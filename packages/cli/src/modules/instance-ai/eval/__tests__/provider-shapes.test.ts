@@ -1,0 +1,383 @@
+import { applyProviderShapeNormalizers, findProviderShapeViolation } from '../provider-shapes';
+import type { ProviderRequestInfo } from '../provider-shapes';
+
+interface Spec {
+	type: 'json' | 'text' | 'binary' | 'error';
+	body?: unknown;
+}
+
+const info = (over: Partial<ProviderRequestInfo>): ProviderRequestInfo => ({
+	method: 'POST',
+	pathname: '/',
+	hostname: undefined,
+	...over,
+});
+
+const openAiImages = info({ hostname: 'api.openai.com', pathname: '/v1/images/generations' });
+const gemini = info({
+	hostname: 'generativelanguage.googleapis.com',
+	pathname: '/v1beta/models/gemini-1.5-flash:generateContent',
+});
+const redditSubmit = info({ hostname: 'oauth.reddit.com', pathname: '/api/submit' });
+const redditComment = info({ hostname: 'oauth.reddit.com', pathname: '/api/comment' });
+const hubspotUpsert = info({
+	hostname: 'api.hubapi.com',
+	pathname: '/contacts/v1/contact/createOrUpdate/email/jane@example.com',
+});
+const googleDocs = info({
+	hostname: 'docs.googleapis.com',
+	pathname: '/v1/documents/abc123:batchUpdate',
+});
+
+// ---------------------------------------------------------------------------
+// applyProviderShapeNormalizers
+// ---------------------------------------------------------------------------
+
+describe('applyProviderShapeNormalizers', () => {
+	it('leaves non-json specs untouched', () => {
+		const spec: Spec = { type: 'text', body: '<xml/>' };
+		applyProviderShapeNormalizers(openAiImages, spec);
+		expect(spec).toEqual({ type: 'text', body: '<xml/>' });
+	});
+
+	it('leaves unmatched endpoints untouched', () => {
+		const spec: Spec = { type: 'json', body: { ok: true } };
+		applyProviderShapeNormalizers(info({ hostname: 'api.slack.com', pathname: '/chat' }), spec);
+		expect(spec.body).toEqual({ ok: true });
+	});
+
+	describe('OpenAI images', () => {
+		it('wraps a bare image object into the data-array envelope with b64_json', () => {
+			const spec: Spec = { type: 'json', body: { url: 'https://x/y.png' } };
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<Record<string, unknown>> };
+			expect(Array.isArray(body.data)).toBe(true);
+			expect(body.data).toHaveLength(1);
+			expect(typeof body.data[0].b64_json).toBe('string');
+			expect(body.data[0].url).toBe('https://x/y.png');
+		});
+
+		it('adds b64_json to a data entry that is missing it', () => {
+			const spec: Spec = { type: 'json', body: { data: [{ url: 'https://x/y.png' }] } };
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<Record<string, unknown>> };
+			expect(typeof body.data[0].b64_json).toBe('string');
+		});
+
+		it('synthesizes a data array when none is present', () => {
+			const spec: Spec = { type: 'json', body: { created: 123 } };
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<Record<string, unknown>>; created: number };
+			expect(body.data).toHaveLength(1);
+			expect(typeof body.data[0].b64_json).toBe('string');
+			expect(body.created).toBe(123);
+		});
+
+		it('substitutes model-authored b64_json with decodable PNG bytes, preserving siblings', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: { created: 1, data: [{ b64_json: 'iVBORw0KGgo', revised_prompt: 'p' }] },
+			};
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<{ b64_json: string; revised_prompt: string }> };
+			expect(body.data[0].revised_prompt).toBe('p');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			// Real decodable canvas, not the old 8-byte truncated header.
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
+			expect(png.readUInt32BE(16)).toBe(512);
+			expect(png.readUInt32BE(20)).toBe(512);
+		});
+
+		it('preserves url entries while adding decodable b64_json alongside', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: { created: 1, data: [{ url: 'https://example.invalid/img.png' }] },
+			};
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<{ url: string; b64_json: string }> };
+			expect(body.data[0].url).toBe('https://example.invalid/img.png');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
+		});
+	});
+
+	describe('Google Gemini', () => {
+		it('wraps a bare text payload into the candidates envelope', () => {
+			const spec: Spec = { type: 'json', body: { text: 'hello world' } };
+			applyProviderShapeNormalizers(gemini, spec);
+			const body = spec.body as {
+				candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+			};
+			expect(body.candidates[0].content.parts[0].text).toBe('hello world');
+		});
+
+		it('wraps a bare content string payload', () => {
+			const spec: Spec = { type: 'json', body: { content: 'answer' } };
+			applyProviderShapeNormalizers(gemini, spec);
+			const body = spec.body as {
+				candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+			};
+			expect(body.candidates[0].content.parts[0].text).toBe('answer');
+		});
+
+		it('preserves an already-correct candidates envelope', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: {
+					candidates: [{ content: { parts: [{ text: 'x' }], role: 'model' } }],
+				},
+			};
+			const before = structuredClone(spec.body);
+			applyProviderShapeNormalizers(gemini, spec);
+			expect(spec.body).toEqual(before);
+		});
+	});
+
+	describe('Reddit', () => {
+		it('wraps an api/submit payload into { json: { data } }', () => {
+			const spec: Spec = { type: 'json', body: { id: 't3_abc', url: 'https://reddit/x' } };
+			applyProviderShapeNormalizers(redditSubmit, spec);
+			const body = spec.body as { json: { data: Record<string, unknown> } };
+			expect(body.json.data.id).toBe('t3_abc');
+		});
+
+		it('unwraps an already-enveloped api/submit payload without double-wrapping', () => {
+			const spec: Spec = { type: 'json', body: { json: { errors: [], data: { id: 't3_abc' } } } };
+			applyProviderShapeNormalizers(redditSubmit, spec);
+			const body = spec.body as { json: { data: Record<string, unknown> } };
+			expect(body.json.data.id).toBe('t3_abc');
+			expect((body.json as { json?: unknown }).json).toBeUndefined();
+		});
+
+		it('wraps an api/comment payload into { json: { data: { things: [{ data }] } } }', () => {
+			const spec: Spec = { type: 'json', body: { id: 't1_xyz', body: 'nice' } };
+			applyProviderShapeNormalizers(redditComment, spec);
+			const body = spec.body as {
+				json: { data: { things: Array<{ data: Record<string, unknown> }> } };
+			};
+			expect(body.json.data.things[0].data.id).toBe('t1_xyz');
+		});
+	});
+
+	describe('HubSpot contacts upsert', () => {
+		it('injects a numeric vid and isNew when missing', () => {
+			const spec: Spec = { type: 'json', body: { properties: {} } };
+			applyProviderShapeNormalizers(hubspotUpsert, spec);
+			const body = spec.body as { vid: number; isNew: boolean };
+			expect(typeof body.vid).toBe('number');
+			expect(typeof body.isNew).toBe('boolean');
+		});
+
+		it('coerces a string vid to a number and preserves isNew', () => {
+			const spec: Spec = { type: 'json', body: { vid: '3234574', isNew: false } };
+			applyProviderShapeNormalizers(hubspotUpsert, spec);
+			const body = spec.body as { vid: number; isNew: boolean };
+			expect(body.vid).toBe(3234574);
+			expect(body.isNew).toBe(false);
+		});
+	});
+
+	describe('Google Docs batchUpdate', () => {
+		it('ensures a non-empty replies array', () => {
+			const spec: Spec = { type: 'json', body: { documentId: 'abc123' } };
+			applyProviderShapeNormalizers(googleDocs, spec);
+			const body = spec.body as { replies: unknown[] };
+			expect(Array.isArray(body.replies)).toBe(true);
+			expect(body.replies.length).toBeGreaterThan(0);
+		});
+
+		it('preserves an existing non-empty replies array', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: { documentId: 'abc', replies: [{ insertText: {} }] },
+			};
+			applyProviderShapeNormalizers(googleDocs, spec);
+			const body = spec.body as { replies: unknown[] };
+			expect(body.replies).toEqual([{ insertText: {} }]);
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// findProviderShapeViolation
+// ---------------------------------------------------------------------------
+
+describe('findProviderShapeViolation', () => {
+	it('returns undefined for unmatched endpoints', () => {
+		expect(
+			findProviderShapeViolation(info({ hostname: 'api.slack.com', pathname: '/chat' }), {
+				ok: true,
+			}),
+		).toBeUndefined();
+	});
+
+	it('flags an OpenAI images body with no data array', () => {
+		expect(findProviderShapeViolation(openAiImages, { url: 'x' })).toContain('data');
+	});
+
+	it('flags an OpenAI images entry missing both b64_json and url', () => {
+		expect(findProviderShapeViolation(openAiImages, { data: [{ revised_prompt: 'p' }] })).toContain(
+			'b64_json',
+		);
+	});
+
+	it('accepts a correct OpenAI images body', () => {
+		expect(
+			findProviderShapeViolation(openAiImages, { data: [{ b64_json: 'AAAA' }] }),
+		).toBeUndefined();
+	});
+
+	it('flags a Gemini body missing candidates parts', () => {
+		expect(findProviderShapeViolation(gemini, { text: 'hi' })).toContain('candidates');
+	});
+
+	it('accepts a correct Gemini body', () => {
+		expect(
+			findProviderShapeViolation(gemini, {
+				candidates: [{ content: { parts: [{ text: 'x' }] } }],
+			}),
+		).toBeUndefined();
+	});
+
+	it('flags a Reddit submit body missing json.data', () => {
+		expect(findProviderShapeViolation(redditSubmit, { id: 't3_abc' })).toContain('json');
+	});
+
+	it('flags a Reddit comment body missing things', () => {
+		expect(findProviderShapeViolation(redditComment, { json: { data: { id: 't1' } } })).toContain(
+			'things',
+		);
+	});
+
+	it('flags a HubSpot upsert body missing vid', () => {
+		expect(findProviderShapeViolation(hubspotUpsert, { id: 'abc' })).toContain('vid');
+	});
+
+	it('accepts a HubSpot upsert body with a vid', () => {
+		expect(findProviderShapeViolation(hubspotUpsert, { vid: 123, isNew: true })).toBeUndefined();
+	});
+
+	it('flags a Google Docs batchUpdate body missing replies', () => {
+		expect(findProviderShapeViolation(googleDocs, { documentId: 'abc' })).toContain('replies');
+	});
+
+	it('accepts a Google Docs batchUpdate body with replies', () => {
+		expect(findProviderShapeViolation(googleDocs, { replies: [{}] })).toBeUndefined();
+	});
+});
+
+describe('OpenAI completion text normalizer', () => {
+	const info = (pathname: string) => ({ method: 'POST', pathname, hostname: 'api.openai.com' });
+
+	it('stringifies an object embedded as Responses output text', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				object: 'response',
+				output: [
+					{
+						type: 'message',
+						content: [{ type: 'output_text', text: { quotes: ['a', 'b'] } }],
+					},
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		const body = spec.body as { output: Array<{ content: Array<{ text: unknown }> }> };
+		expect(body.output[0].content[0].text).toBe('{"quotes":["a","b"]}');
+	});
+
+	it('leaves string Responses text and tool-call items untouched', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				output: [
+					{ type: 'message', content: [{ type: 'output_text', text: '{"ok":true}' }] },
+					{ type: 'function_call', name: 'lookup', arguments: '{}' },
+				],
+			},
+		};
+		const before = JSON.stringify(spec.body);
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		expect(JSON.stringify(spec.body)).toBe(before);
+	});
+
+	it('stringifies an object chat-completions message content, preserving null and part arrays', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				choices: [
+					{ message: { role: 'assistant', content: { answer: 42 } } },
+					{ message: { role: 'assistant', content: null, tool_calls: [] } },
+					{ message: { role: 'assistant', content: [{ type: 'text', text: 'hi' }] } },
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/chat/completions'), spec);
+		const body = spec.body as { choices: Array<{ message: { content: unknown } }> };
+		expect(body.choices[0].message.content).toBe('{"answer":42}');
+		expect(body.choices[1].message.content).toBeNull();
+		expect(Array.isArray(body.choices[2].message.content)).toBe(true);
+	});
+
+	it('reports a violation for object-typed Responses text and passes string text', () => {
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: { a: 1 } }] }],
+			}),
+		).toContain('must be a STRING');
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }],
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('Gmail messages.list', () => {
+	const gmailList = info({
+		hostname: 'www.googleapis.com',
+		pathname: '/gmail/v1/users/me/messages',
+		method: 'GET',
+	});
+
+	it('wraps a bare array into the messages envelope', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: [{ id: 'msg_1', threadId: 'thr_1' }],
+		};
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual({
+			messages: [{ id: 'msg_1', threadId: 'thr_1' }],
+			resultSizeEstimate: 1,
+		});
+	});
+
+	it('leaves a correct envelope untouched', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: { messages: [{ id: 'msg_1' }], resultSizeEstimate: 1 },
+		};
+		const before = structuredClone(spec.body);
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual(before);
+	});
+
+	it('does not touch the single-message GET', () => {
+		const single = info({
+			hostname: 'www.googleapis.com',
+			pathname: '/gmail/v1/users/me/messages/msg_1',
+			method: 'GET',
+		});
+		const spec: Spec = { type: 'json', body: [{ anything: true }] };
+		applyProviderShapeNormalizers(single, spec);
+		expect(Array.isArray(spec.body)).toBe(true);
+	});
+
+	it('reports a violation for a bare array and passes the envelope', () => {
+		expect(findProviderShapeViolation(gmailList, [{ id: 'msg_1' }])).toContain('bare array');
+		expect(
+			findProviderShapeViolation(gmailList, { messages: [], resultSizeEstimate: 0 }),
+		).toBeUndefined();
+	});
+});

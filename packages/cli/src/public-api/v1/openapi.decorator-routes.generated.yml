@@ -1,0 +1,99 @@
+openapi: 3.0.0
+info:
+  title: decorator-routes
+  version: 0.0.0
+paths:
+  /git-connections:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnections.generated.yml
+  /git-connections/{id}:
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnection.generated.yml
+    put:
+      $ref: ./handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+    delete:
+      $ref: ./handlers/git-connections/spec/paths/deleteGitConnection.generated.yml
+  /git-connections/{id}/clone:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/cloneGitConnection.generated.yml
+  /git-connections/{id}/disconnect:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
+  /git-connections/{id}/push:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  /git-connections/{id}/projects:
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
+  /git-connections/{id}/projects/{projectId}:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
+    delete:
+      $ref: ./handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
+  /role-mapping-rules:
+    get:
+      $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}/move:
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}:
+    patch:
+      $ref: ./handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+    delete:
+      $ref: ./handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
+  /roles:
+    get:
+      $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
+    post:
+      $ref: ./handlers/roles/spec/paths/createRole.generated.yml
+  /roles/{slug}:
+    get:
+      $ref: ./handlers/roles/spec/paths/getRole.generated.yml
+    put:
+      $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
+    delete:
+      $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
+  /tags:
+    get:
+      $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /workflows:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
+    post:
+      $ref: ./handlers/workflows/spec/paths/createWorkflow.generated.yml
+  /workflows/{workflowId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
+  /workflows/{workflowId}/archive:
+    post:
+      $ref: ./handlers/workflows/spec/paths/archiveWorkflow.generated.yml
+  /workflows/{workflowId}/unarchive:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unarchiveWorkflow.generated.yml
+  /workflows/{workflowId}/transfer:
+    put:
+      $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  /workflows/{workflowId}/publish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  /workflows/{workflowId}/unpublish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  /workflows/{workflowId}/activate:
+    post:
+      $ref: ./handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  /workflows/{workflowId}/deactivate:
+    post:
+      $ref: ./handlers/workflows/spec/paths/deactivateWorkflow.generated.yml
+  /workflows/{workflowId}/history:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/tags:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
+    put:
+      $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml

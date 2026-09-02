@@ -5,10 +5,9 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	isNodeTypeClass,
+	WEBHOOK_LIFECYCLE_METHODS,
+	type WebhookLifecycleMethod,
 } from '../utils/index.js';
-
-const REQUIRED_METHODS = ['checkExists', 'create', 'delete'] as const;
-type RequiredMethod = (typeof REQUIRED_METHODS)[number];
 
 /**
  * Returns true if the description declares webhook endpoints, indicating the
@@ -39,8 +38,8 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	);
 }
 
-function findMissingMethods(group: TSESTree.ObjectExpression): RequiredMethod[] {
-	return REQUIRED_METHODS.filter(
+function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
+	return WEBHOOK_LIFECYCLE_METHODS.filter(
 		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
 	);
 }

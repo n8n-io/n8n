@@ -1,12 +1,13 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { googleApiRequest } from '../GenericFunctions';
+import type { Mocked } from 'vitest';
 
 describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -24,11 +25,11 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('googleApiRequest', () => {
-		const mockRequestOAuth2 = jest.fn();
+		const mockRequestOAuth2 = vi.fn();
 
 		beforeEach(() => {
 			mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;

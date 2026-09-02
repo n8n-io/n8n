@@ -41,7 +41,7 @@ export async function searchContainers(
 
 	return {
 		results: formatResults(containers, filter),
-		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION],
+		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION] as string | undefined,
 	};
 }
 
@@ -71,6 +71,6 @@ export async function searchItems(
 
 	return {
 		results: formatResults(items, filter),
-		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION],
+		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION] as string | undefined,
 	};
 }

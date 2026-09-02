@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
-import { useToast } from '@/app/composables/useToast';
+import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -10,139 +9,96 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
+import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type {
-	AgentExecution,
-	AgentExecutionThread,
+import {
+	defaultAgentSessionFilters,
+	type AgentExecution,
+	type AgentExecutionThread,
+	type ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
-import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
-import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
-import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
-import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
-import {
-	flattenExecutionsToTimelineItems,
-	computeIdleRanges,
-	sessionBounds,
-	itemFilterKey,
-	chartBlockColor,
-	filteredTimelineItemIndexes,
-	isSubAgentTimelineItem,
-} from '@/features/agents/session-timeline.utils';
-import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
-import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
-import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
+import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
+import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
+import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
+import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import type { AgentResource } from '@/features/agents/types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nBreadcrumbs,
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	N8nIconButton,
-	N8nInput,
-} from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useActiveElement, useEventListener } from '@vueuse/core';
+import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const projectsStore = useProjectsStore();
-const activeElement = useActiveElement();
+const {
+	isEnabled: isLangSmithExportEnabled,
+	isExporting,
+	sendSession,
+} = useAgentSessionLangSmithExport();
+const rootStore = useRootStore();
+const { config: localConfig, fetchConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
 
+// Populated by the timeline panel's `loaded` event so the header can render its
+// title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
-const loading = ref(true);
-const selectedIndex = ref<number | null>(null);
-const highlightedIndex = ref<number | null>(null);
-const selectedFilters = ref<Set<string>>(new Set());
-const searchQuery = ref('');
-let loadThreadDetailRequestId = 0;
-
-const baseItems = computed<TimelineItem[]>(() =>
-	flattenExecutionsToTimelineItems(executions.value),
-);
-
-// Resolve sub-agent ids to friendly names, loaded lazily and only when the
-// session actually contains delegations (mirrors how the chat resolves the
-// delegate step label).
-const { subAgentNameById } = useSubAgentNames(projectId, () =>
-	baseItems.value.some(isSubAgentTimelineItem),
-);
-
-const items = computed<TimelineItem[]>(() =>
-	baseItems.value.map((item) => {
-		if (!isSubAgentTimelineItem(item)) return item;
-		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
-		return name ? { ...item, subAgentName: name } : item;
-	}),
-);
-const idleRanges = computed(() => computeIdleRanges(items.value));
-const bounds = computed(() => sessionBounds(items.value));
-
-function labelForKey(key: string): string {
-	switch (key) {
-		case 'user':
-			return i18n.baseText('agentSessions.timeline.user');
-		case 'agent':
-			return i18n.baseText('agentSessions.timeline.agent');
-		case 'tool':
-			return i18n.baseText('agentSessions.timeline.tool');
-		case 'workflow':
-			return i18n.baseText('agentSessions.timeline.workflow');
-		case 'node':
-			return i18n.baseText('agentSessions.timeline.node');
-		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'agentSessions.timeline.tool.richInteraction':
-		case 'agentSessions.timeline.tool.richInteractionDisplay':
-			return i18n.baseText(key);
-		default:
-			return key;
-	}
-}
-
-const filterOptions = computed<FilterOption[]>(() => {
-	const counts = new Map<string, number>();
-	const colorByKey = new Map<string, string>();
-	for (const item of items.value) {
-		const key = itemFilterKey(item);
-		counts.set(key, (counts.get(key) ?? 0) + 1);
-		if (!colorByKey.has(key)) colorByKey.set(key, chartBlockColor(item.kind));
-	}
-	return Array.from(counts.entries()).map(([key, count]) => ({
-		key,
-		label: labelForKey(key),
-		color: colorByKey.get(key) ?? 'var(--border-color)',
-		count,
-	}));
-});
+const agent = ref<AgentResource | null>(null);
+const isPreviewOpen = useStorage(previewOpenStorageKey, false);
+const previewInitialized = ref(false);
+const {
+	activeChatSessionId,
+	effectiveSessionId,
+	currentSessionHasMessages,
+	currentSessionTitle,
+	sessionMenu,
+	onSessionPick,
+	onNewChat,
+} = useAgentBuilderSession({ routeBacked: computed(() => false) });
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
 	const first = executions.value[0];
+
+	/** Relabel InstanceAI to AI Assistant for the UI */
+	if (first.source === 'instance-ai') return 'AI Assistant';
+
 	return first.source ?? 'chat';
 });
 
-const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
-	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+const triggerIcon = computed((): IconName => {
+	const source = triggerSource.value;
+	if (!source) return 'bolt-filled';
+
+	switch (source) {
+		case 'slack':
+			return 'slack';
+		case 'AI Assistant':
+			return 'sparkles';
+		default:
+			return 'bolt-filled';
+	}
 });
 
 const triggerLabel = computed((): string => {
 	const source = triggerSource.value;
 	if (!source) return '';
+	if (source === 'chat' || source === 'n8n_chat') {
+		return i18n.baseText('agentSessions.origin.preview');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -216,115 +172,52 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const selectedItem = computed<TimelineItem | null>(() =>
-	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
+const totalTokens = computed(() => {
+	if (!thread.value) return 0;
+	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
+});
+
+const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const totalCost = computed(() => thread.value?.totalCost ?? 0);
+const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
+
+function onPanelLoaded(detail: ThreadDetail | null) {
+	thread.value = detail?.thread ?? null;
+	executions.value = detail?.executions ?? [];
+}
+
+let previewLoadRequestId = 0;
+
+/** Load the agent data required by the shared preview dock. */
+watch(
+	[projectId, agentId],
+	async ([nextProjectId, nextAgentId]) => {
+		const requestId = ++previewLoadRequestId;
+		previewInitialized.value = false;
+		agent.value = null;
+		try {
+			const [loadedAgent] = await Promise.all([
+				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
+				fetchConfig(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
+					filters: defaultAgentSessionFilters(),
+				}),
+			]);
+			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+		} finally {
+			if (requestId === previewLoadRequestId) previewInitialized.value = true;
+		}
+	},
+	{ immediate: true },
 );
 
-const visibleItemIndexes = computed(() =>
-	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
+watch(
+	threadId,
+	(nextThreadId) => {
+		activeChatSessionId.value = nextThreadId;
+	},
+	{ immediate: true },
 );
-
-function moveSelectedIndex(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-
-	if (highlightedIndex.value === null || !indexes.includes(highlightedIndex.value)) {
-		highlightedIndex.value = direction === 1 ? indexes[0] : indexes[indexes.length - 1];
-		return;
-	}
-
-	const currentVisibleIndex = indexes.indexOf(highlightedIndex.value);
-	const nextVisibleIndex = currentVisibleIndex + direction;
-	if (nextVisibleIndex < 0 || nextVisibleIndex >= indexes.length) return;
-	highlightedIndex.value = indexes[nextVisibleIndex];
-}
-
-function moveSelectedIndexToBoundary(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-	highlightedIndex.value = direction === 1 ? indexes[indexes.length - 1] : indexes[0];
-}
-
-function selectTimelineItem(index: number | null) {
-	selectedIndex.value = index;
-	highlightedIndex.value = index;
-}
-
-function onKeyDown(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
-
-	if (event.key === 'Escape') {
-		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
-			event.preventDefault();
-			selectTimelineItem(null);
-		}
-		return;
-	}
-
-	if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(1);
-		} else {
-			moveSelectedIndex(1);
-		}
-	} else if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(-1);
-		} else {
-			moveSelectedIndex(-1);
-		}
-	}
-}
-
-useEventListener(document, 'keydown', onKeyDown);
-
-function onKeyUp(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-	if (highlightedIndex.value === selectedIndex.value) return;
-	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
-}
-
-useEventListener(document, 'keyup', onKeyUp);
-
-async function loadThreadDetail() {
-	const currentProjectId = projectId.value;
-	const currentAgentId = agentId.value;
-	const currentThreadId = threadId.value;
-	const requestId = ++loadThreadDetailRequestId;
-
-	thread.value = null;
-	executions.value = [];
-	selectedFilters.value = new Set();
-	searchQuery.value = '';
-	selectTimelineItem(null);
-	loading.value = true;
-
-	void sessionsStore.fetchThreads(currentProjectId, currentAgentId);
-
-	try {
-		const result = await sessionsStore.getThreadDetail(
-			currentProjectId,
-			currentThreadId,
-			currentAgentId,
-		);
-		if (requestId !== loadThreadDetailRequestId) return;
-		thread.value = result.thread;
-		executions.value = result.executions;
-	} catch (error) {
-		if (requestId !== loadThreadDetailRequestId) return;
-		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
-	} finally {
-		if (requestId === loadThreadDetailRequestId) {
-			loading.value = false;
-		}
-	}
-}
-
-watch([projectId, agentId, threadId], loadThreadDetail, { immediate: true });
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
@@ -339,6 +232,19 @@ function formatDate(fullDate: string): string {
 }
 
 function closeTimeline() {
+	/**
+	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
+	 * If no state is available, it's most likey because the link was visited directly.
+	 * Here we fallback to default Agents view.
+	 */
+	const previousRoute = router.options.history.state.back;
+	const resolvedPreviousRoute =
+		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
+
+	if (resolvedPreviousRoute?.matched.length) {
+		router.back();
+		return;
+	}
 	void router.push(agentExecutionsRoute.value);
 }
 
@@ -357,304 +263,98 @@ function onSessionSelect(nextThreadId: string) {
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
 }
+
+function togglePreview() {
+	isPreviewOpen.value = !isPreviewOpen.value;
+}
+
+function viewPreviewTrace() {
+	if (!effectiveSessionId.value) return;
+	onSessionSelect(effectiveSessionId.value);
+}
 </script>
 
 <template>
 	<div :class="$style.view">
-		<div :class="$style.topBar">
-			<div :class="$style.topBarLeft">
-				<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
-					<template #append>
-						<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-						<N8nDropdownMenu
-							:items="sessionOptions"
-							placement="bottom-start"
-							:extra-popper-class="$style.sessionDropdownMenu"
-							data-testid="session-header-switcher"
-							@select="onSessionSelect"
-						>
-							<template #trigger>
-								<N8nButton
-									variant="ghost"
-									size="small"
-									:class="$style.switcherButton"
-									:aria-label="i18n.baseText('agentSessions.sessionName')"
-								>
-									<span :class="$style.switcherLabel">{{ sessionTitle }}</span>
-									<N8nIcon icon="chevron-down" :size="14" />
-								</N8nButton>
-							</template>
-							<template #item-label="{ item }">
-								<span :class="$style.sessionDropdownName">
-									{{ item.label }}
-								</span>
-							</template>
-							<template #item-trailing="{ item }">
-								<span v-if="item.data?.date" :class="$style.sessionDropdownDate">
-									{{ item.data.date }}
-								</span>
-							</template>
-						</N8nDropdownMenu>
-					</template>
-				</N8nBreadcrumbs>
-			</div>
-			<div v-if="thread" :class="$style.topBarRight">
-				<span v-if="triggerSource" :class="$style.metricItem">
-					<N8nIcon :icon="triggerIcon" :size="12" />
-					<span>{{ triggerLabel }}</span>
-				</span>
-				<span :class="$style.sep">·</span>
-				<span :class="$style.metricItem">
-					<N8nIcon icon="circle-dollar-sign" :size="12" />
-					<span>
-						{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t (${{
-							thread.totalCost.toFixed(4)
-						}})
-					</span>
-				</span>
-				<span :class="$style.sep">·</span>
-				<span :class="$style.metricItem">
-					<N8nIcon icon="clock" :size="12" />
-					<span>{{ formatDuration(thread.totalDuration) }}</span>
-				</span>
-				<N8nIconButton
-					icon="x"
-					variant="ghost"
-					size="small"
-					:class="$style.closeButton"
-					:aria-label="i18n.baseText('generic.close')"
-					data-test-id="agent-session-timeline-close"
-					@click="closeTimeline"
-				/>
-			</div>
-		</div>
+		<AgentSessionTimelineHeader
+			:breadcrumb-items="breadcrumbItems"
+			:session-title="sessionTitle"
+			:session-options="sessionOptions"
+			:show-metrics="Boolean(thread)"
+			:trigger-source="triggerSource"
+			:trigger-icon="triggerIcon"
+			:trigger-label="triggerLabel"
+			:total-tokens="totalTokens"
+			:total-cost="totalCost"
+			:duration-label="durationLabel"
+			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
+			:langsmith-export-loading="isExporting"
+			:is-preview-open="isPreviewOpen"
+			@breadcrumb-select="onBreadcrumbSelect"
+			@session-select="onSessionSelect"
+			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
+			@close="closeTimeline"
+		/>
 
-		<div v-if="!loading" :class="$style.subHeader">
-			<div :class="$style.search">
-				<N8nInput
-					size="medium"
-					v-model="searchQuery"
-					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="12" />
-					</template>
-				</N8nInput>
-			</div>
-			<SessionEventFilter
-				:available="filterOptions"
-				:selected="selectedFilters"
-				@update="(next) => (selectedFilters = next)"
+		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
+			<AgentSessionTimelinePanel
+				:project-id="projectId"
+				:agent-id="agentId"
+				:thread-id="threadId"
+				@loaded="onPanelLoaded"
 			/>
-		</div>
 
-		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
-			<SessionTimelineChart
-				:items="items"
-				:idle-ranges="idleRanges"
-				:session-start="bounds.start"
-				:session-end="bounds.end"
-				:visible-kinds="selectedFilters"
-				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
+			<AgentPreviewDock
+				:is-open="isPreviewOpen"
+				:session-title="currentSessionTitle"
+				:session-options="sessionMenu"
+				:has-session="currentSessionHasMessages"
+				:initialized="previewInitialized"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:agent="agent"
+				:local-config="localConfig"
+				:connected-triggers="[]"
+				:effective-session-id="effectiveSessionId"
+				@view-trace="viewPreviewTrace"
+				@new-session="onNewChat"
+				@session-select="onSessionPick"
+				@close="togglePreview"
 			/>
-		</div>
-
-		<div :class="$style.panels">
-			<div :class="$style.tablePanel">
-				<div v-if="loading" :class="$style.loading">Loading...</div>
-				<SessionTimelineTable
-					v-else
-					:items="items"
-					:idle-ranges="idleRanges"
-					:selected-index="highlightedIndex"
-					:visible-kinds="selectedFilters"
-					:search-query="searchQuery"
-					@select="selectTimelineItem"
-				/>
-			</div>
-			<Transition name="session-detail-panel">
-				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
-				</div>
-			</Transition>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-:global(body) {
-	--color--session-timeline-block-bg-alpha: 75%;
-}
-:global(body[data-theme='dark']) {
-	--color--session-timeline-block-bg-alpha: 45%;
-}
-@media (prefers-color-scheme: dark) {
-	:global(body:not([data-theme])) {
-		--color--session-timeline-block-bg-alpha: 45%;
-	}
-}
-
 .view {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
-.topBar {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	height: var(--height--4xl);
-}
-.topBarLeft {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-.topBarRight {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--medium);
-	user-select: none;
-	color: var(--text-color--subtler);
-	margin-left: auto;
-}
-.sep {
-	color: var(--text-color--subtler);
-}
-.metricItem {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	white-space: nowrap;
-}
-.closeButton {
-	margin-left: var(--spacing--3xs);
-	color: var(--text-color--subtler);
-}
-.crumbSeparator {
-	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
-	user-select: none;
-}
-.switcherButton {
-	font-size: var(--font-size--sm);
-	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--5xs);
-}
-.switcherLabel {
-	max-width: 200px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.sessionDropdownMenu {
-	min-width: 360px;
-}
-:global(.session-dropdown-item-active),
-:global(.session-dropdown-item-active:hover),
-:global(.session-dropdown-item-active:focus),
-:global(.session-dropdown-item-active[data-highlighted]) {
-	background-color: var(--background--active);
-}
-.sessionDropdownName {
-	display: block;
-	max-width: 60%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.sessionDropdownDate {
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--3xs);
-	text-align: right;
-	white-space: nowrap;
-	margin-left: auto;
-}
-.sessionTitle {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
-}
-.subHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-}
-.search {
-	flex: 1;
-	min-width: 0;
-}
-.chartRow {
-	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	background-color: var(--background--surface);
-}
-.panels {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-}
-.tablePanel {
-	flex: 6;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
-}
-.detailPanel {
-	flex: 0 0 40%;
-	min-width: 0;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	border-left: var(--border);
-	background-color: var(--background--surface);
-}
 
-:global(.session-detail-panel-enter-active),
-:global(.session-detail-panel-leave-active) {
-	transition:
-		flex-basis var(--duration--snappy) var(--easing--ease-out),
-		opacity var(--duration--snappy) var(--easing--ease-out),
-		transform var(--duration--snappy) var(--easing--ease-out);
+.content {
+	position: relative;
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow: hidden;
-}
-:global(.session-detail-panel-enter-from),
-:global(.session-detail-panel-leave-to) {
-	flex-basis: 0;
-	opacity: 0;
-	transform: translateX(var(--spacing--sm));
-	border-left-color: transparent;
-}
-:global(.session-detail-panel-enter-to),
-:global(.session-detail-panel-leave-from) {
-	flex-basis: 40%;
-	opacity: 1;
-	transform: translateX(0);
-}
-@media (prefers-reduced-motion: reduce) {
-	:global(.session-detail-panel-enter-active),
-	:global(.session-detail-panel-leave-active) {
+	padding-right: 0;
+	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+	}
+
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
+		padding-right: 0;
 		transition: none;
 	}
-}
-.loading {
-	padding: var(--spacing--sm);
-	color: var(--text-color--subtler);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 </style>

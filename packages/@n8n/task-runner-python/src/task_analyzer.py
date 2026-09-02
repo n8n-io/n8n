@@ -23,9 +23,8 @@ from src.constants import (
     ERROR_BARE_FORMAT_ATTRIBUTE,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
+    FORMAT_METHOD_NAMES,
 )
-
-FORMAT_METHOD_NAMES = frozenset({"format", "format_map"})
 
 CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
@@ -169,10 +168,22 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Constant(self, node: ast.Constant) -> None:
-        """Detect string constants containing dangerous format patterns."""
+        """Detect string constants containing dangerous format patterns or
+        equal to a blocked name/attribute."""
 
         if isinstance(node.value, str):
-            self._check_format_string(node.value, node.lineno)
+            self._scan_string_literal(node.value, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        """Detect compile-time string concatenations that assemble to a
+        blocked name or attribute."""
+
+        if isinstance(node.op, ast.Add):
+            assembled = self._try_assemble_string_concat(node)
+            if assembled is not None:
+                self._scan_string_literal(assembled, node.lineno)
 
         self.generic_visit(node)
 
@@ -248,6 +259,38 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(
                 lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=token)
             )
+
+    def _scan_string_literal(self, s: str, lineno: int) -> None:
+        """Validate a string literal (or compile-time-assembled string) via
+        an exact-match check against the blocked name / attribute sets, and
+        a format-template scan."""
+
+        if s in BLOCKED_NAMES:
+            self._add_violation(lineno, ERROR_DANGEROUS_NAME.format(name=s))
+            return
+        if s in BLOCKED_ATTRIBUTES:
+            self._add_violation(lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=s))
+            return
+        self._check_format_string(s, lineno)
+
+    def _try_assemble_string_concat(self, node: ast.AST) -> str | None:
+        """Recursively fold a tree of ``ast.BinOp(Add)`` over string constants
+        into a single string. Returns ``None`` if any operand is not a string
+        constant (or a string-folding BinOp)."""
+
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left = self._try_assemble_string_concat(node.left)
+            if left is None:
+                return None
+            right = self._try_assemble_string_concat(node.right)
+            if right is None:
+                return None
+            return left + right
+
+        return None
 
     # ========== Validation ==========
 

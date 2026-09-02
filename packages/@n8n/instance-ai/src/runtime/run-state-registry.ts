@@ -1,18 +1,21 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
 	runId: string;
 	threadId: string;
 	abortController: AbortController;
+	/** Prevents an older finalizer from clearing a newer executor for the same thread. */
+	executionToken?: symbol;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
 	modelId?: ModelConfig;
@@ -23,9 +26,15 @@ export interface ActiveRunState {
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	agentRunId: string;
 	agent: unknown;
+	/** The orchestration context the agent's tools closed over. Stored so a
+	 *  resume can rebind `tracing` to the new resume trace — spans emitted
+	 *  through the suspended turn's shut-down runtime export nothing. */
+	orchestrationContext?: OrchestrationContext;
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
@@ -37,8 +46,11 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isPlannedBuildFollowUp: true;
 		buildTaskId: string;
 		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**
@@ -55,6 +67,8 @@ export interface ConfirmationData {
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
 	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
@@ -66,6 +80,11 @@ export interface ConfirmationData {
 	resourceDecision?: string;
 	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
 	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
+	autoSetup?: { credentialType: string; attemptId?: string };
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {
@@ -147,23 +166,41 @@ export class RunStateRegistry<TUser = unknown> {
 			}
 		}
 
-		this.threadMessageGroupId.set(options.threadId, messageGroupId);
-		if (!this.runIdsByMessageGroup.has(messageGroupId)) {
-			this.runIdsByMessageGroup.set(messageGroupId, []);
-		}
-		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
-		if (groupRunIds) groupRunIds.push(runId);
+		this.indexRunInGroup(options.threadId, messageGroupId, runId);
 
 		return { runId, threadId: options.threadId, abortController, messageGroupId };
+	}
+
+	/**
+	 * Seed the message-group indexes for a run: map the thread to its current
+	 * group and record the run under that group. Idempotent.
+	 *
+	 * Called on `startRun` and re-applied on `suspendRun`/`activateSuspendedRun`
+	 * so a run resumed after a restart (where these maps start empty) repopulates
+	 * the group association the SSE bootstrap relies on.
+	 */
+	private indexRunInGroup(threadId: string, messageGroupId: string, runId: string): void {
+		this.threadMessageGroupId.set(threadId, messageGroupId);
+		let groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
+		if (!groupRunIds) {
+			groupRunIds = [];
+			this.runIdsByMessageGroup.set(messageGroupId, groupRunIds);
+		}
+		if (!groupRunIds.includes(runId)) groupRunIds.push(runId);
 	}
 
 	getThreadStatus(
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): InstanceAiThreadStatusResponse {
+		const activeRun = this.activeRuns.get(threadId);
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		const liveRun = activeRun ?? suspendedRun;
+
 		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
+			hasActiveRun: activeRun !== undefined,
+			isSuspended: suspendedRun !== undefined,
+			...(liveRun ? { runId: liveRun.runId } : {}),
 			backgroundTasks: backgroundTasks
 				.filter((task) => task.threadId === threadId)
 				.map((task) => ({
@@ -217,6 +254,11 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
+	/** Number of runs currently executing (excludes suspended/pending runs). */
+	activeRunCount(): number {
+		return this.activeRuns.size;
+	}
+
 	getActiveRun(threadId: string): ActiveRunState | undefined {
 		return this.activeRuns.get(threadId);
 	}
@@ -236,7 +278,8 @@ export class RunStateRegistry<TUser = unknown> {
 		});
 	}
 
-	clearActiveRun(threadId: string): void {
+	clearActiveRun(threadId: string, executionToken?: symbol): void {
+		if (this.activeRuns.get(threadId)?.executionToken !== executionToken) return;
 		this.activeRuns.delete(threadId);
 	}
 
@@ -254,6 +297,12 @@ export class RunStateRegistry<TUser = unknown> {
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
 		this.suspendedRuns.set(threadId, state);
+
+		// Re-seed group indexes: on a restart-resumed orphan these maps start
+		// empty, so without this the SSE bootstrap loses the group association.
+		if (state.messageGroupId) {
+			this.indexRunInGroup(threadId, state.messageGroupId, state.runId);
+		}
 	}
 
 	findSuspendedByRequestId(requestId: string): SuspendedRunState<TUser> | undefined {
@@ -271,7 +320,10 @@ export class RunStateRegistry<TUser = unknown> {
 		return suspended;
 	}
 
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+	activateSuspendedRun(
+		threadId: string,
+		executionToken?: symbol,
+	): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
@@ -281,12 +333,18 @@ export class RunStateRegistry<TUser = unknown> {
 			runId: suspended.runId,
 			threadId,
 			abortController: suspended.abortController,
+			executionToken,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
 			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
+
+		// Re-seed group indexes for the reactivated run (empty after a restart).
+		if (suspended.messageGroupId) {
+			this.indexRunInGroup(threadId, suspended.messageGroupId, suspended.runId);
+		}
 		return suspended;
 	}
 

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { InstanceSettings } from '@/instance-settings';
 import { StorageConfig } from '@/storage.config';
 
-export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'database'] as const;
+export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'azure', 'database'] as const;
 
 const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
 

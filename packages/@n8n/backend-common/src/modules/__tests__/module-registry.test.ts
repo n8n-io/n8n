@@ -1,10 +1,11 @@
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
-import { ModuleRegistry } from '../module-registry';
+import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
 beforeEach(() => {
 	vi.resetAllMocks();
@@ -12,10 +13,34 @@ beforeEach(() => {
 	Container.reset();
 });
 
+describe('getModuleEntryUrl', () => {
+	it.each([
+		['community module', false, '/insights/insights.module.js'],
+		['enterprise module', true, '/insights.ee/insights.module.js'],
+	])('should return a file URL for a %s', (_, isEnterprise, expectedPathSuffix) => {
+		const url = new URL(
+			getModuleEntryUrl(path.join(process.cwd(), 'dist', 'modules'), 'insights', isEnterprise),
+		);
+
+		expect(url.protocol).toBe('file:');
+		expect(url.pathname.endsWith(expectedPathSuffix)).toBe(true);
+	});
+});
+
 describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('instance-ai');
+		expect(eligible).not.toContain('agents');
+		expect(eligible).not.toContain('policy-infrastructure');
+	});
+
+	it('should include instance-ai by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('instance-ai');
+	});
+
+	it('should allow opting out of a default module via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'instance-ai';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('instance-ai');
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -24,6 +49,7 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',
@@ -47,16 +73,19 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'workflow-reviews',
+			'instance-ai',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'instance-ai';
+		process.env.N8N_ENABLED_MODULES = 'agents';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',
@@ -80,7 +109,9 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'workflow-reviews',
 			'instance-ai',
+			'agents',
 		]);
 	});
 

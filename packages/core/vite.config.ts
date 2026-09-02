@@ -3,26 +3,21 @@ import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decora
 import path from 'node:path';
 
 export default mergeConfig(
-	createVitestConfigWithDecorators({
-		globalSetup: ['./test/setup.ts'],
-		setupFiles: ['./test/setup-mocks.ts'],
-	}),
+	createVitestConfigWithDecorators(
+		{
+			globalSetup: ['./test/setup.ts'],
+			setupFiles: ['./test/setup-mocks.ts'],
+		},
+		// Pin `zod` and `n8n-workflow` to their CJS build so cross-boundary `instanceof`
+		// (`ZodType`, `UserError`) holds against the externalized CJS dist. See
+		// `cjsPinAliases` in @n8n/vitest-config/node for the rationale.
+		{ pinCjs: ['zod', 'n8n-workflow'] },
+	),
 	{
 		resolve: {
 			alias: [
 				{ find: '@', replacement: path.resolve(__dirname, './src') },
 				{ find: '@test', replacement: path.resolve(__dirname, './test') },
-				// zod has dual ESM/CJS exports (`./dist/esm/index.js` for `import`,
-				// `./dist/cjs/index.js` for `require`) — two separate files with two separate
-				// `ZodType` classes. @n8n/config dist CJS-requires zod, test files ESM-import
-				// it, and `instanceof` fails between them. Pin the top-level `zod` import to the
-				// CJS file so both code paths share a single module instance. `require.resolve`
-				// follows zod's `require` export condition, so it tracks the installed (catalog)
-				// version automatically. Subpaths like `zod/v4` keep their normal resolution.
-				{
-					find: /^zod$/,
-					replacement: require.resolve('zod'),
-				},
 			],
 		},
 		oxc: {

@@ -9,7 +9,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from 'n8n-workflow';
 
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 
@@ -94,7 +94,7 @@ export async function downloadRecordAttachments(
 		fieldNames = fieldNames.split(',').map((item) => item.trim());
 	}
 	if (!fieldNames.length) {
-		throw new ApplicationError("Specify field to download in 'Download Attachments' option", {
+		throw new UserError("Specify field to download in 'Download Attachments' option", {
 			level: 'warning',
 		});
 	}

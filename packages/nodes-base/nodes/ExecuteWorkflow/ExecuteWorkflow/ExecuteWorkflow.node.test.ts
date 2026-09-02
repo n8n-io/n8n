@@ -1,31 +1,58 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IWorkflowDataProxyData, INode } from 'n8n-workflow';
 
 import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('./GenericFunctions');
-jest.mock('../../../utils/utilities');
+vi.mock('./GenericFunctions');
+vi.mock('../../../utils/utilities');
 
 describe('ExecuteWorkflow', () => {
 	const executeWorkflow = new ExecuteWorkflow();
 	const executeFunctions = mock<IExecuteFunctions>({
-		getNodeParameter: jest.fn(),
-		getInputData: jest.fn(),
-		getWorkflowDataProxy: jest.fn(),
-		executeWorkflow: jest.fn(),
-		continueOnFail: jest.fn(),
-		setMetadata: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getInputData: vi.fn(),
+		getWorkflowDataProxy: vi.fn(),
+		executeWorkflow: vi.fn(),
+		continueOnFail: vi.fn(),
+		setMetadata: vi.fn(),
+		getNode: vi.fn(),
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
 		executeFunctions.getWorkflowDataProxy.mockReturnValue({
 			$workflow: { id: 'workflowId' },
 			$execution: { id: 'executionId' },
 		} as unknown as IWorkflowDataProxyData);
+	});
+
+	test('should document pass-through and declared workflow input mappings for the builder', () => {
+		const workflowInputs = executeWorkflow.description.properties.find(
+			(property) => property.name === 'workflowInputs',
+		);
+		const propertyHint = workflowInputs?.builderHint?.propertyHint;
+		const mappingPatterns = executeWorkflow.description.builderHint?.extraTypeDefContent
+			?.map(({ content }) => content)
+			.join('\n');
+
+		expect(propertyHint).toContain('temporary UI initialization state');
+		expect(propertyHint).toContain('must never be emitted');
+		expect(propertyHint).toContain("trigger is set to 'Accept all data'");
+		expect(propertyHint).toContain('Omit workflowInputs');
+		expect(propertyHint).toContain('value and schema fields exactly match');
+		expect(mappingPatterns).toContain('Omit workflowInputs from parameters');
+		expect(mappingPatterns).toContain("orderId: expr('{{ $json.id }}')");
+		expect(mappingPatterns).toContain("amount: expr('{{ $json.total }}')");
+		expect(mappingPatterns).toContain("id: 'orderId'");
+		expect(mappingPatterns).toContain("type: 'string'");
+		expect(mappingPatterns).toContain("id: 'amount'");
+		expect(mappingPatterns).toContain("type: 'number'");
+		expect(mappingPatterns).toContain('matchingColumns: []');
+		expect(mappingPatterns).toContain('attemptToConvertTypes: false');
+		expect(mappingPatterns).toContain('convertFieldsToString: true');
 	});
 
 	test('should execute workflow in "each" mode and wait for sub-workflow completion', async () => {
@@ -41,8 +68,8 @@ describe('ExecuteWorkflow', () => {
 			$workflow: { id: 'workflowId' },
 			$execution: { id: 'executionId' },
 		} as unknown as IWorkflowDataProxyData);
-		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
-		(executeFunctions.executeWorkflow as jest.Mock).mockResolvedValue({
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		(executeFunctions.executeWorkflow as Mock).mockResolvedValue({
 			executionId: 'subExecutionId',
 			data: [[{ json: { key: 'subValue' } }]],
 		});
@@ -85,7 +112,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(false); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
-		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
 
 		executeFunctions.executeWorkflow.mockResolvedValue({
 			executionId: 'subExecutionId',
@@ -124,8 +151,8 @@ describe('ExecuteWorkflow', () => {
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -151,8 +178,8 @@ describe('ExecuteWorkflow', () => {
 			{ json: { key: '3' } },
 		]);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -173,8 +200,8 @@ describe('ExecuteWorkflow', () => {
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -200,8 +227,8 @@ describe('ExecuteWorkflow', () => {
 			{ json: { key: '3' } },
 		]);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -222,8 +249,8 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 		await expect(executeWorkflow.execute.call(executeFunctions)).rejects.toThrow(
 			'Error executing workflow with item at index 0',

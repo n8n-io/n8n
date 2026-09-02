@@ -5,11 +5,10 @@ import type {
 	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
-	Role,
 	UsersList,
 	User,
 } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
 	FeatureFlags,
 	IDataObject,
@@ -215,7 +214,8 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Role;
+	// Allows custom global role slugs in addition to built-in roles (assignable = any non-owner global role).
+	newRoleName: AssignableGlobalRole;
 }
 
 export async function updateGlobalRole(

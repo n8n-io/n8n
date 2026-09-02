@@ -1,4 +1,60 @@
-import type { TranscriptTurn } from '../types';
+import { isRecord } from '@n8n/utils/is-record';
+
+import type { CaseSeed } from '../harness/schema';
+import type {
+	ConversationTurn,
+	SetupWizardSkippedNode,
+	ToolInteraction,
+	TranscriptStep,
+	TranscriptTurn,
+} from '../types';
+
+/** Render a turn's out-of-band workflow attachment for a transcript/prompt, e.g.
+ *  `[attached workflow: Batch loop]`, or '' when it has none. The editor hands the
+ *  agent a resource reference rather than text, so without this the faithful
+ *  hand-off shape (`text: ""` + `attach`) reaches judges and prompt-aware checks
+ *  as an empty message.
+ *
+ *  `label` is the workflow's NAME — the restored one where the harness knows it
+ *  (the live path), else the name the seed declares for that id
+ *  (`attachedWorkflowLabel`). An id would mean nothing to a prompt-aware check or
+ *  to a human reading the report. */
+export function attachedWorkflowNote(label: string | undefined): string {
+	return label ? `[attached workflow: ${label}]` : '';
+}
+
+/** The name a seed declares for an attached workflow id. The authored-conversation
+ *  path has only the id, and the seed is where that id gets its name; falls back
+ *  to the id when the seed can't resolve it, so the hand-off stays visible. */
+function attachedWorkflowLabel(
+	turn: ConversationTurn | undefined,
+	seed: CaseSeed | undefined,
+): string | undefined {
+	const id = turn?.attach?.workflow;
+	if (id === undefined) return undefined;
+	const declared = seed?.mode === 'inline' ? seed.workflows.find((w) => w.id === id) : undefined;
+	return declared?.name ?? id;
+}
+
+/**
+ * Human-readable prompt label for a test case. Authored cases use their first
+ * turn; a `replay` seed carries no authored conversation, so fall back to the
+ * live (non-seeded) user turn captured in the transcript, then to the thread id.
+ * A text-less hand-off (`text: ""` + `attach`) has no prompt text at all, so it
+ * falls back to naming the attachment — otherwise it labels as '' in every report.
+ */
+export function caseDisplayPrompt(
+	testCase: { conversation?: ConversationTurn[]; seed?: CaseSeed },
+	transcript?: TranscriptTurn[],
+): string {
+	const authored = testCase.conversation?.[0]?.text;
+	if (authored) return authored;
+	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
+	if (liveTurn) return liveTurn;
+	const { seed } = testCase;
+	if (seed?.mode === 'replay') return `[seeded] thread ${seed.threadId.slice(0, 8)}`;
+	return attachedWorkflowNote(attachedWorkflowLabel(testCase.conversation?.[0], seed));
+}
 
 /**
  * User-side turns from a captured transcript, flattened as a text block for
@@ -12,4 +68,248 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	if (turns.length === 0) return '';
 	if (turns.length === 1) return turns[0];
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
+/**
+ * User-side turns from an authored conversation (test-case JSON), flattened the
+ * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
+ * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
+ * text from the authored conversation instead of receiving an empty prompt.
+ *
+ * Accepts `undefined` because `testCase.conversation` is optional (a `replay`-seeded
+ * case carries none) and callers pass it straight through — no conversation → ''.
+ * `seed` resolves an attachment's id to its declared name.
+ */
+export function conversationUserTurnsAsText(
+	conversation: ConversationTurn[] | undefined,
+	seed?: CaseSeed,
+): string {
+	if (!conversation) return '';
+	const turns = conversation
+		.filter((t) => t.role === 'user')
+		// Name an attachment, so a text-less hand-off isn't filtered out below and
+		// handed to the prompt-aware checks as an empty prompt.
+		.map((t) =>
+			[attachedWorkflowNote(attachedWorkflowLabel(t, seed)), t.text].filter(Boolean).join(' '),
+		)
+		.filter((text) => text.length > 0);
+
+	if (turns.length === 0) return '';
+	if (turns.length === 1) return turns[0];
+	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
+/** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
+export function transcriptAsText(transcript: TranscriptTurn[]): string {
+	return transcript
+		.map((turn, i) => {
+			// No seeded label: the judge evaluates the whole conversation as one.
+			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
+			for (const step of turn.steps) {
+				const line = describeStep(step);
+				if (line) lines.push(line);
+			}
+			return lines.join('\n');
+		})
+		.join('\n\n');
+}
+
+/** Concatenated agent narration across a turn's steps (excludes tool interactions). */
+export function agentTextOf(turn: TranscriptTurn): string {
+	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/**
+ * Agent-side narration across a captured transcript, flattened as a text block
+ * for honesty checks. Single narrating turn → plain text; multi-turn → numbered
+ * by conversation turn so each claim aligns with the user turn that prompted it.
+ */
+export function agentTurnsAsText(transcript: TranscriptTurn[]): string {
+	const narrations = transcript
+		.map((turn, i) => ({ turn: i + 1, text: agentTextOf(turn) }))
+		.filter((n) => n.text.length > 0);
+
+	if (narrations.length === 0) return '';
+	if (narrations.length === 1) return narrations[0].text;
+	return narrations.map((n) => `Turn ${String(n.turn)}: ${n.text}`).join('\n\n');
+}
+
+/** The most recent turn's agent narration — a finalText fallback for seeded
+ *  conversations whose live turn produced no text-delta events. */
+export function lastAgentText(transcript: TranscriptTurn[]): string {
+	for (let i = transcript.length - 1; i >= 0; i--) {
+		const text = agentTextOf(transcript[i]);
+		if (text.length > 0) return text;
+	}
+	return '';
+}
+
+/** Tool id the builder calls to create or modify the workflow graph. */
+export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+
+// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
+// every tool, every turn; lets it reason from the counts instead of recounting prose.
+export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
+	const lines: string[] = [];
+	transcript.forEach((turn, i) => {
+		const counts = new Map<string, number>();
+		for (const step of turn.steps) {
+			if (step.kind === 'tool-call') {
+				counts.set(step.toolName, (counts.get(step.toolName) ?? 0) + 1);
+			}
+		}
+		if (counts.size === 0) return;
+		const summary = [...counts.entries()].map(([name, n]) => `${name}×${String(n)}`).join(', ');
+		lines.push(`Turn ${String(i + 1)}: ${summary}`);
+	});
+	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
+}
+
+// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+// error-forced rebuilds, which generalise across prompts better than the raw call count.
+export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
+	return transcript.map(
+		(turn) =>
+			turn.steps.filter((step) => {
+				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+					return false;
+				}
+				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.
+				if (step.error !== undefined) return true;
+				return (
+					isRecord(step.result) &&
+					(step.result.success === false ||
+						(Array.isArray(step.result.errors) && step.result.errors.length > 0))
+				);
+			}).length,
+	);
+}
+
+// Cap each serialized field to bound judge token cost (matches the report's cap).
+const MAX_STEP_CHARS = 2000;
+
+function cap(text: string): string {
+	return text.length > MAX_STEP_CHARS
+		? `${text.slice(0, MAX_STEP_CHARS)}… (${String(text.length - MAX_STEP_CHARS)} more chars)`
+		: text;
+}
+
+function capJson(value: unknown): string {
+	let str: string;
+	try {
+		str = typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value));
+	} catch {
+		str = '<unserializable>';
+	}
+	return cap(str);
+}
+
+function describeStep(step: TranscriptStep): string | null {
+	if (step.kind === 'agent-text') {
+		return step.text ? `Assistant: ${cap(step.text)}` : null;
+	}
+	return describeInteraction(step);
+}
+
+function describeInteraction(interaction: ToolInteraction): string | null {
+	switch (interaction.kind) {
+		case 'plan': {
+			if (interaction.tasks.length === 0) return null;
+			const items = interaction.tasks
+				.map((t, i) => {
+					const title = t.title ?? `Task ${String(i + 1)}`;
+					return t.description ? `${title}: ${t.description}` : title;
+				})
+				.join('; ');
+			return cap(`Plan (${String(interaction.tasks.length)}): ${items}`);
+		}
+		case 'ask-user': {
+			if (interaction.questions.length === 0) return null;
+			const answerByQId = new Map<string, string>();
+			for (const a of interaction.answers ?? []) {
+				const text = a.skipped
+					? '(skipped)'
+					: [a.selectedOptions.join(', '), a.customText].filter(Boolean).join(' — ');
+				if (text) answerByQId.set(a.questionId, text);
+			}
+			const qs = interaction.questions
+				.map((q) => {
+					const opts = q.options && q.options.length > 0 ? ` [${q.options.join(' / ')}]` : '';
+					const answer = answerByQId.get(q.id);
+					return `Q: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
+				})
+				.join(' | ');
+			return `Asked user: ${qs}`;
+		}
+		case 'setup-wizard': {
+			const parts: string[] = [];
+			if (interaction.completedNodes.length > 0) {
+				const configured = interaction.completedNodes.map((c) =>
+					c.parametersSet && c.parametersSet.length > 0
+						? `${c.nodeName} (${c.parametersSet.join(', ')})`
+						: c.nodeName,
+				);
+				parts.push(`configured ${configured.join('; ')}`);
+			}
+			const describeNeeds = (node: SetupWizardSkippedNode) =>
+				`${node.nodeName}${node.credentialType ? ` (needs ${node.credentialType} credential)` : ' (needs parameters)'}`;
+			if (interaction.nodesStillNeedingSetup.length > 0) {
+				parts.push(
+					`still needs setup ${interaction.nodesStillNeedingSetup.map(describeNeeds).join(', ')}`,
+				);
+			}
+			// Kept distinct from the above: the judge cares whether the assistant re-asked for
+			// something the user declined, which reads the same as "unconfigured" if merged.
+			if (interaction.skippedByUser && interaction.skippedByUser.length > 0) {
+				parts.push(`user skipped ${interaction.skippedByUser.map(describeNeeds).join(', ')}`);
+			}
+			const body = parts.length > 0 ? parts.join('; ') : 'nothing to apply';
+			return `Setup wizard: ${body}${interaction.reason ? ` — ${interaction.reason}` : ''}`;
+		}
+		case 'setup-card': {
+			if (interaction.requests.length === 0) return null;
+			const asks = interaction.requests.map((r) => {
+				const needs: string[] = [];
+				if (r.credentialType) needs.push(`${r.credentialType} credential`);
+				if (r.params && r.params.length > 0) needs.push(`params: ${r.params.join(', ')}`);
+				return `${r.nodeName}${needs.length > 0 ? ` (${needs.join('; ')})` : ''}`;
+			});
+			const outcome =
+				interaction.outcome === 'filled'
+					? `filled${interaction.filled && interaction.filled.length > 0 ? ` (${interaction.filled.join(', ')})` : ''} by user`
+					: interaction.outcome === 'skipped'
+						? 'skipped by user'
+						: interaction.outcome === 'declined'
+							? 'dismissed by user'
+							: 'no response';
+			return `Asked user via setup card: ${asks.join('; ')} — ${outcome}`;
+		}
+		case 'confirmation': {
+			const decision =
+				typeof interaction.approved === 'boolean'
+					? interaction.approved
+						? ' (approved)'
+						: ' (rejected)'
+					: '';
+			// Include the prompt and the user's free-text feedback (e.g. plan-rejection reason).
+			const parts = [`Resume ${interaction.toolName}: ${interaction.resumeReason}${decision}`];
+			if (interaction.message) parts.push(`prompt: ${cap(interaction.message)}`);
+			if (interaction.feedback) parts.push(`user feedback: ${cap(interaction.feedback)}`);
+			return parts.join(' — ');
+		}
+		case 'tool-call': {
+			// Args/result are the evidence for node-choice expectations; redacted upstream.
+			const parts = [`Tool: ${interaction.toolName}`];
+			if (interaction.args && Object.keys(interaction.args).length > 0) {
+				parts.push(`args: ${capJson(interaction.args)}`);
+			}
+			if (interaction.error) {
+				parts.push(`error: ${cap(interaction.error)}`);
+			} else if (interaction.result !== undefined) {
+				parts.push(`result: ${capJson(interaction.result)}`);
+			}
+			return parts.join(' ');
+		}
+	}
 }

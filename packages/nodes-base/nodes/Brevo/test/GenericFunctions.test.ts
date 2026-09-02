@@ -2,6 +2,26 @@ import type { IBinaryData, IExecuteSingleFunctions, IHttpRequestOptions } from '
 
 import { BrevoNode } from '../GenericFunctions';
 
+const { mailComposerOptions } = vi.hoisted(() => ({
+	mailComposerOptions: vi.fn(),
+}));
+
+vi.mock('nodemailer/lib/mail-composer', () => ({
+	default: class MailComposer {
+		constructor(options: unknown) {
+			mailComposerOptions(options);
+		}
+
+		compile() {
+			return {
+				getAddresses: () => ({
+					to: [{ address: 'recipient@example.com' }],
+				}),
+			};
+		}
+	},
+}));
+
 type AttachmentEntry = { content: string; name: string };
 
 function makeContext(overrides: {
@@ -9,18 +29,18 @@ function makeContext(overrides: {
 	binaries: Record<string, { metadata: IBinaryData; buffer: Buffer }>;
 	itemIndex?: number;
 }): IExecuteSingleFunctions {
-	const getNodeParameter = jest.fn().mockReturnValue({
+	const getNodeParameter = vi.fn().mockReturnValue({
 		binaryPropertyName: overrides.binaryPropertyName,
 	});
 
-	const assertBinaryData = jest.fn((propertyName: string) => {
+	const assertBinaryData = vi.fn((propertyName: string) => {
 		const entry = overrides.binaries[propertyName];
 		if (!entry) throw new Error(`No binary named ${propertyName}`);
 		return entry.metadata;
 	});
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	const getBinaryDataBuffer = jest.fn(async (propertyName: string) => {
+	const getBinaryDataBuffer = vi.fn(async (propertyName: string) => {
 		const entry = overrides.binaries[propertyName];
 		if (!entry) throw new Error(`No binary named ${propertyName}`);
 		return entry.buffer;
@@ -28,14 +48,37 @@ function makeContext(overrides: {
 
 	return {
 		getNodeParameter,
-		getItemIndex: jest.fn().mockReturnValue(overrides.itemIndex ?? 0),
-		getNode: jest.fn().mockReturnValue({ name: 'Brevo' }),
+		getItemIndex: vi.fn().mockReturnValue(overrides.itemIndex ?? 0),
+		getNode: vi.fn().mockReturnValue({ name: 'Brevo' }),
 		helpers: {
 			assertBinaryData,
 			getBinaryDataBuffer,
 		},
 	} as unknown as IExecuteSingleFunctions;
 }
+
+describe('Brevo - email validation', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('applies content access restrictions when validating addresses', async () => {
+		const context = {
+			getNodeParameter: vi.fn().mockReturnValue('recipient@example.com'),
+		} as unknown as IExecuteSingleFunctions;
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith({
+			to: 'recipient@example.com',
+			disableFileAccess: true,
+			disableUrlAccess: true,
+		});
+	});
+});
 
 describe('Brevo - validateAndCompileAttachmentsData', () => {
 	const validate = BrevoNode.Validators.validateAndCompileAttachmentsData;

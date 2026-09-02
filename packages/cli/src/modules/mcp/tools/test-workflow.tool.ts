@@ -1,43 +1,56 @@
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	type INode,
 	type IPinData,
 	type INodeExecutionData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
 	jsonStringify,
-	ensureError,
 	isTriggerNode,
 } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
-import { getMcpWorkflow } from './workflow-validation.utils';
-
 import type { ActiveExecutions } from '@/active-executions';
-import type { NodeTypes } from '@/node-types';
 import type { McpService } from '@/modules/mcp/mcp.service';
+import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { findEnabledEligibleTrigger } from '../mcp.utils';
+import {
+	waitForExecutionResult,
+	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
+	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
+} from './execution-utils';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to test'),
 	pinData: z
 		.record(z.array(z.record(z.unknown())))
 		.describe(
-			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of items. Each item MUST be wrapped in a "json" property, e.g. [{"json": {"id": "123", "name": "test"}}]. Do NOT pass flat objects like [{"id": "123"}].',
+			'Pin data for all workflow nodes. Use the prepare_workflow_pin_data tool to generate this. Keys are node names, values are arrays of items. Each item MUST be wrapped in a "json" property, e.g. [{"json": {"id": "123", "name": "test"}}]. Do NOT pass flat objects like [{"id": "123"}].',
 		),
 	triggerNodeName: z
 		.string()
 		.optional()
 		.describe(
 			'Optional name of the trigger node to start execution from. Useful for workflows with multiple triggers. Defaults to the first trigger node found.',
+		),
+	timeout: z
+		.number()
+		.int()
+		.positive()
+		.max(WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS)
+		.optional()
+		.describe(
+			`Optional timeout in seconds before the test execution is interrupted. Defaults to ${WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS} seconds. Increase this to test workflows that take longer to run.`,
 		),
 });
 
@@ -67,7 +80,7 @@ export const createTestWorkflowTool = (
 	name: 'test_workflow',
 	config: {
 		description:
-			'Test a workflow using pin data to bypass external services. Trigger nodes, nodes with credentials, and HTTP Request nodes are pinned (use simulated data). Other nodes (Set, If, Code, etc.) execute normally — including credential-free I/O nodes like Execute Command or file read/write nodes. Use prepare_test_pin_data to generate the pin data first.',
+			'Test a workflow using pin data to bypass external services. Trigger nodes, nodes with credentials, and HTTP Request nodes are pinned (use simulated data). Other nodes (Set, If, Code, etc.) execute normally — including credential-free I/O nodes like Execute Command or file read/write nodes. Use prepare_workflow_pin_data to generate the pin data first.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -78,7 +91,12 @@ export const createTestWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, pinData, triggerNodeName }: z.infer<typeof inputSchema>) => {
+	handler: async ({
+		workflowId,
+		pinData,
+		triggerNodeName,
+		timeout,
+	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'test_workflow',
@@ -86,6 +104,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				nodeCount: Object.keys(pinData).length,
 				hasTriggerNodeName: !!triggerNodeName,
+				hasCustomTimeout: timeout !== undefined,
 			},
 		};
 
@@ -100,6 +119,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
+				timeout,
 			);
 
 			telemetryPayload.results = {
@@ -124,7 +144,7 @@ export const createTestWorkflowTool = (
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds`
+					? `Workflow execution timed out after ${error.timeoutMs * Time.milliseconds.toSeconds} seconds`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
@@ -157,6 +177,7 @@ export async function testWorkflow(
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
+	timeoutSeconds: number = WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -169,7 +190,18 @@ export async function testWorkflow(
 	const connections = workflow.connections ?? {};
 
 	// Find the trigger node — support any trigger type
-	const triggerNode = findTriggerNode(nodes, nodeTypes, triggerNodeName);
+	const triggerNode = findEnabledEligibleTrigger(
+		nodes,
+		(node) => {
+			try {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return isTriggerNode(nodeType.description);
+			} catch {
+				return false;
+			}
+		},
+		triggerNodeName,
+	);
 	if (!triggerNode) {
 		throw new WorkflowAccessError(
 			triggerNodeName
@@ -234,7 +266,12 @@ export async function testWorkflow(
 	};
 
 	const executionId = await workflowRunner.run(runData);
-	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
+	const data = await waitForExecutionResult(
+		executionId,
+		activeExecutions,
+		mcpService,
+		timeoutSeconds * Time.seconds.toMilliseconds,
+	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
 
 	return {
@@ -244,29 +281,4 @@ export async function testWorkflow(
 			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
 			: undefined,
 	};
-}
-
-/**
- * Find a trigger node in the workflow.
- * When triggerNodeName is provided, returns that specific node if it is a trigger.
- * Otherwise returns the first trigger node found.
- */
-function findTriggerNode(
-	nodes: INode[],
-	nodeTypes: NodeTypes,
-	triggerNodeName?: string,
-): INode | undefined {
-	for (const node of nodes) {
-		if (node.disabled) continue;
-		if (triggerNodeName && node.name !== triggerNodeName) continue;
-		try {
-			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (isTriggerNode(nodeType.description)) {
-				return node;
-			}
-		} catch {
-			// Node type not found — skip
-		}
-	}
-	return undefined;
 }

@@ -9,7 +9,7 @@ import { NodeApiError } from 'n8n-workflow';
 import { capitalizeFirstLetter, linearApiRequest, sort } from '../GenericFunctions';
 
 describe('Linear -> GenericFunctions', () => {
-	const mockHttpRequestWithAuthentication = jest.fn();
+	const mockHttpRequestWithAuthentication = vi.fn();
 
 	describe('linearApiRequest', () => {
 		let mockExecuteFunctions:
@@ -20,17 +20,17 @@ describe('Linear -> GenericFunctions', () => {
 
 		const setupMockFunctions = (authentication: string) => {
 			mockExecuteFunctions = {
-				getNodeParameter: jest.fn().mockReturnValue(authentication),
+				getNodeParameter: vi.fn().mockReturnValue(authentication),
 				helpers: {
 					httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 				},
-				getNode: jest.fn().mockReturnValue({}),
+				getNode: vi.fn().mockReturnValue({}),
 			} as unknown as
 				| IExecuteFunctions
 				| IWebhookFunctions
 				| IHookFunctions
 				| ILoadOptionsFunctions;
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		};
 
 		beforeEach(() => {

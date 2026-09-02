@@ -1,5 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	DOMAIN_RESTRICTION_FIELDS,
 	assertCredentialAllowsUrl,
@@ -8,6 +6,7 @@ import {
 	injectDomainRestrictionFields,
 	isDomainAllowed,
 } from '../src/credential-domain-restrictions';
+import { UserError } from '../src/errors';
 import { NodeOperationError } from '../src/errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
@@ -279,6 +278,227 @@ describe('getCredentialAllowedDomains', () => {
 			}),
 		).toThrow('No allowed domains specified');
 	});
+
+	describe('credentialOwnedSurface', () => {
+		const noneCredential = { allowedHttpRequestDomains: 'none' };
+
+		it("adds the node's own host to a 'domains' allowlist that omits it", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBe('api.example.com, other.example.com');
+		});
+
+		it("does not duplicate the node's own host when the allowlist already covers it", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com, API.Example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBe('other.example.com, API.Example.com');
+		});
+
+		it('strips the port from the node host it adds', () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com:8443/v2',
+				}),
+			).toBe('api.example.com, other.example.com');
+		});
+
+		it('does not add a host containing a comma, which would split the list', () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://one,two.example.com/v2',
+				}),
+			).toBe('other.example.com');
+		});
+
+		it('treats a wildcard entry as already covering the node host', () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: '*.example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBe('*.example.com');
+		});
+
+		it("falls back to the node's own host when the 'domains' list is empty", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'domains', allowedDomains: '   ' },
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBe('api.example.com');
+		});
+
+		it("still rejects an empty 'domains' list when there is no node host to fall back on", () => {
+			expect(() =>
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+					credentialOwnedSurface: true,
+				}),
+			).toThrow('No allowed domains specified');
+		});
+
+		it.each([
+			['explicitly false', false],
+			['undefined', undefined],
+		])(
+			'never widens the allowlist when credentialOwnedSurface is %s',
+			(_label, credentialOwnedSurface) => {
+				expect(
+					getCredentialAllowedDomains({
+						node,
+						credentialData: {
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains: 'other.example.com',
+						},
+						credentialOwnedSurface,
+						nodeEndpointUrl: 'https://api.example.com/v2',
+					}),
+				).toBe('other.example.com');
+			},
+		);
+
+		it.each([
+			['an unresolved expression', '={{$credentials.baseUrl}}'],
+			['a relative path', '/api/v2'],
+			['a scheme with no host', 'https://'],
+			['an empty string', ''],
+			['undefined', undefined],
+		])('widens nothing when the node endpoint is %s', (_label, nodeEndpointUrl) => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					credentialOwnedSurface: true,
+					nodeEndpointUrl,
+				}),
+			).toBe('other.example.com');
+		});
+
+		it("ignores nodeEndpointUrl for 'none'", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'none' },
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBeUndefined();
+		});
+
+		it("ignores nodeEndpointUrl for 'all'", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'all' },
+					credentialOwnedSurface: true,
+					nodeEndpointUrl: 'https://api.example.com/v2',
+				}),
+			).toBeUndefined();
+		});
+
+		it("leaves 'none' unrestricted for a credential-owned surface", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: noneCredential,
+					credentialOwnedSurface: true,
+				}),
+			).toBeUndefined();
+		});
+
+		it.each([
+			['explicitly false', false],
+			['undefined', undefined],
+		])(
+			"still blocks 'none' when credentialOwnedSurface is %s",
+			(_label, credentialOwnedSurface) => {
+				expect(() =>
+					getCredentialAllowedDomains({
+						node,
+						credentialData: noneCredential,
+						credentialOwnedSurface,
+					}),
+				).toThrow('This credential is configured to prevent use within an HTTP Request node');
+			},
+		);
+
+		it("still blocks 'none' when the flag is omitted entirely", () => {
+			expect(() => getCredentialAllowedDomains({ node, credentialData: noneCredential })).toThrow(
+				'This credential is configured to prevent use within an HTTP Request node',
+			);
+		});
+
+		it("still enforces the 'domains' allowlist on a credential-owned surface", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					credentialOwnedSurface: true,
+				}),
+			).toBe('api.example.com');
+		});
+
+		it("still rejects an empty 'domains' allowlist on a credential-owned surface", () => {
+			expect(() =>
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'domains', allowedDomains: '  ' },
+					credentialOwnedSurface: true,
+				}),
+			).toThrow('No allowed domains specified');
+		});
+
+		it.each([
+			["'all'", { allowedHttpRequestDomains: 'all' }],
+			['an absent mode', {}],
+		])('returns undefined for %s on a credential-owned surface', (_label, credentialData) => {
+			expect(
+				getCredentialAllowedDomains({ node, credentialData, credentialOwnedSurface: true }),
+			).toBeUndefined();
+		});
+	});
 });
 
 describe('assertUrlAllowed', () => {
@@ -298,14 +518,14 @@ describe('assertUrlAllowed', () => {
 		).not.toThrow();
 	});
 
-	it('throws ApplicationError on a non-matching URL when no node is provided', () => {
+	it('throws UserError on a non-matching URL when no node is provided', () => {
 		expect(() =>
 			assertUrlAllowed({ url: 'https://attacker.example', allowedDomains: 'example.com' }),
-		).toThrow(ApplicationError);
+		).toThrow(UserError);
 		expect(() =>
 			assertUrlAllowed({ url: 'https://attacker.example', allowedDomains: 'example.com' }),
 		).toThrow(
-			'Domain not allowed: This credential is restricted from accessing https://attacker.example. Only the following domains are allowed: example.com',
+			'Domain not allowed: This credential is restricted from accessing attacker.example. Only the following domains are allowed: example.com',
 		);
 	});
 
@@ -317,6 +537,43 @@ describe('assertUrlAllowed', () => {
 				allowedDomains: 'example.com',
 			}),
 		).toThrow(NodeOperationError);
+	});
+
+	describe('message contents', () => {
+		it.each([
+			['the path', 'https://attacker.example/api'],
+			['a query string', 'https://attacker.example/api?api_key=sentinel-value'],
+			['a fragment', 'https://attacker.example/api#sentinel-value'],
+			['userinfo', 'https://user:sentinel-value@attacker.example/api'],
+			['userinfo and a query string', 'https://user:sentinel-value@attacker.example/api?k=v'],
+			['a value carried in the path', 'https://attacker.example/v1/sentinel-value/items'],
+		])('names only the host, omitting %s', (_label, url) => {
+			expect(() => assertUrlAllowed({ url, allowedDomains: 'example.com' })).toThrow(
+				'Domain not allowed: This credential is restricted from accessing attacker.example. Only the following domains are allowed: example.com',
+			);
+		});
+
+		it('keeps the port, which is part of the host', () => {
+			expect(() =>
+				assertUrlAllowed({
+					url: 'https://attacker.example:8443/api?api_key=sentinel-value',
+					allowedDomains: 'example.com',
+				}),
+			).toThrow(
+				'Domain not allowed: This credential is restricted from accessing attacker.example:8443. Only the following domains are allowed: example.com',
+			);
+		});
+
+		it('falls back to a redacted URL when there is no host to name', () => {
+			expect(() =>
+				assertUrlAllowed({
+					url: 'attacker.example/api?api_key=sentinel-value',
+					allowedDomains: 'example.com',
+				}),
+			).toThrow(
+				'Domain not allowed: This credential is restricted from accessing attacker.example/api. Only the following domains are allowed: example.com',
+			);
+		});
 	});
 });
 
@@ -363,7 +620,7 @@ describe('assertCredentialAllowsUrl', () => {
 					url: 'https://attacker.example',
 				}),
 			).toThrow(
-				'Domain not allowed: This credential is restricted from accessing https://attacker.example. Only the following domains are allowed: example.com',
+				'Domain not allowed: This credential is restricted from accessing attacker.example. Only the following domains are allowed: example.com',
 			);
 		});
 
@@ -629,6 +886,17 @@ describe('injectDomainRestrictionFields', () => {
 				baseCredential({ authenticate: { type: 'generic', properties: {} }, properties }),
 			);
 			expect(properties).toHaveLength(1);
+		});
+
+		it('does not inject fields when hideDomainRestrictionFields is true', () => {
+			const result = injectDomainRestrictionFields(
+				baseCredential({
+					extends: ['oAuth2Api'],
+					hideDomainRestrictionFields: true,
+				}),
+			);
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(dummyField);
 		});
 	});
 

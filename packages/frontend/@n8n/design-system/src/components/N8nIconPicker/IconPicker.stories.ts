@@ -2,7 +2,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
 import N8nIconPicker from './IconPicker.vue';
-import { type IconOrEmoji } from './types';
+import type { IconOrEmoji } from './types';
 
 export default {
 	title: 'Core/Icon Picker',
@@ -12,11 +12,33 @@ export default {
 			control: 'text',
 		},
 		buttonSize: {
-			type: 'select',
-			options: ['small', 'large'],
+			control: 'select',
+			options: ['small', 'large', 'xlarge'],
+		},
+		buttonVariant: {
+			control: 'select',
+			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+		},
+		isReadOnly: {
+			control: 'boolean',
+		},
+		iconsOnly: {
+			control: 'boolean',
+		},
+		showColorPicker: {
+			control: 'boolean',
+		},
+		containerClass: {
+			control: 'text',
+		},
+		buttonClass: {
+			control: 'text',
+		},
+		defaultTab: {
+			control: 'select',
+			options: ['icons', 'emojis'],
 		},
 	},
-
 	parameters: {
 		docs: {
 			description: { component: 'A searchable selector for browsing and choosing icons.' },
@@ -25,19 +47,23 @@ export default {
 };
 
 function createTemplate(icon: IconOrEmoji): StoryFn {
-	return (args, { argTypes }) => ({
-		components: { N8nIconPicker },
-		props: Object.keys(argTypes),
-		setup: () => ({ args }),
-		data: () => ({
-			icon,
-		}),
-		template:
-			'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
-		methods: {
-			onIconSelected: action('iconSelected'),
-		},
-	});
+	return function renderStory(args, { argTypes }) {
+		return {
+			components: { N8nIconPicker },
+			props: Object.keys(argTypes),
+			setup() {
+				return { args };
+			},
+			data() {
+				return { icon };
+			},
+			template:
+				'<div style="height: 240px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
+			methods: {
+				onIconSelected: action('iconSelected'),
+			},
+		};
+	};
 }
 
 const DefaultTemplate = createTemplate({ type: 'icon', value: 'smile' });
@@ -52,9 +78,22 @@ WithCustomIconAndTooltip.args = {
 	buttonTooltip: 'Select something...',
 };
 
-const OnlyEmojiTemplate = createTemplate({ type: 'emoji', value: '🔥' });
-export const OnlyEmojis = OnlyEmojiTemplate.bind({});
-OnlyEmojis.args = {
+const EmojiTemplate = createTemplate({ type: 'emoji', value: '🔥' });
+export const WithEmoji = EmojiTemplate.bind({});
+WithEmoji.args = {
 	buttonTooltip: 'Select an emoji',
-	availableIcons: [],
+};
+
+const IconsOnlyTemplate = createTemplate({ type: 'icon', value: 'smile' });
+export const IconsOnly = IconsOnlyTemplate.bind({});
+IconsOnly.args = {
+	buttonTooltip: 'Select an icon',
+	iconsOnly: true,
+};
+
+const ColorPickerTemplate = createTemplate({ type: 'icon', value: 'palette' });
+export const WithColorPicker = ColorPickerTemplate.bind({});
+WithColorPicker.args = {
+	buttonTooltip: 'Select an icon color',
+	showColorPicker: true,
 };

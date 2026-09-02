@@ -1,8 +1,9 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type IExecuteFunctions } from 'n8n-workflow';
 
 import { WhatsApp } from '../../WhatsApp.node';
+import type { Mock } from 'vitest';
 
 describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 	let whatsApp: WhatsApp;
@@ -13,12 +14,12 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 
 		mockExecuteFunctions.helpers = {
-			httpRequestWithAuthentication: jest.fn().mockResolvedValue({}),
+			httpRequestWithAuthentication: vi.fn().mockResolvedValue({}),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -35,7 +36,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 			if (key === 'options.limitWaitTime.values') return {};
 		});
 
-		mockExecuteFunctions.putExecutionToWait.mockImplementation();
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 
@@ -87,7 +88,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 		);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValueOnce(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockRejectedValueOnce(
 			new Error('invalid_recipient'),
 		);
 
@@ -117,7 +118,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 		);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValueOnce(
+		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as Mock).mockRejectedValueOnce(
 			new Error('invalid_recipient'),
 		);
 

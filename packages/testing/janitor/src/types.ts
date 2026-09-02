@@ -28,7 +28,9 @@ export type BuiltInRuleId =
 	| 'deduplication'
 	| 'test-data-hygiene'
 	| 'duplicate-logic'
-	| 'no-direct-page-instantiation';
+	| 'no-direct-page-instantiation'
+	| 'no-raw-editor-navigation'
+	| 'valid-owner-annotation';
 
 export type RuleId = string;
 

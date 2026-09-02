@@ -1,64 +1,38 @@
 import type { Config as BrowserConfig } from '@n8n/mcp-browser';
 
-import { logger, type LogLevel } from '../../logger';
-import type { ToolDefinition, ToolModule } from '../types';
+import { ModuleActivation, type ToolModule } from '../types';
 
-export interface BrowserModuleConfig {
-	defaultBrowser?: string;
-	logLevel?: LogLevel;
-	adapter?: 'playwright' | 'agent-browser';
-}
-
-function toBrowserConfig(config: BrowserModuleConfig): Partial<BrowserConfig> {
-	const browserConfig: Partial<BrowserConfig> = {
-		adapter: config.adapter ?? 'agent-browser',
-	};
-	if (config.defaultBrowser) {
-		browserConfig.defaultBrowser = config.defaultBrowser as BrowserConfig['defaultBrowser'];
+function toBrowserConfig(defaultBrowser: string): Partial<BrowserConfig> {
+	const browserConfig: Partial<BrowserConfig> = { adapter: 'agent-browser' };
+	if (defaultBrowser) {
+		browserConfig.defaultBrowser = defaultBrowser as BrowserConfig['defaultBrowser'];
 	}
 	return browserConfig;
 }
 
-/**
- * ToolModule that exposes @n8n/mcp-browser tools through the gateway.
- *
- * Use `BrowserModule.create()` to construct — it dynamically imports
- * `@n8n/mcp-browser` and initialises the BrowserConnection and tools.
- */
-export class BrowserModule implements ToolModule {
-	private connection: { shutdown(): Promise<void> };
-
-	definitions: ToolDefinition[];
-
-	private constructor(definitions: ToolDefinition[], connection: { shutdown(): Promise<void> }) {
-		this.definitions = definitions;
-		this.connection = connection;
-	}
-
-	/**
-	 * Create a BrowserModule if `@n8n/mcp-browser` is available.
-	 * Returns `null` when the package cannot be imported.
-	 */
-	static async create(config: BrowserModuleConfig = {}): Promise<BrowserModule | null> {
-		try {
-			const { createBrowserTools, configureLogger } = await import('@n8n/mcp-browser');
-			if (config.logLevel) {
-				configureLogger({ level: config.logLevel });
-			}
-			const { tools, connection } = createBrowserTools(toBrowserConfig(config));
-			return new BrowserModule(tools, connection);
-		} catch {
-			logger.info('Browser module not supported', { reason: '@n8n/mcp-browser not available' });
-			return null;
-		}
-	}
-
-	isSupported() {
-		return true;
-	}
-
-	/** Shut down the BrowserConnection and close the browser. */
-	async shutdown(): Promise<void> {
-		await this.connection.shutdown();
+async function loadMcpBrowser() {
+	try {
+		return await import('@n8n/mcp-browser');
+	} catch {
+		return null;
 	}
 }
+
+export const BrowserModule: ToolModule = {
+	name: 'Browser',
+	category: 'browser',
+	permissionGroup: 'browser',
+	async activate({ config }) {
+		const mcpBrowser = await loadMcpBrowser();
+		if (!mcpBrowser) {
+			return ModuleActivation.unsupported('@n8n/mcp-browser is not available');
+		}
+		if (config.logLevel) {
+			mcpBrowser.configureLogger({ level: config.logLevel });
+		}
+		const { tools, connection } = mcpBrowser.createBrowserTools(
+			toBrowserConfig(config.browser.defaultBrowser),
+		);
+		return ModuleActivation.supported(tools, async () => await connection.shutdown());
+	},
+};

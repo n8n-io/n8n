@@ -1,6 +1,8 @@
 import {
 	isObjectOrArray,
 	isObject,
+	isStringArray,
+	isStringArrayRecord,
 	searchInObject,
 	getObjectSizeInKB,
 	omitKey,
@@ -42,6 +44,46 @@ describe('objectUtils', () => {
 
 		test.each(testData)('should return false for %s', (_, value) => {
 			assert(!isObject(value));
+		});
+	});
+
+	describe('isStringArray', () => {
+		it('should return true for an empty array', () => {
+			assert(isStringArray([]));
+		});
+
+		it('should return true for an array of strings', () => {
+			assert(isStringArray(['a', 'b']));
+		});
+
+		it('should return false for an array with a non-string item', () => {
+			assert(!isStringArray(['a', 1]));
+		});
+
+		test.each(testData)('should return false for %s', (_, value) => {
+			assert(!isStringArray(value));
+		});
+	});
+
+	describe('isStringArrayRecord', () => {
+		it('should return true for an empty object', () => {
+			assert(isStringArrayRecord({}));
+		});
+
+		it('should return true for a record of string arrays', () => {
+			assert(isStringArrayRecord({ a: ['x'], b: [] }));
+		});
+
+		it('should return false when a value is not a string array', () => {
+			assert(!isStringArrayRecord({ a: ['x'], b: [1] }));
+		});
+
+		it('should return false for an array', () => {
+			assert(!isStringArrayRecord([['x']]));
+		});
+
+		test.each(testData)('should return false for %s', (_, value) => {
+			assert(!isStringArrayRecord(value));
 		});
 	});
 

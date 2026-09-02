@@ -10,6 +10,20 @@ import { computed, ref } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
+export type WorkflowListFilters = {
+	query?: string;
+	tags?: string[];
+	active?: boolean;
+	isArchived?: boolean;
+	parentFolderId?: string;
+	availableInMCP?: boolean;
+	triggerNodeTypes?: string[];
+	includeCallableSubworkflows?: boolean;
+	parentWorkflowId?: string;
+};
+
+const ALL_PROJECTS_KEY = '__all_projects__';
+
 export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const rootStore = useRootStore();
 
@@ -17,6 +31,9 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const totalWorkflowCount = ref(0);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const activeWorkflows = ref<string[]>([]);
+	// Set once fetchAllWorkflows resolves — distinguishes "no workflows" from "not fetched yet"
+	const allWorkflowsFetched = ref(false);
+	const allWorkflowsFetchedByProjectKey = ref<Record<string, true>>({});
 
 	// Computed
 	const allWorkflows = computed(() =>
@@ -62,6 +79,21 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		}
 	}
 
+	function getAllWorkflowsFetchedKey(projectId?: string) {
+		return projectId ?? ALL_PROJECTS_KEY;
+	}
+
+	function markAllWorkflowsFetched(projectId?: string) {
+		allWorkflowsFetchedByProjectKey.value = {
+			...allWorkflowsFetchedByProjectKey.value,
+			[getAllWorkflowsFetchedKey(projectId)]: true,
+		};
+	}
+
+	function hasFetchedAllWorkflows(projectId?: string) {
+		return Boolean(allWorkflowsFetchedByProjectKey.value[getAllWorkflowsFetchedKey(projectId)]);
+	}
+
 	// Methods - Active Workflows Cache
 	function setWorkflowActiveInCache(targetWorkflowId: string, activeVersion: WorkflowHistory) {
 		if (activeWorkflows.value.indexOf(targetWorkflowId) === -1) {
@@ -90,23 +122,15 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	}
 
 	// Methods - Fetching
-	async function fetchWorkflowsPage(
+	async function fetchWorkflowsPageWithCount(
 		projectId?: string,
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: {
-			query?: string;
-			tags?: string[];
-			active?: boolean;
-			isArchived?: boolean;
-			parentFolderId?: string;
-			availableInMCP?: boolean;
-			triggerNodeTypes?: string[];
-		} = {},
+		filters: WorkflowListFilters = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
-	): Promise<WorkflowListResource[]> {
+	): Promise<{ data: WorkflowListResource[]; count: number }> {
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -135,6 +159,27 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 					versionId: '',
 				});
 			});
+		return { data, count };
+	}
+
+	async function fetchWorkflowsPage(
+		projectId?: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		sortBy?: string,
+		filters: WorkflowListFilters = {},
+		includeFolders = false,
+		onlySharedWithMe = false,
+	): Promise<WorkflowListResource[]> {
+		const { data } = await fetchWorkflowsPageWithCount(
+			projectId,
+			page,
+			pageSize,
+			sortBy,
+			filters,
+			includeFolders,
+			onlySharedWithMe,
+		);
 		return data;
 	}
 
@@ -181,6 +226,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const workflows = await searchWorkflows({ projectId });
 		setWorkflows(workflows);
+		allWorkflowsFetched.value = true;
+		markAllWorkflowsFetched(projectId);
 		return workflows;
 	}
 
@@ -254,6 +301,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		totalWorkflowCount,
 		workflowsById,
 		activeWorkflows,
+		allWorkflowsFetched,
 
 		// Computed
 		allWorkflows,
@@ -266,10 +314,12 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		addWorkflow,
 		removeWorkflow,
 		updateWorkflowInCache,
+		hasFetchedAllWorkflows,
 		setWorkflowActiveInCache,
 		setWorkflowInactiveInCache,
 
 		// Fetching
+		fetchWorkflowsPageWithCount,
 		fetchWorkflowsPage,
 		searchWorkflows,
 		fetchAllWorkflows,

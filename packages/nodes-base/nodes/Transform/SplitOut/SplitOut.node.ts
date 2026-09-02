@@ -129,9 +129,10 @@ export class SplitOut implements INodeType {
 		const fieldsTracker = new FieldsTracker();
 
 		for (let i = 0; i < items.length; i++) {
-			const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
-				.split(',')
-				.map((field) => field.trim().replace(/^\$json\./, ''));
+			const fieldsToSplitOut = prepareFieldsArray(
+				this.getNodeParameter('fieldToSplitOut', i) as string | string[],
+				'Fields To Split Out',
+			).map((field) => String(field).replace(/^\$json\./, ''));
 
 			const options = this.getNodeParameter('options', i, {});
 

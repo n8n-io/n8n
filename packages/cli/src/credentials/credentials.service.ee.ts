@@ -1,9 +1,14 @@
+import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { CredentialsEntity, User } from '@n8n/db';
-import { Project, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import {
+	CredentialsEntity,
+	Project,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
@@ -15,6 +20,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
@@ -31,6 +37,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
 	async shareWithProjects(
@@ -40,6 +47,11 @@ export class EnterpriseCredentialsService {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
+		const canShare = await em.exists(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+		});
+		if (!canShare) throw new NotFoundError('Credential not found');
+
 		const roles = await this.roleService.rolesWithScope('project', ['project:list']);
 
 		let projects = await em.find(Project, {
@@ -85,7 +97,7 @@ export class EnterpriseCredentialsService {
 	}
 
 	async getOne(credentialId: string) {
-		return await this.credentialsFinderService.findCredentialById(credentialId);
+		return await this.credentialsFinderService.findById(credentialId);
 	}
 
 	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
@@ -101,6 +113,7 @@ export class EnterpriseCredentialsService {
 					// TODO: replace credential:update with credential:decrypt once it lands
 					// see: https://n8nio.slack.com/archives/C062YRE7EG4/p1708531433206069?thread_ts=1708525972.054149&cid=C062YRE7EG4
 					['credential:read', 'credential:update'],
+					{ includeInstanceCredentials: true },
 				)
 			: null;
 
@@ -111,9 +124,28 @@ export class EnterpriseCredentialsService {
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
-			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
+			credential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:read'],
+				{ includeInstanceCredentials: true },
+			);
+
+			// Connect-capable users of a private credential need the redacted blueprint
+			// (secrets stay masked) so the UI can detect the OAuth type and render the
+			// per-user connect flow, even without edit rights.
+			if (
+				includeDecryptedData &&
+				credential?.isResolvable &&
+				(await this.credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:connect'],
+					{ includeInstanceCredentials: true },
+				))
+			) {
+				decryptedData = await this.credentialsService.decrypt(credential);
+			}
 		}
 
 		if (!credential) {
@@ -126,7 +158,7 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.credentialsService.populateConnectedByMe([enriched], user);
 
 		if (credential.isResolvable) {
@@ -196,6 +228,13 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// Transferring an end-user credential into a project is equivalent to
+		// creating one there: same createEndUser gate, no personal projects.
+		if (credential.isResolvable) {
+			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
+			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
+		}
+
 		// 6. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&
@@ -210,8 +249,11 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// 7. projects losing access — the move drops all their sharings
+		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
+
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 7. transfer the credential
+			// 8. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -222,6 +264,13 @@ export class EnterpriseCredentialsService {
 					projectId: destinationProject.id,
 					role: 'credential:owner',
 				}),
+			);
+
+			// 9. drop connections for members who lost access in the new project
+			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+				credential.id,
+				affectedProjectIds,
+				trx,
 			);
 		});
 	}

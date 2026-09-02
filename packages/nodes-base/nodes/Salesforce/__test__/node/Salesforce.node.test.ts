@@ -172,4 +172,35 @@ describe('Salesforce Node', () => {
 			workflowFiles: ['opportunities.workflow.json'],
 		});
 	});
+
+	describe('jwt authentication', () => {
+		// The cached access token and instance URL are stored on the credential; the node
+		// sends a relative URL and the credential resolves it against the instance URL and
+		// attaches the cached Bearer token instead of logging in per request.
+		const jwtCredentials = {
+			salesforceJwtApi: {
+				accessToken: 'CACHEDTOKEN',
+				instanceUrl: 'https://salesforce.instance',
+				clientId: 'connected-app-client-id',
+				username: 'user@example.com',
+				privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+				environment: 'production',
+			},
+		};
+
+		beforeAll(() => {
+			nock('https://salesforce.instance/services/data/v59.0')
+				.matchHeader('authorization', 'Bearer CACHEDTOKEN')
+				.get('/query')
+				.query({
+					q: 'SELECT id, name, type FROM Account',
+				})
+				.reply(200, { records: accounts });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials: jwtCredentials,
+			workflowFiles: ['search-jwt.workflow.json'],
+		});
+	});
 });

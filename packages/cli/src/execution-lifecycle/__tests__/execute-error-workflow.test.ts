@@ -2,10 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -35,7 +35,7 @@ describe('executeErrorWorkflow', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		globalConfig.nodes = mock<GlobalConfig['nodes']>({
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 		});

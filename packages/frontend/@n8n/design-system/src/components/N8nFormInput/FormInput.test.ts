@@ -1,8 +1,7 @@
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nFormInput from '.';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nFormInput);
 

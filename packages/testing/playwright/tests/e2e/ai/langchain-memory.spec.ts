@@ -104,19 +104,15 @@ test.describe(
 				await expect(n8n.ndv.getOutputDataContainer()).toBeVisible();
 				await expect(n8n.ndv.getAiOutputModeToggle()).toBeVisible();
 
-				const radioButtons = n8n.ndv.getAiOutputModeToggle().locator('[role="radio"]');
+				const radioButtons = n8n.ndv.getAiOutputModeRadios();
 				await expect(radioButtons).toHaveCount(2);
 				await expect(radioButtons.nth(1)).toHaveAttribute('aria-checked', 'true');
 			}
 
 			// Helper function to assert error message is visible
 			async function assertErrorMessageVisible(n8n: n8nPage) {
-				await expect(
-					n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
-				).toBeVisible();
-				await expect(
-					n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
-				).toContainText('Error in sub-node');
+				await expect(n8n.ndv.outputPanel.getErrorMessage()).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getErrorMessage()).toContainText('Error in sub-node');
 			}
 
 			test('should open logs tab by default when there was an error', async ({ n8n }) => {

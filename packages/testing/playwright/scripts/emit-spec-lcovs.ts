@@ -4,62 +4,51 @@
  * `TN:`. These feed the impact map, letting a git diff select the E2E specs that
  * exercise the touched frontend code.
  *
+ * Thin wrapper: the generic build kernel lives in @n8n/test-impact; this script
+ * supplies the n8n-specific input dir + monocart coverage options, and feeds the
+ * raw page.coverage directly into the report.
+ *
  * Frontend only: backend coverage is a shared worker-scoped process with no
  * per-test boundary, so it stays at report granularity. See DEVP-205.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 
-import { CoverageReport } from 'monocart-coverage-reports';
+import { emitPerSpecLcovs } from '@n8n/test-impact';
+import type { CoverageReport } from 'monocart-coverage-reports';
 
-import { BY_SPEC_DIR, coverageOptions } from '../coverage-options';
+import { addV8CoverageInBatches, BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
 
+/** Stream a JSONL raw (one V8 entry per line) without materialising a >512MB string. */
+async function* readJsonlEntries(path: string): AsyncGenerator<unknown> {
+	const lines = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
+	for await (const line of lines) {
+		if (line) yield JSON.parse(line);
+	}
+}
+
 async function main() {
-	if (!existsSync(BY_SPEC_DIR)) {
-		console.log(`emit-spec-lcovs: ${BY_SPEC_DIR} absent — no per-spec coverage collected`);
-		return;
-	}
-	mkdirSync(OUT_DIR, { recursive: true });
-	const dirs = readdirSync(BY_SPEC_DIR).filter((d) => statSync(join(BY_SPEC_DIR, d)).isDirectory());
-	let withMarker = 0;
-	let withRaw = 0;
-	let emitted = 0;
-	for (const slug of dirs) {
-		const dir = join(BY_SPEC_DIR, slug);
-		const specMarker = join(dir, '.spec');
-		if (!existsSync(specMarker)) continue;
-		withMarker++;
-		const spec = readFileSync(specMarker, 'utf8').trim();
-		const rawFiles = readdirSync(dir).filter((f) => f.startsWith('raw-') && f.endsWith('.json'));
-		if (!rawFiles.length) continue;
-		withRaw++;
-		const report = new CoverageReport({
-			...coverageOptions,
-			name: spec,
-			outputDir: dir,
-			reports: ['lcovonly'],
-		});
-		for (const rf of rawFiles) {
-			try {
-				await report.add(JSON.parse(readFileSync(join(dir, rf), 'utf8')));
-			} catch (error) {
-				console.warn(`  ⚠ ${slug}/${rf}: ${String(error)}`);
+	const stats = await emitPerSpecLcovs({
+		bySpecDir: BY_SPEC_DIR,
+		outDir: OUT_DIR,
+		coverageOptions,
+		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
+			for (const rf of rawFiles) {
+				try {
+					await addV8CoverageInBatches(report, readJsonlEntries(join(dir, rf)));
+				} catch (error) {
+					console.warn(`  ⚠ ${rf}: ${String(error)}`);
+				}
 			}
-		}
-		const result = await report.generate();
-		const lcovPath = join(dir, 'lcov.info');
-		if (!result || !result.files?.length || !existsSync(lcovPath)) continue;
-		// Force every record's TN to the real spec id so the merge attributes it.
-		let lcov = readFileSync(lcovPath, 'utf8').replace(/^TN:.*$/gm, `TN:${spec}`);
-		if (!lcov.startsWith('TN:')) lcov = `TN:${spec}\n${lcov}`;
-		writeFileSync(join(OUT_DIR, `${slug}.lcov`), lcov);
-		emitted++;
-	}
+			return true;
+		},
+	});
 	console.log(
-		`emit-spec-lcovs: ${dirs.length} dirs, ${withMarker} with .spec, ${withRaw} with raw → ` +
-			`${emitted} per-spec lcov(s) in ${OUT_DIR}`,
+		`emit-spec-lcovs: ${stats.dirs} dirs, ${stats.withMarker} with .spec, ${stats.withRaw} with raw → ` +
+			`${stats.emitted} per-spec lcov(s) in ${OUT_DIR}`,
 	);
 }
 

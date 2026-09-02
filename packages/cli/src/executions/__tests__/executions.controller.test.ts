@@ -1,12 +1,16 @@
-import type { ExecutionSummaries } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
@@ -20,14 +24,69 @@ describe('ExecutionsController', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getOne', () => {
-		it('should 400 when execution is not a number', async () => {
+		it('should 400 when the id is neither a positive integer nor a uuid', async () => {
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: 'test' } });
 
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should pass an engine 2.0 id through to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const req = mock<ExecutionRequest.GetOne>({ params: { id: V2_EXECUTION_ID } });
+
+			await executionsController.getOne(req);
+
+			expect(executionService.findOne).toHaveBeenCalledWith(req, ['wf-1']);
+		});
+	});
+
+	describe('update', () => {
+		it('should 400 when the id is neither a positive integer nor a uuid', async () => {
+			const req = mock<ExecutionRequest.Update>({ params: { id: 'test' } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should 501 for an engine 2.0 id, which has no annotation store', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(NotImplementedError);
+			expect(executionService.annotate).not.toHaveBeenCalled();
+		});
+
+		it('should 404 for an engine 2.0 id when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(NotFoundError);
+			expect(executionService.annotate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete', () => {
+		it('should 404 when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(
+				executionsController.delete(mock(), mock(), DeleteExecutionsDto.parse({ ids: ['1'] })),
+			).rejects.toThrow(NotFoundError);
+
+			expect(executionService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should pass the user, payload and accessible workflow ids to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const user = mock<User>({ id: 'user-1' });
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionsController.delete(mock<AuthenticatedRequest>({ user }), mock(), payload);
+
+			expect(executionService.delete).toHaveBeenCalledWith(user, payload, ['wf-1']);
 		});
 	});
 

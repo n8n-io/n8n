@@ -32,9 +32,9 @@ const tagErrors = computed(() => {
 	const seen = new Set<string>();
 	return props.modelValue.map((tag) => {
 		const trimmed = tag.key.trim();
-		if (!trimmed) return i18n.baseText('projects.settings.telemetryTags.error.emptyKey');
+		if (!trimmed) return i18n.baseText('projects.settings.customSpanAttributes.error.emptyKey');
 		if (seen.has(trimmed))
-			return i18n.baseText('projects.settings.telemetryTags.error.duplicateKey');
+			return i18n.baseText('projects.settings.customSpanAttributes.error.duplicateKey');
 		seen.add(trimmed);
 		return null;
 	});
@@ -78,12 +78,12 @@ defineExpose({ resetTouched });
 <template>
 	<div>
 		<N8nText size="small" class="mb-s" tag="p">
-			{{ i18n.baseText('projects.settings.telemetryTags.description') }}
+			{{ i18n.baseText('projects.settings.customSpanAttributes.description') }}
 			<a
 				:class="$style.docsLink"
 				href="https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/"
 				target="_blank"
-				>{{ i18n.baseText('projects.settings.telemetryTags.docsLink')
+				>{{ i18n.baseText('projects.settings.customSpanAttributes.docsLink')
 				}}<N8nIcon icon="arrow-up-right" size="xsmall"
 			/></a>
 		</N8nText>
@@ -91,14 +91,16 @@ defineExpose({ resetTouched });
 			<div :class="$style.telemetryTagRow">
 				<N8nInputLabel
 					:label="
-						index === 0 ? i18n.baseText('projects.settings.telemetryTags.key.label') : undefined
+						index === 0
+							? i18n.baseText('projects.settings.customSpanAttributes.key.label')
+							: undefined
 					"
 					size="small"
 				>
 					<N8nInput
 						:model-value="tag.key"
-						:placeholder="i18n.baseText('projects.settings.telemetryTags.key.placeholder')"
-						:aria-label="i18n.baseText('projects.settings.telemetryTags.key.label')"
+						:placeholder="i18n.baseText('projects.settings.customSpanAttributes.key.placeholder')"
+						:aria-label="i18n.baseText('projects.settings.customSpanAttributes.key.label')"
 						data-test-id="project-telemetry-tag-key"
 						@update:model-value="(v: string) => onTagInput(index, 'key', v)"
 						@blur="onTagKeyBlur(index)"
@@ -106,14 +108,16 @@ defineExpose({ resetTouched });
 				</N8nInputLabel>
 				<N8nInputLabel
 					:label="
-						index === 0 ? i18n.baseText('projects.settings.telemetryTags.value.label') : undefined
+						index === 0
+							? i18n.baseText('projects.settings.customSpanAttributes.value.label')
+							: undefined
 					"
 					size="small"
 				>
 					<N8nInput
 						:model-value="tag.value"
-						:placeholder="i18n.baseText('projects.settings.telemetryTags.value.placeholder')"
-						:aria-label="i18n.baseText('projects.settings.telemetryTags.value.label')"
+						:placeholder="i18n.baseText('projects.settings.customSpanAttributes.value.placeholder')"
+						:aria-label="i18n.baseText('projects.settings.customSpanAttributes.value.label')"
 						data-test-id="project-telemetry-tag-value"
 						@update:model-value="(v: string) => onTagInput(index, 'value', v)"
 					/>
@@ -123,8 +127,8 @@ defineExpose({ resetTouched });
 					variant="ghost"
 					size="small"
 					native-type="button"
-					:title="i18n.baseText('projects.settings.telemetryTags.remove')"
-					:aria-label="i18n.baseText('projects.settings.telemetryTags.remove')"
+					:title="i18n.baseText('projects.settings.customSpanAttributes.remove')"
+					:aria-label="i18n.baseText('projects.settings.customSpanAttributes.remove')"
 					data-test-id="project-telemetry-tag-remove"
 					@click.stop.prevent="removeTag(index)"
 				/>
@@ -143,7 +147,7 @@ defineExpose({ resetTouched });
 			class="mt-2xs"
 			data-test-id="project-telemetry-tag-add"
 			@click.stop.prevent="addTag"
-			>{{ i18n.baseText('projects.settings.telemetryTags.add') }}</N8nButton
+			>{{ i18n.baseText('projects.settings.customSpanAttributes.add') }}</N8nButton
 		>
 	</div>
 </template>

@@ -10,6 +10,7 @@ export * from './context-establishment';
 export * from './credential-resolver';
 export * from './module';
 export * from './multi-main';
+export * from './policy-check';
 export * from './pubsub';
 export { Redactable } from './redactable';
 export * from './shutdown';

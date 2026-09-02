@@ -2,36 +2,37 @@ import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
 import { Mailgun } from '../Mailgun.node';
 import { prepareBinariesDataList } from '../../../utils/binary';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Test Mailgun node', () => {
 	let mailgunNode: Mailgun;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockRequestWithAuthentication: jest.Mock;
-	let mockReturnJsonArray: jest.Mock;
-	let mockConstructExecutionMetaData: jest.Mock;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockRequestWithAuthentication: Mock;
+	let mockReturnJsonArray: Mock;
+	let mockConstructExecutionMetaData: Mock;
 
 	beforeEach(() => {
 		mailgunNode = new Mailgun();
-		mockRequestWithAuthentication = jest.fn();
-		mockReturnJsonArray = jest.fn();
-		mockConstructExecutionMetaData = jest.fn();
+		mockRequestWithAuthentication = vi.fn();
+		mockReturnJsonArray = vi.fn();
+		mockConstructExecutionMetaData = vi.fn();
 
 		mockExecuteFunctions = {
-			getInputData: jest.fn(),
-			getNode: jest.fn(),
-			getCredentials: jest.fn(),
-			getNodeParameter: jest.fn(),
-			continueOnFail: jest.fn(),
+			getInputData: vi.fn(),
+			getNode: vi.fn(),
+			getCredentials: vi.fn(),
+			getNodeParameter: vi.fn(),
+			continueOnFail: vi.fn(),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
 				constructExecutionMetaData: mockConstructExecutionMetaData,
 				returnJsonArray: mockReturnJsonArray,
 				requestWithAuthentication: mockRequestWithAuthentication,
 			},
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+		} as unknown as Mocked<IExecuteFunctions>;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('comma-separated attachment strings', () => {
@@ -59,18 +60,21 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce('file1, file2, file3');
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -119,18 +123,21 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce('file1,file2');
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -178,18 +185,21 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce('  file1  ,  file2  ');
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -240,18 +250,21 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce('singleFile');
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string) => {
 					return Buffer.from(items[itemIndex].binary![propertyName].data);
 				},
@@ -324,12 +337,15 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce(binaryDataObject);
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string | IBinaryData) => {
 					if (typeof propertyName === 'object') {
 						return propertyName;
@@ -338,7 +354,7 @@ describe('Test Mailgun node', () => {
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string | IBinaryData) => {
 					const binaryData =
 						typeof propertyName === 'object'
@@ -391,12 +407,15 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
 				.mockReturnValueOnce(binaryDataArray);
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string | IBinaryData) => {
 					if (typeof propertyName === 'object') {
 						return propertyName;
@@ -405,7 +424,7 @@ describe('Test Mailgun node', () => {
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockImplementation(
 				async (itemIndex: number, propertyName: string | IBinaryData) => {
 					const binaryData =
 						typeof propertyName === 'object'
@@ -455,6 +474,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -491,6 +513,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -507,6 +532,55 @@ describe('Test Mailgun node', () => {
 				expect.objectContaining({
 					formData: expect.not.objectContaining({
 						attachment: expect.anything(),
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('Reply-To, custom headers, and tags', () => {
+		it('should send Reply-To, custom headers (h:), and tags (o:tag) in formData', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ type: 'n8n-nodes-base.mailgun' } as any);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				apiDomain: 'api.mailgun.net',
+				emailDomain: 'example.com',
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('reply@example.com')
+				.mockReturnValueOnce({
+					headers: [
+						{ name: 'X-Custom-Header', value: 'custom-value' },
+						{ name: 'X-Another', value: 'another-value' },
+					],
+				})
+				.mockReturnValueOnce('tag1, tag2, tag3')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('Test text')
+				.mockReturnValueOnce('<p>Test HTML</p>')
+				.mockReturnValueOnce('');
+
+			mockRequestWithAuthentication.mockResolvedValue({ id: 'test-message-id' });
+			mockReturnJsonArray.mockImplementation((data: any) => [{ json: data }]);
+			mockConstructExecutionMetaData.mockImplementation((data: any) => data);
+
+			await mailgunNode.execute.call(mockExecuteFunctions);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'mailgunApi',
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						'h:Reply-To': 'reply@example.com',
+						'h:X-Custom-Header': 'custom-value',
+						'h:X-Another': 'another-value',
+						'o:tag': ['tag1', 'tag2', 'tag3'],
 					}),
 				}),
 			);

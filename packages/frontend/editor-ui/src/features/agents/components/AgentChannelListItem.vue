@@ -1,0 +1,251 @@
+<script setup lang="ts">
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+	updatedIconSet,
+	type DropdownMenuItemProps,
+	type IconName,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import { computed } from 'vue';
+import type { AgentChannelConnectAction } from '../channels/types';
+
+type ChannelAction = 'edit' | 'disconnect';
+
+interface Props {
+	integration: ChatIntegrationDescriptor;
+	configured: boolean;
+	connected: boolean;
+	connectAction: AgentChannelConnectAction;
+	loading?: boolean;
+	/**
+	 * Set up and meant to be running, but the last startup attempt failed. Never
+	 * true together with `connected`.
+	 */
+	notRunning?: boolean;
+	/** Why it isn't running, shown on hover. */
+	runtimeError?: string;
+}
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	setup: [channelType: string];
+	edit: [channelType: string];
+	disconnect: [channelType: string];
+}>();
+
+const i18n = useI18n();
+
+const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
+	const actions: Array<DropdownMenuItemProps<ChannelAction>> = [
+		{
+			id: 'edit',
+			label: i18n.baseText('generic.edit'),
+		},
+		{
+			id: 'disconnect',
+			label: i18n.baseText('generic.disconnect'),
+		},
+	];
+
+	return actions;
+});
+
+function isIconName(icon: string): icon is IconName {
+	return icon in updatedIconSet;
+}
+
+const statusLabel = computed(() => {
+	if (props.notRunning) return i18n.baseText('agents.channels.modal.notRunning');
+	if (props.connected) return i18n.baseText('agents.channels.modal.connected');
+	return i18n.baseText('agents.channels.modal.configured');
+});
+
+/**
+ * The tooltip is the only place the startup error is shown, so it must not be
+ * empty when there is one to explain — fall back to generic copy if the server
+ * reported a failure without a message.
+ */
+const statusTooltip = computed(() => {
+	if (!props.notRunning) return '';
+	return props.runtimeError || i18n.baseText('agents.channels.modal.notRunning.tooltip');
+});
+
+function handleConfiguredAction(action: ChannelAction) {
+	if (action === 'edit') {
+		emit('edit', props.integration.type);
+		return;
+	}
+
+	emit('disconnect', props.integration.type);
+}
+</script>
+
+<template>
+	<li :class="$style.channelItem">
+		<template v-if="loading">
+			<div :class="$style.iconWrapper">
+				<N8nLoading variant="circle" />
+			</div>
+			<div :class="$style.content">
+				<N8nLoading variant="text" :class="$style.nameSkeleton" />
+			</div>
+			<div :class="$style.channelActions">
+				<N8nLoading variant="rect" :class="$style.buttonSkeleton" />
+			</div>
+		</template>
+
+		<template v-else>
+			<div :class="$style.iconWrapper">
+				<N8nIcon
+					:icon="integration.icon && isIconName(integration.icon) ? integration.icon : 'zap'"
+					:size="28"
+					:class="$style.channelIcon"
+				/>
+			</div>
+			<div :class="$style.content">
+				<N8nText :class="$style.name" size="medium" bold color="text-dark">
+					{{ integration.label }}
+				</N8nText>
+			</div>
+
+			<div :class="$style.channelActions">
+				<N8nDropdownMenu
+					v-if="configured"
+					:items="configuredActions"
+					placement="bottom-end"
+					:modal="false"
+					@select="handleConfiguredAction"
+				>
+					<template #trigger>
+						<N8nTooltip :content="statusTooltip" :disabled="!notRunning" placement="top">
+							<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
+								<div
+									v-if="connected"
+									:class="$style.connectedDotContainer"
+									data-testid="agent-channel-connected-indicator"
+								>
+									<span :class="[$style.connectedDot, $style.ping]" />
+									<span :class="$style.connectedDot" />
+								</div>
+								<div
+									v-else-if="notRunning"
+									:class="$style.connectedDotContainer"
+									data-testid="agent-channel-not-running-indicator"
+								>
+									<span :class="[$style.connectedDot, $style.notRunningDot]" />
+								</div>
+								{{ statusLabel }}
+							</N8nButton>
+						</N8nTooltip>
+					</template>
+				</N8nDropdownMenu>
+				<N8nButton
+					v-else
+					variant="subtle"
+					size="medium"
+					:icon="connectAction.icon"
+					@click="emit('setup', integration.type)"
+				>
+					{{ connectAction.label }}
+				</N8nButton>
+			</div>
+		</template>
+	</li>
+</template>
+
+<style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
+.channelItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding-block: var(--spacing--sm);
+}
+
+.iconWrapper {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.channelIcon {
+	color: var(--icon-color--strong);
+}
+
+.nameSkeleton {
+	width: 30%;
+}
+
+.buttonSkeleton {
+	height: 32px;
+	width: 80px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 100%;
+	}
+}
+
+.content {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.name {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: var(--line-height--md);
+}
+
+.channelActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+}
+
+.connectedTrigger {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.connectedDotContainer {
+	display: grid;
+	place-content: center;
+
+	> * {
+		grid-area: 1 / 1;
+	}
+}
+
+.connectedDot {
+	width: 6px;
+	height: 6px;
+	border-radius: var(--radius--full);
+	background: var(--color--green-500);
+}
+.notRunningDot {
+	background: var(--color--danger);
+}
+.ping {
+	@include motion.ping;
+}
+</style>

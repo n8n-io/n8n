@@ -1,0 +1,86 @@
+{
+	"name": "Microsoft Outlook Service Principal Event Get All",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"mailbox": {
+					"__rl": true,
+					"mode": "id",
+					"value": "user@example.com"
+				},
+				"resource": "event",
+				"operation": "getAll",
+				"fromAllCalendars": false,
+				"calendarId": {
+					"__rl": true,
+					"value": "AAMkADlhOTA0-calendar-id=",
+					"mode": "id"
+				},
+				"includeRecurringInstances": false,
+				"returnAll": false,
+				"limit": 10,
+				"output": "simple",
+				"filters": {}
+			},
+			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+			"name": "Microsoft Outlook",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 2,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "spCredId1",
+					"name": "Microsoft Entra Service Principal Test"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Outlook": [
+			{
+				"json": {
+					"id": "event-1",
+					"subject": "Single Event",
+					"bodyPreview": "A one-time event",
+					"start": { "dateTime": "2023-09-05T07:00:00.0000000", "timeZone": "UTC" },
+					"end": { "dateTime": "2023-09-05T08:00:00.0000000", "timeZone": "UTC" },
+					"organizer": { "emailAddress": { "name": "Test User", "address": "test@example.com" } },
+					"attendees": [],
+					"webLink": "https://outlook.office365.com/owa/?itemid=event-1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "fed8ec2e-8663-4dfc-8234-33eb83257266",
+	"id": "SP7CYHzBXQw1nfPG",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

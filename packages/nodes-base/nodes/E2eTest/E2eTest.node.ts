@@ -193,7 +193,7 @@ export class E2eTest implements INodeType {
 
 				return {
 					results,
-					paginationToken: offset + pageSize,
+					paginationToken: String(offset + pageSize),
 				};
 			},
 		},

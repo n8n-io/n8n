@@ -1,6 +1,7 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
+import { PublicFormPage } from '../../../pages/PublicFormPage';
 
 test.describe(
 	'Form Trigger',
@@ -61,7 +62,7 @@ test.describe(
 			await n8n.ndv.fillParameterInputByName('fieldName', 'testField4', 3);
 
 			// Configure dropdown field options
-			await n8n.page.getByRole('button', { name: 'Add Field Option' }).click();
+			await n8n.ndv.clickNodeParameterButton('Add Field Option');
 			await n8n.ndv.fillParameterInputByName('option', 'Option 1');
 			await n8n.ndv.fillParameterInputByName('option', 'Option 2', 1);
 
@@ -104,25 +105,23 @@ test.describe(
 
 			// Get the form test URL from the NDV
 			await n8n.canvas.openNode('On form submission');
-			const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
-			const formUrl = await formUrlLocator.textContent();
+			const formUrl = await n8n.canvas.getTestFormUrl();
 
 			// Open form URL in a new browser tab
-			const formPage = await n8n.page.context().newPage();
-			await formPage.goto(formUrl!);
+			const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl);
 
 			// Fill first page with a random first name
 			const firstName = `John${Date.now()}`;
-			await formPage.getByLabel('What is your first name?').fill(firstName);
-			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await formPage.fillField('What is your first name?', firstName);
+			await formPage.submit();
 
 			// Fill second page with a random last name
 			const lastName = `Doe${Date.now()}`;
-			await formPage.getByLabel('What is your last name?').fill(lastName);
-			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await formPage.fillField('What is your last name?', lastName);
+			await formPage.submit();
 
 			// Verify the form was submitted successfully
-			await expect(formPage.getByText('Your response has been recorded')).toBeVisible();
+			await formPage.expectText('Your response has been recorded');
 
 			// Close the form page
 			await formPage.close();
@@ -187,7 +186,7 @@ test.describe(
 					makeUnique: true,
 				});
 
-				await n8n.page.goto(`/workflow/${workflowId}`);
+				await n8n.start.fromExistingWorkflow(workflowId);
 
 				// Start the workflow execution so it's waiting for form submissions
 				await n8n.canvas.clickExecuteWorkflowButton();
@@ -195,17 +194,14 @@ test.describe(
 
 				// Get the form test URL from the NDV
 				await n8n.canvas.openNode('On form submission');
-				const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
-				const formUrl = await formUrlLocator.textContent();
+				const formUrl = await n8n.canvas.getTestFormUrl();
 
 				// Open form URL in a new browser tab
-
-				const formPage = await n8n.page.context().newPage();
-				await formPage.goto(formUrl!);
+				const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl);
 
 				// Submit the form
-				await formPage.getByRole('button', { name: 'Submit' }).click();
-				await expect(formPage.getByText('This worked')).toBeVisible();
+				await formPage.submit();
+				await formPage.expectText('This worked');
 			});
 
 			test('multi-step form submission works with basic auth', async ({ api, n8n }) => {
@@ -301,7 +297,7 @@ test.describe(
 					makeUnique: true,
 				});
 
-				await n8n.page.goto(`/workflow/${workflowId}`);
+				await n8n.start.fromExistingWorkflow(workflowId);
 
 				// Start the workflow execution so it's waiting for form submissions
 				await n8n.canvas.clickExecuteWorkflowButton();
@@ -309,21 +305,18 @@ test.describe(
 
 				// Get the form test URL from the NDV
 				await n8n.canvas.openNode('On form submission');
-				const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
-				const formUrl = await formUrlLocator.textContent();
+				const formUrl = await n8n.canvas.getTestFormUrl();
 
 				// Open form URL in a new browser tab
-
-				const formPage = await n8n.page.context().newPage();
-				await formPage.goto(formUrl!);
+				const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl);
 
 				// Submit first page
-				await formPage.getByRole('button', { name: 'Submit' }).click();
-				await expect(formPage.getByText('Step 2')).toBeVisible();
+				await formPage.submit();
+				await formPage.expectText('Step 2');
 
 				// submit second page
-				await formPage.getByRole('button', { name: 'Submit' }).click();
-				await expect(formPage.getByText('This worked')).toBeVisible();
+				await formPage.submit();
+				await formPage.expectText('This worked');
 			});
 		});
 	},

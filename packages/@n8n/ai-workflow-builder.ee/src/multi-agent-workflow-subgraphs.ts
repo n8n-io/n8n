@@ -369,12 +369,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 				// After discovery in plan mode, getNextPhaseFromLog returns 'builder'.
 				// With builder removed, redirect back to discovery to retry planning.
-				if (
-					next === 'builder' &&
-					featureFlags?.planMode === true &&
-					state.mode === 'plan' &&
-					!state.planOutput
-				) {
+				if (next === 'builder' && state.mode === 'plan' && !state.planOutput) {
 					return { nextPhase: 'discovery', planDecision: null };
 				}
 
@@ -384,16 +379,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addNode('check_state', (state) => {
 				const action = determineStateAction(state, autoCompactThresholdTokens);
 
-				// In plan mode (without mergeAskBuild), skip the supervisor and
-				// route directly to discovery (which contains the planner).
+				// In plan mode (without mergeAskBuild), skip the supervisor and route directly to
+				// discovery (which contains the planner).
 				// Set nextPhase to 'discovery' so create_workflow_name can route correctly.
-				if (
-					action === 'continue' &&
-					featureFlags?.planMode === true &&
-					state.mode === 'plan' &&
-					!state.planOutput &&
-					!mergeAskBuild
-				) {
+				if (action === 'continue' && state.mode === 'plan' && !state.planOutput && !mergeAskBuild) {
 					return { nextPhase: 'discovery' };
 				}
 

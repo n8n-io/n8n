@@ -22,6 +22,8 @@ import {
 } from '../event-message-classes/event-message-confirm';
 import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
 import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
+import type { EventMessageMcpOptions } from '../event-message-classes/event-message-mcp';
+import { EventMessageMcp } from '../event-message-classes/event-message-mcp';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
@@ -440,6 +442,8 @@ export class MessageEventBusLogWriter {
 				return new EventMessageAudit(message as EventMessageAuditOptions);
 			case EventMessageTypeNames.node:
 				return new EventMessageNode(message as EventMessageNodeOptions);
+			case EventMessageTypeNames.mcp:
+				return new EventMessageMcp(message as EventMessageMcpOptions);
 			default:
 				return null;
 		}

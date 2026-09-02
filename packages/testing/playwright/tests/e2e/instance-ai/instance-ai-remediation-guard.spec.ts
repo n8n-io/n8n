@@ -226,7 +226,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 test.describe(
 	'Instance AI remediation guard @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -243,25 +243,27 @@ test.describe(
 			async ({ api, n8nContainer, n8n }, testInfo) => {
 				test.setTimeout(600_000);
 				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Trace replay state is process-local and not stable in multi-main mode',
-				);
 
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'Use the workflow-builder skill, create a build plan for approval, and save it with build-workflow. ' +
+						'Use the workflow-builder skill and save it with build-workflow. ' +
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
-				await n8n.instanceAi.approveBuildPlan(180_000);
 
+				// No assertion on the skill-opening narration. It is not an appended
+				// message but the LABEL of the live step-group button, overwritten by each
+				// following step and gone once the run settles, so catching it is a race
+				// against the run rather than a property of the outcome. Under replay the
+				// whole build lands in seconds and the label is already past it, which cost
+				// this spec the full 540s timeout on every attempt. `load_skill` is an
+				// orchestration tool and never reaches the tool trace, so there is nothing
+				// deterministic to assert in its place — and the behaviour this guards
+				// (a real build, not the legacy path) is already pinned below by
+				// `usedLegacyBuilderTool: false` and the `build-workflow` call assertion.
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
-				await expect(
-					n8n.instanceAi.getAssistantMessageText('Opening skill: workflow-builder'),
-				).toBeVisible();
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));

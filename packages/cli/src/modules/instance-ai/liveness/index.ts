@@ -4,7 +4,6 @@ export {
 	type InstanceAiLivenessBackgroundTasks,
 	type InstanceAiConsumedRunTimeout,
 	type InstanceAiLivenessEventBus,
-	type InstanceAiLivenessLogger,
 	type InstanceAiLivenessPendingConfirmation,
 	type InstanceAiLivenessRunState,
 	type InstanceAiLivenessServiceOptions,

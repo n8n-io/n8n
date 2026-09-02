@@ -3,8 +3,9 @@ import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { STORES } from '@n8n/stores';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
-import { useSettingsStore } from './settings.store';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/app/push-connection/useEventSourceClient';
@@ -122,6 +123,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 */
 	let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	/** Number of active pushConnect owners; disconnect only when this reaches zero. */
+	let connectionOwnerCount = 0;
+
 	const pushConnect = () => {
 		recentConnectIntent = true;
 
@@ -140,12 +144,31 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			disconnectTimeout = null;
 		}
 
+		connectionOwnerCount++;
+		if (connectionOwnerCount !== 1) {
+			return;
+		}
+
 		isConnectionRequested.value = true;
 		isConnecting.value = true;
 		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
+		if (connectionOwnerCount === 0) {
+			return;
+		}
+
+		connectionOwnerCount--;
+
+		if (connectionOwnerCount > 0) {
+			if (disconnectTimeout) {
+				clearTimeout(disconnectTimeout);
+				disconnectTimeout = null;
+			}
+			return;
+		}
+
 		// If connect was called recently, don't disconnect
 		// (handles race condition where new view mounts before old view unmounts)
 		if (recentConnectIntent) {
@@ -159,7 +182,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		disconnectTimeout = setTimeout(() => {
 			// Double-check in case connect was called while we were waiting
-			if (recentConnectIntent) {
+			if (recentConnectIntent || connectionOwnerCount > 0) {
 				disconnectTimeout = null;
 				return;
 			}

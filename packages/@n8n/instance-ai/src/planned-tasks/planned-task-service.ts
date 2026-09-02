@@ -6,6 +6,7 @@ import type {
 	PlannedTaskRecord,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
+	PlannedWorkflowVerification,
 } from '../types';
 
 /**
@@ -38,9 +39,6 @@ function validateDependencies(tasks: PlannedTask[]): void {
 			if (!knownIds.has(depId)) {
 				throw new PlanValidationError(`Task "${task.id}" depends on unknown task "${depId}"`);
 			}
-		}
-		if (task.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
-			throw new PlanValidationError(`Delegate task "${task.id}" must include at least one tool`);
 		}
 		if (task.kind === 'checkpoint') {
 			if (task.deps.length === 0) {
@@ -150,7 +148,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	/**
 	 * Transition a graph from `awaiting_approval` → `active` after the user
-	 * approves the plan. Callers (create-tasks, submit-plan) must invoke this
+	 * approves the plan. Callers must invoke this
 	 * before schedulePlannedTasks() so tick() can begin dispatching. No-op on
 	 * any other status (a cancelled plan stays cancelled, an already-active
 	 * plan doesn't regress).
@@ -438,7 +436,10 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	async tick(
 		threadId: string,
-		options: { availableSlots?: number } = {},
+		options: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		} = {},
 	): Promise<PlannedTaskSchedulerAction> {
 		// Use atomic update so the graph status transition (active → awaiting_replan
 		// or active → completed) cannot race with concurrent markSucceeded/markFailed.
@@ -458,6 +459,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			}
 
 			if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -467,6 +477,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			// treat as completed so the orchestrator can synthesize partial results.
 			const hasWorkLeft = graph.tasks.some((t) => t.status === 'planned' || t.status === 'running');
 			if (graph.tasks.length > 0 && !hasWorkLeft) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;

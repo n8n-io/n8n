@@ -7,6 +7,9 @@ import type {
 	NodeInstance,
 	ConnectionTarget,
 	GraphNode,
+	AuthoredNodeGroup,
+	GroupMember,
+	GroupOptions,
 	IDataObject,
 	NodeChain,
 	GeneratePinDataOptions,
@@ -29,6 +32,7 @@ import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
 	MutablePluginContext,
+	ResolvedNodeGroup,
 	ValidationIssue,
 	SerializerContext,
 } from './workflow-builder/plugins/types';
@@ -56,6 +60,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _branchDepth = 0;
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
+	/** Node groups, carried by member node handle and resolved to IDs in toJSON(). */
+	private _nodeGroups: AuthoredNodeGroup[];
 
 	constructor(
 		id: string,
@@ -66,6 +72,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		pinData?: Record<string, IDataObject[]>,
 		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 		registry?: PluginRegistry,
+		nodeGroups?: AuthoredNodeGroup[],
 	) {
 		this.id = id;
 		this.name = name;
@@ -76,6 +83,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._pinData = pinData;
 		this._meta = meta;
 		this._registry = registry;
+		this._nodeGroups = nodeGroups ? nodeGroups.map((g) => ({ ...g, members: [...g.members] })) : [];
 	}
 
 	/**
@@ -338,8 +346,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				}
 			}
 
-			this._currentNode = headName;
-			this._currentOutput = 0;
+			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
+			this._currentNode = continuation?.currentNode ?? headName;
+			this._currentOutput = continuation?.currentOutput ?? 0;
 			return this;
 		}
 
@@ -491,6 +500,31 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder {
+		this._nodeGroups.push({ ...options, name, members: [...members] });
+		return this;
+	}
+
+	/**
+	 * Resolve each group's members to the IDs the emitted nodes will carry. Each member
+	 * handle resolves to its current map key (stable across regenerateNodeIds() via
+	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
+	 * key holds the ID the serializer emits. Unresolvable members are dropped.
+	 */
+	private resolveNodeGroups(): ResolvedNodeGroup[] {
+		return this._nodeGroups.map(({ members, ...group }) => {
+			const memberIds: string[] = [];
+			for (const member of members) {
+				const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
+				const id = key ? this._nodes.get(key)?.instance.id : undefined;
+				if (id && !memberIds.includes(id)) {
+					memberIds.push(id);
+				}
+			}
+			return { ...group, memberIds };
+		});
+	}
+
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined {
 		// First try direct lookup (for backward compatibility and nodes added via add/then)
 		const directLookup = this._nodes.get(name);
@@ -525,6 +559,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			meta: this._meta,
 			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
+			nodeGroups: this._nodeGroups.length > 0 ? this.resolveNodeGroups() : undefined,
+			existingGroupIdsByName: options?.existingGroupIdsByName,
 		};
 
 		return jsonSerializer.serialize(ctx);
@@ -602,8 +638,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * Precedence: an id declared in the source (`config.id`) is authoritative and is never
+	 * regenerated — it is the node's stable identity in n8n. Otherwise `existingIdsByName`
+	 * is consulted, and only then is a deterministic id derived.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void {
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void {
 		const newNodes = new Map<string, GraphNode>();
 		// Build mapping from old instance IDs to map keys BEFORE cloning.
 		// Cloned instances' _connections still reference original target instances
@@ -614,9 +656,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
 			staleIdToKeyMap.set(instance.id, mapKey);
-			const newId = generateDeterministicNodeId(this.id, instance.type, mapKey);
+			const newId =
+				instance.config?.id ??
+				existingIdsByName?.get(mapKey) ??
+				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new deterministic ID
+			// Clone the instance with the new ID
 			const newInstance = cloneNodeWithId(instance, newId);
 
 			newNodes.set(mapKey, {
@@ -708,6 +753,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						issue.parameterPath,
 						issue.originalName,
 						issue.violationLevel,
+						issue.severity === 'informational' ? 'informational' : 'warning',
 					),
 				);
 			}
@@ -1321,6 +1367,8 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		parsed.lastNode,
 		parsed.pinData,
 		parsed.meta,
+		undefined,
+		parsed.nodeGroups,
 	);
 }
 

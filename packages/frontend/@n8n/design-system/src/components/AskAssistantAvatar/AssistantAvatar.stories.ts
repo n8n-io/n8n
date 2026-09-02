@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import AssistantAvatar from './AssistantAvatar.vue';
 
 export default {
-	title: 'Assistant/AssistantAvatar',
+	title: 'Areas/Assistant/AssistantAvatar',
 	component: AssistantAvatar,
 	argTypes: {},
 };

@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mockDeep } from 'jest-mock-extended';
-import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
+import { mockDeep } from 'vitest-mock-extended';
+import { Collection, Db, MongoBulkWriteError, MongoClient, ObjectId } from 'mongodb';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type {
 	IExecuteFunctions,
@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { MongoDb } from '../MongoDb.node';
+import type { MockInstance } from 'vitest';
 
 const manualTriggerName = 'When clicking "Execute Workflow"';
 const searchIndexName = 'my-index';
@@ -129,7 +130,34 @@ function mockExecuteFunctions(typeVersion: number, operation: string) {
 	return executeFunctions;
 }
 
-function collectionNames(collectionSpy: jest.SpyInstance): string[] {
+function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find') {
+	const executeFunctions = mockExecuteFunctions(1.3, operation);
+	executeFunctions.getInputData.mockReturnValue([inputItems[0]]);
+	executeFunctions.getNodeParameter.mockImplementation(
+		(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+			switch (parameterName) {
+				case 'operation':
+					return operation;
+				case 'collection':
+					return 'users';
+				case 'query':
+					return operation === 'aggregate'
+						? '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]'
+						: '{ "name": "$1", "age": { "$gte": "$2" } }';
+				case 'queryParameters':
+					return ['Alice', 30];
+				case 'options':
+					return {};
+				default:
+					return fallbackValue;
+			}
+		},
+	);
+
+	return executeFunctions;
+}
+
+function collectionNames(collectionSpy: MockInstance): string[] {
 	return collectionSpy.mock.calls.reduce<string[]>((names, call) => {
 		const [collectionName] = call as unknown[];
 
@@ -148,22 +176,322 @@ function searchIndexOperationResult(indexName: string) {
 describe('MongoDB CRUD Node', () => {
 	const testHarness = new NodeTestHarness();
 
-	describe('document operations in version 1.3', () => {
-		let collectionSpy: jest.SpyInstance;
+	describe('document operations in version 1.5', () => {
+		let collectionSpy: MockInstance;
 		const node = new MongoDb();
 
+		function bulkWriteError(
+			writeErrors: Array<{ index: number; errmsg: string }>,
+			message = 'bulk write failed',
+		) {
+			const error = Object.create(MongoBulkWriteError.prototype) as MongoBulkWriteError;
+			Object.assign(error, { message, writeErrors });
+			return error;
+		}
+
+		function mockBulkExecuteFunctions(
+			operation: string,
+			{
+				continueOnFail = false,
+				params = {},
+			}: {
+				continueOnFail?: boolean;
+				params?: Record<
+					string,
+					NodeParameterValueType | ((itemIndex: number) => NodeParameterValueType)
+				>;
+			} = {},
+		) {
+			const executeFunctions = mockExecuteFunctions(1.5, operation);
+			executeFunctions.continueOnFail.mockReturnValue(continueOnFail);
+			const merged = new Map<
+				string,
+				NodeParameterValueType | ((itemIndex: number) => NodeParameterValueType)
+			>([
+				['operation', operation],
+				['collection', 'users'],
+				['fields', 'id,value'],
+				['updateKey', 'id'],
+				['upsert', false],
+				['options.useDotNotation', false],
+				['options.dateFields', ''],
+				...Object.entries(params),
+			]);
+			executeFunctions.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+					if (!merged.has(parameterName)) return fallbackValue as never;
+					const value = merged.get(parameterName);
+					return (typeof value === 'function' ? value(itemIndex) : value) as never;
+				},
+			);
+			return executeFunctions;
+		}
+
 		beforeEach(() => {
-			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+			collectionSpy = vi.spyOn(Db.prototype, 'collection');
 		});
 
 		afterEach(() => {
 			collectionSpy.mockRestore();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
+		});
+
+		it.each(['update', 'findOneAndUpdate'])(
+			'batches %s items into a single ordered bulkWrite per collection',
+			async (operation) => {
+				const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
+				const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+
+				const [items] = await node.execute.call(mockBulkExecuteFunctions(operation));
+
+				expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+				expect(bulkWriteSpy).toHaveBeenCalledWith(
+					[
+						{ updateOne: { filter: { id: '1' }, update: { $set: { id: '1', value: 'first' } } } },
+						{ updateOne: { filter: { id: '2' }, update: { $set: { id: '2', value: 'second' } } } },
+						{ updateOne: { filter: { id: '3' }, update: { $set: { id: '3', value: 'third' } } } },
+					],
+					{ ordered: true },
+				);
+				expect(updateOneSpy).not.toHaveBeenCalled();
+				expect(findOneAndUpdateSpy).not.toHaveBeenCalled();
+				expect(items).toEqual([
+					{ json: { id: '1', value: 'first' }, pairedItem: { item: 0 } },
+					{ json: { id: '2', value: 'second' }, pairedItem: { item: 1 } },
+					{ json: { id: '3', value: 'third' }, pairedItem: { item: 2 } },
+				]);
+			},
+		);
+
+		it('resolves the collection per item and issues one bulkWrite per group', async () => {
+			const bulkWriteSpy = vi
+				.spyOn(Collection.prototype, 'bulkWrite')
+				.mockResolvedValue({} as never);
+
+			await node.execute.call(mockExecuteFunctions(1.5, 'update'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-2',
+				'collection-3',
+			]);
+			expect(bulkWriteSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('restores input order when grouping interleaves collections', async () => {
+			const bulkWriteSpy = vi
+				.spyOn(Collection.prototype, 'bulkWrite')
+				.mockResolvedValue({} as never);
+			const executeFunctions = mockBulkExecuteFunctions('update', {
+				params: { collection: (itemIndex: number) => ['a', 'b', 'a'][itemIndex] },
+			});
+
+			const [items] = await node.execute.call(executeFunctions);
+
+			expect(bulkWriteSpy).toHaveBeenCalledTimes(2);
+			expect(items.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }, { item: 2 }]);
+		});
+
+		// The string case pins the pre-1.5 truthy coercion for expression-driven values
+		it.each([true, 'true'])(
+			'sends upsert per operation when the parameter is truthy (%j)',
+			async (upsert) => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+
+				await node.execute.call(mockBulkExecuteFunctions('update', { params: { upsert } }));
+
+				expect(bulkWriteSpy).toHaveBeenCalledWith(
+					[
+						{
+							updateOne: {
+								filter: { id: '1' },
+								update: { $set: { id: '1', value: 'first' } },
+								upsert: true,
+							},
+						},
+						{
+							updateOne: {
+								filter: { id: '2' },
+								update: { $set: { id: '2', value: 'second' } },
+								upsert: true,
+							},
+						},
+						{
+							updateOne: {
+								filter: { id: '3' },
+								update: { $set: { id: '3', value: 'third' } },
+								upsert: true,
+							},
+						},
+					],
+					{ ordered: true },
+				);
+			},
+		);
+
+		it('filters by ObjectId and strips _id from the update when the update key is _id', async () => {
+			const bulkWriteSpy = vi
+				.spyOn(Collection.prototype, 'bulkWrite')
+				.mockResolvedValue({} as never);
+			const documentId = '662a2b1a2f8b9c0d1e2f3a4b';
+			const executeFunctions = mockBulkExecuteFunctions('update', {
+				params: { updateKey: '_id', fields: '_id,value' },
+			});
+			executeFunctions.getInputData.mockReturnValue([
+				{ json: { _id: documentId, value: 'renamed' } },
+			]);
+
+			const [items] = await node.execute.call(executeFunctions);
+
+			expect(bulkWriteSpy).toHaveBeenCalledWith(
+				[
+					{
+						updateOne: {
+							filter: { _id: new ObjectId(documentId) },
+							update: { $set: { value: 'renamed' } },
+						},
+					},
+				],
+				{ ordered: true },
+			);
+			expect(items).toEqual([{ json: { value: 'renamed' }, pairedItem: { item: 0 } }]);
+		});
+
+		it('uses an unordered bulkWrite and maps write errors to items when continue-on-fail is on', async () => {
+			const bulkWriteSpy = vi
+				.spyOn(Collection.prototype, 'bulkWrite')
+				.mockRejectedValue(bulkWriteError([{ index: 1, errmsg: 'E11000 duplicate key' }]));
+
+			const [items] = await node.execute.call(
+				mockBulkExecuteFunctions('update', { continueOnFail: true }),
+			);
+
+			expect(bulkWriteSpy).toHaveBeenCalledWith(expect.any(Array), { ordered: false });
+			expect(items).toEqual([
+				{ json: { id: '1', value: 'first' }, pairedItem: { item: 0 } },
+				{ json: { error: 'E11000 duplicate key' }, pairedItem: { item: 1 } },
+				{ json: { id: '3', value: 'third' }, pairedItem: { item: 2 } },
+			]);
+		});
+
+		it('maps write errors by op position when a prepare failure shifts the indexes', async () => {
+			const bulkWriteSpy = vi
+				.spyOn(Collection.prototype, 'bulkWrite')
+				.mockRejectedValue(bulkWriteError([{ index: 1, errmsg: 'E11000 duplicate key' }]));
+			const executeFunctions = mockBulkExecuteFunctions('update', { continueOnFail: true });
+			executeFunctions.getInputData.mockReturnValue([
+				inputItems[0],
+				{ json: { value: 'missing-key' } },
+				inputItems[2],
+			]);
+
+			const [items] = await node.execute.call(executeFunctions);
+
+			// Item 1 never reached the bulkWrite, so write-error index 1 is original item 2
+			expect(bulkWriteSpy).toHaveBeenCalledWith(
+				[
+					{ updateOne: { filter: { id: '1' }, update: { $set: { id: '1', value: 'first' } } } },
+					{ updateOne: { filter: { id: '3' }, update: { $set: { id: '3', value: 'third' } } } },
+				],
+				{ ordered: false },
+			);
+			expect(items).toEqual([
+				{ json: { id: '1', value: 'first' }, pairedItem: { item: 0 } },
+				{ json: { error: 'Item is missing the updateKey field' }, pairedItem: { item: 1 } },
+				{ json: { error: 'E11000 duplicate key' }, pairedItem: { item: 2 } },
+			]);
+		});
+
+		it('fails the whole group when the error carries no per-operation verdicts', async () => {
+			vi.spyOn(Collection.prototype, 'bulkWrite').mockRejectedValue(new Error('connection lost'));
+
+			const [items] = await node.execute.call(
+				mockBulkExecuteFunctions('update', { continueOnFail: true }),
+			);
+
+			expect(items).toEqual([
+				{ json: { error: 'connection lost' }, pairedItem: { item: 0 } },
+				{ json: { error: 'connection lost' }, pairedItem: { item: 1 } },
+				{ json: { error: 'connection lost' }, pairedItem: { item: 2 } },
+			]);
+		});
+
+		it('throws the bulk failure when continue-on-fail is off', async () => {
+			vi.spyOn(Collection.prototype, 'bulkWrite').mockRejectedValue(new Error('boom'));
+
+			await expect(node.execute.call(mockBulkExecuteFunctions('update'))).rejects.toThrow('boom');
+		});
+
+		it.each([
+			['update', 'updateOne'],
+			['findOneAndUpdate', 'findOneAndUpdate'],
+		] as const)('keeps per-item %s calls in version 1.4', async (operation, driverMethod) => {
+			const driverSpy = vi.spyOn(Collection.prototype, driverMethod).mockResolvedValue({} as never);
+			const bulkWriteSpy = vi.spyOn(Collection.prototype, 'bulkWrite');
+
+			await node.execute.call(mockExecuteFunctions(1.4, operation));
+
+			expect(driverSpy).toHaveBeenCalledTimes(3);
+			expect(bulkWriteSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('document operations in version 1.3', () => {
+		let collectionSpy: MockInstance;
+		const node = new MongoDb();
+
+		beforeEach(() => {
+			collectionSpy = vi.spyOn(Db.prototype, 'collection');
+		});
+
+		afterEach(() => {
+			collectionSpy.mockRestore();
+			vi.clearAllMocks();
+		});
+
+		describe('query parameters', () => {
+			const expectedQuery = { name: 'Alice', age: { $gte: 30 } };
+
+			it('passes the resolved query to find', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('find'));
+
+				expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+			});
+
+			it('passes the resolved query to deleteMany', async () => {
+				const deleteManySpy = vi.spyOn(Collection.prototype, 'deleteMany').mockResolvedValue({
+					acknowledged: true,
+					deletedCount: 0,
+				});
+
+				await node.execute.call(mockQueryOperation('delete'));
+
+				expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
+			});
+
+			it('passes the resolved query to aggregate', async () => {
+				const aggregateSpy = vi.spyOn(Collection.prototype, 'aggregate').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('aggregate'));
+
+				expect(aggregateSpy).toHaveBeenCalledWith([{ $match: expectedQuery }]);
+			});
 		});
 
 		it('groups insert items by collection and uses insertMany per group', async () => {
-			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertOneSpy = vi.spyOn(Collection.prototype, 'insertOne');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 1,
@@ -183,7 +511,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('uses a single insertMany when all items share the same collection', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -219,7 +547,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each insert output item to its input item', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 1,
@@ -242,7 +570,7 @@ describe('MongoDB CRUD Node', () => {
 				{ json: { id: '3', value: 'third', collection: 'col1' } },
 			];
 
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy
 				.mockResolvedValueOnce({
 					acknowledged: true,
@@ -284,7 +612,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves update collections against each input item', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -304,7 +632,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each update output item to its input item', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -321,7 +649,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves find-and-update collections against each input item', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
@@ -335,7 +663,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each find-and-update output item to its input item', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
@@ -346,7 +674,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('resolves find-and-replace collections against each input item', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
@@ -360,7 +688,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs each find-and-replace output item to its input item', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
@@ -420,9 +748,9 @@ describe('MongoDB CRUD Node', () => {
 				});
 
 				it('does not invoke the driver for the affected item', async () => {
-					const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
-					const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
-					const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+					const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
+					const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
+					const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 					findOneAndReplaceSpy.mockResolvedValue(null);
 					findOneAndUpdateSpy.mockResolvedValue(null);
 					updateOneSpy.mockResolvedValue({
@@ -494,21 +822,21 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('document operations in version 1.2', () => {
-		let collectionSpy: jest.SpyInstance;
+		let collectionSpy: MockInstance;
 		const node = new MongoDb();
 
 		beforeEach(() => {
-			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+			collectionSpy = vi.spyOn(Db.prototype, 'collection');
 		});
 
 		afterEach(() => {
 			collectionSpy.mockRestore();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('keeps insert using the first item collection', async () => {
-			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertOneSpy = vi.spyOn(Collection.prototype, 'insertOne');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -525,7 +853,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all insert output items to all input items as fallback', async () => {
-			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			const insertManySpy = vi.spyOn(Collection.prototype, 'insertMany');
 			insertManySpy.mockResolvedValue({
 				acknowledged: true,
 				insertedCount: 3,
@@ -543,7 +871,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('keeps update using the first item collection', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -563,7 +891,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all update output items to all input items as fallback', async () => {
-			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			const updateOneSpy = vi.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
 				acknowledged: true,
 				matchedCount: 1,
@@ -581,7 +909,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all find-and-update output items to all input items as fallback', async () => {
-			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			const findOneAndUpdateSpy = vi.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndUpdate'));
@@ -593,7 +921,7 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		it('pairs all find-and-replace output items to all input items as fallback', async () => {
-			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			const findOneAndReplaceSpy = vi.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndReplace'));
@@ -606,8 +934,8 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('createSearchIndex operation', () => {
-		// Direct method replacement (not jest.spyOn) so the recorded calls survive
-		// the per-test `restoreMocks` reset in the root jest config.
+		// Direct method replacement (not vi.spyOn) so the recorded calls survive
+		// the per-test `restoreMocks` reset in the vitest config.
 		const calls: unknown[][] = [];
 		const original = Collection.prototype.createSearchIndex;
 		beforeAll(() => {

@@ -9,6 +9,8 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
 const GROUP_NODES_SHORTCUT = { metaKey: true, keys: ['G'] };
@@ -17,14 +19,22 @@ const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
 const props = withDefaults(
 	defineProps<{
 		selectedNodes: GraphNode[];
+		/**
+		 * Full visual bounds of the selection (group frames included). Keeps the
+		 * toolbar above the selection rectangle, which would otherwise cover it
+		 * and swallow its clicks.
+		 */
+		selectionBounds?: BoundingBox;
 		readOnly?: boolean;
 	}>(),
 	{
+		selectionBounds: undefined,
 		readOnly: false,
 	},
 );
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
@@ -39,7 +49,10 @@ const emit = defineEmits<{
 const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id));
 
 const canExtractWorkflow = computed(
-	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
+	() =>
+		!props.readOnly &&
+		!settingsStore.isSubworkflowConversionDisabled &&
+		isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
 const isToolbarVisible = computed(
@@ -47,11 +60,19 @@ const isToolbarVisible = computed(
 );
 
 const extractWorkflowLabel = computed(() =>
-	i18n.baseText('contextMenu.extract', { adjustToNumber: props.selectedNodes.length }),
+	i18n.baseText('contextMenu.extract', {
+		adjustToNumber: props.selectedNodes.length,
+		interpolate: {
+			subject: i18n.baseText('contextMenu.node', {
+				adjustToNumber: props.selectedNodes.length,
+				interpolate: { count: props.selectedNodes.length },
+			}),
+		},
+	}),
 );
 
 const position = computed(() => {
-	const rect = getRectOfNodes(props.selectedNodes);
+	const rect = props.selectionBounds ?? getRectOfNodes(props.selectedNodes);
 	return {
 		left: rect.x + rect.width / 2,
 		top: rect.y - TOOLBAR_OFFSET_PX,

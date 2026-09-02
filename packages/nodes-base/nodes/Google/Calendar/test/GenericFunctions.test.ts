@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -16,6 +16,7 @@ import {
 	googleApiRequestAllItems,
 	googleApiRequestWithRetries,
 } from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('addTimezoneToDate', () => {
 	it('should add timezone to date', () => {
@@ -121,9 +122,9 @@ describe('eventExtendYearIntoFuture', () => {
 });
 
 describe('googleApiRequest', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let requestOAuth2Spy: jest.SpyInstance;
+	let requestOAuth2Spy: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -136,8 +137,10 @@ describe('googleApiRequest', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		requestOAuth2Spy = jest.spyOn(mockExecuteFunctions.helpers, 'requestOAuth2');
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		// mockDeep already makes helpers.requestOAuth2 a mock; vi.spyOn can't wrap the
+		// mock-extended proxy property, so use it directly.
+		requestOAuth2Spy = mockExecuteFunctions.helpers.requestOAuth2 as unknown as Mock;
 	});
 
 	it('should make a successful GET request with default parameters', async () => {
@@ -278,8 +281,8 @@ describe('googleApiRequest', () => {
 });
 
 describe('googleApiRequestAllItems', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let requestOAuth2Spy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let requestOAuth2Spy: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -291,8 +294,8 @@ describe('googleApiRequestAllItems', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		requestOAuth2Spy = jest.spyOn(mockExecuteFunctions.helpers, 'requestOAuth2');
-		jest.clearAllMocks();
+		requestOAuth2Spy = mockExecuteFunctions.helpers.requestOAuth2 as unknown as Mock;
+		vi.clearAllMocks();
 	});
 
 	it('should fetch all items across multiple pages', async () => {
@@ -427,8 +430,8 @@ describe('encodeURIComponentOnce', () => {
 });
 
 describe('getCalendars', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	let requestOAuth2Spy: jest.SpyInstance;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+	let requestOAuth2Spy: Mock;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
@@ -440,8 +443,8 @@ describe('getCalendars', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		requestOAuth2Spy = jest.spyOn(mockLoadOptionsFunctions.helpers, 'requestOAuth2');
-		jest.clearAllMocks();
+		requestOAuth2Spy = mockLoadOptionsFunctions.helpers.requestOAuth2 as unknown as Mock;
+		vi.clearAllMocks();
 	});
 
 	it('should return all calendars without filter', async () => {
@@ -540,11 +543,11 @@ describe('getCalendars', () => {
 });
 
 describe('getTimezones', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return all timezones without filter', async () => {
@@ -704,7 +707,7 @@ describe('addNextOccurrence', () => {
 			},
 		];
 
-		const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+		const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
 		const result = addNextOccurrence(items);
 
@@ -716,9 +719,9 @@ describe('addNextOccurrence', () => {
 });
 
 describe('googleApiRequestWithRetries', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let requestOAuth2Spy: jest.SpyInstance;
+	let requestOAuth2Spy: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -731,8 +734,10 @@ describe('googleApiRequestWithRetries', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		requestOAuth2Spy = jest.spyOn(mockExecuteFunctions.helpers, 'requestOAuth2');
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		// mockDeep already makes helpers.requestOAuth2 a mock; vi.spyOn can't wrap the
+		// mock-extended proxy property, so use it directly.
+		requestOAuth2Spy = mockExecuteFunctions.helpers.requestOAuth2 as unknown as Mock;
 	});
 
 	it('should make successful request without retries', async () => {

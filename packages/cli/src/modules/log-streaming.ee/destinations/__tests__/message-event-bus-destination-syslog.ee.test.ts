@@ -1,15 +1,14 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationSyslogOptions } from 'n8n-workflow';
 
-import { MessageEventBusDestinationSyslog } from '../message-event-bus-destination-syslog.ee';
+import {
+	MessageEventBusDestinationSyslog,
+	isMessageEventBusDestinationSyslogOptions,
+} from '../message-event-bus-destination-syslog.ee';
 
 describe('MessageEventBusDestinationSyslog', () => {
 	describe('isMessageEventBusDestinationSyslogOptions', () => {
 		it('should identify valid syslog options', () => {
-			const {
-				isMessageEventBusDestinationSyslogOptions,
-			} = require('../message-event-bus-destination-syslog.ee');
-
 			const validOptions: MessageEventBusDestinationSyslogOptions = {
 				__type: MessageEventBusDestinationTypeNames.syslog,
 				host: 'localhost',
@@ -26,10 +25,6 @@ describe('MessageEventBusDestinationSyslog', () => {
 		});
 
 		it('should reject invalid options', () => {
-			const {
-				isMessageEventBusDestinationSyslogOptions,
-			} = require('../message-event-bus-destination-syslog.ee');
-
 			expect(isMessageEventBusDestinationSyslogOptions({})).toBe(false);
 			expect(isMessageEventBusDestinationSyslogOptions(null)).toBe(false);
 			expect(isMessageEventBusDestinationSyslogOptions({ label: 'test' })).toBe(false);

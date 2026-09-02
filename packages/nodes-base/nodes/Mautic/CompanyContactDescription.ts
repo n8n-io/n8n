@@ -25,7 +25,7 @@ export const companyContactOperations: INodeProperties[] = [
 				action: 'Remove a company contact',
 			},
 		],
-		default: 'create',
+		default: 'add',
 	},
 ];
 

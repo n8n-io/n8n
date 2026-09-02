@@ -19,10 +19,10 @@ export const createMockExecuteFunction = (
 ) => {
 	const mockNode = typeVersion === node.typeVersion ? node : { ...node, typeVersion };
 	const fakeExecuteFunction = {
-		getInputData: jest.fn(() => {
+		getInputData: vi.fn(() => {
 			return [{ json: {} }];
 		}),
-		getNodeParameter: jest.fn(
+		getNodeParameter: vi.fn(
 			(
 				parameterName: string,
 				_itemIndex: number,
@@ -33,11 +33,11 @@ export const createMockExecuteFunction = (
 				return get(nodeParameters, parameter, fallbackValue);
 			},
 		),
-		getNode: jest.fn(() => {
+		getNode: vi.fn(() => {
 			return mockNode;
 		}),
-		helpers: { constructExecutionMetaData: jest.fn(constructExecutionMetaData) },
-		continueOnFail: jest.fn(() => false),
+		helpers: { constructExecutionMetaData: vi.fn(constructExecutionMetaData) },
+		continueOnFail: vi.fn(() => false),
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };

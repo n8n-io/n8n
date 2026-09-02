@@ -28,6 +28,42 @@ function createAgentWithTool(provider: 'openai' | 'anthropic' = 'anthropic'): Ag
 		.tool(addTool);
 }
 
+function createAgentWithAbortAwareTool({
+	onToolStart,
+	onToolAbort,
+}: {
+	onToolStart: () => void;
+	onToolAbort: () => void;
+}): Agent {
+	const abortAwareTool = new Tool('wait_for_abort')
+		.description(
+			'Wait until the current run is aborted, then report whether the abort signal fired.',
+		)
+		.input(z.object({ reason: z.string().optional() }))
+		.handler(async (_input, ctx) => {
+			const signal = ctx.abortSignal;
+			onToolStart();
+			await new Promise<void>((resolve) => {
+				signal?.addEventListener(
+					'abort',
+					() => {
+						onToolAbort();
+						resolve();
+					},
+					{ once: true },
+				);
+			});
+			return { aborted: signal?.aborted === true };
+		});
+
+	return new Agent('events-abort-tool-agent')
+		.model(getModel('anthropic'))
+		.instructions(
+			'You must call wait_for_abort exactly once before answering. Do not answer directly.',
+		)
+		.tool(abortAwareTool);
+}
+
 // ---------------------------------------------------------------------------
 // Event system — generate path
 // ---------------------------------------------------------------------------
@@ -137,6 +173,63 @@ describe('event system — generate', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Abort signal propagation — public Agent API
+// ---------------------------------------------------------------------------
+
+describe('abort signal propagation to tools', () => {
+	it('passes an aborting signal to tool context during generate()', async () => {
+		const external = new AbortController();
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolAborted!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolAborted = resolve;
+		});
+		const agent = createAgentWithAbortAwareTool({
+			onToolStart: toolStarted,
+			onToolAbort: toolAborted,
+		});
+
+		const run = agent.generate('Call wait_for_abort now.', { abortSignal: external.signal });
+		await waitForToolStart;
+
+		external.abort();
+
+		await waitForToolAbort;
+		await run;
+	});
+
+	it('passes an aborting signal to tool context during stream()', async () => {
+		const external = new AbortController();
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolAborted!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolAborted = resolve;
+		});
+		const agent = createAgentWithAbortAwareTool({
+			onToolStart: toolStarted,
+			onToolAbort: toolAborted,
+		});
+
+		const { stream } = await agent.stream('Call wait_for_abort now.', {
+			abortSignal: external.signal,
+		});
+		const drain = collectStreamChunks(stream);
+		await waitForToolStart;
+
+		external.abort();
+
+		await waitForToolAbort;
+		await drain;
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Event system — stream path
 // ---------------------------------------------------------------------------
 
@@ -175,51 +268,42 @@ describe('event system — stream', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getState()
+// Result getState()
 // ---------------------------------------------------------------------------
 
-describe('getState()', () => {
-	it('returns idle before first run', () => {
-		const agent = createSimpleAgent();
-		const state = agent.getState();
-		expect(state.status).toBe('idle');
-		expect(state.messageList.messages).toHaveLength(0);
-	});
-
+describe('result getState()', () => {
 	it('returns success after a successful generate()', async () => {
 		const agent = createSimpleAgent();
-		await agent.generate('Say hello');
-		const state = agent.getState();
+		const result = await agent.generate('Say hello');
+		const state = result.getState();
 		expect(state.status).toBe('success');
 	});
 
 	it('returns success after a completed stream()', async () => {
 		const agent = createSimpleAgent();
-		const { stream } = await agent.stream('Say hello');
+		const result = await agent.stream('Say hello');
+		const { stream } = result;
 		await collectStreamChunks(stream);
-		const state = agent.getState();
+		const state = result.getState();
 		expect(state.status).toBe('success');
 	});
 
-	it('state is running during the generate loop (observed via event)', async () => {
+	it('stream result state is running before the stream is drained', async () => {
 		const agent = createSimpleAgent();
 
-		let stateWhileRunning: string | undefined;
-		agent.on(AgentEvent.TurnStart, () => {
-			stateWhileRunning = agent.getState().status;
-		});
+		const result = await agent.stream('Say hello');
+		expect(result.getState().status).toBe('running');
 
-		await agent.generate('Say hello');
-
-		expect(stateWhileRunning).toBe('running');
+		await collectStreamChunks(result.stream);
+		expect(result.getState().status).toBe('success');
 	});
 
 	it('reflects resourceId and threadId from RunOptions', async () => {
 		const agent = createSimpleAgent();
-		await agent.generate('Say hello', {
+		const result = await agent.generate('Say hello', {
 			persistence: { resourceId: 'user-123', threadId: 'thread-abc' },
 		});
-		const state = agent.getState();
+		const state = result.getState();
 		expect(state.persistence?.resourceId).toBe('user-123');
 		expect(state.persistence?.threadId).toBe('thread-abc');
 	});

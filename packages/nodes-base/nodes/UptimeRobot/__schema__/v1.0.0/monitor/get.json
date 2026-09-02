@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "properties": {
+        "create_datetime": {
+            "type": "integer"
+        },
+        "friendly_name": {
+            "type": "string"
+        },
+        "http_password": {
+            "type": "string"
+        },
+        "http_username": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "interval": {
+            "type": "integer"
+        },
+        "keyword_value": {
+            "type": "string"
+        },
+        "port": {
+            "type": "string"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "sub_type": {
+            "type": "string"
+        },
+        "timeout": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

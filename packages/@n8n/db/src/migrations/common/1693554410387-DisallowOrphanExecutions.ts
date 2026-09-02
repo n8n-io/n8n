@@ -10,13 +10,13 @@ export class DisallowOrphanExecutions1693554410387 implements ReversibleMigratio
 
 		await runQuery(`DELETE FROM ${executionEntity} WHERE ${workflowId} IS NULL;`);
 
-		await addNotNull('execution_entity', 'workflowId');
+		await addNotNull('execution_entity', 'workflowId', { recreatesOnSqlite: true });
 	}
 
 	/**
 	 * Reversal excludes restoring deleted rows.
 	 */
 	async down({ schemaBuilder: { dropNotNull } }: MigrationContext) {
-		await dropNotNull('execution_entity', 'workflowId');
+		await dropNotNull('execution_entity', 'workflowId', { recreatesOnSqlite: true });
 	}
 }

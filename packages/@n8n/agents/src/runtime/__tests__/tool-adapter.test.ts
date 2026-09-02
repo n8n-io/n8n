@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
-import { executeTool, toAiSdkTools } from '../tool-adapter';
+import { executeTool, toAiSdkTools } from '../tools/tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -175,6 +175,24 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(firstCall.type).toBe('object');
 		expect(secondCall.type).toBe('object');
 	});
+
+	it('disables provider strict mode for MCP tools without changing optional properties', () => {
+		const rawSchema: JSONSchema7 = {
+			type: 'object',
+			properties: {
+				team: { type: 'string' },
+				query: { type: 'string' },
+				priority: { type: 'number' },
+			},
+			required: ['team'],
+		};
+
+		const result = toAiSdkTools([makeJsonSchemaTool(rawSchema, { mcpTool: true })]);
+
+		expect(result.testTool).toMatchObject({ strict: false });
+		expect(jsonSchemaMock).toHaveBeenCalledWith(rawSchema);
+		expect(jsonSchemaMock.mock.calls[0][0].required).toEqual(['team']);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -197,6 +215,21 @@ describe('toAiSdkTools — description forwarding', () => {
 // ---------------------------------------------------------------------------
 
 describe('executeTool — context propagation', () => {
+	it('passes MCP tool input to the handler unchanged', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'linear_list_issues',
+			description: 'List Linear issues',
+			mcpTool: true,
+			handler,
+		};
+		const input = { team: 'Agent', query: '', priority: 0 };
+
+		await executeTool(input, tool);
+
+		expect(handler.mock.calls[0][0]).toBe(input);
+	});
+
 	it('passes the run abort signal to the tool handler', async () => {
 		const handler = vi.fn().mockResolvedValue('ok');
 		const tool: BuiltTool = { name: 'cancellable', description: 'd', handler };
@@ -220,5 +253,57 @@ describe('executeTool — context propagation', () => {
 		await executeTool({}, tool, undefined, undefined, 'call-1', { abortSignal: signal });
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ abortSignal: signal }));
+	});
+
+	it('passes the execution counter to the tool handler', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = { name: 'counted', description: 'd', handler };
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+
+		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
+	});
+
+	it('passes the execution counter to interruptible tool handlers', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'interruptible-counted',
+			description: 'd',
+			handler,
+			suspendSchema: z.object({}),
+		};
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+
+		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
+	});
+
+	it('passes the checkpointed suspend payload to interruptible tool handlers on resume', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'interruptible-resumed',
+			description: 'd',
+			handler,
+			suspendSchema: z.object({ requestId: z.string() }),
+		};
+
+		await executeTool({}, tool, { approved: true }, undefined, 'call-1', {
+			suspendPayload: { requestId: 'r1' },
+		});
+
+		expect(handler).toHaveBeenCalledWith(
+			{},
+			expect.objectContaining({ suspendPayload: { requestId: 'r1' } }),
+		);
 	});
 });

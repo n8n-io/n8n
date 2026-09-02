@@ -46,6 +46,7 @@ export interface ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<CredentialResolutionResult>;
 
 	/**

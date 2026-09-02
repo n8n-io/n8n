@@ -1,8 +1,11 @@
 import {
 	isDisplayableConfirmationRequest,
 	type InstanceAiConfirmationRequestEvent,
+	type InstanceAiErrorEvent,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
@@ -59,7 +62,12 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	return event.type === 'text-delta' && event.payload.text.trim().length > 0;
+	// The durable log stores coalesced text-block facts, never deltas, so
+	// flag-on guard reads must recognize both shapes of streamed text.
+	return (
+		(event.type === 'text-delta' || event.type === 'text-block') &&
+		event.payload.text.trim().length > 0
+	);
 }
 
 export class InstanceAiTerminalResponseGuard {
@@ -71,6 +79,7 @@ export class InstanceAiTerminalResponseGuard {
 		options: {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
 			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision {
@@ -93,7 +102,9 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'completed-after-error',
 				};
 			}
-			if (visibility.hasRootText) {
+			// Closing text only: a preamble the model never followed with an answer
+			// leaves the user watching a turn that looks like it is still running.
+			if (visibility.hasClosingRootText) {
 				return {
 					status,
 					visibilitySource: 'root-text',
@@ -109,7 +120,8 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			if (options.suppressCompletedFallback) {
+			// Only suppress when some agent already produced text; a turn with no text at all must still emit.
+			if (options.suppressCompletedFallback && visibility.hasAgentText) {
 				return {
 					status,
 					visibilitySource: 'none',
@@ -127,6 +139,7 @@ export class InstanceAiTerminalResponseGuard {
 		}
 
 		if (status === 'cancelled') {
+			// A cancelled run needs no assistant placeholder: the stopped state is self-evident in the UI.
 			if (visibility.hasRootText || visibility.hasRootError) {
 				return {
 					status,
@@ -135,11 +148,12 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			return this.emitText(
+			return {
 				status,
-				'cancelled-silent',
-				'The run was cancelled before I could send a response.',
-			);
+				visibilitySource: 'none',
+				action: 'none',
+				reason: 'cancelled-silent',
+			};
 		}
 
 		if (visibility.hasRootError) {
@@ -156,6 +170,7 @@ export class InstanceAiTerminalResponseGuard {
 			visibility.hasRootText ? 'errored-after-text' : 'errored-silent',
 			options.errorMessage ??
 				'I hit an error before I could finish that response. Please try again.',
+			options.errorCode,
 		);
 	}
 
@@ -203,15 +218,30 @@ export class InstanceAiTerminalResponseGuard {
 
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
+		hasClosingRootText: boolean;
 		hasRootError: boolean;
 		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
+		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
+		// The loop runs another turn for every tool call, so the turn that ends the
+		// run never carries one: root text before the last tool call is a preamble
+		// ("Let me read the source…"), text after it is the answer. With no tool
+		// calls the index is -1 and every text event counts.
+		const lastRootToolCall = currentRunEvents.findLastIndex(
+			(event) => event.agentId === this.options.rootAgentId && event.type === 'tool-call',
+		);
 		return {
 			hasRootText: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && hasText(event),
 			),
+			hasClosingRootText: currentRunEvents.some(
+				(event, index) =>
+					index > lastRootToolCall && event.agentId === this.options.rootAgentId && hasText(event),
+			),
+			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
+			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),
@@ -253,6 +283,7 @@ export class InstanceAiTerminalResponseGuard {
 		status: TerminalResponseStatus,
 		reason: TerminalResponseDecision['reason'],
 		content: string,
+		code?: InstanceAiErrorCode,
 	): TerminalResponseDecision {
 		return {
 			status,
@@ -264,7 +295,7 @@ export class InstanceAiTerminalResponseGuard {
 				runId: this.options.runId,
 				agentId: this.options.rootAgentId,
 				responseId: this.fallbackResponseId(status),
-				payload: { content },
+				payload: { content, ...(code ? { code } : {}) },
 			},
 		};
 	}

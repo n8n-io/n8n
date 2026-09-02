@@ -8,19 +8,21 @@ const props = defineProps<KeyboardShortcut>();
 const { isMacOs, controlKeyText } = useDeviceSupport();
 
 const keys = computed(() => {
-	const allKeys = props.keys.map((key) => key.charAt(0).toUpperCase() + key.slice(1));
+	const allKeys: string[] = [];
 
 	if (props.metaKey) {
-		allKeys.unshift(controlKeyText.value);
-	}
-
-	if (props.altKey) {
-		allKeys.unshift(isMacOs ? '⌥' : 'Alt');
+		allKeys.push(controlKeyText.value);
 	}
 
 	if (props.shiftKey) {
-		allKeys.unshift('⇧');
+		allKeys.push('⇧');
 	}
+
+	if (props.altKey) {
+		allKeys.push(isMacOs ? '⌥' : 'Alt');
+	}
+
+	allKeys.push(...props.keys.map((key) => key.charAt(0).toUpperCase() + key.slice(1)));
 
 	return allKeys;
 });

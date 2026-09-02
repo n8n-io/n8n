@@ -1,12 +1,13 @@
 import type { PushPayload } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { parseWorkflowMessage } from './collaboration.message';
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
@@ -14,7 +15,6 @@ import type {
 	WriteAccessReleaseRequestedMessage,
 	WriteAccessHeartbeatMessage,
 } from './collaboration.message';
-import { parseWorkflowMessage } from './collaboration.message';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -317,6 +317,26 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers({ type: 'workflowSettingsUpdated', data: msgData }, userIds);
+	}
+
+	/**
+	 * Invalidation-only: clients refetch the authoritative status. Delivery is best-effort and
+	 * per-instance; cross-main viewers heal via focus/reconnect refetch. Review lifecycle write
+	 * paths must call this after their transactions commit.
+	 */
+	async broadcastWorkflowReviewStateChanged(workflowId: Workflow['id']) {
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'workflowReviewStateChanged'> = {
+			workflowId,
+		};
+
+		this.push.sendToUsers({ type: 'workflowReviewStateChanged', data: msgData }, userIds);
 	}
 
 	/**

@@ -62,10 +62,9 @@ describe('LicenseMetricsRepository', () => {
 					StatisticsNames.manualError,
 					secondWorkflow.id,
 				),
-				workflowStatisticsRepository.upsertWorkflowStatistics(
+				workflowStatisticsRepository.insertWorkflowStatistics(
 					StatisticsNames.productionSuccess,
 					secondWorkflow.id,
-					true,
 				),
 			]);
 

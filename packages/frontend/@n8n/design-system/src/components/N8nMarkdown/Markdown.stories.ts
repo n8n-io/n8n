@@ -76,6 +76,13 @@ WithCheckboxes.args = {
 	loading: false,
 };
 
+export const WithCodeBlock = Template.bind({});
+WithCodeBlock.args = {
+	content:
+		'To get started, run the following in a terminal:\n\n```\necho "Hello world"\n```\n\nInline code like `EXAMPLE_VAR=true` should also render.\n',
+	loading: false,
+};
+
 const TemplateWithYoutubeEmbed: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),

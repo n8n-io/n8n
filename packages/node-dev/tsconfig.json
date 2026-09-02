@@ -6,9 +6,9 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"preserveSymlinks": true,
-		"tsBuildInfoFile": "dist/build.tsbuildinfo",
 		// TODO: remove all options below this line
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"types": ["node"]
 	},
 	"include": ["commands/**/*.ts", "src/**/*.ts"]
 }

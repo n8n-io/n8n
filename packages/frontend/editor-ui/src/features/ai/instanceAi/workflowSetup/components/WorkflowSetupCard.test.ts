@@ -32,6 +32,9 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 			if (key === 'instanceAi.credential.setupTitle' && opts?.interpolate?.name) {
 				return `Set up ${opts.interpolate.name}`;
 			}
+			if (key === 'instanceAi.workflowSetup.configureNode' && opts?.interpolate?.name) {
+				return `Configure '${opts.interpolate.name}'`;
+			}
 			return key;
 		},
 	}),
@@ -127,10 +130,31 @@ describe('WorkflowSetupCard', () => {
 			props: { section },
 		});
 
-		expect(getByText('HTTP Request')).toBeInTheDocument();
+		expect(getByText("Configure 'HTTP Request'")).toBeInTheDocument();
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
 		expect(getByTestId('node-icon')).toBeInTheDocument();
 		expect(queryByTestId('credential-icon')).not.toBeInTheDocument();
+	});
+
+	it('titles the card from the setup hint suggested name, verbatim', () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+				// "API" must survive — hint names skip the type-name keyword filter.
+				suggestedName: 'fal.ai API Key',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		const { getByText, getByTestId, queryByText } = renderComponent({
+			props: { section },
+		});
+
+		expect(getByText('Set up fal.ai API Key')).toBeInTheDocument();
+		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
+		expect(getByTestId('credential-icon')).toBeInTheDocument();
 	});
 
 	it('shows the credential app name when the section only needs credentials', () => {

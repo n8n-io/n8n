@@ -12,13 +12,26 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalSeedDataTableRowsRequest,
+	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -28,19 +41,39 @@ import {
 	Put,
 	Patch,
 	Delete,
+	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
-import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
+import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
+import {
+	OversizedAttachmentError,
+	UnsupportedAttachmentError,
+	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
+} from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { EvalThreadRestoreService } from './eval/thread-restore.service';
+import { DurableEventLog } from './event-bus/durable-event-log';
+import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -49,6 +82,8 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
@@ -58,6 +93,10 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 @RestController('/instance-ai')
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
+
+	/** Durable-log prototype flag (N8N_INSTANCE_AI_DURABLE_LOG): replay and
+	 *  cursors come from the DB-backed log instead of the in-memory bus. */
+	private readonly durableLogEnabled: boolean;
 
 	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
 		let score = 0;
@@ -91,23 +130,41 @@ export class InstanceAiController {
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
+		private readonly gatewayService: InstanceAiGatewayService,
+		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly eventLog: DurableEventLog,
+		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
+		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly publisher: Publisher,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
+		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	private requireInstanceAiEnabled(): void {
 		if (!this.settingsService.isInstanceAiEnabled()) {
 			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+
+	private requireRunDebugEnabled(): void {
+		if (!this.instanceAiService.isRunDebugEnabled()) {
+			throw new NotFoundError('Run debug is not enabled');
 		}
 	}
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
@@ -139,15 +196,38 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		if (payload.attachments && payload.attachments.length > 0) {
+		// Only file attachments carry a mime type to validate; workflow and agent
+		// attachments are resource references the agent resolves with its tools.
+		const fileAttachments = (payload.attachments ?? []).filter(
+			(attachment) => attachment.type === 'file',
+		);
+		if (fileAttachments.length > 0) {
 			try {
-				validateAttachmentMimeTypes(payload.attachments);
+				validateAttachmentMimeTypes(fileAttachments);
+				// Reject oversized payloads here rather than letting them reach the model.
+				// The provider answers an oversized image with an opaque 400, and the
+				// attachment is already persisted in thread history by then — so every
+				// later turn replays it and fails too, stranding the conversation.
+				//
+				// Note the request schema caps each `data` field at the same per-file
+				// limit, and body validation runs before this handler — so over HTTP a
+				// single oversized file is answered by the schema and only the combined
+				// budget reaches here. This call stays because it is the check for
+				// non-HTTP callers and the one that enforces the total.
+				validateAttachmentSizes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
 					throw new BadRequestError(
 						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
 							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				if (error instanceof OversizedAttachmentError) {
+					throw new BadRequestError(
+						error.reason === 'per_file'
+							? `${error.message} Attach a smaller version, or resize the image before sending.`
+							: `${error.message} Send them across separate messages, or attach smaller versions.`,
 					);
 				}
 				throw error;
@@ -164,6 +244,7 @@ export class InstanceAiController {
 			threadId,
 			payload.message,
 			payload.attachments,
+			payload.context,
 			payload.timeZone,
 			payload.pushRef,
 		);
@@ -187,12 +268,6 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
-		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
-		}
-
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
 		// event and close the stream if ownership changed. Events are buffered
@@ -202,7 +277,74 @@ export class InstanceAiController {
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
-		// 1. Set SSE headers.
+		// 1. Subscribe to live events before the async bootstrap below.
+		//    hasSubscribers() must be true across the awaits that follow: in
+		//    multi-main, sibling mains drop relayed events for threads without a
+		//    local subscriber, so a relayed event arriving during an await would
+		//    otherwise be lost for good. Events emitted while bootstrapping are
+		//    NOT delivered here — they land in the event store and the replay in
+		//    step 6 picks them up, avoiding duplicates.
+		let bootstrapping = true;
+
+		const deliver = (stored: StoredEvent) => {
+			if (ownershipVerified) {
+				this.writeSseEvent(res, stored);
+				return;
+			}
+
+			// When the thread was not_found at connect time, re-validate ownership
+			// on the first event. Buffer all events until the check resolves to
+			// avoid leaking data during the async gap.
+			pendingEvents.push(stored);
+
+			if (ownershipCheckInFlight) return;
+			ownershipCheckInFlight = true;
+
+			void this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (currentOwnership === 'other_user') {
+						res.end();
+						return;
+					}
+					ownershipVerified = true;
+					for (const buffered of pendingEvents) {
+						this.writeSseEvent(res, buffered);
+					}
+					pendingEvents.length = 0;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					res.end();
+				});
+		};
+
+		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
+			if (bootstrapping) return;
+			deliver(stored);
+		});
+
+		// Cleanup is registered before the async bootstrap so a client disconnect
+		// (or an error response) during the awaits below doesn't leak the
+		// subscription.
+		let closed = false;
+		let keepAlive: NodeJS.Timeout | undefined = undefined;
+		const cleanup = () => {
+			closed = true;
+			unsubscribe();
+			if (keepAlive !== undefined) clearInterval(keepAlive);
+		};
+		req.once('close', cleanup);
+		res.once('finish', cleanup);
+
+		// 2. Re-publish any terminal outcomes that never reached the client.
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
+		}
+
+		// 3. Set SSE headers.
 		// Disable response compression — SSE streams small chunks where compression
 		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
 		// of native memory for the lifetime of the connection.
@@ -213,7 +355,7 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		// 2. Determine replay cursor
+		// 4. Determine replay cursor
 		//    Last-Event-ID header (browser auto-reconnect) takes precedence over query param.
 		//    Both are validated as non-negative integers; invalid values fall back to 0.
 		const headerValue = req.headers['last-event-id'];
@@ -221,20 +363,9 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 3. Replay missed events then subscribe in the same tick.
-		//    Since InProcessEventBus is synchronous and single-threaded (Node.js
-		//    event loop), there is no window for missed events between replay and
-		//    subscribe when done in the same synchronous block.
-		const missed = this.eventBus.getEventsAfter(threadId, cursor);
-		for (const stored of missed) {
-			this.writeSseEvent(res, stored);
-		}
-
-		// 3b. Bootstrap sync: emit one run-sync control frame per live message group.
-		//     Multiple groups can be active simultaneously when a background task
-		//     from an older turn outlives its original turn. Each frame uses named
-		//     SSE event type (event: run-sync) with NO id: field so the browser's
-		//     lastEventId is unaffected and replay cursor stays consistent.
+		// 5. Collect live message groups and fetch their persisted snapshots.
+		//    Multiple groups can be active simultaneously when a background task
+		//    from an older turn outlives its original turn.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 
 		// Collect all distinct message groups that have live activity.
@@ -265,17 +396,34 @@ export class InstanceAiController {
 			}
 		}
 
+		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
 		for (const [groupId, group] of liveGroups) {
-			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			// Use the group's own latest runId — NOT the thread-global activeRunId,
-			// which belongs to the current orchestrator turn and would be wrong for
-			// background groups from older turns.
-			const groupRunId = group.runIds.at(-1);
-			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
-				messageGroupId: groupId,
-				runId: groupRunId,
-			});
-			if (runEvents.length === 0 && !persistedSnapshot) continue;
+			persistedSnapshots.set(
+				groupId,
+				await this.memoryService.getLatestRunSnapshot(threadId, {
+					messageGroupId: groupId,
+					// Use the group's own latest runId — NOT the thread-global
+					// activeRunId, which belongs to the current orchestrator turn and
+					// would be wrong for background groups from older turns.
+					runId: group.runIds.at(-1),
+				}),
+			);
+		}
+
+		// The client may have disconnected during the awaits above.
+		if (closed) return;
+
+		// 6b (used by both arms below). Emit one run-sync control frame for a live
+		//     message group. Each frame uses a named SSE event type
+		//     (event: run-sync) with NO id: field so the browser's lastEventId is
+		//     unaffected and the replay cursor stays consistent.
+		const writeRunSyncFrame = (
+			groupId: string,
+			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
+			runEvents: InstanceAiEvent[],
+		) => {
+			const persistedSnapshot = persistedSnapshots.get(groupId);
+			if (runEvents.length === 0 && !persistedSnapshot) return;
 
 			const eventTree = buildAgentTreeFromEvents(runEvents);
 			const agentTree = InstanceAiController.selectBootstrapTree(
@@ -284,7 +432,7 @@ export class InstanceAiController {
 			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
-					runId: groupRunId,
+					runId: group.runIds.at(-1),
 					messageGroupId: groupId,
 					runIds: group.runIds,
 					agentTree,
@@ -292,56 +440,172 @@ export class InstanceAiController {
 					backgroundTasks: threadStatus.backgroundTasks,
 				})}\n\n`,
 			);
+		};
+
+		if (this.durableLogEnabled) {
+			// 6. Replay missed events from the DURABLE log — survives restarts and is
+			//    valid on any main (the table is in the shared DB). The reads are
+			//    async, so unlike the old synchronous memory-store replay, live
+			//    events can land mid-bootstrap: buffer them across every await (the
+			//    replay read, the run-sync tree reads, AND the gap read) and flush
+			//    with seq dedupe only when no await remains before live delivery
+			//    takes over (the drain persists before it emits, so a fact is never
+			//    in neither place). A flushed event may already be folded into a
+			//    run-sync tree; the shared reducer applies it idempotently, same as
+			//    any live event arriving after a frame.
+			const arrivedDuringReplay: StoredEvent[] = [];
+			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+				arrivedDuringReplay.push(stored);
+			});
+			try {
+				const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+				// The client may have disconnected during the read: stop before
+				// writing to the dead response or arming the keep-alive below.
+				if (closed) return;
+				let lastReplayedSeq = cursor;
+				for (const stored of missed) {
+					deliver(stored);
+					if (stored.id !== undefined) lastReplayedSeq = stored.id;
+				}
+				// Build each live group's bootstrap tree from the durable log, so the
+				// group renders fully even when the bus cache was evicted, the process
+				// restarted, or this main never buffered the thread (sibling main).
+				// Remember which coalesced blocks each delivered tree folds: the gap
+				// read below may return the same rows, and re-applying a block the
+				// tree already renders would append a duplicate timeline entry.
+				const blockKey = (event: {
+					type: string;
+					runId: string;
+					agentId: string;
+					responseId?: string;
+					payload: { text: string };
+				}) =>
+					`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
+				const foldedBlockKeys = new Set<string>();
+				for (const [groupId, group] of liveGroups) {
+					const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
+					if (closed) return;
+					writeRunSyncFrame(groupId, group, runEvents);
+					for (const event of runEvents) {
+						if (event.type === 'text-block' || event.type === 'reasoning-block') {
+							foldedBlockKeys.add(blockKey(event));
+						}
+					}
+				}
+				// One more durable read: coalesced blocks are persisted but never
+				// live-emitted (live clients saw the deltas), so a segment that closed
+				// during the awaits above exists only as rows the replay read predates
+				// — invisible to the buffering subscription. Without this read, the
+				// buffered fact that follows such a block would advance the browser
+				// cursor past it and no later replay would ever return it.
+				const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
+				if (closed) return;
+				// A still-streaming segment exists only in the log's coalesce buffer
+				// (deltas are never persisted), so a mid-stream refresh would render
+				// only the post-refresh tail. Serve each open segment as one ephemeral
+				// delta frame (no `id:` line — the cursor stays on durable facts), after
+				// the run-sync frames so live deltas keep appending to it and the
+				// segment's eventual block replaces it. Everything from this read to
+				// `bootstrapping = false` is synchronous, so a buffered delta of a
+				// served segment is exactly text inside the snapshot: skipping it loses
+				// nothing and delivering it would duplicate.
+				const openSegments = this.eventLog.getOpenSegments(threadId);
+				const segmentKey = (
+					kind: 'text' | 'reasoning',
+					event: { runId: string; agentId: string; responseId?: string },
+				) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
+				const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
+				// Deliver the gap rows first. A block identical to one folded into a
+				// delivered run-sync tree is not re-applied (that would duplicate its
+				// text) but still counts as delivered for cursor contiguity — its
+				// content reached the client inside the frame. Buffered deltas of a
+				// gap block's segment are skipped below like served ones: their text
+				// is inside the block, and delivering them after it would duplicate.
+				const gapBlockSegments = new Set<string>();
+				for (const row of gapRows) {
+					if (row.id === undefined || row.id <= lastReplayedSeq) continue;
+					const { event } = row;
+					if (event.type === 'text-block' || event.type === 'reasoning-block') {
+						gapBlockSegments.add(
+							segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
+						);
+						if (foldedBlockKeys.has(blockKey(event))) {
+							lastReplayedSeq = row.id;
+							continue;
+						}
+					}
+					deliver(row);
+					lastReplayedSeq = row.id;
+				}
+				for (const stored of arrivedDuringReplay) {
+					if (stored.id !== undefined) {
+						if (stored.id <= lastReplayedSeq) continue;
+						if (stored.id === lastReplayedSeq + 1) {
+							deliver(stored);
+							lastReplayedSeq = stored.id;
+							continue;
+						}
+						// Rows between the cursor and this fact were persisted after the
+						// gap read (a segment closed while it was in flight): deliver the
+						// fact's content but strip its id line, so the cursor never
+						// crosses a row the client has not seen — the next replay returns
+						// the missing block and re-applies this fact idempotently.
+						deliver({ event: stored.event });
+						continue;
+					}
+					const { event } = stored;
+					if (
+						(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
+						(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
+							gapBlockSegments.has(
+								segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
+							))
+					) {
+						continue;
+					}
+					deliver(stored);
+				}
+				for (const segment of openSegments) {
+					deliver({
+						event: {
+							type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
+							runId: segment.runId,
+							agentId: segment.agentId,
+							...(segment.responseId ? { responseId: segment.responseId } : {}),
+							payload: { text: segment.text },
+						},
+					});
+				}
+				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
+			} finally {
+				// The buffering subscription must not outlive the bootstrap, even when
+				// a durable read throws.
+				stopBuffering();
+			}
+		} else {
+			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
+			//    in one synchronous block. The event bus store and emitter are
+			//    synchronous, so no event can slip between the replay and the live
+			//    handler taking over. Events that arrived during the awaits above are
+			//    already in the store (the early subscription in step 1 keeps relayed
+			//    events flowing in multi-main) and are included in the replay here.
+			const missed = this.eventBus.getEventsAfter(threadId, cursor);
+			for (const stored of missed) {
+				deliver(stored);
+			}
+			for (const [groupId, group] of liveGroups) {
+				writeRunSyncFrame(groupId, group, this.eventBus.getEventsForRuns(threadId, group.runIds));
+			}
 		}
 		if (liveGroups.size > 0) res.flush?.();
 
-		// 4. Subscribe to live events
-		// When the thread was not_found at connect time, re-validate ownership on
-		// the first event. Buffer all events until the check resolves to avoid
-		// leaking data during the async gap.
-		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
-			if (ownershipVerified) {
-				this.writeSseEvent(res, stored);
-				return;
-			}
+		bootstrapping = false;
 
-			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
-		});
-
-		// 5. Keep-alive
-		const keepAlive = setInterval(() => {
+		// 7. Keep-alive
+		keepAlive = setInterval(() => {
 			res.write(': ping\n\n');
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
-
-		// 6. Cleanup on disconnect
-		const cleanup = () => {
-			unsubscribe();
-			clearInterval(keepAlive);
-		};
-		req.once('close', cleanup);
-		res.once('finish', cleanup);
 	}
 
 	@Post('/confirm/:requestId')
@@ -364,7 +628,7 @@ export class InstanceAiController {
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
-		return { ok: true };
+		return resolved;
 	}
 
 	@Post('/chat/:threadId/cancel')
@@ -372,7 +636,7 @@ export class InstanceAiController {
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.cancelRun(threadId);
+		await this.instanceAiService.routeCancelRun(threadId);
 		return { ok: true };
 	}
 
@@ -406,7 +670,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
+		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
 		return { ok: true };
 	}
 
@@ -421,7 +685,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
+		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
 
@@ -439,22 +703,100 @@ export class InstanceAiController {
 	@Get('/settings')
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
-		return this.settingsService.getAdminSettings();
+		return await this.settingsService.getAdminSettings();
+	}
+
+	@Get('/settings/models')
+	@GlobalScope('instanceAi:manage')
+	async getModelCatalog(_req: AuthenticatedRequest) {
+		return await this.modelCatalogService.getModels();
 	}
 
 	@Put('/settings')
 	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		const result = await this.settingsService.updateAdminSettings(payload);
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		const result = await this.settingsService.updateAdminSettings(payload, req.user);
+		const [publishResult] = await Promise.allSettled([
+			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
+			this.applyAdminSettingsSideEffects(result),
+		]);
 
-		if (payload.enabled === false || payload.localGatewayDisabled === true) {
-			const disconnectedUserIds = this.instanceAiService.disconnectAllGateways();
-			if (disconnectedUserIds.length > 0) {
+		if (publishResult.status === 'rejected') {
+			this.instanceAiErrorReporter.report(publishResult.reason, {
+				component: 'settings-publish',
+				threadId: 'admin-settings',
+			});
+		}
+
+		return result;
+	}
+
+	@Post('/settings/verify/model')
+	@GlobalScope('instanceAi:manage')
+	async verifyModel(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifyModelRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
+	}
+
+	@Post('/settings/verify/sandbox')
+	@GlobalScope('instanceAi:manage')
+	async verifySandbox(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySandboxRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
+	}
+
+	@Post('/settings/verify/search')
+	@GlobalScope('instanceAi:manage')
+	async verifySearch(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySearchRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
+	}
+
+	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
+	async reloadAdminSettings() {
+		await this.settingsService.reloadFromDb();
+		await this.applyAdminSettingsSideEffects({
+			enabled: this.settingsService.isInstanceAiEnabled(),
+			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
+			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
+		});
+	}
+
+	private async applyAdminSettingsSideEffects(
+		settings: Pick<
+			InstanceAiAdminSettingsResponse,
+			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
+		>,
+	) {
+		const sideEffects: Array<() => Promise<void> | void> = [
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('agents');
+			},
+		];
+		if (!settings.enabled || !settings.browserUseEnabled) {
+			sideEffects.push(async () => await this.browserSessionService.shutdown());
+		}
+
+		if (!settings.enabled || settings.localGatewayDisabled) {
+			sideEffects.push(() => {
+				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+				if (disconnectedUserIds.length === 0) return;
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -467,10 +809,18 @@ export class InstanceAiController {
 					},
 					disconnectedUserIds,
 				);
-			}
+			});
 		}
 
-		return result;
+		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.instanceAiErrorReporter.report(result.reason, {
+					component: 'settings-side-effects',
+					threadId: 'admin-settings',
+				});
+			}
+		}
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -495,16 +845,16 @@ export class InstanceAiController {
 		return result;
 	}
 
-	@Get('/settings/credentials')
-	@GlobalScope('instanceAi:message')
-	async listModelCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listModelCredentials(req.user);
-	}
-
 	@Get('/settings/service-credentials')
 	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listServiceCredentials(req.user);
+	async listServiceCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceServiceCredentials();
+	}
+
+	@Get('/settings/model-credentials')
+	@GlobalScope('instanceAi:manage')
+	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceModelCredentials();
 	}
 
 	@Get('/threads')
@@ -522,9 +872,37 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
+			'project:read',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have access to the requested project');
+		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+
+		const launchMetadata = {
+			source: payload.source,
+			origin: payload.origin ?? ('internal' as const),
+			sourceContext: payload.sourceContext,
+		};
+
+		try {
+			return await this.memoryService.ensureThread(
+				req.user.id,
+				requestedThreadId,
+				payload.projectId,
+				launchMetadata,
+			);
+		} catch (error) {
+			this.instanceAiErrorReporter.report(error, {
+				component: 'instance-ai-ensure-thread',
+				threadId: requestedThreadId,
+				userId: req.user.id,
+				projectId: payload.projectId,
+			});
+			throw error;
+		}
 	}
 
 	@Delete('/threads/:threadId')
@@ -536,7 +914,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.clearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
@@ -580,24 +958,40 @@ export class InstanceAiController {
 
 		// Exclude snapshots for active/suspended runs — they have no matching
 		// assistant message in native memory yet and would misalign the
-		// positional snapshot-to-message matching in parseStoredMessages.
+		// positional snapshot-to-message matching in parseStoredMessages. The
+		// live message-group ids ride along so the durable-log fold can exclude
+		// a whole in-flight group even when the active run's own run-start row
+		// has not been persisted yet (it is the group mapping's source there).
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
 		const excludeRunIds: string[] = [];
-		if (activeRunId) excludeRunIds.push(activeRunId);
+		const excludeMessageGroupIds: string[] = [];
+		if (activeRunId) {
+			excludeRunIds.push(activeRunId);
+			const activeGroupId = this.instanceAiService.getMessageGroupId(threadId);
+			if (activeGroupId) excludeMessageGroupIds.push(activeGroupId);
+		}
 		for (const t of threadStatus.backgroundTasks) {
-			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+			if (t.status !== 'running') continue;
+			if (t.runId) excludeRunIds.push(t.runId);
+			if (t.messageGroupId) excludeMessageGroupIds.push(t.messageGroupId);
 		}
 
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
 			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
+			excludeMessageGroupIds:
+				excludeMessageGroupIds.length > 0 ? excludeMessageGroupIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
-		// already covered by these historical messages (prevents duplicates)
-		const nextEventId = this.eventBus.getNextEventId(threadId);
+		// already covered by these historical messages (prevents duplicates).
+		// Flag on: durable authority, valid across restarts and mains. Flag off:
+		// the shared sequence, so the cursor is valid against any main.
+		const nextEventId = this.durableLogEnabled
+			? await this.eventLog.getNextEventId(threadId)
+			: await this.eventBus.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 
@@ -614,10 +1008,40 @@ export class InstanceAiController {
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
+	@Get('/debug/runs/:runId')
+	@GlobalScope('instanceAi:message')
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		const record = this.instanceAiService.getRunDebug(runId);
+		if (!record) {
+			throw new NotFoundError('Run debug record not found');
+		}
+		await this.assertThreadAccess(req.user.id, record.threadId);
+		return record;
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			threadId,
+			runs: this.instanceAiService.listThreadDebugRuns(threadId),
+		};
+	}
+
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
+	// Runs for minutes; the eval client (N8nClient) disables undici's 300s timeout for it.
 	@Post('/eval/execute-with-llm-mock/:workflowId')
-	@GlobalScope('instanceAi:message')
+	@GlobalScope('instanceAi:eval')
 	async executeWithLlmMock(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -627,14 +1051,198 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	// Runs for minutes; same client timeout handling as the workflow variant.
+	@Post('/eval/execute-agent-with-llm-mock/:agentId')
+	@GlobalScope('instanceAi:eval')
+	async executeAgentWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstanceAiEvalAgentExecutionRequest,
+	) {
+		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+	}
+
+	/**
+	 * Pin a build thread's credential view to a declared set. Only narrows:
+	 * `list()` results are intersected with these IDs, so the caller cannot see
+	 * anything they couldn't already access. The thread must exist — entries are
+	 * cleared with the thread's state, so pins for never-created threads would
+	 * be uncollectable.
+	 */
+	@Post('/eval/thread-credential-allowlist')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialAllowlist(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		this.evalCredentialAllowlists.set(
+			payload.threadId,
+			payload.credentialIds,
+			payload.bypassCredentialTest,
+		);
+		return { ok: true };
+	}
+
+	/**
+	 * Seed an existing (owned) thread with a previously exported conversation:
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
+	 * write the native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
+	 */
+	@Post('/eval/restore-thread')
+	@GlobalScope('instanceAi:eval')
+	async restoreEvalThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreThreadRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+
+		const workflows = payload.workflows ?? [];
+		const agents = payload.agents ?? [];
+		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
+		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
+		// dead tool (or binds an unrelated ambient workflow of the same name).
+		const unbacked = findUnbackedSeedWorkflowTools(payload);
+		if (unbacked.length > 0) {
+			throw new BadRequestError(
+				unbacked
+					.map(
+						({ agentId, target }: { agentId: string; target: unknown }) =>
+							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
+					)
+					.join('; '),
+			);
+		}
+		// Data tables first: the workflows reference them, and their ids are
+		// rewritten to the recreated tables' ids during workflow restore.
+		const idMap = await this.evalThreadRestore.restoreDataTables(
+			payload.dataTables ?? [],
+			projectId,
+			{ uniquifyNames: payload.uniquifyNames ?? true },
+		);
+		const dataTableIds = [...idMap.values()];
+		// Roll back everything we created if a later step fails, so a partial
+		// restore doesn't leak workflows/tables/agents into the shared eval project.
+		let restored = 0;
+		let createdWorkflowIds: string[] = [];
+		let createdAgentIds: string[] = [];
+		// Captured so the binding write is undoable: the message write happens after
+		// it, and without this a message failure left a binding pointing at agents the
+		// rollback had already deleted.
+		let priorMetadata: Record<string, unknown> | undefined;
+		let bindingWritten = false;
+		try {
+			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
+				workflows,
+				projectId,
+				idMap,
+			);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			// Built (and validated) BEFORE the message write: a rejected binding — two
+			// agents whose refs collide — must fail while the restore is still fully
+			// rollback-able, not after the messages have committed.
+			const binding =
+				createdAgentIds.length > 0
+					? seedAgentBuilderTargetMetadata(
+							agents.map((agent) => ({
+								agentId: agent.id,
+								projectId,
+								name: agent.config.name,
+								ref: agent.config.name,
+							})),
+							payload.messages,
+						)
+					: undefined;
+			// Bind the thread as the conversation that built these agents would have, or
+			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// BEFORE the messages, and undoable: the catch restores the prior metadata,
+			// so a message failure can't leave a binding pointing at deleted agents, and
+			// a binding failure can't leave messages referencing them.
+			if (binding) {
+				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
+				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
+				bindingWritten = true;
+			}
+			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
+			if (payload.messages.length > 0) {
+				({ restored } = await this.memoryService.restoreThreadMessages(
+					req.user.id,
+					payload.threadId,
+					payload.messages,
+				));
+			}
+		} catch (error) {
+			if (bindingWritten) {
+				try {
+					// `updateThread` MERGES, so the prior snapshot alone would leave the
+					// binding keys standing — this names them and restores each.
+					await this.memoryService.updateThread(payload.threadId, {
+						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
+					});
+				} catch {
+					// Best-effort, like the artifact deletes: never throw over the failure
+					// that triggered the rollback.
+				}
+			}
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
+			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			throw error;
+		}
+		return {
+			ok: true,
+			threadId: payload.threadId,
+			restored,
+			workflowIds: workflows.map((workflow) => workflow.id),
+			dataTableIds,
+			agentIds: createdAgentIds,
+		};
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly the supplied set
+	 * (clear-then-insert). The eval harness pre-creates a case's scenario data
+	 * tables empty before the build turn (so the agent binds the real table id),
+	 * then calls this per scenario to swap in that scenario's rows (TRUST-311
+	 * follow-up). Auth + project scoping mirror restore-thread: the table must be
+	 * in the thread's project.
+	 */
+	@Post('/eval/seed-data-table-rows')
+	@GlobalScope('instanceAi:eval')
+	async seedEvalDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalSeedDataTableRowsRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+		await this.evalThreadRestore.reseedDataTableRows(payload.tableId, projectId, payload.rows);
+		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
 	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
-		const token = this.instanceAiService.generatePairingToken(req.user.id);
-		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const token = this.gatewayService.generatePairingToken(req.user.id);
+		const expiresAt = this.gatewayService.getGatewayApiKeyExpiresAt(req.user.id, token);
 		const ttlSeconds = expiresAt
 			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
 			: null;
@@ -648,7 +1256,7 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
 
-		const gateway = this.instanceAiService.getLocalGateway(userId);
+		const gateway = this.gatewayService.getLocalGateway(userId);
 
 		// If the grace-period timer already fired (e.g. after a long reconnect gap),
 		// the gateway state is torn down. Reject so the daemon falls into its auth-error
@@ -658,7 +1266,7 @@ export class InstanceAiController {
 		}
 
 		// Daemon reconnected within the grace window — cancel the pending disconnect.
-		this.instanceAiService.clearDisconnectTimer(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
@@ -689,7 +1297,7 @@ export class InstanceAiController {
 			unsubscribeRequest();
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);
-			this.instanceAiService.startDisconnectTimer(userId, () => {
+			this.gatewayService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -704,7 +1312,7 @@ export class InstanceAiController {
 				);
 			});
 		};
-		req.once('close', cleanup);
+		res.once('close', cleanup);
 		res.once('finish', cleanup);
 	}
 
@@ -714,23 +1322,25 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(key);
 		await this.assertGatewayEnabled(userId);
 
-		this.instanceAiService.initGateway(userId, payload);
+		this.gatewayService.initGateway(userId, payload);
+		this.gatewayService.applyToolPolicy(userId);
 
+		const status = this.gatewayService.getGatewayStatus(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
 				data: {
-					connected: true,
-					directory: payload.rootPath,
-					hostIdentifier: payload.hostIdentifier ?? null,
-					toolCategories: payload.toolCategories ?? [],
+					connected: status.connected,
+					directory: status.directory,
+					hostIdentifier: status.hostIdentifier,
+					toolCategories: status.toolCategories,
 				},
 			},
 			[userId],
 		);
 
 		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
+		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -741,9 +1351,9 @@ export class InstanceAiController {
 	gatewayDisconnect(req: Request) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		this.instanceAiService.clearDisconnectTimer(userId);
-		this.instanceAiService.disconnectGateway(userId);
-		this.instanceAiService.clearActiveSessionKey(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
@@ -763,7 +1373,7 @@ export class InstanceAiController {
 	) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		const resolved = this.instanceAiService.resolveGatewayRequest(
+		const resolved = this.gatewayService.resolveGatewayRequest(
 			userId,
 			requestId,
 			payload.result,
@@ -791,7 +1401,8 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
-		return this.instanceAiService.getGatewayStatus(req.user.id);
+		this.gatewayService.applyToolPolicy(req.user.id);
+		return this.gatewayService.getGatewayStatus(req.user.id);
 	}
 
 	/**
@@ -803,9 +1414,9 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayDisconnectSession(req: AuthenticatedRequest) {
 		const userId = req.user.id;
-		this.instanceAiService.clearDisconnectTimer(userId);
-		this.instanceAiService.disconnectGateway(userId);
-		this.instanceAiService.clearActiveSessionKey(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
@@ -816,7 +1427,37 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/browser/create-link')
+	@GlobalScope('instanceAi:gateway')
+	async createBrowserLink(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return await this.browserSessionService.createLink(req.user.id);
+	}
+
+	@Get('/browser/status')
+	@GlobalScope('instanceAi:gateway')
+	browserStatus(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return this.browserSessionService.getStatus(req.user.id);
+	}
+
+	@Post('/browser/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async browserDisconnectSession(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		await this.browserSessionService.disconnect(req.user.id);
+		return { ok: true };
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────
+
+	private assertBrowserChannelEnabled(): void {
+		if (!this.settingsService.isBrowserUseEnabled()) {
+			throw new ForbiddenError('Browser Use is disabled');
+		}
+	}
 
 	/**
 	 * Verify thread ownership. Throws ForbiddenError if another user owns it.
@@ -875,7 +1516,7 @@ export class InstanceAiController {
 		}
 
 		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.instanceAiService.getUserIdForApiKey(key);
+		const userId = this.gatewayService.getUserIdForApiKey(key);
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
@@ -899,8 +1540,12 @@ export class InstanceAiController {
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
-		// No `event:` field — events are discriminated by data.type per streaming-protocol.md
-		res.write(`id: ${stored.id}\ndata: ${JSON.stringify(stored.event)}\n\n`);
+		// No `event:` field — events are discriminated by data.type per streaming-protocol.md.
+		// Ephemeral events (deltas/status) carry no `id:` line, so the browser's
+		// Last-Event-ID only ever advances on durable facts — same precedent as
+		// the run-sync control frames above.
+		const idLine = stored.id !== undefined ? `id: ${stored.id}\n` : '';
+		res.write(`${idLine}data: ${JSON.stringify(stored.event)}\n\n`);
 		res.flush?.();
 	}
 }

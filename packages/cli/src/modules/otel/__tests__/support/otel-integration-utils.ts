@@ -1,23 +1,23 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-
-import { TestNodeWithTracing } from './test-node-with-tracing';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
-import { readFileSync } from 'fs';
 import path from 'path';
 
 import { WorkflowRunner } from '@/workflow-runner';
-import { OtelConfig } from '../../otel.config';
 import * as utils from '@test-integration/utils';
 
 import { OtelTestProvider } from './otel-test-provider';
+import { TestNodeWithTracing } from './test-node-with-tracing';
+import { OtelConfig } from '../../otel.config';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 
@@ -46,6 +46,10 @@ export async function initOtelTestEnvironment() {
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 	await Container.get(ModuleRegistry).initModules('main');
+	Container.get(LicenseState).setLicenseProvider({
+		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
+		getValue: () => undefined,
+	});
 	const distNodes = loadNodesFromDist([
 		'n8n-nodes-base.executeWorkflow',
 		'n8n-nodes-base.executeWorkflowTrigger',

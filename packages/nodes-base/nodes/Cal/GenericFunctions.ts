@@ -15,24 +15,51 @@ export async function calApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	query: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('calApi');
+	let options: IHttpRequestOptions = {
+		baseURL: credentials.host as string,
+		method,
+		body,
+		qs: {
+			...query,
+			apiKey: credentials.apiKey,
+		},
+		url: resource,
+	};
 
+	options = Object.assign({}, options, option);
+	try {
+		return await this.helpers.httpRequest(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function calApiRequestV2<T>(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+	option: Partial<IHttpRequestOptions> = {},
+): Promise<T> {
+	const credentials = await this.getCredentials('calApi');
 	let options: IHttpRequestOptions = {
 		baseURL: credentials.host as string,
 		method,
 		body,
 		qs: query,
-		url: resource,
+		url: `/v2${resource}`,
 	};
 
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
+
 	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);

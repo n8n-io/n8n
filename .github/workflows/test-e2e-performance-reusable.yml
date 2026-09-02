@@ -21,3 +21,35 @@ jobs:
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance
     secrets: inherit
+
+  canvas-perf-sentinels:
+    name: Canvas Perf Sentinels
+    # Sentinels are nightly only — wall-clock browser perf has 15-30% variance,
+    # so gating PR runs on these would produce false-positive blockers.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build-and-test-performance
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: packages/testing/playwright/scripts/canvas-perf-sentinels.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Download performance shard artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: performance-shard-*
+          path: performance-artifacts
+          merge-multiple: true
+
+      - name: Run canvas perf sentinels
+        run: |
+          RESULTS_PATH=$(find performance-artifacts -name 'test-results.json' -print -quit)
+          if [ -z "$RESULTS_PATH" ]; then
+            echo "::warning::No test-results.json found in performance artifacts — sentinel skipped."
+            exit 0
+          fi
+          node packages/testing/playwright/scripts/canvas-perf-sentinels.mjs "$RESULTS_PATH"

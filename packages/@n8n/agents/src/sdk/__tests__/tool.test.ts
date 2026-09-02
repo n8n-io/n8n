@@ -48,6 +48,7 @@ describe('Tool builder — .requireApproval()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(true);
 	});
 
 	it('build() throws when .requireApproval() is combined with .suspend()/.resume()', () => {
@@ -85,6 +86,7 @@ describe('Tool builder — .needsApprovalFn()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(false);
 	});
 
 	it('build() throws when .needsApprovalFn() is combined with .suspend()/.resume()', () => {
@@ -167,11 +169,31 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 
 		await wrapped.handler!({ id: '1' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: '1' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: '1' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
+	});
+
+	it('includes display metadata from the wrapped tool object when suspending', async () => {
+		const baseTool = makeBuiltTool();
+		const wrapped = {
+			...wrapToolForApproval(baseTool, { requireApproval: true }),
+			metadata: { displayName: 'Display test tool' },
+		};
+		const { ctx, suspendMock } = makeCtx();
+
+		await wrapped.handler!({ id: '1' }, ctx);
+
+		expect(suspendMock).toHaveBeenCalledWith(
+			{
+				type: 'approval',
+				toolName: 'testTool',
+				displayName: 'Display test tool',
+				args: { id: '1' },
+			},
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 
 	it('executes original handler when approved on resume', async () => {
@@ -192,6 +214,66 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		const result = await wrapped.handler!({ id: 'abc' }, ctx);
 
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
+	});
+
+	it("resumes an inner suspension when its approval payload matches the wrapper's payload", async () => {
+		const approvalPayload = {
+			type: 'approval',
+			toolName: 'testTool',
+			args: { id: 'parent-call' },
+		};
+		const continuation = { childRunId: 'child-run-1' };
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			if (interruptCtx.continuation === undefined) {
+				return await interruptCtx.suspend(approvalPayload, { continuation });
+			}
+			return { resumedWith: interruptCtx.resumeData };
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		const initialCall = makeCtx();
+		await wrapped.handler!({ id: 'parent-call' }, initialCall.ctx);
+		const [, outerSuspendOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+		const outerApproval = makeCtx({ approved: true });
+		outerApproval.ctx.suspendPayload = approvalPayload;
+		outerApproval.ctx.continuation = outerSuspendOptions?.continuation;
+		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
+
+		const innerApproval = makeCtx({ approved: true });
+		innerApproval.ctx.suspendPayload = approvalPayload;
+		innerApproval.ctx.continuation = continuation;
+		const result = await wrapped.handler!({ id: 'parent-call' }, innerApproval.ctx);
+
+		expect(innerApproval.suspendMock).not.toHaveBeenCalled();
+		expect(result).toEqual({ resumedWith: { approved: true } });
+	});
+
+	it('does not run inner cancellation cleanup when the outer approval is cancelled', async () => {
+		const onCancellation = vi.fn<NonNullable<BuiltTool['onCancellation']>>();
+		const wrapped = wrapToolForApproval(makeBuiltTool({ onCancellation }), {
+			requireApproval: true,
+		});
+		const { ctx, suspendMock } = makeCtx();
+
+		await wrapped.handler!({ id: 'parent-call' }, ctx);
+		const [suspendPayload, suspendOptions] = suspendMock.mock.calls[0] ?? [];
+		await wrapped.onCancellation?.(
+			{ id: 'parent-call' },
+			{
+				cancellation: { message: 'cancelled' },
+				suspendPayload,
+				continuation: suspendOptions?.continuation,
+			},
+		);
+
+		expect(onCancellation).not.toHaveBeenCalled();
 	});
 });
 
@@ -226,11 +308,10 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 
 		await wrapped.handler!({ id: 'secret' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: 'secret' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: 'secret' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 
 	it('does not suspend when needsApprovalFn returns false for non-matching args', async () => {
@@ -247,13 +328,44 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 		expect(suspendMock).not.toHaveBeenCalled();
 		expect(result).toEqual({ result: 'public' });
 	});
+
+	it('emits tool execution start with the original structured args when approval is not needed', async () => {
+		const baseTool = makeBuiltTool({
+			inputSchema: z.object({
+				id: z.string(),
+				password: z.string(),
+				nested: z.object({ apiKey: z.string() }),
+			}),
+		});
+		const wrapped = wrapToolForApproval(baseTool, {
+			needsApprovalFn: async () => await Promise.resolve(false),
+		});
+		const { ctx } = makeCtx();
+		const emitEvent = vi.fn();
+		ctx.toolCallId = 'tool-call-1';
+		ctx.emitEvent = emitEvent;
+		const input = {
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		};
+
+		await wrapped.handler!(input, ctx);
+
+		expect(emitEvent).toHaveBeenCalledWith({
+			type: 'tool_execution_start',
+			toolCallId: 'tool-call-1',
+			toolName: 'testTool',
+			args: input,
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
-// wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)
+// wrapToolForApproval — config: { requireApproval: true }
 // ---------------------------------------------------------------------------
 
-describe('wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)', () => {
+describe('wrapToolForApproval — config: { requireApproval: true }', () => {
 	it('always suspends regardless of original tool settings', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
@@ -261,11 +373,10 @@ describe('wrapToolForApproval — config: { requireApproval: true } (agent-level
 
 		await wrapped.handler!({ id: 'any-id' }, ctx);
 
-		expect(suspendMock).toHaveBeenCalledWith({
-			type: 'approval',
-			toolName: 'testTool',
-			args: { id: 'any-id' },
-		});
+		expect(suspendMock).toHaveBeenCalledWith(
+			{ type: 'approval', toolName: 'testTool', args: { id: 'any-id' } },
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 	});
 });
 

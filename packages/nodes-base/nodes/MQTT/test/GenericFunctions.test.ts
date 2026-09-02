@@ -1,14 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { MqttClient } from 'mqtt';
-import { ApplicationError } from '@n8n/errors';
+import { OperationalError } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from '../GenericFunctions';
 
 describe('createClient', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('should create a client with minimal credentials', async () => {
-		const mockConnect = jest.spyOn(MqttClient.prototype, 'connect').mockImplementation(function (
+		const mockConnect = vi.spyOn(MqttClient.prototype, 'connect').mockImplementation(function (
 			this: MqttClient,
 		) {
 			setImmediate(() => this.emit('connect', mock()));
@@ -37,14 +37,16 @@ describe('createClient', () => {
 		});
 	});
 
-	it('should reject with ApplicationError on connection error and close connection', async () => {
-		const mockConnect = jest.spyOn(MqttClient.prototype, 'connect').mockImplementation(function (
+	it('should reject with OperationalError on connection error and close connection', async () => {
+		const mockConnect = vi.spyOn(MqttClient.prototype, 'connect').mockImplementation(function (
 			this: MqttClient,
 		) {
 			setImmediate(() => this.emit('error', new Error('Connection failed')));
 			return this;
 		});
-		const mockEnd = jest.spyOn(MqttClient.prototype, 'end').mockImplementation();
+		const mockEnd = vi
+			.spyOn(MqttClient.prototype, 'end')
+			.mockImplementation((() => {}) as unknown as MqttClient['end']);
 
 		const credentials: MqttCredential = {
 			protocol: 'mqtt',
@@ -59,7 +61,7 @@ describe('createClient', () => {
 
 		const clientPromise = createClient(credentials);
 
-		await expect(clientPromise).rejects.toThrow(ApplicationError);
+		await expect(clientPromise).rejects.toThrow(OperationalError);
 		expect(mockConnect).toBeCalledTimes(1);
 		expect(mockEnd).toBeCalledTimes(1);
 	});

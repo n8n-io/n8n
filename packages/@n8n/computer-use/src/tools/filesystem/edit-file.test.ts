@@ -175,8 +175,8 @@ describe('editFileTool', () => {
 			).rejects.toThrow('oldString not found');
 		});
 
-		it('rejects files larger than 512 KB', async () => {
-			mockStat(600 * 1024);
+		it('rejects files larger than 1 MB', async () => {
+			mockStat(2 * 1024 * 1024);
 
 			await expect(
 				editFileTool.execute(

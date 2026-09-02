@@ -12,6 +12,7 @@ import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const nodeType: INodeTypeDescription = {
 	displayName: 'OpenAI',
@@ -86,6 +87,11 @@ describe('NDVSubConnections', () => {
 				rootNode: node,
 			},
 			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 				stubs: {
 					N8nButton: true,
 				},
@@ -103,6 +109,13 @@ describe('NDVSubConnections', () => {
 		const component = render(NDVSubConnections, {
 			props: {
 				rootNode: node,
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1000); // Event debounce time
@@ -175,6 +188,13 @@ describe('NDVSubConnections', () => {
 		const { getByTestId } = render(NDVSubConnections, {
 			props: {
 				rootNode: multiConnectionNode,
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1);

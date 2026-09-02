@@ -55,6 +55,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -271,5 +274,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

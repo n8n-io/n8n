@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableProjectIdSchema } from '../schemas';
-
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { dataTableProjectIdSchema, dataTableRowSchema } from '../schemas';
 
 const ADD_ROWS_MAX = 1000;
 
@@ -14,7 +14,7 @@ const addRowsInputSchema = {
 	dataTableId: z.string().describe('The ID of the data table to insert rows into'),
 	projectId: dataTableProjectIdSchema,
 	rows: z
-		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+		.array(dataTableRowSchema)
 		.min(1)
 		.max(ADD_ROWS_MAX)
 		.describe(

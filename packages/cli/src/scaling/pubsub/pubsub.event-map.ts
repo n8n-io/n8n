@@ -1,10 +1,13 @@
 import type {
 	AgentIntegrationConfig,
 	ChatHubMessageStatus,
+	InstanceAiEvent,
 	PushMessage,
+	PushPayload,
 	WorkerStatus,
+	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
-import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
 	// #region Lifecycle
@@ -35,6 +38,9 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-otel-config': never;
+	'reload-instance-ai-settings': never;
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -63,6 +69,20 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// #region Execution control
+
+	/**
+	 * Stop a specific in-memory execution on whichever worker is running it. Used in queue
+	 * mode for subworkflow executions, which run inline in the parent's worker process and
+	 * therefore have no Bull job to abort. Each worker checks its own `ActiveExecutions` and
+	 * cancels the execution if it holds it.
+	 */
+	'stop-execution': {
+		executionId: string;
+	};
+
+	// #endregion
+
 	// #region Multi-main setup
 
 	'add-webhooks-triggers-and-pollers': {
@@ -84,6 +104,11 @@ export type PubSubCommandMap = {
 		workflowId: string;
 	};
 
+	/** Wake the leader's publication outbox consumer to drain pending records now.
+	 * The consumer polls as a backup, but this lets publication feel fast without frequent polling.
+	 */
+	'workflow-publish-wake-up': never;
+
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;
@@ -91,9 +116,24 @@ export type PubSubCommandMap = {
 		nodeId?: string;
 	};
 
+	/** Relay a publication status push from the leader (which drains the publication
+	 * outbox) to the other mains, so clients connected to followers get the push too. */
+	'display-workflow-publication-status': WorkflowPublicationStatusMessage;
+
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 		asBinary: boolean;
+	};
+
+	'relay-agent-execution-update': {
+		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
+	};
+
+	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
+	'resume-agent-workflow-tool': {
+		agentRun: RelatedAgentRun;
+		status: string;
 	};
 
 	'clear-test-webhooks': {
@@ -127,6 +167,39 @@ export type PubSubCommandMap = {
 			status?: ChatHubMessageStatus;
 			error?: string;
 		};
+	};
+
+	/**
+	 * Relay an Instance AI stream event to sibling mains.
+	 *
+	 * The agent runs on whichever main received `POST /chat/:threadId` and emits
+	 * events into that main's in-process bus, but the client's `GET /events/:threadId`
+	 * SSE connection may be held by a different main. The producing main relays each
+	 * event; the main holding the SSE subscription re-emits it locally to its client.
+	 */
+	'relay-instance-ai-event': {
+		threadId: string;
+		/**
+		 * Producer-assigned stored event. The id comes from the shared per-thread
+		 * sequence, so every main stores and serves identical event ids and the
+		 * frontend's replay cursor is valid against any main. With the durable
+		 * log enabled ids are DB-assigned seqs and ephemeral events (deltas,
+		 * status) carry no id at all: they are live-only.
+		 */
+		storedEvent: { id?: number; event: InstanceAiEvent };
+	};
+
+	/**
+	 * Relay an Instance AI task-control action (correction / cancel / clear) to
+	 * sibling mains. The action may target a background task or run held
+	 * in another main's in-memory state. Broadcast + local-gate: every main applies
+	 * it only to its own local slice of the thread.
+	 */
+	'relay-instance-ai-task-control': {
+		threadId: string;
+		taskId?: string;
+		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
+		correction?: string;
 	};
 
 	/**
@@ -207,6 +280,61 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Ask the current leader to start or stop a leader-only channel runtime
+	 * (e.g. Telegram in polling mode) on behalf of the main that handled the
+	 * user's request. See `LeaderChannelRelayService` for the mechanism.
+	 *
+	 * Broadcast to every main rather than targeted at the leader's host: the
+	 * leader key can be stale by the time we read it, and leadership can change
+	 * between publish and receive. Followers ignore this command, so whoever
+	 * holds leadership when it lands is the one that acts.
+	 *
+	 * `replyTo` carries the requester's host ID because the subscriber emits
+	 * only the payload — `senderId` is stripped before handlers see the message.
+	 *
+	 * A connect carries the whole config: it runs before the config is persisted,
+	 * so the leader cannot read it back. A teardown only needs the connection key,
+	 * which every caller already holds.
+	 */
+	'agent-chat-leader-channel-request': {
+		requestId: string;
+		replyTo: string;
+		agentId: string;
+	} & (
+		| { action: 'connect'; integration: AgentIntegrationConfig }
+		| { action: 'disconnect'; integration: { type: string; credentialId: string } }
+	);
+
+	/**
+	 * Acknowledge an `agent-chat-leader-channel-request`, targeted at the
+	 * requester's host ID. Published by the leader once the operation has fully
+	 * completed, so the requesting main can only report success after the
+	 * leader's startup or teardown finished.
+	 */
+	'agent-chat-leader-channel-result': {
+		requestId: string;
+		ok: boolean;
+		error?: string;
+	};
+
+	/**
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
+	};
+
+	/**
 	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
 	 * Published by the main that handled an agent mutation (publish, unpublish,
 	 * config update, tool/skill change, delete) after the change is persisted.
@@ -230,6 +358,21 @@ export type PubSubCommandMap = {
 	'agent-tasks-changed': {
 		agentId: string;
 	};
+
+	// #endregion
+
+	// #region Redaction
+
+	/**
+	 * Drop the cached instance redaction floor across main instances.
+	 * Published by the main that handled a redaction-floor update after the new
+	 * value is persisted; every other main clears its local cache key so the next
+	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
+	 */
+	'redaction-floor-changed': never;
 
 	// #endregion
 };

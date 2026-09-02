@@ -11,7 +11,7 @@ import type {
 export function getCredentialsType(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 ): 'calendlyApi' | 'calendlyOAuth2Api' {
-	const authentication = this.getNodeParameter('authentication', 0) as string;
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	return authentication === 'apiKey' ? 'calendlyApi' : 'calendlyOAuth2Api';
 }
 

@@ -1,7 +1,10 @@
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { getHtmlSandboxCSP } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import { applyFormSandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 
 describe('WebhookResponseHeaders', () => {
 	describe('set()', () => {
@@ -265,6 +268,31 @@ describe('WebhookResponseHeaders', () => {
 					['x-three', '3'],
 				]),
 			);
+		});
+	});
+
+	describe('applyFormSandboxCSP', () => {
+		const securityConfig = Container.get(SecurityConfig);
+
+		afterEach(() => {
+			securityConfig.disableFormHtmlSandboxing = false;
+		});
+
+		it('should set the sandbox policy', () => {
+			const res = mock<Response>();
+
+			applyFormSandboxCSP(res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+		});
+
+		it('should set no policy when form sandboxing is disabled', () => {
+			securityConfig.disableFormHtmlSandboxing = true;
+			const res = mock<Response>();
+
+			applyFormSandboxCSP(res);
+
+			expect(res.setHeader).not.toHaveBeenCalled();
 		});
 	});
 });

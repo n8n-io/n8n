@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { z } from 'zod';
 
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';

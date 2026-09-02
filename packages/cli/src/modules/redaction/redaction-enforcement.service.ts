@@ -36,4 +36,20 @@ export class RedactionEnforcementService {
 			throw new UnprocessableRequestError(REDACTION_FLOOR_VIOLATION_MESSAGE);
 		}
 	}
+
+	/**
+	 * Create-time counterpart to {@link assertPolicyChangeAllowed}: a new workflow
+	 * has no prior policy, so a create is modelled as a change from `undefined` to
+	 * the supplied policy. Rejects a supplied policy weaker than the floor.
+	 *
+	 * Used by the public API, which treats a supplied policy as explicit intent —
+	 * the editor instead materialises 'none' as its default toggle state and seeds
+	 * below-floor values up to the floor (see WorkflowCreationService), so this is
+	 * deliberately not applied to editor-originated creates.
+	 */
+	async assertNewPolicyAllowed(
+		incomingPolicy: WorkflowSettings.RedactionPolicy | undefined,
+	): Promise<void> {
+		await this.assertPolicyChangeAllowed(undefined, incomingPolicy);
+	}
 }

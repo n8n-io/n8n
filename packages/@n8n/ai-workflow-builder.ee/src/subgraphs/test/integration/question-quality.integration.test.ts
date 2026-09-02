@@ -356,7 +356,6 @@ describe('Question Quality - Integration Tests', () => {
 			parsedNodeTypes,
 			llm,
 			plannerLLM: llm,
-			featureFlags: { planMode: true },
 			checkpointer: new MemorySaver(),
 		});
 	}

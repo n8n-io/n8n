@@ -25,6 +25,14 @@ properties:
   executionOrder:
     type: string
     example: v1
+  binaryMode:
+    type: string
+    enum: ['separate', 'combined']
+    description: |
+      Controls how binary data is resolved from a node's input. This is a derived,
+      internal setting rather than something intended to be set programmatically.
+      It is included in workflow responses for reference, but any value sent when
+      creating or updating a workflow is ignored.
   callerPolicy:
     type: string
     enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
@@ -33,7 +41,8 @@ properties:
       Defaults to workflowsFromSameOwner.
 
       Available options:
-      - `any`: Any workflow can call this workflow (no restrictions)
+      - `any`: **Deprecated, removed in version 3.** Any workflow can call this workflow.
+        Switch to `workflowsFromAList` or `workflowsFromSameOwner` before upgrading.
       - `none`: No other workflows can call this workflow (completely blocked)
       - `workflowsFromSameOwner` (default): Only workflows owned by the same project can call this workflow
         * For personal projects: Only workflows created by the same user
@@ -46,6 +55,18 @@ properties:
     type: string
     description: Comma-separated list of workflow IDs allowed to call this workflow (only used with workflowsFromAList policy)
     example: '14, 18, 23'
+  timeSavedMode:
+    type: string
+    enum: ['fixed', 'dynamic']
+    description: |
+      Controls how the time saved per execution is calculated.
+      Available options:
+      - `fixed`: Uses a predetermined time value specified in the `timeSavedPerExecution` field.
+        * Requires the `timeSavedPerExecution` field to be set
+        * Use when the time saved is consistent across all executions
+      - `dynamic`: Automatically calculates time saved based on actual execution metrics
+        * The `timeSavedPerExecution` field is ignored when this mode is active
+        * Use when time saved varies between executions
   timeSavedPerExecution:
     type: number
     description: Estimated time saved per execution in minutes
@@ -62,8 +83,11 @@ properties:
       - `all`: Redact all executions (manual and production).
 
       When the instance has a redaction floor configured, the policy must be equal to
-      or stricter than the floor. Requests that would weaken the policy below the
-      instance floor are rejected with 422.
+      or stricter than the floor. A policy weaker than the floor is rejected with 422
+      on create, and on update when it changes the stored policy; an unchanged
+      pre-existing below-floor policy is preserved (the floor is not applied
+      retroactively). Omitting this field when creating a workflow seeds it to the
+      instance floor instead.
     example: non-manual
   availableInMCP:
     type: boolean
@@ -96,3 +120,11 @@ properties:
           type: string
         value:
           type: string
+  credentialResolverId:
+    type: string
+    description: |
+      ID of the credential resolver used to resolve credentials for this workflow.
+      This is a derived, internal setting managed via the workflow's credential
+      resolver configuration rather than something intended to be set programmatically.
+      It is included in workflow responses for reference, but any value sent when
+      creating or updating a workflow is ignored.

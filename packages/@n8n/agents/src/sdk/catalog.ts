@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
 const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
@@ -9,6 +11,7 @@ const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
 const AGENT_PROVIDER_NAMES: Record<string, string> = {
 	'aws-bedrock': 'AWS Bedrock',
 	'azure-openai': 'Azure OpenAI',
+	'google-vertex-anthropic': 'Google Vertex Anthropic',
 };
 
 /** Cost per million tokens. */
@@ -31,6 +34,14 @@ export interface ModelLimits {
 	output?: number;
 }
 
+/** Input and output types supported by a model. */
+export interface ModelModalities {
+	/** Supported input types. */
+	input?: string[];
+	/** Supported output types. */
+	output?: string[];
+}
+
 /** Information about a single model. */
 export interface ModelInfo {
 	/** Model ID (e.g. 'claude-sonnet-4-5'). */
@@ -39,10 +50,17 @@ export interface ModelInfo {
 	name: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
-	/** Whether the model supports reasoning / thinking. */
-	reasoning: boolean;
+	/** Whether the model supports reasoning / thinking, when reported by models.dev. */
+	reasoning?: boolean;
+	/**
+	 * Whether the model accepts a temperature sampling parameter, when
+	 * reported by models.dev. Reasoning-family models typically report false.
+	 */
+	temperature?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
+	/** Input and output types supported by the model. */
+	modalities?: ModelModalities;
 	/** Cost per million tokens. */
 	cost?: ModelCost;
 	/** Token limits. */
@@ -55,31 +73,86 @@ export interface ProviderInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Anthropic'). */
 	name: string;
-	/** Available models keyed by model ID. */
+	/** Available (non-deprecated) models keyed by model ID. */
 	models: Record<string, ModelInfo>;
+	/**
+	 * Model IDs models.dev marks as deprecated for this provider. Kept out of
+	 * `models` so existing consumers never offer them, but exposed so callers
+	 * can distinguish known-retired IDs (hard error) from merely-absent ones.
+	 */
+	deprecatedModelIds?: string[];
 }
 
 /** The full catalog of providers and their models. */
 export type ProviderCatalog = Record<string, ProviderInfo>;
 
-interface ModelsDevModel {
-	id: string;
-	name: string;
-	release_date?: string;
-	reasoning?: boolean;
-	tool_call?: boolean;
-	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
-	limit?: { context?: number; output?: number };
-}
+const modelsDevModelSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	release_date: z.string().optional(),
+	reasoning: z.boolean().optional(),
+	temperature: z.boolean().optional(),
+	tool_call: z.boolean().optional(),
+	status: z.string().optional(),
+	modalities: z
+		.object({
+			input: z.array(z.string()).optional(),
+			output: z.array(z.string()).optional(),
+		})
+		.optional(),
+	cost: z
+		.object({
+			input: z.number().optional(),
+			output: z.number().optional(),
+			cache_read: z.number().optional(),
+			cache_write: z.number().optional(),
+		})
+		.optional(),
+	limit: z
+		.object({
+			context: z.number().optional(),
+			output: z.number().optional(),
+		})
+		.optional(),
+});
 
-interface ModelsDevProvider {
-	id: string;
-	name: string;
-	models?: Record<string, ModelsDevModel>;
-}
+const modelsDevProviderSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	models: z.record(z.string(), z.unknown()).optional(),
+});
+
+const modelsDevCatalogSchema = z.record(z.string(), z.unknown());
 
 function toAgentProviderId(modelsDevProviderId: string): string {
 	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
+}
+
+const LATEST_NAME_SUFFIX = /\s*\(latest\)$/i;
+
+/**
+ * models.dev names versionless alias models with a " (latest)" suffix
+ * (e.g. `claude-opus-4-5` → "Claude Opus 4.5 (latest)"), which quickly goes
+ * stale as newer models ship. Strip the suffix from every model name, and when
+ * a pinned snapshot shares the resulting name with an alias (e.g.
+ * `claude-opus-4-5-20251101` "Claude Opus 4.5"), drop the snapshot so the
+ * alias is the single entry for that model.
+ */
+function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
+	const aliasNames = new Set<string>();
+	for (const model of Object.values(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			aliasNames.add(model.name.replace(LATEST_NAME_SUFFIX, ''));
+		}
+	}
+
+	for (const [modelId, model] of Object.entries(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			model.name = model.name.replace(LATEST_NAME_SUFFIX, '');
+		} else if (aliasNames.has(model.name)) {
+			delete models[modelId];
+		}
+	}
 }
 
 /**
@@ -97,26 +170,46 @@ function toAgentProviderId(modelsDevProviderId: string): string {
  * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL);
+export async function fetchProviderCatalog(options?: {
+	signal?: AbortSignal;
+}): Promise<ProviderCatalog> {
+	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
 
-	const data = (await response.json()) as Record<string, ModelsDevProvider>;
+	const data = modelsDevCatalogSchema.parse(await response.json());
 	const catalog: ProviderCatalog = {};
 
-	for (const [key, provider] of Object.entries(data)) {
+	for (const [key, rawProvider] of Object.entries(data)) {
+		const providerResult = modelsDevProviderSchema.safeParse(rawProvider);
+		if (!providerResult.success) continue;
+		const provider = providerResult.data;
 		if (!provider.models || Object.keys(provider.models).length === 0) continue;
 
+		const providerId = toAgentProviderId(key);
 		const models: Record<string, ModelInfo> = {};
-		for (const [modelId, model] of Object.entries(provider.models)) {
+		const deprecatedModelIds = new Set<string>(catalog[providerId]?.deprecatedModelIds);
+		for (const [modelId, rawModel] of Object.entries(provider.models)) {
+			const modelResult = modelsDevModelSchema.safeParse(rawModel);
+			if (!modelResult.success) continue;
+			const model = modelResult.data;
+			// Deprecated models still 404 at call time when the provider retires
+			// them, so never offer them in `models` — but record the id so
+			// validation can flag known-retired picks as hard errors.
+			if (model.status === 'deprecated') {
+				deprecatedModelIds.add(modelId);
+				deprecatedModelIds.add(model.id);
+				continue;
+			}
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
-				reasoning: model.reasoning ?? false,
+				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
+				...(model.temperature !== undefined && { temperature: model.temperature }),
 				toolCall: model.tool_call ?? false,
+				...(model.modalities !== undefined && { modalities: model.modalities }),
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {
 				info.cost = {
@@ -135,7 +228,8 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		const providerId = toAgentProviderId(key);
+		if (Object.keys(models).length === 0 && deprecatedModelIds.size === 0) continue;
+
 		catalog[providerId] = {
 			id: providerId,
 			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
@@ -143,7 +237,12 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 				...(catalog[providerId]?.models ?? {}),
 				...models,
 			},
+			deprecatedModelIds: Array.from(deprecatedModelIds),
 		};
+	}
+
+	for (const provider of Object.values(catalog)) {
+		normalizeLatestModelNames(provider.models);
 	}
 
 	return catalog;
@@ -197,13 +296,57 @@ export async function getModelCost(modelId: string): Promise<ModelCost | undefin
 }
 
 /**
+ * models.dev's `cacheWrite` rate encodes Anthropic's 5-minute-TTL write premium
+ * (1.25x base input). A 1h breakpoint costs ~1.6x more to write (2x vs 1.25x base
+ * input), so scale the catalog rate when the caller reports a 1h TTL. Only
+ * Anthropic populates `inputTokenDetails.cacheWrite`, so this is safe to apply
+ * unconditionally — it's a no-op whenever there are no cache-write tokens.
+ */
+function resolveCacheWriteRate(
+	cost: ModelCost,
+	anthropicCacheTtl: '5m' | '1h' | undefined,
+): number {
+	const isOneHour = anthropicCacheTtl === '1h';
+	return cost.cacheWrite !== undefined
+		? cost.cacheWrite * (isOneHour ? 1.6 : 1)
+		: cost.input * (isOneHour ? 2 : 1.25);
+}
+
+/**
  * Compute the cost in USD from token usage and per-million-token pricing.
+ * When `usage.inputTokenDetails` is present, prompt tokens are billed per
+ * cache tier (no-cache / cache read / cache write) using the catalog's cache
+ * rates. When a tier's catalog rate is unavailable, cache reads fall back to
+ * the flat input rate; cache writes fall back to the input rate scaled by
+ * Anthropic's write premium (see {@link resolveCacheWriteRate}).
+ * `anthropicCacheTtl` scales the cache-write rate for Anthropic's 1h tier;
+ * ignored when there are no cache-write tokens.
  */
 export function computeCost(
-	usage: { promptTokens: number; completionTokens: number },
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+	},
 	cost: ModelCost,
+	options?: { anthropicCacheTtl?: '5m' | '1h' },
 ): number {
-	const inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	const details = usage.inputTokenDetails;
+	let inputCost: number;
+	if (details) {
+		const noCache = details.noCache ?? 0;
+		const cacheRead = details.cacheRead ?? 0;
+		const cacheWrite = details.cacheWrite ?? 0;
+		// Any prompt tokens not covered by the breakdown are billed at the full input rate.
+		const remaining = Math.max(usage.promptTokens - (noCache + cacheRead + cacheWrite), 0);
+		inputCost =
+			((noCache + remaining) / 1_000_000) * cost.input +
+			(cacheRead / 1_000_000) * (cost.cacheRead ?? cost.input) +
+			(cacheWrite / 1_000_000) * resolveCacheWriteRate(cost, options?.anthropicCacheTtl);
+	} else {
+		inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	}
+
 	const outputCost = (usage.completionTokens / 1_000_000) * cost.output;
 	return inputCost + outputCost;
 }

@@ -3,18 +3,18 @@ import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-util
 import type { CredentialsEntity, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
-import * as utils from '../shared/utils';
+import { CredentialsHelper } from '@/credentials-helper';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { CredentialsHelper } from '@/credentials-helper';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 
@@ -82,6 +82,7 @@ describe('Dynamic Credentials API', () => {
 	let savedCredential: CredentialsEntity;
 	let resolver: DynamicCredentialResolver;
 	let owner: User;
+	let unrelatedMember: User;
 
 	beforeAll(async () => {
 		// Mock OAuth metadata endpoint for resolver validation
@@ -111,6 +112,10 @@ describe('Dynamic Credentials API', () => {
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
 		({ savedCredential, resolver, owner } = await setupWorkflow());
+
+		// A second regular member with no relationship to the owner's credential:
+		// not the owner, no project membership, no sharing.
+		unrelatedMember = await createUser();
 	});
 
 	afterAll(async () => {
@@ -263,6 +268,29 @@ describe('Dynamic Credentials API', () => {
 						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
 						.expect(204);
 				});
+			});
+		});
+
+		describe("when an unrelated authenticated member targets another user's credential", () => {
+			it('should not return an authorization URL for a credential the member cannot access', async () => {
+				const response = await testServer
+					.authAgentFor(unrelatedMember)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token');
+
+				expect([403, 404]).toContain(response.status);
+				expect(response.body?.data).toBeUndefined();
+			});
+
+			it('should not revoke a credential the member cannot access', async () => {
+				const response = await testServer
+					.authAgentFor(unrelatedMember)
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token');
+
+				expect([403, 404]).toContain(response.status);
 			});
 		});
 	});

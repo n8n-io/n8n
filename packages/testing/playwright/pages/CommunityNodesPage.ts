@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 
 export class CommunityNodesPage extends BasePage {
+	readonly actionToggle = new ActionToggle(this.page);
+
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/community-nodes');
 	}
@@ -12,16 +15,16 @@ export class CommunityNodesPage extends BasePage {
 		return this.page.getByTestId('community-package-card');
 	}
 
-	getActionBox(): Locator {
-		return this.page.getByTestId('action-box');
+	getEmptyState(): Locator {
+		return this.page.getByTestId('empty-state');
 	}
 
 	getInstallButton(): Locator {
-		// Try action box first (empty state), fallback to header install button
-		const actionBoxButton = this.getActionBox().locator('button');
+		// Try the empty state first, fallback to header install button
+		const emptyStateButton = this.getEmptyState().locator('button');
 		const headerInstallButton = this.page.getByRole('button', { name: 'Install' });
 
-		return actionBoxButton.or(headerInstallButton);
+		return emptyStateButton.or(headerInstallButton);
 	}
 
 	getInstallModal(): Locator {
@@ -49,7 +52,7 @@ export class CommunityNodesPage extends BasePage {
 	}
 
 	getUninstallAction(): Locator {
-		return this.page.getByTestId('action-uninstall');
+		return this.actionToggle.getAction('uninstall');
 	}
 
 	getUpdateButton(): Locator {

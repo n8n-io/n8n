@@ -1,6 +1,6 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -28,12 +28,14 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 
 		const isFeatureEnabled = computed(() => {
+			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+
 			return (
 				[
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun,
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
-				].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '') &&
+				].some((readyToRunVariant) => readyToRunVariant === variant) &&
 				cloudPlanStore.userIsTrialing
 			);
 		});

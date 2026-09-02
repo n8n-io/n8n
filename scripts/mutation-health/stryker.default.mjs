@@ -18,6 +18,14 @@ export default {
 	plugins: ['@stryker-mutator/vitest-runner'],
 	reporters: ['progress', 'clear-text', 'html', 'json'],
 	coverageAnalysis: 'perTest',
+	// Skip static mutants (evaluated once at module load). Stryker can't use
+	// per-test coverage for them, so each forces a full-suite re-run — on
+	// static-heavy foundational files that dominates runtime (e.g.
+	// node-helpers.ts: ~26% static mutants, ~33-min leg). For nightly cadence
+	// the dynamic mutants (the real branching logic) are what matter; dropping
+	// static ones is an acceptable trade. Scores tick up slightly on
+	// static-heavy files (smaller denominator) — expected, not a regression.
+	ignoreStatic: true,
 	// Empty — mutate.mjs always passes --mutate <file>.
 	mutate: [],
 	htmlReporter: { fileName: 'reports/mutation/raw.html' },

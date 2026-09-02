@@ -1,9 +1,10 @@
-import { extensionManifestSchema } from '../src/schema';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import { writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
 import { format, resolveConfig } from 'prettier';
+import { fileURLToPath } from 'url';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+
+import { extensionManifestSchema } from '../src/schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');

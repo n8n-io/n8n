@@ -1,5 +1,17 @@
 {
 	"workflowPreview.ariaLabel.creating": "Creating workflow",
+	"workflowPreview.ariaLabel.preview": "Workflow preview",
 	"workflowPreview.ariaLabel.ready": "Workflow ready to open",
-	"workflowPreview.openButton": "Open in n8n"
+	"workflowPreview.error.detailsUnavailable": "Preview couldn't load. Open the workflow in n8n to view it.",
+	"workflowPreview.error.invalidWorkflow": "Preview couldn't load because the workflow data is incomplete. Open the workflow in n8n to view it.",
+	"workflowPreview.error.previewUnavailable": "Looks like your mcp client doesn't support workflow previews. Open the workflow in n8n to view it.",
+	"workflowPreview.fallbackDescription": "View your workflow in n8n",
+	"workflowPreview.frameTitle": "n8n workflow preview",
+	"workflowPreview.loadingPreview": "Loading preview",
+	"workflowPreview.nodeCount.many": "{count} nodes",
+	"workflowPreview.nodeCount.one": "1 node",
+	"workflowPreview.openButton": "Open in n8n",
+	"workflowPreview.openButtonShort": "Open",
+	"workflowPreview.readyLabel": "Workflow created",
+	"workflowPreview.untitledWorkflow": "Untitled workflow"
 }

@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -100,6 +100,23 @@ describe('HookContext', () => {
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
+
+		it('should surface the node to the credentials helper', async () => {
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
+		});
 	});
 
 	describe('getNodeParameter', () => {
@@ -134,7 +151,7 @@ describe('HookContext', () => {
 				activation,
 			);
 
-			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(ApplicationError);
+			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(UnexpectedError);
 		});
 	});
 

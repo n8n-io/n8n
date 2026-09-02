@@ -88,6 +88,44 @@ describe('createNodeAsTool', () => {
 
 			expect(tool.description).toBe('Another custom tool description');
 		});
+
+		it('should evaluate expressions in toolDescription using the supplied context', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = '={{ $json.sessionId }}{{ $json.user }}';
+			(context.getNodeParameter as Mock).mockImplementation((name: string, _itemIndex: number) => {
+				if (name === 'toolDescription') return '123ABC';
+				return undefined;
+			});
+
+			const tool = createNodeAsTool({ ...options, context, itemIndex: 0 }).response;
+
+			expect(context.getNodeParameter).toHaveBeenCalledWith('toolDescription', 0, '');
+			expect(tool.description).toBe('123ABC');
+		});
+
+		it('should leave the raw expression as-is when no context is provided', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = '={{ $json.sessionId }}';
+
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.description).toBe('={{ $json.sessionId }}');
+		});
+
+		it('should not call context.getNodeParameter for a static toolDescription', () => {
+			node.parameters.descriptionType = 'manual';
+			node.parameters.toolDescription = 'Plain static description';
+			(context.getNodeParameter as Mock).mockClear();
+
+			const tool = createNodeAsTool({ ...options, context, itemIndex: 0 }).response;
+
+			expect(context.getNodeParameter).not.toHaveBeenCalledWith(
+				'toolDescription',
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(tool.description).toBe('Plain static description');
+		});
 	});
 
 	describe('Schema Creation and Parameter Handling', () => {

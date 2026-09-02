@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class NotificationsPage {
 	readonly page: Page;
@@ -43,64 +43,66 @@ export class NotificationsPage {
 	}
 
 	/**
-	 * Clicks the close button on the FIRST notification matching the text.
-	 * Fast execution with short timeouts for snappy notifications.
+	 * Gets an action element (e.g. a link/button) within a notification matched by title or content.
+	 * @param text The text or regular expression to find the notification.
+	 * @param actionLabel The text or regular expression of the action element inside the notification.
+	 * @returns A Locator for the action element.
+	 */
+	getNotificationAction(text: string | RegExp, actionLabel: string | RegExp): Locator {
+		return this.getNotificationByTitleOrContent(text).getByText(actionLabel);
+	}
+
+	/**
+	 * Closes every notification matching the text - toasts stack, so the same title
+	 * can be on screen more than once. Throws if any is still there afterwards: a
+	 * toast left open covers the top-right of the app and intercepts later clicks,
+	 * and error toasts (`duration: 0`) never auto-dismiss on their own.
 	 * @param text The text of the notification to close.
 	 * @param options Optional configuration
 	 */
 	async closeNotificationByText(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
+	): Promise<void> {
 		const { timeout = 2000 } = options;
+		const notifications = this.getNotificationByTitle(text);
+		const deadline = Date.now() + timeout;
 
-		try {
-			const notification = this.getNotificationByTitle(text).first();
-			await notification.waitFor({ state: 'visible', timeout });
-
-			const closeBtn = notification.locator('.el-notification__closeBtn');
-			await closeBtn.click({ timeout: 500 });
-
-			// Quick check that it's gone - don't wait long
-			await notification.waitFor({ state: 'hidden', timeout: 1000 });
-			return true;
-		} catch (error) {
-			return false;
+		while ((await notifications.count()) > 0 && Date.now() < deadline) {
+			// May be mid-dismissal already; the count assertion below is the real contract.
+			await notifications
+				.first()
+				.locator('.el-notification__closeBtn')
+				.click({ timeout: 500 })
+				.catch(() => {});
 		}
+
+		await expect(notifications).toHaveCount(0, { timeout });
 	}
 
 	/**
-	 * Wait for a notification to appear with specific text.
-	 * Reasonable timeout for waiting, but still faster than before.
+	 * Wait for a notification to appear with specific text. Throws if it never shows -
+	 * callers use this as a synchronisation point, so a silent miss lets the test run
+	 * on against unfinished state and fail later with a misleading error.
 	 * @param text The text to search for in notification title.
 	 * @param options Optional configuration
 	 */
 	async waitForNotification(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
+	): Promise<void> {
 		const { timeout = 5000 } = options;
-
-		try {
-			const notification = this.getNotificationByTitle(text).first();
-			await notification.waitFor({ state: 'visible', timeout });
-			return true;
-		} catch {
-			return false;
-		}
+		await this.getNotificationByTitle(text).first().waitFor({ state: 'visible', timeout });
 	}
 
 	// Wait for notification and then close it
 	async waitForNotificationAndClose(
 		text: string | RegExp,
 		options: { timeout?: number } = {},
-	): Promise<boolean> {
-		const { timeout = 3000 } = options;
-		const isVisible = await this.waitForNotification(text, { timeout });
-		if (!isVisible) {
-			return false;
-		}
-		return await this.closeNotificationByText(text, { timeout });
+	): Promise<void> {
+		const { timeout = 5000 } = options;
+		await this.waitForNotification(text, { timeout });
+		await this.closeNotificationByText(text, { timeout });
 	}
 
 	/**

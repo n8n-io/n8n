@@ -6,11 +6,6 @@
  * DI mocks unless they need custom behaviour.
  */
 
-// jest-mock-extended (used by NodeTestHarness) requires `jest` as a global.
-// Vitest does not set this alias automatically.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).jest = vi;
-
 vi.mock('@n8n/di', () => ({
 	Container: {
 		get: vi.fn().mockImplementation(() => ({

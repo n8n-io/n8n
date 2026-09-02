@@ -7,6 +7,7 @@ import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModa
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { ManualChatModal } from './components/ManualChatModal';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -19,8 +20,9 @@ export class CanvasPage extends BasePage {
 
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly manualChat = new ManualChatModal(this.page.getByTestId('canvas-chat'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 	readonly tagsManagerModal = new TagsManagerModal(
@@ -165,9 +167,11 @@ export class CanvasPage extends BasePage {
 
 	/**
 	 * @param options - Configuration options for waiting for save workflow completion.
-	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 5000ms: the 1500ms
+	 * autosave debounce plus round-trip headroom, since CI runs one n8n instance for
+	 * as many workers as there are cores.
 	 */
-	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
+	async waitForSaveWorkflowCompleted({ timeout = 5000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
@@ -192,6 +196,16 @@ export class CanvasPage extends BasePage {
 
 	async openNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).dblclick();
+	}
+
+	/**
+	 * Reads the test form URL (`/form-test/<id>`) shown in the open Form Trigger
+	 * NDV. Open the node first (e.g. via {@link openNode}).
+	 */
+	async getTestFormUrl(): Promise<string> {
+		const locator = this.page.getByText(/form-test\/[a-f0-9-]+/);
+		await expect(locator).toHaveText(/form-test\/[a-f0-9-]+/);
+		return (await locator.textContent()) ?? '';
 	}
 
 	getRenamePrompt(): Locator {
@@ -238,6 +252,13 @@ export class CanvasPage extends BasePage {
 		await this.fillByTestId('inline-edit-input', name);
 	}
 
+	async saveNewWorkflow(name = 'Test Workflow'): Promise<void> {
+		const saved = this.waitForSaveWorkflowCompleted();
+		await this.setWorkflowName(name);
+		await this.page.getByTestId('inline-edit-input').press('Enter');
+		await saved;
+	}
+
 	/**
 	 * Import a workflow from a fixture file
 	 * @param fixtureKey - The key of the fixture file to import
@@ -246,6 +267,7 @@ export class CanvasPage extends BasePage {
 	 */
 	async importWorkflow(fixtureKey: string, workflowName: string) {
 		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-import');
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
@@ -269,6 +291,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickImportFromURL(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import');
 		await this.clickByTestId('workflow-menu-item-import-from-url');
 	}
 
@@ -305,7 +328,6 @@ export class CanvasPage extends BasePage {
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
-		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -319,34 +341,29 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
+	async openDescriptionAndTagsModal(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-edit-description');
+		await this.getWorkflowTagsDropdown().waitFor();
+	}
+
 	async clickCreateTagButton(): Promise<void> {
-		await this.page.getByTestId('new-tag-link').click();
+		await this.openDescriptionAndTagsModal();
+		await this.openTagsDropdownInModal();
 	}
 
-	async clickNthTagPill(index: number): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').locator('.el-tag').nth(index).click();
+	async openTagsDropdownInModal(): Promise<void> {
+		await this.getWorkflowTagsDropdown().click();
 	}
 
-	async clickWorkflowTagsArea(): Promise<void> {
-		await this.page.getByTestId('workflow-tags').click();
-	}
-
-	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-dropdown').click();
+	async saveDescriptionAndTagsModal(): Promise<void> {
+		const responsePromise = this.waitForSaveWorkflowCompleted();
+		await this.clickByTestId('workflow-description-save-button');
+		await responsePromise;
 	}
 
 	getTagPills(): Locator {
-		return this.page
-			.getByTestId('workflow-tags-container')
-			.locator('.el-tag:not(.count-container)');
-	}
-
-	getSavedWorkflowTagPills(): Locator {
-		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
-	}
-
-	getWorkflowTagsElement(): Locator {
-		return this.page.getByTestId('workflow-tags');
+		return this.page.getByTestId('workflow-tags-dropdown').locator('.el-tag:not(.count-container)');
 	}
 
 	getWorkflowTagsDropdown(): Locator {
@@ -358,13 +375,12 @@ export class CanvasPage extends BasePage {
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
-		const input = this.page.getByTestId('workflow-tags-container').locator('input').first();
+		const input = this.page.getByTestId('workflow-tags-dropdown').locator('input').first();
 		await input.fill(text);
 	}
 
 	async openTagManagerModal(): Promise<void> {
 		await this.clickCreateTagButton();
-		await this.page.getByTestId('tags-dropdown').click();
 		await this.page.locator('.manage-tags').click();
 	}
 
@@ -377,6 +393,10 @@ export class CanvasPage extends BasePage {
 	// Tag dropdown getters
 	getVisibleDropdown(): Locator {
 		return this.page.locator('.el-select-dropdown:visible');
+	}
+
+	getTagDropdownItems(): Locator {
+		return this.getVisibleDropdown().locator('li');
 	}
 
 	getTagItemsInDropdown(): Locator {
@@ -427,8 +447,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Production Checklist methods
-	getProductionChecklistButton(): Locator {
-		return this.page.getByTestId('suggested-action-count');
+	getProductionChecklistMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-production-checklist');
+	}
+
+	async openProductionChecklist(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.getProductionChecklistMenuItem().click();
 	}
 
 	getProductionChecklistPopover(): Locator {
@@ -443,8 +468,8 @@ export class CanvasPage extends BasePage {
 		return items;
 	}
 
-	getProductionChecklistIgnoreAllButton(): Locator {
-		return this.page.getByTestId('suggested-action-ignore-all');
+	async closeProductionChecklist(): Promise<void> {
+		await this.clickByTestId('suggested-actions-close');
 	}
 
 	getErrorActionItem(): Locator {
@@ -459,12 +484,10 @@ export class CanvasPage extends BasePage {
 		return this.getProductionChecklistActionItem('Test reliability of AI steps');
 	}
 
-	async clickProductionChecklistButton(): Promise<void> {
-		await this.getProductionChecklistButton().click();
-	}
-
-	async clickProductionChecklistIgnoreAll(): Promise<void> {
-		await this.getProductionChecklistIgnoreAllButton().click();
+	getProductionChecklistActionCompletedIcon(index = 0): Locator {
+		return this.getProductionChecklistActionItem()
+			.nth(index)
+			.locator('svg[data-icon="circle-check"]');
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
@@ -549,11 +572,28 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
-	async waitForBlankCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+	/**
+	 * Wait for the workflow canvas to finish loading and become interactive.
+	 *
+	 * While the editor loads, `LoadingView` renders a full-screen overlay
+	 * (`node-view-loader`) on top of the canvas. The canvas controls (e.g.
+	 * zoom-to-fit) are already in the DOM and report as stable, but the overlay
+	 * intercepts pointer events, so clicking before it clears hangs until the
+	 * action times out. Always wait for the canvas to be ready before
+	 * interacting with it after a navigation.
+	 */
+	async waitForCanvasReady(): Promise<void> {
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
-		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
+	async waitForBlankCanvasReady(): Promise<void> {
+		await this.waitForCanvasReady();
+		// A blank canvas shows the AI choice prompt when AI Builder is enabled,
+		// otherwise the default add-first-step button. Accept either so this works
+		// in both environments.
+		await expect(this.getChoicePrompt().or(this.getCanvasPlusButton())).toBeVisible();
 	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
@@ -601,6 +641,12 @@ export class CanvasPage extends BasePage {
 	connectionToolbarBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+		);
+	}
+
+	getAddConnectionButtonBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
+			'add-connection-button',
 		);
 	}
 
@@ -720,21 +766,19 @@ export class CanvasPage extends BasePage {
 	}
 
 	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
+		return this.manualChat.getInput();
 	}
 
 	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+		return this.manualChat.getMessages();
 	}
 
 	getManualChatLatestBotMessage(): Locator {
-		return this.getManualChatModal()
-			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
-			.last();
+		return this.manualChat.getLatestBotMessage();
 	}
 
 	getWaitingNodes(): Locator {
@@ -786,7 +830,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getChatPanel(): Locator {
-		return this.page.getByTestId('canvas-chat');
+		return this.manualChat.get();
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)
@@ -852,10 +896,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('zoom-in-button');
 	}
 
-	getResetZoomButton(): Locator {
-		return this.page.getByTestId('reset-zoom-button');
-	}
-
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -889,6 +929,38 @@ export class CanvasPage extends BasePage {
 		});
 	}
 
+	/**
+	 * Wait for the canvas viewport transform (zoom/pan) to stop changing.
+	 * After a route change the editor runs an animated fit-to-view. Sparse
+	 * expect.poll sampling can catch two equal values in the pre-animation window
+	 * and report "settled" before the animation starts; this checks every frame
+	 * inside the page so it can't miss the in-flight transition.
+	 */
+	async waitForCanvasZoomSettled(stableFrames = 5): Promise<void> {
+		await this.page.waitForFunction(
+			(needed) => {
+				const el = document.querySelector('.vue-flow__transformationpane.vue-flow__container');
+				if (!el) return false;
+				const transform = getComputedStyle(el).transform;
+				const w = window as unknown as { n8nZoomSettle?: { last: string; count: number } };
+				const state = (w.n8nZoomSettle ??= { last: '', count: 0 });
+				if (transform === state.last) {
+					state.count += 1;
+				} else {
+					state.last = transform;
+					state.count = 0;
+				}
+				if (state.count >= needed) {
+					delete w.n8nZoomSettle;
+					return true;
+				}
+				return false;
+			},
+			stableFrames,
+			{ polling: 'raf', timeout: 10_000 },
+		);
+	}
+
 	waitingForTriggerEvent() {
 		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
 	}
@@ -899,6 +971,10 @@ export class CanvasPage extends BasePage {
 
 	getNodeWarningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
+	}
+
+	getNodePinnedStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-pinned');
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
@@ -913,6 +989,17 @@ export class CanvasPage extends BasePage {
 
 	getAllNodeSuccessIndicators(): Locator {
 		return this.page.getByTestId('canvas-node-status-success');
+	}
+
+	/**
+	 * Nodes that show either a success OR a pinned indicator after execution.
+	 * The two test IDs are mutually exclusive in `CanvasNodeStatusIcons` (pinned
+	 * wins), so the combined count equals "nodes traversed during execution".
+	 */
+	getAllNodeExecutedIndicators(): Locator {
+		return this.page.locator(
+			'[data-test-id="canvas-node-status-success"], [data-test-id="canvas-node-status-pinned"]',
+		);
 	}
 
 	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
@@ -1050,17 +1137,53 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-name-input');
 	}
 
-	// Workflow History methods
-	getWorkflowHistoryButton(): Locator {
-		return this.page.getByTestId('workflow-history-button');
+	getTidyUpButton(): Locator {
+		return this.page.getByTestId('tidy-up-button');
 	}
 
+	async clickTidyUpButton(): Promise<void> {
+		await this.getTidyUpButton().click();
+	}
+
+	async duplicateSelectedNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+d');
+	}
+
+	async nudgeSelectedNodes(
+		direction: 'left' | 'right' | 'up' | 'down',
+		repeats = 1,
+	): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		for (let press = 0; press < repeats; press++) {
+			await this.page.keyboard.press(keyMap[direction]);
+		}
+	}
+
+	async panBy(deltaX: number, deltaY: number): Promise<void> {
+		const pane = this.canvasPane();
+		const box = await pane.boundingBox();
+		if (!box) throw new Error('Canvas pane not visible');
+		const startX = box.x + box.width / 2;
+		const startY = box.y + box.height / 2;
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down({ button: 'middle' });
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 20 });
+		await this.page.mouse.up({ button: 'middle' });
+	}
+
+	// Workflow History methods
 	getWorkflowHistoryCloseButton(): Locator {
 		return this.page.getByTestId('workflow-history-close-button');
 	}
 
 	async openWorkflowHistory(): Promise<void> {
-		await this.getWorkflowHistoryButton().click();
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-version-history');
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
@@ -1104,10 +1227,27 @@ export class CanvasPage extends BasePage {
 		return box;
 	}
 
+	async dragNodeGroupFromTitleBar(title: string, deltaX: number, deltaY: number): Promise<void> {
+		const header = await this.getNodeGroupHeader(title).boundingBox();
+		const name = await this.getNodeGroupTitle(title).boundingBox();
+		if (!header || !name) throw new Error(`Node group "${title}" not found or not visible`);
+
+		// Grab the empty draggable space between the name and the header's right edge
+		const startX = (name.x + name.width + header.x + header.width) / 2;
+		const startY = header.y + header.height / 2;
+
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
 	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {
 		const group = await this.lockNodeGroupByTitle(oldTitle);
-		await group.getByTestId('inline-edit-preview').click();
-		const input = group.getByTestId('inline-edit-input');
+		// Scope to the title: an expanded group also renders a description inline edit.
+		const title = group.getByTestId('canvas-node-group-title');
+		await title.getByTestId('inline-edit-preview').click();
+		const input = title.getByTestId('inline-edit-input');
 		await input.fill(newTitle);
 		if (commit === 'enter') {
 			await input.press('Enter');
@@ -1118,8 +1258,9 @@ export class CanvasPage extends BasePage {
 
 	async cancelNodeGroupTitleEdit(title: string) {
 		const group = await this.lockNodeGroupByTitle(title);
-		await group.getByTestId('inline-edit-preview').click();
-		const input = group.getByTestId('inline-edit-input');
+		const titleEl = group.getByTestId('canvas-node-group-title');
+		await titleEl.getByTestId('inline-edit-preview').click();
+		const input = titleEl.getByTestId('inline-edit-input');
 		await input.fill('temporary');
 		await input.press('Escape');
 	}
@@ -1130,6 +1271,26 @@ export class CanvasPage extends BasePage {
 		const groupId = await this.getNodeGroupByTitle(title).getAttribute('data-group-id');
 		if (!groupId) throw new Error(`Node group with title "${title}" not found`);
 		return this.page.locator(`[data-test-id="canvas-node-group"][data-group-id="${groupId}"]`);
+	}
+
+	groupToggleButton(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-toggle');
+	}
+
+	getNodeGroupFrame(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async getNodeGroupFrameBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupFrame(title).boundingBox();
+		if (!box) throw new Error(`Node group frame for "${title}" not found or not visible`);
+		return box;
+	}
+
+	async toggleNodeGroup(title: string) {
+		await this.groupToggleButton(title).click();
 	}
 
 	async selectNodes(nodeNames: string[]): Promise<void> {

@@ -1,4 +1,4 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
 
 import { Xero } from '../Xero.node';

@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type { IExecuteFunctions, INode, IWorkflowDataProxyData } from 'n8n-workflow';
 
@@ -22,7 +22,7 @@ describe('Code Node unit test', () => {
 		pythonThisArg.getNodeParameter.calledWith('pythonCode', 0).mockReturnValue('return []');
 		pythonThisArg.getInputData.mockReturnValue([{ json: {} }]);
 
-		const runSpy = jest
+		const runSpy = vi
 			.spyOn(PythonTaskRunnerSandbox.prototype, 'runUsingIncomingItems')
 			.mockResolvedValue([]);
 

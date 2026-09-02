@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
@@ -17,50 +17,38 @@ const emit = defineEmits<{
 }>();
 
 const nodeHelpers = useNodeHelpers();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const i18n = useI18n();
 
-const workflowRunData = computed<IRunData | null>(() => {
-	const workflowExecution = workflowsStore.getWorkflowExecution;
-	if (workflowExecution === null) {
-		return null;
-	}
-	const executionData = workflowExecution.data;
-	return executionData ? executionData.resultData.runData : null;
-});
+const workflowRunData = computed<IRunData | null>(
+	() => workflowExecutionStateStore.value.activeExecutionRunData,
+);
 
 const binaryData = computed<IBinaryData | null>(() => {
+	const { index, key, node: nodeName, outputIndex, runIndex } = props.displayData;
 	if (
-		typeof props.displayData.node !== 'string' ||
-		typeof props.displayData.key !== 'string' ||
-		typeof props.displayData.runIndex !== 'number' ||
-		typeof props.displayData.index !== 'number' ||
-		typeof props.displayData.outputIndex !== 'number'
+		typeof nodeName !== 'string' ||
+		typeof key !== 'string' ||
+		typeof runIndex !== 'number' ||
+		typeof index !== 'number' ||
+		typeof outputIndex !== 'number'
 	) {
 		return null;
 	}
 
-	const binaryDataLocal = nodeHelpers.getBinaryData(
-		workflowRunData.value,
-		props.displayData.node,
-		props.displayData.runIndex,
-		props.displayData.outputIndex,
-	);
+	const runDataOfNode = workflowRunData.value?.[nodeName]?.[runIndex]?.data;
+	const binaryDataLocal = nodeHelpers.getBinaryData(runDataOfNode, outputIndex);
 
 	if (binaryDataLocal.length === 0) {
 		return null;
 	}
 
-	if (
-		props.displayData.index >= binaryDataLocal.length ||
-		binaryDataLocal[props.displayData.index][props.displayData.key] === undefined
-	) {
+	if (index >= binaryDataLocal.length || binaryDataLocal[index][key] === undefined) {
 		return null;
 	}
 
-	const binaryDataItem: IBinaryData =
-		binaryDataLocal[props.displayData.index][props.displayData.key];
+	const binaryDataItem: IBinaryData = binaryDataLocal[index][key];
 
 	return binaryDataItem;
 });

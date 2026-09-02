@@ -3,7 +3,7 @@ import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import fs from 'fs';
 import { Client } from 'langsmith/client';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
@@ -217,17 +217,6 @@ export function findRepoRoot(startDir: string): string | undefined {
 		dir = path.dirname(dir);
 	}
 	return undefined;
-}
-
-/**
- * Resolve the path to packages/nodes-base/nodes/ for __schema__ resolution.
- * Returns undefined if the path doesn't exist (e.g. running outside the monorepo).
- */
-export function resolveNodesBasePath(): string | undefined {
-	const repoRoot = findRepoRoot(__dirname);
-	if (!repoRoot) return undefined;
-	const p = path.join(repoRoot, 'packages', 'nodes-base', 'nodes');
-	return fs.existsSync(p) ? p : undefined;
 }
 
 /**

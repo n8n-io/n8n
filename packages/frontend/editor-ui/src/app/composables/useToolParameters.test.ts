@@ -5,6 +5,8 @@ import { ref, shallowRef, nextTick } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { useToolParameters } from './useToolParameters';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
+import type { WorkflowDocumentId } from '../stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -15,6 +17,7 @@ import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
+		documentId: 'test-workflow@latest',
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		allNodes: [],
@@ -49,7 +52,12 @@ describe('useToolParameters', () => {
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
 		workflowsStore.setWorkflowId('test-workflow');
-		workflowsStore.getWorkflowExecution = null;
+		(
+			mockedStore(
+				useWorkflowExecutionStateStore,
+				'test-workflow@latest' as WorkflowDocumentId,
+			) as unknown as { activeExecution: unknown }
+		).activeExecution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});
 
@@ -158,7 +166,12 @@ describe('useToolParameters', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowExecution = {
+			(
+				mockedStore(
+					useWorkflowExecutionStateStore,
+					'test-workflow@latest' as WorkflowDocumentId,
+				) as unknown as { activeExecution: unknown }
+			).activeExecution = {
 				data: {
 					resultData: {
 						runData: {

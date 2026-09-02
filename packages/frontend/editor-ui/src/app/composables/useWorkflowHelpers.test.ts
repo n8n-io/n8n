@@ -1,7 +1,10 @@
 import type { IWorkflowDb } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { resolveParameter, useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import {
+	resolveParameter,
+	resolveRequiredParameters,
+	useWorkflowHelpers,
+} from '@/app/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -11,7 +14,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	IConnections,
+	INodeProperties,
+	IRunData,
+} from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
@@ -19,6 +27,18 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+
+// The current workflow id is resolved via the route/document store. These tests
+// drive it through `workflowsStore.workflowId`, so resolve it from there.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -672,6 +692,19 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('executeData', () => {
+		// Production reads run data from the execution-state store (keyed by document
+		// id), not the workflows store. `createTestingPinia` exposes store getters as
+		// writable for stubbing, so override the computed run data directly (mirrors
+		// how this suite previously stubbed the removed `workflowsStore.getWorkflowRunData`).
+		function seedActiveRunData(runData: IRunData | null) {
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			(
+				executionStateStore as unknown as { activeExecutionRunData: IRunData | null }
+			).activeExecutionRunData = runData;
+		}
+
 		it('should return empty execute data if no parent nodes', () => {
 			const { executeData } = useWorkflowHelpers();
 
@@ -709,29 +742,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			seedActiveRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -783,29 +810,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[1]]: [
+			seedActiveRunData({
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -868,44 +889,38 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			seedActiveRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataA,
-												index: 0,
-											},
-										],
-									},
-									source: [],
-								},
-							],
-							[parentNodes[1]]: [
-								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataB,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonDataA,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
+								{
+									json: jsonDataB,
+									index: 0,
+								},
+							],
+						},
+						source: [],
+					},
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -967,13 +982,13 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = {
+			seedActiveRunData({
 				ParentNode: [
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1006,14 +1021,14 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 			const parentRunIndex = 1;
 
-			workflowsStore.getWorkflowRunData = {
+			seedActiveRunData({
 				ParentNode: [
 					{ data: {} } as never,
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1047,7 +1062,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = null;
+			seedActiveRunData(null);
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
@@ -1304,5 +1319,85 @@ describe(resolveParameter, () => {
 
 			expect(result?.params).toBeDefined();
 		});
+	});
+});
+
+describe('resolveRequiredParameters', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	const createParameter = (loadOptionsDependsOn: string[]): INodeProperties => ({
+		displayName: 'Fallback Output',
+		name: 'fallbackOutput',
+		type: 'options',
+		default: 'none',
+		typeOptions: { loadOptionsDependsOn },
+	});
+
+	const createResolveContext = () => {
+		const workflowData = createTestWorkflow({
+			nodes: [createTestNode({ name: 'Switch' })],
+		});
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+		workflowDocumentStore.hydrate(workflowData);
+
+		return {
+			workflowDocumentId: workflowDocumentStore.documentId,
+			opts: {
+				localResolve: true as const,
+				nodeName: 'Switch',
+				additionalKeys: {},
+			},
+		};
+	};
+
+	it('should preserve structure and resolve available leaves when an optional expression fails', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		const result = await resolveRequiredParameters(
+			createParameter(['rules.values']),
+			{
+				rules: {
+					values: [
+						{
+							conditions: {
+								leftValue: '={{ $json.missing.toUpperCase() }}',
+								rightValue: '={{ 2 + 2 }}',
+							},
+							outputKey: 'Matched',
+						},
+					],
+				},
+			},
+			workflowDocumentId,
+			opts,
+		);
+
+		expect(result).toEqual({
+			rules: {
+				values: [
+					{
+						conditions: { leftValue: null, rightValue: 4 },
+						outputKey: 'Matched',
+					},
+				],
+			},
+		});
+	});
+
+	it('should reject when a required parameter cannot be resolved', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		await expect(
+			resolveRequiredParameters(
+				createParameter(['rules']),
+				{ rules: '={{ $json.missing.toUpperCase() }}' },
+				workflowDocumentId,
+				opts,
+			),
+		).rejects.toThrow();
 	});
 });

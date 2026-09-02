@@ -1,6 +1,7 @@
 import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class SettingsEnvironmentPage extends BasePage {
 	async goto(): Promise<void> {
@@ -27,13 +28,24 @@ export class SettingsEnvironmentPage extends BasePage {
 		return this.page.getByTestId('source-control-save-settings-button');
 	}
 
-	fillRepoUrl(url: string): Promise<void> {
-		return this.getRepoUrlInput().fill(url);
+	getRefreshSshKeyButton(): Locator {
+		return this.page.getByTestId('source-control-refresh-ssh-key-button');
+	}
+
+	async waitForConnectForm(): Promise<void> {
+		await expect(this.getRepoUrlInput()).toBeEditable();
+		await expect(this.getRefreshSshKeyButton()).toBeVisible();
+	}
+
+	async fillRepoUrl(url: string): Promise<void> {
+		await expect(this.getRepoUrlInput()).toBeEditable();
+		await this.getRepoUrlInput().fill(url);
+		await this.getRepoUrlInput().blur();
 	}
 
 	async selectBranch(branchName: string): Promise<void> {
 		await this.getBranchSelect().click();
-		await this.page.getByRole('option', { name: branchName }).click();
+		await this.getVisiblePopoverOption(branchName).click();
 	}
 
 	async enableReadOnlyMode(): Promise<void> {
@@ -53,6 +65,6 @@ export class SettingsEnvironmentPage extends BasePage {
 			.getByRole('dialog')
 			.filter({ hasText: 'Disconnect Git repository' });
 		await expect(confirmModal).toBeVisible();
-		await confirmModal.locator('.btn--confirm').click();
+		await new MessageBox(confirmModal).confirmButton.click();
 	}
 }

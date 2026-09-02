@@ -1,4 +1,4 @@
-import { fetchProviderCatalog } from '../catalog';
+import { computeCost, fetchProviderCatalog } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
 	const originalFetch = global.fetch;
@@ -9,6 +9,7 @@ describe('fetchProviderCatalog', () => {
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {
+		const abortController = new AbortController();
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
@@ -21,6 +22,12 @@ describe('fetchProviderCatalog', () => {
 								id: 'gpt-5',
 								name: 'GPT-5',
 								tool_call: true,
+								modalities: { input: ['text', 'image'], output: ['text'] },
+							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								reasoning: false,
 							},
 						},
 					},
@@ -58,9 +65,15 @@ describe('fetchProviderCatalog', () => {
 		});
 		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5'].modalities).toEqual({
+			input: ['text', 'image'],
+			output: ['text'],
+		});
+		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
+		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
 			'Claude Sonnet 4.5',
 		);
@@ -69,5 +82,286 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog['amazon-bedrock']).toBeUndefined();
 		expect(catalog.azure).toBeUndefined();
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', {
+			signal: abortController.signal,
+		});
+	});
+
+	it('rejects a malformed catalog response', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve([]),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		await expect(fetchProviderCatalog()).rejects.toThrow();
+	});
+
+	it('omits malformed providers and models while retaining valid entries', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					invalidProvider: {
+						id: 'invalid-provider',
+						models: {},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-valid': {
+								id: 'gpt-valid',
+								name: 'GPT Valid',
+								tool_call: true,
+							},
+							'gpt-missing-name': {
+								id: 'gpt-missing-name',
+							},
+							'gpt-invalid-tool-call': {
+								id: 'gpt-invalid-tool-call',
+								name: 'GPT Invalid Tool Call',
+								tool_call: 'yes',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.invalidProvider).toBeUndefined();
+		expect(catalog.openai.models).toEqual({
+			'gpt-valid': {
+				id: 'gpt-valid',
+				name: 'GPT Valid',
+				toolCall: true,
+			},
+		});
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
+	});
+
+	it('keeps deprecated model ids out of models but exposes them for validation', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+							'claude-sonnet-4-6': {
+								id: 'claude-sonnet-4-6',
+								name: 'Claude Sonnet 4.6',
+							},
+							'claude-beta-model': {
+								id: 'claude-beta-model',
+								name: 'Claude Beta Model',
+								status: 'beta',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
+		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
+		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
+	});
+
+	it('retains a provider that only has deprecated models so callers can detect them', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-3-haiku-20240307': {
+								id: 'claude-3-haiku-20240307',
+								name: 'Claude Haiku 3',
+								status: 'deprecated',
+							},
+						},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-5': { id: 'gpt-5', name: 'GPT-5' },
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.anthropic.models).toEqual({});
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
+		expect(catalog.openai.models['gpt-5'].name).toBe('GPT-5');
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
+	});
+
+	it('parses the temperature capability flag from models.dev', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-5-mini': {
+								id: 'gpt-5-mini',
+								name: 'GPT-5 mini',
+								temperature: false,
+								tool_call: true,
+							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								temperature: true,
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.openai.models['gpt-5-mini'].temperature).toBe(false);
+		expect(catalog.openai.models['gpt-4.1-mini'].temperature).toBe(true);
+	});
+
+	it('strips the "(latest)" suffix from model names and drops duplicate pinned snapshots', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					anthropic: {
+						id: 'anthropic',
+						name: 'Anthropic',
+						models: {
+							'claude-opus-4-5': {
+								id: 'claude-opus-4-5',
+								name: 'Claude Opus 4.5 (latest)',
+							},
+							'claude-opus-4-5-20251101': {
+								id: 'claude-opus-4-5-20251101',
+								name: 'Claude Opus 4.5',
+							},
+							'claude-opus-4-8': {
+								id: 'claude-opus-4-8',
+								name: 'Claude Opus 4.8',
+							},
+							'claude-3-5-haiku-latest': {
+								id: 'claude-3-5-haiku-latest',
+								name: 'Claude Haiku 3.5 (latest)',
+							},
+						},
+					},
+					google: {
+						id: 'google',
+						name: 'Google',
+						models: {
+							'gemini-flash-latest': {
+								id: 'gemini-flash-latest',
+								name: 'Gemini Flash Latest',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		// Alias keeps its id but loses the "(latest)" tag
+		expect(catalog.anthropic.models['claude-opus-4-5'].name).toBe('Claude Opus 4.5');
+		expect(catalog.anthropic.models['claude-3-5-haiku-latest'].name).toBe('Claude Haiku 3.5');
+		// Pinned snapshot with the same name as an alias is dropped
+		expect(catalog.anthropic.models['claude-opus-4-5-20251101']).toBeUndefined();
+		// Models without a same-named alias are untouched
+		expect(catalog.anthropic.models['claude-opus-4-8'].name).toBe('Claude Opus 4.8');
+		// Only the parenthesized suffix is stripped, not other "latest" naming
+		expect(catalog.google.models['gemini-flash-latest'].name).toBe('Gemini Flash Latest');
+	});
+});
+
+describe('computeCost', () => {
+	it('bills all prompt tokens at the flat input rate when there is no cache breakdown', () => {
+		const cost = computeCost(
+			{ promptTokens: 1_000_000, completionTokens: 1_000_000 },
+			{ input: 3, output: 15 },
+		);
+
+		expect(cost).toBeCloseTo(18);
+	});
+
+	it('bills each cache tier at its catalog rate when a breakdown is present', () => {
+		const cost = computeCost(
+			{
+				promptTokens: 1_000_000,
+				completionTokens: 0,
+				inputTokenDetails: { noCache: 200_000, cacheRead: 500_000, cacheWrite: 300_000 },
+			},
+			{ input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+		);
+
+		expect(cost).toBeCloseTo(1.875);
+	});
+
+	it('falls back to the flat input rate for cache tiers missing a catalog rate', () => {
+		const cost = computeCost(
+			{
+				promptTokens: 1_000_000,
+				completionTokens: 0,
+				inputTokenDetails: { noCache: 500_000, cacheRead: 500_000 },
+			},
+			{ input: 3, output: 15 },
+		);
+
+		expect(cost).toBeCloseTo(3);
+	});
+
+	it('scales the cache-write rate for a 1h Anthropic TTL when a cacheWrite rate is present', () => {
+		const cost = computeCost(
+			{
+				promptTokens: 1_000_000,
+				completionTokens: 0,
+				inputTokenDetails: { cacheWrite: 1_000_000 },
+			},
+			{ input: 3, output: 15, cacheWrite: 3.75 },
+			{ anthropicCacheTtl: '1h' },
+		);
+
+		expect(cost).toBeCloseTo(3.75 * 1.6);
+	});
+
+	it('scales the flat input rate for a 1h Anthropic TTL when no cacheWrite rate is available', () => {
+		const cost = computeCost(
+			{
+				promptTokens: 1_000_000,
+				completionTokens: 0,
+				inputTokenDetails: { cacheWrite: 1_000_000 },
+			},
+			{ input: 3, output: 15 },
+			{ anthropicCacheTtl: '1h' },
+		);
+
+		expect(cost).toBeCloseTo(3 * 2);
 	});
 });

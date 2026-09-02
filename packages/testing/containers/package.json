@@ -30,7 +30,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
+  "dependencies": {
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@testcontainers/k3s": "catalog:",
     "@testcontainers/kafka": "catalog:",
@@ -40,6 +40,10 @@
     "get-port": "^7.1.0",
     "mockserver-client": "^5.15.0",
     "kafkajs": "catalog:",
-    "testcontainers": "catalog:"
+    "testcontainers": "catalog:",
+    "undici": "catalog:undici-v7"
+  },
+  "devDependencies": {
+    "tsx": "catalog:"
   }
 }

@@ -1,12 +1,9 @@
 <script lang="ts" setup>
 import { computed, provide, shallowRef } from 'vue';
-import {
-	WorkflowDocumentStoreKey,
-	WorkflowIdKey,
-	WorkflowStateKey,
-} from '@/app/constants/injectionKeys';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import WorkflowCanvasHostBody from './WorkflowCanvasHostBody.vue';
 
 const props = withDefaults(
@@ -14,8 +11,12 @@ const props = withDefaults(
 		workflowId: string;
 		/** Incremented to force re-init when the workflow id is unchanged but content has been modified. */
 		refreshKey?: number;
+		/** Workflow data to open without a fetch (e.g. an editor hand-off snapshot). Falls back to fetching by id. */
+		initialWorkflow?: IWorkflowDb;
+		/** Execution to display once on open, seeded directly (e.g. an editor hand-off snapshot). */
+		initialExecution?: IExecutionResponse;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, initialWorkflow: undefined, initialExecution: undefined },
 );
 
 const emit = defineEmits<{
@@ -33,10 +34,6 @@ const emit = defineEmits<{
 // existing init flow uses this id without modification.
 const localWorkflowId = computed(() => props.workflowId);
 provide(WorkflowIdKey, localWorkflowId);
-
-// Scoped workflow state — independent of any sibling editor.
-const workflowState = useWorkflowState();
-provide(WorkflowStateKey, workflowState);
 
 // Document store ref is populated by useWorkflowInitialization in the body.
 // NodeView and its descendants read it via WorkflowDocumentStoreKey.
@@ -57,6 +54,8 @@ defineExpose({ requestFitView });
 		ref="bodyRef"
 		:workflow-id="workflowId"
 		:refresh-key="refreshKey"
+		:initial-workflow="initialWorkflow"
+		:initial-execution="initialExecution"
 		@ready="emit('ready')"
 		@workflow-loaded="(id) => emit('workflow-loaded', id)"
 	/>

@@ -1,5 +1,12 @@
+import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { GlobalConfig } from '@n8n/config';
+import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+
+import type { DurableEventLog } from '../durable-event-log';
 import { InProcessEventBus } from '../in-process-event-bus';
 
 function makeEvent(type: string, runId: string): InstanceAiEvent {
@@ -11,19 +18,98 @@ function makeEvent(type: string, runId: string): InstanceAiEvent {
 	};
 }
 
+/** Flush the per-thread drain: each batch awaits one (mock) Redis round trip. */
+async function flushDrain() {
+	await new Promise((resolve) => setImmediate(resolve));
+}
+
 describe('InProcessEventBus', () => {
 	let bus: InProcessEventBus;
+	let publisher: ReturnType<typeof mock<Publisher>>;
+	let eventLog: ReturnType<typeof mock<DurableEventLog>>;
+	let logger: ReturnType<typeof mock<Logger>>;
+	let instanceSettings: { isMultiMain: boolean };
+
+	/** Shared fake Redis sequence — one Map plays the role of the Redis server,
+	 *  so two bus instances built in one test behave like two mains. */
+	let seqByKey: Map<string, number>;
+	let redisFailure: Error | null;
+	let incrbyCalls: Array<{ key: string; count: number }>;
+	let deletedKeys: string[];
+
+	const redisClient = {
+		multi: (): unknown => {
+			let incrArgs: { key: string; count: number } | null = null;
+			const chain = {
+				incrby(key: string, count: number) {
+					incrArgs = { key, count };
+					return chain;
+				},
+				expire() {
+					return chain;
+				},
+				async exec() {
+					if (redisFailure) throw redisFailure;
+					const { key, count } = incrArgs!;
+					incrbyCalls.push({ key, count });
+					const value = (seqByKey.get(key) ?? 0) + count;
+					seqByKey.set(key, value);
+					return [
+						[null, value],
+						[null, 1],
+					];
+				},
+			};
+			return chain;
+		},
+		async get(key: string) {
+			if (redisFailure) throw redisFailure;
+			const value = seqByKey.get(key);
+			return value === undefined ? null : String(value);
+		},
+		async del(key: string) {
+			deletedKeys.push(key);
+			seqByKey.delete(key);
+			return 1;
+		},
+	};
+
+	function buildBus({ durableLog = false } = {}) {
+		logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		publisher = mock<Publisher>();
+		publisher.publishCommand.mockResolvedValue(undefined);
+		publisher.getClient.mockReturnValue(redisClient as never);
+		// Flag off: the durable log is never touched, so a bare mock suffices.
+		eventLog = mock<DurableEventLog>();
+		const globalConfig = mock<GlobalConfig>({
+			redis: { prefix: 'n8n' },
+			instanceAi: { durableLog },
+		});
+		return new InProcessEventBus(
+			logger,
+			instanceSettings as InstanceSettings,
+			publisher,
+			eventLog,
+			globalConfig,
+		);
+	}
 
 	beforeEach(() => {
-		bus = new InProcessEventBus();
+		instanceSettings = { isMultiMain: false };
+		seqByKey = new Map();
+		redisFailure = null;
+		incrbyCalls = [];
+		deletedKeys = [];
+		bus = buildBus();
 	});
 
 	afterEach(() => {
 		bus.clear();
 	});
 
-	describe('publish', () => {
-		it('should assign monotonically increasing IDs per thread', () => {
+	describe('publish (single-main)', () => {
+		it('should assign monotonically increasing IDs per thread in the same tick', () => {
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
 			bus.publish('thread-1', makeEvent('b', 'run_1'));
 			bus.publish('thread-1', makeEvent('c', 'run_1'));
@@ -50,11 +136,86 @@ describe('InProcessEventBus', () => {
 			expect(events2).toHaveLength(1);
 			expect(events2[0].id).toBe(1);
 		});
+
+		it('should not touch Redis', () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			expect(seqByKey.size).toBe(0);
+		});
+	});
+
+	describe('publish (multi-main, shared sequence)', () => {
+		beforeEach(() => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+		});
+
+		it('assigns ids from the shared Redis sequence in publish order', async () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			bus.publish('thread-1', makeEvent('b', 'run_1'));
+			bus.publish('thread-1', makeEvent('c', 'run_1'));
+			await flushDrain();
+
+			const events = bus.getEventsAfter('thread-1', 0);
+			expect(events.map((e) => e.id)).toEqual([1, 2, 3]);
+			expect(events.map((e) => e.event.payload)).toEqual([
+				{ text: 'a-run_1' },
+				{ text: 'b-run_1' },
+				{ text: 'c-run_1' },
+			]);
+		});
+
+		it('sequences events queued during a Redis round trip as one INCRBY batch', async () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1')); // drains alone
+			bus.publish('thread-1', makeEvent('b', 'run_1')); // queued during the round trip
+			bus.publish('thread-1', makeEvent('c', 'run_1')); // queued during the round trip
+			await flushDrain();
+
+			expect(incrbyCalls.map((c) => c.count)).toEqual([1, 2]);
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([1, 2, 3]);
+		});
+
+		it('continues the sequence started by another main', async () => {
+			const otherMain = buildBus();
+			otherMain.publish('thread-1', makeEvent('a', 'run_1'));
+			otherMain.publish('thread-1', makeEvent('b', 'run_1'));
+			await flushDrain();
+
+			bus.publish('thread-1', makeEvent('c', 'run_1'));
+			await flushDrain();
+
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([3]);
+		});
+
+		it('falls back to local ids above the high-water mark when Redis fails', async () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			bus.publish('thread-1', makeEvent('b', 'run_1'));
+			await flushDrain();
+
+			redisFailure = new Error('connection lost');
+			bus.publish('thread-1', makeEvent('c', 'run_1'));
+			await flushDrain();
+
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([1, 2, 3]);
+		});
+
+		it('keeps fallback ids above ids observed from relayed events', async () => {
+			redisFailure = new Error('connection lost');
+			// A sibling produced up to id 7 — observed via relay without a subscriber.
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 7, event: makeEvent('x', 'run_1') },
+			});
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			await flushDrain();
+
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([8]);
+		});
 	});
 
 	describe('subscribe', () => {
 		it('should receive events published after subscription', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -66,7 +227,7 @@ describe('InProcessEventBus', () => {
 		});
 
 		it('should not receive events from other threads', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-2', makeEvent('a', 'run_2'));
@@ -75,7 +236,7 @@ describe('InProcessEventBus', () => {
 		});
 
 		it('should stop delivery after unsubscribe', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			const unsubscribe = bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -124,15 +285,38 @@ describe('InProcessEventBus', () => {
 	});
 
 	describe('getNextEventId', () => {
-		it('should return 1 for a new thread', () => {
-			expect(bus.getNextEventId('thread-1')).toBe(1);
+		it('should return 1 for a new thread', async () => {
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(1);
 		});
 
-		it('should return the next sequential ID after publishing', () => {
+		it('should return the next sequential ID after publishing', async () => {
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
 			bus.publish('thread-1', makeEvent('b', 'run_1'));
 
-			expect(bus.getNextEventId('thread-1')).toBe(3);
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(3);
+		});
+
+		it('reads the shared sequence in multi-main, so any main returns the same cursor', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+			const otherMain = buildBus();
+
+			otherMain.publish('thread-1', makeEvent('a', 'run_1'));
+			otherMain.publish('thread-1', makeEvent('b', 'run_1'));
+			await flushDrain();
+
+			// This main never buffered the thread, but agrees on the next id.
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(3);
+		});
+
+		it('falls back to the local high-water mark when Redis fails', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			await flushDrain();
+
+			redisFailure = new Error('connection lost');
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(2);
 		});
 	});
 
@@ -170,11 +354,23 @@ describe('InProcessEventBus', () => {
 			expect(events[0]).toHaveProperty('runId');
 			expect(events[0]).toHaveProperty('agentId');
 		});
+
+		it('includes events still awaiting a sequence number (same-main read-your-writes)', () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+
+			// No drain flush: the event has no id yet, but same-main callers
+			// (terminal outcomes, tracing, snapshots) must still see it.
+			expect(bus.getEventsForRun('thread-1', 'run_1')).toHaveLength(1);
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(0);
+		});
 	});
 
 	describe('clear', () => {
-		it('should remove all stored events and listeners', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+		it('should remove all stored events and listeners', async () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
@@ -184,11 +380,303 @@ describe('InProcessEventBus', () => {
 
 			// Events cleared
 			expect(bus.getEventsAfter('thread-1', 0)).toEqual([]);
-			expect(bus.getNextEventId('thread-1')).toBe(1);
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(1);
 
 			// Listener removed — new publish should not reach old handler
 			bus.publish('thread-1', makeEvent('b', 'run_1'));
 			expect(received).toHaveLength(1);
+		});
+	});
+
+	describe('clearThread', () => {
+		it('deletes the shared sequence key in multi-main', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			await flushDrain();
+			expect(seqByKey.size).toBe(1);
+
+			bus.clearThread('thread-1');
+			await flushDrain();
+
+			expect(deletedKeys).toEqual(['n8n:instance-ai:event-seq:thread-1']);
+			expect(bus.getEventsAfter('thread-1', 0)).toEqual([]);
+		});
+
+		it('does not touch Redis in single-main', async () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			bus.clearThread('thread-1');
+			await flushDrain();
+
+			expect(deletedKeys).toEqual([]);
+		});
+	});
+
+	describe('cross-main relay', () => {
+		it('does not relay when single-main', () => {
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('relays each event with its producer-assigned id when multi-main', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+
+			const event = makeEvent('a', 'run_1');
+			bus.publish('thread-1', event);
+			await flushDrain();
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-event',
+				payload: {
+					threadId: 'thread-1',
+					// publish() stamps the publish time onto the event
+					storedEvent: { id: 1, event: { ...event, ts: expect.any(Number) } },
+				},
+			});
+		});
+
+		it('still delivers locally even when relaying', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			await flushDrain();
+
+			expect(received).toEqual([1]);
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+		});
+
+		it('skips relay for oversized events but still delivers locally', async () => {
+			instanceSettings = { isMultiMain: true };
+			bus = buildBus();
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
+			const huge = makeEvent('a', 'run_1');
+			(huge.payload as { text: string }).text = 'x'.repeat(6 * 1024 * 1024);
+
+			bus.publish('thread-1', huge);
+			await flushDrain();
+
+			// Relay skipped (would bloat pubsub), but the local SSE client still got it
+			// via the emit (even though the 2 MB store cap then evicts it).
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(received).toEqual([1]);
+		});
+	});
+
+	describe('handleRelayInstanceAiEvent', () => {
+		it('stores and re-emits a relayed event under its producer-assigned id', () => {
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
+
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 42, event: makeEvent('a', 'run_1') },
+			});
+
+			expect(received).toEqual([42]);
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([42]);
+			// Re-emit must not re-relay (loop guard).
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('ignores a relayed event when this main has no subscriber for the thread', () => {
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 1, event: makeEvent('a', 'run_1') },
+			});
+
+			// Nothing stored, since the thread has no local consumer here.
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(0);
+		});
+
+		it('keeps the store sorted when a concurrent producer relays a lower id', () => {
+			bus.subscribe('thread-1', () => {});
+
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 5, event: makeEvent('later', 'run_1') },
+			});
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 3, event: makeEvent('earlier', 'run_2') },
+			});
+
+			expect(bus.getEventsAfter('thread-1', 0).map((e) => e.id)).toEqual([3, 5]);
+		});
+
+		it('drops a duplicate id instead of storing or emitting it twice', () => {
+			const received: number[] = [];
+			bus.subscribe('thread-1', (e) => received.push(e.id!));
+			const storedEvent = { id: 5, event: makeEvent('a', 'run_1') };
+
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent });
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent });
+
+			expect(received).toEqual([5]);
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(1);
+		});
+	});
+
+	describe('hasSubscribers', () => {
+		it('reflects active subscriptions', () => {
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+			const unsubscribe = bus.subscribe('thread-1', () => {});
+			expect(bus.hasSubscribers('thread-1')).toBe(true);
+			unsubscribe();
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+		});
+	});
+
+	describe('durable log (flag on)', () => {
+		type EmitFn = (drained: { id?: number; event: InstanceAiEvent; live: boolean }) => void;
+
+		/** Route publish through the mocked drain and hand back its emit callback. */
+		function publishAndCaptureEmit(threadId: string, event: InstanceAiEvent): EmitFn {
+			bus.publish(threadId, event);
+			const call = eventLog.publish.mock.calls.at(-1)!;
+			expect(call[0]).toBe(threadId);
+			// publish() stamps `ts` onto a copy before handing it to the log
+			expect(call[1]).toEqual({ ...event, ts: expect.any(Number) });
+			return call[2] as EmitFn;
+		}
+
+		beforeEach(() => {
+			bus = buildBus({ durableLog: true });
+		});
+
+		it('routes publishes into the durable log instead of the Redis sequence', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus({ durableLog: true });
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+
+			expect(eventLog.publish).toHaveBeenCalledTimes(1);
+			expect(incrbyCalls).toHaveLength(0);
+		});
+
+		it('emits a drained durable fact with its DB seq and retains nothing', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ id: 7, event, live: true });
+
+			expect(received).toEqual([{ id: 7, event }]);
+			expect(bus.getEventsForRun('thread-1', 'run_1')).toHaveLength(0);
+		});
+
+		it('emits ephemeral events live without an id', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ event, live: true });
+
+			expect(received).toEqual([{ event }]);
+			expect(received[0]).not.toHaveProperty('id');
+		});
+
+		it('drops a coalesced block entirely (subscribers saw its deltas, the DB has the row)', () => {
+			const received: unknown[] = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ id: 3, event, live: false });
+
+			expect(received).toHaveLength(0);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(bus.getEventsForRun('thread-1', 'run_1')).toHaveLength(0);
+		});
+
+		it('retains no per-thread state across a burst of drained facts', () => {
+			for (let thread = 0; thread < 50; thread++) {
+				const threadId = `thread-${thread}`;
+				const event = makeEvent('a', 'run_1');
+				const emit = publishAndCaptureEmit(threadId, event);
+				for (let seq = 1; seq <= 20; seq++) emit({ id: seq, event, live: true });
+			}
+
+			// Nothing to release on run completion, thread deletion or the TTL prune,
+			// because nothing was retained in the first place.
+			expect(bus.retainedThreadCount()).toBe(0);
+		});
+
+		it('reports a store read as a wiring bug, once per entry point', () => {
+			expect(bus.getEventsAfter('thread-1', 0)).toEqual([]);
+			expect(bus.getEventsAfter('thread-1', 0)).toEqual([]);
+			// Names the entry point the caller used, not the method it delegates to.
+			expect(bus.getEventsForRun('thread-1', 'run_1')).toEqual([]);
+			expect(bus.getEventsForRuns('thread-1', ['run_1'])).toEqual([]);
+
+			expect(logger.error.mock.calls).toEqual([
+				[expect.stringContaining('getEventsAfter'), { threadId: 'thread-1' }],
+				[expect.stringContaining('getEventsForRun '), { threadId: 'thread-1' }],
+				[expect.stringContaining('getEventsForRuns'), { threadId: 'thread-1' }],
+			]);
+		});
+
+		it('answers the next event id from the durable log, never from memory', async () => {
+			eventLog.getNextEventId.mockResolvedValue(42);
+
+			await expect(bus.getNextEventId('thread-1')).resolves.toBe(42);
+			expect(eventLog.getNextEventId).toHaveBeenCalledWith('thread-1');
+		});
+
+		it('relays live drained events to siblings with the DB seq passed through', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus({ durableLog: true });
+			const event = makeEvent('a', 'run_1');
+
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ id: 9, event, live: true });
+			emit({ event, live: true });
+
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(2);
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(1, {
+				command: 'relay-instance-ai-event',
+				payload: { threadId: 'thread-1', storedEvent: { id: 9, event } },
+			});
+			// The ephemeral relay frame carries no id.
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(2, {
+				command: 'relay-instance-ai-event',
+				payload: { threadId: 'thread-1', storedEvent: { event } },
+			});
+		});
+
+		it('re-emits a relayed frame to subscribers without storing it, id-bearing or not', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent: { event } });
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent: { id: 4, event } });
+
+			expect(received).toEqual([{ event }, { id: 4, event }]);
+			expect(bus.retainedThreadCount()).toBe(0);
+		});
+
+		it('drops a relayed frame for a thread this main has no subscriber for', () => {
+			bus.handleRelayInstanceAiEvent({
+				threadId: 'thread-1',
+				storedEvent: { id: 4, event: makeEvent('a', 'run_1') },
+			});
+
+			expect(bus.retainedThreadCount()).toBe(0);
+		});
+
+		it('clearThread and clear drop the durable log drain state too', () => {
+			bus.clearThread('thread-1');
+			expect(eventLog.clearThread).toHaveBeenCalledWith('thread-1');
+
+			bus.clear();
+			expect(eventLog.clear).toHaveBeenCalledTimes(1);
 		});
 	});
 });

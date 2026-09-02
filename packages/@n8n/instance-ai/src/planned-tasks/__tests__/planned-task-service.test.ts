@@ -110,12 +110,16 @@ describe('PlannedTaskCoordinator', () => {
 			).rejects.toThrow('dependency cycle');
 		});
 
-		it('throws when delegate task has no tools', async () => {
-			const tasks = [makeTask({ id: 'a', kind: 'delegate', tools: [] })];
+		it('throws when a checkpoint task depends only on another checkpoint', async () => {
+			const tasks = [
+				makeTask({ id: 'wf-1' }),
+				makeTask({ id: 'cp-1', kind: 'checkpoint', deps: ['wf-1'] }),
+				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['cp-1'] }),
+			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must include at least one tool');
+			).rejects.toThrow('must depend on at least one build-workflow task');
 		});
 
 		it('accepts a checkpoint task that depends on a build-workflow task', async () => {
@@ -131,17 +135,6 @@ describe('PlannedTaskCoordinator', () => {
 
 		it('throws when a checkpoint task has no deps', async () => {
 			const tasks = [makeTask({ id: 'verify-1', kind: 'checkpoint', deps: [] })];
-
-			await expect(
-				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must depend on at least one build-workflow task');
-		});
-
-		it('throws when a checkpoint task depends only on non-build-workflow tasks', async () => {
-			const tasks = [
-				makeTask({ id: 'delegate-1', kind: 'delegate', tools: ['nodes'] }),
-				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['delegate-1'] }),
-			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
@@ -623,22 +616,20 @@ describe('PlannedTaskCoordinator', () => {
 	});
 
 	describe('tick', () => {
-		it('dispatches ready tasks with all deps satisfied', async () => {
+		it('orchestrates the first ready build-workflow task when deps are satisfied', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
 						makeTaskRecord({ id: 'a', deps: [], status: 'succeeded' }),
 						makeTaskRecord({
 							id: 'b',
-							kind: 'delegate',
-							tools: ['research'],
+							kind: 'build-workflow',
 							deps: ['a'],
 							status: 'planned',
 						}),
 						makeTaskRecord({
 							id: 'c',
-							kind: 'delegate',
-							tools: ['nodes'],
+							kind: 'build-workflow',
 							deps: ['a'],
 							status: 'planned',
 						}),
@@ -649,10 +640,10 @@ describe('PlannedTaskCoordinator', () => {
 
 			const action = await coordinator.tick('thread-1');
 
-			expect(action.type).toBe('dispatch');
-			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(2);
-				expect(action.tasks.map((t) => t.id)).toEqual(['b', 'c']);
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(['b', 'c']).toContain(action.tasks[0].id);
 			}
 		});
 
@@ -670,6 +661,30 @@ describe('PlannedTaskCoordinator', () => {
 			if (action.type === 'orchestrate-build-workflow') {
 				expect(action.tasks).toHaveLength(1);
 				expect(action.tasks[0].id).toBe('wf-1');
+			}
+		});
+
+		it('returns dispatch for a ready legacy delegate task', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'legacy-1',
+							kind: 'delegate',
+							spec: 'Do the research',
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('dispatch');
+			if (action.type === 'dispatch') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0]?.kind).toBe('delegate');
 			}
 		});
 
@@ -757,8 +772,7 @@ describe('PlannedTaskCoordinator', () => {
 						}),
 						makeTaskRecord({
 							id: 'wf-2',
-							kind: 'delegate',
-							tools: ['research'],
+							kind: 'build-workflow',
 							deps: [],
 							status: 'planned',
 						}),
@@ -811,24 +825,60 @@ describe('PlannedTaskCoordinator', () => {
 			}
 		});
 
-		it('respects availableSlots limit', async () => {
+		it('routes pending workflow verification before synthesis without completing the graph', async () => {
+			const task = makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' });
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ tasks: [task] });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const pendingWorkflowVerification = {
+				task,
+				outcome: {
+					workItemId: 'wi-1',
+					taskId: 'wf-1',
+					workflowId: 'workflow-1',
+					submitted: true,
+					triggerType: 'manual_or_testable' as const,
+					needsUserInput: false,
+					summary: 'Submitted.',
+				},
+				obligation: {
+					workItemId: 'wi-1',
+					threadId: 'thread-1',
+					taskId: 'wf-1',
+					plannedTaskId: 'wf-1',
+					workflowId: 'workflow-1',
+					source: 'planned' as const,
+					policy: 'required' as const,
+					status: 'ready_to_verify' as const,
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			};
+
+			const action = await coordinator.tick('thread-1', { pendingWorkflowVerification });
+
+			expect(action.type).toBe('orchestrate-workflow-verification');
+			if (action.type === 'orchestrate-workflow-verification') {
+				expect(action.graph.status).toBe('active');
+				expect(action.verification).toBe(pendingWorkflowVerification);
+			}
+		});
+
+		it('returns none when availableSlots is zero even with ready build tasks', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
-						makeTaskRecord({ id: 'a', kind: 'delegate', tools: ['research'], status: 'planned' }),
-						makeTaskRecord({ id: 'b', kind: 'delegate', tools: ['research'], status: 'planned' }),
-						makeTaskRecord({ id: 'c', kind: 'delegate', tools: ['nodes'], status: 'planned' }),
+						makeTaskRecord({ id: 'a', kind: 'build-workflow', status: 'planned' }),
+						makeTaskRecord({ id: 'b', kind: 'build-workflow', status: 'planned' }),
 					],
 				});
 				return await Promise.resolve(updater(graph));
 			});
 
-			const action = await coordinator.tick('thread-1', { availableSlots: 1 });
+			const action = await coordinator.tick('thread-1', { availableSlots: 0 });
 
-			expect(action.type).toBe('dispatch');
-			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(1);
-			}
+			expect(action.type).toBe('none');
 		});
 
 		it('returns none when graph is not active', async () => {

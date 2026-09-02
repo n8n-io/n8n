@@ -1,23 +1,24 @@
 /**
- * SSRF guard abstraction for the web_fetch tool.
+ * SSRF guard contract for the web_fetch tool.
  *
- * The builder package cannot import the cli `SsrfProtectionService` (cli depends on
- * this package) nor n8n-core's `SsrfBridge` type (not a dependency), so we declare a
- * minimal local contract here. `SsrfProtectionService` is structurally assignable to
- * `SsrfGuard`, so the cli composition root can pass it directly.
+ * This is the narrow slice of `@n8n/backend-network`'s `SsrfBridge` that the
+ * web_fetch tool actually needs: URL validation, redirect validation and a
+ * secure DNS lookup. `SsrfProtectionService` implements `SsrfBridge`, so the cli
+ * composition root passes it directly; `createPassthroughSsrfGuard` below is the
+ * no-op variant. `SsrfBridge` is imported as a type only (via the dependency-free
+ * `/transport` subpath), so this leaf package takes no runtime dependency on the
+ * network package.
  */
-import { type Result, createResultOk, ensureError } from 'n8n-workflow';
+import type { SsrfBridge } from '@n8n/backend-network/transport';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
 
-export interface SsrfGuard {
-	/** Resolve and validate a URL's host(s) against the blocklist/allowlist. */
-	validateUrl(url: string | URL): Promise<Result<void, Error>>;
-	/** Synchronously validate a redirect target (catches direct-IP targets). */
-	validateRedirectSync(url: string): void;
-	/** Drop-in `dns.lookup` replacement that validates the resolved IP at connect time. */
-	createSecureLookup(): LookupFunction;
-}
+export type SsrfGuard = Pick<
+	SsrfBridge,
+	'validateUrl' | 'validateRedirectSync' | 'createSecureLookup'
+>;
 
 /**
  * Thrown inside `beforeRedirect` to halt axios auto-follow when a redirect crosses to a

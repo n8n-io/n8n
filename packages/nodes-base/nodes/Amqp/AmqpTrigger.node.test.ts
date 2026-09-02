@@ -1,36 +1,36 @@
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
-import type { ITriggerFunctions } from 'n8n-workflow';
+import type { IRun, ITriggerFunctions } from 'n8n-workflow';
 
 import { AmqpTrigger } from './AmqpTrigger.node';
 
 let eventHandlers: Record<string, (...args: unknown[]) => void> = {};
-const mockAddCredit = jest.fn();
-const mockClose = jest.fn();
-const mockOpenReceiver = jest.fn();
-const mockEmitExecutionError = jest.fn();
+const mockAddCredit = vi.fn();
+const mockClose = vi.fn();
+const mockOpenReceiver = vi.fn();
+const mockEmitExecutionError = vi.fn();
 
 const mockConnection = {
 	open_receiver: mockOpenReceiver,
 	close: mockClose,
 };
 
-jest.mock('rhea', () => ({
-	create_container: jest.fn(() => ({
+vi.mock('rhea', () => ({
+	create_container: vi.fn(() => ({
 		on: (event: string, handler: (...args: unknown[]) => void) => {
 			eventHandlers[event] = handler;
 		},
-		removeAllListeners: jest.fn((event: string) => {
+		removeAllListeners: vi.fn((event: string) => {
 			delete eventHandlers[event];
 		}),
-		connect: jest.fn(() => mockConnection),
+		connect: vi.fn(() => mockConnection),
 	})),
 }));
 
 describe('AMQP Trigger Node', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		eventHandlers = {};
 		mockEmitExecutionError.mockClear();
 	});
@@ -94,7 +94,7 @@ describe('AMQP Trigger Node', () => {
 	});
 
 	it('should reject in manual mode after 15s with no message', async () => {
-		const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+		const timeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation((fn) => {
 			fn(); // fire immediately
 			return 1 as unknown as NodeJS.Timeout;
 		});
@@ -106,7 +106,7 @@ describe('AMQP Trigger Node', () => {
 		});
 
 		await expect(manualTriggerFunction?.()).rejects.toThrow(
-			'Aborted because no message received within 15 seconds',
+			'Aborted because no message was received within 15 seconds',
 		);
 		timeoutSpy.mockRestore();
 	});
@@ -131,8 +131,8 @@ describe('AMQP Trigger Node', () => {
 
 	it('should call saveFailedExecution when handleMessage throws an error in trigger mode', async () => {
 		const trigger = new AmqpTrigger();
-		const emit = jest.fn();
-		const saveFailedExecution = jest.fn();
+		const emit = vi.fn();
+		const saveFailedExecution = vi.fn();
 
 		const triggerFunctions = mockDeep<ITriggerFunctions>();
 		Object.assign(triggerFunctions, { emit, saveFailedExecution });
@@ -157,21 +157,23 @@ describe('AMQP Trigger Node', () => {
 
 		await trigger.trigger.call(triggerFunctions);
 
+		const addCreditSpy = vi.fn();
 		eventHandlers['message']({
 			message: { body: 'invalid json {', message_id: 1 },
 			receiver: {
-				has_credit: jest.fn().mockReturnValue(true),
+				add_credit: addCreditSpy,
 			},
 		});
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => setTimeout(resolve, 30));
 
 		expect(saveFailedExecution).toHaveBeenCalledWith(expect.any(NodeOperationError));
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
 	});
 
 	it('should handle errors in manual mode and reject the promise', async () => {
 		const trigger = new AmqpTrigger();
-		const emit = jest.fn();
+		const emit = vi.fn();
 
 		const triggerFunctions = mockDeep<ITriggerFunctions>();
 		Object.assign(triggerFunctions, { emit });
@@ -271,15 +273,15 @@ describe('AMQP Trigger Node', () => {
 		eventHandlers['message']({
 			message,
 			receiver: {
-				has_credit: jest.fn().mockReturnValue(true),
+				add_credit: vi.fn(),
 			},
 		});
 
 		expect(emit).toHaveBeenCalled();
 	});
 
-	it('should add credit when receiver has no credit', async () => {
-		const addCreditSpy = jest.fn();
+	it('should release 1 credit after a message completes', async () => {
+		const addCreditSpy = vi.fn();
 		await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
 			node: {
@@ -291,19 +293,184 @@ describe('AMQP Trigger Node', () => {
 			credential: { hostname: 'localhost', port: 5672 },
 		});
 
-		jest.useFakeTimers();
-		const message = { body: 'hello', message_id: 1 };
-		eventHandlers['message']({
-			message,
-			receiver: {
-				has_credit: jest.fn().mockReturnValue(false),
-				add_credit: addCreditSpy,
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({
+				message: { body: 'hello', message_id: 1 },
+				receiver: { add_credit: addCreditSpy },
+			}),
+		);
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+
+		expect(addCreditSpy).toHaveBeenCalledTimes(1);
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
+
+	it('should release 1 credit per completed message when multiple are in flight', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3 },
+				},
 			},
+			credential: { hostname: 'localhost', port: 5672 },
 		});
 
-		jest.advanceTimersByTime(10);
-		jest.useRealTimers();
+		vi.useFakeTimers();
+		const receiver = { add_credit: addCreditSpy };
+		await Promise.all(
+			[1, 2, 3].map(async (id) => {
+				await Promise.resolve(
+					eventHandlers['message']({ message: { body: 'hello', message_id: id }, receiver }),
+				);
+			}),
+		);
 
-		expect(addCreditSpy).toHaveBeenCalledWith(100);
+		vi.advanceTimersByTime(15);
+		vi.useRealTimers();
+
+		const totalCreditsGranted = addCreditSpy.mock.calls.reduce(
+			(sum: number, [credits]) => sum + (credits as number),
+			0,
+		);
+		expect(totalCreditsGranted).toBe(3);
+	});
+
+	it('should not release credit before the execution finishes when parallelProcessing is false', async () => {
+		const addCreditSpy = vi.fn();
+		const { emit } = await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { parallelProcessing: false },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		vi.useFakeTimers();
+		const handlerPromise = eventHandlers['message']({
+			message: { body: 'hello', message_id: 1 },
+			receiver: { add_credit: addCreditSpy },
+		});
+
+		await vi.advanceTimersByTimeAsync(100);
+		expect(addCreditSpy).not.toHaveBeenCalled();
+
+		emit.mock.calls[0][2]?.resolve({} as IRun);
+		await Promise.resolve(handlerPromise);
+
+		await vi.advanceTimersByTimeAsync(15);
+		vi.useRealTimers();
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
+
+	it('should grant only the free slots when the receiver reopens after a reconnect', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'b', message_id: 2 }, receiver }),
+		);
+
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(1);
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+	});
+
+	it('should not release credit for executions that finish while the link is down', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'b', message_id: 2 }, receiver }),
+		);
+
+		eventHandlers['disconnected']({});
+		addCreditSpy.mockClear();
+
+		// both executions finish while disconnected: slots are freed but no credit is added
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).not.toHaveBeenCalled();
+
+		// the reopened receiver grants all free slots, restoring the full window
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenCalledTimes(1);
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+	});
+
+	it('should resume releasing credit per completion after the receiver reopens', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['disconnected']({});
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		addCreditSpy.mockClear();
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
 	});
 });

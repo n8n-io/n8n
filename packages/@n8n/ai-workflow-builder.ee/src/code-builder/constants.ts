@@ -115,8 +115,8 @@ export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 
 /** MCP tools — not used by the code-builder agent, only exposed via the MCP server. */
 export const MCP_GET_SDK_REFERENCE_TOOL: BuilderToolBase = {
-	toolName: 'get_sdk_reference',
-	displayTitle: 'Getting SDK reference',
+	toolName: 'get_workflow_sdk_reference',
+	displayTitle: 'Getting workflow SDK reference',
 };
 
 export const MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: BuilderToolBase = {
@@ -132,6 +132,11 @@ export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
 export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'update_workflow',
 	displayTitle: 'Updating workflow',
+};
+
+export const MCP_EXPLORE_NODE_RESOURCES_TOOL: BuilderToolBase = {
+	toolName: 'explore_node_resources',
+	displayTitle: 'Exploring node resources',
 };
 
 export const MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: BuilderToolBase = {

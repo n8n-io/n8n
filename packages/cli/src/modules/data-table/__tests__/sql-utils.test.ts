@@ -84,6 +84,32 @@ describe('sql-utils', () => {
 			expect(result[0].updatedAt).toEqual(new Date(dateString));
 		});
 
+		it('should normalize date values from ISO strings with timezone offsets', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const dateString = '2024-01-15T10:30:00.000+02:00';
+			const expectedDate = new Date('2024-01-15T08:30:00.000Z');
+			const rows = [{ id: 1, birthday: dateString, createdAt: dateString, updatedAt: dateString }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(expectedDate);
+			expect(result[0].createdAt).toEqual(expectedDate);
+			expect(result[0].updatedAt).toEqual(expectedDate);
+		});
+
+		it('should normalize date values from postgres timestamptz strings', () => {
+			const columns = [createColumn('birthday', 'date')];
+			const dateString = '2024-01-15 10:30:00+02';
+			const expectedDate = new Date('2024-01-15T08:30:00.000Z');
+			const rows = [{ id: 1, birthday: dateString, createdAt: dateString, updatedAt: dateString }];
+
+			const result = normalizeRows(rows, columns);
+
+			expect(result[0].birthday).toEqual(expectedDate);
+			expect(result[0].createdAt).toEqual(expectedDate);
+			expect(result[0].updatedAt).toEqual(expectedDate);
+		});
+
 		it('should normalize date values from strings of sqlite format', () => {
 			const columns = [createColumn('birthday', 'date')];
 			const dateString = '2024-01-15 10:30:00';

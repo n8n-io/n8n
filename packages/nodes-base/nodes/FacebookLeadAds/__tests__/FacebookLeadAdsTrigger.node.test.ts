@@ -1,26 +1,27 @@
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IDataObject, INode, IWebhookFunctions } from 'n8n-workflow';
 
 import { FacebookLeadAdsTrigger } from '../FacebookLeadAdsTrigger.node';
+import type { Mocked } from 'vitest';
 
 describe('FacebookLeadAdsTrigger', () => {
 	let node: FacebookLeadAdsTrigger;
-	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
+	let mockWebhookFunctions: Mocked<IWebhookFunctions>;
 
 	beforeEach(() => {
 		node = new FacebookLeadAdsTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('webhook', () => {
 		it('should respond to verification challenge as text/plain', async () => {
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				type: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				type: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			} as unknown as Response;
 
 			mockWebhookFunctions.getWebhookName.mockReturnValue('setup');

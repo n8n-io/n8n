@@ -8,6 +8,7 @@ export { DeduplicationRule } from './deduplication.rule.js';
 export { TestDataHygieneRule } from './test-data-hygiene.rule.js';
 export { DuplicateLogicRule } from './duplicate-logic.rule.js';
 export { NoDirectPageInstantiationRule } from './no-direct-page-instantiation.rule.js';
+export { NoRawEditorNavigationRule } from './no-raw-editor-navigation.rule.js';
 
 // Re-export types for convenience
 export type { Violation, RuleResult, RuleConfig } from '../types.js';

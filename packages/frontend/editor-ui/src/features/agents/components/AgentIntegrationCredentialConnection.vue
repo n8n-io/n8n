@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 
@@ -17,13 +17,18 @@ const props = withDefaults(
 		disabled?: boolean;
 		connected?: boolean;
 		loading?: boolean;
-		publishing?: boolean;
 		showConnectButton?: boolean;
 		showDisconnectButton?: boolean;
 		showEditButton?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		connectedDescription?: string;
+		/**
+		 * Force creating a NEW credential instead of picking an existing one: hides
+		 * the credential dropdown and offers only "Create new credential". Used by
+		 * the AIA channel-setup flow so a new agent always gets its own credential.
+		 */
+		forceNewCredential?: boolean;
 	}>(),
 	{
 		modelValue: undefined,
@@ -31,13 +36,13 @@ const props = withDefaults(
 		disabled: false,
 		connected: false,
 		loading: false,
-		publishing: false,
 		showConnectButton: false,
 		showDisconnectButton: false,
 		showEditButton: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		connectedDescription: '',
+		forceNewCredential: false,
 	},
 );
 
@@ -52,9 +57,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const canEdit = computed(() => props.showEditButton && !props.connected && !!props.modelValue);
-const connectDisabled = computed(
-	() => !props.modelValue || props.loading || props.publishing || props.disabled,
+const selectedCredentialName = computed(
+	() => props.credentials.find((c) => c.id === props.modelValue)?.name ?? '',
 );
+const connectDisabled = computed(() => !props.modelValue || props.loading || props.disabled);
 </script>
 
 <template>
@@ -74,9 +80,32 @@ const connectDisabled = computed(
 			{{ connectedDescription }}
 		</N8nText>
 		<div :class="$style.selectRow">
+			<!-- Force-new: no existing-credential dropdown, only create-new (AIA channel setup). -->
+			<N8nButton
+				v-if="forceNewCredential && !modelValue"
+				variant="outline"
+				size="large"
+				:class="$style.select"
+				:disabled="disabled"
+				:data-testid="`${integrationType}-create-credential-button`"
+				@click="emit('create')"
+			>
+				<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+				{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+			</N8nButton>
+			<N8nText
+				v-else-if="forceNewCredential"
+				:class="$style.select"
+				size="large"
+				:data-testid="`${integrationType}-created-credential-name`"
+			>
+				{{ selectedCredentialName }}
+			</N8nText>
 			<AgentCredentialSelect
+				v-else
 				:model-value="modelValue"
 				:class="$style.select"
+				size="large"
 				:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
 				:credentials="credentials"
 				:credential-permissions="credentialPermissions"
@@ -86,20 +115,22 @@ const connectDisabled = computed(
 				@update:model-value="emit('update:modelValue', $event)"
 				@create="emit('create')"
 			/>
-			<N8nButton
-				v-if="canEdit"
-				variant="outline"
-				size="small"
-				icon="pen"
-				:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-				:data-testid="`${integrationType}-edit-credential`"
-				@click="emit('edit')"
-			/>
+			<N8nTooltip v-if="canEdit" :content="i18n.baseText('generic.edit')" placement="top">
+				<N8nIconButton
+					variant="ghost"
+					size="large"
+					icon-size="medium"
+					icon="pen"
+					:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
+					:data-testid="`${integrationType}-edit-credential`"
+					@click="emit('edit')"
+				/>
+			</N8nTooltip>
 			<N8nButton
 				v-if="showDisconnectButton"
 				variant="destructive"
 				:loading="loading"
-				size="small"
+				size="large"
 				:data-testid="`${integrationType}-disconnect-button`"
 				@click="emit('disconnect')"
 			>
@@ -108,10 +139,10 @@ const connectDisabled = computed(
 			</N8nButton>
 			<N8nButton
 				v-if="showConnectButton"
-				variant="solid"
+				variant="outline"
 				:disabled="connectDisabled"
-				:loading="loading || publishing"
-				size="small"
+				:loading="loading"
+				size="large"
 				:data-testid="`${integrationType}-connect-button`"
 				@click="emit('connect')"
 			>
@@ -137,6 +168,7 @@ const connectDisabled = computed(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
 }
 
 .label {

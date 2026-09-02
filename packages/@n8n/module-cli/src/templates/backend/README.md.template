@@ -1,0 +1,19 @@
+# {{TitleName}} — backend (placeholder)
+
+> **Nothing loads this directory.** The backend runtime discovers modules under
+> `packages/cli/src/modules/<name>`, where every real backend module lives.
+> This is a reserved path for the day frontend and backend halves of a module
+> sit side by side — it is not wired to anything today.
+
+To create a backend module that actually runs:
+
+```bash
+pnpm setup-backend-module
+```
+
+That writes `packages/cli/src/modules/<name>`; see
+`scripts/backend-module/backend-module-guide.md`.
+
+Keeping the `id` here identical to the frontend half (`{{name}}`) is what will
+make the two sides one module later — both gate off the same
+`/rest/module-settings` entry.

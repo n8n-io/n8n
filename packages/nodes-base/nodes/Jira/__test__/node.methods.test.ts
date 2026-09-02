@@ -1,16 +1,17 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IHttpRequestMethods, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { Jira } from '../Jira.node';
+import type * as _importType0 from '../GenericFunctions';
 
 const ISSUE_KEY = 'KEY-1';
 
-jest.mock('../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../GenericFunctions');
+vi.mock('../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../GenericFunctions');
 	return {
 		...originalModule,
-		jiraSoftwareCloudApiRequest: jest.fn(async function (
+		jiraSoftwareCloudApiRequest: vi.fn(async function (
 			endpoint: string,
 			method: IHttpRequestMethods,
 		) {

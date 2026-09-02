@@ -29,6 +29,22 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 	};
 });
 
+let mockExecution: IExecutionResponse | null = null;
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive `mockExecution` is always picked up.
+			get value() {
+				return { activeExecution: mockExecution };
+			},
+		})),
+	};
+});
+
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
 
@@ -850,11 +866,8 @@ describe('useDataSchema', () => {
 			],
 		])(
 			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
+			([node, runIndex, outputIndex, workflowExecution], output) => {
+				mockExecution = (workflowExecution ?? null) as IExecutionResponse | null;
 				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 			},
 		);

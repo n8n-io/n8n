@@ -101,9 +101,10 @@ GROUP BY 1, 2 ORDER BY 1;
 ```javascript
 import { sendMetrics, metric } from './send-metrics.mjs';
 
-await sendMetrics([
+// Fire-and-forget — best-effort telemetry, must never block CI.
+sendMetrics([
   metric('my-metric', 42.0, 'ms', { context: 'value' }),
-]);
+]).catch((err) => console.warn(`[metrics] send failed: ${err.message}`));
 ```
 
 **From a Playwright test:**

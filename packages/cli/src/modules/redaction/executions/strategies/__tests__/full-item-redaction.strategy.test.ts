@@ -2,6 +2,7 @@ import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
+
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from '../full-item-redaction.strategy';
 
@@ -436,6 +437,92 @@ describe('FullItemRedactionStrategy', () => {
 
 				expect(execution.data.resultData.redactedError).toBeUndefined();
 			});
+		});
+	});
+
+	describe('executionData subtrees', () => {
+		const stackNode = {
+			id: 'node-1',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+
+		it('clears item json and binary in nodeExecutionStack', async () => {
+			const execution = makeExecution({});
+			execution.data.executionData!.nodeExecutionStack = [
+				{
+					node: stackNode,
+					source: null,
+					data: {
+						main: [
+							[
+								{
+									json: { secret: 'stack-value' },
+									binary: { file: { mimeType: 'text/plain', data: 'abc' } },
+								},
+							],
+						],
+					},
+				},
+			];
+
+			await strategy.apply(execution, makeContext());
+
+			const item = execution.data.executionData!.nodeExecutionStack[0].data.main[0]![0];
+			expect(item.json).toEqual({});
+			expect(item.binary).toBeUndefined();
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+		});
+
+		it('moves item error to redaction.error in nodeExecutionStack', async () => {
+			const error = new NodeApiError(stackNode, { message: 'Bad Gateway' }, { httpCode: '502' });
+			const execution = makeExecution({});
+			execution.data.executionData!.nodeExecutionStack = [
+				{
+					node: stackNode,
+					source: null,
+					data: { main: [[{ json: { secret: 'stack-value' }, error }]] },
+				},
+			];
+
+			await strategy.apply(execution, makeContext());
+
+			const item = execution.data.executionData!.nodeExecutionStack[0].data.main[0]![0];
+			expect(item.error).toBeUndefined();
+			expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '502' });
+		});
+
+		it('clears item json and binary in waitingExecution', async () => {
+			const execution = makeExecution({});
+			execution.data.executionData!.waitingExecution = {
+				'Test Node': {
+					0: {
+						main: [
+							[
+								{
+									json: { secret: 'waiting-value' },
+									binary: { file: { mimeType: 'text/plain', data: 'abc' } },
+								},
+							],
+						],
+					},
+				},
+			};
+
+			await strategy.apply(execution, makeContext());
+
+			const item = execution.data.executionData!.waitingExecution['Test Node'][0].main[0]![0];
+			expect(item.json).toEqual({});
+			expect(item.binary).toBeUndefined();
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+		});
+
+		it('does nothing when executionData has no stack or waiting items', async () => {
+			const execution = makeExecution({});
+			await expect(strategy.apply(execution, makeContext())).resolves.toBeUndefined();
 		});
 	});
 

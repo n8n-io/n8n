@@ -1,0 +1,17 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "object",
+			"required": ["output_text"],
+			"properties": {
+				"output_text": {
+					"type": "string",
+					"description": "The summary text"
+				}
+			}
+		}
+	},
+	"version": 1
+}

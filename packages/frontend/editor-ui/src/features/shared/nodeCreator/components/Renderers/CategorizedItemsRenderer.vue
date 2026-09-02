@@ -128,6 +128,9 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 					</template>
 				</N8nTooltip>
 			</span>
+			<template v-if="$slots.trailing" #trailing>
+				<slot name="trailing" />
+			</template>
 		</CategoryItem>
 
 		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">

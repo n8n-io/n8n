@@ -1,4 +1,4 @@
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { ChatRequest, PlanMode, WebFetchApproval } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import {

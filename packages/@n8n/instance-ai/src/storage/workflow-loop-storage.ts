@@ -8,6 +8,8 @@ import type {
 } from '../workflow-loop/workflow-loop-state';
 import {
 	attemptRecordSchema,
+	isPlannedWorkflowBuildOwner,
+	resolveWorkflowBuildOwner,
 	workflowBuildOutcomeSchema,
 	workflowLoopStateSchema,
 } from '../workflow-loop/workflow-loop-state';
@@ -23,6 +25,35 @@ const workItemRecordSchema = z.object({
 const loopStorageSchema = z.record(z.string(), workItemRecordSchema);
 
 export type WorkflowLoopWorkItemRecord = z.infer<typeof workItemRecordSchema>;
+
+export interface WorkflowSetupRoutingClaim {
+	claimId: string;
+	claimedAt: string;
+	expiresAt: string;
+}
+
+function clearSetupRoutingClaim(state: WorkflowLoopState): WorkflowLoopState {
+	const next: WorkflowLoopState = { ...state };
+	delete next.setupRoutingClaimId;
+	delete next.setupRoutingClaimedAt;
+	delete next.setupRoutingClaimExpiresAt;
+	return next;
+}
+
+function hasUnexpiredSetupRoutingClaim(state: WorkflowLoopState, nowIso: string): boolean {
+	if (!state.setupRoutingClaimId) return false;
+
+	const expiresAtMs = Date.parse(state.setupRoutingClaimExpiresAt ?? '');
+	if (!Number.isFinite(expiresAtMs)) return true;
+
+	return expiresAtMs > Date.parse(nowIso);
+}
+
+function isPlannedWorkItem(record: WorkflowLoopWorkItemRecord): boolean {
+	return isPlannedWorkflowBuildOwner(
+		resolveWorkflowBuildOwner(record.state, record.lastBuildOutcome),
+	);
+}
 
 export class WorkflowLoopStorage {
 	constructor(private readonly memory: PatchableThreadMemory) {}
@@ -64,6 +95,108 @@ export class WorkflowLoopStorage {
 			}
 		}
 		return null;
+	}
+
+	async listWorkItems(threadId: string): Promise<WorkflowLoopWorkItemRecord[]> {
+		const all = await this.loadAll(threadId);
+		return Object.values(all);
+	}
+
+	async claimSetupRouting(
+		threadId: string,
+		workItemId: string,
+		claim: WorkflowSetupRoutingClaim,
+	): Promise<WorkflowLoopWorkItemRecord | null> {
+		let claimed: WorkflowLoopWorkItemRecord | null = null;
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record) return null;
+				if (record.state.setupRoutedAt || isPlannedWorkItem(record)) return null;
+				if (hasUnexpiredSetupRoutingClaim(record.state, claim.claimedAt)) return null;
+
+				const state: WorkflowLoopState = {
+					...record.state,
+					setupRoutingClaimId: claim.claimId,
+					setupRoutingClaimedAt: claim.claimedAt,
+					setupRoutingClaimExpiresAt: claim.expiresAt,
+				};
+				claimed = { state, attempts: record.attempts, lastBuildOutcome: record.lastBuildOutcome };
+				all[workItemId] = claimed;
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: all,
+					},
+				};
+			},
+		});
+		return claimed;
+	}
+
+	async markSetupRouted(
+		threadId: string,
+		workItemId: string,
+		claimId: string,
+		routedAt: string,
+	): Promise<boolean> {
+		let marked = false;
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record) return null;
+				if (record.state.setupRoutedAt || isPlannedWorkItem(record)) return null;
+				if (record.state.setupRoutingClaimId !== claimId) return null;
+
+				all[workItemId] = {
+					state: {
+						...clearSetupRoutingClaim(record.state),
+						setupRoutedAt: routedAt,
+					},
+					attempts: record.attempts,
+					lastBuildOutcome: record.lastBuildOutcome,
+				};
+				marked = true;
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: all,
+					},
+				};
+			},
+		});
+		return marked;
+	}
+
+	async releaseSetupRoutingClaim(
+		threadId: string,
+		workItemId: string,
+		claimId: string,
+	): Promise<void> {
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record || record.state.setupRoutingClaimId !== claimId) return null;
+
+				all[workItemId] = {
+					state: clearSetupRoutingClaim(record.state),
+					attempts: record.attempts,
+					lastBuildOutcome: record.lastBuildOutcome,
+				};
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: all,
+					},
+				};
+			},
+		});
 	}
 
 	private async loadAll(threadId: string): Promise<Record<string, WorkflowLoopWorkItemRecord>> {

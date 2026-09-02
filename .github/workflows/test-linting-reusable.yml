@@ -12,10 +12,12 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.15.0
+        default: 26.5.1
 
 env:
-  NODE_OPTIONS: --max-old-space-size=7168
+  # Inherited by every worker turbo spawns, so the real budget is
+  # concurrency x cap: lint:ci runs 2 x 6 GB, fitting the runner's 15.2 GB.
+  NODE_OPTIONS: --max-old-space-size=6144
 
 jobs:
   lint:

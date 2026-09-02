@@ -3,6 +3,7 @@ import type Bull from 'bull';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	IDataObject,
 	IExecuteResponsePromiseData,
 	IRun,
 	StructuredChunk,
@@ -25,6 +26,9 @@ export type JobData = {
 	projectId?: string;
 	projectName?: string;
 
+	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
+	encryptedRunnerIdentity?: string;
+
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
 	isMcpExecution?: boolean;
@@ -41,6 +45,8 @@ export type JobData = {
 		/** The n8n node name that provides this tool. */
 		sourceNodeName?: string;
 	};
+	/** The MCP request as node input, so the worker gives the tool node the same `$json` as direct mode. */
+	mcpToolInput?: IDataObject;
 };
 
 export type JobResult = {

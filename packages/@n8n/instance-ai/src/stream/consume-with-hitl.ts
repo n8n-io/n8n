@@ -1,3 +1,4 @@
+import type { RedactionOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
@@ -7,6 +8,7 @@ import {
 	normalizeStreamSource,
 	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
@@ -33,6 +35,8 @@ export interface ConsumeWithHitlOptions {
 	resumeOptions?: Record<string, unknown>;
 	/** Native agent persistence owner for suspended sub-agent state. */
 	persistence?: { threadId: string; resourceId: string };
+	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 }
 
 export interface ConsumeWithHitlResult {
@@ -89,6 +93,7 @@ export async function consumeStreamWithHitl(
 			eventBus: options.eventBus,
 			signal: options.abortSignal,
 			logger: options.logger,
+			outputRedaction: options.outputRedaction,
 		},
 		control: {
 			mode: 'auto',
@@ -122,6 +127,8 @@ export interface ConsumeStreamCascadingOptions {
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
+	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 }
 
 export type ConsumeStreamCascadingResult =
@@ -130,6 +137,7 @@ export type ConsumeStreamCascadingResult =
 			agentRunId: string;
 			text: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  }
 	| {
 			status: 'suspended';
@@ -138,6 +146,7 @@ export type ConsumeStreamCascadingResult =
 			confirmationEvent?: ConfirmationRequestEvent;
 			text?: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  };
 
 /**
@@ -168,6 +177,7 @@ export async function consumeStreamCascading(
 			eventBus: options.eventBus,
 			signal: options.abortSignal,
 			logger: options.logger,
+			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },
 	});
@@ -180,6 +190,7 @@ export async function consumeStreamCascading(
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 			...(result.text ? { text: result.text } : {}),
 			workSummary: result.workSummary,
+			...(result.usage ? { usage: result.usage } : {}),
 		};
 	}
 
@@ -188,5 +199,6 @@ export async function consumeStreamCascading(
 		agentRunId: result.agentRunId,
 		text: result.text ?? stream.text ?? Promise.resolve(''),
 		workSummary: result.workSummary,
+		...(result.usage ? { usage: result.usage } : {}),
 	};
 }

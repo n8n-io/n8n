@@ -14,7 +14,7 @@ import type { SDKFunctions } from './interpreter';
 import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
-/** Helper to get the first call argument from a Jest mock with proper typing */
+/** Helper to get the first call argument from a Vitest mock with proper typing */
 function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;
@@ -806,6 +806,28 @@ describe('AST Interpreter', () => {
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
 
+		it('reports an actionable, non-double-wrapped message for disallowed methods', () => {
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.join(', ');
+			`;
+			let caught: unknown;
+			try {
+				interpretSDKCode(code, sdkFunctions);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(SecurityError);
+			const message = (caught as SecurityError).message;
+			expect(message).toContain("Method 'join' is not an allowed SDK method");
+			expect(message).toContain('Allowed methods:');
+			expect(message).toContain('add');
+			// No double-wrap: the sentence must not be quoted inside "Security violation: '...'".
+			expect(message).not.toContain("Security violation: 'Method");
+			// Internal methods are not advertised as allowed.
+			expect(message).not.toContain('toJSON');
+		});
+
 		it('should allow connect() method on workflow builder', () => {
 			const connectMock = vi.fn();
 			sdkFunctions.workflow = vi.fn(() => ({
@@ -817,6 +839,22 @@ describe('AST Interpreter', () => {
 			`;
 			interpretSDKCode(code, sdkFunctions);
 			expect(connectMock).toHaveBeenCalledWith('source', 0, 'target', 0);
+		});
+
+		it("should forward group()'s options object to the workflow builder", () => {
+			const groupMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
+				group: groupMock,
+			}));
+			// Members are irrelevant here — this pins the third argument surviving evaluation.
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.group('Ingestion', [], { description: 'Pulls the CRM contacts' });
+			`;
+			interpretSDKCode(code, sdkFunctions);
+			expect(groupMock).toHaveBeenCalledWith('Ingestion', [], {
+				description: 'Pulls the CRM contacts',
+			});
 		});
 	});
 

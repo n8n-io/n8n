@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -45,7 +45,7 @@ vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
 
 // Mock telemetry
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: trackMock,
 	}),
@@ -65,17 +65,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-
-// Mock useWorkflowState
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(() => ({
-			isWorkflowRunning: ref(false),
-		})),
-	};
-});
 
 // Mock useWorkflowSaving
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
@@ -105,7 +94,7 @@ vi.mock('@/app/composables/useBrowserNotifications', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

@@ -1,6 +1,9 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { Telemetry } from '@/telemetry';
+
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import {
@@ -9,9 +12,6 @@ import {
 	dataTableProjectIdSchema,
 	successMessageOutputSchema,
 } from '../schemas';
-
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { Telemetry } from '@/telemetry';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table containing the column'),

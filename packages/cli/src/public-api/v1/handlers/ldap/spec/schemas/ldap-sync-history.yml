@@ -1,0 +1,58 @@
+type: object
+additionalProperties: false
+description: LDAP synchronization history record.
+required:
+  - id
+  - runMode
+  - status
+  - startedAt
+  - endedAt
+  - scanned
+  - created
+  - updated
+  - disabled
+  - error
+properties:
+  id:
+    type: integer
+    description: Unique identifier for this sync run.
+    example: 1
+  runMode:
+    type: string
+    enum: [dry, live]
+    description: Whether the sync was a dry run or applied live.
+    example: live
+  status:
+    type: string
+    description: Status of the synchronization (e.g., success, error).
+    example: success
+  startedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the synchronization started.
+    example: 2025-07-21T10:30:00Z
+  endedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the synchronization completed.
+    example: 2025-07-21T10:35:00Z
+  scanned:
+    type: integer
+    description: Number of LDAP entries scanned during synchronization.
+    example: 42
+  created:
+    type: integer
+    description: Number of new users created during synchronization.
+    example: 5
+  updated:
+    type: integer
+    description: Number of existing users updated during synchronization.
+    example: 3
+  disabled:
+    type: integer
+    description: Number of users disabled during synchronization.
+    example: 0
+  error:
+    type: string
+    description: Error message if the synchronization failed. Empty string if successful.
+    example: ''

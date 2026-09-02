@@ -1,0 +1,114 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What are the best practices for growing tomatoes?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01GLqkjpzUMgPuSRULxHa5yL\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"# Best Practices for Growing Tomatoes\\n\\n**Location & Sunlight**\\n- 6-8 hours of direct sunlight daily\\n- Well-draining soil rich in organic matter\\n\\n**Planting**\\n- Start seeds indoors 6-8 weeks before last frost, or buy seedlings\\n- Plant deep; they'll root along buried stems\\n- Space 24-36 inches apart\\n\\n**Watering**\\n- 1-2 inches per week, consistently\\n- Water at soil level (not leaves) to prevent disease\\n- Morning watering is best\\n\\n**Support & Pruning**\\n- Use cages, stakes, or trellises\\n- Remove lower leaves as plant grows\\n- Prune suckers (shoots between main stem and branches) for determinate varieties\\n\\n**Fertilizing**\\n- Feed every 2-3 weeks once flowering starts\\n- Use balanced or low-nitrogen fertilizer to encourage fruit over foliage\\n\\n**Pest & Disease Management**\\n- Watch for aphids, hornworms, and spider mites\\n- Improve air circulation to prevent fungal diseases\\n- Mulch to reduce soil-borne disease\\n\\n**Harvesting**\\n- Pick when fully colored but still slightly firm\\n- Tomatoes ripen faster at room temperature than on the vine\\n\\n**Tip:** Choose varieties suited to your climate (determinate for short seasons, indeterminate for long ones).\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":27,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":314,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:02Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:01Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:02Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371c08be35b8b-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:05 GMT",
+			"request-id": "req_011CcLBRYaf78gMByvMpqsq6",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=.K1zPmUQVP1QIfpeAAvIg4MB4Kf2lWtfgKmTuUnx3qc-1782217200.7297294-1.0.1.1-TzvFEcGYqErtCOphUqLvucH4zF9v82KBTCgYn1aXgoQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-9793e696e21e2f091a672b861c5d75ec-6f0d8b8396376a0b-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Generate a short title and a single emoji for a conversation based on the user message.\nRespond with ONLY a JSON object: {\"title\": \"...\", \"emoji\": \"...\"}\nRules:\n- Title: 2 to 6 words, max 50 characters, sentence case\n- Title must not contain emoji, quotes, colons, or markdown formatting\n- Emoji: exactly one emoji that represents the topic\n- Respond with the JSON object only, no other text"
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "\nHere's the conversation:\n<conversation>\nWhat are the best practices for growing tomatoes?\n</conversation>"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01TRjwDEKZ8uiR9bCwrUogZH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"```json\\n{\\\"title\\\": \\\"Best practices for growing tomatoes\\\", \\\"emoji\\\": \\\"🍅\\\"}\\n```\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":137,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":27,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:06Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:05Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371dd6e3d5b8b-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:06 GMT",
+			"request-id": "req_011CcLBRssX2Dipd62bhqG3E",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=lE.LgeBrW2.1kdeoWNN6j5cmTwW8NtkVHgeyBZM5iYs-1782217205.3508515-1.0.1.1-pI8hSg9LfrUITWFaYIb9iQ5IRltsF2iesOHSMl0KZo0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-88445398f6d007a9d9d7cec4dc268570-ab7674ebc4092403-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

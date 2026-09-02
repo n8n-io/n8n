@@ -4,6 +4,7 @@ import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createConnectedTool, extractDomain, withSnapshotEnvelope } from './helpers';
+import { waitUntilField } from './navigation';
 
 export function createTabTools(connection: BrowserConnection): ToolDefinition[] {
 	return [tabOpen(connection), tabList(connection), tabFocus(connection), tabClose(connection)];
@@ -11,6 +12,7 @@ export function createTabTools(connection: BrowserConnection): ToolDefinition[] 
 
 const tabOpenSchema = z.object({
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
+	waitUntil: waitUntilField,
 });
 
 const tabOpenOutputSchema = withSnapshotEnvelope({
@@ -26,7 +28,7 @@ function tabOpen(connection: BrowserConnection): ToolDefinition {
 		'Open a new tab. Optionally navigate to a URL.',
 		tabOpenSchema,
 		async (state, input) => {
-			const pageInfo = await state.adapter.newPage(input.url);
+			const pageInfo = await state.adapter.newPage(input.url, input.waitUntil);
 			state.pages.set(pageInfo.id, pageInfo);
 			state.activePageId = pageInfo.id;
 			return formatCallToolResult({
@@ -95,7 +97,7 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 			const pages = await state.adapter.listTabs();
 			const target = pages.find((p) => p.id === input.pageId);
 			if (!target) {
-				const { PageNotFoundError } = await import('../errors');
+				const { PageNotFoundError } = await import('../errors.js');
 				throw new PageNotFoundError(input.pageId);
 			}
 			await state.adapter.focusPage(input.pageId);

@@ -1,6 +1,6 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
@@ -10,7 +10,7 @@ import { computed } from 'vue';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
@@ -273,7 +273,7 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = workflowsStore.getWorkflowRunData;
+		const runData: IRunData | null = workflowExecutionStateStore.value.activeExecutionRunData;
 
 		const nodeRunData = runData?.[nodeName];
 

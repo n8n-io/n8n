@@ -81,8 +81,12 @@ export interface IExpressionEvaluator {
 	 * Acquire a bridge for an owner object (e.g. an Expression instance).
 	 * Must be called before evaluate(). The same object must be passed as
 	 * the caller argument to evaluate().
+	 *
+	 * Returns whether a bridge was newly acquired: `false` means the owner
+	 * already held one, so the current scope must not release it (release is
+	 * not reference-counted).
 	 */
-	acquire(owner: object): Promise<void>;
+	acquire(owner: object): Promise<boolean>;
 
 	/**
 	 * Release the bridge held for an owner object.
@@ -133,10 +137,10 @@ export interface NodeProxy {
  * type.
  *
  * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
- * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
- * which structured-clones the value and erases nominal types. The handlers
- * pass the clone through verbatim, so a precise return type would be
- * misleading. Matches the `NodeProxy` return type for the same reason.
+ * `ivm.Callback` structured-clones results as they pass between isolates,
+ * which erases nominal types. The handlers pass the clone through verbatim,
+ * so a precise return type would be misleading. Matches the `NodeProxy`
+ * return type for the same reason.
  */
 export interface InputProxy {
 	first?: () => unknown;

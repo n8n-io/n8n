@@ -1,15 +1,17 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleChat } from '../../GoogleChat.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../GenericFunctions');
+vi.mock('../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(),
+		googleApiRequest: vi.fn(),
 	};
 });
 
@@ -23,7 +25,7 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -78,9 +80,7 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-		(genericFunctions.googleApiRequest as jest.Mock).mockRejectedValueOnce(
-			new Error('space_not_found'),
-		);
+		(genericFunctions.googleApiRequest as Mock).mockRejectedValueOnce(new Error('space_not_found'));
 
 		const result = await googleChat.execute.call(mockExecuteFunctions);
 
@@ -106,9 +106,7 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(genericFunctions.googleApiRequest as jest.Mock).mockRejectedValueOnce(
-			new Error('space_not_found'),
-		);
+		(genericFunctions.googleApiRequest as Mock).mockRejectedValueOnce(new Error('space_not_found'));
 
 		await expect(googleChat.execute.call(mockExecuteFunctions)).rejects.toThrow('space_not_found');
 		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();

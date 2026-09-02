@@ -1,8 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { OnPubSubEvent, PubSubMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { PubSubEventBus } from '../pubsub.eventbus';
 import { PubSubRegistry } from '../pubsub.registry';
@@ -53,7 +53,7 @@ describe('PubSubRegistry', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 		metadata = Container.get(PubSubMetadata);
 		pubsubEventBus = Container.get(PubSubEventBus);
@@ -63,7 +63,7 @@ describe('PubSubRegistry', () => {
 	it('should call decorated methods when events are emitted', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
+		const onMainInstanceSpy = vi.spyOn(testService, 'onMainInstance');
 
 		const pubSubRegistry = new PubSubRegistry(
 			logger,
@@ -80,8 +80,8 @@ describe('PubSubRegistry', () => {
 	it('should respect instance type filtering when handling events', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
-		const onWorkerInstanceSpy = jest.spyOn(testService, 'onWorkerInstance');
+		const onMainInstanceSpy = vi.spyOn(testService, 'onMainInstance');
+		const onWorkerInstanceSpy = vi.spyOn(testService, 'onWorkerInstance');
 
 		// Test with main leader instance
 		const mainPubSubRegistry = new PubSubRegistry(
@@ -98,7 +98,7 @@ describe('PubSubRegistry', () => {
 		expect(onWorkerInstanceSpy).not.toHaveBeenCalled();
 
 		// Test with worker instance
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		pubsubEventBus.removeAllListeners();
 
 		const workerPubSub = new PubSubRegistry(
@@ -118,9 +118,9 @@ describe('PubSubRegistry', () => {
 	it('should respect instance role filtering when handling events', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
-		const onFollowerInstanceSpy = jest.spyOn(testService, 'onFollowerInstance');
-		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
+		const onLeaderInstanceSpy = vi.spyOn(testService, 'onLeaderInstance');
+		const onFollowerInstanceSpy = vi.spyOn(testService, 'onFollowerInstance');
+		const onAllInstancesSpy = vi.spyOn(testService, 'onAllInstances');
 
 		// Test with leader instance
 		const pubSubRegistry = new PubSubRegistry(
@@ -150,7 +150,7 @@ describe('PubSubRegistry', () => {
 		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
 
 		// Test with follower instance
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		pubsubEventBus.removeAllListeners();
 
 		const followerPubSubRegistry = new PubSubRegistry(
@@ -178,7 +178,7 @@ describe('PubSubRegistry', () => {
 	it('should handle both instance type and role filtering together', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
+		const onLeaderInstanceSpy = vi.spyOn(testService, 'onLeaderInstance');
 
 		// Test with main leader instance
 		const pubSubRegistry = new PubSubRegistry(
@@ -205,7 +205,7 @@ describe('PubSubRegistry', () => {
 	it('should handle dynamic role changes at runtime', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onLeaderInstanceSpy = jest.spyOn(testService, 'onLeaderInstance');
+		const onLeaderInstanceSpy = vi.spyOn(testService, 'onLeaderInstance');
 
 		// Create a mutable instance settings object to simulate role changes
 		const instanceSettings = mock<InstanceSettings>({
@@ -252,7 +252,7 @@ describe('PubSubRegistry', () => {
 	it('should clean up event handlers when reinitializing', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
+		const onMainInstanceSpy = vi.spyOn(testService, 'onMainInstance');
 
 		const pubSubRegistry = new PubSubRegistry(
 			logger,
@@ -280,7 +280,7 @@ describe('PubSubRegistry', () => {
 	it('should handle multiple reinitializations without memory leaks', () => {
 		const TestService = createTestServiceClass();
 		const testService = Container.get(TestService);
-		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
+		const onAllInstancesSpy = vi.spyOn(testService, 'onAllInstances');
 
 		const pubSubRegistry = new PubSubRegistry(
 			logger,

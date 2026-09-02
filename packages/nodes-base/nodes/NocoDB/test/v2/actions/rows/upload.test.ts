@@ -2,13 +2,17 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/upload.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		apiRequestAllItems: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		apiRequestAllItems: { call: vi.fn() },
 	};
 });
 
@@ -17,17 +21,17 @@ describe('NocoDB Rows Upload Action', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
-		(apiRequestAllItems.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
+		(apiRequestAllItems.call as Mock).mockClear();
 	});
 
 	const mockReturnValue = { id: '1', fields: { testFieldName: [] } };
@@ -35,7 +39,7 @@ describe('NocoDB Rows Upload Action', () => {
 	describe('base64 upload mode', () => {
 		it('should upload a file successfully in base64 mode', async () => {
 			// Mock parameters
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -48,7 +52,7 @@ describe('NocoDB Rows Upload Action', () => {
 			});
 
 			// Mock API response
-			(apiRequest.call as jest.Mock).mockResolvedValueOnce(mockReturnValue);
+			(apiRequest.call as Mock).mockResolvedValueOnce(mockReturnValue);
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -108,7 +112,7 @@ describe('NocoDB Rows Upload Action', () => {
 	describe('url upload mode', () => {
 		it('should upload a file successfully in url mode when existing field is empty', async () => {
 			// Mock parameters
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -119,7 +123,7 @@ describe('NocoDB Rows Upload Action', () => {
 			});
 
 			// Mock API responses
-			(apiRequest.call as jest.Mock)
+			(apiRequest.call as Mock)
 				.mockResolvedValueOnce({ fields: { testFieldName: [] } }) // GET existing data
 				.mockResolvedValueOnce({ records: [mockReturnValue] }); // PATCH update
 
@@ -175,7 +179,7 @@ describe('NocoDB Rows Upload Action', () => {
 
 		it('should upload a file successfully in url mode when existing field is an array', async () => {
 			// Mock parameters
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -186,7 +190,7 @@ describe('NocoDB Rows Upload Action', () => {
 			});
 
 			// Mock API responses
-			(apiRequest.call as jest.Mock)
+			(apiRequest.call as Mock)
 				.mockResolvedValueOnce({
 					fields: { testFieldName: [{ url: 'http://example.com/existing-file.jpg' }] },
 				}) // GET existing data
@@ -225,7 +229,7 @@ describe('NocoDB Rows Upload Action', () => {
 
 		it('should upload a file successfully in url mode when existing field is a string', async () => {
 			// Mock parameters
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -236,7 +240,7 @@ describe('NocoDB Rows Upload Action', () => {
 			});
 
 			// Mock API responses
-			(apiRequest.call as jest.Mock)
+			(apiRequest.call as Mock)
 				.mockResolvedValueOnce({
 					fields: { testFieldName: '[{"url":"http://example.com/existing-file.jpg"}]' },
 				}) // GET existing data as string
@@ -277,7 +281,7 @@ describe('NocoDB Rows Upload Action', () => {
 	describe('error handling', () => {
 		it('should return an error object when API request fails and continueOnFail is true', async () => {
 			// Mock parameters for base64 mode
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -288,11 +292,11 @@ describe('NocoDB Rows Upload Action', () => {
 				if (name === 'base64value') return 'base64encodeddata';
 				return undefined;
 			});
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 			// Mock API response to throw an error
 			const apiError = new Error('API request failed');
-			(apiRequest.call as jest.Mock).mockRejectedValueOnce(apiError);
+			(apiRequest.call as Mock).mockRejectedValueOnce(apiError);
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -303,7 +307,7 @@ describe('NocoDB Rows Upload Action', () => {
 
 		it('should throw NodeApiError when API request fails and continueOnFail is false', async () => {
 			// Mock parameters for base64 mode
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'testProjectId';
 				if (name === 'table') return 'testTable';
 				if (name === 'id') return 'testRowId';
@@ -314,11 +318,11 @@ describe('NocoDB Rows Upload Action', () => {
 				if (name === 'base64value') return 'base64encodeddata';
 				return undefined;
 			});
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 			// Mock API response to throw an error
 			const apiError = new Error('API request failed');
-			(apiRequest.call as jest.Mock).mockRejectedValueOnce(apiError);
+			(apiRequest.call as Mock).mockRejectedValueOnce(apiError);
 
 			await expect(execute.call(mockExecuteFunctions)).rejects.toThrow('API request failed');
 		});

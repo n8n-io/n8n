@@ -1,14 +1,16 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 
-jest.mock('@n8n_io/license-sdk');
+vi.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -157,7 +159,7 @@ describe('License', () => {
 
 	test('getMainPlan() returns the latest main entitlement', async () => {
 		// mock entitlements response
-		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
+		License.prototype.getCurrentEntitlements = vi.fn().mockReturnValue([
 			{
 				id: '84a9c852-1349-478d-9ad1-b3f55510e477',
 				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
@@ -194,7 +196,7 @@ describe('License', () => {
 				validTo: makeDateWithHourOffset(1),
 			},
 		]);
-		jest.fn(license.getMainPlan).mockReset();
+		vi.fn(license.getMainPlan).mockReset();
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan?.id).toBe(MOCK_MAIN_PLAN_ID);
@@ -202,7 +204,7 @@ describe('License', () => {
 
 	test('getMainPlan() returns undefined if there is no main plan', async () => {
 		// mock entitlements response
-		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
+		License.prototype.getCurrentEntitlements = vi.fn().mockReturnValue([
 			{
 				id: '84a9c852-1349-478d-9ad1-b3f55510e477',
 				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
@@ -222,7 +224,7 @@ describe('License', () => {
 				validTo: makeDateWithHourOffset(1),
 			},
 		]);
-		jest.fn(license.getMainPlan).mockReset();
+		vi.fn(license.getMainPlan).mockReset();
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan).toBeUndefined();
@@ -256,7 +258,7 @@ describe('License', () => {
 			},
 		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
 			const logger = mockLogger();
-			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
+			const reloadSpy = vi.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
 			const instanceSettings = mock<InstanceSettings>({ instanceType });
 			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
 
@@ -270,7 +272,7 @@ describe('License', () => {
 
 			await license.init();
 
-			const licenseManager = LicenseManager as jest.MockedClass<typeof LicenseManager>;
+			const licenseManager = LicenseManager as MockedClass<typeof LicenseManager>;
 			const calls = licenseManager.mock.calls;
 			const licenseManagerCall = calls[calls.length - 1][0];
 			const onExpirySoon = licenseManagerCall.onExpirySoon;
@@ -285,6 +287,52 @@ describe('License', () => {
 			}
 		});
 	});
+
+	describe('device fingerprint', () => {
+		const getDeviceFingerprint = () => {
+			const licenseManager = LicenseManager as MockedClass<typeof LicenseManager>;
+			const calls = licenseManager.mock.calls;
+			return calls[calls.length - 1][0].deviceFingerprint as () => string;
+		};
+
+		const globalConfig = mock<GlobalConfig>({
+			license: licenseConfig,
+			multiMainSetup: { enabled: false },
+		});
+
+		it('should use instanceId when it is at least 32 characters long', async () => {
+			const longInstanceId = 'a'.repeat(64);
+			const instanceSettings = mock<InstanceSettings>({
+				instanceId: longInstanceId,
+				derivedInstanceId: 'b'.repeat(64),
+				instanceType: 'main',
+				isLeader: true,
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+
+			expect(getDeviceFingerprint()()).toEqual(longInstanceId);
+		});
+
+		it('should fall back to derivedInstanceId and warn once when instanceId is too short', async () => {
+			const derivedInstanceId = 'b'.repeat(64);
+			const instanceSettings = mock<InstanceSettings>({
+				instanceId: 'short-id',
+				derivedInstanceId,
+				instanceType: 'main',
+				isLeader: true,
+			});
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			license = new License(logger, instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+
+			const deviceFingerprint = getDeviceFingerprint();
+			expect(deviceFingerprint()).toEqual(derivedInstanceId);
+			expect(deviceFingerprint()).toEqual(derivedInstanceId);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
+	});
 });
 
 describe('License', () => {
@@ -297,7 +345,7 @@ describe('License', () => {
 		});
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -307,7 +355,7 @@ describe('License', () => {
 		});
 
 		it('should register callback and call it on license reload', async () => {
-			const callback = jest.fn();
+			const callback = vi.fn();
 			license.onCertRefresh(callback);
 
 			await license.reload();
@@ -316,8 +364,8 @@ describe('License', () => {
 		});
 
 		it('should call multiple registered callbacks', async () => {
-			const callback1 = jest.fn();
-			const callback2 = jest.fn();
+			const callback1 = vi.fn();
+			const callback2 = vi.fn();
 
 			license.onCertRefresh(callback1);
 			license.onCertRefresh(callback2);
@@ -329,7 +377,7 @@ describe('License', () => {
 		});
 
 		it('should return unsubscribe function that removes callback', async () => {
-			const callback = jest.fn();
+			const callback = vi.fn();
 			const unsubscribe = license.onCertRefresh(callback);
 
 			unsubscribe();
@@ -339,10 +387,10 @@ describe('License', () => {
 		});
 
 		it('should continue calling other callbacks if one throws', async () => {
-			const errorCallback = jest.fn().mockImplementation(() => {
+			const errorCallback = vi.fn().mockImplementation(() => {
 				throw new Error('Callback error');
 			});
-			const callback2 = jest.fn();
+			const callback2 = vi.fn();
 
 			license.onCertRefresh(errorCallback);
 			license.onCertRefresh(callback2);
@@ -370,7 +418,7 @@ describe('License', () => {
 			);
 			await license.init();
 
-			const callback = jest.fn();
+			const callback = vi.fn();
 			license.onCertRefresh(callback);
 
 			await license.reload();
@@ -459,7 +507,7 @@ describe('License', () => {
 		});
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -469,7 +517,7 @@ describe('License', () => {
 		});
 
 		it('should return number of days until expiry for future date', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
 
 			const result = license.getExpiringInDays();
 
@@ -477,7 +525,7 @@ describe('License', () => {
 		});
 
 		it('should return 0 for already expired licenses', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-24)); // 1 day ago
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(-24)); // 1 day ago
 
 			const result = license.getExpiringInDays();
 
@@ -485,7 +533,7 @@ describe('License', () => {
 		});
 
 		it('should return undefined when no expiry date exists', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(null);
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(null);
 
 			const result = license.getExpiringInDays();
 
@@ -494,7 +542,7 @@ describe('License', () => {
 
 		it('should handle exactly 0 hours remaining', () => {
 			const now = new Date();
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(now);
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(now);
 
 			const result = license.getExpiringInDays();
 
@@ -502,7 +550,7 @@ describe('License', () => {
 		});
 
 		it('should handle dates far in the future', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(365 * 24)); // 1 year
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(365 * 24)); // 1 year
 
 			const result = license.getExpiringInDays();
 
@@ -510,7 +558,7 @@ describe('License', () => {
 		});
 
 		it('should handle fractional days by ceiling', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(37)); // 1.5+ days
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(37)); // 1.5+ days
 
 			const result = license.getExpiringInDays();
 
@@ -519,7 +567,7 @@ describe('License', () => {
 
 		it('should handle invalid date (NaN)', () => {
 			const invalidDate = new Date('invalid');
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(invalidDate);
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(invalidDate);
 
 			const result = license.getExpiringInDays();
 
@@ -527,7 +575,7 @@ describe('License', () => {
 		});
 
 		it('should return maximum 0 for negative day differences', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-100)); // 4+ days ago
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(-100)); // 4+ days ago
 
 			const result = license.getExpiringInDays();
 
@@ -544,7 +592,7 @@ describe('License', () => {
 		});
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -554,7 +602,7 @@ describe('License', () => {
 		});
 
 		it('should return number of days until termination for future date', () => {
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(48)); // 2 days
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(48)); // 2 days
 
 			const result = license.getTerminatingInDays();
 
@@ -562,7 +610,7 @@ describe('License', () => {
 		});
 
 		it('should return 0 for already terminated licenses', () => {
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-48)); // 2 days ago
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(-48)); // 2 days ago
 
 			const result = license.getTerminatingInDays();
 
@@ -570,7 +618,7 @@ describe('License', () => {
 		});
 
 		it('should return undefined when no termination date exists', () => {
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(null);
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(null);
 
 			const result = license.getTerminatingInDays();
 
@@ -579,7 +627,7 @@ describe('License', () => {
 
 		it('should handle exactly 0 hours until termination', () => {
 			const now = new Date();
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(now);
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(now);
 
 			const result = license.getTerminatingInDays();
 
@@ -587,7 +635,7 @@ describe('License', () => {
 		});
 
 		it('should handle termination dates far in the future', () => {
-			License.prototype.getTerminationDate = jest
+			License.prototype.getTerminationDate = vi
 				.fn()
 				.mockReturnValue(makeDateWithHourOffset(720 * 24)); // 2 years
 
@@ -597,7 +645,7 @@ describe('License', () => {
 		});
 
 		it('should handle fractional days by ceiling', () => {
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(13)); // 0.5+ days
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(13)); // 0.5+ days
 
 			const result = license.getTerminatingInDays();
 
@@ -606,7 +654,7 @@ describe('License', () => {
 
 		it('should handle invalid date (NaN)', () => {
 			const invalidDate = new Date('invalid');
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(invalidDate);
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(invalidDate);
 
 			const result = license.getTerminatingInDays();
 
@@ -614,9 +662,7 @@ describe('License', () => {
 		});
 
 		it('should return maximum 0 for negative day differences', () => {
-			License.prototype.getTerminationDate = jest
-				.fn()
-				.mockReturnValue(makeDateWithHourOffset(-200)); // 8+ days ago
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(-200)); // 8+ days ago
 
 			const result = license.getTerminatingInDays();
 
@@ -633,7 +679,7 @@ describe('License', () => {
 		});
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -643,8 +689,8 @@ describe('License', () => {
 		});
 
 		it('should handle both dates being set independently', () => {
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(168)); // 7 days
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(168)); // 7 days
 
 			const expiringDays = license.getExpiringInDays();
 			const terminatingDays = license.getTerminatingInDays();
@@ -655,9 +701,9 @@ describe('License', () => {
 
 		it('should handle different precisions for dates', () => {
 			// Expiry in 2.3 days
-			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(55));
+			License.prototype.getExpiryDate = vi.fn().mockReturnValue(makeDateWithHourOffset(55));
 			// Termination in 5.7 days
-			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(137));
+			License.prototype.getTerminationDate = vi.fn().mockReturnValue(makeDateWithHourOffset(137));
 
 			const expiringDays = license.getExpiringInDays();
 			const terminatingDays = license.getTerminatingInDays();

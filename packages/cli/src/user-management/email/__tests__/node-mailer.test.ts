@@ -2,11 +2,16 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
-import { mock } from 'jest-mock-extended';
-import { join as pathJoin } from 'path';
 import type { Transporter } from 'nodemailer';
+import { join as pathJoin } from 'path';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeMailer } from '@/user-management/email/node-mailer';
+
+// This suite reads real template files; opt out of the global node:fs/promises mock.
+vi.unmock('node:fs/promises');
+vi.unmock('fs/promises');
 
 const templatesDir = pathJoin(__dirname, '../templates');
 
@@ -41,7 +46,7 @@ const basePayload = {
 
 describe('NodeMailer', () => {
 	let nodeMailer: NodeMailer;
-	let mockTransport: jest.Mocked<Transporter>;
+	let mockTransport: Mocked<Transporter>;
 
 	beforeEach(() => {
 		nodeMailer = new NodeMailer(

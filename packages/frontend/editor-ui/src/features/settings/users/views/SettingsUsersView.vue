@@ -3,38 +3,35 @@ import { ref, computed, onMounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	ROLE,
-	type Role,
 	type UsersListSortOptions,
 	type User,
 	USERS_LIST_SORT_OPTIONS,
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	DEBOUNCE_TIME,
-	EnterpriseEditionFeature,
-	getDebounceTime,
-	MODAL_CONFIRM,
-} from '@/app/constants';
+import type { TableOptions } from '@n8n/design-system';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '../users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { copyInviteLink } from '../invite-link.utils';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
-	N8nActionBox,
+	N8nAlert,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -53,6 +50,7 @@ const message = useMessage();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -87,6 +85,11 @@ onMounted(async () => {
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
+	}
+
+	// Needed for the projects dialog to map project role slugs to display names.
+	if (!rolesStore.roles.project.length) {
+		void rolesStore.fetchRoles();
 	}
 
 	await userRoleProvisioningStore.getProvisioningConfig();
@@ -141,7 +144,7 @@ const isAdvancedPermissionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
 );
 
-const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
+const userRoles = computed((): Array<{ value: string; label: string; disabled?: boolean }> => {
 	return [
 		{
 			value: ROLE.Member,
@@ -157,6 +160,11 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},
+		...rolesStore.customInstanceRoles.map((role) => ({
+			value: role.slug,
+			label: role.displayName,
+			disabled: !role.licensed,
+		})),
 	];
 });
 
@@ -210,7 +218,10 @@ async function onReinvite(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user?.email && user?.role) {
-			if (!['global:admin', 'global:member'].includes(user.role)) {
+			// Any assignable role (not owner/default/chat) can be reinvited.
+			const canReinvite =
+				user.role !== ROLE.Owner && user.role !== ROLE.Default && user.role !== ROLE.ChatUser;
+			if (!canReinvite) {
 				throw new Error('Invalid role name on reinvite');
 			}
 			await usersStore.reinviteUser({
@@ -245,8 +256,7 @@ async function onGenerateInviteLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			await copyInviteLink(clipboard, usersStore, userId);
 
 			showToast({
 				type: 'success',
@@ -315,7 +325,7 @@ function goToUpgradeAdvancedPermissions() {
 
 const updatingRoleUserId = ref<string | null>(null);
 
-const onUpdateRole = async (payload: { userId: string; role: Role }) => {
+const onUpdateRole = async (payload: { userId: string; role: string }) => {
 	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
 	if (!user) {
 		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
@@ -360,7 +370,7 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 	}
 };
 
-async function onRoleChange(user: User, newRoleName: Role) {
+async function onRoleChange(user: User, newRoleName: string) {
 	if (newRoleName === user.role) return;
 
 	const name =
@@ -440,7 +450,7 @@ const onSearch = (value: string) => {
 			}}</N8nText>
 		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"

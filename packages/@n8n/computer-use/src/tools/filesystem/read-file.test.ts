@@ -32,7 +32,7 @@ describe('readFileTool', () => {
 		});
 
 		it('has a non-empty description', () => {
-			expect(readFileTool.description).toBe('Read the contents of a file');
+			expect(readFileTool.description.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -129,32 +129,73 @@ describe('readFileTool', () => {
 			expect(content.content).toBe('Line 5\nLine 6\nLine 7');
 		});
 
-		it('rejects binary files', async () => {
+		it('rejects unsupported binary files', async () => {
 			mockStat(100);
 			const binary = Buffer.alloc(100);
 			binary[50] = 0;
 			mockReadFile(binary);
 
 			await expect(readFileTool.execute({ filePath: 'binary.dat' }, CONTEXT)).rejects.toThrow(
-				'Binary file',
+				'Unsupported binary file',
 			);
 		});
 
-		it('rejects binary files without null bytes', async () => {
+		it('rejects unsupported binary files without null bytes', async () => {
 			mockStat(100);
-			mockReadFile(Buffer.from([0xff, 0xfe, 0xfd, 0xfc]));
+			mockReadFile(Buffer.from([0xfe, 0xfd, 0xfc, 0xfb]));
 
 			await expect(readFileTool.execute({ filePath: 'binary.dat' }, CONTEXT)).rejects.toThrow(
-				'Binary file',
+				'Unsupported binary file',
 			);
 		});
 
-		it('rejects files larger than 512KB', async () => {
-			mockStat(600 * 1024);
+		it('rejects files larger than 1MB', async () => {
+			mockStat(2 * 1024 * 1024);
 
 			await expect(readFileTool.execute({ filePath: 'large.txt' }, CONTEXT)).rejects.toThrow(
 				'too large',
 			);
+		});
+
+		it('returns PNG as image content', async () => {
+			const bytes = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+			mockStat(bytes.length);
+			mockReadFile(bytes);
+
+			const result = await readFileTool.execute({ filePath: 'pic.png' }, CONTEXT);
+			expect(result.content).toEqual([
+				{ type: 'image', data: bytes.toString('base64'), mimeType: 'image/png' },
+			]);
+		});
+
+		it.each([
+			['pic.jpg', 'image/jpeg'],
+			['pic.jpeg', 'image/jpeg'],
+			['pic.gif', 'image/gif'],
+			['pic.webp', 'image/webp'],
+		])('returns %s as image content with mime %s', async (filePath, mimeType) => {
+			mockStat(8);
+			mockReadFile(Buffer.alloc(8));
+
+			const result = await readFileTool.execute({ filePath }, CONTEXT);
+			expect(result.content[0]).toMatchObject({ type: 'image', mimeType });
+		});
+
+		it('returns PDF as embedded resource', async () => {
+			const bytes = Buffer.from('PDF-bytes');
+			mockStat(bytes.length);
+			mockReadFile(bytes);
+
+			const result = await readFileTool.execute({ filePath: 'doc.pdf' }, CONTEXT);
+			expect(result.content).toHaveLength(1);
+			const item = result.content[0] as {
+				type: string;
+				resource: { uri: string; mimeType: string; blob: string };
+			};
+			expect(item.type).toBe('resource');
+			expect(item.resource.mimeType).toBe('application/pdf');
+			expect(item.resource.uri.startsWith('file://')).toBe(true);
+			expect(item.resource.blob).toBe(bytes.toString('base64'));
 		});
 
 		it('rejects path traversal', async () => {

@@ -170,6 +170,51 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 	});
 });
 
+test.describe('CAT-3263: Parent receives error from child with wait node', () => {
+	test('should fail the Execute Workflow node when the child errors after wait completes', async ({
+		api,
+	}) => {
+		// Child waits on a webhook, then errors (Stop and Error) once resumed.
+		const { workflowId: childWorkflowId } =
+			await api.workflows.importWorkflowFromFile('cat-3263-child.json');
+
+		// Reuse the generic CAT-1801 parent (Webhook -> Execute Workflow, waitForSubWorkflow).
+		const parentFilePath = resolveFromRoot('workflows', 'cat-1801-parent.json');
+		const parentContent = readFileSync(parentFilePath, 'utf8');
+		const parentDefinition = JSON.parse(parentContent) as IWorkflowBase;
+
+		const executeWorkflowNode = parentDefinition.nodes.find(
+			(n) => n.type === 'n8n-nodes-base.executeWorkflow',
+		)!;
+		executeWorkflowNode.parameters.workflowId = { value: childWorkflowId, mode: 'list' };
+
+		const {
+			webhookPath,
+			workflowId: parentWorkflowId,
+			createdWorkflow: { versionId },
+		} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
+
+		await api.workflows.activate(parentWorkflowId, versionId!);
+		await api.webhooks.trigger(`/webhook/${webhookPath}`);
+
+		// Resume the child once it suspends on its Wait node; it then hits Stop and Error.
+		const childExecution = await api.workflows.waitForWorkflowStatus(childWorkflowId, 'waiting');
+		const resumeUrl = await getResumeUrl(api, childExecution.id, 'Edit Fields', 'webhook');
+		await api.webhooks.trigger(resumeUrl);
+
+		// The parent must fail, not resume as a success with input passed through.
+		const parentExecution = await api.workflows.waitForExecution(parentWorkflowId, 15000);
+		expect(parentExecution.status).toBe('error');
+
+		const fullParentExecution = await api.workflows.getExecution(parentExecution.id);
+		const executionData = flatted.parse(fullParentExecution.data);
+		expect(executionData.resultData.error?.message).toBe(
+			'Error from sub-workflow after webhook resume',
+		);
+		expect(executionData.resultData.runData['Execute Workflow'][0].executionStatus).toBe('error');
+	});
+});
+
 test.describe('CAT-1929: Parent should not resume until child with multiple waits completes', () => {
 	test('should keep parent waiting after first wait node is resumed, only completing after second wait', async ({
 		api,

@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecutions
+  x-required-scope: execution:list
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
@@ -7,6 +8,12 @@ get:
   description: Retrieve all executions from your instance.
   parameters:
     - $ref: '../schemas/parameters/includeData.yml'
+    - name: ignoreDataSizeLimit
+      in: query
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+      required: false
+      schema:
+        type: boolean
     - $ref: '../schemas/parameters/redactExecutionData.yml'
     - name: status
       in: query
@@ -30,6 +37,22 @@ get:
       schema:
         type: string
         example: VmwOO9HeTEj20kxM
+    - name: startedAfter
+      in: query
+      description: Only return executions that started after this time.
+      required: false
+      schema:
+        type: string
+        format: date-time
+        example: '2024-01-01T00:00:00.000Z'
+    - name: startedBefore
+      in: query
+      description: Only return executions that started before this time.
+      required: false
+      schema:
+        type: string
+        format: date-time
+        example: '2024-12-31T23:59:59.999Z'
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
   responses:
@@ -39,6 +62,8 @@ get:
         application/json:
           schema:
             $ref: '../schemas/executionList.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':

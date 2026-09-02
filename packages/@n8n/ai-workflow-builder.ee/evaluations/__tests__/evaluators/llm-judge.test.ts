@@ -65,7 +65,7 @@ describe('LLM-Judge Evaluator', () => {
 
 	describe('createLLMJudgeEvaluator()', () => {
 		it('should create an evaluator with correct name', async () => {
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			expect(evaluator.name).toBe('llm-judge');
@@ -74,7 +74,7 @@ describe('LLM-Judge Evaluator', () => {
 		it('should call evaluateWorkflow with workflow and prompt', async () => {
 			mockEvaluateWorkflow.mockResolvedValue(createMockEvalResult());
 
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -91,7 +91,7 @@ describe('LLM-Judge Evaluator', () => {
 		it('should return feedback array with all category scores', async () => {
 			mockEvaluateWorkflow.mockResolvedValue(createMockEvalResult());
 
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -140,7 +140,7 @@ describe('LLM-Judge Evaluator', () => {
 				}),
 			);
 
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -164,7 +164,7 @@ describe('LLM-Judge Evaluator', () => {
 				}),
 			);
 
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			const feedback = await evaluator.evaluate(createMockWorkflow(), { prompt: 'Test' });
@@ -178,7 +178,7 @@ describe('LLM-Judge Evaluator', () => {
 		it('should handle evaluation errors gracefully', async () => {
 			mockEvaluateWorkflow.mockRejectedValue(new Error('LLM API error'));
 
-			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge/index.js');
 			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
 
 			const workflow = createMockWorkflow();

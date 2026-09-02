@@ -1,6 +1,6 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { PopOutWindowKey } from '@/app/constants';
-import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
+import { useProvideTooltipAppendTo } from '@n8n/design-system';
 import {
 	computed,
 	type ComputedRef,

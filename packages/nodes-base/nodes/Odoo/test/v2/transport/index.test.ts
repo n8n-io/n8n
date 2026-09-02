@@ -1,12 +1,13 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { bodyToRpcArgs, odooApiRequest } from '../../../v2/transport';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	randomInt: jest.fn(() => 1),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+	randomInt: vi.fn(() => 1),
 }));
 
 // ─── bodyToRpcArgs ────────────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ describe('odooApiRequest', () => {
 		ctx.getNode.mockReturnValue({ name: 'Odoo', type: 'n8n-nodes-base.odoo' } as any);
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('API key auth (callJson2)', () => {
 		beforeEach(() => {
@@ -116,7 +117,7 @@ describe('odooApiRequest', () => {
 				db: '',
 			});
 			ctx.helpers = {
-				httpRequestWithAuthentication: jest.fn().mockResolvedValue([{ id: 1, name: 'Test' }]),
+				httpRequestWithAuthentication: vi.fn().mockResolvedValue([{ id: 1, name: 'Test' }]),
 			} as any;
 		});
 
@@ -188,7 +189,7 @@ describe('odooApiRequest', () => {
 
 		it('throws NodeApiError on HTTP failure', async () => {
 			ctx.helpers = {
-				httpRequestWithAuthentication: jest.fn().mockRejectedValue(new Error('Network error')),
+				httpRequestWithAuthentication: vi.fn().mockRejectedValue(new Error('Network error')),
 			} as any;
 			await expect(
 				odooApiRequest.call(ctx, 'res.partner', 'search_read', {}),
@@ -206,7 +207,7 @@ describe('odooApiRequest', () => {
 				db: 'mydb',
 			});
 			ctx.helpers = {
-				httpRequest: jest
+				httpRequest: vi
 					.fn()
 					.mockResolvedValueOnce({ result: 1 }) // getRpcUserID login
 					.mockResolvedValueOnce({ result: [{ id: 1 }] }), // execute
@@ -246,7 +247,7 @@ describe('odooApiRequest', () => {
 
 		it('throws when login returns an error', async () => {
 			ctx.helpers = {
-				httpRequest: jest.fn().mockResolvedValue({
+				httpRequest: vi.fn().mockResolvedValue({
 					error: { data: { message: 'Invalid credentials' } },
 				}),
 			} as any;
@@ -257,7 +258,7 @@ describe('odooApiRequest', () => {
 
 		it('throws when execute response contains an error', async () => {
 			ctx.helpers = {
-				httpRequest: jest
+				httpRequest: vi
 					.fn()
 					.mockResolvedValueOnce({ result: 1 })
 					.mockResolvedValueOnce({ error: { data: { message: 'Access denied' } } }),

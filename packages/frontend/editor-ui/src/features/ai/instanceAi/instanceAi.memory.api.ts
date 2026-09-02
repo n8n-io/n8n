@@ -5,6 +5,8 @@ import type {
 	InstanceAiThreadListResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 } from '@n8n/api-types';
 
 export async function fetchThreads(
@@ -59,4 +61,18 @@ export async function fetchThreadStatus(
 	threadId: string,
 ): Promise<InstanceAiThreadStatusResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/status`);
+}
+
+export async function fetchRunDebug(
+	context: IRestApiContext,
+	runId: string,
+): Promise<InstanceAiRunDebugResponse> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/debug/runs/${runId}`);
+}
+
+export async function fetchThreadDebugRuns(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<InstanceAiThreadDebugRunsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/debug/threads/${threadId}/runs`);
 }

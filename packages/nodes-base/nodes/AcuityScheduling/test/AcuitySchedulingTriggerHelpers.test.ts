@@ -1,5 +1,5 @@
 import { createHmac } from 'crypto';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { verifySignature } from '../AcuitySchedulingTriggerHelpers';
@@ -31,7 +31,7 @@ describe('AcuitySchedulingTriggerHelpers', () => {
 				ctx.getCredentials.mockResolvedValue(opts.credentials ?? { apiKey });
 			}
 			ctx.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
+				header: vi.fn().mockImplementation((name: string) => {
 					if (name === 'x-acuity-signature') return signatureHeader;
 					return null;
 				}),

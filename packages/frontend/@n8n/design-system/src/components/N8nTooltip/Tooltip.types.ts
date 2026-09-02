@@ -27,6 +27,8 @@ export type Justify =
 	| 'space-evenly';
 
 export interface N8nTooltipProps {
+	/** Render the trigger as the direct child element instead of wrapping in a span */
+	asChild?: boolean;
 	/** Text content for the tooltip. Supports HTML (sanitized for security). */
 	content?: string;
 	/** Position of tooltip relative to trigger */

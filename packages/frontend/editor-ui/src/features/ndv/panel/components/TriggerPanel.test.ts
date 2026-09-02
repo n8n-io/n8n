@@ -15,6 +15,16 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
@@ -51,6 +61,16 @@ describe('TriggerPanel.vue', () => {
 		vi.resetAllMocks();
 	});
 
+	function setExecutedNode(executedNode: string) {
+		// Testing pinia makes store getters writable at runtime; the cast makes
+		// that writability visible to the type checker.
+		const executionStateStore = mockedStore(
+			useWorkflowExecutionStateStore,
+			createWorkflowDocumentId('1'),
+		) as unknown as { activeExecutionExecutedNode: string | undefined };
+		executionStateStore.activeExecutionExecutedNode = executedNode;
+	}
+
 	it('renders default state', () => {
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -69,7 +89,7 @@ describe('TriggerPanel.vue', () => {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId('1')).setExecutionWaitingForWebhook(
 			true,
 		);
-		workflowsStore.executedNode = 'Webhook';
+		setExecutedNode('Webhook');
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {
@@ -85,7 +105,7 @@ describe('TriggerPanel.vue', () => {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId('1')).setExecutionWaitingForWebhook(
 			true,
 		);
-		workflowsStore.executedNode = 'OtherNode';
+		setExecutedNode('OtherNode');
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {
@@ -101,7 +121,7 @@ describe('TriggerPanel.vue', () => {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId('1')).setExecutionWaitingForWebhook(
 			true,
 		);
-		workflowsStore.executedNode = 'ChildNode';
+		setExecutedNode('ChildNode');
 		vi.spyOn(workflowDocStore, 'getParentNodes').mockReturnValue(['Webhook']);
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -118,7 +138,7 @@ describe('TriggerPanel.vue', () => {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId('1')).setExecutionWaitingForWebhook(
 			true,
 		);
-		workflowsStore.executedNode = 'UnrelatedNode';
+		setExecutedNode('UnrelatedNode');
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {

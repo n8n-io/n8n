@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { NODE_TYPES, isIfNodeType, isSwitchNodeType } from '../../constants/node-types';
 import {
 	isNodeChain,
+	type AnchoredStickyNote,
 	type NodeInstance,
 	type TriggerInstance,
 	type NodeConfig,
@@ -114,9 +115,19 @@ function generateNodeName(type: string): string {
  * Returns a new config object when any normalization happens; otherwise a
  * shallow copy (matching the previous `{ ...config }` semantics).
  */
+/**
+ * A declared node id, or undefined when there is none. A blank string is not a declaration —
+ * treating it as one would hand every such node the same empty identity, which
+ * `duplicate-node-id-validator` would then skip and the DB would accept.
+ */
+export function declaredNodeId(id: unknown): string | undefined {
+	return typeof id === 'string' && id.trim() !== '' ? id : undefined;
+}
+
 export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
+	const id = declaredNodeId(config?.id);
 	const creds = config?.credentials as Record<string, unknown> | undefined;
-	if (!creds) return { ...config };
+	if (!creds) return { ...config, id };
 
 	let normalizedCreds:
 		| Record<string, CredentialReference | NewCredentialValue | string>
@@ -169,8 +180,8 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 		// 4. else: leave as CredentialReference / plain string
 	}
 
-	if (!normalizedCreds) return { ...config };
-	return { ...config, credentials: normalizedCreds } as NodeConfig;
+	if (!normalizedCreds) return { ...config, id };
+	return { ...config, id, credentials: normalizedCreds } as NodeConfig;
 }
 
 /**
@@ -198,7 +209,10 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.type = type;
 		this.version = version;
 		this.config = normalizeNodeConfig(config);
-		this.id = id ?? uuid();
+		// An explicit `id` argument (update/clone) wins over one declared in the source,
+		// so `update()` can never re-identify a node. Read the NORMALIZED config so a blank
+		// declaration is treated as absent rather than becoming a shared empty identity.
+		this.id = id ?? this.config.id ?? uuid();
 		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
@@ -207,6 +221,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		const mergedConfig = {
 			...this.config,
 			...config,
+			// Identity is not patchable: an `id` in the patch would leave `config.id` diverging
+			// from `this.id`, and regenerateNodeIds() would adopt it on the next rebuild.
+			id: this.config.id,
 			parameters: config.parameters ?? this.config.parameters,
 			credentials: config.credentials ?? this.config.credentials,
 		};
@@ -355,6 +372,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		// Declaring an error route implies the error output port exists.
+		this.config.onError ??= 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
@@ -557,7 +576,12 @@ class NodeChainImpl<
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		this.tail.onError(handler as T);
+		// Bind to the chain node that declares an error output; tail is the fallback.
+		const declaring = this.allNodes.filter(
+			(n) => n !== null && n !== undefined && n.config?.onError === 'continueErrorOutput',
+		);
+		const source = declaring.length === 1 ? declaring[0] : this.tail;
+		source.onError(handler as T);
 		return this;
 	}
 
@@ -1027,23 +1051,14 @@ export function trigger<TTrigger extends TriggerInput>(
 	);
 }
 
-// Default node dimensions for bounding box calculation
-const DEFAULT_NODE_WIDTH = 200;
-const DEFAULT_NODE_HEIGHT = 100;
-const STICKY_PADDING = 50;
-
 /**
- * Calculate bounding box around a set of nodes
+ * Resolve the IDs of the nodes a sticky was asked to wrap.
+ *
+ * Only IDs are captured — the sticky's box is computed during serialization, once
+ * layout has decided where the anchors actually sit.
  */
-function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
-	position: [number, number];
-	width: number;
-	height: number;
-} | null {
-	if (nodes.length === 0) return null;
-
-	// Normalize builder objects to their underlying NodeInstance
-	const normalizedNodes = nodes
+function resolveAnchorIds(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
+	return nodes
 		.map((item): NodeInstance<string, string, unknown> | null => {
 			if (isSplitInBatchesBuilder(item)) {
 				return extractSplitInBatchesBuilder(item).sibNode;
@@ -1059,68 +1074,47 @@ function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unk
 			}
 			return null;
 		})
-		.filter((n): n is NodeInstance<string, string, unknown> => n !== null);
-
-	if (normalizedNodes.length === 0) return null;
-
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const node of normalizedNodes) {
-		const pos = node.config.position ?? [0, 0];
-		const x = pos[0];
-		const y = pos[1];
-
-		minX = Math.min(minX, x);
-		minY = Math.min(minY, y);
-		maxX = Math.max(maxX, x + DEFAULT_NODE_WIDTH);
-		maxY = Math.max(maxY, y + DEFAULT_NODE_HEIGHT);
-	}
-
-	return {
-		position: [minX - STICKY_PADDING, minY - STICKY_PADDING],
-		width: maxX - minX + STICKY_PADDING * 2,
-		height: maxY - minY + STICKY_PADDING * 2,
-	};
+		.filter((n): n is NodeInstance<string, string, unknown> => n !== null)
+		.map((n) => n.id);
 }
 
 /**
  * Sticky note node instance
  */
-class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void> {
+class StickyNoteInstance
+	implements NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, AnchoredStickyNote
+{
 	readonly type = 'n8n-nodes-base.stickyNote' as const;
 	readonly version = 'v1' as const;
 	readonly config: NodeConfig;
 	readonly id: string;
 	readonly name: string;
+	readonly stickyAnchorIds: readonly string[];
 
 	constructor(
 		content: string,
 		nodes: Array<NodeInstance<string, string, unknown>> = [],
 		stickyConfig: StickyNoteConfig = {},
+		anchorIds?: readonly string[],
+		id?: string,
 	) {
-		this.id = uuid();
+		this.id = id ?? declaredNodeId(stickyConfig.id) ?? uuid();
 		// Use a unique default name to prevent multiple stickies from overwriting each other
 		// when added to a workflow (Map uses name as key)
 		this.name = stickyConfig.name ?? `Sticky Note ${this.id.slice(0, 8)}`;
-
-		// If nodes are provided, calculate bounding box to wrap around them
-		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
+		this.stickyAnchorIds = anchorIds ?? resolveAnchorIds(nodes);
 
 		this.config = {
+			// Only mirror an author-declared id, so `config.id` keeps meaning "declared
+			// in the source" for the id-precedence rules in regenerateNodeIds().
+			...(declaredNodeId(stickyConfig.id) !== undefined && { id: stickyConfig.id }),
 			name: this.name,
-			position: stickyConfig.position ?? boundingBox?.position,
+			position: stickyConfig.position,
 			parameters: {
 				content,
 				...(stickyConfig.color !== undefined && { color: stickyConfig.color }),
-				...((stickyConfig.width ?? boundingBox?.width) !== undefined && {
-					width: stickyConfig.width ?? boundingBox?.width,
-				}),
-				...((stickyConfig.height ?? boundingBox?.height) !== undefined && {
-					height: stickyConfig.height ?? boundingBox?.height,
-				}),
+				...(stickyConfig.width !== undefined && { width: stickyConfig.width }),
+				...(stickyConfig.height !== undefined && { height: stickyConfig.height }),
 			},
 		};
 	}
@@ -1128,14 +1122,17 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void> {
 		const newContent = (config.parameters?.content as string) ?? this.config.parameters?.content;
 		const newConfig: StickyNoteConfig = {
+			id: this.config.id,
 			position: config.position ?? this.config.position,
 			color: (config.parameters?.color as number) ?? (this.config.parameters?.color as number),
 			width: (config.parameters?.width as number) ?? (this.config.parameters?.width as number),
 			height: (config.parameters?.height as number) ?? (this.config.parameters?.height as number),
 			name: config.name ?? this.name,
 		};
-		// Pass empty nodes array since update doesn't recalculate bounding box
-		return new StickyNoteInstance(newContent, [], newConfig);
+		// Empty nodes array: update() doesn't recalculate the bounding box. Anchors carry over
+		// (update changes config, not what the sticky wraps) and so does the id, so `update()`
+		// cannot re-identify the node.
+		return new StickyNoteInstance(newContent, [], newConfig, this.stickyAnchorIds, this.id);
 	}
 
 	input(_index: number): InputTarget {

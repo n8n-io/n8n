@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ASK_CREDENTIAL_TOOL_NAME, ASK_QUESTION_TOOL_NAME } from '@n8n/api-types';
 import { TOOL_CALL_STATE } from '../constants';
 import {
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
@@ -16,6 +15,10 @@ const writeTodosI18n: WriteTodosI18n = {
 			'agents.chat.writeTodos.status.completed': 'Completed',
 			'agents.chat.writeTodos.status.blocked': 'Blocked',
 			'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+			'agents.chat.difficulty.low': 'Low',
+			'agents.chat.difficulty.medium': 'Medium',
+			'agents.chat.difficulty.high': 'High',
+			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 		};
@@ -61,23 +64,6 @@ describe('tool-call-details', () => {
 					tool: 'search_nodes',
 					output: 'Credential missing',
 					state: TOOL_CALL_STATE.ERROR,
-				}),
-			).toBeUndefined();
-		});
-
-		it('does not expose resolved interactive tool resume payloads', () => {
-			expect(
-				getToolCallDetails({
-					tool: ASK_QUESTION_TOOL_NAME,
-					output: { values: ['slack'] },
-					state: TOOL_CALL_STATE.DONE,
-				}),
-			).toBeUndefined();
-			expect(
-				getToolCallDetails({
-					tool: ASK_CREDENTIAL_TOOL_NAME,
-					output: { credentialId: 'c1', credentialName: 'My Slack' },
-					state: TOOL_CALL_STATE.DONE,
 				}),
 			).toBeUndefined();
 		});
@@ -140,6 +126,7 @@ describe('tool-call-details', () => {
 								id: 'a',
 								content: 'Delegated work',
 								status: 'pending',
+								difficulty: 'high',
 								delegateHint: { subAgentId: 'agent-2' },
 							},
 						],
@@ -149,7 +136,7 @@ describe('tool-call-details', () => {
 				writeTodosI18n,
 				nameById,
 			);
-			expect(details).toContain('_(Sub-agent: Helper agent)_');
+			expect(details).toContain('_(Difficulty: High; Sub-agent: Helper agent)_');
 		});
 
 		it('returns undefined for write_todos without i18n', () => {
@@ -159,7 +146,7 @@ describe('tool-call-details', () => {
 					output: {
 						status: 'ok',
 						todoCount: 1,
-						todos: [{ id: 'a', content: 'Task', status: 'pending' }],
+						todos: [{ id: 'a', content: 'Task', status: 'pending', difficulty: 'low' }],
 					},
 					state: TOOL_CALL_STATE.DONE,
 				}),

@@ -3,6 +3,9 @@ import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from '
 import { encodeOutlookId } from '../helpers/utils';
 import { getSubfolders, microsoftApiRequest } from '../transport';
 
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
+
 async function search(
 	this: ILoadOptionsFunctions,
 	resource: string,
@@ -17,6 +20,7 @@ async function search(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -32,7 +36,7 @@ async function search(
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, qs);
+		response = await microsoftApiRequest.call(this, 'GET', resource, 0, undefined, qs);
 	}
 
 	return {
@@ -42,7 +46,7 @@ async function search(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -74,6 +78,7 @@ export async function searchDrafts(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -90,7 +95,7 @@ export async function searchDrafts(
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
 	}
 
 	return {
@@ -101,7 +106,7 @@ export async function searchDrafts(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -117,6 +122,7 @@ export async function searchMessages(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -132,7 +138,7 @@ export async function searchMessages(
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
 	}
 
 	return {
@@ -143,7 +149,7 @@ export async function searchMessages(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -163,6 +169,7 @@ export async function searchEvents(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -182,6 +189,7 @@ export async function searchEvents(
 			this,
 			'GET',
 			`/calendars/${calendarId}/events`,
+			0,
 			undefined,
 			qs,
 		);
@@ -195,7 +203,7 @@ export async function searchEvents(
 				url: `https://outlook.office365.com/calendar/item/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -211,6 +219,7 @@ export async function searchFolders(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -220,10 +229,10 @@ export async function searchFolders(
 			$top: 100,
 		};
 
-		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', undefined, qs);
+		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', 0, undefined, qs);
 	}
 
-	let folders = await getSubfolders.call(this, response.value as IDataObject[], true);
+	let folders = await getSubfolders.call(this, response.value as IDataObject[], 0, true);
 
 	if (filter) {
 		filter = filter.toLowerCase();
@@ -240,7 +249,7 @@ export async function searchFolders(
 				url: `https://outlook.office365.com/mail/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -259,6 +268,7 @@ export async function searchAttachments(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -273,6 +283,7 @@ export async function searchAttachments(
 			this,
 			'GET',
 			`/messages/${messageId}/attachments`,
+			0,
 			undefined,
 			qs,
 		);
@@ -285,6 +296,6 @@ export async function searchAttachments(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }

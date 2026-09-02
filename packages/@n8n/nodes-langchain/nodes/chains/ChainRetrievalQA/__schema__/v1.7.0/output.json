@@ -1,0 +1,11 @@
+{
+	"type": "object",
+	"required": ["response"],
+	"properties": {
+		"response": {
+			"type": "string",
+			"description": "The answer text produced by the chain — a plain string"
+		}
+	},
+	"version": 1
+}

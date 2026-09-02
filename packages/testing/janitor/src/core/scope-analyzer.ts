@@ -1,8 +1,7 @@
 /**
  * Filters CHANGED_FILES to a single package and detects config-file bailouts.
  * Output is a shell sentinel (SKIP / RUN_FULL / file list). The actual
- * import-graph walk is the runner's job (jest --findRelatedTests / vitest
- * related).
+ * import-graph walk is the runner's job (vitest related).
  */
 
 import { existsSync } from 'node:fs';
@@ -10,17 +9,6 @@ import { isAbsolute, relative, resolve } from 'node:path';
 
 import { matchesGlobalTrigger } from './global-triggers.js';
 import { toPosix } from './path-utils.js';
-
-export type Runner = 'jest' | 'vitest';
-/**
- * Jest has two test surfaces in this workspace:
- *   - unit       — pure modules + mocked deps; only the unit bailouts apply
- *   - integration — HTTP / DI container; transitive deps that don't appear in
- *                   the import graph (db schema, shared fixtures, migrations)
- *                   force RUN_FULL. See JEST_INTEGRATION_BAILOUT for the list.
- * `undefined` collapses to the unit variant for callers that don't specify.
- */
-export type JestVariant = 'unit' | 'integration';
 
 // Bailout patterns are centralised here (vs the original DEVP-194 spec's
 // per-package `n8nTestChanged.inPackageBailouts` field) because the n8n
@@ -34,33 +22,6 @@ const COMMON_BAILOUT = [
 	/^\.swcrc$/,
 	/^babel\.config\.[cm]?[jt]s$/,
 ];
-const JEST_BAILOUT = [
-	...COMMON_BAILOUT,
-	/^jest\.config\.[cm]?[jt]s$/,
-	/(?:^|\/)(?:jest|test)\.setup\.[cm]?[jt]s$/,
-	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
-];
-// Integration tests hit HTTP + the DI container, so changes to types that
-// aren't import-graph-visible to the test file still flow through at runtime:
-//   - entity / repository changes — touched at runtime via `Container.get`,
-//     not imported by the test
-//   - migrations — never imported but every integration test depends on the
-//     resulting schema
-//   - `src/databases/**` / `src/modules/*/database/**` — schema scaffolding
-//   - `test/integration/shared/**` — shared fixtures coupled at runtime
-//   - `test/migration/**` — migration test infrastructure
-// Without these, jest --findRelatedTests would return zero tests and CI
-// would falsely report green on changes that genuinely break integration.
-const JEST_INTEGRATION_BAILOUT = [
-	...JEST_BAILOUT,
-	/\.entity\.[cm]?ts$/,
-	/\.repository\.[cm]?ts$/,
-	/\.migration\.[cm]?ts$/,
-	/^src\/databases\//,
-	/^src\/modules\/[^/]+\/database\//,
-	/^test\/integration\/shared\//,
-	/^test\/migration\//,
-];
 // Frontend packages use vite.config.* for the vitest config too (vitest reads
 // vite.config). Setup files live at src/__tests__/setup.ts per the shared
 // @n8n/vitest-config convention.
@@ -73,17 +34,19 @@ const VITEST_BAILOUT = [
 ];
 
 export interface ComputeScopeOptions {
-	runner: Runner;
 	packageDir: string;
 	rootDir: string;
 	/** `null` = no signal → RUN_FULL (local dev with unset env). */
 	changedFiles: string[] | null;
-	/**
-	 * Only relevant when `runner === 'jest'`. Selects the bailout set:
-	 * `'integration'` widens it to catch runtime-coupled changes (entities,
-	 * repositories, migrations, shared fixtures). Defaults to `'unit'`.
-	 */
-	jestVariant?: JestVariant;
+	/** This package's name (from its package.json). Needed to check membership
+	 *  in `affectedPackages`. */
+	packageName?: string;
+	/** Packages affected by the change — the owner of each changed file plus its
+	 *  transitive dependents (from `affectedPackages()`). When this package has
+	 *  no in-package changes but appears here, an upstream workspace dependency
+	 *  changed and we must run the full suite (a scoped `vitest related` run
+	 *  can't see the cross-package change). `null`/undefined = no signal. */
+	affectedPackages?: string[] | null;
 }
 
 export type ScopeResult =
@@ -116,14 +79,20 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	const inPackage = options.changedFiles.filter(
 		(f) => f === pkgPrefix || f.startsWith(pkgPrefixSlash),
 	);
-	if (inPackage.length === 0) return { kind: 'skip', reason: 'No changed files in package' };
+	if (inPackage.length === 0) {
+		// No files changed inside this package, but the dep-graph flags it as
+		// affected → an upstream workspace dependency changed. `vitest related`
+		// on this package's own test files can't see that, so run the full suite.
+		if (options.packageName && options.affectedPackages?.includes(options.packageName)) {
+			return {
+				kind: 'full',
+				reason: 'Affected by an upstream workspace change (no in-package changes)',
+			};
+		}
+		return { kind: 'skip', reason: 'No changed files in package' };
+	}
 
-	const bailout =
-		options.runner === 'jest'
-			? options.jestVariant === 'integration'
-				? JEST_INTEGRATION_BAILOUT
-				: JEST_BAILOUT
-			: VITEST_BAILOUT;
+	const bailout = VITEST_BAILOUT;
 	for (const file of inPackage) {
 		const relInPkg = file.slice(pkgPrefixSlash.length);
 		if (bailout.some((p) => p.test(relInPkg))) {

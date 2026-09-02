@@ -2,13 +2,17 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/count.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		apiRequestAllItems: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		apiRequestAllItems: { call: vi.fn() },
 	};
 });
 
@@ -17,27 +21,27 @@ describe('NocoDB Rows Count Action', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
-		(apiRequestAllItems.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
+		(apiRequestAllItems.call as Mock).mockClear();
 	});
 
 	it('should return the count of rows successfully with no options', async () => {
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 			if (name === 'projectId') return 'base1';
 			if (name === 'table') return 'table1';
 			if (name === 'options') return {};
 			return undefined;
 		});
-		(apiRequest.call as jest.Mock).mockResolvedValue({ count: 10 });
+		(apiRequest.call as Mock).mockResolvedValue({ count: 10 });
 
 		const result = await execute.call(mockExecuteFunctions);
 
@@ -60,13 +64,13 @@ describe('NocoDB Rows Count Action', () => {
 
 	it('should return the count of rows successfully with where option', async () => {
 		const options = { where: '(name,like,example%)' };
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 			if (name === 'projectId') return 'base1';
 			if (name === 'table') return 'table1';
 			if (name === 'options') return options;
 			return undefined;
 		});
-		(apiRequest.call as jest.Mock).mockResolvedValue({ count: 5 });
+		(apiRequest.call as Mock).mockResolvedValue({ count: 5 });
 
 		const result = await execute.call(mockExecuteFunctions);
 
@@ -89,14 +93,14 @@ describe('NocoDB Rows Count Action', () => {
 
 	it('should throw NodeApiError when apiRequest fails and continueOnFail is false', async () => {
 		const error = new Error('API Error');
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 			if (name === 'projectId') return 'base1';
 			if (name === 'table') return 'table1';
 			if (name === 'options') return {};
 			return undefined;
 		});
-		(apiRequest.call as jest.Mock).mockRejectedValue(error);
-		(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+		(apiRequest.call as Mock).mockRejectedValue(error);
+		(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 		await expect(execute.call(mockExecuteFunctions)).rejects.toThrow('API Error');
 		expect(mockExecuteFunctions.continueOnFail).toHaveBeenCalled();
@@ -104,14 +108,14 @@ describe('NocoDB Rows Count Action', () => {
 
 	it('should return error object when apiRequest fails and continueOnFail is true', async () => {
 		const error = new Error('API Error');
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 			if (name === 'projectId') return 'base1';
 			if (name === 'table') return 'table1';
 			if (name === 'options') return {};
 			return undefined;
 		});
-		(apiRequest.call as jest.Mock).mockRejectedValue(error);
-		(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(apiRequest.call as Mock).mockRejectedValue(error);
+		(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await execute.call(mockExecuteFunctions);
 

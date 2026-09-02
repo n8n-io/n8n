@@ -1,6 +1,6 @@
-import { shallowRef, ref, computed } from 'vue';
-import { describe, it, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/vue';
+import { shallowRef, ref, computed, nextTick, watchSyncEffect } from 'vue';
+import { describe, it, vi, beforeEach, afterEach } from 'vitest';
+import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -19,27 +19,45 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
+import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 const trackMock = vi.hoisted(() => vi.fn());
+const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
+
+// Keep the real composable (quick-connect tests need it); stub only `authorize`.
+vi.mock('../composables/useCredentialOAuth', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useCredentialOAuth')>();
+	return {
+		useCredentialOAuth: () => ({
+			...actual.useCredentialOAuth(),
+			authorize: authorizeMock,
+		}),
+	};
+});
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		balance: computed(() => undefined),
 		budget: computed(() => undefined),
+		creditsLabelKey: computed(() => 'generic.freeCredits'),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -153,11 +171,13 @@ describe('NodeCredentials', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let workflowDocumentStoreRef: ReturnType<
 		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
 	>;
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
+	let stopCredentialsMirror: () => void;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -190,11 +210,26 @@ describe('NodeCredentials', () => {
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
-		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi
+			.fn()
+			.mockImplementation(async () => Object.values(credentialsStore.usableCredentials));
+
+		// The picker reads `usableCredentials`, the slice only the scoped fetch writes.
+		// Tests seed the flat map, and by the time an NDV mounts in production the
+		// scoped fetch has already run (useWorkflowInitialization), so mirror the seed
+		// into the slice. Tests that need the two to diverge stop the mirror first.
+		stopCredentialsMirror = watchSyncEffect(() => {
+			credentialsStore.usableCredentials = { ...credentialsStore.state.credentials };
+		});
+		credentialsStore.hasFetchedUsableCredentials = true;
+
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowsStore.isNewWorkflow = false;
 
 		projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
 		settingsStore.settings = {
@@ -208,6 +243,10 @@ describe('NodeCredentials', () => {
 		credentialsStore.state.credentialTypes = {
 			openAiApi: openAiApiCredentialType,
 		};
+	});
+
+	afterEach(() => {
+		stopCredentialsMirror?.();
 	});
 
 	it('should display available credentials in the dropdown', async () => {
@@ -225,13 +264,108 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it('should not offer a credential the scoped fetch left out of the usable slice', async () => {
+		// An unscoped fetchAllCredentials from anywhere in the app can fill the flat
+		// map with credentials from other projects while the NDV is open (IAM-1241).
+		stopCredentialsMirror();
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+			'personal-cred': createCredential({ id: 'personal-cred', name: 'Personal OpenAi account' }),
+		};
+		credentialsStore.usableCredentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent();
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+		expect(screen.queryByText('Personal OpenAi account')).not.toBeInTheDocument();
+	});
+
+	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{ props: { credentialsFieldLabel: 'fal.ai API Key credentials' } },
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credentials-label')).toHaveTextContent('fal.ai API Key credentials');
+	});
+
+	it('renders standalone when no active workflow document store is provided', () => {
+		// Instance AI credential card: rendered standalone, outside a loaded
+		// workflow document. The strict injectNDVStore() used to throw here on the
+		// immediate parameters watch, tearing down the card (mount/unmount flicker).
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		expect(() =>
+			renderComponent(
+				{ props: { node: httpNode, overrideCredType: 'openAiApi', standalone: true } },
+				{ merge: true },
+			),
+		).not.toThrow();
+
+		expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+	});
+
 	it('should refresh credentials from the server when mounted on an existing node', () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {};
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: '1',
+		});
+	});
+
+	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
+		// Hosts with a synthetic workflow document (e.g. the tool config modal)
+		// own the credential fetch themselves; the component's own fetch would
+		// query a nonexistent workflow id and wipe the store with its empty result.
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent({ props: { skipCredentialsFetch: true } });
+
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
+	});
+
+	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = { id: 'project-1' } as Project;
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent();
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			projectId: 'project-1',
+		});
+	});
+
+	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = { id: 'personal-project' } as Project;
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent();
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			projectId: 'personal-project',
+		});
 	});
 
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
@@ -276,7 +410,38 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: false },
+			{ hideAskAssistant: false, closeOnSave: true },
+		);
+	});
+
+	it('should configure the new credential modal for a tool context', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent({
+			global: {
+				provide: {
+					[ChatHubToolContextKey as symbol]: true,
+				},
+			},
+		});
+
+		const credentialsSelect = screen.getByTestId('node-credentials-select');
+
+		await userEvent.click(credentialsSelect);
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			httpNode.name,
+			httpNode,
+			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true },
 		);
 	});
 
@@ -458,6 +623,207 @@ describe('NodeCredentials', () => {
 				type: 'openAiApi',
 			});
 		});
+
+		it("emits 'Node credential assigned' with source user and kind own on manual selection", async () => {
+			const openAiNodeWithCred: INodeUi = {
+				...openAiNodeNoCreds,
+				credentials: { openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' } },
+			};
+			ndvStore.activeNode = openAiNodeWithCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			renderComponent({ props: { node: openAiNodeWithCred } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.getByText('OpenAi account 2'));
+
+			expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+				credential_type: 'openAiApi',
+				node_type: openAiNodeWithCred.type,
+				workflow_id: expect.any(String),
+				credential_kind: 'own',
+				source: 'user',
+			});
+		});
+
+		it('should drop credentials the node no longer uses when selecting a credential', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// Node switched from generic to predefined auth: the httpHeaderAuth entry is stale.
+			// Built from scratch (not from the shared httpNode fixture) because store actions
+			// in earlier tests mutate the fixture object in place.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					provideSslCertificates: false,
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'e4b917b5-e994-42c7-8576-6ef28a7619b2',
+				name: 'HTTP Request Stale',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toEqual({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+			});
+		});
+
+		it('should keep existing credentials when the node type is unknown', async () => {
+			// No node types registered: the active credential types cannot be determined,
+			// so selecting a credential must not remove any existing entries.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'f5c917b5-e994-42c7-8576-6ef28a7619b3',
+				name: 'HTTP Request Unknown Type',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			// Presence matters (nothing was deleted); the renderer's merge:true option
+			// deep-merges nodes into the shared httpNode fixture, so avoid exact equality.
+			expect(payload.properties.credentials).toMatchObject({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+				httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+			});
+		});
+
+		it('should never drop the just-selected credential even when it is not in the active set', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// The node's configuration points at anthropicApi, so the openAiApi credential
+			// the user is about to pick (rendered via overrideCredType) is not in the
+			// active set — only the just-selected guard keeps it from being deleted.
+			const httpNodeOtherAuth: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'anthropicApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'a1b917b5-e994-42c7-8576-6ef28a7619b4',
+				name: 'HTTP Request Other Auth',
+				credentials: {
+					anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeOtherAuth;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent({ props: { node: httpNodeOtherAuth } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toMatchObject({
+				anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+			});
+		});
 	});
 
 	describe('resolvable credentials', () => {
@@ -521,9 +887,16 @@ describe('NodeCredentials', () => {
 			displayName: 'OAuth2 API',
 			properties: [
 				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: false,
+				},
+				{
 					displayName: 'Client ID',
 					name: 'clientId',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -531,6 +904,7 @@ describe('NodeCredentials', () => {
 					displayName: 'Client Secret',
 					name: 'clientSecret',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -541,16 +915,8 @@ describe('NodeCredentials', () => {
 			name: 'slackOAuth2Api',
 			extends: ['oAuth2Api'],
 			displayName: 'Slack OAuth2 API',
-			properties: [
-				{
-					displayName: 'Client ID',
-					name: 'clientId',
-					type: 'string',
-					default: '',
-					required: true,
-				},
-			],
-			__overwrittenProperties: ['clientId'],
+			properties: [],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
 		};
 
 		const slackNode: INodeUi = {
@@ -809,11 +1175,11 @@ describe('NodeCredentials', () => {
 					name: slackNode.name,
 					type: slackNode.type,
 				}),
-				{ hideAskAssistant: false },
+				{ hideAskAssistant: false, closeOnSave: true },
 			);
 		});
 
-		it('should show "Set up credential" button in standard empty state', () => {
+		it('shows the connect entry state in the standard empty state', () => {
 			setupQuickConnectStores();
 
 			ndvStore.activeNode = openAiNodeNoCreds;
@@ -828,7 +1194,10 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
+			// Without n8n credits the empty state is a single "Connect to <service>" button.
+			expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
+			const emptyState = screen.getByTestId('node-credentials-empty-state');
+			expect(within(emptyState).getByRole('button', { name: /Connect to/ })).toBeInTheDocument();
 		});
 
 		it('should show quick connect when sibling credential type has managed OAuth', () => {
@@ -919,6 +1288,179 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Dropbox')).toBeInTheDocument();
 		});
 
+		it('should show sibling OAuth quick connect when the auth field is kept in NDV', () => {
+			setupQuickConnectStores();
+
+			const discordOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'discordOAuth2Api',
+				displayName: 'Discord OAuth2 API',
+			};
+			const discordNode: INodeUi = {
+				parameters: { authentication: 'botToken' },
+				type: 'n8n-nodes-base.discord',
+				typeVersion: 2,
+				position: [0, 0],
+				id: 'discord-node-id',
+				name: 'Discord',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				discordOAuth2Api: discordOAuth2ApiType,
+				discordBotApi: {
+					name: 'discordBotApi',
+					displayName: 'Discord Bot API',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Discord',
+					name: 'n8n-nodes-base.discord',
+					group: ['output'],
+					version: 2,
+					description: '',
+					defaults: { name: 'Discord' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'discordBotApi',
+							required: true,
+							displayOptions: { show: { authentication: ['botToken'] } },
+						},
+						{
+							name: 'discordOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Connection Type',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Bot Token', value: 'botToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'botToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = discordNode;
+
+			renderComponent(
+				{
+					props: {
+						node: discordNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.getByText('Connect to Discord')).toBeInTheDocument();
+		});
+
+		it('should not show sibling OAuth quick connect for an independent credential field', () => {
+			setupQuickConnectStores();
+
+			const pipedriveOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'pipedriveOAuth2Api',
+				displayName: 'Pipedrive OAuth2 API',
+			};
+			const pipedriveNode: INodeUi = {
+				parameters: {
+					authentication: 'apiToken',
+					incomingAuthentication: 'basicAuth',
+				},
+				type: 'n8n-nodes-base.pipedriveTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'pipedrive-trigger-node-id',
+				name: 'Pipedrive Trigger',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				pipedriveOAuth2Api: pipedriveOAuth2ApiType,
+				pipedriveApi: {
+					name: 'pipedriveApi',
+					displayName: 'Pipedrive API',
+					properties: [],
+				},
+				httpBasicAuth: {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Pipedrive Trigger',
+					name: 'n8n-nodes-base.pipedriveTrigger',
+					group: ['trigger'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Pipedrive Trigger' },
+					inputs: [],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'pipedriveApi',
+							required: true,
+							displayOptions: { show: { authentication: ['apiToken'] } },
+						},
+						{
+							name: 'pipedriveOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+						{
+							name: 'httpBasicAuth',
+							required: true,
+							displayOptions: { show: { incomingAuthentication: ['basicAuth'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							required: true,
+							options: [
+								{ name: 'API Token', value: 'apiToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'apiToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = pipedriveNode;
+
+			renderComponent(
+				{
+					props: {
+						node: pipedriveNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getAllByTestId('quick-connect-empty-state')).toHaveLength(1);
+			expect(screen.getAllByTestId('node-credentials-empty-state')).toHaveLength(1);
+		});
+
 		it('should show standard dropdown when credential already exists', () => {
 			setupQuickConnectStores();
 
@@ -966,6 +1508,32 @@ describe('NodeCredentials', () => {
 
 			expect(screen.queryByTestId('credential-edit-button')).toBeInTheDocument();
 		});
+
+		it('should configure the edit credential modal for a tool context', async () => {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			renderComponent({
+				global: {
+					provide: {
+						[ChatHubToolContextKey as symbol]: true,
+					},
+				},
+			});
+
+			const editIcon = screen
+				.getByTestId('credential-edit-button')
+				.querySelector('[data-icon="pen"]');
+			expect(editIcon).not.toBeNull();
+			await userEvent.click(editIcon!);
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('c8vqdPpPClh4TgIO', {
+				hideAskAssistant: true,
+				appendToBody: true,
+			});
+		});
 	});
 
 	it('should not show "Set up credential" button when user cannot create credentials', () => {
@@ -983,6 +1551,8 @@ describe('NodeCredentials', () => {
 		);
 
 		expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
+		const emptyState = screen.getByTestId('node-credentials-empty-state');
+		expect(within(emptyState).getByRole('button')).toBeDisabled();
 	});
 
 	it('should clear stale AI Gateway managed credentials on mount when gateway is disabled', () => {
@@ -1040,6 +1610,42 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	describe('credential auto-select', () => {
+		it('should auto-select a credential of the overridden type on mount', () => {
+			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
+			ndvStore.activeNode = httpNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					node: httpNodeNoCreds,
+					overrideCredType: 'openAiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				name: string;
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.name).toBe(httpNodeNoCreds.name);
+			expect(payload.properties.credentials['openAiApi']).toEqual({
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account',
+			});
+		});
+	});
+
 	describe('AI Gateway toggle (onAiGatewaySelector)', () => {
 		const googlePalmApiCredType: ICredentialType = {
 			name: 'googlePalmApi',
@@ -1075,9 +1681,14 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -1090,14 +1701,8 @@ describe('NodeCredentials', () => {
 			credentialsStore.state.credentialTypes = { googlePalmApi: googlePalmApiCredType };
 		});
 
-		const aiGatewayToggleStub = {
-			template: '<div data-test-id="ai-gateway-toggle" />',
-			props: ['aiGatewayEnabled', 'readonly'],
-			emits: ['toggle'],
-		};
-
 		describe('rendering', () => {
-			it('should show the toggle and the credential selector when gateway is supported but not managed', () => {
+			it('offers n8n credits alongside own credentials when the gateway supports the type', async () => {
 				const existingCred = {
 					id: 'cred-1',
 					name: 'My Google Key',
@@ -1117,15 +1722,15 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				// Both the toggle and the credential dropdown should be visible
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				expect(screen.getByTestId('node-credentials-select-item-n8n-credits')).toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select-item-cred-1')).toBeInTheDocument();
 			});
 
-			it('should show the toggle but hide the credential selector when gateway is managed', () => {
+			it('should show the select with n8n credits selected when gateway is managed', async () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -1134,23 +1739,28 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				// The select stays visible with n8n credits as the selection.
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				expect(await screen.findByDisplayValue('n8n credits')).toBeInTheDocument();
 			});
 
-			it('should show the toggle when gateway is managed but config has not loaded yet', () => {
+			it('keeps the managed selection when gateway config has not loaded yet', () => {
 				// Simulates the case where the AI gateway backend is unreachable and fetchConfig
-				// fails, leaving isCredentialTypeSupported returning false. The toggle must still
-				// appear so the user can disable AI gateway on existing nodes.
+				// fails, leaving isCredentialTypeSupported returning false. The managed selection
+				// must still render so the user can switch away on existing nodes.
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
@@ -1165,20 +1775,23 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 
-			it('should not show the toggle when gateway feature is disabled', () => {
+			it('does not offer n8n credits when the gateway feature is disabled', async () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
@@ -1188,13 +1801,17 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+				// Without n8n credits the empty state is a plain create button, not a picker.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
 			});
 
-			it('should show the toggle in readonly mode when gateway is managed', () => {
+			it('shows the managed selection in readonly mode', () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -1203,15 +1820,14 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi', readonly: true },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				// The readonly disabled input should not be shown for a managed credential
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				// The readonly disabled input shows the managed selection.
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('n8n credits')).toBeInTheDocument();
 			});
 
-			it('should show the readonly disabled input and the toggle when readonly and not managed', () => {
+			it('should show the readonly disabled input when readonly and not managed', () => {
 				const nodeWithCred: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
@@ -1220,33 +1836,581 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi', readonly: true },
-					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
-				// Toggle is shown (disabled) so users can see the gateway is supported for this type
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 		});
 
-		it('should emit credentialSelected with __aiGatewayManaged:true when toggled ON', async () => {
+		describe('n8n credits dropdown option', () => {
+			const existingCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+
+			const nodeWithCred: INodeUi = {
+				...googleAiNode,
+				credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+			};
+
+			beforeEach(() => {
+				credentialsStore.state.credentials = { 'cred-1': existingCred };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(existingCred);
+				ndvStore.activeNode = nodeWithCred;
+			});
+
+			it('lists n8n credits as the first option for a gateway-served type', async () => {
+				renderComponent({ props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				const creditsOption = screen.getByTestId('node-credentials-select-item-n8n-credits');
+				expect(creditsOption).toBeInTheDocument();
+				// First row, above the user's own credentials.
+				const allOptions = screen.getAllByTestId(/node-credentials-select-item-/);
+				expect(allOptions[0]).toBe(creditsOption);
+			});
+
+			it('does not offer n8n credits when the gateway does not serve the type', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				renderComponent({ props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				expect(screen.queryByText('My Google Key')).toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+
+			it('writes the managed slot when the n8n credits option is chosen', async () => {
+				const { emitted } = renderComponent({
+					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
+				});
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
+
+				const payload = ((emitted('credentialSelected')?.at(-1) as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(payload.properties.credentials.googlePalmApi).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+			});
+
+			it('shows the balance pill on the n8n credits row and the managed trigger', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => 2.75),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				// Trigger overlay + the dropdown row both carry the balance.
+				expect(screen.getAllByText('$2.75 remaining').length).toBeGreaterThanOrEqual(1);
+
+				const credentialsSelect = screen.getByTestId('node-credentials-select');
+				await userEvent.click(credentialsSelect);
+
+				const credentialSearch = credentialsSelect.querySelector('input') as HTMLElement;
+				await userEvent.type(credentialSearch, 'My');
+
+				expect(screen.queryByText('$2.75 remaining')).not.toBeInTheDocument();
+			});
+
+			it('shows a top-up gear instead of the pen while managed', () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
+				expect(screen.queryByTestId('credential-edit-button')).not.toBeInTheDocument();
+			});
+
+			it('opens the top-up modal from the gear', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+				vi.spyOn(uiStore, 'openModalWithData');
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('credential-topup-button'));
+
+				await waitFor(() => {
+					expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+						name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+						data: { variant: 'member' },
+					});
+				});
+			});
+
+			it('switches to an own credential from the managed state via the dropdown', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				const { emitted } = renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+				});
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-cred-1'));
+
+				const payload = ((emitted('credentialSelected')?.at(-1) as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(payload.properties.credentials.googlePalmApi).toEqual({
+					id: 'cred-1',
+					name: 'My Google Key',
+				});
+			});
+		});
+
+		describe('multiple credential types (n8n credits on a non-default auth)', () => {
+			// Mirrors a node whose `authentication` defaults to an option mapping to a
+			// credential type NOT covered by n8n credits, while a sibling auth option
+			// maps to a covered type.
+			const serviceOAuth2CredType: ICredentialType = {
+				name: 'serviceOAuth2Api',
+				displayName: 'Service OAuth2 API',
+				properties: [],
+			};
+			const serviceApiKeyCredType: ICredentialType = {
+				name: 'serviceApiKey',
+				displayName: 'Service API',
+				properties: [],
+			};
+
+			const multiAuthNodeType: INodeTypeDescription = {
+				displayName: 'Service',
+				name: 'service',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Service' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				credentials: [
+					{
+						name: 'serviceOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+					{
+						name: 'serviceApiKey',
+						required: true,
+						displayOptions: { show: { authentication: ['apiKey'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'OAuth2', value: 'oAuth2' },
+							{ name: 'API Key', value: 'apiKey' },
+						],
+						default: 'oAuth2',
+					},
+				],
+			};
+
+			const multiAuthNode: INodeUi = {
+				id: 'node-service',
+				name: 'Service',
+				type: 'service',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { authentication: 'oAuth2' },
+				credentials: {},
+			};
+
+			beforeEach(() => {
+				// Gateway covers only the API-key credential type, not the default OAuth2 one.
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'serviceApiKey'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'serviceApiKey'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				nodeTypesStore.setNodeTypes([multiAuthNodeType]);
+				credentialsStore.state.credentialTypes = {
+					serviceOAuth2Api: serviceOAuth2CredType,
+					serviceApiKey: serviceApiKeyCredType,
+				};
+				credentialsStore.state.credentials = {};
+			});
+
+			it('offers the n8n credits option when a non-displayed sibling credential type is supported', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					// Clear the suite-wide default override — these tests model the NDV row.
+					props: { node: multiAuthNode, overrideCredType: '' },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+
+				expect(screen.getByTestId('node-credentials-select-item-n8n-credits')).toBeInTheDocument();
+			});
+
+			it('switches authentication to the supported credential type when n8n credits is chosen', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				const { emitted } = renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '' },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
+
+				// Managed credential is attached to the supported (API-key) type, not the default OAuth2 type.
+				const credPayload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(credPayload.properties.credentials.serviceApiKey).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+				expect(credPayload.properties.credentials.serviceOAuth2Api).toBeUndefined();
+
+				// And the node's authentication is switched to the supported option.
+				const authPayload = ((emitted('valueChanged')?.[0] as unknown[]) ?? [])[0] as {
+					name: string;
+					value: string;
+				};
+				expect(authPayload).toEqual({ name: 'parameters.authentication', value: 'apiKey' });
+			});
+
+			// Mirrors the real NDV mount: `show-all` is true and the node has no
+			// explicit `authentication` (relies on the type's `oAuth2` default),
+			// exactly like a freshly inserted PDF.co node.
+			it('switches authentication when show-all is set and authentication is unset', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				const { emitted } = renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '', showAll: true },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
+
+				const credPayload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(credPayload.properties.credentials.serviceApiKey).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+
+				const authPayload = ((emitted('valueChanged')?.[0] as unknown[]) ?? [])[0] as {
+					name: string;
+					value: string;
+				};
+				expect(authPayload).toEqual({ name: 'parameters.authentication', value: 'apiKey' });
+			});
+
+			// Setup-flow hosts (standalone Instance AI cards, setup panel via
+			// overrideCredType) read the credentialSelected payload by this row's
+			// type and don't handle valueChanged, so the sibling fallback must not
+			// surface the toggle there.
+			it('does not offer the sibling fallback in standalone mode', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '', standalone: true },
+				});
+
+				// The sibling fallback is suppressed, so no picker (and no n8n credits) appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+
+			it('does not offer the sibling fallback when a credential type override is set', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					props: { node: multiAuthNode, overrideCredType: 'serviceOAuth2Api' },
+				});
+
+				// The sibling fallback is suppressed, so no picker (and no n8n credits) appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+		});
+
+		describe('minNodeTypeVersion gate', () => {
+			const versionedNodeType: INodeTypeDescription = {
+				displayName: 'Some Node',
+				name: 'some-package.SomeNode',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Some Node' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				credentials: [{ name: 'someApi', required: true }],
+				properties: [],
+			};
+
+			const someApiCredType: ICredentialType = {
+				name: 'someApi',
+				displayName: 'Some API',
+				properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+			};
+
+			beforeEach(() => {
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				nodeTypesStore.setNodeTypes([versionedNodeType]);
+				credentialsStore.state.credentialTypes = { someApi: someApiCredType };
+			});
+
+			it('does not offer n8n credits when typeVersion is below the minimum', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+				});
+
+				// Below the minimum version the gateway is unsupported, so no picker appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+
+			it('offers n8n credits when typeVersion meets the minimum', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+
+				expect(screen.getByTestId('node-credentials-select-item-n8n-credits')).toBeInTheDocument();
+			});
+
+			it('should emit credentialSelected clearing __aiGatewayManaged when version gate fails on mount', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: { someApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = node;
+
+				const { emitted } = renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+				});
+
+				expect(emitted('credentialSelected')).toBeTruthy();
+				const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				// No available credentials in store → entry is deleted, not restored
+				expect(payload.properties.credentials['someApi']).toBeUndefined();
+			});
+
+			it('should not emit credentialSelected on mount when version gate fails but no managed credential exists', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
+					isNodeTypeVersionSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const node: INodeUi = {
+					id: 'node-some',
+					name: 'Some Node',
+					type: 'some-package.SomeNode',
+					typeVersion: 1.0,
+					position: [0, 0],
+					parameters: {},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				const { emitted } = renderComponent({
+					props: { node, overrideCredType: 'someApi' },
+				});
+
+				expect(emitted('credentialSelected')).toBeFalsy();
+			});
+		});
+
+		it('writes the managed slot when n8n credits is chosen with no stored credentials', async () => {
 			ndvStore.activeNode = googleAiNode;
 
 			const { emitted } = renderComponent({
 				props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
-				global: {
-					stubs: {
-						AiGatewaySelector: {
-							template:
-								'<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
-							props: ['aiGatewayEnabled'],
-							emits: ['toggle'],
-						},
-					},
-				},
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+			await userEvent.click(
+				within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+			);
+			await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
 
 			expect(emitted('credentialSelected')).toBeTruthy();
 			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
@@ -1261,7 +2425,238 @@ describe('NodeCredentials', () => {
 			});
 		});
 
-		it('should emit credentialSelected restoring credentials when toggled OFF with available credentials', async () => {
+		it('should auto-enable gateway credential on mount when the current action is supported', () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
+		it('should not auto-enable the gateway before the scoped fetch has resolved', async () => {
+			// An unfetched slice reads as "no credentials" — acting on it would switch a
+			// node that has a perfectly good credential onto n8n credits (IAM-1241).
+			stopCredentialsMirror();
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.hasFetchedUsableCredentials = false;
+			credentialsStore.usableCredentials = {};
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+
+			// Once the scope lands the user's own credential is selected instead.
+			credentialsStore.usableCredentials = { 'cred-1': ownCred };
+			credentialsStore.hasFetchedUsableCredentials = true;
+			await nextTick();
+
+			const payload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual(
+				expect.objectContaining({ id: 'cred-1' }),
+			);
+		});
+
+		it('should auto-enable gateway credential on mount for a directly-supported single-cred node in the NDV (show-all, no override)', () => {
+			// Real NDV config: show-all is true and no overrideCredType. Regression guard
+			// for the sibling-fallback change not clobbering directly-supported types.
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: '', showAll: true },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
+		it('should auto-select an own credential when one is available', () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithoutCred: INodeUi = {
+				...googleAiNode,
+				credentials: {},
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithoutCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithoutCred, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: 'cred-1',
+				name: 'My Google Key',
+			});
+		});
+
+		it('should not auto-enable gateway credential on mount when the current action is unsupported', () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'unsupportedOp' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
+		it('should not redirect an empty node onto n8n Connect when a supported action is picked later', async () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+				credentials: {},
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// n8n Connect is auto-selected once, as the initial default.
+			expect(gatewayEmitCount()).toBe(1);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// The action change must not redirect the user back onto n8n Connect.
+			expect(gatewayEmitCount()).toBe(1);
+		});
+
+		it('should not switch a user-selected own credential to n8n Connect when the action changes', async () => {
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.state.credentials = { 'cred-1': ownCred };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+
+			const nodeWithOwnCred: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'scrape', operation: 'scrape' },
+				credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+			};
+			ndvStore.activeNode = nodeWithOwnCred;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithOwnCred, overrideCredType: 'googlePalmApi' },
+			});
+
+			const gatewayEmitCount = () =>
+				(
+					(emitted('credentialSelected') ?? []) as Array<
+						[{ properties: { credentials: Record<string, { __aiGatewayManaged?: boolean }> } }]
+					>
+				).filter((e) => e[0]?.properties?.credentials?.googlePalmApi?.__aiGatewayManaged === true)
+					.length;
+
+			// The own credential is kept as-is; n8n Connect is never auto-selected.
+			expect(gatewayEmitCount()).toBe(0);
+
+			// Re-trigger the credential-options watch, as changing the action would.
+			credentialsStore.state.credentials = {
+				'cred-1': ownCred,
+				other: { id: 'other', name: 'Other', type: 'otherApi' } as never,
+			};
+			await nextTick();
+
+			// Still no switch to n8n Connect after the re-evaluation.
+			expect(gatewayEmitCount()).toBe(0);
+		});
+
+		it('restores the stored credential on mount when the node version loses gateway support', async () => {
 			const existingCred = {
 				id: 'cred-1',
 				name: 'My Google Key',
@@ -1279,21 +2674,27 @@ describe('NodeCredentials', () => {
 			};
 			ndvStore.activeNode = nodeWithGateway;
 
-			const { emitted } = renderComponent({
-				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-				global: {
-					stubs: {
-						AiGatewaySelector: {
-							template:
-								'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
-							props: ['aiGatewayEnabled'],
-							emits: ['toggle'],
-						},
-					},
-				},
+			// Mount-time cleanup: the node's version no longer supports the gateway.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => false),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+			const { emitted } = renderComponent({
+				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+			});
 
 			expect(emitted('credentialSelected')).toBeTruthy();
 			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
@@ -1310,28 +2711,17 @@ describe('NodeCredentials', () => {
 		});
 
 		describe('telemetry', () => {
-			const toggleOnStub = {
-				template: '<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
-				props: ['aiGatewayEnabled'],
-				emits: ['toggle'],
-			};
-
-			const toggleOffStub = {
-				template:
-					'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
-				props: ['aiGatewayEnabled'],
-				emits: ['toggle'],
-			};
-
 			it('should track telemetry with mode "n8n_connect" when toggled ON by user', async () => {
 				ndvStore.activeNode = googleAiNode;
 
 				renderComponent({
 					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: toggleOnStub } },
 				});
 
-				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
 
 				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
 					credential_type: 'googlePalmApi',
@@ -1339,27 +2729,12 @@ describe('NodeCredentials', () => {
 					mode: 'n8n_connect',
 					workflow_id: expect.any(String),
 				});
-			});
-
-			it('should track telemetry with mode "own" when toggled OFF by user', async () => {
-				const nodeWithGateway: INodeUi = {
-					...googleAiNode,
-					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
-				};
-				ndvStore.activeNode = nodeWithGateway;
-
-				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: toggleOffStub } },
-				});
-
-				await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
-
-				expect(trackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+				expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
 					credential_type: 'googlePalmApi',
 					node_type: googleAiNode.type,
-					mode: 'own',
 					workflow_id: expect.any(String),
+					credential_kind: 'n8n_connect',
+					source: 'user',
 				});
 			});
 
@@ -1369,17 +2744,34 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewaySelector: toggleOnStub } },
 				});
 
 				expect(trackMock).not.toHaveBeenCalledWith(
 					'User toggled n8n connect credential',
 					expect.anything(),
 				);
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
+			});
+
+			it('does not emit "Node credential assigned" in standalone mode (backend attributes it)', async () => {
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi', standalone: true },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
+				);
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
+
+				// The Instance AI setup card hosts NodeCredentials in standalone mode;
+				// the confirmed selection is counted server-side as source: 'instance-ai-*'.
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
 			});
 		});
 
-		it('should emit credentialSelected removing credentials when toggled OFF with no available credentials', async () => {
+		it('clears the managed slot on mount when the node version loses gateway support and no credential exists', async () => {
 			credentialsStore.state.credentials = {};
 
 			const nodeWithGateway: INodeUi = {
@@ -1388,21 +2780,27 @@ describe('NodeCredentials', () => {
 			};
 			ndvStore.activeNode = nodeWithGateway;
 
-			const { emitted } = renderComponent({
-				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-				global: {
-					stubs: {
-						AiGatewaySelector: {
-							template:
-								'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
-							props: ['aiGatewayEnabled'],
-							emits: ['toggle'],
-						},
-					},
-				},
+			// Mount-time cleanup: the node's version no longer supports the gateway.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => false),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+			const { emitted } = renderComponent({
+				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+			});
 
 			expect(emitted('credentialSelected')).toBeTruthy();
 			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
@@ -1420,7 +2818,7 @@ describe('NodeCredentials', () => {
 			name: 'My Slack',
 			type: 'openAiApi',
 			isResolvable: true,
-			scopes: ['credential:update'],
+			scopes: ['credential:update', 'credential:connect'],
 		});
 
 		const notionNode: INodeUi = {
@@ -1454,42 +2852,73 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credential-private-icon')).not.toBeInTheDocument();
 		});
 
-		it('renders the private callout when a private credential is selected', async () => {
+		it('renders the private connection row when a private credential is selected', async () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-row')).toBeInTheDocument();
 		});
 
-		it('does not render the callout for a static credential', async () => {
+		it('does not render the connection row for a static credential', async () => {
 			credentialsStore.state.credentials = {
 				c8vqdPpPClh4TgIO: createCredential({ isResolvable: false }),
 			};
 			renderComponent({ props: { node: httpNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
 		});
 
-		it('shows connected status row when connectedByMe is true', async () => {
+		it('shows the Connected dropdown when connectedByMe is true', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: true },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Your account is connected')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connected-actions')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 
-		it('shows the connect prompt with a Connect button when connectedByMe is false', async () => {
+		it('names the provider account the connection authenticates as', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: true,
+					connectedAccountIdentifier: 'jane@gmail.com',
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-row')).toHaveTextContent(
+				'Connected as jane@gmail.com',
+			);
+		});
+
+		it('does not name the n8n account when the provider tells us no account', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.usersById = {
+				'user-1': { id: 'user-1', email: 'signed-in@n8n.io' } as IUser,
+			};
+			usersStore.currentUserId = 'user-1';
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			const row = screen.getByTestId('node-credential-private-row');
+			expect(row).toHaveTextContent('Connected');
+			expect(row).not.toHaveTextContent('signed-in@n8n.io');
+		});
+
+		it('shows the Connect button when connectedByMe is false', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Connect your account')).toBeInTheDocument();
 			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
-		it('hides the Connect button when the user lacks update permission', async () => {
+		it('disables the Connect button when the user lacks connect permission', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': {
 					...privateCredential,
@@ -1499,11 +2928,37 @@ describe('NodeCredentials', () => {
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText('Connect your account')).toBeInTheDocument();
-			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
 		});
 
-		it('clicking the Connect button calls uiStore.openExistingCredential with the credential id', async () => {
+		it('keeps the Connect button enabled in readonly mode for a user who can connect', async () => {
+			// Connecting your own account is a personal action gated by the connect
+			// scope, not by the node's readonly state (mirrors the credentials list).
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
+		it('keeps the Connected actions dropdown usable in readonly mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
+			await userEvent.click(dropdown);
+
+			expect(screen.getByText('Disconnect')).toBeInTheDocument();
+		});
+
+		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
@@ -1511,30 +2966,48 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
 
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith(
-				'private-cred-id',
-				expect.any(Object),
+			expect(authorizeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'private-cred-id' }),
 			);
+			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
 		});
 
-		it('still renders the callout when the workflow uses the default (system) resolver', async () => {
+		it('connects via OAuth even when the user has edit rights (single flow for all)', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: false,
+					scopes: ['credential:update', 'credential:connect'],
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
+
+			expect(authorizeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'private-cred-id' }),
+			);
+			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
+		});
+
+		it('still renders the connection row when the workflow uses the default (system) resolver', async () => {
 			workflowDocumentStore.mergeSettings({ credentialResolverId: SYSTEM_RESOLVER_ID });
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-row')).toBeInTheDocument();
 		});
 
-		it('hides the callout when the workflow uses a non-default resolver', async () => {
+		it('hides the connection row when the workflow uses a non-default resolver', async () => {
 			workflowDocumentStore.mergeSettings({ credentialResolverId: 'slack-resolver' });
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
 		});
 	});
 });

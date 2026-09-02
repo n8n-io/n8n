@@ -10,6 +10,11 @@ export type ApiKeyOwner = {
 	email: string;
 };
 
+export type ApiKeyOwnerSummary = ApiKeyOwner & {
+	/** Number of keys this owner holds in the `all` population. */
+	keyCount: number;
+};
+
 export type ApiKey = {
 	id: string;
 	label: string;
@@ -27,9 +32,28 @@ export type ApiKey = {
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
 
+export type ApiKeyOwnership = 'mine' | 'all';
+
 export type ApiKeyList = {
 	items: ApiKey[];
-	count: number;
+	/**
+	 * Per-ownership totals after the label filter is applied.
+	 * `counts[ownership]` drives pagination of the returned page.
+	 */
+	counts: { mine: number; all: number };
+	/**
+	 * Per-ownership totals ignoring the label filter, so callers can render
+	 * tab badges and empty-state CTAs against the true population. Equals
+	 * `counts` when no label filter was passed.
+	 */
+	totals: { mine: number; all: number };
+	/**
+	 * Distinct owners who hold at least one key in the `all` population (with
+	 * their key counts), regardless of the active label/owner filters, so
+	 * callers can populate an owner filter. Empty for callers without
+	 * `apiKey:manage`.
+	 */
+	owners: ApiKeyOwnerSummary[];
 };
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

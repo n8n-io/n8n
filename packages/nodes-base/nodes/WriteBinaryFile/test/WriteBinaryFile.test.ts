@@ -14,7 +14,7 @@ describe('Test Write Binary File Node', () => {
 	writeFileNode.parameters.fileName = writeFilePath;
 
 	beforeEach(() => {
-		jest.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
+		vi.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
 	});
 
 	const tests: WorkflowTestData[] = [

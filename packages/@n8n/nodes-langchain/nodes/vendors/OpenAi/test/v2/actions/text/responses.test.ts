@@ -95,7 +95,48 @@ describe('OpenAI Responses Helper Functions', () => {
 			expect(result).toEqual([
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I am doing well, thank you!' }],
+					content: [{ type: 'output_text', text: 'I am doing well, thank you!', annotations: [] }],
+				},
+			]);
+		});
+
+		it('should format assistant text messages as output_text', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const messages = [
+				{
+					role: 'assistant',
+					type: 'text',
+					content: 'Sure, here is one:',
+				},
+			];
+
+			const result = await formatInputMessages.call(executeFunctions, 0, messages);
+
+			expect(result).toEqual([
+				{
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'Sure, here is one:', annotations: [] }],
+				},
+			]);
+		});
+
+		it('should format user and system text messages as input_text', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const messages = [
+				{ role: 'system', type: 'text', content: 'You are a helpful assistant.' },
+				{ role: 'user', type: 'text', content: 'Hello' },
+			];
+
+			const result = await formatInputMessages.call(executeFunctions, 0, messages);
+
+			expect(result).toEqual([
+				{
+					role: 'system',
+					content: [{ type: 'input_text', text: 'You are a helpful assistant.' }],
+				},
+				{
+					role: 'user',
+					content: [{ type: 'input_text', text: 'Hello' }],
 				},
 			]);
 		});
@@ -364,7 +405,9 @@ describe('OpenAI Responses Helper Functions', () => {
 				},
 				{
 					role: 'assistant',
-					content: [{ type: 'input_text', text: 'I can see the image you shared.' }],
+					content: [
+						{ type: 'output_text', text: 'I can see the image you shared.', annotations: [] },
+					],
 				},
 			]);
 		});

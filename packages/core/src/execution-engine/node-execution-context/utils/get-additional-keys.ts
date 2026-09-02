@@ -21,6 +21,7 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
+	options: { isCredential: boolean } = { isCredential: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
@@ -40,8 +41,13 @@ export function getAdditionalKeys(
 				? createExecutionCustomData({ runExecutionData, mode })
 				: undefined,
 		},
+		// Gated on the value's presence, not on `mode`: sub-workflows of an eval run
+		// execute as 'integrated' but inherit evaluationRunId, so they must expose it too.
+		$evaluation: additionalData.evaluationRunId
+			? { runId: additionalData.evaluationRunId }
+			: undefined,
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated
 		$executionId: executionId,
@@ -55,9 +61,10 @@ export function getAdditionalKeys(
  * */
 export function getNonWorkflowAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
+	options: { secretsEnabled: boolean } = { secretsEnabled: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	return {
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 	};
 }

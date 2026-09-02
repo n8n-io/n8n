@@ -9,10 +9,23 @@ import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant: mockedGetVariant,
+		// Read by ParameterInputList's per-node experiment gating (e.g. Telegram HITL),
+		// which every parameter type mounts through, including this fixedCollection one.
+		isFeatureEnabled: vi.fn(() => false),
 	})),
 }));
 
@@ -87,6 +100,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 		const mockPostHog = vi.mocked(usePostHog);
 		mockPostHog.mockReturnValue({
 			getVariant: vi.fn().mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant),
+			isFeatureEnabled: vi.fn(() => false),
 		} as Partial<PosthogStore> as PosthogStore);
 
 		const { container } = renderComponent();

@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { z } from 'zod';
 import {
 	ContextEstablishmentHook,
 	type ContextEstablishmentOptions,
@@ -7,6 +6,7 @@ import {
 	type HookDescription,
 	type IContextEstablishmentHook,
 } from '@n8n/decorators';
+import { z } from 'zod';
 
 function isHeaderObject(obj: unknown): obj is Record<string, unknown> {
 	return obj !== null && obj !== undefined && typeof obj === 'object' && !Array.isArray(obj);

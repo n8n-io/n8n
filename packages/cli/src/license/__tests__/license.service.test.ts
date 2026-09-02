@@ -1,15 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { markHttpRequestError } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { WorkflowRepository } from '@n8n/db';
 import type { TEntitlement } from '@n8n_io/license-sdk';
-import axios, { AxiosError } from 'axios';
-import { mock } from 'jest-mock-extended';
+import { AxiosError } from 'axios';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { LicenseErrors, LicenseService } from '@/license/license.service';
-
-jest.mock('axios');
 
 describe('LicenseService', () => {
 	const license = mock<License>();
@@ -17,6 +17,9 @@ describe('LicenseService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const entitlement = mock<TEntitlement>({ productId: '123' });
 	const eventService = mock<EventService>();
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
 	const licenseService = new LicenseService(
 		mock(),
 		license,
@@ -24,6 +27,7 @@ describe('LicenseService', () => {
 		workflowRepository,
 		mock(),
 		eventService,
+		outboundHttp,
 	);
 
 	license.getMainPlan.mockReturnValue(entitlement);
@@ -33,7 +37,7 @@ describe('LicenseService', () => {
 	workflowRepository.getActiveTriggerCount.mockResolvedValue(7);
 	workflowRepository.getWorkflowsWithEvaluationCount.mockResolvedValue(1);
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	class LicenseError extends Error {
 		constructor(readonly errorId: string) {
@@ -140,9 +144,7 @@ describe('LicenseService', () => {
 
 	describe('registerCommunityEdition', () => {
 		test('on success', async () => {
-			jest
-				.spyOn(axios, 'post')
-				.mockResolvedValueOnce({ data: { title: 'Title', text: 'Text', licenseKey: 'abc-123' } });
+			request.mockResolvedValueOnce({ title: 'Title', text: 'Text', licenseKey: 'abc-123' });
 			const data = await licenseService.registerCommunityEdition({
 				userId: '123',
 				email: 'test@ema.il',
@@ -152,6 +154,17 @@ describe('LicenseService', () => {
 			});
 
 			expect(data).toEqual({ title: 'Title', text: 'Text' });
+			expect(request).toHaveBeenCalledWith({
+				url: 'https://enterprise.n8n.io/community-registered',
+				method: 'POST',
+				body: {
+					email: 'test@ema.il',
+					instanceId: '123',
+					instanceUrl: 'http://localhost',
+					licenseType: 'community-registered',
+				},
+				json: true,
+			});
 			expect(eventService.emit).toHaveBeenCalledWith('license-community-plus-registered', {
 				userId: '123',
 				email: 'test@ema.il',
@@ -159,8 +172,13 @@ describe('LicenseService', () => {
 			});
 		});
 
-		test('on failure', async () => {
-			jest.spyOn(axios, 'post').mockRejectedValueOnce(new AxiosError('Failed'));
+		test('on failure surfaces the upstream error message', async () => {
+			// The real client tags the errors it rejects; mirror that so the guard fires.
+			const requestError = markHttpRequestError(new AxiosError('Failed'));
+			requestError.response = mock<AxiosError['response']>({
+				data: { message: 'Email already registered' },
+			});
+			request.mockRejectedValueOnce(requestError);
 			await expect(
 				licenseService.registerCommunityEdition({
 					userId: '123',
@@ -169,7 +187,21 @@ describe('LicenseService', () => {
 					instanceUrl: 'http://localhost',
 					licenseType: 'community-registered',
 				}),
-			).rejects.toThrowError('Failed');
+			).rejects.toThrowError('Failed to register community edition: Email already registered');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('on non-HTTP failure throws a generic error', async () => {
+			request.mockRejectedValueOnce(new Error('boom'));
+			await expect(
+				licenseService.registerCommunityEdition({
+					userId: '123',
+					email: 'test@ema.il',
+					instanceId: '123',
+					instanceUrl: 'http://localhost',
+					licenseType: 'community-registered',
+				}),
+			).rejects.toThrowError('Failed to register community edition');
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});

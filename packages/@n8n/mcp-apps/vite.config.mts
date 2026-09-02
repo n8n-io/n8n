@@ -44,6 +44,7 @@ export default defineConfig(({ mode }) => {
 		],
 		resolve: {
 			alias: {
+				'@mcp-apps': resolve(__dirname, 'src'),
 				'@n8n/design-system': resolve(__dirname, '../../frontend/@n8n/design-system/src'),
 			},
 		},

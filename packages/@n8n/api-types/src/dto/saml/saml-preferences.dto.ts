@@ -13,6 +13,15 @@ const SignatureConfigSchema = z.object({
 	}),
 });
 
+/** Same shape without defaults — required for full-object Public API PUTs. */
+const SignatureConfigRequiredSchema = z.object({
+	prefix: z.string(),
+	location: z.object({
+		reference: z.string(),
+		action: z.enum(['before', 'after', 'prepend', 'append']),
+	}),
+});
+
 export class SamlPreferencesAttributeMapping extends Z.class({
 	/** SAML attribute mapped to the user's email. */
 	email: z.string(),
@@ -61,4 +70,33 @@ export class SamlPreferences extends Z.class({
 	}),
 
 	relayState: z.string().default(''),
+}) {}
+
+/**
+ * Public API PUT body for SAML configuration. Clients must send every writable
+ * field; use empty strings / empty arrays when a value is unset.
+ */
+export class UpdateSamlConfigurationDto extends Z.class({
+	mapping: z.object({
+		email: z.string(),
+		firstName: z.string(),
+		lastName: z.string(),
+		userPrincipalName: z.string(),
+		n8nInstanceRole: z.string(),
+		n8nProjectRoles: z.array(z.string()),
+	}),
+	metadata: z.string(),
+	metadataUrl: z.string(),
+	ignoreSSL: z.boolean(),
+	loginBinding: SamlLoginBindingSchema,
+	loginEnabled: z.boolean(),
+	loginLabel: z.string(),
+	authnRequestsSigned: z.boolean(),
+	wantAssertionsSigned: z.boolean(),
+	wantMessageSigned: z.boolean(),
+	signingPrivateKey: z.string(),
+	signingCertificate: z.string(),
+	acsBinding: SamlLoginBindingSchema,
+	signatureConfig: SignatureConfigRequiredSchema,
+	relayState: z.string(),
 }) {}

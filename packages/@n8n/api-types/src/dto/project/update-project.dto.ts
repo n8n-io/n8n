@@ -24,7 +24,7 @@ const updateProjectShape = {
 				const trimmedKeys = tags.map((t) => t.key.trim());
 				return trimmedKeys.length === new Set(trimmedKeys).size;
 			},
-			{ message: 'Duplicate keys are not allowed in customTelemetryTags' },
+			{ message: 'Duplicate keys are not allowed in custom span attributes' },
 		)
 		.optional(),
 };
