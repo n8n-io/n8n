@@ -237,10 +237,13 @@ each of them, worst first:
 [a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
 ```
 
-`elements` counts the distinct violating elements, so a bucket that was scanned
-twice reports each element once. `score` weights those elements by impact
-(critical 10, serious 5, moderate 3, minor 1), so it goes to zero as the bucket
-gets fixed. The same numbers go into the GitHub job summary as a bucket table.
+`elements` counts the distinct violating elements. An element is counted once
+for each screen it is broken on, however many rules it trips there, so a bucket
+the run scanned twice on the same screen reports its elements once. `score`
+weights those elements by impact (critical 10, serious 5, moderate 3, minor 1),
+taking the worst impact reported for each element, so it goes to zero as the
+bucket gets fixed. The same numbers go into the GitHub job summary as a bucket
+table.
 
 When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
 reporter sends the scores to the QA metrics webhook the perf metrics use. Each

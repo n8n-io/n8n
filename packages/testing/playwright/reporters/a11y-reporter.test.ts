@@ -26,8 +26,12 @@ function violation(
 	return { id, impact, tags: [], description: '', help: '', helpUrl: '', nodes };
 }
 
-function scan(bucket: A11yScan['bucket'], violations: A11yViolation[]): A11yScan {
-	return { bucket, url: 'http://localhost:5678/home/workflows', violations };
+function scan(
+	bucket: A11yScan['bucket'],
+	violations: A11yViolation[],
+	url = 'http://localhost:5678/home/workflows',
+): A11yScan {
+	return { bucket, url, violations };
 }
 
 describe('mergeA11yScans', () => {
@@ -104,6 +108,37 @@ describe('scoreA11yBuckets', () => {
 		]);
 
 		expect(scores[0]).toMatchObject({ scans: 2, rules: 1, elements: 1, score: 5 });
+	});
+
+	test('counts an element once when two rules trip on it, at its worst impact', () => {
+		const button = node('button');
+
+		const [score] = scoreA11yBuckets([
+			scan('canvas', [
+				violation('color-contrast', [button], 'serious'),
+				violation('button-name', [button], 'critical'),
+			]),
+		]);
+
+		expect(score).toMatchObject({ rules: 2, elements: 1, score: 10 });
+		expect(score.elementsByImpact).toMatchObject({ critical: 1, serious: 0 });
+	});
+
+	test('counts the same markup on two screens as two elements', () => {
+		const scores = scoreA11yBuckets([
+			scan(
+				'sidebar',
+				[violation('label', [node('input')])],
+				'http://localhost:5678/home/workflows',
+			),
+			scan(
+				'sidebar',
+				[violation('label', [node('input')])],
+				'http://localhost:5678/home/credentials',
+			),
+		]);
+
+		expect(scores[0]).toMatchObject({ scans: 2, rules: 1, elements: 2, score: 10 });
 	});
 
 	test('weights the elements by impact', () => {

@@ -29,40 +29,49 @@ export function resolveCiMetricsWebhook(
 
 function gitFallback(command: string): string | null {
 	try {
-		return execSync(`git ${command}`, {
+		const output = execSync(`git ${command}`, {
 			encoding: 'utf8',
 			stdio: ['pipe', 'pipe', 'ignore'],
 		}).trim();
+		return output === '' ? null : output;
 	} catch {
 		return null;
 	}
 }
 
+/**
+ * A GitHub variable that does not apply to the event is set to an empty string,
+ * not left unset - `GITHUB_HEAD_REF` on a push or a merge group, for one. Reading
+ * it as `undefined` is what lets the next fallback run.
+ */
+function ciEnv(name: string): string | undefined {
+	const value = process.env[name];
+	return value === undefined || value.trim() === '' ? undefined : value;
+}
+
 /** Context every telemetry payload carries, whatever measured it. */
 export function ciMetricsContext() {
-	const ref = process.env.GITHUB_REF ?? '';
-	const prMatch = ref.match(/refs\/pull\/(\d+)/);
-	const runId = process.env.GITHUB_RUN_ID ?? null;
+	const prMatch = (ciEnv('GITHUB_REF') ?? '').match(/refs\/pull\/(\d+)/);
+	const runId = ciEnv('GITHUB_RUN_ID') ?? null;
+	const repository = ciEnv('GITHUB_REPOSITORY');
+	const attempt = ciEnv('GITHUB_RUN_ATTEMPT');
 
 	return {
 		timestamp: new Date().toISOString(),
 		git: {
-			sha: (process.env.GITHUB_SHA ?? gitFallback('rev-parse HEAD'))?.slice(0, 8) ?? null,
+			sha: (ciEnv('GITHUB_SHA') ?? gitFallback('rev-parse HEAD'))?.slice(0, 8) ?? null,
 			branch:
-				process.env.GITHUB_HEAD_REF ??
-				process.env.GITHUB_REF_NAME ??
+				ciEnv('GITHUB_HEAD_REF') ??
+				ciEnv('GITHUB_REF_NAME') ??
 				gitFallback('rev-parse --abbrev-ref HEAD'),
 			pr: prMatch ? parseInt(prMatch[1], 10) : null,
 		},
 		ci: {
 			runId,
-			runUrl:
-				runId && process.env.GITHUB_REPOSITORY
-					? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`
-					: null,
-			workflow: process.env.GITHUB_WORKFLOW ?? null,
-			job: process.env.GITHUB_JOB ?? null,
-			attempt: process.env.GITHUB_RUN_ATTEMPT ? parseInt(process.env.GITHUB_RUN_ATTEMPT, 10) : null,
+			runUrl: runId && repository ? `https://github.com/${repository}/actions/runs/${runId}` : null,
+			workflow: ciEnv('GITHUB_WORKFLOW') ?? null,
+			job: ciEnv('GITHUB_JOB') ?? null,
+			attempt: attempt ? parseInt(attempt, 10) : null,
 		},
 		runner: {
 			provider: !process.env.CI

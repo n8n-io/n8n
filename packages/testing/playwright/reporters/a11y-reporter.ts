@@ -34,6 +34,15 @@ function nodeKey(node: NodeResult): string {
 	return `${JSON.stringify(node.target)}::${node.html}`;
 }
 
+/**
+ * Identifies a violating element within the screen it was found on. The same
+ * selector and markup on another URL is another element - a shared header is
+ * broken once for each screen it renders on - so the score keys on both.
+ */
+function scanNodeKey(scan: A11yScan, node: NodeResult): string {
+	return `${scan.url}::${nodeKey(node)}`;
+}
+
 const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'] as const;
 
 /** The impacts axe reports, plus a fallback for a rule that carries none. */
@@ -43,8 +52,9 @@ function impactOf(violation: A11yViolation): A11yImpact {
 	return IMPACT_ORDER.find((impact) => impact === violation.impact) ?? 'unknown';
 }
 
-function impactRank(violation: A11yViolation): number {
-	const index = IMPACT_ORDER.findIndex((impact) => impact === violation.impact);
+/** Lower is worse. `unknown` sorts last, next to `minor`, which is how it is weighted. */
+function impactRank(impact: A11yImpact): number {
+	const index = IMPACT_ORDER.findIndex((known) => known === impact);
 	return index === -1 ? IMPACT_ORDER.length : index;
 }
 
@@ -74,7 +84,7 @@ export function mergeA11yScans(scans: A11yScan[]): A11yViolation[] {
 	}
 
 	return [...byRule.values()].sort(
-		(a, b) => impactRank(a) - impactRank(b) || b.nodes.length - a.nodes.length,
+		(a, b) => impactRank(impactOf(a)) - impactRank(impactOf(b)) || b.nodes.length - a.nodes.length,
 	);
 }
 
@@ -99,20 +109,66 @@ export type A11yBucketScore = {
 	scans: number;
 	/** Distinct rules the bucket violated. */
 	rules: number;
-	/** Distinct violating elements. */
+	/** Distinct violating elements, one count for each screen an element broke on. */
 	elements: number;
 	/** Weighted element total. See {@link A11Y_IMPACT_WEIGHTS}. */
 	score: number;
+	/** The same elements, split by the worst impact reported for each of them. */
 	elementsByImpact: Record<A11yImpact, number>;
 };
 
 /**
- * Scores every bucket a run exercised, worst score first.
+ * Scores one bucket over every scan that covered it.
  *
- * The scans of one bucket are merged before they are counted, so a bucket a
- * journey scanned twice - or a retried test scanned again - scores the same as
- * one that was scanned once.
+ * An element is counted once, at the worst impact any rule reported for it: a
+ * button that trips both a contrast rule and a name rule is one broken button,
+ * not two. The same element on two screens stays two elements, while a bucket
+ * the run scanned twice - a journey that revisited it, or a retried test -
+ * counts each of its elements once.
  */
+function scoreBucket(bucket: A11yBucket, bucketScans: A11yScan[]): A11yBucketScore {
+	const rules = new Set<string>();
+	const impactByElement = new Map<string, A11yImpact>();
+
+	for (const scan of bucketScans) {
+		for (const violation of scan.violations) {
+			rules.add(violation.id);
+			const impact = impactOf(violation);
+
+			for (const node of violation.nodes) {
+				const key = scanNodeKey(scan, node);
+				const worst = impactByElement.get(key);
+				if (worst === undefined || impactRank(impact) < impactRank(worst)) {
+					impactByElement.set(key, impact);
+				}
+			}
+		}
+	}
+
+	const elementsByImpact: Record<A11yImpact, number> = {
+		critical: 0,
+		serious: 0,
+		moderate: 0,
+		minor: 0,
+		unknown: 0,
+	};
+	let score = 0;
+	for (const impact of impactByElement.values()) {
+		elementsByImpact[impact] += 1;
+		score += A11Y_IMPACT_WEIGHTS[impact];
+	}
+
+	return {
+		bucket,
+		scans: bucketScans.length,
+		rules: rules.size,
+		elements: impactByElement.size,
+		score,
+		elementsByImpact,
+	};
+}
+
+/** Scores every bucket a run exercised, worst score first. */
 export function scoreA11yBuckets(scans: A11yScan[]): A11yBucketScore[] {
 	const byBucket = new Map<A11yBucket, A11yScan[]>();
 	for (const scan of scans) {
@@ -122,34 +178,7 @@ export function scoreA11yBuckets(scans: A11yScan[]): A11yBucketScore[] {
 	}
 
 	return [...byBucket]
-		.map(([bucket, bucketScans]) => {
-			const elementsByImpact: Record<A11yImpact, number> = {
-				critical: 0,
-				serious: 0,
-				moderate: 0,
-				minor: 0,
-				unknown: 0,
-			};
-			let elements = 0;
-			let score = 0;
-
-			const violations = mergeA11yScans(bucketScans);
-			for (const violation of violations) {
-				const impact = impactOf(violation);
-				elementsByImpact[impact] += violation.nodes.length;
-				elements += violation.nodes.length;
-				score += A11Y_IMPACT_WEIGHTS[impact] * violation.nodes.length;
-			}
-
-			return {
-				bucket,
-				scans: bucketScans.length,
-				rules: violations.length,
-				elements,
-				score,
-				elementsByImpact,
-			};
-		})
+		.map(([bucket, bucketScans]) => scoreBucket(bucket, bucketScans))
 		.sort((a, b) => b.score - a.score || a.bucket.localeCompare(b.bucket));
 }
 

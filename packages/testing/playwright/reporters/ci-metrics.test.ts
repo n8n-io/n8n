@@ -27,6 +27,7 @@ function stubFetch(response: Partial<Response> | Error) {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.unstubAllEnvs();
 	vi.restoreAllMocks();
 });
 
@@ -38,6 +39,38 @@ describe('resolveCiMetricsWebhook', () => {
 				{ QA_METRICS_WEBHOOK_URL: 'https://env.test', QA_METRICS_WEBHOOK_USER: 'env-user' },
 			),
 		).toEqual({ url: 'https://explicit.test', user: 'env-user', password: undefined });
+	});
+});
+
+describe('ciMetricsContext', () => {
+	test('reads the branch from the head ref of a pull request run', () => {
+		vi.stubEnv('GITHUB_SHA', 'abcdef1234567890');
+		vi.stubEnv('GITHUB_REF', 'refs/pull/37626/merge');
+		vi.stubEnv('GITHUB_HEAD_REF', 'a-feature-branch');
+		vi.stubEnv('GITHUB_REF_NAME', '37626/merge');
+
+		expect(ciMetricsContext().git).toEqual({
+			sha: 'abcdef12',
+			branch: 'a-feature-branch',
+			pr: 37626,
+		});
+	});
+
+	test('falls back to the ref name when the head ref is set but empty', () => {
+		// What a push or a merge group run looks like: the variable exists, with no value.
+		vi.stubEnv('GITHUB_SHA', 'abcdef1234567890');
+		vi.stubEnv('GITHUB_REF', 'refs/heads/master');
+		vi.stubEnv('GITHUB_HEAD_REF', '');
+		vi.stubEnv('GITHUB_REF_NAME', 'master');
+
+		expect(ciMetricsContext().git).toEqual({ sha: 'abcdef12', branch: 'master', pr: null });
+	});
+
+	test('leaves out a run url when the run id is empty', () => {
+		vi.stubEnv('GITHUB_RUN_ID', '');
+		vi.stubEnv('GITHUB_REPOSITORY', 'n8n-io/n8n');
+
+		expect(ciMetricsContext().ci).toMatchObject({ runId: null, runUrl: null });
 	});
 });
 
