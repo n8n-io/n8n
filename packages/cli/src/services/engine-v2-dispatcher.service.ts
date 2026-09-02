@@ -84,7 +84,7 @@ export class EngineV2Dispatcher {
 
 	/** Returns the execution id this dispatch minted. */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		const trigger = this.firedTrigger(data);
+		const trigger = this.resolveFiredTrigger(data);
 
 		this.assertSupported(data, trigger);
 
@@ -221,7 +221,7 @@ export class EngineV2Dispatcher {
 	 * webhook node already ran control-plane-side, and `prepareExecutionData`
 	 * seeded its output as the first entry of the node execution stack.
 	 */
-	private firedTrigger(data: IWorkflowExecutionDataProcess): FiredTrigger {
+	private resolveFiredTrigger(data: IWorkflowExecutionDataProcess): FiredTrigger {
 		const seeded = data.triggerToStartFrom
 			? undefined
 			: data.executionData?.executionData?.nodeExecutionStack[0];
