@@ -7,8 +7,22 @@ type BlockingIssue =
 			existingWorkflowId: string;
 			name: string;
 	  }
+	| {
+			type: 'workflow-lineage-conflict';
+			sourceWorkflowId: string;
+			projectId: string;
+			existingWorkflows: Array<{ id: string; name: string; isArchived: boolean }>;
+	  }
 	| { type: 'project-conflict'; sourceProjectId: string; name: string }
 	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
+	| {
+			type: 'workflow-archive-forbidden';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			name: string;
+			projectId: string;
+			transition: 'archive' | 'unarchive';
+	  }
 	| { type: 'folder-removal-forbidden'; folderId: string; name: string; projectId: string }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
 	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
@@ -42,11 +56,20 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'workflow-conflict') {
 		return `workflow "${it.name}" (source ${it.sourceWorkflowId}) already exists as ${it.existingWorkflowId}`;
 	}
+	if (it.type === 'workflow-lineage-conflict') {
+		const workflows = Array.isArray(it.existingWorkflows)
+			? it.existingWorkflows.map(({ id, name }) => `"${name}" (${id})`).join(', ')
+			: '';
+		return `source workflow ${it.sourceWorkflowId} matches multiple workflows in project ${it.projectId}: ${workflows}`;
+	}
 	if (it.type === 'project-conflict') {
 		return `project "${it.name}" (source ${it.sourceProjectId}) already exists on this instance`;
 	}
 	if (it.type === 'workflow-removal-forbidden') {
 		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
+	}
+	if (it.type === 'workflow-archive-forbidden') {
+		return `workflow "${it.name}" (${it.existingWorkflowId}) in project ${it.projectId} must be ${it.transition}d to match the package, but you lack permission to do so`;
 	}
 	if (it.type === 'folder-removal-forbidden') {
 		return `folder "${it.name}" (${it.folderId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;

@@ -397,11 +397,17 @@ export class ImportOrchestrator {
 			...workflowPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-conflict', ...conflict }),
 			),
+			...workflowPlan.lineageConflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-lineage-conflict', ...conflict }),
+			),
 			...workflowPlan.idConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-id-conflict', ...conflict }),
 			),
 			...workflowPlan.folderConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-folder-conflict', ...conflict }),
+			),
+			...workflowPlan.archiveForbidden.map(
+				(failure): BlockingIssue => ({ type: 'workflow-archive-forbidden', ...failure }),
 			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),

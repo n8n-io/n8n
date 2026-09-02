@@ -305,12 +305,17 @@ export class WorkflowFinderService {
 	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
-	 * authored on this instance).
+	 * authored on this instance). Archived workflows are left out unless
+	 * `includeArchived` is set.
 	 */
 	async findOwnedWorkflowsBySourceWorkflowIds(
 		projectId: string,
 		sourceWorkflowIds: string[],
-		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+		options: {
+			includeActiveVersion?: boolean;
+			includeParentFolder?: boolean;
+			includeArchived?: boolean;
+		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (sourceWorkflowIds.length === 0) return [];
 
@@ -318,6 +323,7 @@ export class WorkflowFinderService {
 			activeVersion: options.includeActiveVersion,
 			parentFolder: options.includeParentFolder,
 		};
+		const archivedFilter = options.includeArchived ? {} : { isArchived: false };
 
 		const workflows = new Map<string, WorkflowEntity>();
 
@@ -330,7 +336,7 @@ export class WorkflowFinderService {
 					{
 						projectId,
 						role: 'workflow:owner',
-						workflow: { sourceWorkflowId: In(chunk), isArchived: false },
+						workflow: { sourceWorkflowId: In(chunk), ...archivedFilter },
 					},
 					{
 						projectId,
@@ -338,7 +344,7 @@ export class WorkflowFinderService {
 						workflow: {
 							id: In(chunk),
 							sourceWorkflowId: IsNull(),
-							isArchived: false,
+							...archivedFilter,
 						},
 					},
 				],

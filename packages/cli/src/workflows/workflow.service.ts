@@ -406,6 +406,8 @@ export class WorkflowService {
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
+			/** Allows a package import to update archived content. */
+			allowArchivedUpdate?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -421,6 +423,7 @@ export class WorkflowService {
 			source = 'ui',
 			versionName,
 			versionDescription,
+			allowArchivedUpdate = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -436,7 +439,7 @@ export class WorkflowService {
 			);
 		}
 
-		if (workflow.isArchived) {
+		if (workflow.isArchived && !allowArchivedUpdate) {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
