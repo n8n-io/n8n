@@ -19,7 +19,6 @@ import {
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
-	AI_TRANSFORM_NODE_TYPE,
 	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
@@ -226,11 +225,6 @@ export function searchNodes(
 	items: INodeCreateElement[],
 	additionalFactors = {},
 ) {
-	const askAiEnabled = useSettingsStore().isAskAiEnabled;
-	if (!askAiEnabled) {
-		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
-	}
-
 	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases

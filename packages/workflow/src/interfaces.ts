@@ -1866,12 +1866,6 @@ export interface ILoadOptions {
 	};
 }
 
-export type NodePropertyAction = {
-	type: 'askAiCodeGeneration';
-	handler?: string;
-	target?: string;
-};
-
 export interface CalloutActionBase {
 	type: string;
 	label: string;
@@ -1888,7 +1882,7 @@ export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 export interface INodePropertyTypeOptions {
 	// Supported by: button
 	buttonConfig?: {
-		action?: string | NodePropertyAction;
+		action?: string;
 		label?: string; // otherwise "displayName" is used
 		hasInputField?: boolean;
 		inputFieldMaxLength?: number; // Supported if hasInputField is true

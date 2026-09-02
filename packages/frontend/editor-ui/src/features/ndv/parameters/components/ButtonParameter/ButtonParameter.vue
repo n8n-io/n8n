@@ -1,25 +1,20 @@
 <script setup lang="ts">
-import { type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
+import { type INodeProperties } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
-import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getParentNodes,
-	generateCodeForAiTransform,
 	type TextareaRowData,
 	getUpdatedTextareaValue,
 	getTextareaCursorPosition,
 } from '../../utils/buttonParameter.utils';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -40,12 +35,10 @@ const activeNode = computed(() => ndvStore.value.activeNode);
 
 const i18n = useI18n();
 
-const isLoading = ref(false);
 const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 const textareaRowsData = ref<TextareaRowData | null>(null);
 
-const hasExecutionData = computed(() => (ndvStore.value.ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
 const inputFieldMaxLength = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.inputFieldMaxLength,
@@ -53,114 +46,27 @@ const inputFieldMaxLength = computed(
 const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
-const { askAi } = useEditorContext();
-const isAiTransformButton = computed(() => {
-	const action = props.parameter.typeOptions?.buttonConfig?.action;
-	return typeof action === 'object' && action?.type === 'askAiCodeGeneration';
-});
 const isSubmitEnabled = computed(() => {
-	if (isAiTransformButton.value && !askAi.value) return false;
-	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
+	if (props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
 	if (maxlength && prompt.value.length > maxlength) return false;
 
 	return true;
 });
-const promptUpdated = computed(() => {
-	const lastPrompt = activeNode.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
-	if (!lastPrompt) return false;
-	return lastPrompt.trim() !== prompt.value.trim();
-});
-
-function startLoading() {
-	isLoading.value = true;
-}
-
-function stopLoading() {
-	setTimeout(() => {
-		isLoading.value = false;
-	}, 200);
-}
-
 function getPath(parameter: string) {
 	return (props.path ? `${props.path}.` : '') + parameter;
 }
 
-async function onSubmit() {
-	const { showMessage } = useToast();
-	const action: string | NodePropertyAction | undefined =
-		props.parameter.typeOptions?.buttonConfig?.action;
+function onSubmit() {
+	const action = props.parameter.typeOptions?.buttonConfig?.action;
 
 	if (!action || !activeNode.value) return;
-
-	if (typeof action === 'string') {
-		switch (action) {
-			default:
-				return;
-		}
-	}
 
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
 	});
-
-	const { type, target } = action;
-
-	startLoading();
-
-	try {
-		switch (type) {
-			case 'askAiCodeGeneration':
-				const updateInformation = await generateCodeForAiTransform(
-					prompt.value,
-					getPath(target as string),
-					workflowDocumentStore.value.documentId,
-					ndvStore.value.activeNode,
-					ndvStore.value.pushRef,
-					askAi.value,
-					5,
-				);
-				if (!updateInformation) return;
-
-				//update code parameter
-				emit('valueChanged', updateInformation);
-
-				//update code generated for prompt parameter
-				emit('valueChanged', {
-					name: getPath(AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT),
-					value: prompt.value,
-				});
-
-				useTelemetry().trackAiTransform('generationFinished', ndvStore.value.pushRef, {
-					prompt: prompt.value,
-					code: updateInformation.value,
-				});
-				break;
-			default:
-				return;
-		}
-
-		showMessage({
-			type: 'success',
-			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
-		});
-
-		stopLoading();
-	} catch (error) {
-		useTelemetry().trackAiTransform('generationFinished', ndvStore.value.pushRef, {
-			prompt: prompt.value,
-			code: '',
-			hasError: true,
-		});
-		showMessage({
-			type: 'error',
-			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-			message: error.message,
-		});
-		stopLoading();
-	}
 }
 
 function onPromptInput(inputValue: string) {
@@ -232,13 +138,8 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${inputFieldMaxLength}`"
 				/>
-				<span
-					v-if="promptUpdated"
-					:class="$style['warning-text']"
-					v-text="'Instructions changed'"
-				/>
 			</div>
-			<DraggableTarget type="mapping" :disabled="isLoading" @drop="onDrop">
+			<DraggableTarget type="mapping" @drop="onDrop">
 				<template #default="{ activeDrop, droppable }">
 					<N8nInput
 						v-model="prompt"
@@ -260,29 +161,9 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			</DraggableTarget>
 		</div>
 		<div :class="$style.controls">
-			<N8nTooltip :disabled="isSubmitEnabled">
-				<div>
-					<N8nButton
-						variant="subtle"
-						:disabled="!isSubmitEnabled"
-						size="small"
-						:loading="isLoading"
-						@click="onSubmit"
-					>
-						{{ buttonLabel }}
-					</N8nButton>
-				</div>
-				<template #content>
-					<span
-						v-if="!hasExecutionData"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
-					/>
-					<span
-						v-else-if="prompt.length === 0"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
-					/>
-				</template>
-			</N8nTooltip>
+			<N8nButton variant="subtle" :disabled="!isSubmitEnabled" size="small" @click="onSubmit">
+				{{ buttonLabel }}
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -340,10 +221,6 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	padding: var(--spacing--2xs) 0;
 	display: flex;
 	justify-content: flex-end;
-}
-.warning-text {
-	color: var(--color--warning);
-	line-height: 1.2;
 }
 .droppable {
 	border: 1.5px dashed var(--ndv--droppable-parameter--color) !important;
