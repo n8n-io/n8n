@@ -245,6 +245,16 @@ describe('NonWebhookTriggerRegistrar', () => {
 			});
 		});
 
+		test('deregister removes the poll jobs even when the schedule job removal fails', async () => {
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockResolvedValue();
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
+
+			expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		});
+
 		test('deregister propagates a durable removal failure over an abandonable in-memory failure', async () => {
 			// The caller abandons an in-memory UserError as permanent, so surfacing it
 			// while a durable removal failed would leave the rows behind with no retry.

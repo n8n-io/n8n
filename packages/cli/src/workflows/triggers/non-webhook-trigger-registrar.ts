@@ -223,7 +223,15 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	private async removeDurableJobs(workflowId: WorkflowId, nodeId: INode['id']) {
-		await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
-		await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId),
+			this.pollTriggerJobRegistrar.remove(workflowId, nodeId),
+		]);
+		const failure = results.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (failure) {
+			throw ensureError(failure.reason);
+		}
 	}
 }

@@ -2088,7 +2088,7 @@ describe('WorkflowService', () => {
 
 			trxMock = mock<EntityManager>();
 			workflowRepositoryMock.runInTransaction.mockImplementation(
-				async (_ctx, runInTransaction) => await runInTransaction(trxMock),
+				async (ctx, runInTransaction) => await runInTransaction(trxMock, ctx),
 			);
 
 			workflowService = new WorkflowService(
