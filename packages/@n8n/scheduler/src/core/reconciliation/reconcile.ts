@@ -18,11 +18,11 @@ export interface ReconciliationCursor {
 export interface ReconciliationSummary {
 	/** Owners checked against their resolver. */
 	ownersChecked: number;
-	/** Jobs newly disabled and stamped, starting their quarantine. */
+	/** Jobs newly stopped and stamped, starting their quarantine. */
 	quarantined: number;
 	/** Quarantined jobs whose grace ran out, deleted. */
 	deleted: number;
-	/** Quarantined jobs whose owner turned out to exist after all, re-enabled. */
+	/** Quarantined jobs whose owner turned out to exist after all, revived. */
 	revived: number;
 	/**
 	 * Owner types left exactly as they were, because nothing claimed them or
@@ -53,7 +53,7 @@ export interface ReconciliationHooks {
 	onQuarantined?: (context: { ownerType: string; jobs: number }) => void;
 	/** Quarantined jobs past their grace were deleted. */
 	onDeleted?: (context: { ownerType: string; jobs: number }) => void;
-	/** Quarantined jobs were re-enabled. */
+	/** Quarantined jobs were revived. */
 	onRevived?: (context: { ownerType: string; ownerIds: string[]; jobs: number }) => void;
 	/** A revived job's schedule could not be planned. It revived with no clock. */
 	onReviveClockFailed?: (context: { jobId: number; error: Error }) => void;
@@ -64,13 +64,14 @@ export interface ReconciliationHooks {
  * deprovisioning. Finds scheduled jobs whose owner no longer exists and retires
  * them, covering what a module's own delete transaction missed.
  *
- * Never deletes on first sight. A job whose owner is reported gone is disabled
- * and stamped, with its queued occurrences withdrawn in the same transaction.
- * It is deleted only once that stamp outlives the quarantine grace, and one
- * whose owner is reported alive again is re-enabled with a fresh clock (see
+ * Never deletes on first sight. A job whose owner is reported gone loses its
+ * clock and is stamped, with its queued occurrences withdrawn in the same
+ * transaction. It is deleted only once that stamp outlives the quarantine
+ * grace, and one whose owner is reported alive again gets a fresh clock (see
  * {@link revive}). No answer is never read as an answer: an unclaimed owner
  * type, a resolver that threw, and a job younger than the settle period are all
- * left untouched.
+ * left untouched. A quarantine written on an answer that went stale while it was
+ * being written is lifted in the same pass (see {@link sweepPage}).
  *
  * Safe to run concurrently across instances, since every step is an idempotent
  * owner-scoped statement. Reads at most `maxPagesPerPass` owner pages in a
@@ -266,18 +267,24 @@ async function sweepPage(sweep: Sweep, after?: string): Promise<PageResult> {
 		return { outcome: 'drained', totals: noTotals() };
 	}
 
-	let existing: Set<string>;
-	try {
-		existing = await sweep.resolver.findExisting(ownerIds);
-	} catch (error) {
-		notify(() => hooks.onResolverFailed?.(ownerType, ensureError(error)));
+	const liveness = await askLiveness(sweep, ownerIds);
+	if (liveness === undefined) {
 		return { outcome: 'failed', totals: noTotals() };
 	}
-
-	const missing = ownerIds.filter((ownerId) => !existing.has(ownerId));
-	const alive = ownerIds.filter((ownerId) => existing.has(ownerId));
+	let { alive, missing } = liveness;
 
 	const quarantined = await quarantine(store, ownerType, missing, clock, hooks);
+	if (quarantined > 0) {
+		const recheck = await askLiveness(sweep, missing);
+		if (recheck === undefined) {
+			return {
+				outcome: 'failed',
+				totals: { ownersChecked: ownerIds.length, quarantined, deleted: 0, revived: 0 },
+			};
+		}
+		alive = [...alive, ...recheck.alive];
+		missing = recheck.missing;
+	}
 	const deleted = await deleteExpired(store, ownerType, missing, clock.quarantinedBefore, hooks);
 	const revival = await revive(store, ownerType, alive, sweep.now, options, hooks, sweep.signal);
 
@@ -297,6 +304,29 @@ async function sweepPage(sweep: Sweep, after?: string): Promise<PageResult> {
 	return { outcome: 'swept', totals, after: ownerIds[ownerIds.length - 1] };
 }
 
+/** Which of these owners the resolver finds, and which it does not. */
+interface Liveness {
+	alive: string[];
+	missing: string[];
+}
+
+/**
+ * Ask the resolver which of these owners still exist.
+ */
+async function askLiveness(sweep: Sweep, ownerIds: string[]): Promise<Liveness | undefined> {
+	let existing: Set<string>;
+	try {
+		existing = await sweep.resolver.findExisting(ownerIds);
+	} catch (error) {
+		notify(() => sweep.hooks.onResolverFailed?.(sweep.ownerType, ensureError(error)));
+		return undefined;
+	}
+	return {
+		alive: ownerIds.filter((ownerId) => existing.has(ownerId)),
+		missing: ownerIds.filter((ownerId) => !existing.has(ownerId)),
+	};
+}
+
 function noTotals(): SweepTotals {
 	return { ownersChecked: 0, quarantined: 0, deleted: 0, revived: 0 };
 }
@@ -311,7 +341,7 @@ function addTotals(first: SweepTotals, second: SweepTotals): SweepTotals {
 }
 
 /**
- * Disable and stamp the not-yet-quarantined jobs of owners reported gone, and
+ * Stop and stamp the not-yet-quarantined jobs of owners reported gone, and
  * withdraw their queued occurrences so nothing already materialized still fires.
  */
 async function quarantine(
@@ -371,7 +401,8 @@ interface ReviveResult {
  *
  * A resolver answers existence, not intent, so a job is restored exactly as it
  * was stored, including one the owner would no longer provision. Bringing the
- * set back in line stays the owner's own job.
+ * set back in line stays the owner's own job. A disabled job stays disabled and
+ * gets no clock.
  *
  * Reads at most `batchSize` quarantined jobs and stops between lifts once
  * cancelled, leaving the page for a later pass.
@@ -404,7 +435,7 @@ async function revive(
 		}
 		const lifted = await store.liftQuarantine(
 			job.id,
-			nextRunAtFor(job, from, options.defaultTimezone, hooks),
+			job.enabled ? nextRunAtFor(job, from, options.defaultTimezone, hooks) : null,
 		);
 		revived += lifted;
 		lifts += 1;
@@ -424,8 +455,8 @@ async function revive(
 
 /**
  * A schedule that can no longer be planned revives with no clock rather than
- * blocking the sweep. The job is enabled again but records nothing until it is
- * reprovisioned.
+ * blocking the sweep. The job leaves quarantine but records nothing until it
+ * is reprovisioned.
  */
 function nextRunAtFor(
 	job: QuarantinedJob,

@@ -390,9 +390,12 @@ export class SchedulerConfig {
 
 	/**
 	 * How many owners the check looks at per database round-trip. Defaults to 500.
-	 * Must be greater than 0.
+	 * Must be between 1 and 1000.
+	 *
+	 * The owner ids of a batch travel as one `IN` list, so the cap keeps the
+	 * statement under the driver's bind-parameter ceiling.
 	 */
-	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_BATCH_SIZE', positiveIntSchema)
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_BATCH_SIZE', positiveIntSchema.max(1000))
 	ownerReconciliationBatchSize: number = 500;
 
 	/**

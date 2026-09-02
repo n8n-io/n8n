@@ -104,3 +104,36 @@ export class InvalidSchedulerDepsError extends Error {
 		this.name = 'InvalidSchedulerDepsError';
 	}
 }
+
+/**
+ * Raised when provisioning is attempted for an owner type no resolver claimed.
+ * Without one, the reconciliation sweep could never clean up its jobs.
+ */
+export class UnregisteredOwnerTypeError extends Error {
+	constructor(readonly ownerType: string) {
+		super('Cannot provision scheduled jobs for an owner type with no registered liveness resolver');
+		this.name = 'UnregisteredOwnerTypeError';
+	}
+}
+
+/** Raised when a job's owner id is empty or too long to store. */
+export class InvalidOwnerIdError extends Error {
+	constructor(
+		readonly length: number,
+		readonly maxLength: number,
+	) {
+		super('Scheduled job owner id must be non-empty and fit its length limit');
+		this.name = 'InvalidOwnerIdError';
+	}
+}
+
+/** Raised when a job's owner member id is empty or too long to store. */
+export class InvalidOwnerMemberIdError extends Error {
+	constructor(
+		readonly length: number,
+		readonly maxLength: number,
+	) {
+		super('Scheduled job owner member id must be non-empty and fit its length limit');
+		this.name = 'InvalidOwnerMemberIdError';
+	}
+}
