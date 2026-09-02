@@ -51,16 +51,24 @@ import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 
 /**
- * The emitted item's `json` starts as the caller's own request body, so a caller can
- * put a `user` key in it and have it land in the output. Drop any claimed `user`
- * unconditionally and re-add only the identity the server itself resolved, so
- * `json.user` is either absent or trustworthy — never whatever the request claimed.
+ * Merges the server-verified identity into the emitted item's `json`.
+ *
+ * Under `n8nUserAuth` the `user` key belongs to the server. The item's `json` starts as
+ * the caller's own request body, so any `user` the caller sent is dropped — whether or
+ * not a verified one replaces it, since a workflow reading `json.user` must never get an
+ * attacker-controlled value in the slot the trusted one occupies. Under the other auth
+ * modes no server identity exists, `user` is ordinary body data, and the body passes
+ * through untouched.
  *
  * An array body is returned as is: it can carry no `user` key, and object rest would
  * silently turn it into `{ 0: …, 1: … }`.
  */
-function withAuthenticatedUser(json: IDataObject, user: IUser | undefined): IDataObject {
-	if (Array.isArray(json)) return json;
+function withAuthenticatedUser(
+	json: IDataObject,
+	user: IUser | undefined,
+	serverOwnsUserKey: boolean,
+): IDataObject {
+	if (!serverOwnsUserKey || Array.isArray(json)) return json;
 	const { user: claimedUser, ...rest } = json;
 	if (!user) return rest;
 	// Field by field, so a future `IUser` field cannot leak into workflow data.
@@ -1172,6 +1180,7 @@ export class ChatTrigger extends Node {
 			json: withAuthenticatedUser(
 				item.json,
 				ctx.getNodeParameter('includeUserInOutput', true) !== false ? authedUser : undefined,
+				authentication === 'n8nUserAuth',
 			),
 		};
 

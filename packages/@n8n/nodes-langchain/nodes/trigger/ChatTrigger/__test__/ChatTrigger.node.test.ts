@@ -731,7 +731,9 @@ describe('ChatTrigger Node', () => {
 	});
 
 	// `json` starts life as the caller's own request body, so a caller can put a `user`
-	// key in it. It must never survive into the output and look authoritative.
+	// key in it. Under `n8nUserAuth` that key is the server's, so a claimed one must never
+	// survive into the output and look authoritative. Under the other auth modes there is
+	// no server identity to shadow, so the body is left exactly as it arrived.
 	describe('user spoofing', () => {
 		const authedUser = {
 			id: 'user-1',
@@ -774,13 +776,22 @@ describe('ChatTrigger Node', () => {
 			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: authedUser });
 		});
 
-		it('strips a caller-supplied user when the chat is unauthenticated', async () => {
+		it('leaves a caller-supplied user alone when the chat is unauthenticated', async () => {
 			setParams({ authentication: 'none' });
 			vi.mocked(validateAuth).mockResolvedValue(undefined);
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: forgedUser });
+		});
+
+		it('leaves a caller-supplied user alone under basicAuth', async () => {
+			setParams({ authentication: 'basicAuth' });
+			vi.mocked(validateAuth).mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: forgedUser });
 		});
 
 		it('strips a caller-supplied user when the toggle is off', async () => {
