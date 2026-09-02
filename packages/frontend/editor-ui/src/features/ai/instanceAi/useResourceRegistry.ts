@@ -343,12 +343,17 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				name: attachment.name ?? 'Untitled',
 			});
 		} else if (attachment.type === 'agent') {
-			recordProduced(col, {
-				type: 'agent',
-				id: attachment.id,
-				name: attachment.name ?? 'Untitled',
-				projectId: attachment.projectId,
-			});
+			recordProduced(
+				col,
+				{
+					type: 'agent',
+					id: attachment.id,
+					name: attachment.name ?? 'Untitled',
+					projectId: attachment.projectId,
+					...(attachment.pending ? { pending: true } : {}),
+				},
+				{ linkable: !attachment.pending },
+			);
 		}
 	}
 }
@@ -363,7 +368,8 @@ function enrichAgentFromBuilderTarget(
 	// Event-derived names are canonical; the persisted metadata name only fills
 	// in when no run event carried one (e.g. historical threads whose events
 	// aren't loaded). The 'Untitled' placeholder is not a real name.
-	const eventName = existing && existing.name !== 'Untitled' ? existing.name : undefined;
+	const eventName =
+		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
 	recordProduced(
 		col,
 		{

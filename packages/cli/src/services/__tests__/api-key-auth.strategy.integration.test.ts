@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -214,6 +215,21 @@ describe('ApiKeyAuthStrategy', () => {
 			expect(await strategy.authenticate(req)).toBe(true);
 			expect(req.user.id).toBe(owner.id);
 			expect(req.tokenGrant?.subject.id).toBe(owner.id);
+		});
+
+		it('abstains (returns null) when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
+			const globalConfig = Container.get(GlobalConfig);
+			globalConfig.publicApi.disabled = true;
+
+			try {
+				const owner = await createOwnerWithApiKey();
+				const [{ apiKey }] = owner.apiKeys;
+				const req = mockReqWith(apiKey);
+
+				expect(await strategy.authenticate(req)).toBeNull();
+			} finally {
+				globalConfig.publicApi.disabled = false;
+			}
 		});
 	});
 });

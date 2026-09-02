@@ -12,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'docker/get-n8n.sh'
+      - 'docker/get-n8n-compose.yml'
       - 'docker/test-get-n8n.sh'
       - '.github/workflows/test-get-n8n.yml'
   schedule:

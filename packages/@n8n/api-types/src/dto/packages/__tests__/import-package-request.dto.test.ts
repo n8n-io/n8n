@@ -16,7 +16,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -44,7 +45,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -74,7 +76,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -103,7 +106,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
-				folderConflictPolicy: 'merge',
+				projectConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
@@ -299,6 +303,44 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 
+	// The three conflict policies this module added behave identically at the DTO layer; only
+	// `folderConflictPolicy` has no default, because omitting it means "follow projectConflictPolicy".
+	describe.each([
+		{ field: 'projectConflictPolicy', values: ['merge', 'fail', 'overwrite'], expected: 'merge' },
+		{ field: 'folderConflictPolicy', values: ['merge', 'fail', 'overwrite'], expected: undefined },
+		{ field: 'overwriteDeletionPolicy', values: ['archive', 'hard-delete'], expected: 'archive' },
+	] as const)('$field', ({ field, values, expected }) => {
+		it(`defaults to ${expected ?? 'undefined'} when omitted`, () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data[field]).toBe(expected);
+		});
+
+		it('accepts every supported value', () => {
+			for (const value of values) {
+				const result = ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					[field]: value,
+				});
+				expect(result.success).toBe(true);
+				if (result.success) expect(result.data[field]).toBe(value);
+			}
+		});
+
+		it('rejects an unsupported value', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					[field]: 'not-a-policy',
+				}).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain(field);
+		});
+	});
+
 	describe('missingNodeTypeMode', () => {
 		it('defaults to "fail" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
@@ -400,7 +442,8 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
 			{ field: 'workflowIdPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
-			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'projectConflictPolicy', expected: 'merge' },
+			{ field: 'overwriteDeletionPolicy', expected: 'archive' },
 			{ field: 'dataTableMatchingMode', expected: 'by-id' },
 			{ field: 'dataTableMissingMode', expected: 'create' },
 			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },

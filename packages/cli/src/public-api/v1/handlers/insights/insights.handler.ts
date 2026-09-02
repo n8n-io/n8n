@@ -67,6 +67,7 @@ const insightsHandlers: InsightsHandlers = {
 			}
 
 			const summary = await Container.get(InsightsService).getInsightsSummary({
+				user: req.user,
 				startDate,
 				endDate,
 				projectId: query.data.projectId,

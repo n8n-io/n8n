@@ -70,6 +70,13 @@ For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
 `filePath`.
 
+When a repair adds a node into an existing chain (an ensure-the-target-exists
+step, a dedupe, a notification), check what the downstream node reads before
+wiring it in-line — workflow rule 7 applies: an inserted write/create node
+replaces the payload flowing into the next node with its own API response.
+Branch it in parallel, reorder it upstream of the data producer, or make the
+downstream node reference the data node explicitly.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
@@ -79,8 +86,8 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 `ask-user` only when a missing choice changes the workflow's intent or topology
 (e.g. which destination service). But when that choice is which service to use
 for a capability the user did not name,
-discover coverage first and use an n8n credits–covered node instead of asking
-when the user has no credential for a comparable tool (see n8n credits
+discover coverage first and use a Gateway credits–covered node instead of asking
+when the user has no credential for a comparable tool (see Gateway credits
 Preference). Setup details — recipients, accounts,
 resources, channels, credentials, timezone — belong in placeholders or
 unresolved `newCredential()` calls until post-build setup. After the first
@@ -115,15 +122,19 @@ setup steps or node semantics from memory when those sources can answer.
 1. **Knowledge base** — consult before
    building. Read the relevant `.md` guides and templates for each technique
    the request involves. Skip only for trivial mechanical edits you have
-   already reviewed in this thread.
-   - `knowledge-base/index.json` — catalog of technique guides
-     (`knowledge-base/best-practices/index.json`; read the linked `.md` files)
-     and orchestration reference docs (`knowledge-base/reference/index.json`)
-   - `knowledge-base/templates/` — curated SDK workflow examples: use
-     `workspace_execute_command` with `rg` or `find` to locate matches, then
-     read only the relevant `.ts` files — never load `templates/index.json`
-     wholesale
-   - `node-types/index.txt` — searchable catalog of available n8n nodes
+   already reviewed in this thread. The knowledge base lives at the workspace
+   root (NOT inside this skill's directory) — all paths below are
+   workspace-root-relative:
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/index.json` — catalog of technique
+     guides (`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`;
+     read the linked `.md` files) and orchestration reference docs
+     (`${N8N_WORKSPACE_DIR}/knowledge-base/reference/index.json`)
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/templates/` — curated SDK workflow
+     examples: use `workspace_execute_command` with `rg` or `find` to locate
+     matches, then read only the relevant `.ts` files —
+     never load `templates/index.json` wholesale
+   - `${N8N_WORKSPACE_DIR}/node-types/index.txt` — searchable catalog of
+     available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
@@ -135,14 +146,19 @@ setup steps or node semantics from memory when those sources can answer.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
-`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
-Use it as the build checklist for source preservation, fan-out/fan-in,
-effect-specific gating, and list itemization.
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
+before writing code. Use it as the build checklist for source preservation,
+fan-out/fan-in, effect-specific gating, and list itemization.
 
 When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
+(v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
+uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
+output is already a parsed object, never `JSON.parse` it). When mapping fields
+from an Anthropic node, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
+(`$json.content` is an array of blocks — read text with
+`$json.content[0].text`, never treat `$json.content` as a string).
 
 ## Workflow-Level Error Workflows
 
@@ -150,9 +166,10 @@ Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
 real workflow ID of a separate **published** workflow with an active Error
 Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Before building or attaching an error workflow, load
-this skill's `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+about global behavior. Do not offer or build an error workflow before the
+primary workflow is published. Before building or attaching an error
+workflow, load this skill's `references/error-workflows.md` linked file and
+follow its build → publish → assign steps.
 
 ## Mandatory Process
 
@@ -269,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -307,33 +325,68 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When the user explicitly asks for a **new** credential ("create a new Slack
+  credential"), the unresolved `newCredential('Name')` is not enough on its own —
+  the build would still attach their sole existing credential of that type, and
+  setup would preselect their most recent one. Pass the credential type in
+  `preferNewCredentials` on `build-workflow` **and** on
+  `workflows(action="setup")` (or `preferNew: true` on the entry of
+  `credentials(action="setup")`). The slot then stays unresolved through the build
+  and the card opens on credential creation, with existing credentials still
+  listed in case the user changes their mind. Pass it only on an explicit request,
+  never by default — reuse is the right behavior everywhere else.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
   attached a credential to those nodes — either an existing stored credential or
-  an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
+  a Gateway credits–managed one (entries with `id: null` and `__aiGatewayManaged:
   true`). Treat them all as connected: do not ask the user to connect or create
   those credentials, do not route them to credential setup, and mention at most
-  that the credential (or n8n credits) is being used.
+  that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth; when generic auth is truly needed,
-  prefer `httpBearerAuth` over `httpHeaderAuth`.
-- `credentials(action="list", type=...)` may include a synthetic n8n credits
-  entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
-  when the type is covered by n8n credits (see n8n credits Preference). It is
-  not a stored credential: never pass it to `newCredential(...)` and never
-  emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
-  applies it automatically when the user has no stored credential of that type.
+  `credentials(action="search-types")` with the service name. Pick in this
+  order:
+  1. A **dedicated credential type** whenever search finds one.
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+     without a dedicated type whose auth is expressible as header/query/body
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, key page, a cheap
+     authenticated GET endpoint) while you have the docs open: the setup call
+     needs them for the `credentialHints` recipe (see the post-build-flow
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's template, docsUrl
+     and testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
+- `credentials(action="list", type=...)` may include a Gateway credits entry
+  `{ id: "__AI_GATEWAY_MANAGED__", name: "Gateway credits", type, __aiGatewayManaged: true }`
+  when the type is covered by Gateway credits (see Gateway credits Preference). Treat its
+  `id` like any credential id: to use Gateway credits, write
+  `newCredential('Gateway credits', '__AI_GATEWAY_MANAGED__')` on the node — exactly as
+  you copy a stored credential's id. The build keeps it and attaches Gateway credits,
+  even when the user already has their own credential of that type. Write it
+  whenever the user asks for Gateway credits; otherwise the normal reuse/own-credential
+  rules apply. (When the user has no stored credential of a covered type, the build
+  still auto-attaches Gateway credits even if you didn't write the entry.)
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
 
-## n8n credits Preference
+## Gateway credits Preference
 
-"n8n credits" is the user-facing name of n8n's managed credential
+"Gateway credits" is the user-facing name of n8n's managed credential
 service. On instances licensed for it, several common AI-provider and
 scraping nodes can run with no API key required on the user's side.
 
@@ -345,10 +398,10 @@ and has no usable credential for a comparable one* — it runs with no API key.
 Keep your normal `suggested`/search pick when the user already has a credential
 for a comparable tool.
 
-The `suggested` list and search *rank* don't prioritize n8n credits coverage
+The `suggested` list and search *rank* don't prioritize Gateway credits coverage
 (individual search results still flag it). When the user asks for a capability
 they have no usable credential for, search that
-capability — or run `nodes(action="list", n8nConnectOnly=true)` — before
+capability — or run `nodes(action="list", gatewayCreditsOnly=true)` — before
 committing, and prefer a covered result.
 
 Respect the constraints it reports:
@@ -358,28 +411,33 @@ Respect the constraints it reports:
     use the marker key `__operation_only__`.
   - Do not set parameters listed in `aiGateway.hiddenProperties`.
 
-**Enumeration (answering "what does n8n credits support?"):**
-  - All supported nodes: `nodes(action="list", n8nConnectOnly=true)` — each
+**Enumeration (answering "what does Gateway credits support?"):**
+  - All supported nodes: `nodes(action="list", gatewayCreditsOnly=true)` — each
     result carries the full `aiGateway` field (minVersion, operations,
     hiddenProperties).
   - All supported credential types:
-    `credentials(action="search-types", n8nConnectOnly=true)`.
+    `credentials(action="search-types", gatewayCreditsOnly=true)`.
   - Operations for a specific supported node: `nodes(action="describe", …)`
     → `aiGateway.operations`.
 
 **Preference rule:** When adding a new node that has no credential assigned
-yet, prefer n8n credits over stored credentials if the credential type is
+yet, prefer Gateway credits over stored credentials if the credential type is
 supported — it works with no API key required and avoids spending the user's
 API quota. The synthetic entry in `credentials(action="list", type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
 
+If `credentialResolutionNote` on the build result says Gateway credits are
+depleted, follow that note: tell the user they must top up Gateway credits
+or add their own key on the node. Do not say the workflow works out of the
+box, and do not offer a live test.
+
 - If the user explicitly specified their own credential (by name or by
   choosing one from a list), use that credential and do not substitute
-  n8n credits.
+  Gateway credits.
 - When speaking to the user in chat, always refer to this feature as
-  "n8n credits" — never "n8n Connect", "AI Gateway", or "gateway". Those are
+  "Gateway credits" — never "n8n credits", "n8n Connect", "AI Gateway", or "gateway". Those are
   internal names only, including the `aiGateway` field on node/credential
   results: read it to make decisions, but never surface that name to the user.
 
@@ -427,6 +485,25 @@ via `load_skill` first (if not already loaded this turn), then follow that
 skill for schema/row guidance. Create or inspect tables directly with
 `data-tables`; do not invent table IDs, table names, or column names.
 
+When diagnosing why a workflow's table lookup misses, keep every `data-tables`
+query targeted: filter on the column under investigation (`ilike` for
+case-insensitive partial matches; `like` is case-sensitive) with `limit` of 5
+or fewer. Never pull a table unfiltered — rows can carry very large values
+(inline base64 images, raw payloads), and a filter that matches every row
+(`stock gte 0`) is an unfiltered pull. Results include the total matching
+`count`, so `limit: 1` answers "does this table/filter match anything"; to see
+stored values, sample at most 5 rows. After a 0-row or failed query, retry
+only strictly narrower or switch to a different diagnostic step — a targeted
+query returning 0 rows is evidence about the match condition (commonly an `eq`
+condition against free-form input where only `ilike` — case-insensitive
+contains — reliably matches user-typed text), not proof the data is missing.
+Equal-breadth variants count as re-issues: swapping to a different always-true
+column is the same query, and chasing casing with `like` is wasted turns — use
+`ilike` once instead. Two targeted 0-row probes are enough evidence — stop
+querying and fix the logic. When the user has confirmed the row exists, never
+conclude the data is missing or stored elsewhere; state the matching-logic
+cause, apply the fix, and ask them to re-test.
+
 When the ask is a summary, digest, or report over a period ("weekly summary of
 what was recorded", "digest of this week's rows"), the summary branch must
 read that period's rows back from where the workflow logs them (Data Table,
@@ -445,12 +522,21 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing. 
+- Avoid code node where possible, use n8n nodes that help do the same thing.
+  If it makes it simpler, go ahead and use code node.
+- Write Code nodes in JavaScript unless the user explicitly asks for Python.
+  `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
+  (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
+  `_input` or `$` helpers. Its imports are allowlisted per deployment and the
+  allowlist is empty by default: write import-free Python unless the **Python
+  Code Nodes** section of your system prompt says this instance allows more.
+  `build-workflow` re-checks the code against the real allowlist and reports
+  anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
   `expr()`. Full allowed/forbidden list:
-  `knowledge-base/reference/workflow-sdk-language.md`.
+  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
@@ -461,6 +547,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -534,6 +629,21 @@ import {
 } from '@n8n/workflow-sdk';
 ```
 
+## Node Groups
+
+Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
+result is readable the first time the user sees it. Group each clear stage (ingest → transform
+→ deliver); small workflows don't need groups. Give every group a one-sentence
+`description` — groups are collapsed by default, so name + description is what the user sees
+first.
+
+`.group(name, members, { description })` on the workflow builder; members are the node handles.
+Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group from the saved workflow and report a warning, so fix the source
+instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
+and their descriptions intact unless the change is about grouping.
+
 ## Workflow Rules
 
 Follow these rules strictly when generating workflows:
@@ -579,6 +689,31 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Inserting a node into an existing connection A→B changes what B receives:
+   `$json` and auto-mapped fields in B now read the inserted node's output, not
+   A's. Write/create/send nodes output their **API response** (ids, metadata,
+   `ok` flags), never the data that flowed into them — so inserting one
+   in-line (e.g. an ensure-the-target-exists step before a write) silently
+   replaces the payload with metadata. Keep the data path intact instead:
+   branch the inserted node in parallel from the data producer, reorder it
+   upstream of the data producer, or have B reference `$('Data Node')`
+   explicitly.
+8. A polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeding an
+   action that creates or writes records must ensure each polled item is
+   processed once — poll cursors are best-effort bookkeeping (they reset when
+   the trigger node is recreated or renamed) and every still-matching item is
+   then re-delivered as a duplicate. Either restrict the trigger to
+   unread/unprocessed items AND mark each item handled once its record exists,
+   in a way the trigger's own filter excludes — mark as read when filtering
+   unread, move out of the watched folder, or apply a label only if the
+   trigger's query also excludes that label (a label does not mark a message
+   read) — or record handled ids in a Data Table: look the id up before
+   creating the record, skip ids already seen, and insert it only after the
+   create succeeds. An unread filter alone is not enough: if no step ever
+   marks the item read, it never excludes anything. Wire the mark-as-handled
+   step AFTER the record-creating node, so a mid-run failure cannot consume an
+   item without producing its output — this trades a rare duplicate (create
+   succeeded, marking failed) for never losing an item; do not invert it.
 
 ## Tool Naming Rules
 

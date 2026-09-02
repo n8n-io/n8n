@@ -1,7 +1,7 @@
 import { UpdateWorkflowReviewRequestVersionDto } from '../update-workflow-review-request-version.dto';
 
 describe('UpdateWorkflowReviewRequestVersionDto', () => {
-	describe('Valid requests', () => {
+	describe('accepted', () => {
 		test.each([
 			{
 				name: 'workflowId, workflowVersionId and workflowVersionName',
@@ -11,13 +11,49 @@ describe('UpdateWorkflowReviewRequestVersionDto', () => {
 					workflowVersionName: 'Release candidate',
 				},
 			},
-		])('should validate $name', ({ request }) => {
+			{
+				name: 'an optional workflowVersionDescription',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'What changed in this version',
+				},
+			},
+			{
+				name: 'an empty workflowVersionDescription',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: '',
+				},
+			},
+			{
+				name: 'an optional review description',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: 'Review the retry behavior',
+				},
+			},
+			{
+				name: 'an empty review description',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: '',
+				},
+			},
+		])('accepts $name', ({ request }) => {
 			const result = UpdateWorkflowReviewRequestVersionDto.safeParse(request);
 			expect(result.success).toBe(true);
 			expect(result.data).toMatchObject(request);
 		});
 
-		test('should trim the workflowVersionName', () => {
+		test('trims the workflowVersionName', () => {
 			const result = UpdateWorkflowReviewRequestVersionDto.safeParse({
 				workflowId: 'workflow-1',
 				workflowVersionId: 'version-1',
@@ -29,7 +65,7 @@ describe('UpdateWorkflowReviewRequestVersionDto', () => {
 		});
 	});
 
-	describe('Invalid requests', () => {
+	describe('rejected', () => {
 		test.each([
 			{
 				name: 'missing workflowId',
@@ -83,7 +119,27 @@ describe('UpdateWorkflowReviewRequestVersionDto', () => {
 				},
 				expectedErrorPath: ['workflowVersionName'],
 			},
-		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
+			{
+				name: 'a workflowVersionDescription longer than 2048 characters',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'a'.repeat(2049),
+				},
+				expectedErrorPath: ['workflowVersionDescription'],
+			},
+			{
+				name: 'a review description longer than 512 characters',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: 'a'.repeat(513),
+				},
+				expectedErrorPath: ['description'],
+			},
+		])('rejects $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateWorkflowReviewRequestVersionDto.safeParse(request);
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(expectedErrorPath);

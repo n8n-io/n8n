@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
 import { buildWorkflow } from '../harness/build-workflow';
+import { recordUserTurn } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 
@@ -12,6 +13,25 @@ vi.mock('../harness/chat-loop', () => ({
 	waitForAllActivity: vi.fn().mockResolvedValue(undefined),
 	runMultiTurnConversation: vi.fn().mockResolvedValue(undefined),
 	recordUserTurn: vi.fn(),
+}));
+
+// The proxy's real constructor builds an LLM agent; only the script it is handed
+// matters here, so capture that and stub the rest (runMultiTurnConversation is
+// mocked above, so no other method is reached).
+const { proxyScripts } = vi.hoisted(() => ({
+	proxyScripts: [] as Array<Array<{ text: string }>>,
+}));
+
+vi.mock('../utils/user-proxy', () => ({
+	UserProxyLlm: class {
+		constructor(config: { conversation: Array<{ text: string }> }) {
+			proxyScripts.push(config.conversation);
+		}
+		respondToConfirmation = vi.fn().mockResolvedValue({ approve: true });
+		ingestEvents = vi.fn();
+		decideFollowUp = vi.fn().mockResolvedValue({ kind: 'done' });
+		getDecisionStats = vi.fn().mockReturnValue({});
+	},
 }));
 
 vi.mock('../outcome/workflow-discovery', () => ({
@@ -58,6 +78,8 @@ function inlineSeed(): ConversationSeed {
 		],
 		workflows: [{ id: SEED_WF_ID, name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
+		agents: [],
+		projects: [],
 	};
 }
 
@@ -90,9 +112,12 @@ const baseConfig = {
 
 describe('buildWorkflow with an inline seed', () => {
 	it('restores the inline seed before the live turn', async () => {
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread),
@@ -138,9 +163,12 @@ describe('buildWorkflow with an inline seed', () => {
 			{ id: 'leftover-1', name: 'Batch loop [seed aaaaaaaa]' },
 			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
 		]);
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
@@ -175,7 +203,7 @@ describe('buildWorkflow with an inline seed', () => {
 
 		await buildWorkflow({
 			client: makeClient(
-				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [], agentIds: [] }),
 				{ listWorkflows, deleteWorkflow },
 			),
 			...baseConfig,
@@ -200,7 +228,7 @@ describe('buildWorkflow with an inline seed', () => {
 
 		await buildWorkflow({
 			client: makeClient(
-				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [], agentIds: [] }),
 				{ listWorkflows, deleteWorkflow },
 			),
 			...baseConfig,
@@ -211,9 +239,12 @@ describe('buildWorkflow with an inline seed', () => {
 	});
 
 	it('still builds when eviction fails — it is best-effort, not a gate', async () => {
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread, {
@@ -241,9 +272,12 @@ describe('buildWorkflow with an inline seed', () => {
 			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
 			{ id: 'leftover-3', name: 'Batch loop [seed cccccccc]' },
 		]);
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
@@ -251,7 +285,6 @@ describe('buildWorkflow with an inline seed', () => {
 			preRunWorkflowIds: new Set(['leftover-1', 'leftover-2', 'leftover-3']),
 			seed: { mode: 'inline' as const, ...inlineSeed() },
 		});
-
 		expect(deleteWorkflow.mock.calls.map((call) => String(call[0]))).toEqual([
 			'leftover-1',
 			'leftover-2',
@@ -260,10 +293,156 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(build.success).toBe(true);
 	});
 
+	// The shape a real user creates by opening the assistant with a workflow in front
+	// of them: the product hands the agent a resource reference, so it resolves by id
+	// and never hunts by name.
+	it('sends the attached seed workflow with the opening message, using the REMAPPED id', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: 'why is this failing?', attach: { workflow: SEED_WF_ID } },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const [, , attachments] = sendMessage.mock.calls[0] as [
+			string,
+			string,
+			Array<{ type: string; id: string; name: string }> | undefined,
+		];
+		expect(attachments).toHaveLength(1);
+		expect(attachments?.[0].type).toBe('workflow');
+		// The authored id is rewritten per run, so sending it verbatim would point the
+		// agent at a workflow that doesn't exist on this instance.
+		expect(attachments?.[0].id).not.toBe(SEED_WF_ID);
+		const [, , workflows] = restoreThread.mock.calls[0] as [
+			string,
+			unknown,
+			Array<{ id: string; name: string }>,
+		];
+		expect(attachments?.[0].id).toBe(workflows[0].id);
+		expect(attachments?.[0].name).toBe(workflows[0].name);
+	});
+
+	// The API carries the attachment out of band, so the graded transcript would show a
+	// faithful hand-off (`text: ''` + attach) as a bare empty message: an anomaly to the
+	// judge, and an EMPTY prompt for the prompt-aware checks (userTurnsAsText drops
+	// empty strings). The recorded turn names it instead.
+	it('names the attached workflow in the RECORDED turn, so judges can see the hand-off', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
+		vi.mocked(recordUserTurn).mockClear();
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			// No typed text — exactly the shape the docs promote.
+			conversation: [{ role: 'user' as const, text: '', attach: { workflow: SEED_WF_ID } }],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const restoredWorkflows = (
+			restoreThread.mock.calls[0] as [string, unknown, Array<{ id: string; name: string }>]
+		)[2];
+		const [, recordedText] = vi.mocked(recordUserTurn).mock.calls[0];
+		const [, sentText] = sendMessage.mock.calls[0] as [string, string, unknown];
+
+		// The RESTORED (per-run) name, not the authored one — that's what exists on the
+		// instance and what the judge will see referenced.
+		expect(recordedText).toBe(`[attached workflow: ${restoredWorkflows[0].name}]`);
+		// The agent still gets the user's real (empty) text plus the attachment itself.
+		expect(sentText).toBe('');
+	});
+
+	// The proxy renders its script and running transcript from `text` alone, so a
+	// hand-off case with follow-ups would otherwise audit plans and decide follow-ups
+	// against a blank opening turn that never mentions the workflow.
+	it('names the attached workflow in the script the user proxy reads', async () => {
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
+		proxyScripts.length = 0;
+
+		await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: '', attach: { workflow: SEED_WF_ID } },
+				{ role: 'user' as const, text: 'now add error handling' },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const restoredWorkflows = (
+			restoreThread.mock.calls[0] as [string, unknown, Array<{ id: string; name: string }>]
+		)[2];
+		expect(proxyScripts[0][0].text).toBe(`[attached workflow: ${restoredWorkflows[0].name}]`);
+		// Later turns are the author's own text, untouched.
+		expect(proxyScripts[0][1].text).toBe('now add error handling');
+	});
+
+	it('fails loudly when the attached seed workflow is missing from the restore', async () => {
+		// The schema refuses an `attach` the seed does not declare, so a miss here means
+		// the restore/remap lost it. Running on would silently downgrade the case to a
+		// find-it test and grade the wrong thing.
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
+
+		const result = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage: vi.fn().mockResolvedValue({ runId: 'r' }) }),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: 'why?', attach: { workflow: 'never-declared' } },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toMatch(/attaches seeded workflow "never-declared"/);
+	});
+
+	it('sends no attachments when the opening turn declares none', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		await buildWorkflow({
+			client: makeClient(
+				vi.fn().mockResolvedValue({
+					restored: 1,
+					workflowIds: [],
+					dataTableIds: [],
+					agentIds: [],
+				}),
+				{ sendMessage },
+			),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+		expect(sendMessage.mock.calls[0][2]).toBeUndefined();
+	});
+
 	it('does not restore anything for a case with no seed', async () => {
 		const restoreThread = vi
 			.fn()
-			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: [] });
+			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] });
 
 		const build = await buildWorkflow({ client: makeClient(restoreThread), ...baseConfig });
 

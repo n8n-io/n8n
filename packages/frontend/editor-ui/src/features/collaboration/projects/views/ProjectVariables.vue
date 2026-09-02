@@ -33,8 +33,7 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
@@ -43,7 +42,7 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { isVariableResource } from '@/app/utils/typeGuards';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();

@@ -1,4 +1,3 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	rejectIfDynamicSelectorUsesFromAi,
@@ -8,7 +7,6 @@ import {
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AGENT_MODEL_PROVIDERS,
-	AgentIntegrationSchema,
 	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -19,8 +17,7 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -33,17 +30,23 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import {
+	AgentTestRunService,
+	agentTestRunContinuationSchema,
+	collectStandardApprovals,
+	InvalidAgentTestRunCheckpointError,
+	type AgentTestRunResult,
+} from '@/modules/agents/agent-test-run.service';
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
-import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
@@ -66,8 +69,17 @@ import {
 	AGENT_BUILDER_REFERENCE_URI,
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
-import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	MCP_CALL_AGENT_TOOL_NAME,
+	MCP_CREATE_AGENT_TOOL_NAME,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '../../mcp.constants';
+import type {
+	RegisterResourceFn,
+	RegisterToolFn,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
@@ -302,6 +314,7 @@ const verifyMcpServerInput = {
 		.min(1)
 		.optional()
 		.describe('Accessible credential ID; required when authentication is not none'),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
 } satisfies z.ZodRawShape;
 
@@ -314,6 +327,35 @@ const updateIntegrationInput = {
 		.record(z.unknown())
 		.optional()
 		.describe('Integration settings; required for Telegram connect operations'),
+	replacesCredentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'On connect, the credential of the same type this one takes over from. Swaps both in one operation instead of a separate disconnect',
+		),
+} satisfies z.ZodRawShape;
+
+const callAgentRequestSchema = z.discriminatedUnion('type', [
+	z
+		.object({
+			type: z.literal('message'),
+			message: z.string().trim().min(1),
+			sessionId: z.string().trim().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('approval'),
+			approved: z.boolean(),
+			continuation: agentTestRunContinuationSchema,
+		})
+		.strict(),
+]);
+
+const callAgentInput = {
+	...agentIdentityShape,
+	request: callAgentRequestSchema,
 } satisfies z.ZodRawShape;
 
 const emptyInput = {} satisfies z.ZodRawShape;
@@ -324,6 +366,7 @@ type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
 type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
 type VerifyMcpServerInput = z.infer<z.ZodObject<typeof verifyMcpServerInput>>;
 type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>>;
+type CallAgentInput = z.infer<z.ZodObject<typeof callAgentInput>>;
 
 type MutationResource = {
 	type: 'skill' | 'task' | 'customTool';
@@ -349,19 +392,17 @@ export class McpAgentToolsService {
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentTaskService: AgentTaskService,
+		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentSecureRuntime: AgentSecureRuntime,
 		private readonly integrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly integrationManagementService: AgentIntegrationManagementService,
 		private readonly agentModelCatalogService: AgentModelCatalogService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
@@ -369,18 +410,29 @@ export class McpAgentToolsService {
 	/**
 	 * `allowedToolNames` carries the OAuth grant's scope-derived allow-list
 	 * (undefined means a non-scope-bearing credential with full access).
+	 * `registerTool` is the caller's scope-checking registrar (see
+	 * McpService.createToolRegistrar), which also bridges the raw-shape zod
+	 * schemas to what the v2 SDK expects; `registerResource` is its resource
+	 * counterpart (McpService.createResourceRegistrar).
 	 */
-	registerTools(server: McpServer, user: User, allowedToolNames?: Set<string>): void {
+	registerTools(
+		registerTool: RegisterToolFn,
+		registerResource: RegisterResourceFn,
+		user: User,
+		allowedToolNames?: Set<string>,
+	): void {
+		const isCallAgentAvailable = allowedToolNames?.has(MCP_CALL_AGENT_TOOL_NAME) ?? true;
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			this.register(server, tool);
+			registerTool(tool);
 		};
 
 		registerIfAllowed(this.searchAgentsTool(user));
 		registerIfAllowed(this.getAgentTool(user));
 		registerIfAllowed(this.createAgentTool(user));
 		registerIfAllowed(this.mutateAgentTool(user));
-		registerIfAllowed(this.validateAgentTool(user));
+		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
+		registerIfAllowed(this.callAgentTool(user));
 		registerIfAllowed(this.publishAgentTool(user));
 		registerIfAllowed(this.unpublishAgentTool(user));
 		registerIfAllowed(this.revertAgentTool(user));
@@ -395,11 +447,11 @@ export class McpAgentToolsService {
 		// follows that tool's scope gate.
 		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
-		server.resource(
-			'agent-builder-reference',
-			AGENT_BUILDER_REFERENCE_URI,
-			{ description: 'Reference for creating and managing n8n Agents through MCP.' },
-			() => ({
+		registerResource({
+			name: 'agent-builder-reference',
+			uri: AGENT_BUILDER_REFERENCE_URI,
+			config: { description: 'Reference for creating and managing n8n Agents through MCP.' },
+			read: () => ({
 				contents: [
 					{
 						uri: AGENT_BUILDER_REFERENCE_URI,
@@ -408,14 +460,7 @@ export class McpAgentToolsService {
 					},
 				],
 			}),
-		);
-	}
-
-	private register<Input extends z.ZodRawShape>(
-		server: McpServer,
-		tool: ToolDefinition<Input>,
-	): void {
-		server.registerTool(tool.name, tool.config, tool.handler);
+		});
 	}
 
 	private searchAgentsTool(user: User): ToolDefinition<typeof searchAgentsInput> {
@@ -423,7 +468,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
+					'Search Agents the current user can access. Use excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -618,7 +663,10 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private validateAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private validateAgentTool(
+		user: User,
+		isCallAgentAvailable: boolean,
+	): ToolDefinition<typeof agentIdentityShape> {
 		return {
 			name: 'validate_agent',
 			config: {
@@ -637,12 +685,58 @@ export class McpAgentToolsService {
 				await this.run(user, 'validate_agent', { agentId }, async () => {
 					const agent = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, agent.projectId, 'agent:read');
+					const validation = await this.validateAgent(user, agent);
+					const shouldSuggestCallAgent =
+						validation.valid &&
+						isCallAgentAvailable &&
+						(await userHasScopes(user, ['agent:execute'], false, { projectId: agent.projectId }));
 					return {
 						ok: true,
-						...(await this.validateAgent(user, agent)),
+						...validation,
 						url: this.getAgentUrl(agent.projectId, agentId),
+						...(shouldSuggestCallAgent
+							? {
+									nextStep: {
+										tool: MCP_CALL_AGENT_TOOL_NAME,
+										reason: 'Test the runnable draft before reporting it ready',
+									},
+								}
+							: {}),
 					};
 				}),
+		};
+	}
+
+	private callAgentTool(user: User): ToolDefinition<typeof callAgentInput> {
+		return {
+			name: MCP_CALL_AGENT_TOOL_NAME,
+			config: {
+				description:
+					'Test an Agent draft through built-in Preview chat. Start or continue a conversation with a message request, or resume one returned approval after the human decides. This uses real tools and credentials, so external side effects are possible.',
+				inputSchema: callAgentInput,
+				annotations: {
+					title: 'Call Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: false,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: CallAgentInput, extra) => {
+				const abortSignal =
+					isRecord(extra) && extra.signal instanceof AbortSignal ? extra.signal : undefined;
+
+				return await this.run(
+					user,
+					MCP_CALL_AGENT_TOOL_NAME,
+					{ agentId: input.agentId },
+					async () => {
+						const agent = await this.resolveAgent(user, input.agentId);
+						await this.assertScope(user, agent.projectId, 'agent:execute');
+						return await this.callAgent(user, agent, input.request, abortSignal);
+					},
+				);
+			},
 		};
 	}
 
@@ -845,7 +939,7 @@ export class McpAgentToolsService {
 			name: 'discover_agent_assets',
 			config: {
 				description:
-					'Discover model catalogs, chat integrations, attachable workflows, published sub-agents, or MCP registry servers.',
+					'Discover model catalogs, chat integrations, attachable workflows, saved sub-agents, or MCP registry servers.',
 				inputSchema: discoverAssetsInput,
 				annotations: {
 					title: 'Discover Agent Assets',
@@ -1031,6 +1125,7 @@ export class McpAgentToolsService {
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
+				timezone: task.timezone,
 				enabled: task.enabled,
 			})),
 			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
@@ -1052,6 +1147,128 @@ export class McpAgentToolsService {
 
 	private getAgentUrl(projectId: string, agentId: string) {
 		return `${this.urlService.getInstanceBaseUrl()}/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}`;
+	}
+
+	private async callAgent(
+		user: User,
+		agent: Agent,
+		request: CallAgentInput['request'],
+		abortSignal?: AbortSignal,
+	): Promise<Record<string, unknown>> {
+		const { id: agentId, projectId } = agent;
+		const previewUrl = `${this.getAgentUrl(projectId, agentId)}/preview`;
+
+		try {
+			let result: AgentTestRunResult;
+			if (request.type === 'message') {
+				result = await this.agentTestRunService.executeDraftRun({
+					agentId,
+					projectId,
+					message: request.message,
+					sessionId: request.sessionId,
+					credentialProvider: this.credentialProvider(user, projectId),
+					user,
+					source: 'mcp',
+					abortSignal,
+				});
+			} else {
+				result = await this.agentTestRunService.resumeDraftApproval({
+					agentId,
+					projectId,
+					continuation: request.continuation,
+					approved: request.approved,
+					user,
+					source: 'mcp',
+					abortSignal,
+				});
+			}
+
+			if (result.status === 'session_not_found') {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'session_not_found',
+					message: 'Session not found.',
+				};
+			}
+			if (result.status === 'agent_misconfigured') {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'agent_misconfigured',
+					message: "This agent isn't ready to run yet. Finish configuring it and try again.",
+					missing: result.missing,
+				};
+			}
+			if (result.status === 'completed') return { ok: true, ...result };
+
+			const approvals = collectStandardApprovals(result);
+			if (approvals) {
+				// TODO: Return approvals via MCP input_required: https://linear.app/n8n/issue/ADO-5754
+				return {
+					ok: true,
+					status: 'suspended',
+					response: result.response,
+					sessionId: result.sessionId,
+					...(result.executionId ? { executionId: result.executionId } : {}),
+					approvals,
+				};
+			}
+
+			const canOpenPreview = await userHasScopes(user, ['project:read', 'agent:read'], false, {
+				projectId,
+			});
+			const previewAccessNote = canOpenPreview
+				? undefined
+				: 'Your access permits running this agent but not opening Preview. Share the Preview URL with a project member who has project and agent read access.';
+			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+				agentId,
+				suspensions: result.suspensions,
+				userId: user.id,
+			});
+			if (!cancelled) {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'cancellation_failed',
+					message:
+						'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+					sessionId: result.sessionId,
+					previewUrl,
+					...(previewAccessNote ? { previewAccessNote } : {}),
+				};
+			}
+
+			return {
+				ok: true,
+				status: 'approval_required',
+				response: result.response,
+				sessionId: result.sessionId,
+				...(result.executionId ? { executionId: result.executionId } : {}),
+				suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
+					runId,
+					toolCallId,
+					toolName,
+				})),
+				previewUrl,
+				...(previewAccessNote ? { previewAccessNote } : {}),
+			};
+		} catch (error) {
+			if (error instanceof InvalidAgentTestRunCheckpointError) {
+				return {
+					ok: false,
+					status: 'error',
+					code: error.code,
+					message: error.message,
+				};
+			}
+			return {
+				ok: false,
+				status: 'error',
+				code: 'execution_failed',
+				message: error instanceof Error ? error.message : 'Agent test run failed.',
+			};
+		}
 	}
 
 	/**
@@ -1373,7 +1590,6 @@ export class McpAgentToolsService {
 			case 'subagents': {
 				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
 					query: input.query?.trim() || undefined,
-					publishedOnly: true,
 					excludeAgentId: input.excludeAgentId,
 				});
 				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
@@ -1402,6 +1618,7 @@ export class McpAgentToolsService {
 				transport: input.transport,
 				authentication: input.authentication,
 				credential: input.credential,
+				metadata: input.metadata,
 				...(input.connectionTimeoutMs !== undefined
 					? { connectionTimeoutMs: input.connectionTimeoutMs }
 					: {}),
@@ -1410,11 +1627,9 @@ export class McpAgentToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 			},
 		);
 		return { ok: true, tools };
@@ -1426,79 +1641,44 @@ export class McpAgentToolsService {
 		await this.assertScope(user, projectId, 'agent:update');
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(user, input, agent)
-			: await this.connectIntegration(user, input, agent, projectId);
+			: await this.connectIntegration(user, input, agent);
 	}
 
 	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
-		const persisted = (agent.integrations ?? []).find(
-			(item) => item.type === input.type && item.credentialId === input.credentialId,
-		);
-		// Mirrors AgentIntegrationsController.disconnectIntegration: tear down
-		// the runtime channel even when persistence has no matching record
-		// (e.g. the integration was removed via a config mutation).
-		const parsed = AgentIntegrationSchema.safeParse({
+		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
+			agent,
+			user,
 			type: input.type,
 			credentialId: input.credentialId,
+			modifiedBy: 'mcp',
 		});
-		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
-		if (integration) {
-			await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
-		} else {
-			await this.chatIntegrationService.disconnect(input.agentId, {
-				type: input.type,
-				credentialId: input.credentialId,
-			});
-		}
-		const saved = await this.integrationPersistenceService.removeCredentialIntegration(
-			agent,
-			input.type,
-			input.credentialId,
-			{ user, modifiedBy: 'mcp', broadcast: false },
-		);
 		return {
 			ok: true,
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
 			connected: false,
+			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 
-	private async connectIntegration(
-		user: User,
-		input: UpdateIntegrationInput,
-		agent: Agent,
-		projectId: string,
-	) {
+	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const candidate = {
 			type: input.type,
 			credentialId: input.credentialId,
 			...(input.settings ? { settings: input.settings } : {}),
 		};
-		const parsed = AgentIntegrationSchema.safeParse(candidate);
-		if (!parsed.success) throw new UserError(`Invalid integration: ${parsed.error.message}`);
-		if (parsed.data.type === 'telegram' && !parsed.data.settings) {
-			throw new UserError('Telegram integration settings are required');
-		}
-
-		const credential = await this.requireAccessibleCredential(
-			this.credentialProvider(user, projectId),
-			input.credentialId,
-		);
-		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
-		if (!implementation.credentialTypes.includes(credential.type)) {
-			throw new UserError(
-				`${implementation.displayLabel} integrations do not support ${credential.type} credentials`,
-			);
-		}
-
-		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
+		const { savedAgent: saved } = await this.integrationManagementService.connect({
 			agent,
-			parsed.data,
-			{ user, modifiedBy: 'mcp', broadcast: false },
-		);
+			user,
+			integration: candidate,
+			...(input.replacesCredentialId
+				? { replaces: { type: input.type, credentialId: input.replacesCredentialId } }
+				: {}),
+			modifiedBy: 'mcp',
+		});
 		const result = {
 			ok: true,
 			agentId: input.agentId,
@@ -1509,13 +1689,6 @@ export class McpAgentToolsService {
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
-
-		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			input.agentId,
-			parsed.data,
-			'connect',
-		);
 		return {
 			...result,
 			connected: true,

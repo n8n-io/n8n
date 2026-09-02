@@ -62,6 +62,12 @@
                             }
                         }
                     },
+                    "Message-ID": {
+                        "type": "string"
+                    },
+                    "MIME-Version": {
+                        "type": "string"
+                    },
                     "payload": {
                         "type": "object",
                         "properties": {
@@ -84,6 +90,48 @@
                             },
                             "partId": {
                                 "type": "string"
+                            },
+                            "parts": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "body": {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "string"
+                                                },
+                                                "size": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "filename": {
+                                            "type": "string"
+                                        },
+                                        "headers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "value": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "mimeType": {
+                                            "type": "string"
+                                        },
+                                        "partId": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
                             }
                         }
                     },
@@ -118,5 +166,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

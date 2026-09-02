@@ -3,6 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -87,7 +88,7 @@ export class WorkflowPublicationReconciler {
 
 		// Run an initial pass at startup rather than waiting a full interval, so a
 		// trigger missed during the last leader transition recovers promptly.
-		if (this.reconcileInterval) void this.reconcile();
+		if (this.reconcileInterval) void this.reconcile(WorkflowPublicationReason.Startup);
 	}
 
 	/**
@@ -101,7 +102,7 @@ export class WorkflowPublicationReconciler {
 
 		const intervalSeconds = this.workflowsConfig.publicationReconcileIntervalSeconds;
 		this.reconcileInterval = setInterval(
-			async () => await this.reconcile(),
+			async () => await this.reconcile(WorkflowPublicationReason.Reconcile),
 			intervalSeconds * Time.seconds.toMilliseconds,
 		);
 
@@ -122,8 +123,12 @@ export class WorkflowPublicationReconciler {
 	 * other role: sweep ghost registrations instead. Errors are caught and
 	 * reported so a transient failure never escapes the interval; the next pass
 	 * retries.
+	 *
+	 * `reason` records why this pass enqueues (startup, takeover, or drift-heal);
+	 * the applier translates it into the activation mode reported to trigger
+	 * nodes, e.g. "Instance Started" fires only for the startup pass.
 	 */
-	async reconcile(): Promise<void> {
+	async reconcile(reason: WorkflowPublicationReason): Promise<void> {
 		if (this.isShuttingDown) return;
 
 		if (!this.instanceSettings.isLeader) {
@@ -140,22 +145,26 @@ export class WorkflowPublicationReconciler {
 					const missing = await this.republishWorkflows(
 						await this.findMissingActiveWorkflows(),
 						'Re-publishing workflows with missing in-memory triggers',
+						reason,
 					);
 					// After the missing-trigger drain, so workflows that pass already
 					// converged are not re-detected (and double-counted) as skewed.
 					const versionSkew = await this.republishWorkflows(
 						await this.outboxRepository.findVersionSkewedWorkflowIds(),
 						'Re-enqueuing workflows whose published version diverged from the active version',
+						reason,
 					);
 					// Also after the earlier drains, for the same reason: rows those
 					// passes already converged must not be re-detected here.
 					const statusDrift = await this.republishWorkflows(
 						await this.outboxRepository.findTriggerStatusDriftedWorkflowIds(),
 						'Re-enqueuing workflows whose trigger-status rows lag the active version',
+						reason,
 					);
 					const unreported = await this.republishWorkflows(
 						await this.outboxRepository.findUnreportedPublishedWorkflowIds(),
 						'Re-enqueuing published workflows that no publication reported trigger statuses for',
+						reason,
 					);
 
 					span.setAttribute('n8n.publication.deficient_workflows', missing);
@@ -203,7 +212,7 @@ export class WorkflowPublicationReconciler {
 	async reconcileOnLeaderTakeover(): Promise<void> {
 		if (!this.reconcileInterval) return;
 
-		await this.reconcile();
+		await this.reconcile(WorkflowPublicationReason.LeadershipTakeover);
 	}
 
 	private async findSurplusWorkflowIds(): Promise<WorkflowId[]> {
@@ -259,10 +268,14 @@ export class WorkflowPublicationReconciler {
 		return missing;
 	}
 
-	private async republishWorkflows(workflowIds: WorkflowId[], logMessage: string): Promise<number> {
+	private async republishWorkflows(
+		workflowIds: WorkflowId[],
+		logMessage: string,
+		reason: WorkflowPublicationReason,
+	): Promise<number> {
 		if (workflowIds.length > 0) {
 			this.logger.debug(logMessage, { workflowIds });
-			await this.outboxRepository.enqueueByWorkflowIds(workflowIds);
+			await this.outboxRepository.enqueueByWorkflowIds(workflowIds, reason);
 			// Drain directly rather than waiting for the next poll cycle. These are
 			// safe to call here, to recover more quickly.
 			this.outboxConsumer.startPolling();

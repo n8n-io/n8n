@@ -3,6 +3,7 @@ import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { toMb } from '@n8n/utils/number/bytes';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -241,7 +242,6 @@ export class Push extends TypedEmitter<PushEvents> {
 			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
 			if (eventSizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
-				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
 				const eventMb = toMb(eventSizeBytes);
 				const maxMb = toMb(MAX_PUBSUB_PAYLOAD_BYTES);
 

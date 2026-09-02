@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
-import type { ICredentialsResponse } from '../../credentials.types';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
 import type {
 	CredentialInformation,
@@ -186,6 +186,15 @@ const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>(
 const workflowDocumentStore = provideWorkflowDocumentStore();
 const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
+// Telemetry workflow attribution: prefer the workflow passed by the surface that
+// opened the modal (NDV, Instance AI setup card) — the resolved document store is
+// empty when the modal opens outside a loaded workflow document.
+const telemetryWorkflowId = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const fromModal = isCredentialModalState(modalState) ? modalState.workflowId : undefined;
+	return fromModal ?? workflowDocumentStore.value.workflowId;
+});
+
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -211,6 +220,10 @@ const form = useCredentialForm({
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
+	setupHint: () => {
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		return isCredentialModalState(modalState) ? modalState.credentialSetupHint : undefined;
+	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
 	// modal's former testCredential, which ended with scrollToTop).
 	onTestComplete: scrollToTop,
@@ -230,6 +243,7 @@ const {
 	showValidationWarning,
 	isResolvable,
 	connectedByMe,
+	connectedAccountIdentifier,
 	useCustomOAuth,
 	activeNodeType,
 	credentialTypeName,
@@ -269,6 +283,11 @@ const instanceAiCredentialHelp = computed(() => {
 const closeOnSave = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
+const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
 });
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
@@ -434,6 +453,15 @@ onMounted(async () => {
 	}
 });
 
+// The missing-required-fields warning latches on open/save/close attempts;
+// release it as soon as the form satisfies the requirements so the OAuth
+// connect banner reappears without needing a save first.
+watch(requiredPropertiesFilled, (filled) => {
+	if (filled) {
+		showValidationWarning.value = false;
+	}
+});
+
 async function beforeClose() {
 	let keepEditing = false;
 
@@ -498,7 +526,7 @@ function onTabSelect(tab: string) {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
 		tab,
-		workflow_id: workflowDocumentStore.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
 	});
@@ -592,6 +620,7 @@ async function onResolvableChange(value: boolean) {
 	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
 	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	connectedAccountIdentifier.value = undefined;
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
@@ -650,6 +679,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		null,
 		null,
 	);
+	const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 
 	assert(credentialTypeName.value);
 	const credentialDetails: ICredentialsDecrypted = {
@@ -692,6 +722,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, homeProject.value);
+		if (credential) onCredentialCreated.value?.(credential);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -700,7 +731,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		// Changing a private credential's shared (static) fields invalidates every
 		// end user's connection, so warn before saving.
-		const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 		if (isResolvable.value && getChangedSharedFields(savedData).length) {
 			const confirmAction = await confirmModal('sharedFieldsChanged', {
 				credentialName: credentialName.value,
@@ -717,7 +747,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	isSaving.value = false;
 	if (credential) {
 		credentialId.value = credential.id;
-		currentCredential.value = credential;
+		// The save response omits the encrypted `data` (see credentials.controller.ts),
+		// but we know it now matches what we just persisted. Keep it as the baseline so
+		// the next shared-field diff doesn't compare against an empty object and
+		// false-trigger the "will disconnect everyone" prompt.
+		const updatedCredential: ICredentialsDecryptedResponse = { ...credential, data: savedData };
+		currentCredential.value = updatedCredential;
 		// Resync in case the save cleared this user's connection server-side.
 		connectedByMe.value = credential.connectedByMe === true;
 
@@ -751,7 +786,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
-			workflow_id: workflowDocumentStore.value.workflowId,
+			workflow_id: telemetryWorkflowId.value,
 			credential_id: credential.id,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
@@ -885,7 +920,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowDocumentStore.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 
 	return credential;
@@ -1021,6 +1056,22 @@ async function oAuthCredentialAuthorize() {
 
 	credentialsStore.pendingOAuthRefresh = true;
 
+	// window.open must run within the click's transient user activation:
+	// opening after the save/authorize round trips below gets the popup blocked
+	// on slow connections (Chrome expires activation after ~5s) and in stricter
+	// browsers (Safari) regardless of timing. Open a blank window now and
+	// navigate it once the authorization URL is known.
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+	if (!oauthPopup) {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
+		);
+		return;
+	}
+
 	// Editors persist any blueprint changes before connecting. Connect-only users
 	// (e.g. on a private credential they can't edit) have nothing to save, so
 	// connecting through saveCredential would be a no-op that returns null and
@@ -1028,6 +1079,7 @@ async function oAuthCredentialAuthorize() {
 	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
+		oauthPopup.close();
 		return;
 	}
 
@@ -1049,6 +1101,7 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	} catch (error) {
+		oauthPopup.close();
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
@@ -1063,6 +1116,7 @@ async function oAuthCredentialAuthorize() {
 	}
 
 	if (url === undefined || url === '') {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1075,6 +1129,7 @@ async function oAuthCredentialAuthorize() {
 	try {
 		const parsedUrl = new URL(url);
 		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			oauthPopup.close();
 			toast.showError(
 				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1082,6 +1137,7 @@ async function oAuthCredentialAuthorize() {
 			return;
 		}
 	} catch {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1089,9 +1145,7 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const oauthPopup = window.open(url, 'OAuth Authorization', params);
+	oauthPopup.location.href = url;
 
 	// Token presence in credential data can only confirm the flow when there was
 	// no token yet (a reconnect's old token would read as an immediate false
@@ -1107,7 +1161,7 @@ async function oAuthCredentialAuthorize() {
 	const handleOAuthResult = (successfullyConnected: boolean) => {
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowDocumentStore.value.workflowId || null,
+			workflow_id: telemetryWorkflowId.value || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1132,25 +1186,25 @@ async function oAuthCredentialAuthorize() {
 
 			connectedByMe.value = true;
 
-			void credentialsStore.fetchAllCredentials().then(() => {
+			void credentialsStore.fetchAllCredentials().then((credentials) => {
 				nodeHelpers.updateNodesCredentialsIssues();
+				// The account just connected is only known server-side, so pick it up
+				// from the refresh rather than guessing at who the user is. Read this
+				// request's own response, not the store: any other credentials fetch
+				// that resolves later replaces the whole store map with its own view.
+				connectedAccountIdentifier.value = credentials.find(
+					(credential) => credential.id === credentialId.value,
+				)?.connectedAccountIdentifier;
 			});
 
 			// Close the window
-			if (oauthPopup) {
-				oauthPopup.close();
-			}
+			oauthPopup.close();
 
 			if (closeOnSave.value) {
 				closeDialog();
 			}
 		}
 	};
-
-	if (!oauthPopup) {
-		handleOAuthResult(false);
-		return;
-	}
 
 	// Supersede any previous pending flow so a re-click doesn't leave a second
 	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
@@ -1204,6 +1258,7 @@ async function onDisconnectMyConnection(): Promise<void> {
 		} else {
 			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
 		}
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1249,6 +1304,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 		// this session (or carried over from the loaded credential) makes the banner
 		// misreport "connected" for a mode that was never actually saved.
 		connectedByMe.value = false;
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1414,7 +1470,9 @@ const { width } = useElementSize(credNameRef);
 							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
+							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
+							:new-credential-project-type="homeProject?.type"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
 							:is-quick-connect-mode="isQuickConnectMode"

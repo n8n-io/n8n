@@ -11,7 +11,7 @@ import type { Request, Response } from 'express';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
 import type { IHttpRequestOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -157,13 +157,11 @@ describe('OauthService', () => {
 	});
 
 	describe('constructor', () => {
-		it('builds its HTTP client with the injected SSRF protection service and a default timeout', () => {
-			// Guards the intent that outbound OAuth calls run with SSRF protection
-			// enabled per the configured env vars, rather than relying on the implicit
-			// `requests()` default, and that the shared request timeout is applied once
-			// on the client instead of being repeated per call.
+		it('builds its HTTP client with the default safe mode and a default timeout', () => {
+			// Guards the intent that outbound OAuth calls run through the default safe
+			// client, and that the shared request timeout is applied once on the
+			// client instead of being repeated per call.
 			expect(outboundHttp.requests).toHaveBeenCalledWith({
-				ssrf: ssrfProtectionService,
 				timeout: expect.any(Number),
 			});
 		});
@@ -304,7 +302,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(
+			credentialsFinderService.findById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'credential-id', isResolvable: false }),
 			);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
@@ -327,7 +325,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(mockCredential);
+			credentialsFinderService.findById.mockResolvedValue(mockCredential);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
 			const result = await service.getCredentialForAuthFlow(req);
@@ -1791,6 +1789,32 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'zendeskOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for typeformOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'typeformOAuth2Api',
 				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
@@ -5204,52 +5228,6 @@ describe('OauthService', () => {
 		});
 	});
 
-	describe('extractAccountIdentifier', () => {
-		it('returns email from direct token field', () => {
-			expect(
-				OauthService.extractAccountIdentifier({ email: 'user@example.com', access_token: 'tok' }),
-			).toBe('user@example.com');
-		});
-
-		it('returns login from direct token field (GitHub-style)', () => {
-			expect(OauthService.extractAccountIdentifier({ login: 'octocat', access_token: 'tok' })).toBe(
-				'octocat',
-			);
-		});
-
-		it('extracts email from JWT id_token', () => {
-			const payload = { email: 'user@gmail.com', sub: '123' };
-			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
-			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe('user@gmail.com');
-		});
-
-		it('extracts preferred_username from JWT id_token when no email', () => {
-			const payload = { preferred_username: 'admin@contoso.com', sub: '123' };
-			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
-			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe(
-				'admin@contoso.com',
-			);
-		});
-
-		it('returns undefined for token data without identifiers', () => {
-			expect(
-				OauthService.extractAccountIdentifier({ access_token: 'tok', refresh_token: 'ref' }),
-			).toBeUndefined();
-		});
-
-		it('handles malformed JWT gracefully', () => {
-			expect(OauthService.extractAccountIdentifier({ id_token: 'not.a.jwt' })).toBeUndefined();
-		});
-
-		it('prefers direct fields over id_token', () => {
-			const payload = { email: 'jwt@example.com' };
-			const idToken = `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`;
-			expect(
-				OauthService.extractAccountIdentifier({ email: 'direct@example.com', id_token: idToken }),
-			).toBe('direct@example.com');
-		});
-	});
-
 	describe('refreshOAuth2CredentialById', () => {
 		const credentialId = 'cred-123';
 		const projectId = 'proj-456';
@@ -5339,6 +5317,38 @@ describe('OauthService', () => {
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
 			expect(result).toBeNull();
+		});
+
+		it('reports a dynamically registered credential whose client registration is gone', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			// Stands in for the real client: without a client id or token endpoint
+			// the exchange is rejected by the authorization server.
+			const mockToken = {
+				refresh: vi.fn().mockRejectedValue(new Error('invalid_client')),
+				client: {},
+			};
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				useDynamicClientRegistration: true,
+				serverUrl: 'https://mcp.linear.app/mcp',
+				// clientId and accessTokenUrl are absent: nothing identifies the
+				// client and there is no token endpoint to post to.
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+
+			// Expect an error when DCR data is missing
+			await expect(service.refreshOAuth2CredentialById(credentialId, projectId)).rejects.toThrow(
+				UserError,
+			);
+			expect(mockToken.refresh).not.toHaveBeenCalled();
 		});
 
 		it('refreshes the token with token.refresh() for authorizationCode grant and returns a Bearer header', async () => {

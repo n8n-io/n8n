@@ -5,14 +5,16 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
+import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
+	AgentJsonConfig,
+	AgentSkill,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -43,6 +45,7 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -66,6 +69,13 @@ export interface WorkflowSummary {
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
+	/**
+	 * Owning project. Present only when the listing can span more than one
+	 * project — a list narrowed to a single project would repeat it on every row.
+	 * Without it, a cross-project listing gives no way to tell which project a
+	 * workflow belongs to.
+	 */
+	project?: { id: string; name: string };
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -100,6 +110,12 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/**
+	 * Nodes with pinned data saved on the workflow when this run started. A
+	 * reached node in this list output its pinned items instead of executing,
+	 * so the run is not a live test of it.
+	 */
+	workflowPinnedNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -231,21 +247,11 @@ export interface NodeSummary {
 }
 
 /**
- * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
- * Attached to node results only when the instance is licensed for the
- * gateway AND the node is listed in the gateway config. Absence means either
- * "not licensed" or "not supported" — consumers treat both the same.
- *
- * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
- * a map from resource name to allowed operations. Nodes without a resource
- * dimension use the marker key `'__operation_only__'`.
+ * Re-exported from `@n8n/ai-utilities/node-catalog`, which owns the definition
+ * because the shared node search engine reads it. Kept exported here so this
+ * package's consumers have one import site for the Instance AI types.
  */
-export interface AiGatewayNodeMeta {
-	supported: true;
-	operations?: Record<string, string[]>;
-	minVersion?: number;
-	hiddenProperties?: string[];
-}
+export type { AiGatewayNodeMeta };
 
 export interface NodeDescription extends NodeSummary {
 	properties: Array<{
@@ -290,17 +296,48 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';
 
+export interface WorkflowListResult {
+	/** The page of workflows, capped by `limit`. */
+	workflows: WorkflowSummary[];
+	/** Total workflows matching every requested filter, ignoring `limit`. */
+	total: number;
+	/**
+	 * Total workflows in scope with the `query` name filter removed — what an
+	 * unfiltered list of the same status and scope would return. Equals `total`
+	 * when no `query` was given. Lets callers tell a name-filtered subset apart
+	 * from the full inventory.
+	 */
+	totalInScope: number;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
-	}): Promise<WorkflowSummary[]>;
+		/**
+		 * Restrict the listing to one project, overriding `scope`. A read-only
+		 * narrowing of what the caller can already reach: the adapter passes it as a
+		 * filter on top of the user's own read permissions, so it can never widen
+		 * access. Writes stay locked to the thread's bound project regardless.
+		 */
+		projectId?: string;
+	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
 	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
+	/**
+	 * Names and item counts of nodes carrying pinned data on the saved workflow.
+	 * Deliberately a summary next to the WorkflowJSON rather than part of it:
+	 * pin payloads can be huge, and a JSON that round-trips through
+	 * `updateFromWorkflowJSON` must stay pin-free so agent saves keep clearing
+	 * stale pins instead of re-persisting them.
+	 */
+	getPinnedDataSummary?(
+		workflowId: string,
+	): Promise<Array<{ nodeName: string; itemCount: number }>>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -314,13 +351,13 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -461,21 +498,39 @@ export interface InstanceAiCredentialService {
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
+	/** Whether a stored credential carries any values at all — `blank` when every
+	 *  text field its type declares is empty. Non-secret: only the verdict crosses
+	 *  the boundary, never the data. Tells an empty binding from a real one for the
+	 *  types that declare no connection test (generic auth). */
+	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** Whether a credential type with this exact registered name exists on the instance. */
+	credentialTypeExists?(credentialType: string): Promise<boolean>;
 	/** HTTP-usable credential types with the API host(s) they authenticate against,
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */
 	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
+	/** For Templated Custom Auth credentials only: the service host each credential
+	 *  was created for (its recipe's `serviceHost`), by credential id — `null` for
+	 *  untagged/legacy ones. Non-secret metadata; never exposes credential data.
+	 *  Powers same-service filtering of setup candidates for the shared type. */
+	getTemplatedCredentialHosts?(credentialIds: string[]): Promise<Record<string, string | null>>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
+	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
+	/** Whether the credential type is an OAuth type whose client the instance
+	 *  provides via credential overwrites (managed OAuth) — the editor offers
+	 *  one-click connect for these instead of an API-key form. */
+	isManagedOAuthCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -484,6 +539,27 @@ export interface CredentialFieldInfo {
 	type: string;
 	required: boolean;
 	description?: string;
+}
+
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	credentialType: string;
+	tools: string[];
+}
+
+/** A service the user connected, with those of its tools that reached the agent.
+ *  Named by slug, which is also what the MCP tools accept as an argument. */
+export interface ConnectedMcpService {
+	slug: string;
+	toolNames: string[];
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
 export interface ExploreResourcesParams {
@@ -512,8 +588,21 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
+export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
+	name: string;
+	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
+	currentValue: string;
+}
+
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -533,6 +622,20 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
@@ -568,7 +671,7 @@ export interface SearchableNodeDescription {
 	outputs: string[] | string;
 	codex?: { alias?: string[] };
 	builderHint?: {
-		message?: string;
+		searchHint?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
@@ -603,7 +706,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -908,12 +1011,16 @@ export interface BuilderDelegateSession {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
 	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
 export interface BuilderTurnStream {
 	fullStream: AsyncIterable<unknown>;
 	text: Promise<string>;
+	/** Structured host artifacts the embedded builder reported during this turn. */
+	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
 }
 
 /** Reference to a suspended builder tool call awaiting user input. */
@@ -956,6 +1063,15 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
+	readAgentArtifact?(agentId: string): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		configHash: string | null;
+	} | null>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -994,6 +1110,13 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
+	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	 *  agent is built, which is also when its MCP tools are attached, so it always
+	 *  matches what this agent can actually call. */
+	connectedMcpServices?: ConnectedMcpService[];
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
@@ -1038,6 +1161,9 @@ export interface InstanceAiContext {
 	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
 	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
 	grantSessionToolApproval?: (key: string) => Promise<void>;
+	/** Drop a thread-level grant. Only for decisions meant to be reversible inside a thread —
+	 *  e.g. a skipped credential setup the user later asks to complete. */
+	revokeSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -1051,17 +1177,27 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Run-scoped outcome tracking for browser-assisted credential setup. The
+	 * credentials tool marks an attempt pending when it hands off to the LLM
+	 * with `needsBrowserSetup`; the browser tool wrapper reports each
+	 * `browser_create_credential` outcome. The host resolves the terminal
+	 * success/failure telemetry when the run finishes.
+	 */
+	browserCredentialSetup?: {
+		markPending: (credentialType: string, attemptId?: string) => void;
+		markCreated: (credentialType: string) => void;
+		markCreateFailed: (credentialType: string, errorCode: string) => void;
+	};
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
-	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow on every successful create, and
-	 * hydrated at run start from the persisted plan graph when — and only when —
-	 * the plan is still `active` or
-	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
-	 * the window closes as soon as the plan settles. Consumed by the delete
-	 * handler to skip the confirmation gate when the agent cleans up its own
-	 * in-flight artifacts. Lazily initialized on first create.
+	 * IDs of workflows the agent created during the **current run**. Populated by
+	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
+	 * the same thread uses the persisted `workflows:update:<id>` session grant
+	 * written at create time — this in-memory set alone does not survive a new run.
+	 * Lazily initialized on first create.
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
@@ -1076,6 +1212,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
+	 *  accept absolute file paths under the root by normalizing them to
+	 *  workspace-relative. */
+	workspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -1300,6 +1440,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1324,16 +1466,22 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
+export type VertexAnthropicModelConfig = {
+	id: `google-vertex-anthropic/${string}`;
+	project: string;
+	location: string;
+	googleCredentials?: string;
+};
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
- *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
- *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
- *  `/chat/completions` adapter. */
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
@@ -1550,8 +1698,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

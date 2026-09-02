@@ -16,7 +16,6 @@ import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgent
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
 import SurfaceMcpEmptyStateTile from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue';
 
 const emit = defineEmits<{
@@ -37,7 +36,7 @@ const agentTelemetry = useAgentTelemetry();
 const { showAppSelection, emptyStateHeading, emptyStateDescription, canCreateWorkflow } =
 	useWorkflowsEmptyState();
 
-const { showTile: showMcpTile, showReminder: showMcpReminder } = useSurfaceMcpEmptyState({
+const { showTile: showMcpTile } = useSurfaceMcpEmptyState({
 	canCreateWorkflow: computed(() => Boolean(canCreateWorkflow.value)),
 	showAppSelection: computed(() => Boolean(showAppSelection.value)),
 });
@@ -132,7 +131,6 @@ const handleAppSelectionContinue = () => {
 					>
 						{{ emptyStateDescription }}
 					</N8nText>
-					<SurfaceMcpEmptyStateReminder v-if="showMcpReminder" />
 
 					<!-- Cards vary based on enabled modules and ready-to-run availability -->
 					<div

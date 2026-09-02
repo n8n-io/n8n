@@ -3,13 +3,18 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadSummary,
+	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
+	type PushMessage,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
 	type InstanceAiThreadLaunchInput,
 } from './instanceAi.api';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -19,8 +24,11 @@ import {
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
+
+type InstanceAiCreditsPushData = Extract<PushMessage, { type: 'updateInstanceAiCredits' }>['data'];
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -37,6 +45,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
+	/** Whether the pool has been locked by the activation cap. */
+	const quotaLocked = ref(false);
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -106,33 +116,37 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
 	});
 
-	// --- Credits push listener ---
+	/**
+	 * Whether to warn about credits above the chat input: either the balance is running low, or the
+	 * pool has been locked outright. The two are mutually exclusive in practice — a cohort with a
+	 * masked balance can never read as "low" — so this is the single condition the views use.
+	 */
+	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
 
-	let removeCreditsPushListener: (() => void) | null = null;
+	// --- Credits push handling ---
 
-	function startCreditsPushListener(): void {
-		if (removeCreditsPushListener) return;
-		const pushStore = usePushConnectionStore();
-		removeCreditsPushListener = pushStore.addEventListener((message) => {
-			if (message.type !== 'updateInstanceAiCredits') return;
-			creditsQuota.value = message.data.creditsQuota;
-			creditsClaimed.value = message.data.creditsClaimed;
-			// Per-message claims also carry the thread's running total — write it onto the
-			// matching thread so the credits dropdown updates live for the acting user.
-			const { creditsPerThread } = message.data;
-			if (creditsPerThread !== undefined) {
-				const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
-				if (thread) {
-					thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
-				}
+	// Applies an `updateInstanceAiCredits` push. The instance-ai module descriptor
+	// registers this through its `pushHandlers`, so the shell owns the subscription
+	// lifecycle and credits stay current instance-wide; the store just applies the
+	// payload.
+	function handleCreditsPush(data: InstanceAiCreditsPushData): void {
+		creditsQuota.value = data.creditsQuota;
+		creditsClaimed.value = data.creditsClaimed;
+		// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
+		// push carries no lock state, and claims can land after the lock — a background memory
+		// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
+		// as false would clear the warning the lock had just raised.
+		if (data.quotaLocked !== undefined) {
+			quotaLocked.value = data.quotaLocked;
+		}
+		// Per-message claims also carry the thread's running total — write it onto the
+		// matching thread so the credits dropdown updates live for the acting user.
+		const { creditsPerThread } = data;
+		if (creditsPerThread !== undefined) {
+			const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
+			if (thread) {
+				thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
 			}
-		});
-	}
-
-	function stopCreditsPushListener(): void {
-		if (removeCreditsPushListener) {
-			removeCreditsPushListener();
-			removeCreditsPushListener = null;
 		}
 	}
 
@@ -141,6 +155,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const result = await getInstanceAiCredits(rootStore.restApiContext);
 			creditsQuota.value = result.creditsQuota;
 			creditsClaimed.value = result.creditsClaimed;
+			quotaLocked.value = result.quotaLocked ?? false;
 		} catch {
 			// Non-critical — credits display is optional
 		}
@@ -268,6 +283,38 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+		const existing = pendingComposerAttachments.value.find(
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+		);
+		if (existing) {
+			existing.sets = mergeNodeSets(existing.sets, newSets);
+		} else {
+			pendingComposerAttachments.value = [
+				...pendingComposerAttachments.value,
+				{ type: 'nodes', workflowId, sets: newSets },
+			];
+		}
+	}
+
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
+	}
+
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -282,6 +329,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
+		quotaLocked,
+		showCreditWarning,
 
 		// Thread-list actions
 		deleteThread,
@@ -291,12 +340,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		updateThreadMetadata,
 		loadThreads,
 		fetchCredits,
-		startCreditsPushListener,
-		stopCreditsPushListener,
+		handleCreditsPush,
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,
 		syncThread,
+		pendingComposerAttachments,
+		stageNodeSets,
+		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		requestClearCanvasSelection,
 	};
 });
 

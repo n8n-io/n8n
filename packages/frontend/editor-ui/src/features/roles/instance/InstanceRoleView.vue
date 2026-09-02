@@ -17,7 +17,7 @@ import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
 import DeleteInstanceRoleModal from './components/DeleteInstanceRoleModal.vue';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
-import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
+import { ALL_INSTANCE_SCOPES, withMandatoryInstanceScopes } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
@@ -50,6 +50,7 @@ const {
 	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
 	filterScopes: (scopes) =>
 		scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
+	ensureScopes: withMandatoryInstanceScopes,
 	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 
@@ -92,8 +93,10 @@ function setPreset(slug: string) {
 
 	// Only keep scopes the editor knows about; system roles may carry internal scopes
 	// (e.g. chatHub:*) that the UI doesn't expose and shouldn't be silently forwarded.
-	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
-		(ALL_INSTANCE_SCOPES as readonly string[]).includes(s),
+	form.value.scopes = withMandatoryInstanceScopes(
+		structuredClone(toRaw(preset.scopes)).filter((s) =>
+			(ALL_INSTANCE_SCOPES as readonly string[]).includes(s),
+		),
 	);
 }
 

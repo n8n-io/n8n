@@ -12,6 +12,10 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
+import {
+	decodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
@@ -36,6 +40,9 @@ type CheckpointStatus =
 			status: 'active';
 			checkpoint: SerializableAgentState;
 	  };
+
+const MAX_SANDBOX_RECONCILIATION_CHECKPOINTS = 100;
+export const CHECKPOINT_RECONCILIATION_OVERFLOW = Symbol('checkpoint-reconciliation-overflow');
 
 @Service()
 export class N8NCheckpointStorage {
@@ -64,6 +71,33 @@ export class N8NCheckpointStorage {
 				await this.claimForResume(key, state, agentId),
 			delete: async (key) => await this.delete(key, agentId),
 		};
+	}
+
+	async getActiveRunIdsForSandbox(
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+	): Promise<Set<string> | typeof CHECKPOINT_RECONCILIATION_OVERFLOW> {
+		const checkpoints = await this.agentCheckpointRepository.findForSandboxReconciliation(agentId);
+		if (checkpoints.length > MAX_SANDBOX_RECONCILIATION_CHECKPOINTS) {
+			return CHECKPOINT_RECONCILIATION_OVERFLOW;
+		}
+
+		const runIds = new Set<string>();
+
+		for (const checkpoint of checkpoints) {
+			if (checkpoint.expired || checkpoint.state === null) continue;
+
+			try {
+				const state = jsonParse<SerializableAgentState>(checkpoint.state);
+				if (state.status !== 'running' && state.status !== 'suspended') continue;
+				const scope = decodeAgentSandboxHostMetadata(state.persistence?.hostMetadata);
+				if (scope?.principalHash === principalHash) runIds.add(checkpoint.runId);
+			} catch {
+				// A malformed checkpoint must not block workspace acquisition.
+			}
+		}
+
+		return runIds;
 	}
 
 	init() {
@@ -136,6 +170,40 @@ export class N8NCheckpointStorage {
 			agentId,
 			JSON.stringify(state),
 		);
+	}
+
+	/**
+	 * The agent's open (unexpired, still parked) checkpoint for a thread, or
+	 * null. The authoritative "is this conversation suspended right now?"
+	 * lookup: unlike the `suspended` execution record, a checkpoint stops being
+	 * suspended the moment the run is resumed or cancelled.
+	 */
+	async findSuspendedForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<SerializableAgentState | null> {
+		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		for (const row of rows) {
+			const checkpoint = this.parseSuspendedState(row.state, threadId);
+			if (checkpoint) return checkpoint;
+		}
+		return null;
+	}
+
+	private parseSuspendedState(
+		state: string | null,
+		threadId: string,
+	): SerializableAgentState | null {
+		if (!state) return null;
+		let parsed: SerializableAgentState;
+		try {
+			parsed = jsonParse<SerializableAgentState>(state);
+		} catch {
+			return null;
+		}
+		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
+		if (parsed.persistence?.threadId !== threadId) return null;
+		return parsed;
 	}
 
 	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {

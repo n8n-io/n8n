@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.27.0",
+  "version": "0.30.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -24,6 +24,12 @@
       ],
       "http-proxy-agent": [
         "dist/esm/utils/http-proxy-agent.d.ts"
+      ],
+      "tokenizer": [
+        "dist/esm/utils/tokenizer/tiktoken.d.ts"
+      ],
+      "json-schema": [
+        "dist/esm/json-schema/index.d.ts"
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
@@ -68,6 +74,16 @@
       "types": "./dist/esm/utils/http-proxy-agent.d.ts",
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
+    },
+    "./tokenizer": {
+      "types": "./dist/esm/utils/tokenizer/tiktoken.d.ts",
+      "import": "./dist/esm/utils/tokenizer/tiktoken.js",
+      "require": "./dist/cjs/utils/tokenizer/tiktoken.js"
+    },
+    "./json-schema": {
+      "types": "./dist/esm/json-schema/index.d.ts",
+      "import": "./dist/esm/json-schema/index.js",
+      "require": "./dist/cjs/json-schema/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
@@ -134,9 +150,9 @@
     "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "pdf-parse": "catalog:",
-    "undici": "catalog:undici-v6"
+    "undici": "catalog:undici-v7"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

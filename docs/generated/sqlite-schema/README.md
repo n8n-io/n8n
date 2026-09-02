@@ -8,21 +8,24 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [agent_background_job](agent_background_job.md) | 16 |  | table |
+| [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
+| [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
 | [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 21 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_task_definition](agent_task_definition.md) | 7 |  | table |
+| [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
-| [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
-| [agents](agents.md) | 13 |  | table |
+| [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
+| [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -62,6 +65,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
+| [git_connection_project](git_connection_project.md) | 4 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -78,7 +83,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
-| [instance_ai_run_snapshots](instance_ai_run_snapshots.md) | 11 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
@@ -89,8 +93,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
-| [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
+| [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
+| [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
@@ -112,6 +117,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
+| [type_availability_policy](type_availability_policy.md) | 7 |  | table |
+| [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
+| [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
 | [user](user.md) | 15 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
@@ -121,14 +129,16 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
-| [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
+| [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
+| [workflow_review_activity](workflow_review_activity.md) | 7 |  | table |
+| [workflow_review_activity_comment](workflow_review_activity_comment.md) | 8 |  | table |
 | [workflow_review_request](workflow_review_request.md) | 12 |  | table |
 | [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
-| [workflow_review_request_workflow](workflow_review_request_workflow.md) | 4 |  | table |
+| [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -137,10 +147,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_credential_dependency" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_credential_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_dataset" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_rating" }o--o| "user" : "FOREIGN KEY (ratedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -224,6 +238,8 @@ erDiagram
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "folder" : "FOREIGN KEY (folderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"git_connection_project" }o--|| "git_connection" : "FOREIGN KEY (gitConnectionId) REFERENCES git_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"git_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_by_period" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -245,7 +261,6 @@ erDiagram
 "instance_ai_pending_confirmations" }o--o| "instance_ai_checkpoints" : "FOREIGN KEY (checkpointKey) REFERENCES instance_ai_checkpoints (key) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_run_snapshots" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -254,10 +269,11 @@ erDiagram
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -284,6 +300,9 @@ erDiagram
 "test_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_run" }o--o| "evaluation_config" : "FOREIGN KEY (evaluationConfigId) REFERENCES evaluation_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "trusted_key" |o--|| "trusted_key_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"type_availability_policy_attachment" |o--|| "type_availability_policy" : "FOREIGN KEY (policyId) REFERENCES type_availability_policy (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"type_availability_policy_attachment" |o--|| "type_availability_policy_scope" : "FOREIGN KEY (scopeId) REFERENCES type_availability_policy_scope (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"type_availability_policy_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "user_api_keys" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -304,6 +323,10 @@ erDiagram
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_activity" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_activity" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_activity_comment" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_activity_comment" }o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -312,12 +335,44 @@ erDiagram
 "workflow_review_request_authors" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_reviewers" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (baselineVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
+"agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  datetime_3_ createdAt
+  TEXT error
+  varchar_36_ id PK
+  varchar_16_ kind
+  varchar_36_ parentAgentId FK
+  varchar_128_ parentThreadId
+  TEXT result
+  datetime_3_ settledAt
+  varchar_16_ status
+  varchar_36_ subAgentId
+  datetime_3_ timeoutAt
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
+}
+"agent_channel_status" {
+  varchar_36_ agentId PK
+  INTEGER attempts
+  datetime_3_ backoffUntil
+  datetime_3_ createdAt
+  varchar_36_ credentialId PK
+  TEXT errorMessage
+  datetime_3_ expiresAt
+  varchar_128_ hostId PK
+  varchar_64_ integrationType PK
+  varchar_16_ status
+  datetime_3_ updatedAt
+}
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
@@ -347,6 +402,11 @@ erDiagram
   varchar_255_ runId PK
   TEXT state
   datetime_3_ updatedAt
+}
+"agent_credential_dependency" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  varchar_36_ credentialId PK
 }
 "agent_eval_dataset" {
   varchar_36_ agentId FK
@@ -410,6 +470,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -474,6 +535,7 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
+  varchar_64_ timezone
   datetime_3_ updatedAt
 }
 "agent_task_run_lock" {
@@ -491,6 +553,7 @@ erDiagram
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
@@ -502,6 +565,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills
@@ -874,6 +938,27 @@ erDiagram
   varchar_36_ folderId PK
   varchar_36_ tagId PK
 }
+"git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
+}
+"git_connection_project" {
+  datetime_3_ createdAt
+  varchar_36_ gitConnectionId FK
+  varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
 "insights_by_period" {
   INTEGER id
   INTEGER metaId FK
@@ -1039,19 +1124,6 @@ erDiagram
   datetime_3_ updatedAt
   TEXT workingMemory
 }
-"instance_ai_run_snapshots" {
-  datetime_3_ createdAt
-  varchar_36_ langsmithRunId
-  varchar_36_ langsmithTraceId
-  varchar_36_ messageGroupId
-  varchar_36_ runId PK
-  TEXT runIds
-  varchar_64_ spanId
-  varchar threadId PK
-  varchar_64_ traceId
-  TEXT tree
-  datetime_3_ updatedAt
-}
 "instance_ai_thread_grants" {
   datetime_3_ createdAt
   varchar_512_ grantKey PK
@@ -1139,6 +1211,7 @@ erDiagram
   varchar clientId FK
   datetime_3_ createdAt
   bigint expiresAt
+  varchar resource
   TEXT scope
   varchar_255_ token PK
   datetime_3_ updatedAt
@@ -1150,6 +1223,15 @@ erDiagram
   INTEGER id
   TEXT scope
   varchar userId FK
+}
+"poller_state" {
+  datetime_3_ backoffUntil
+  INTEGER consecutiveErrors
+  datetime_3_ createdAt
+  TEXT cursor
+  varchar_36_ nodeId PK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId PK
 }
 "processed_data" {
   varchar_255_ context PK
@@ -1348,6 +1430,33 @@ erDiagram
   varchar_32_ type
   datetime_3_ updatedAt
 }
+"type_availability_policy" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_64_ kind
+  TEXT rules
+  datetime_3_ updatedAt
+  varchar_36_ updatedBy
+  INTEGER version
+}
+"type_availability_policy_attachment" {
+  datetime_3_ createdAt
+  boolean isFloor
+  varchar_36_ policyId PK
+  INTEGER priority
+  varchar_36_ scopeId PK
+  datetime_3_ updatedAt
+}
+"type_availability_policy_scope" {
+  datetime_3_ createdAt
+  varchar_16_ defaultAction
+  varchar_36_ id PK
+  varchar_64_ kind
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ updatedBy
+  INTEGER version
+}
 "user" {
   datetime_3_ createdAt
   boolean disabled
@@ -1459,6 +1568,7 @@ erDiagram
   TEXT errorMessage
   INTEGER id
   varchar_36_ publishedVersionId
+  varchar_20_ reason
   varchar_20_ status
   datetime_3_ updatedAt
   varchar_36_ workflowId
@@ -1487,6 +1597,25 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
 }
+"workflow_review_activity" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT data
+  INTEGER id
+  varchar_64_ type
+  INTEGER typeVersion
+  varchar_36_ workflowReviewRequestId FK
+}
+"workflow_review_activity_comment" {
+  INTEGER activityId FK
+  TEXT body
+  datetime_3_ createdAt
+  varchar createdById FK
+  datetime_3_ deletedAt
+  TEXT history
+  INTEGER id
+  datetime_3_ updatedAt
+}
 "workflow_review_request" {
   datetime_3_ approvedAt
   varchar closedById FK
@@ -1510,6 +1639,7 @@ erDiagram
   varchar_36_ workflowReviewRequestId PK
 }
 "workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id PK
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

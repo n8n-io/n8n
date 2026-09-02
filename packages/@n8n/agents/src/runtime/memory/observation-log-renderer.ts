@@ -1,9 +1,8 @@
-import type {
-	ObservationLogEntry,
-	ObservationLogMarker,
-	TokenCounter,
+import {
+	getStoredObservationTokenCount,
+	type ObservationLogEntry,
+	type ObservationLogMarker,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 
 const MARKER_LABELS: Record<ObservationLogMarker, string> = {
 	critical: 'CRITICAL',
@@ -19,7 +18,6 @@ const MARKER_LEGEND =
 
 export interface RenderObservationLogOptions {
 	renderTokenBudget?: number;
-	tokenCounter?: TokenCounter;
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {
@@ -34,11 +32,6 @@ function formatObservationTime(date: Date): string {
 	return `${hours}:${minutes}`;
 }
 
-function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCounter): number {
-	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
-	return tokenCounter(entry.text);
-}
-
 function renderBullet(entry: ObservationLogEntry, indent = ''): string {
 	return `${indent}* ${MARKER_LABELS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
 }
@@ -48,13 +41,12 @@ export function renderObservationLog(
 	options: RenderObservationLogOptions = {},
 ): string | null {
 	const activeEntries = entries.filter((entry) => entry.status === 'active').sort(compareEntries);
-	const tokenCounter = options.tokenCounter ?? estimateObservationTokens;
 	const renderTokenBudget = options.renderTokenBudget;
 	let remainingTokens = renderTokenBudget ?? Number.POSITIVE_INFINITY;
 
 	const included = new Set<string>();
 	for (const entry of activeEntries) {
-		const tokenCount = observationTokenCount(entry, tokenCounter);
+		const tokenCount = getStoredObservationTokenCount(entry);
 		if (tokenCount > remainingTokens) continue;
 		included.add(entry.id);
 		remainingTokens -= tokenCount;

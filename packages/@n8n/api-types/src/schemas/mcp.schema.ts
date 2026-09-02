@@ -16,7 +16,7 @@ export const MCP_APPS_VARIANT_ENABLED = 'variant';
 // current behaviour.
 export const MCP_CANVAS_GROUPS_FLAG = '102_mcp_canvas_groups';
 
-export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write'] as const;
+export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] as const;
 
 /**
  * OAuth scopes a user can grant to an MCP client on the consent screen for
@@ -34,6 +34,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
+	'project:write',
 	'tag:read',
 ] as const;
 
@@ -66,6 +67,10 @@ export const MCP_CLIENT_BRAND_MATCHERS: ReadonlyArray<{
 
 export function getMcpClientType(clientName: string): McpClientType | null {
 	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.type ?? null;
+}
+
+export function getMcpClientBrand(clientName: string): McpClientBrandName | null {
+	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? null;
 }
 
 /**

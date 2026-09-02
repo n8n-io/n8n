@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { toPathSegment } from '@utils/url';
+
 import {
 	caseCommentFields,
 	caseCommentOperations,
@@ -211,7 +213,11 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-delete-case.html
 
 						const caseId = this.getNodeParameter('caseId', i);
-						await elasticSecurityApiRequest.call(this, 'DELETE', `/cases?ids=["${caseId}"]`);
+						await elasticSecurityApiRequest.call(
+							this,
+							'DELETE',
+							`/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`,
+						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -221,7 +227,11 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-get-case.html
 
 						const caseId = this.getNodeParameter('caseId', i);
-						responseData = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
+						responseData = await elasticSecurityApiRequest.call(
+							this,
+							'GET',
+							`/cases/${toPathSegment(caseId)}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               case: getAll
@@ -278,7 +288,7 @@ export class ElasticSecurity implements INodeType {
 							cases: [
 								{
 									id: caseId,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									...(syncAlerts && { settings: { syncAlerts } }),
 									...rest,
 								},
@@ -302,7 +312,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 
 						const { title, connector, owner, description, settings, tags } =
-							await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
+							await elasticSecurityApiRequest.call(this, 'GET', `/cases/${toPathSegment(caseId)}`);
 
 						const tagToAdd = this.getNodeParameter('tag', i);
 
@@ -325,7 +335,7 @@ export class ElasticSecurity implements INodeType {
 									owner,
 									description,
 									settings,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									tags: [...tags, tagToAdd],
 								},
 							],
@@ -342,7 +352,7 @@ export class ElasticSecurity implements INodeType {
 							(await elasticSecurityApiRequest.call(
 								this,
 								'GET',
-								`/cases/${caseId}`,
+								`/cases/${toPathSegment(caseId)}`,
 							)) as IDataObject & { tags: string[] };
 
 						if (!tags.includes(tagToRemove)) {
@@ -364,7 +374,7 @@ export class ElasticSecurity implements INodeType {
 									owner,
 									description,
 									settings,
-									version: await getVersion.call(this, `/cases/${caseId}`),
+									version: await getVersion.call(this, `/cases/${toPathSegment(caseId)}`),
 									tags: tags.filter((tag) => tag !== tagToRemove),
 								},
 							],
@@ -395,7 +405,7 @@ export class ElasticSecurity implements INodeType {
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);
-						const endpoint = `/cases/${caseId}/comments`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
 						if (simple) {
@@ -412,7 +422,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
-						const endpoint = `/cases/${caseId}/comments/${commentId}`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`;
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -423,7 +433,7 @@ export class ElasticSecurity implements INodeType {
 
 						const caseId = this.getNodeParameter('caseId', i);
 
-						const endpoint = `/cases/${caseId}/comments`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await handleListing.call(this, 'GET', endpoint);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
@@ -435,7 +445,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
-						const endpoint = `/cases/${caseId}/comments/${commentId}`;
+						const endpoint = `/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`;
 						await elasticSecurityApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'update') {
@@ -454,10 +464,13 @@ export class ElasticSecurity implements INodeType {
 							id: commentId,
 							type: 'user',
 							owner: 'securitySolution',
-							version: await getVersion.call(this, `/cases/${caseId}/comments/${commentId}`),
+							version: await getVersion.call(
+								this,
+								`/cases/${toPathSegment(caseId)}/comments/${toPathSegment(commentId)}`,
+							),
 						} as IDataObject;
 
-						const patchEndpoint = `/cases/${caseId}/comments`;
+						const patchEndpoint = `/cases/${toPathSegment(caseId)}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
 						if (simple) {

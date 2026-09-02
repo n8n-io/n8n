@@ -1,4 +1,7 @@
-import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialDestinationDecision,
+	InstanceAiThreadStatusResponse,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
@@ -67,6 +70,8 @@ export interface ConfirmationData {
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
 	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
@@ -81,7 +86,9 @@ export interface ConfirmationData {
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
-	autoSetup?: { credentialType: string };
+	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {

@@ -13,6 +13,8 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { withOwnerKeys } from './owner-key';
+import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -91,9 +93,14 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
+			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
+	}
+
+	isActive(): boolean {
+		return this.scheduler !== undefined;
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {
@@ -161,6 +168,25 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 	}
 }
 
+/**
+ * Warn when a poll may still be in flight after the lease on its occurrence has
+ * expired: the reaper can then reclaim the occurrence and another instance can
+ * start the same poll while the first one is still running. Equality counts
+ * too, since the poll deadline only starts after the occurrence's setup reads.
+ */
+function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
+	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
+	if (
+		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
+		pollTimeoutSeconds >= leaseDurationSeconds
+	) {
+		logger.warn(
+			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
+			{ pollTimeoutSeconds, leaseDurationSeconds },
+		);
+	}
+}
+
 export function buildMaterializerTransaction(
 	dataSource: DataSource,
 	jobs: ScheduledJobRepository,
@@ -170,8 +196,10 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit, lookaheadMs) =>
-						await jobs.claimDue(manager, limit, lookaheadMs),
+					claimDueJobs: async (limit, lookaheadMs) => {
+						const claimed = await jobs.claimDue(manager, limit, lookaheadMs);
+						return claimed === undefined ? undefined : withOwnerKeys(claimed);
+					},
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					retireSuperseded: async (superseded) => await tasks.updateToMissed(manager, superseded),

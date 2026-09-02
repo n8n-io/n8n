@@ -64,6 +64,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
@@ -114,6 +115,7 @@ erDiagram
   varchar_128_ name
   text objective
   varchar_32_ taskId
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
 }

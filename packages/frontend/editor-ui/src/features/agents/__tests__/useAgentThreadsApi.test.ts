@@ -2,7 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { deleteThread, getThreadDetail, listThreads } from '../composables/useAgentThreadsApi';
+import {
+	defaultAgentSessionFilters,
+	deleteThread,
+	getThreadDetail,
+	listThreads,
+} from '../composables/useAgentThreadsApi';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -19,7 +24,11 @@ describe('useAgentThreadsApi', () => {
 		const response = { threads: [], nextCursor: null };
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);
 
-		const result = await listThreads(restApiContext, 'project-1', 'agent-1', 20, 'cursor-1');
+		const result = await listThreads(restApiContext, 'project-1', 'agent-1', {
+			limit: 20,
+			cursor: 'cursor-1',
+			filters: defaultAgentSessionFilters(),
+		});
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
@@ -27,6 +36,26 @@ describe('useAgentThreadsApi', () => {
 			'/projects/project-1/agents/v2/agent-1/threads?limit=20&cursor=cursor-1',
 		);
 		expect(result).toBe(response);
+	});
+
+	it('serializes active session filters', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ threads: [], nextCursor: null });
+
+		await listThreads(restApiContext, 'project-1', 'agent-1', {
+			limit: 20,
+			filters: {
+				status: 'error',
+				origin: 'slack',
+				startDate: new Date('2026-01-01T00:00:00Z'),
+				endDate: '2026-01-02T00:00:00Z',
+			},
+		});
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project-1/agents/v2/agent-1/threads?limit=20&status=error&origin=slack&updatedAfter=2026-01-01T00%3A00%3A00.000Z&updatedBefore=2026-01-02T00%3A00%3A00.000Z',
+		);
 	});
 
 	it('gets thread detail from the agent-scoped collection', async () => {

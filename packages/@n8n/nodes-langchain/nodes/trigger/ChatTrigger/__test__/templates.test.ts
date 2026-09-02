@@ -609,3 +609,148 @@ describe('ChatTrigger Templates Security', () => {
 		});
 	});
 });
+
+describe('createPage inside the shell frame', () => {
+	const params = {
+		instanceId: 'test-instance',
+		webhookUrl: 'http://test.com/webhook',
+		showWelcomeScreen: false,
+		loadPreviousSession: 'notSupported' as const,
+		i18n: { en: {} },
+		mode: 'production' as const,
+		authentication: 'n8nUserAuth' as const,
+		allowFileUploads: false,
+		allowedFilesMimeTypes: '',
+		customCss: '.chat-message { color: red; }',
+		enableStreaming: false,
+		initialMessages: '',
+	};
+	const visitor = {
+		id: 'user-1',
+		email: 'visitor@example.com',
+		firstName: 'Vi',
+		lastName: 'Sitor',
+	};
+
+	const inner = createPage({
+		...params,
+		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
+	});
+
+	it('loads the widget from the published CDN bundle', () => {
+		expect(inner).toContain('cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js');
+		expect(inner).not.toContain('/chat-widget/');
+	});
+
+	it('stands in for localStorage before the widget loads', () => {
+		expect(inner).toContain("Object.defineProperty(window, 'localStorage'");
+		// A classic inline script runs before the deferred module script, so the shim
+		// is in place by the time the widget touches storage.
+		expect(inner.indexOf("Object.defineProperty(window, 'localStorage'")).toBeLessThan(
+			inner.indexOf('<script type="module">'),
+		);
+	});
+
+	it('takes the conversation session id from the shell', () => {
+		expect(inner).toContain('window.location.hash.slice(1)');
+		expect(inner).toContain('"n8n-chat/sessionId"');
+		expect(inner).toContain('sessionId: window.__n8nChatSessionId || undefined,');
+	});
+
+	it('authenticates messages by request header', () => {
+		expect(inner).toContain('headers[\'x-auth-token\'] = "signed.jwt.token"');
+	});
+
+	// `createChat` keeps this object by reference and the widget reads it on every
+	// send, so a later in-place write is what makes a refreshed token take effect.
+	it('hands the widget a header object it can keep mutating', () => {
+		expect(inner).toContain('const headers = window.__n8nChatAuthHeaders || {};');
+		expect(inner).toContain('headers: headers');
+		expect(inner).toContain("headers['X-Instance-Id'] = 'test-instance';");
+		// Guards the race where a refresh lands before this module script runs.
+		expect(inner).toContain("if (!headers['x-auth-token'])");
+	});
+
+	// Not a window listener: a port belongs to this document's realm, so it dies with
+	// this document. A replacement loaded by author script cannot obtain it, which is
+	// what keeps the shell's next token away from it.
+	it('opens a private channel to the shell instead of listening on window', () => {
+		expect(inner).toContain('window.__n8nChatAuthHeaders = {};');
+		expect(inner).toContain('var channel = new MessageChannel();');
+		expect(inner).toContain('channel.port1.onmessage = function (event) {');
+		expect(inner).toContain(
+			"window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);",
+		);
+		expect(inner).toContain("data.type !== 'n8n-chat-auth-token'");
+		expect(inner).toContain("window.__n8nChatAuthHeaders['x-auth-token'] = data.token;");
+		expect(inner).not.toContain("addEventListener('message'");
+	});
+
+	// Announcing with no port still closes the shell's latch, so a document loaded here
+	// later cannot claim the channel this one failed to open.
+	it('announces readiness without a port when the browser has no channel', () => {
+		expect(inner).toContain(
+			"try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}",
+		);
+	});
+
+	// The refresh token lives only in an httpOnly cookie; it must appear in neither
+	// document.
+	it('carries no refresh token', () => {
+		expect(inner).not.toContain('refreshToken');
+		expect(inner).not.toContain('n8n-chat-oauth-refresh');
+	});
+
+	// Not merely skipped at runtime: the bootstrap is never emitted, so there is no
+	// path from this document to a login endpoint it couldn't reach or a sign-in page it
+	// couldn't render.
+	it('takes the visitor from the server instead of fetching the login endpoint', () => {
+		expect(inner).toContain('const metadata = { user: {"id":"user-1"');
+		expect(inner).not.toContain("fetch('/rest/login'");
+		expect(inner).not.toContain("'/signin?redirect='");
+	});
+
+	it('still renders the author own styling', () => {
+		expect(inner).toContain('.chat-message { color: red; }');
+	});
+
+	describe('outside the shell', () => {
+		const plain = createPage(params);
+
+		it('is unchanged: no shim, no session handover, no token header', () => {
+			expect(plain).not.toContain("Object.defineProperty(window, 'localStorage'");
+			expect(plain).not.toContain('window.__n8nChatSessionId');
+			expect(plain).not.toContain('x-auth-token');
+			expect(plain).toContain('const injectedVisitor = null;');
+		});
+
+		// Nothing refreshes this render, so it keeps the inline header literal rather
+		// than the mutable object the frame render needs.
+		it('keeps the header literal inline', () => {
+			expect(plain).toContain("'X-Instance-Id': 'test-instance',");
+			expect(plain).not.toContain('window.__n8nChatAuthHeaders');
+			expect(plain).not.toContain('headers: headers');
+		});
+
+		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.
+		it('keeps the login bootstrap the flag-off render depends on', () => {
+			expect(plain).toContain("fetch('/rest/login'");
+			expect(plain).toContain("'/signin?redirect='");
+		});
+	});
+
+	// A frame render holding half an identity would silently serve an anonymous chat where
+	// the single-document path redirects to sign-in, and the frame can resolve neither half
+	// for itself. Both fields are required together, so that state can't be expressed —
+	// this fails the build rather than the run if the shape ever loosens.
+	it('cannot represent a frame render missing half its identity', () => {
+		type FrameIdentity = Parameters<typeof createPage>[0]['frameIdentity'];
+
+		// @ts-expect-error the visitor and their token only ever travel together
+		const withoutVisitor: FrameIdentity = { authToken: 'signed.jwt.token' };
+		// @ts-expect-error ...in both directions
+		const withoutToken: FrameIdentity = { visitor };
+
+		expect([withoutVisitor, withoutToken]).toHaveLength(2);
+	});
+});

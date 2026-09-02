@@ -1,11 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
-import type {
-	INodeType,
-	INodeTypes,
-	IConnections as N8nIConnections,
-	IDisplayOptions,
-} from 'n8n-workflow';
+import type { INodeType, INodeTypes, IDisplayOptions } from 'n8n-workflow';
 import { mapConnectionsByDestination, NodeVersionNotFoundError } from 'n8n-workflow';
 
 import { matchesDisplayOptions } from './display-options';
@@ -16,6 +11,7 @@ import { resolveMainOutputCount } from './node-port-resolvers/resolve-main-outpu
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
+import { toEngineConnections } from '../utils/workflow-json-engine-helpers';
 import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
 /**
@@ -23,6 +19,7 @@ import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
  */
 export type ValidationErrorCode =
 	| 'NO_NODES'
+	| 'DUPLICATE_NODE_ID'
 	| 'MISSING_TRIGGER'
 	| 'DISCONNECTED_NODE'
 	| 'MISSING_PARAMETER'
@@ -610,6 +607,20 @@ export function validateWorkflow(
 						}
 					}
 
+					// An omitted discriminator falls back to the node default at runtime
+					// (the editor strips defaults on save), so a round-tripped workflow
+					// must not fail the build on it — surface it as informational.
+					if (error.missingDiscriminator) {
+						warnings.push(
+							ValidationWarning.informational(
+								'INVALID_PARAMETER',
+								`Node "${node.name}": ${message}`,
+								node.name,
+							),
+						);
+						continue;
+					}
+
 					// Report as WARNING (non-blocking) to maintain backwards compatibility
 					warnings.push(
 						new ValidationWarning(
@@ -669,9 +680,7 @@ export function validateWorkflow(
  * drops the third branch at runtime.
  */
 function checkMergeNodeInputCount(json: WorkflowJSON, warnings: ValidationWarning[]): void {
-	const connectionsByDest = mapConnectionsByDestination(
-		json.connections as unknown as N8nIConnections,
-	);
+	const connectionsByDest = mapConnectionsByDestination(toEngineConnections(json.connections));
 
 	for (const node of json.nodes) {
 		if (!node.name) continue;
@@ -772,10 +781,8 @@ function validateSubnodeParameters(
 	}
 
 	// Invert connections to find incoming connections by destination
-	// Cast to n8n-workflow IConnections since our local type has string for connection type
-	const connectionsByDest = mapConnectionsByDestination(
-		json.connections as unknown as N8nIConnections,
-	);
+	// Convert to n8n-workflow IConnections since our local type has string for connection type
+	const connectionsByDest = mapConnectionsByDestination(toEngineConnections(json.connections));
 
 	// Check each node that might be a parent with AI inputs
 	for (const parentNode of json.nodes) {
@@ -913,9 +920,7 @@ function validateParentSupportsInputs(
 		}
 	}
 
-	const connectionsByDest = mapConnectionsByDestination(
-		json.connections as unknown as N8nIConnections,
-	);
+	const connectionsByDest = mapConnectionsByDestination(toEngineConnections(json.connections));
 
 	for (const parentNode of json.nodes) {
 		if (!parentNode.name) continue;
@@ -991,9 +996,7 @@ function validateRequiredInputsConnected(
 	nodeTypesProvider: INodeTypes,
 	errors: ValidationError[],
 ): void {
-	const connectionsByDest = mapConnectionsByDestination(
-		json.connections as unknown as N8nIConnections,
-	);
+	const connectionsByDest = mapConnectionsByDestination(toEngineConnections(json.connections));
 
 	for (const parentNode of json.nodes) {
 		if (!parentNode.name) continue;

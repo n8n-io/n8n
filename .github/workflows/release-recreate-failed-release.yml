@@ -1,0 +1,183 @@
+name: 'Release: Recreate failed release'
+run-name: 'Release: Recreate failed release ${{ inputs.failed-version }}'
+
+# Recovery path for a release that published to npm and then died. npm versions
+# are immutable, so the burned version is skipped and the identical code is
+# re-released under the next patch. `release-publish.yml` only fires on a PR
+# merged into `release/*`, so a new release branch + PR is the only way to
+# re-drive it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      failed-version:
+        description: 'Version whose release pipeline failed after it reached npm (e.g. 2.27.2)'
+        required: true
+        type: string
+      force:
+        description: 'Skip the npm registry check (use when the registry is unreliable)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Queue a double-dispatch rather than interleaving two pushes of the same
+# branch. Not cancel-in-progress: killing a run mid-push is worse than waiting.
+concurrency:
+  group: recreate-failed-release-${{ inputs.failed-version }}
+  cancel-in-progress: false
+
+jobs:
+  recreate-release-pr:
+    name: Recreate release PR
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    timeout-minutes: 10
+
+    outputs:
+      pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
+      next-release: ${{ steps.prepare.outputs.next-release }}
+
+    steps:
+      - name: Validate the failed version
+        env:
+          FAILED_VERSION: ${{ inputs.failed-version }}
+        # The value is interpolated into git refs, so it is validated before it
+        # ever reaches a command.
+        run: |
+          if [[ ! "$FAILED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$FAILED_VERSION' is not a plain X.Y.Z version"
+            exit 1
+          fi
+
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the installation token to only what this recovery needs.
+          permission-contents: write # push the new release branch
+          permission-pull-requests: write # open the release PR
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
+          # Don't persist the token in .git/config (avoids leaking it via artifacts);
+          # the branch push uses an explicit token URL and create-pull-request
+          # pushes with its own token input.
+          persist-credentials: false
+
+      # Checkout of the failed release branch via a separate step to prevent
+      # unsafe actions/checkout ref usage.
+      # poutine: untrusted_checkout_exec
+      - name: Switch to the failed release branch
+        env:
+          FAILED_VERSION: ${{ inputs.failed-version }}
+        run: git checkout "release/$FAILED_VERSION"
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Bump the root and cli versions
+        id: prepare
+        # Assign first: a command substitution nested in another command's
+        # arguments (e.g. `echo "X=$(node …)"`) discards the script's exit code.
+        shell: bash
+        env:
+          FAILED_VERSION: ${{ inputs.failed-version }}
+          SKIP_REGISTRY_CHECK: ${{ inputs.force && '1' || '' }}
+        run: |
+          NEXT_RELEASE="$(node .github/scripts/prepare-rerelease.mjs)"
+          if [ -z "$NEXT_RELEASE" ]; then
+            echo "::error::prepare-rerelease.mjs produced no version"
+            exit 1
+          fi
+          echo "NEXT_RELEASE=$NEXT_RELEASE" >> "$GITHUB_ENV"
+          echo "next-release=$NEXT_RELEASE" >> "$GITHUB_OUTPUT"
+
+      # Not force-pushed: an existing release branch means someone already
+      # started this recovery, and resetting it silently would be worse.
+      - name: Push the new release branch
+        env:
+          FAILED_VERSION: ${{ inputs.failed-version }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "refs/remotes/origin/release/${FAILED_VERSION}:refs/heads/release/${NEXT_RELEASE}"
+
+      - name: Generate PR body
+        id: generate-body
+        run: |
+          set -e
+          CHANGELOG_FILE="CHANGELOG-${NEXT_RELEASE}.md"
+          DELIMITER="EOF_$(uuidgen)"
+
+          {
+            echo "content<<${DELIMITER}"
+            cat "${CHANGELOG_FILE}"
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create the PR
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        id: create-pr
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          base: 'release/${{ env.NEXT_RELEASE }}'
+          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
+          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          delete-branch: true
+          labels: release,release:patch,automation:release
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          body: ${{ steps.generate-body.outputs.content }}
+
+  approve-and-automerge:
+    needs: [recreate-release-pr]
+    if: |
+      needs.recreate-release-pr.outputs.pull-request-number != ''
+    # inherit, not named secrets: the callee's app credentials live on the
+    # `release` environment, which a caller cannot read to forward.
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]
+    permissions:
+      contents: write
+      pull-requests: write
+    secrets: inherit
+    with:
+      pull-request-number: ${{ needs.recreate-release-pr.outputs.pull-request-number }}
+
+  notify-slack:
+    name: Notify Slack
+    needs: [recreate-release-pr]
+    if: needs.recreate-release-pr.outputs.pull-request-number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+          FAILED_VERSION: ${{ inputs.failed-version }}
+          NEXT_RELEASE: ${{ needs.recreate-release-pr.outputs.next-release }}
+          PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.recreate-release-pr.outputs.pull-request-number }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text ":lifebuoy: Recreating failed release *${FAILED_VERSION}* as *${NEXT_RELEASE}*. <${PR_URL}|View PR> — it auto-merges once checks pass; close it to cancel."

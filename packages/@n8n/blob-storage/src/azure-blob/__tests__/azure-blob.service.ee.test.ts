@@ -15,6 +15,7 @@ const { mockBlockBlobClient, mockContainerClient } = vi.hoisted(() => {
 	};
 	const container = {
 		exists: vi.fn(),
+		listBlobsFlat: vi.fn(),
 		getBlockBlobClient: vi.fn(() => blockBlob),
 	};
 	return { mockBlockBlobClient: blockBlob, mockContainerClient: container };
@@ -40,7 +41,55 @@ describe('AzureBlobService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockContainerClient.getBlockBlobClient.mockReturnValue(mockBlockBlobClient);
+		mockContainerClient.listBlobsFlat.mockReturnValue({
+			byPage: () => ({
+				next: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+			}),
+		});
 		service = new AzureBlobService(logger, config);
+	});
+
+	describe('checkConnection', () => {
+		it('should probe access with a single-page list (works with container SAS)', async () => {
+			const byPage = vi.fn().mockReturnValue({
+				next: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+			});
+			mockContainerClient.listBlobsFlat.mockReturnValue({ byPage });
+
+			await service.checkConnection();
+
+			expect(mockContainerClient.listBlobsFlat).toHaveBeenCalled();
+			expect(byPage).toHaveBeenCalledWith({ maxPageSize: 1 });
+			expect(mockContainerClient.exists).not.toHaveBeenCalled();
+		});
+
+		it('should map a 404 from list to a missing-container UserError', async () => {
+			mockContainerClient.listBlobsFlat.mockReturnValue({
+				byPage: () => ({
+					next: vi
+						.fn()
+						.mockRejectedValue(Object.assign(new Error('NotFound'), { statusCode: 404 })),
+				}),
+			});
+
+			await expect(service.checkConnection()).rejects.toThrow(
+				`Azure Blob container "${config.containerName}" does not exist or is not accessible.`,
+			);
+		});
+
+		it('should wrap non-404 list failures as UnexpectedError', async () => {
+			mockContainerClient.listBlobsFlat.mockReturnValue({
+				byPage: () => ({
+					next: vi
+						.fn()
+						.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 })),
+				}),
+			});
+
+			await expect(service.checkConnection()).rejects.toThrow(
+				'Request to Azure Blob storage failed: Forbidden',
+			);
+		});
 	});
 
 	describe('put', () => {

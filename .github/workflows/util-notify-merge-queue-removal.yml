@@ -1,0 +1,22 @@
+name: 'Util: Notify Merge Queue Removal'
+
+on:
+  pull_request:
+    types: [dequeued]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    # MERGE/ALREADY_MERGED are successful exits, MANUAL is the author's own doing
+    if: ${{ !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
+    steps:
+      # A failing PR can dequeue others behind it, so the reason may not be this PR's fault
+      - run: |
+          gh pr comment "$PR_URL" --body "This PR was removed from the merge queue (reason: \`$REASON\`). Check the merge-queue run's failing checks and re-queue when ready."
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REASON: ${{ github.event.reason }}

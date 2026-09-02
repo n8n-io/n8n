@@ -1,18 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const defaultScopes = [
-	'read:jira-user',
-	'read:jira-work',
-	'write:jira-work',
-	'manage:jira-webhook',
-	'manage:jira-user',
-	'offline_access',
-];
+import { jiraDefaultScopes } from './common/atlassian-scopes';
+
+const defaultScopes = jiraDefaultScopes;
 
 export class JiraSoftwareCloudOAuth2Api implements ICredentialType {
 	name = 'jiraSoftwareCloudOAuth2Api';
 
-	extends = ['oAuth2Api'];
+	extends = ['atlassianOAuth2Api'];
 
 	displayName = 'Jira SW Cloud OAuth2 API';
 
@@ -20,44 +15,17 @@ export class JiraSoftwareCloudOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Domain',
+			// Named `domain` so existing Jira OAuth2 credentials, which store the value
+			// under this key, keep working. The Confluence sibling has no site field:
+			// its node carries a Site selector instead.
+			displayName: 'Site URL',
 			name: 'domain',
 			type: 'string',
 			default: '',
-			placeholder: 'https://example.atlassian.net',
+			placeholder: 'https://your-site.atlassian.net',
 			required: true,
-		},
-		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
-			displayName: 'Authorization URL',
-			name: 'authUrl',
-			type: 'hidden',
-			default: 'https://auth.atlassian.com/authorize',
-			required: true,
-		},
-		{
-			displayName: 'Access Token URL',
-			name: 'accessTokenUrl',
-			type: 'hidden',
-			default: 'https://auth.atlassian.com/oauth/token',
-			required: true,
-		},
-		{
-			displayName: 'Auth URI Query Parameters',
-			name: 'authQueryParameters',
-			type: 'hidden',
-			default: 'audience=api.atlassian.com&prompt=consent',
-		},
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'hidden',
-			default: 'header',
+			description:
+				'The URL of your Atlassian site, e.g. https://your-site.atlassian.net. The scheme and any path (like /wiki) are ignored.',
 		},
 		{
 			displayName: 'Custom Scopes',

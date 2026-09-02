@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
@@ -246,21 +246,34 @@ export const v1Workflow = (
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
-	inputs: JsonValue,
+	inputs: StepSlots,
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
-	context: { executionId: 'exec-1', stepId: nodeId, workflowId: 'wf-1', mode: 'manual' },
+	context: {
+		executionId: 'exec-1',
+		stepId: nodeId,
+		workflowId: 'wf-1',
+		mode: 'manual',
+		iteration: 0,
+	},
 });
 
 export const testStepExecutor = (
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, JsonValue> = {},
+	outputsByNodeId: Record<string, StepSlots> = {},
 ): V1StepExecutor =>
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
-		loadStepData: async () => await Promise.resolve({ graph, outputsByStepId }),
+		// every fixture node runs once, so its outputs sit at iteration 0
+		loadStepData: async () =>
+			await Promise.resolve({
+				graph,
+				outputsByNode: Object.fromEntries(
+					Object.entries(outputsByNodeId).map(([nodeId, outputs]) => [nodeId, { 0: outputs }]),
+				),
+			}),
 	});
 
-export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

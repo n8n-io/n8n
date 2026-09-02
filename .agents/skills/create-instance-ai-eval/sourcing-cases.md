@@ -36,6 +36,12 @@ claude mcp add --scope local --transport http langtracer-hosted \
 session start, so reconnect to pick it up. (The LangSmith MCP is usually already
 connected.)
 
+The MCP returns ids; the driver needs pages. Every thread, cluster, and case you
+cite while sourcing has a web URL off the same base — `<base>/conversations/<threadId>`,
+`<base>/clusters/<id>`, `<base>/test-cases/<id>` — so cite them as links, not bare
+ids. Full table in
+[Share links, never bare ids](SKILL.md#share-links-never-bare-ids).
+
 ## Discover → verify → encode
 
 1. **Scan cluster themes** — `list_cluster_runs` / `get_latest_cluster_run`
@@ -62,12 +68,38 @@ connected.)
    voice.
 5. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
-   [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). Exception:
-   seeded cases (any `seed` mode) can't be pushed — the case-write API has no
-   `seed` field, so the push lists them under
-   `skipped:`. And a `replay` case shouldn't be committed either — it dies when
-   its trace is pruned or deleted — so it has no durable home; that's exactly why
-   step 4 turns the confirmed failure into a durable synthetic case.
+   [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). An `inline`
+   seed rides along with the case. Exception: a `replay` case is refused and listed
+   under `skipped:` — it's reconstructed from a trace at run time, so it dies when
+   that trace is pruned and has no durable home; that's exactly why step 4 turns the
+   confirmed failure into a durable synthetic case.
+
+## Was the workflow handed over? (sourcing an `attach` opening)
+
+Whether the opening turn carries `attach` is a **fact about the thread**, not a
+judgement call — and guessing wrong makes the case harder than reality. Read it two
+ways, depending on when the thread was imported:
+
+- **Recorded.** Turn 0 of `get_conversation` carries
+  `resourceAttachments: [{ "type": "workflow", "id": "…" }]`. That's the editor
+  hand-off verbatim. Only kind and ids are stored, never the workflow's name.
+- **Inferred**, for threads imported before n8n traced it. The tell is an opening turn
+  whose `userMessage` is **empty** — the editor's context block is stripped before the
+  trace, so a hand-off where the user typed nothing leaves a blank record. Corroborate
+  with an early `workflows[get]` on a workflow the user never named.
+
+Then use the id to recover the workflow itself: find the tool call whose *input*
+carries that `workflowId` (usually `workflows[get]`, `full: true`) — its **output** is
+the workflow, nodes and connections and parameters, and that is what you scrub into
+`seed.workflows`. The id alone is only a join key; it addresses the user's own
+instance, so it is worthless by itself.
+
+Two things to expect:
+
+- **The agent may never have read it.** Then you have an id and no content, and the
+  workflow is yours to write — keep the topology plausible for the complaint.
+- **The opening often has no text at all.** Keep it that way; see the empty-opening
+  note in [`case-shapes.md`](case-shapes.md).
 
 ## Scrubbing a real workflow into a synthetic seed
 

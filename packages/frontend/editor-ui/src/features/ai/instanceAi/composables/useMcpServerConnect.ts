@@ -8,6 +8,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {
@@ -134,5 +135,57 @@ export function useMcpServerConnect() {
 		});
 	}
 
-	return { connectServer, connectWithCredential };
+	/**
+	 * The adapter `ToolCredentialPicker` injects. Only the "create a new
+	 * credential" leg differs per surface, so callers pass just that.
+	 */
+	function openExistingCredential(credentialId: string): void {
+		const hasConnections = mcpStore.connections.some(
+			(connection) => connection.credentialId === credentialId,
+		);
+		if (!hasConnections) {
+			uiStore.openExistingCredential(credentialId);
+			return;
+		}
+
+		const listeners = effectScope(true);
+		listeners.run(() => {
+			listenForModalChanges({
+				store: uiStore,
+				onModalClosed: (modalName) => {
+					if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
+					listeners.stop();
+					for (const connection of mcpStore.connections) {
+						if (connection.credentialId === credentialId) {
+							void mcpStore.fetchConnectionTools(connection.id);
+						}
+					}
+				},
+			});
+		});
+
+		try {
+			uiStore.openExistingCredential(credentialId);
+		} catch (error) {
+			listeners.stop();
+			throw error;
+		}
+	}
+
+	function createCredentialAdapter(
+		openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
+	): ToolConnectionCredentialAdapter {
+		return {
+			getCredentialsByType: (authType) =>
+				credentialsStore.getCredentialsByType(authType).map((credential) => ({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+				})),
+			openNewCredential,
+			openExistingCredential,
+		};
+	}
+
+	return { connectServer, connectWithCredential, createCredentialAdapter };
 }

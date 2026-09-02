@@ -8,7 +8,6 @@ import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { ManualChatModal } from './components/ManualChatModal';
-import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -253,6 +252,13 @@ export class CanvasPage extends BasePage {
 		await this.fillByTestId('inline-edit-input', name);
 	}
 
+	async saveNewWorkflow(name = 'Test Workflow'): Promise<void> {
+		const saved = this.waitForSaveWorkflowCompleted();
+		await this.setWorkflowName(name);
+		await this.page.getByTestId('inline-edit-input').press('Enter');
+		await saved;
+	}
+
 	/**
 	 * Import a workflow from a fixture file
 	 * @param fixtureKey - The key of the fixture file to import
@@ -261,6 +267,7 @@ export class CanvasPage extends BasePage {
 	 */
 	async importWorkflow(fixtureKey: string, workflowName: string) {
 		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-import');
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
@@ -284,6 +291,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickImportFromURL(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import');
 		await this.clickByTestId('workflow-menu-item-import-from-url');
 	}
 
@@ -333,34 +341,29 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
+	async openDescriptionAndTagsModal(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-edit-description');
+		await this.getWorkflowTagsDropdown().waitFor();
+	}
+
 	async clickCreateTagButton(): Promise<void> {
-		await this.page.getByTestId('new-tag-link').click();
+		await this.openDescriptionAndTagsModal();
+		await this.openTagsDropdownInModal();
 	}
 
-	async clickNthTagPill(index: number): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').locator('.el-tag').nth(index).click();
+	async openTagsDropdownInModal(): Promise<void> {
+		await this.getWorkflowTagsDropdown().click();
 	}
 
-	async clickWorkflowTagsArea(): Promise<void> {
-		await this.page.getByTestId('workflow-tags').click();
-	}
-
-	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-dropdown').click();
+	async saveDescriptionAndTagsModal(): Promise<void> {
+		const responsePromise = this.waitForSaveWorkflowCompleted();
+		await this.clickByTestId('workflow-description-save-button');
+		await responsePromise;
 	}
 
 	getTagPills(): Locator {
-		return this.page
-			.getByTestId('workflow-tags-container')
-			.locator('.el-tag:not(.count-container)');
-	}
-
-	getSavedWorkflowTagPills(): Locator {
-		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
-	}
-
-	getWorkflowTagsElement(): Locator {
-		return this.page.getByTestId('workflow-tags');
+		return this.page.getByTestId('workflow-tags-dropdown').locator('.el-tag:not(.count-container)');
 	}
 
 	getWorkflowTagsDropdown(): Locator {
@@ -372,13 +375,12 @@ export class CanvasPage extends BasePage {
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
-		const input = this.page.getByTestId('workflow-tags-container').locator('input').first();
+		const input = this.page.getByTestId('workflow-tags-dropdown').locator('input').first();
 		await input.fill(text);
 	}
 
 	async openTagManagerModal(): Promise<void> {
 		await this.clickCreateTagButton();
-		await this.page.getByTestId('tags-dropdown').click();
 		await this.page.locator('.manage-tags').click();
 	}
 
@@ -445,8 +447,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Production Checklist methods
-	getProductionChecklistButton(): Locator {
-		return this.page.getByTestId('suggested-action-count');
+	getProductionChecklistMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-production-checklist');
+	}
+
+	async openProductionChecklist(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.getProductionChecklistMenuItem().click();
 	}
 
 	getProductionChecklistPopover(): Locator {
@@ -461,8 +468,8 @@ export class CanvasPage extends BasePage {
 		return items;
 	}
 
-	getProductionChecklistIgnoreAllButton(): Locator {
-		return this.page.getByTestId('suggested-action-ignore-all');
+	async closeProductionChecklist(): Promise<void> {
+		await this.clickByTestId('suggested-actions-close');
 	}
 
 	getErrorActionItem(): Locator {
@@ -477,28 +484,10 @@ export class CanvasPage extends BasePage {
 		return this.getProductionChecklistActionItem('Test reliability of AI steps');
 	}
 
-	async clickProductionChecklistButton(): Promise<void> {
-		await this.getProductionChecklistButton().click();
-	}
-
-	async clickProductionChecklistIgnoreAll(): Promise<void> {
-		await this.getProductionChecklistIgnoreAllButton().click();
-	}
-
-	async ignoreProductionChecklistAction(index = 0): Promise<void> {
-		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
-	}
-
 	getProductionChecklistActionCompletedIcon(index = 0): Locator {
 		return this.getProductionChecklistActionItem()
 			.nth(index)
 			.locator('svg[data-icon="circle-check"]');
-	}
-
-	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
-		const messageBox = new MessageBox(this.page);
-		await expect(messageBox.root).toBeVisible();
-		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	async duplicateNode(nodeName: string): Promise<void> {
@@ -907,10 +896,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('zoom-in-button');
 	}
 
-	getResetZoomButton(): Locator {
-		return this.page.getByTestId('reset-zoom-button');
-	}
-
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -942,6 +927,38 @@ export class CanvasPage extends BasePage {
 			// Fallback: return default zoom level
 			return 1.0;
 		});
+	}
+
+	/**
+	 * Wait for the canvas viewport transform (zoom/pan) to stop changing.
+	 * After a route change the editor runs an animated fit-to-view. Sparse
+	 * expect.poll sampling can catch two equal values in the pre-animation window
+	 * and report "settled" before the animation starts; this checks every frame
+	 * inside the page so it can't miss the in-flight transition.
+	 */
+	async waitForCanvasZoomSettled(stableFrames = 5): Promise<void> {
+		await this.page.waitForFunction(
+			(needed) => {
+				const el = document.querySelector('.vue-flow__transformationpane.vue-flow__container');
+				if (!el) return false;
+				const transform = getComputedStyle(el).transform;
+				const w = window as unknown as { n8nZoomSettle?: { last: string; count: number } };
+				const state = (w.n8nZoomSettle ??= { last: '', count: 0 });
+				if (transform === state.last) {
+					state.count += 1;
+				} else {
+					state.last = transform;
+					state.count = 0;
+				}
+				if (state.count >= needed) {
+					delete w.n8nZoomSettle;
+					return true;
+				}
+				return false;
+			},
+			stableFrames,
+			{ polling: 'raf', timeout: 10_000 },
+		);
 	}
 
 	waitingForTriggerEvent() {
@@ -1160,16 +1177,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Workflow History methods
-	getWorkflowHistoryButton(): Locator {
-		return this.page.getByTestId('workflow-history-button');
-	}
-
 	getWorkflowHistoryCloseButton(): Locator {
 		return this.page.getByTestId('workflow-history-close-button');
 	}
 
 	async openWorkflowHistory(): Promise<void> {
-		await this.getWorkflowHistoryButton().click();
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-version-history');
 	}
 
 	async closeWorkflowHistory(): Promise<void> {

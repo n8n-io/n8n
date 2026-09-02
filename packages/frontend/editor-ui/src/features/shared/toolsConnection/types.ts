@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -18,23 +18,44 @@ export interface ToolCredentialRef {
 	required?: boolean;
 }
 
+/**
+ * `none` means no connection has been created. `disconnected` is reserved for
+ * an existing connection that is currently unavailable.
+ */
+export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+/** Whether a connection exists or is currently being established. */
+export function hasToolConnection(status: ToolConnectionStatus): boolean {
+	return status !== 'none';
+}
+
 export interface BaseConnectionItem {
 	id: string;
 	title: string;
 	description?: string;
 	iconSource?: ToolIconSource;
-	isConnected: boolean;
+	status: ToolConnectionStatus;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
 	category?: ToolCategoryKey;
 	/** Reviewed and approved by n8n. Drives the shield badge, install state irrelevant. */
 	verified?: boolean;
+	/** Backed by n8n Connect (AI Gateway): credentials are managed, shows a "Free credits" pill. */
+	freeCredits?: boolean;
 	/** Not yet installed: swaps the Connect action for an Install one. */
 	communityPreview?: boolean;
 	installing?: boolean;
 	/** Non-admin cannot install; the action is disabled with a contact-admin tooltip. */
 	installDisabled?: boolean;
+	/**
+	 * Row is visible but not selectable. Used to surface incompatible items
+	 * (e.g. a workflow with a Wait node) at the bottom of a category so the user
+	 * can see why they're missing instead of the row simply being absent.
+	 */
+	disabled?: boolean;
+	/** Human-readable explanation shown as a tooltip when `disabled` is true. */
+	disabledReason?: string;
 }
 
 export interface NodeConnectionItem extends BaseConnectionItem {
@@ -114,6 +135,7 @@ export type ToolCategoryKey =
 	| 'mcp'
 	| 'ai'
 	| 'n8n'
+	| 'n8n-connect'
 	| 'app-action'
 	| 'community'
 	| 'workflows'
@@ -152,10 +174,22 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string) => void;
+	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 
 export const TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY = Symbol(
 	'tool-connection-credential-adapter',
 ) as InjectionKey<ToolConnectionCredentialAdapter | null>;
+
+/**
+ * i18n key for the credits pill on gateway-backed rows: "Free credits" until an
+ * allowance is used up, then "n8n credits". Injected by the consumer (from
+ * `aiGateway.store`) so the shared module stays free of editor-ui stores; rows
+ * without `freeCredits` never read it.
+ */
+export type CreditsLabelKey = 'generic.freeCredits' | 'generic.n8nCredits';
+
+export const TOOL_CONNECTION_CREDITS_LABEL_KEY = Symbol(
+	'tool-connection-credits-label',
+) as InjectionKey<Ref<CreditsLabelKey> | null>;

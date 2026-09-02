@@ -55,6 +55,30 @@ export function isExecutionTimeout(message: string): boolean {
 	return /operation was aborted|TimeoutError/i.test(message);
 }
 
+/** A request cut short by the client's own AbortSignal. Narrower than
+ *  {@link isExecutionTimeout}: a node's quoted `TimeoutError` is not a dead lane. */
+export function isRequestAbort(message: string): boolean {
+	return /operation was aborted/i.test(message);
+}
+
+/** The server stopped the run for exceeding the forwarded budget. In-band
+ *  (`success: false`), so unrecognised it reads as an ordinary failure to the
+ *  judge. Wording kept in sync with BOTH server paths that stop a run for time:
+ *  `EvalExecutionService.awaitRunWithinBudget` (workflow) and
+ *  `EvalAgentExecutionService`'s budget abort (agent). */
+export function isServerBudgetStop(errors: string[] | undefined): boolean {
+	return (errors ?? []).some((e) => /exceeded its .*eval budget/i.test(e));
+}
+
+/** Re-throw a budget stop as a timeout so the caller's timeout path classifies it
+ *  instead of the judge scoring it as a builder failure. Shared by the workflow and
+ *  agent scenario runners: the classification is one rule, so it lives in one place
+ *  rather than being kept in sync by hand at two call sites. No-op otherwise. */
+export function throwIfServerBudgetStop(result: { success: boolean; errors: string[] }): void {
+	if (result.success || !isServerBudgetStop(result.errors)) return;
+	throw new Error(`The operation was aborted due to timeout: ${result.errors.join('; ')}`);
+}
+
 /** Retry decision for one failed scenario-execution attempt. */
 export function shouldRetryScenarioExecution(message: string, attempt: number): boolean {
 	if (isTransientNetworkError(message)) return attempt < MAX_EXEC_ATTEMPTS;

@@ -29,10 +29,19 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
+| `--workflow-version-policy` | Which version of each workflow travels in the package: `latest` (default) exports the latest version whether or not it is published, `published-strict` exports the published version and aborts when any workflow has none, `prefer-published` falls back to the latest version where there is no published one, and `ignore-unpublished` leaves unpublished workflows out of the package entirely. |
+| `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. Literal values never travel either way. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
+
+A workflow has a latest version (what you see in the editor) and, once
+published, a published version; `--workflow-version-policy` picks which one
+travels. The chosen version decides which credentials, data tables, variables
+and sub-workflows are bundled alongside it, but the workflow's name, settings
+(including `errorWorkflow`) and tags are not versioned and always come from the
+latest version.
 
 Statically referenced sub-workflows are dependencies of the package. How
 missing ones are handled depends on
@@ -63,7 +72,9 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--missing-node-type-mode` | What to do when a workflow uses a node type — or a version of a node type — this instance does not have. `fail` (instance default) rejects the import before anything is written, listing every missing node type and the workflows that use it; `import-anyway` imports the package, but the affected workflows are never published by the import, regardless of the publishing policy. |
-| `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it) or `fail`. Requires a folders-enabled license when the package contains folders. |
+| `--project-conflict-policy` | What to do when a project in the package already exists on the instance, matched by ID, and by default how its contents are treated too (project packages only): `merge` (instance default) is purely additive — the existing project's name, description, icon and custom span attributes are left alone and the package's contents are added alongside; `overwrite` makes the package authoritative, replacing those details (a detail the package omits is left as it is, not cleared) and, via `--folder-conflict-policy`, removing contents the package does not carry; `fail` rejects the import before anything is written. |
+| `--folder-conflict-policy` | What to do when a package folder already exists in the target project. **Defaults to whatever `--project-conflict-policy` is**, so you state the intent once; for a workflow package, which defines no projects, it defaults to `merge`. `merge` reuses the existing folder and merges the package's children into it; `fail` rejects the import; `overwrite` additionally removes workflows the package does not contain, at the project root and in package-defined folders (see `--overwrite-deletion-policy`), and is rejected unless `--project-conflict-policy` is also `overwrite`. Folders the package does not define are removed too, but only once nothing is left inside them, so target-only content is never swept up. Requires a folders-enabled license when the package contains folders, and the `workflow:delete` and `folder:delete` scopes for `overwrite`. |
+| `--overwrite-deletion-policy` | How `--folder-conflict-policy=overwrite` removes a workflow the package does not contain: `archive` (instance default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. Each entry in `removedWorkflows` reports what actually happened in its `deletion` field, so a `hard-delete` whose row cannot be dropped yet (unpublishing defers trigger teardown) shows as `archived` rather than failing the import. Ignored unless the folder conflict policy is `overwrite`. |
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
@@ -79,6 +90,7 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 Requires the API key to hold:
 
 - `workflow:import` — always
+- `workflow:delete` and `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.
 - `variable:update` — when the import would overwrite a variable, i.e. `--variable-conflict-policy=overwrite` and at least one resolved variable's value differs from the package's. `keep-existing` (the default) never overwrites and needs neither this scope nor a variables-enabled license.
@@ -89,6 +101,9 @@ When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
 
 - a workflow conflict under `--workflow-conflict-policy=fail`
+- a project that already exists under `--project-conflict-policy=fail`
+- a workflow that `--folder-conflict-policy=overwrite` would remove but you lack
+  `workflow:delete` on
 - an unresolved credential under `--credential-missing-mode=must-preexist`
 - a schema-incompatible data table
 - a workflow using a node type this instance does not have under

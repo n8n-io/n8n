@@ -128,14 +128,23 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Agent-anchored builds create a first-class Agent — delete it with the
-	// rest of the build's artifacts so no caller has to remember to.
+	// Agent-anchored builds create a first-class Agent, and a seed may have restored
+	// one — delete both with the rest of the build's artifacts so no caller has to
+	// remember to. A seeded agent the live turn also edited appears in both.
 	const agentRef = findAgentArtifactRef(build.artifactRefs);
-	if (agentRef) {
+	const agentIds = new Set([...(agentRef ? [agentRef.id] : []), ...(build.createdAgentIds ?? [])]);
+	if (agentIds.size > 0) {
 		try {
-			await client.deleteAgent(await client.getPersonalProjectId(), agentRef.id);
+			const projectId = await client.getPersonalProjectId();
+			for (const id of agentIds) {
+				try {
+					await client.deleteAgent(projectId, id);
+				} catch {
+					clean = false; // Best-effort cleanup
+				}
+			}
 		} catch {
-			clean = false; // Best-effort cleanup
+			clean = false; // Non-fatal — project ID lookup may fail
 		}
 	}
 
@@ -152,6 +161,17 @@ export async function cleanupBuild(
 			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
 		} catch {
 			clean = false; // Non-fatal — project ID lookup may fail
+		}
+	}
+
+	// Projects a seed created. Deleted last of the artifacts, so anything the
+	// run put inside one is already gone by its own path rather than vanishing with
+	// the project.
+	for (const id of build.createdProjectIds ?? []) {
+		try {
+			await client.deleteProject(id);
+		} catch {
+			clean = false; // Best-effort cleanup
 		}
 	}
 
@@ -237,9 +257,9 @@ export async function runWorkflowChecks(args: {
 }
 
 function hasAnthropicKey(): boolean {
-	return Boolean(
-		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-			process.env.N8N_AI_ANTHROPIC_KEY ??
-			process.env.ANTHROPIC_API_KEY,
-	);
+	return [
+		process.env.N8N_AI_ANTHROPIC_KEY,
+		process.env.ANTHROPIC_API_KEY,
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY,
+	].some((value) => Boolean(value?.trim()));
 }

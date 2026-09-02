@@ -1,38 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import type { ICredentialType, INodeCredentialTestResult } from 'n8n-workflow';
-import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import ConnectionDialog from '../ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../../../instanceAiSettings.store';
-
-// Renders ConnectionFields and CredentialInputs for real (unlike the view suite, which mocks
-// ConnectionFields wholesale); only the parameter input leaf is stubbed.
-vi.mock('@/features/ndv/parameters/components/ParameterInputExpanded.vue', async () => {
-	const { defineComponent, h } = await import('vue');
-	return {
-		default: defineComponent({
-			props: { parameter: { type: Object, required: true }, value: { default: '' } },
-			emits: ['update'],
-			setup(props, { emit }) {
-				return () =>
-					h('input', {
-						'data-test-id': `param-${(props.parameter as { name: string }).name}`,
-						value: String(props.value ?? ''),
-						onInput: (event: Event) =>
-							emit('update', {
-								name: (props.parameter as { name: string }).name,
-								value: (event.target as HTMLInputElement).value,
-							}),
-					});
-			},
-		}),
-	};
-});
+import ConnectionDialog from '../ConnectionDialog.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -40,21 +12,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
-	usePushConnectionStore: vi.fn().mockReturnValue({ addEventListener: vi.fn() }),
-}));
-
-vi.mock('../../../instanceAi.settings.api', () => ({
-	fetchSettings: vi.fn().mockResolvedValue(null),
-	updateSettings: vi.fn(),
-	fetchPreferences: vi.fn(),
-	updatePreferences: vi.fn(),
-	fetchServiceCredentials: vi.fn().mockResolvedValue([]),
-	fetchInstanceModelCredentials: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock('../../../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
+	usePushConnectionStore: () => ({ addEventListener: vi.fn() }),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -63,67 +21,37 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 
 const renderDialog = createComponentRenderer(ConnectionDialog);
 
-const DAYTONA_TYPE: ICredentialType = {
-	name: 'daytonaApi',
-	displayName: 'Daytona',
-	properties: [
-		{ displayName: 'API URL', name: 'apiUrl', type: 'string', required: true, default: '' },
-		{
-			displayName: 'API Key',
-			name: 'apiKey',
-			type: 'string',
-			typeOptions: { password: true },
-			required: true,
-			default: '',
-		},
-	],
-	test: { request: { url: '/test' } },
-};
+function inputFor(element: HTMLElement): HTMLInputElement {
+	if (element instanceof HTMLInputElement) return element;
+	const input = element.querySelector('input');
+	if (!input) throw new Error('Expected an input');
+	return input;
+}
 
-const OPENAI_TYPE: ICredentialType = {
-	name: 'openAiApi',
-	displayName: 'OpenAI',
-	properties: [
-		{ displayName: 'API Key', name: 'apiKey', type: 'string', required: true, default: '' },
-		{ displayName: 'Organization ID', name: 'organizationId', type: 'string', default: '' },
-		{
-			displayName: 'Base URL',
-			name: 'url',
-			type: 'string',
-			default: 'https://api.openai.com/v1',
-		},
-		{ displayName: 'Add Custom Header', name: 'header', type: 'boolean', default: false },
-		{
-			displayName: 'Header Name',
-			name: 'headerName',
-			type: 'string',
-			default: '',
-			displayOptions: { show: { header: [true] } },
-		},
-		{
-			displayName: 'Header Value',
-			name: 'headerValue',
-			type: 'string',
-			default: '',
-			displayOptions: { show: { header: [true] } },
-		},
-	],
-};
-
-describe('ConnectionDialog (real connection fields)', () => {
+describe('ConnectionDialog', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
+	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		store = useInstanceAiSettingsStore();
+		credentialsStore = useCredentialsStore();
+		credentialsStore.setCredentialTypes([
+			{ name: 'anthropicApi', displayName: 'Anthropic', properties: [] },
+			{ name: 'openAiApi', displayName: 'OpenAI', properties: [] },
+			{ name: 'openRouterApi', displayName: 'OpenRouter', properties: [] },
+			{ name: 'daytonaApi', displayName: 'Daytona', properties: [] },
+			{ name: 'searXngApi', displayName: 'SearXNG', properties: [] },
+			{ name: 'braveSearchApi', displayName: 'Brave Search', properties: [] },
+		] as never);
 		store.$patch({
 			settings: {
 				enabled: true,
 				permissions: {},
 				mcpAccessEnabled: true,
 				sandboxEnabled: false,
-				sandboxProvider: 'daytona',
+				sandboxProvider: 'n8n-sandbox',
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
@@ -132,232 +60,112 @@ describe('ConnectionDialog (real connection fields)', () => {
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
+				searchDisabled: false,
+				n8nSandboxServiceUrl: null,
+				envManaged: {
+					model: { provider: false, apiKey: false, baseUrl: false, model: false },
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
 				localGatewayDisabled: false,
-			},
+			} as never,
 		});
+		vi.spyOn(store, 'save').mockResolvedValue(true);
+		vi.spyOn(store, 'refreshCredentials').mockResolvedValue(undefined);
+		vi.spyOn(store, 'refreshInstanceModelCredentials').mockResolvedValue(undefined);
 	});
 
-	it('renders an input per visible property of the selected credential type', async () => {
-		useCredentialsStore().setCredentialTypes([DAYTONA_TYPE]);
+	it('uses Cancel and Save without onboarding progress in both direct and setup contexts', async () => {
+		const direct = renderDialog({ props: { kind: 'search', open: true } });
 
-		const { findByTestId, getAllByTestId, getByTestId } = renderDialog({
-			props: { kind: 'sandbox', open: true },
-		});
+		expect(await direct.findByTestId('n8n-agent-search-dialog-cancel')).toBeVisible();
+		expect(direct.getByTestId('n8n-agent-search-dialog-save')).toBeVisible();
+		expect(direct.queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
+		expect(direct.queryByTestId('n8n-agent-search-dialog-back')).toBeNull();
+		direct.unmount();
 
-		await findByTestId('n8n-agent-sandbox-connection-fields');
-		await waitFor(() => expect(getAllByTestId('credential-connection-parameter')).toHaveLength(2));
-		expect(getByTestId('param-apiUrl')).toBeVisible();
-		expect(getByTestId('param-apiKey')).toBeVisible();
-		expect((getByTestId('param-apiUrl') as HTMLInputElement).value).toBe(
-			'https://app.daytona.io/api',
-		);
+		const setup = renderDialog({ props: { kind: 'search', open: true, setup: true } });
+		expect(await setup.findByTestId('n8n-agent-search-dialog-cancel')).toBeVisible();
+		expect(setup.getByTestId('n8n-agent-search-dialog-save')).toBeVisible();
+		expect(setup.queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
+		expect(setup.queryByTestId('n8n-agent-search-dialog-back')).toBeNull();
 	});
 
-	it('renders no inputs when credential types are not loaded, so the view must fetch them', async () => {
-		const { findByTestId, queryAllByTestId, queryByTestId } = renderDialog({
-			props: { kind: 'sandbox', open: true },
-		});
-
-		await findByTestId('n8n-agent-sandbox-provider-select');
-		expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
-		expect(queryAllByTestId('credential-connection-parameter')).toHaveLength(0);
-	});
-
-	it('selects proxy-managed Daytona without requesting direct credentials', async () => {
-		useSettingsStore().moduleSettings = {
-			'instance-ai': {
-				enabled: true,
-				localGatewayDisabled: false,
-				browserUseEnabled: true,
-				proxyEnabled: true,
-				cloudManaged: false,
-				sandboxEnabled: true,
-				workflowBuilderAvailable: true,
-				sandboxUnavailableReason: null,
-				runDebugEnabled: false,
-			},
-		};
-		store.$patch({
-			settings: {
-				...store.settings!,
-				sandboxProvider: 'n8n-sandbox',
-				sandboxEnvConfigured: true,
-			},
-		});
-		vi.mocked(store.save).mockResolvedValue(true);
-		const credentialsStore = useCredentialsStore();
-		const { findByText, findByTestId, getByTestId, queryByTestId } = renderDialog({
-			props: { kind: 'sandbox', open: true },
-		});
-
-		const select = await findByTestId('n8n-agent-sandbox-provider-select');
-		await fireEvent.click(select.querySelector('input')!);
-		await fireEvent.click(await findByText('Daytona'));
-
-		expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
-		expect(getByTestId('n8n-agent-sandbox-dialog-save')).not.toBeDisabled();
-		await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
-
-		await waitFor(() => expect(store.save).toHaveBeenCalledOnce());
-		expect(credentialsStore.testCredential).not.toHaveBeenCalled();
-		expect(store.draft).toMatchObject({ sandboxProvider: 'daytona' });
-		expect(store.draft).not.toHaveProperty('sandboxConnection');
-	});
-
-	it('renders only the minimal OpenAI fields while preserving hidden credential data', async () => {
-		const credentialsStore = useCredentialsStore();
-		credentialsStore.setCredentialTypes([OPENAI_TYPE]);
-		vi.mocked(credentialsStore.getCredentialData).mockResolvedValue({
-			data: {
-				apiKey: 'stored-key',
-				organizationId: 'org-old',
-				url: 'https://api.openai.com/v1',
-				header: true,
-				headerName: 'x-proxy-key',
-				headerValue: 'old-value',
-			},
-		} as never);
-		store.$patch({
-			settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
-			instanceModelCredentials: [
-				{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
-			],
-		});
-		vi.mocked(store.save).mockResolvedValue(true);
-		const refresh = Promise.withResolvers<void>();
-		vi.mocked(store.refreshInstanceModelCredentials).mockReturnValue(refresh.promise);
-
-		const { emitted, findByTestId, getByTestId, queryByTestId } = renderDialog({
+	it('uses the same provider and model dropdowns as onboarding', async () => {
+		const { findByTestId, findByText, getByTestId, queryByTestId } = renderDialog({
 			props: { kind: 'model', open: true },
 		});
 
-		await findByTestId('param-apiKey');
-		expect(getByTestId('param-url')).toBeVisible();
-		expect(queryByTestId('param-organizationId')).toBeNull();
-		expect(queryByTestId('param-header')).toBeNull();
-		expect(queryByTestId('param-headerName')).toBeNull();
-		expect(queryByTestId('param-headerValue')).toBeNull();
-		await fireEvent.update(getByTestId('param-apiKey'), 'new-key');
-		await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+		const provider = await findByTestId('n8n-agent-model-provider-select');
+		expect(getByTestId('n8n-agent-model-name-input')).toBeVisible();
+		expect(queryByTestId('assistant-model-base-url')).toBeNull();
 
-		await waitFor(() => expect(store.save).toHaveBeenCalledOnce());
-		expect(emitted().saved).toBeUndefined();
-		expect(store.draft).toMatchObject({
-			modelConnection: {
-				type: 'openAiApi',
-				data: {
-					apiKey: 'new-key',
-					organizationId: 'org-old',
-					url: 'https://api.openai.com/v1',
-					header: true,
-					headerName: 'x-proxy-key',
-					headerValue: 'old-value',
-				},
-			},
-		});
-		refresh.resolve();
-		await waitFor(() => expect(emitted().saved).toEqual([[]]));
+		await fireEvent.click(inputFor(provider));
+		await fireEvent.click(await findByText('instanceAi.onboarding.model.customProvider'));
+		expect(getByTestId('assistant-model-base-url')).toBeVisible();
 	});
 
-	it('hydrates the sandbox credential selected by the configured provider', async () => {
-		const credentialsStore = useCredentialsStore();
-		vi.mocked(credentialsStore.getCredentialData).mockResolvedValue({
-			data: { name: 'x-api-key', value: 'stored-key' },
-		} as never);
+	it('does not render an empty existing-credential selector for a fresh connection', async () => {
+		const { findByTestId, queryByTestId } = renderDialog({
+			props: { kind: 'sandbox', open: true },
+		});
+
+		expect(await findByTestId('n8n-agent-sandbox-provider-select')).toBeVisible();
+		expect(queryByTestId('n8n-agent-sandbox-existing-credential-select')).toBeNull();
+	});
+
+	it('assigns a selected compatible credential', async () => {
+		store.$patch({
+			instanceModelCredentials: [
+				{ id: 'anthropic-id', name: 'Existing Anthropic', type: 'anthropicApi' },
+				{ id: 'openai-id', name: 'Existing OpenAI', type: 'openAiApi' },
+			],
+		});
+		const { emitted, findByTestId, findByText, getByTestId } = renderDialog({
+			props: { kind: 'model', open: true },
+		});
+
+		const existing = await findByTestId('n8n-agent-model-existing-credential-select');
+		await fireEvent.click(inputFor(existing));
+		await fireEvent.click(await findByText('Existing Anthropic · Anthropic'));
+		await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+		await waitFor(() => expect(emitted().saved).toEqual([[]]));
+		expect(store.setField).toHaveBeenCalledWith('modelCredentialId', 'anthropic-id');
+		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5');
+		expect(emitted()['update:open']).toContainEqual([false]);
+	});
+
+	it('shows environment-managed settings as active and read-only', async () => {
 		store.$patch({
 			settings: {
 				...store.settings!,
-				sandboxProvider: 'n8n-sandbox',
-				daytonaCredentialId: 'daytona-id',
-				n8nSandboxCredentialId: 'n8n-id',
+				sandboxEnvConfigured: true,
+				envManaged: {
+					...store.settings!.envManaged,
+					sandbox: { provider: true, serviceUrl: true, apiKey: true },
+				},
 			},
 		});
-		vi.mocked(store.save).mockResolvedValue(true);
-
-		const { findByTestId, getByTestId } = renderDialog({
+		const { findByText, getByTestId, queryByTestId } = renderDialog({
 			props: { kind: 'sandbox', open: true },
 		});
 
-		const keyField = await findByTestId('n8n-agent-sandbox-api-key-input');
-		const keyInput =
-			keyField.tagName === 'INPUT'
-				? (keyField as HTMLInputElement)
-				: keyField.querySelector('input')!;
-		expect(credentialsStore.getCredentialData).toHaveBeenCalledWith({ id: 'n8n-id' });
-		expect(keyInput.value).toBe('stored-key');
-		await fireEvent.update(keyInput, 'new-key');
-		await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
-
-		await waitFor(() => expect(store.save).toHaveBeenCalledOnce());
-		expect(store.draft).toMatchObject({
-			sandboxConnection: {
-				type: 'httpHeaderAuth',
-				data: { name: 'x-api-key', value: 'new-key' },
-			},
-		});
+		expect(await findByText('instanceAi.onboarding.env.title')).toBeVisible();
+		expect(queryByTestId('n8n-agent-sandbox-provider-select')).toBeNull();
+		expect(getByTestId('n8n-agent-sandbox-dialog-save')).toBeDisabled();
 	});
 
-	it('ignores a stale hydration after the dialog is reopened', async () => {
-		const credentialsStore = useCredentialsStore();
-		credentialsStore.setCredentialTypes([OPENAI_TYPE]);
-		store.$patch({
-			settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
-			instanceModelCredentials: [
-				{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
-			],
+	it('keeps setup open after save so the parent can move to the next connection', async () => {
+		vi.spyOn(store, 'verifySearch').mockResolvedValue({ ok: true });
+		const { emitted, findByTestId, getByTestId } = renderDialog({
+			props: { kind: 'search', open: true, setup: true },
 		});
-		const stale =
-			Promise.withResolvers<Awaited<ReturnType<typeof credentialsStore.getCredentialData>>>();
-		const fresh =
-			Promise.withResolvers<Awaited<ReturnType<typeof credentialsStore.getCredentialData>>>();
-		vi.mocked(credentialsStore.getCredentialData)
-			.mockReturnValueOnce(stale.promise)
-			.mockReturnValueOnce(fresh.promise);
 
-		const result = renderDialog({ props: { kind: 'model', open: true } });
-		await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(1));
-		await result.rerender({ kind: 'model', open: false });
-		await result.rerender({ kind: 'model', open: true });
-		await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(2));
+		await fireEvent.click(await findByTestId('assistant-search-disabled'));
+		await fireEvent.click(getByTestId('n8n-agent-search-dialog-save'));
 
-		fresh.resolve({ data: { apiKey: 'fresh-key' } } as never);
-		const apiKeyInput = await result.findByTestId('param-apiKey');
-		expect((apiKeyInput as HTMLInputElement).value).toBe('fresh-key');
-		stale.resolve({ data: { apiKey: 'stale-key' } } as never);
-		await stale.promise;
-		await nextTick();
-		expect(result.getByTestId('param-apiKey')).toHaveValue('fresh-key');
-	});
-
-	it('keeps the dialog and fields locked while testing a connection', async () => {
-		useCredentialsStore().setCredentialTypes([DAYTONA_TYPE]);
-		const credentialsStore = useCredentialsStore();
-		let finishTest = (_result: INodeCredentialTestResult) => {};
-		vi.mocked(credentialsStore.testCredential).mockImplementation(
-			async () =>
-				await new Promise<INodeCredentialTestResult>((resolve) => {
-					finishTest = resolve;
-				}),
-		);
-		vi.mocked(store.save).mockResolvedValue(true);
-
-		const { findByTestId, getByTestId } = renderDialog({
-			props: { kind: 'sandbox', open: true },
-		});
-		const apiKeyInput = await findByTestId('param-apiKey');
-		await fireEvent.update(apiKeyInput, 'secret');
-		const saveButton = getByTestId('n8n-agent-sandbox-dialog-save');
-		await waitFor(() => expect(saveButton).not.toBeDisabled());
-
-		await fireEvent.click(saveButton);
-
-		const cancelButton = getByTestId('n8n-agent-sandbox-dialog-cancel');
-		await waitFor(() => expect(cancelButton).toBeDisabled());
-		expect(apiKeyInput).toBeDisabled();
-		await fireEvent.click(cancelButton);
-		expect(getByTestId('n8n-agent-sandbox-dialog-cancel')).toBeDisabled();
-
-		finishTest({ status: 'OK', message: '' });
-		await waitFor(() => expect(store.save).toHaveBeenCalled());
+		await waitFor(() => expect(emitted().saved).toEqual([[]]));
+		expect(emitted()['update:open']).toBeUndefined();
 	});
 });

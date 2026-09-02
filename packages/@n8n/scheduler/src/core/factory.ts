@@ -287,6 +287,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					if (result === 'failure') metrics.recordDeadLettered();
 				}),
 			onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
+			onLeaseLost: (taskType) => {
+				recordMetric(() => metrics.recordLeaseLost(taskType));
+				emit(
+					'warn',
+					'Scheduler task finished after losing its lease; another instance may have run the same occurrence concurrently',
+					{ taskType },
+				);
+			},
 		},
 		createExecutorTracing(tracer),
 	);

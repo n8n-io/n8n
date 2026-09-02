@@ -12,35 +12,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import {
+	getAtlassianApiBaseUrl,
+	getAtlassianCloudId,
+	getAtlassianSiteParameter,
+	resolveAtlassianCloudId,
+} from '@utils/atlassian';
+
 import type { JiraServerInfo, JiraWebhook } from './types';
-
-// Module-level cache: normalised domain → cloudId (persists for the life of the n8n process)
-const _cloudIdCache = new Map<string, string>();
-
-async function getCloudId(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	credentialType: string,
-	domain: string,
-): Promise<string> {
-	const normalizedDomain = domain.replace(/\/$/, '');
-	if (_cloudIdCache.has(normalizedDomain)) return _cloudIdCache.get(normalizedDomain)!;
-
-	const resources = (await this.helpers.requestWithAuthentication.call(this, credentialType, {
-		uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
-		json: true,
-	})) as Array<{ id: string; url: string }>;
-
-	const site = resources.find((r) => r.url === normalizedDomain);
-	if (!site) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No accessible Jira site found for domain: ${domain}. Make sure the domain matches your Atlassian site URL exactly.`,
-		);
-	}
-
-	_cloudIdCache.set(normalizedDomain, site.id);
-	return site.id;
-}
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -63,10 +42,25 @@ export async function jiraSoftwareCloudApiRequest(
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
 	} else if (jiraVersion === 'cloudOAuth2') {
-		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain as string;
 		credentialType = 'jiraSoftwareCloudOAuth2Api';
-		const cloudId = await getCloudId.call(this, credentialType, rawDomain);
-		domain = `https://api.atlassian.com/ex/jira/${cloudId}`;
+		const rawDomain = (await this.getCredentials(credentialType)).domain;
+		if (typeof rawDomain !== 'string' || rawDomain === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The Jira credential is missing the Site URL field',
+			);
+		}
+		const cloudId = await getAtlassianCloudId.call(this, credentialType, rawDomain, 'jira');
+		domain = getAtlassianApiBaseUrl('jira', cloudId);
+	} else if (jiraVersion === 'cloudServiceAccount') {
+		credentialType = 'atlassianServiceAccountApi';
+		const cloudId = await resolveAtlassianCloudId.call(
+			this,
+			credentialType,
+			getAtlassianSiteParameter(this),
+			'jira',
+		);
+		domain = getAtlassianApiBaseUrl('jira', cloudId);
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';

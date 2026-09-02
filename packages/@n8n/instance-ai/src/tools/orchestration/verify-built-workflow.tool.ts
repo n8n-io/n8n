@@ -20,6 +20,7 @@ import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
+import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -42,6 +43,18 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 				'Schedule Trigger -> omit inputData. ' +
 				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
 				'downstream expressions reference $json.<field>, matching the flat production shape.',
+		),
+	triggerNodeName: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+				"triggers' branches are never verified. To cover every branch, call verify once per " +
+				"trigger. Trigger names come from build-workflow's `triggerNodes` or " +
+				'workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
+				'and never build a throwaway copy — to reach a branch; use this instead.',
 		),
 	timeout: z
 		.number()
@@ -158,6 +171,19 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
+			const chatModelRecovery = await target.domainContext.workflowService
+				.getAsWorkflowJSON(workflowId)
+				.then(
+					async (workflow) =>
+						await collectChatModelRecoveryContext(
+							target.domainContext,
+							workflow.nodes ?? [],
+							workflow.connections,
+						),
+				)
+				.catch(() => undefined);
+			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
 			const { result, analysis } = prepared.gateScript
@@ -167,11 +193,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						executionService: target.domainContext.executionService,
 						workflowId,
 						inputData: resolvedInput.inputData,
+						triggerNodeName: resolvedInput.triggerNodeName,
 						timeout: resolvedInput.timeout,
 						abortSignal: context.abortSignal,
 						buildOutcome,
 						stateBefore: target.stateBefore,
 						runId: context.runId,
+						chatModelRelatedNodeNames,
+						chatModelRecovery,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -179,6 +208,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							resolvedInput.inputData,
 							{
 								timeout: resolvedInput.timeout,
+								triggerNodeName: resolvedInput.triggerNodeName,
 								verificationPinData: prepared.verificationPinData,
 								isVerificationRun: true,
 								abortSignal: context.abortSignal,
@@ -191,8 +221,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								buildOutcome,
 								simulatedNodes: prepared.simulatedNodes,
 								haltedGateNames: prepared.haltedGateNames,
+								triggerNodeName: resolvedInput.triggerNodeName,
 								stateBefore: target.stateBefore,
 								runId: context.runId,
+								chatModelRelatedNodeNames,
+								chatModelRecovery,
 							}),
 						};
 					})();

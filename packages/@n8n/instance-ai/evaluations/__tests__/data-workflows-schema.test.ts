@@ -131,10 +131,25 @@ describe('EvalTestCaseSchema', () => {
 		expect(seed.dataTables).toEqual([]);
 	});
 
-	it('rejects an inline seed with no messages', () => {
+	// Emptiness is judged over EVERY slot, not just `messages`: a seed carrying
+	// nothing restores nothing and the case then grades as an unseeded build — green
+	// for the wrong reason.
+	it('rejects an inline seed that carries nothing at all', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({ ...validFixture(), seed: { mode: 'inline', messages: [] } }),
 		).toThrow();
+	});
+
+	it('accepts a fixture-only inline seed that carries just a project', () => {
+		// The project-scope shape: a seeded project must exist on the instance, but the
+		// conversation under test starts from scratch, so there is no history to seed.
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', projects: [{ name: 'Foobar' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.projects).toEqual([{ name: 'Foobar' }]);
+		expect(seed.messages).toEqual([]);
 	});
 
 	it('rejects an unknown seed mode', () => {
@@ -213,6 +228,56 @@ describe('EvalTestCaseSchema', () => {
 			},
 		});
 		expect(inlineSeedOf(parsed).messages[0].createdAt).toBe(authored);
+	});
+
+	// The restamp lands on fixed slots, never `Date.now()`-derived: `createdAt` is
+	// part of the projection `planPush` compares, so a now-based rewrite would read
+	// as an edit on every parse and re-PATCH the case forever.
+	it('restamps a future createdAt to the same value on every parse', () => {
+		const caseJson = {
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: '2099-01-01T00:00:00.000Z',
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		};
+		const first = inlineSeedOf(EvalTestCaseSchema.parse(caseJson)).messages[0].createdAt;
+		const second = inlineSeedOf(EvalTestCaseSchema.parse(caseJson)).messages[0].createdAt;
+		expect(first).toBe(second);
+		expect(Date.parse(String(first))).toBeLessThan(Date.now());
+	});
+
+	// A shorthand turn appended after full envelopes stamps at the fixed epoch,
+	// which is BEFORE their authored stamps — the store would present it first while
+	// `transcriptPrefixFromSeed` still grades array order.
+	it('restamps a mixed seed whose authored timestamps do not ascend', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: '2026-06-29T09:00:00.000Z',
+						content: [{ type: 'text', text: 'build it' }],
+					},
+					{ role: 'assistant', text: 'Done.' },
+				],
+			},
+		});
+		const at = inlineSeedOf(parsed).messages.map((m) => Date.parse(String(m.createdAt)));
+		expect(at[0]).toBeLessThan(at[1]);
+		expect(at[1]).toBeLessThan(Date.now());
 	});
 
 	// Both arms are strict, so a seed mixing them fails instead of having the
@@ -323,6 +388,163 @@ describe('EvalTestCaseSchema', () => {
 				seed: { mode: 'inline', messages: [{ role: 'user', text: 123 }] },
 			}),
 		).toThrow(/full envelope[\s\S]*shorthand/);
+	});
+
+	it('accepts an attach on the opening turn naming a seeded workflow', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'why is this failing?', attach: { workflow: 'wf12345678' } },
+			],
+			seed: {
+				mode: 'inline',
+				messages: [{ role: 'user', text: 'build it' }],
+				workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+			},
+		});
+		expect(parsed.conversation?.[0].attach).toEqual({ workflow: 'wf12345678' });
+	});
+
+	// An attachment models the user opening the assistant with a workflow already in
+	// front of them, so the turn it rides has to BE the user's. An assistant-first
+	// opener carrying one would be graded against a transcript that never happened.
+	it('rejects an attach on an assistant opening turn', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'assistant', text: 'here is what I built', attach: { workflow: 'wf12345678' } },
+					{ role: 'user', text: 'why is this failing?' },
+				],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/attach.*user|user.*attach/i);
+	});
+
+	it('rejects an attach on a later turn — an attachment is a hand-off', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'user', text: 'why is this failing?' },
+					{ role: 'user', text: 'and now this', attach: { workflow: 'wf12345678' } },
+				],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/only the first conversation turn may carry .attach./);
+	});
+
+	it('rejects an attach naming a workflow the seed does not declare', () => {
+		// A dangling reference hands the agent nothing and reads as a builder failure.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { workflow: 'not-in-the-seed' } }],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).toThrow(/must be the id of a workflow the inline seed declares/);
+	});
+
+	it('rejects an empty opening turn that carries no attach', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '' }],
+			}),
+		).toThrow(/opening turn with empty text must carry .attach./);
+	});
+
+	it('rejects an empty LATER turn too — the chat API 400s on it just the same', () => {
+		// The guard used to cover only turn 0, so this reached the API mid-run and
+		// surfaced as what reads like an infrastructure fault.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'user', text: 'build a thing' },
+					{ role: 'user', text: '   ' },
+				],
+			}),
+		).toThrow(/a conversation turn needs text/);
+	});
+
+	it('leaves an empty ASSISTANT turn alone — script data, never posted to chat', () => {
+		// The guard exists for the chat API's 400. Assistant turns are the proxy's
+		// script, so an empty one has nothing to do with that rule.
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'build a thing' },
+				{ role: 'assistant', text: '' },
+			],
+		});
+		expect(parsed.conversation?.[1].text).toBe('');
+	});
+
+	it('does not tell a replay author to add an attach they cannot use', () => {
+		// On a replay case conversation[0] CONTINUES the trace's live turn, and `attach`
+		// needs an inline seed to point at — so the opening-turn advice is a dead end.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '' }],
+				seed: { mode: 'replay', threadId: 'thread-1' },
+			}),
+		).toThrow(/a conversation turn needs text/);
+	});
+
+	it('rejects a seed declaring two workflows with the same id', () => {
+		// Restore index-aligns authored ids with remapped ones and rewrites references
+		// by id, so a duplicate would silently resolve to the wrong workflow.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [
+						{ id: 'wf12345678', name: 'First', nodes: [], connections: {} },
+						{ id: 'wf12345678', name: 'Second', nodes: [], connections: {} },
+					],
+				},
+			}),
+		).toThrow(/seed workflow ids must be unique/);
+	});
+
+	it('accepts an empty opening turn when a seeded workflow is attached', () => {
+		// The faithful hand-off shape: opened on a workflow, nothing typed.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '', attach: { workflow: 'wf12345678' } }],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).not.toThrow();
+	});
+
+	it('rejects an attach on a case with no inline seed at all', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { workflow: 'wf12345678' } }],
+			}),
+		).toThrow(/must be the id of a workflow the inline seed declares/);
 	});
 
 	it('accepts a replay seed with no conversation (live turn from the trace)', () => {

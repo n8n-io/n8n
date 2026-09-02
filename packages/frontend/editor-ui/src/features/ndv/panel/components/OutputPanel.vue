@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -22,7 +22,7 @@ import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
-import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -115,7 +115,9 @@ const workflowObject = computed(() =>
 const node = computed(() => {
 	return ndvStore.value.activeNode ?? undefined;
 });
-const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
+
+const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
+
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
@@ -141,13 +143,7 @@ const hasAiMetadata = computed(() => {
 	return false;
 });
 
-const hasError = computed(() =>
-	Boolean(
-		workflowRunData.value &&
-			node.value &&
-			workflowRunData.value[node.value.name]?.[props.runIndex]?.error,
-	),
-);
+const hasError = computed(() => Boolean(nodeRunData.value?.[props.runIndex]?.error));
 
 // Determine the initial output mode to logs if the node has an error and the logs are available
 const defaultOutputMode = computed<OutputType>(() => {
@@ -169,36 +165,10 @@ const runTaskData = computed(() => {
 		return null;
 	}
 
-	const runData = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return null;
-	}
-
-	if (runData[node.value.name].length <= props.runIndex) {
-		return null;
-	}
-
-	return runData[node.value.name][props.runIndex];
+	return nodeRunData.value?.[props.runIndex] ?? null;
 });
 
-const runsCount = computed(() => {
-	if (node.value === null) {
-		return 0;
-	}
-
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (runData === null || (node.value && !runData.hasOwnProperty(node.value.name))) {
-		return 0;
-	}
-
-	if (node.value && runData[node.value.name].length) {
-		return runData[node.value.name].length;
-	}
-
-	return 0;
-});
+const runsCount = computed(() => nodeRunData.value?.length ?? 0);
 
 const staleData = computed(() => {
 	if (!node.value) {
@@ -239,14 +209,11 @@ const allToolsWereUnusedNotice = computed(() => {
 	}
 });
 
-const isNDVV2 = computed(() => true);
 // Methods
 
 const insertTestData = () => {
 	if (!runDataRef.value) return;
 
-	// We should be able to fix this when we migrate RunData.vue to composition API
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 	runDataRef.value.enterEditMode({
 		origin: 'insertTestDataLink',
 	});
@@ -313,7 +280,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <template>
 	<RunData
 		ref="runDataRef"
-		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
+		:class="$style.runData"
 		:node="node"
 		:workflow-object="workflowObject"
 		:run-index="runIndex"
@@ -345,15 +312,15 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<N8nRadioButtons
+					<N8nSegmentControl
 						v-model="outputMode"
 						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
 					/>
 				</template>
-				<span v-else :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">
+				<span v-else :class="$style.title">
 					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
@@ -371,69 +338,49 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template #node-not-run>
-			<template v-if="isNDVV2">
-				<NDVEmptyState
-					v-if="isReadOnly"
-					:title="
-						i18n.baseText(
-							isTriggerNode
-								? 'ndv.output.noOutputData.trigger.title'
-								: 'ndv.output.noOutputData.v2.title',
-						)
-					"
-				/>
-				<NDVEmptyState
-					v-else
-					:title="
-						i18n.baseText(
-							isTriggerNode
-								? 'ndv.output.noOutputData.trigger.title'
-								: 'ndv.output.noOutputData.v2.title',
-						)
-					"
-				>
-					<template v-if="isTriggerNode" #icon>
-						<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path
-								d="M10.9062 2.40625L8.5 8.03125H12C12.4062 8.03125 12.7812 8.28125 12.9375 8.65625C13.0625 9.0625 12.9688 9.5 12.6562 9.78125L4.65625 16.7812C4.28125 17.0625 3.78125 17.0938 3.40625 16.8125C3.03125 16.5625 2.875 16.0625 3.0625 15.625L5.46875 10H2C1.5625 10 1.1875 9.75 1.0625 9.375C0.90625 8.96875 1 8.53125 1.3125 8.25L9.3125 1.25C9.6875 0.96875 10.1875 0.9375 10.5625 1.21875C10.9375 1.46875 11.0938 1.96875 10.9062 2.40625Z"
-								fill="currentColor"
-							/>
-						</svg>
-					</template>
-					<template v-else #icon>
-						<N8nIcon icon="arrow-right-from-line" size="xlarge" />
-					</template>
-					<template #default>
-						<I18nT
-							v-if="!canPinData || isSubNodeType"
-							tag="span"
-							:keypath="
-								isSubNodeType
-									? 'ndv.output.runNodeHintSubNode'
-									: 'ndv.output.noOutputData.v2.description'
-							"
-							scope="global"
-						>
-							<template #link>
-								<NodeExecuteButton
-									hide-icon
-									transparent
-									variant="subtle"
-									:node-name="activeNode?.name ?? ''"
-									:label="
-										i18n.baseText(
-											isTriggerNode
-												? 'ndv.output.noOutputData.trigger.action'
-												: 'ndv.output.noOutputData.v2.action',
-										)
-									"
-									telemetry-source="inputs"
-									@execute="emit('execute')"
-								/>
-								<br />
-							</template>
-						</I18nT>
-						<template v-else>
+			<NDVEmptyState
+				v-if="isReadOnly"
+				:title="
+					i18n.baseText(
+						isTriggerNode
+							? 'ndv.output.noOutputData.trigger.title'
+							: 'ndv.output.noOutputData.notRun.title',
+					)
+				"
+			/>
+			<NDVEmptyState
+				v-else
+				:title="
+					i18n.baseText(
+						isTriggerNode
+							? 'ndv.output.noOutputData.trigger.title'
+							: 'ndv.output.noOutputData.notRun.title',
+					)
+				"
+			>
+				<template v-if="isTriggerNode" #icon>
+					<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="M10.9062 2.40625L8.5 8.03125H12C12.4062 8.03125 12.7812 8.28125 12.9375 8.65625C13.0625 9.0625 12.9688 9.5 12.6562 9.78125L4.65625 16.7812C4.28125 17.0625 3.78125 17.0938 3.40625 16.8125C3.03125 16.5625 2.875 16.0625 3.0625 15.625L5.46875 10H2C1.5625 10 1.1875 9.75 1.0625 9.375C0.90625 8.96875 1 8.53125 1.3125 8.25L9.3125 1.25C9.6875 0.96875 10.1875 0.9375 10.5625 1.21875C10.9375 1.46875 11.0938 1.96875 10.9062 2.40625Z"
+							fill="currentColor"
+						/>
+					</svg>
+				</template>
+				<template v-else #icon>
+					<N8nIcon icon="arrow-right-from-line" size="xlarge" />
+				</template>
+				<template #default>
+					<I18nT
+						v-if="!canPinData || isSubNodeType"
+						tag="span"
+						:keypath="
+							isSubNodeType
+								? 'ndv.output.runNodeHintSubNode'
+								: 'ndv.output.noOutputData.notRun.description'
+						"
+						scope="global"
+					>
+						<template #link>
 							<NodeExecuteButton
 								hide-icon
 								transparent
@@ -443,47 +390,39 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									i18n.baseText(
 										isTriggerNode
 											? 'ndv.output.noOutputData.trigger.action'
-											: 'ndv.output.noOutputData.v2.action',
+											: 'ndv.output.noOutputData.notRun.action',
 									)
 								"
 								telemetry-source="inputs"
 								@execute="emit('execute')"
 							/>
 							<br />
-							{{ i18n.baseText('generic.or') }}
-							<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
-								{{ i18n.baseText('ndv.output.insertTestData') }}
-							</N8nText>
 						</template>
-					</template>
-				</NDVEmptyState>
-			</template>
-
-			<template v-else>
-				<div v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">
-					<div :class="$style.spinner">
-						<N8nSpinner type="ring" />
-					</div>
-					<N8nText>
-						{{ i18n.baseText('ndv.output.waitingToRun') }}
-					</N8nText>
-				</div>
-				<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-					<template v-if="isSubNodeType">
-						{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
-					</template>
+					</I18nT>
 					<template v-else>
-						{{ i18n.baseText('ndv.output.runNodeHint') }}
-						<span v-if="canPinData" @click="insertTestData">
-							<br />
-							{{ i18n.baseText('generic.or') }}
-							<N8nText tag="a" size="medium" color="primary">
-								{{ i18n.baseText('ndv.output.insertTestData') }}
-							</N8nText>
-						</span>
+						<NodeExecuteButton
+							hide-icon
+							transparent
+							variant="subtle"
+							:node-name="activeNode?.name ?? ''"
+							:label="
+								i18n.baseText(
+									isTriggerNode
+										? 'ndv.output.noOutputData.trigger.action'
+										: 'ndv.output.noOutputData.notRun.action',
+								)
+							"
+							telemetry-source="inputs"
+							@execute="emit('execute')"
+						/>
+						<br />
+						{{ i18n.baseText('generic.or') }}
+						<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
+							{{ i18n.baseText('ndv.output.insertTestData') }}
+						</N8nText>
 					</template>
-				</N8nText>
-			</template>
+				</template>
+			</NDVEmptyState>
 		</template>
 
 		<template #node-waiting>
@@ -544,11 +483,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: none;
 }
 .runData {
-	background-color: var(--run-data--color--background);
-}
-
-.runDataV2 {
-	background-color: var(--ndvv2--run-data--color--background);
+	background-color: var(--ndv--run-data--color--background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing--4xs);
@@ -557,14 +492,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 .titleSection {
 	display: flex;
 	align-items: center;
+	padding-left: var(--spacing--4xs);
 
 	> * {
 		margin-right: var(--spacing--2xs);
 	}
-}
-
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
 }
 
 .title {
@@ -572,11 +504,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
 	font-weight: var(--font-weight--bold);
-	font-size: var(--font-size--sm);
-}
-
-.titleV2 {
-	letter-spacing: 2px;
 	font-size: var(--font-size--xs);
 }
 
@@ -597,17 +524,5 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	padding: 0;
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
-}
-
-.spinner {
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--ndv--spacing);
-
-	* {
-		color: var(--color--primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
 }
 </style>

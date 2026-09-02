@@ -5,12 +5,14 @@ import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
+import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
+import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -22,7 +24,7 @@ import { setLanguage } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
@@ -34,6 +36,7 @@ import type {
 } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 
@@ -65,6 +68,8 @@ useTelemetryInitializer();
 
 // Initialize global backend status tracking
 useBackendStatus();
+
+useModulePushDispatcher({ router });
 
 useTrialIntroModalAutoOpen();
 
@@ -135,6 +140,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<AppCommandBar />
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+			<E2ETestModeMarker />
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

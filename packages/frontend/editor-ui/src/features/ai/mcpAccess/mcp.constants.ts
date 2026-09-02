@@ -1,4 +1,4 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import type { ScopeGroupDefinition } from '@/app/components/scopes/scopes.utils';
 
@@ -41,3 +41,4 @@ export const MCP_CONNECT_POPOVER_WIDTH = 460;
 
 export const MCP_CONNECT_WORKFLOWS_MODAL_KEY = 'mcpConnectWorkflowsModal';
 export const MCP_CONNECT_AGENTS_MODAL_KEY = 'mcpConnectAgentsModal';
+export const UNKNOWN_COUNT_VALUE = '—';

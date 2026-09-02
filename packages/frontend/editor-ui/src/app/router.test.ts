@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { Response } from 'miragejs';
 import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
@@ -8,11 +9,16 @@ import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { get } from '@n8n/rest-api-client';
+import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
+import { middleware } from '@/app/utils/rbac/middleware';
 
 const App = {
 	template: '<div />',
@@ -37,6 +43,7 @@ describe('router', () => {
 
 	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
 		initializeAuthenticatedFeaturesSpy = vi
 			.spyOn(init, 'initializeAuthenticatedFeatures')
@@ -192,6 +199,38 @@ describe('router', () => {
 		20000,
 	);
 
+	const gitConnectionScopes: Scope[] = [
+		'gitConnection:list',
+		'gitConnection:read',
+		'gitConnection:create',
+		'gitConnection:update',
+		'gitConnection:delete',
+	];
+
+	test.each<[string, RouteRecordName, Scope[], boolean, boolean]>([
+		['/settings/git-connections', VIEWS.WORKFLOWS, [], true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], true, true],
+		['/settings/git-connections', VIEWS.GIT_CONNECTIONS_SETTINGS, gitConnectionScopes, true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, false, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, true, false],
+	])(
+		'should resolve %s to %s with %s permissions, module active %s and flag on %s (git connections)',
+		async (path, name, scopes, isModuleActive, isFlagOn) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.activeModules = isModuleActive ? ['git-connections'] : [];
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_PROMOTIONS: isFlagOn ? 'true' : 'false',
+			} as typeof settingsStore.settings.envFeatureFlags;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
 		[VIEWS.USAGE, false],
@@ -199,6 +238,22 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should block Gateway credits settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
@@ -264,6 +319,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
@@ -364,5 +420,74 @@ describe('router', () => {
 		);
 		expect(editRoleRoute?.props).toBe(true);
 		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
+	});
+
+	// Kept last and self-contained: it logs the shared `currentUser` out for real
+	// and flips session-expiry store state that every other test in this file
+	// implicitly relies on staying logged in, so it restores both in its own
+	// `afterEach` rather than depending on file/test order.
+	describe('session-expiry redirect (registered on rest-api-client, see router.ts)', () => {
+		afterEach(async () => {
+			useSessionExpiryStore().handled = false;
+			useNotificationsStore().setNotificationsSuppressed(false);
+			window.preventNodeViewBeforeUnload = undefined;
+			await useUsersStore().initialize();
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		// The actual `window.location.href` assignment isn't asserted on here: jsdom doesn't
+		// implement real navigation, and swapping out `window.location` to spy on it breaks the
+		// (also real, jsdom-hosted) HTTP request this test drives, since the mocked object lacks
+		// the properties the request layer needs to resolve a relative baseURL. Asserting on
+		// `router.resolve` (the same call the redirect makes to build its href) and on
+		// `preventNodeViewBeforeUnload` (set immediately before the redirect) verifies the same
+		// behavior without touching the real `window.location`.
+		test('reloads to sign-in when a REST call to the app backend comes back 401', async () => {
+			const rootStore = useRootStore();
+			server.get('/rest/__test_401__', () => new Response(401, {}, { message: 'Unauthorized' }));
+			const resolveSpy = vi.spyOn(router, 'resolve');
+
+			await expect(get(rootStore.restApiContext.baseUrl, '/__test_401__')).rejects.toThrow();
+
+			await vi.waitFor(() => {
+				expect(window.preventNodeViewBeforeUnload).toBe(true);
+			});
+
+			expect(resolveSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.SIGNIN,
+					query: expect.objectContaining({ sessionExpired: 'true' }),
+				}),
+			);
+		});
+	});
+
+	describe('error thrown during authenticated-features init', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test('still settles the navigation and runs the normal permission checks, instead of leaving it unresolved', async () => {
+			// The mock skips real authentication, so the guard redirects to sign-in.
+			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
+	});
+
+	describe('error thrown from a route middleware', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test("redirects to sign-in instead of authorizing the route the check didn't complete for", async () => {
+			vi.spyOn(middleware, 'authenticated').mockImplementation(() => {
+				throw new Error('boom');
+			});
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
 	});
 });

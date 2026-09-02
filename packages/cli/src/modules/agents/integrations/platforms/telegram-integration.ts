@@ -1,8 +1,7 @@
 import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
@@ -10,19 +9,21 @@ import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
-	type ApprovalDecisionMessageParams,
+	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
 } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import {
@@ -67,10 +68,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 			'The agent needs to reply to Telegram users in the same conversation context.',
 			'The agent needs to update a Telegram message in the current conversation.',
 			'The agent should send Telegram messages as the connected Telegram bot.',
+			'A scheduled Agent task should proactively send a direct message to a known Telegram user ID.',
 		],
 		useNodeToolWhen: [
 			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
-			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+			'The Telegram operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -88,8 +90,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 	]);
 
 	readonly actionToolGuidance = [
+		'For scheduled tasks without an inbound conversation, use send_dm with the known Telegram user ID. The integration action does not require current message context.',
 		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
-		'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
 	];
 
 	readonly needsShortCallbackData = true;
@@ -98,13 +100,23 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
-	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
+	formatActionDecisionMessage({
+		approved,
+		selectedLabel,
+		raw,
+		user,
+	}: ActionDecisionMessageParams): string {
 		const originalText =
 			isRecord(raw) && isRecord(raw.message) && typeof raw.message.text === 'string'
 				? raw.message.text
 				: '';
 		const responder = user.fullName || user.userName || user.userId;
-		const outcome = approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
+		const outcome =
+			approved === undefined
+				? `✅ ${selectedLabel || 'Action'} selected by ${responder}`
+				: approved
+					? `✅ Approved by ${responder}`
+					: `🚫 Declined by ${responder}`;
 		return originalText ? `${originalText}\n\n${outcome}` : outcome;
 	}
 
@@ -132,8 +144,6 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		super();
 	}
@@ -146,33 +156,37 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return createTelegramAdapter({ botToken, mode, secretToken });
 	}
 
+	validateConfig(integration: AgentIntegrationConfig): void {
+		if (integration.type === this.type && !integration.settings) {
+			throw new BadRequestError('Telegram integration settings are required');
+		}
+	}
+
 	/**
 	 * In polling mode the Chat SDK adapter long-polls Telegram, which must be
 	 * done by exactly one main — otherwise multiple instances race for the same
 	 * updates. Webhook mode is safe on every main.
+	 *
+	 * Mirrors `createAdapter`, which forces webhook mode when ingress is off: an
+	 * outbound connection opens no poll loop, so it is not leader-bound.
 	 */
-	override requiresLeader(): boolean {
-		return this.getMode() === 'polling';
+	override requiresLeader({ ingressEnabled } = { ingressEnabled: true }): boolean {
+		return ingressEnabled && this.getMode() === 'polling';
 	}
 
 	/**
-	 * Block the connect flow if this Telegram credential is already claimed by
-	 * another agent in our DB. We deliberately don't probe Telegram for an
-	 * existing webhook here — `onAfterConnect` overwrites whatever URL Telegram
-	 * has on file, so a stale webhook from elsewhere isn't a connect blocker.
+	 * We deliberately don't probe Telegram for an existing webhook here —
+	 * `onAfterConnect` overwrites whatever URL Telegram has on file, so a stale
+	 * webhook from elsewhere isn't a connect blocker. That leaves the claim
+	 * check, which reads only our own DB, so publishing can run it as a
+	 * preflight.
 	 */
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Telegram credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
@@ -234,7 +248,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	async createBridgeExecutionContext(
 		params: BridgeMessageContextParams,
 	): Promise<BridgeExecutionContext> {
-		return createTelegramBridgeExecutionContext(params);
+		return await Promise.resolve(createTelegramBridgeExecutionContext(params));
 	}
 
 	async createResumeExecutionContext(params: {
@@ -242,7 +256,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
 	}): Promise<BridgeResumeExecutionContext> {
-		return createTelegramResumeExecutionContext(params);
+		return await Promise.resolve(createTelegramResumeExecutionContext(params));
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
@@ -321,10 +335,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 		body?: Record<string, unknown>,
 	) {
 		return await this.outboundHttp
-			.requests({
-				// protection is applied because the Bot API host is user-configurable
-				ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
-			})
+			// the Bot API host is user-configurable, so the default safe mode applies
+			.requests()
 			.request({
 				method: 'POST',
 				url: this.botApiUrl(credential, method),

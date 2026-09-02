@@ -8,6 +8,7 @@ import {
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
 	type ReplyExpectation,
+	type SessionBinding,
 } from './integration-tools';
 
 interface UpdateLatestMessageContextOptions {
@@ -37,20 +38,27 @@ export class AgentChatMessageContextBridge {
 		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
 		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
 		const agentUserId = options.agentUserId ?? previousContext?.agentUserId;
+		const target: IntegrationMessageContext['target'] = {
+			type: 'thread',
+			threadId: thread.id,
+			channelId: thread.channelId,
+		};
 		const context: IntegrationMessageContext = {
 			integrationConnectionId,
 			platform: this.integration.type,
-			target: {
-				type: 'thread',
-				threadId: thread.id,
-				channelId: thread.channelId,
-			},
+			target,
 			...(options.messageId ? { messageId: options.messageId } : {}),
 			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
 			...(agentUserId ? { agentUserId } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
 			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
-			...(options.replyExpectation ? { replyExpectation: options.replyExpectation } : {}),
+			...(options.replyExpectation
+				? {
+						replyExpectation: options.replyExpectation,
+						replyTarget: target,
+						...(options.messageId ? { replyMessageId: options.messageId } : {}),
+					}
+				: {}),
 			updatedAt: new Date().toISOString(),
 		};
 
@@ -77,6 +85,20 @@ export class AgentChatMessageContextBridge {
 				}`,
 			);
 			return undefined;
+		}
+	}
+
+	async resolveSession(threadId: string): Promise<SessionBinding | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSession(threadId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
 		}
 	}
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, type ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -66,9 +66,12 @@ const items = computed<{ input?: Record<string, unknown>; output?: Record<string
 		const isTrigger = allNodes.some(
 			(n) => n.name === probe && nodeTypesStore.isTriggerNode(n.type),
 		);
+		const evaluationTriggerNames = new Set(
+			allNodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
 		const input = isTrigger
 			? readFirstOutputItem(runData, probe)
-			: readFirstInputItemViaGraph(runData, connections, probe);
+			: readFirstInputItemViaGraph(runData, connections, probe, evaluationTriggerNames);
 		const output = readFirstOutputItem(runData, probe);
 		return { input, output };
 	},
@@ -115,7 +118,6 @@ const outputEntries = computed(() => toEntries(items.value.output));
 
 			<N8nButton
 				size="mini"
-				type="primary"
 				:class="[$style.createButton, expanded ? $style.createButtonVisible : null]"
 				:data-test-id="`tests-execution-create-${execution.id}`"
 				@click="emit('create')"

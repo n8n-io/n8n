@@ -10,10 +10,12 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,
@@ -27,13 +29,18 @@ import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import {
+	findHttpRequestToolUrlFromAiViolations,
+	validateNodeToolConfigs,
+	validateNodeToolExpressions,
+} from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -46,6 +53,8 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
+		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
@@ -99,6 +108,19 @@ export class AgentConfigService {
 			};
 		}
 
+		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools);
+		if (urlViolations.length > 0) {
+			return {
+				valid: false,
+				error: urlViolations
+					.map(
+						({ toolName, path }) =>
+							`HTTP Request tool "${toolName}" cannot use $fromAI in ${path}. Enter a fixed URL.`,
+					)
+					.join('\n'),
+			};
+		}
+
 		const nodeError = await validateNodeToolConfigs(config.tools);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
@@ -131,8 +153,9 @@ export class AgentConfigService {
 			projectId,
 			user,
 		);
+		const accessibleCredentials = await credentialProvider.list();
 		const accessibleCredentialIds = new Set(
-			(await credentialProvider.list()).map((credential) => credential.id),
+			accessibleCredentials.map((credential) => credential.id),
 		);
 		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
@@ -151,6 +174,10 @@ export class AgentConfigService {
 		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		if (validatedConfig.tools !== undefined) {
+			await this.nodeToolAiGatewayService.assignManagedCredentials(
+				validatedConfig.tools,
+				new Set(accessibleCredentials.map((credential) => credential.type)),
+			);
 			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
 
@@ -173,6 +200,7 @@ export class AgentConfigService {
 		const toolsProvided = validatedConfig.tools !== undefined;
 		const skillsProvided = validatedConfig.skills !== undefined;
 		const credentialProvided = validatedConfig.credential !== undefined;
+		const modelDeploymentNameProvided = validatedConfig.modelDeploymentName !== undefined;
 		const personalisationProvided = validatedConfig.personalisation !== undefined;
 		const memoryProvided = validatedConfig.memory !== undefined;
 		const subAgentsProvided = validatedConfig.subAgents !== undefined;
@@ -214,6 +242,15 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (modelDeploymentNameProvided) {
+			const deploymentName = decomposedSchema.modelDeploymentName?.trim();
+			if (deploymentName) {
+				nextSchema.modelDeploymentName = deploymentName;
+			} else {
+				delete nextSchema.modelDeploymentName;
+			}
+		}
 
 		if (options?.clearOmittedOptionalFields) {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);
@@ -263,7 +300,8 @@ export class AgentConfigService {
 			user,
 		);
 
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		this.modificationTelemetry.record({
@@ -338,15 +376,8 @@ export class AgentConfigService {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
-			if (!agent.activeVersionId) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
-			}
 		}
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function mergePersonalisationWithPreviousGradient(
@@ -379,6 +410,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
 	const optionalFields = [
 		'credential',
+		'modelDeploymentName',
 		'personalisation',
 		'memory',
 		'subAgents',

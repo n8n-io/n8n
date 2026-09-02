@@ -22,11 +22,12 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   update-pointer-tags:
+    permissions:
+      contents: write
     name: Update pointer tags
     runs-on: ubuntu-slim
     environment: minor-release-tag-merge

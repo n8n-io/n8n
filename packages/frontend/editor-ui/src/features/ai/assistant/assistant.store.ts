@@ -4,7 +4,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, onScopeDispose, ref, watch } from 'vue';

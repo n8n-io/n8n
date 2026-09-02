@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -78,8 +78,11 @@ const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const projectIdRef = computed(() => props.projectId);
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
-	useProjectAgentsList(projectIdRef);
+const {
+	list: projectAgents,
+	ensureLoaded: ensureProjectAgentsLoaded,
+	refresh: refreshProjectAgents,
+} = useProjectAgentsList(projectIdRef);
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
@@ -95,19 +98,20 @@ const selectedSubAgentIds = computed(() =>
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
+		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
 	),
 );
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		const reasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const validationReasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const reasons =
+			validationReasons.length > 0 || agent || projectAgents.value === null
+				? validationReasons
+				: [i18n.baseText('agents.builder.validation.issue.subAgent.missingReference')];
 		return {
 			id: agentId,
-			name: agent?.name ?? agentId,
+			name: agent?.name ?? i18n.baseText('agents.builder.subAgents.unavailable'),
 			useWhen: useWhen ?? '',
 			invalid: reasons.length > 0,
 			invalidReasons: reasons,
@@ -168,9 +172,24 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 };
 
+/**
+ * Reason-specific overrides for `incompatible_reference` issues that carry a
+ * `reason` discriminator (currently workflow tools). Keyed by the `reason`
+ * string emitted by the backend. Takes precedence over the kind/code key so
+ * the message names the actual problem (e.g. "contains a Wait node") instead
+ * of the generic "can't be used as an agent tool".
+ */
+const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
+	incompatible_nodes:
+		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
+	no_supported_trigger:
+		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+};
+
 function issueMessage(issue: AgentConfigValidationIssue): string {
 	const { kind, toolType, id } = issue.capability;
 	const key =
+		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
 		(kind === 'tool' && toolType
 			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
 			: undefined) ??
@@ -239,13 +258,25 @@ async function reloadTasks() {
 	}
 }
 
+async function ensureSubAgentNamesLoaded() {
+	const agents = await ensureProjectAgentsLoaded();
+	const loadedIds = new Set(agents.map((agent) => agent.id));
+	if (selectedSubAgentIds.value.some((agentId) => !loadedIds.has(agentId))) {
+		await refreshProjectAgents();
+	}
+}
+
 onMounted(() => {
 	if (showSection('tasks')) void reloadTasks();
-	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
 	if (showSection('tasks')) void reloadTasks();
+});
+
+watch([() => props.projectId, selectedSubAgentIds], () => {
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 function openTaskModal(task: TaskRow | null) {
@@ -423,7 +454,12 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 	return tool.tools.map((item) => ({
 		id: toTargetKey(item.openTarget),
 		label: item.label,
-		data: { nodeType: item.nodeType, openTarget: item.openTarget },
+		data: {
+			nodeType: item.nodeType,
+			openTarget: item.openTarget,
+			invalid: item.invalid,
+			invalidReasons: item.invalidReasons,
+		},
 	}));
 }
 
@@ -486,6 +522,7 @@ function openExistingSubAgentModal(subAgent: {
 				id: subAgent.id,
 				name: subAgent.name,
 			},
+			agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(subAgent.id)}`,
 			useWhen: subAgent.useWhen,
 			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
@@ -549,6 +586,24 @@ function openExistingSubAgentModal(subAgent: {
 									:size="16"
 									:class="ui.class"
 								/>
+							</template>
+							<template #item-trailing="{ item }">
+								<N8nTooltip
+									v-if="item.data?.invalid"
+									:disabled="(item.data.invalidReasons ?? []).length === 0"
+									placement="top"
+								>
+									<N8nIcon
+										icon="triangle-alert"
+										:size="14"
+										data-testid="agent-capabilities-tool-menu-invalid-icon"
+									/>
+									<template #content>
+										<div v-for="reason in item.data.invalidReasons" :key="reason">
+											{{ reason }}
+										</div>
+									</template>
+								</N8nTooltip>
 							</template>
 						</N8nDropdownMenu>
 						<AgentChipButton

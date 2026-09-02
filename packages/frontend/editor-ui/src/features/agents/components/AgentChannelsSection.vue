@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
@@ -15,6 +16,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
+		isPublished?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 		/** No agent row exists yet — nothing can be connected to it. */
@@ -24,8 +26,10 @@ const props = withDefaults(
 	{
 		connectedTriggers: () => [],
 		disabled: false,
+		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		ensureAgentPersisted: undefined,
 	},
 );
 
@@ -38,10 +42,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { connectedCredentials, fetchStatus } = useAgentIntegrationStatus(
-	props.projectId,
-	props.agentId,
-);
+const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
+	useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
@@ -80,11 +82,20 @@ const channelIssueMessages = computed(() => {
 	return messages;
 });
 
+function channelRuntimeErrorMessage(channel: string): string {
+	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
+}
+
 const channelRows = computed(() =>
 	props.connectedTriggers.map((channel) => {
 		const integration = catalog.value?.find(({ type }) => type === channel);
 		const credentialId = connectedCredentials.value[channel];
-		const invalidReasons = channelIssueMessages.value.get(channel) ?? [];
+		// A channel that is configured correctly but failed to start is just as
+		// broken from here as a misconfigured one, so it uses the same affordance.
+		const invalidReasons = [
+			...(channelIssueMessages.value.get(channel) ?? []),
+			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+		];
 		return {
 			type: channel,
 			label: integration?.label ?? channel,
@@ -106,7 +117,7 @@ async function loadChannelDetails() {
 
 	try {
 		credentialsStore.setCredentials([]);
-		const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});
 		credentialNamesById.value = Object.fromEntries(
@@ -119,10 +130,31 @@ async function loadChannelDetails() {
 
 onMounted(() => {
 	void loadChannelDetails();
+	agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 });
+
+function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
+	if (event?.agentId !== props.agentId || event.source !== 'channel-setup-card') return;
+	void loadChannelDetails();
+}
+
+agentsEventBus.on('agentUpdated', onChannelSetup);
+
+onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
 
 watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
+});
+
+// After IAI builds an agent we shold refetch credentials and channels
+function onExternalAgentUpdated(event?: { agentId?: string; source?: string }) {
+	if (event?.source === 'agent-builder') return;
+	if (event?.agentId && event.agentId !== props.agentId) return;
+	void loadChannelDetails();
+}
+
+onBeforeUnmount(() => {
+	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 });
 
 function openChannelModal() {
@@ -132,7 +164,7 @@ function openChannelModal() {
 
 function openChannelEdit(channelType: string) {
 	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
-	channelModalView.value = hasEditableChannelView ? (`${channelType}_edit` as ChannelView) : 'list';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
 	channelModalOpen.value = true;
 }
 
@@ -220,6 +252,7 @@ const remainingChannelOptionLabels = computed(() => {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
+			:is-published="isPublished"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
 			@channel-connected="handleChannelConnected"

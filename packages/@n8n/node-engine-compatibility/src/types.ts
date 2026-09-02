@@ -1,4 +1,4 @@
-import type { JsonValue, StepExecutionContext, WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import type {
 	INode,
@@ -13,6 +13,13 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+/** The v1 identity of a trigger node, kept so expressions can read it back. */
+export interface TriggerStepConfig {
+	nodeType: string;
+	typeVersion: number;
+	parameters: INodeParameters;
+}
+
 export interface V1NodeStepConfig {
 	nodeType: string;
 	typeVersion: number;
@@ -26,7 +33,8 @@ export interface V1Execution extends Pick<IWorkflowBase, 'nodes' | 'connections'
 
 export interface StepData {
 	graph: WorkflowGraph;
-	outputsByStepId: Record<string, JsonValue>;
+	/** Completed step outputs, by node id then by iteration. */
+	outputsByNode: Record<string, Record<number, StepSlots>>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;

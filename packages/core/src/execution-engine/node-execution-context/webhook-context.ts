@@ -20,6 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -29,6 +30,7 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
+
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -98,7 +100,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		// No real task run backs a webhook call, so this only exists to surface `node`
+		// to the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
+		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
+
+		return await this._getCredentials<T>(type, executeData);
 	}
 
 	getBodyData() {
@@ -165,6 +171,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	isChatSessionTest() {
+		return this.webhookData.isChatSessionTest === true;
+	}
+
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,
@@ -198,6 +208,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.completeN8nOAuth2Flow(code, state);
 	}
 
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
+	}
+
 	async validateN8nOAuth2Token(
 		token: string,
 		resourceUrl: string,
@@ -208,11 +228,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
 	}
 
-	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+	async establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void> {
 		if (!this.additionalData.establishTriggerIdentity) {
 			throw new UnexpectedError('Trigger identity establishment is not available');
 		}
-		await this.additionalData.establishTriggerIdentity(token, resource);
+		await this.additionalData.establishTriggerIdentity(token, resource, subject);
 	}
 
 	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
@@ -225,13 +245,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
+		options?: number | { inputData?: IDataObject },
 	): Promise<unknown> {
+		const inputData =
+			typeof options === 'object' && options !== null ? options.inputData : undefined;
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
-		// incoming node data.
+		// incoming node data, unless the trigger supplied its own shape.
 		const connectionInputData: INodeExecutionData[] = [
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			{ json: this.additionalData.httpRequest?.body || {} },
+			{ json: inputData ?? (this.additionalData.httpRequest?.body || {}) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

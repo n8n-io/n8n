@@ -43,7 +43,7 @@ describe('AttachableWorkflowsService', () => {
 		);
 	});
 
-	it('returns only workflows with a supported trigger, mapped to name/active/triggerType', async () => {
+	it('returns only workflows with a supported trigger and stable ids', async () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findWorkflowsForUser.mockResolvedValue({
 			workflows: [
@@ -56,7 +56,7 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1');
 
-		expect(result).toEqual([{ name: 'Has trigger', active: true, triggerType: 'manual' }]);
+		expect(result).toEqual([{ id: 'a', name: 'Has trigger', active: true, triggerType: 'manual' }]);
 	});
 
 	it('dedupes workflows that surface via multiple share paths', async () => {
@@ -86,7 +86,9 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1', 'billing');
 
-		expect(result).toEqual([{ name: 'Billing follow-up', active: false, triggerType: 'manual' }]);
+		expect(result).toEqual([
+			{ id: 'a', name: 'Billing follow-up', active: false, triggerType: 'manual' },
+		]);
 	});
 
 	it('returns at most 10 most recently updated workflows when search term is omitted', async () => {
@@ -108,11 +110,13 @@ describe('AttachableWorkflowsService', () => {
 
 		expect(result).toHaveLength(10);
 		expect(result[0]).toEqual({
+			id: 'wf-59',
 			name: 'Workflow 59',
 			active: false,
 			triggerType: 'manual',
 		});
 		expect(result.at(-1)).toEqual({
+			id: 'wf-50',
 			name: 'Workflow 50',
 			active: false,
 			triggerType: 'manual',

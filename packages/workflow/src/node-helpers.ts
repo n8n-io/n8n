@@ -512,6 +512,78 @@ export function displayParameterPath(
 }
 
 /**
+ * Returns the credential types a node actively uses given its current configuration,
+ * or `null` when the active set cannot be determined statically. A credential type is
+ * active when:
+ * - its description in the node type is currently displayed (its `displayOptions` match), or
+ * - it is referenced by the `nodeCredentialType` / `genericAuthType` parameters — nodes like
+ *   HTTP Request select credential types dynamically through these parameters instead of
+ *   declaring them in the node type description.
+ *
+ * Returns `null` when the node type description is unavailable, a credential-type
+ * parameter is an expression (it only resolves at runtime), or evaluating the
+ * configuration throws. Callers must fall back conservatively for their use case:
+ * treat all referenced credentials as active when validating, and clean nothing
+ * when removing stale entries.
+ */
+export function getActiveCredentialTypes(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
+): Set<string> | null {
+	if (!nodeTypeDescription) {
+		return null;
+	}
+
+	try {
+		const activeTypes = new Set<string>();
+
+		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
+			if (displayParameter(node.parameters, credentialDescription, node, nodeTypeDescription)) {
+				activeTypes.add(credentialDescription.name);
+			}
+		}
+
+		const { nodeCredentialType, genericAuthType } = node.parameters;
+		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
+			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
+			if (typeof paramValue !== 'string' || !paramValue) {
+				continue;
+			}
+
+			// These parameters select the credential type dynamically, so their own
+			// displayOptions (e.g. shown only for a given `authentication` value) decide
+			// whether the value they hold is actually in use. A stale value left over from
+			// a previous selection must not be reported as active just because it's
+			// non-empty. Node types that don't declare the property at all (e.g. tests)
+			// keep the previous, unconditional behaviour.
+			const paramDescription = (nodeTypeDescription.properties ?? []).find(
+				(p) => p.name === paramName,
+			);
+			if (
+				paramDescription &&
+				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
+			) {
+				continue;
+			}
+
+			// Checked after the hidden check: a hidden parameter holds no active value,
+			// expression or not, so a leftover expression must not make the whole node
+			// indeterminable and block cleanup.
+			if (isExpression(paramValue)) {
+				return null;
+			}
+
+			activeTypes.add(paramValue);
+		}
+
+		return activeTypes;
+	} catch {
+		// Malformed display options must not break callers that never evaluated them before
+		return null;
+	}
+}
+
+/**
  * Returns the context data
  *
  * @param {IRunExecutionData} runExecutionData The run execution data
@@ -626,8 +698,10 @@ function getParameterResolveOrder(
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
 			if (!resolvedParameters.includes(dependency)) {
-				if (dependency.charAt(0) === '/') {
-					// Assume that root level dependencies are resolved
+				if (!Object.hasOwn(parameterDependencies, dependency)) {
+					// Not a parameter of this level (e.g. a `/root.path`), so it cannot be
+					// resolved here. `displayParameter` looks the value up later and hides
+					// the parameter if it is missing.
 					continue;
 				}
 				// Dependencies for that parameter are still missing so

@@ -92,6 +92,10 @@ test.describe(
 
 			await n8n.instanceAi.waitForPreviewCanvasNode('run button visibility test');
 
+			// The preview canvas is locked (read-only, run button hidden) while the
+			// agent is working, so wait for the run to finish before asserting.
+			await n8n.instanceAi.waitForRunComplete(120_000);
+
 			// The run workflow button should be visible inside the preview iframe
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,
@@ -155,12 +159,20 @@ test.describe(
 
 				await n8n.instanceAi.waitForPreviewCanvasNode(setNodeName);
 
-				// Hover over the Set node to show its toolbar
-				const setNode = n8n.instanceAi.getPreviewNodeByName(setNodeName);
-				await expect(setNode).toBeVisible({ timeout: 10_000 });
-				await setNode.hover();
+				// The node streams onto the canvas while the AI is still building; wait
+				// for the run button to enable (build finished) before using the toolbar.
+				await expect
+					.poll(
+						async () =>
+							await n8n.instanceAi
+								.getPreviewRunWorkflowButton()
+								.isEnabled()
+								.catch(() => false),
+						{ intervals: [500, 1_000, 2_000], timeout: 10_000 },
+					)
+					.toBe(true);
 
-				// Click the execute node button on the toolbar
+				// Hover the node and click the execute step button on its toolbar
 				await n8n.instanceAi.executePreviewNodeByName(setNodeName);
 
 				// The node should show a success indicator after execution

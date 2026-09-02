@@ -145,6 +145,40 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
+	describe('MCP server guidance belongs to the tool, not the prompt', () => {
+		// Guidance lives on `mcp-servers`, which is never deferred, so its description
+		// reaches every request the way a prompt section would — without a second copy.
+		it('says nothing about MCP servers', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true, mcpToolSearchEnabled: true });
+
+			expect(prompt).not.toContain('mcp-servers');
+			expect(prompt).not.toContain('## MCP Servers');
+		});
+	});
+
+	// INS-749: n8n-docs is always loaded now, so telling the orchestrator to
+	// discover it via search_tools is both wrong and a nudge away from the tool
+	// it should reach for first on n8n questions.
+	describe('n8n-docs is presented as already available, not as something to discover', () => {
+		// The Tool Discovery section only renders with tool search on, which is where
+		// the stale "search for n8n docs" example lived.
+		const toolSearchOptions = { ...browserCapableOptions, toolSearchEnabled: true };
+
+		it('does not offer n8n docs as a search_tools discovery example', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).not.toMatch(/search "n8n docs"/i);
+		});
+
+		it('tells the orchestrator to answer n8n questions from n8n-docs rather than web search', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toMatch(/prefer[^.]{0,60}n8n-docs/i);
+			expect(prompt).toMatch(/n8n-docs[^.]{0,120}already (loaded|available)/i);
+		});
+	});
+
 	describe('browser availability state propagates to the prompt', () => {
 		it('includes browser automation rules when browser is available', () => {
 			const prompt = getSystemPrompt({

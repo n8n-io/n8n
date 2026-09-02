@@ -29,6 +29,19 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('e1');
 	});
 
+	it('lists project-conflict issues for a 409', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{ type: 'project-conflict', kind: 'fail-policy', sourceProjectId: 'P1', name: 'brie' },
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('project "brie" (source P1) already exists on this instance');
+	});
+
 	it('lists credential-unresolved issues for a 422', () => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {

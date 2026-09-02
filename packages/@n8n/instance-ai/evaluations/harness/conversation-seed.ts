@@ -3,6 +3,7 @@
 // `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
 // langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
+import { instanceAiEvalSeedAgentSchema } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -28,6 +29,27 @@ const SeedWorkflowSchema = z.object({
 	name: z.string().min(1),
 	nodes: z.array(z.record(z.unknown())),
 	connections: z.record(z.unknown()),
+});
+
+/** A project seeded before the live turn. Only the name is authored: the
+ *  case references the project the way a user would (by name), and nothing in a
+ *  seed's messages can refer to a project id, so there is no id to remap. */
+const SeedProjectSchema = z.object({
+	/** Trimmed, not merely non-empty. n8n's `projectNameSchema` has no trim, so
+	 *  `" Foobar "` is created VERBATIM as a project distinct from `"Foobar"` — two
+	 *  projects a human reads as identical, both visible to the agent, leaving a case
+	 *  that says "the Foobar project" in prose ambiguous. It would also slip past the
+	 *  unique-name refine below and past `evictLeftoverSeedProjects`, which matches a
+	 *  leftover by exact name. Refused rather than trimmed: silently rewriting an
+	 *  authored name is how the created project stops matching what the case says. */
+	name: z
+		.string()
+		.min(1)
+		// n8n's own `projectNameSchema` cap. Enforced here so an over-long name fails at
+		// case load rather than mid-run, where the create call returns a 400 that
+		// `createTeamProject` reports as a licensing/quota problem.
+		.max(255)
+		.refine((name) => name.trim() === name, { message: 'project name must be trimmed' }),
 });
 
 const SeedDataTableSchema = z.object({
@@ -121,12 +143,45 @@ export const SeedMessageSchema = seedMessageObjectSchema.superRefine((message, c
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
-	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
-	messages: z.array(SeedMessageSchema).min(1),
-	/** Workflows the history references, recreated on restore. */
-	workflows: z.array(SeedWorkflowSchema).default([]),
+	/** Native agent message log (user/assistant turns with resolved tool-call blocks).
+	 *  May be EMPTY: a seed can carry only instance fixtures (a seeded project) with no
+	 *  history at all. Emptiness is judged at the case level instead — a seed that
+	 *  carries nothing whatsoever is rejected there — because that is the only place
+	 *  that can see every slot at once. Kept permissive here so `remapSeedArtifactIds`
+	 *  can re-parse its own serialization: a fixture-only seed that also declares a
+	 *  workflow would otherwise throw mid-run on a min-1 it never violated. */
+	messages: z.array(SeedMessageSchema).default([]),
+	/** Workflows the history references, recreated on restore. Ids must be distinct:
+	 *  the restore index-aligns authored ids with their per-run remapped ones, and
+	 *  `remapSeedArtifactIds` rewrites references by sequential `replaceAll` — a
+	 *  duplicate would collapse both to one entry and one fresh id, so an `attach`
+	 *  or a message reference would point at the wrong workflow. */
+	workflows: z
+		.array(SeedWorkflowSchema)
+		.default([])
+		.refine(
+			(workflows) => new Set(workflows.map((workflow) => workflow.id)).size === workflows.length,
+			{ message: 'seed workflow ids must be unique — references resolve by id' },
+		),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
+	/** Agents the history built, recreated (and bound to the thread) on restore, so
+	 *  the live turn edits one that already exists. */
+	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
+	/** Team projects created before the live turn, so a project-scope case has a
+	 *  second project the user can SEE but must not be able to write to. Unlike
+	 *  every other artifact here these are instance-level, not thread-scoped, so
+	 *  they're created over the project API rather than by `restore-thread`.
+	 *  Names must be distinct — the case refers to them by name, and two projects
+	 *  sharing one would make "the Foobar project" ambiguous to the agent. */
+	projects: z
+		.array(SeedProjectSchema)
+		.max(5)
+		.default([])
+		.refine(
+			(projects) => new Set(projects.map((project) => project.name)).size === projects.length,
+			{ message: 'seed project names must be unique — a case refers to them by name' },
+		),
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
@@ -153,17 +208,27 @@ function isShorthandTurn(
 	);
 }
 
+/** Base for every timestamp this module stamps. A CONSTANT, not `Date.now()`: the
+ *  same case must yield the same messages on every parse, or the push diff (which
+ *  compares `seed`) reads a fresh timestamp as an edit and re-PATCHes the case on
+ *  every run forever. Only ordering depends on these values, and fixed past slots
+ *  order exactly as well. */
+const SEED_EPOCH_MS = Date.parse('2020-01-01T00:00:00.000Z');
+
+/** The slot for the message at `index` — ascending, and in the past, so array
+ *  order survives a store that presents messages by `createdAt`. */
+const seedStampAt = (index: number) => new Date(SEED_EPOCH_MS + index * 1000).toISOString();
+
 /**
  * Expand `{role, text}` shorthand messages into native llm envelopes; anything
  * else passes through for the envelope schema to validate.
  *
  * Array-level rather than per-message because the stamped timestamps ascend by
- * position — slightly in the past, so seeded history always orders before the
- * live turn and a shorthand author cannot get the ordering wrong. A full
- * envelope keeps its own authored `createdAt`.
+ * position, so seeded history always orders before the live turn and a shorthand
+ * author cannot get the ordering wrong. A full envelope keeps its own authored
+ * `createdAt` — see `normalizeSeedTimestamps` for when that is overridden.
  */
 export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
-	const base = Date.now() - (messages.length + 1) * 1000;
 	return messages.map((message, index) => {
 		if (!isShorthandTurn(message)) return message;
 		return {
@@ -178,48 +243,47 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 					text: Array.isArray(message.text) ? message.text.join('\n') : message.text,
 				},
 			],
-			createdAt: new Date(base + index * 1000).toISOString(),
+			createdAt: seedStampAt(index),
 		};
 	});
 }
 
 /**
- * Pull an inline seed's timestamps back into the past when the author put any of
- * them in the future.
+ * Restamp an inline seed's timestamps when the authored ones don't present the
+ * messages the way the array orders them: ascending, and entirely before the live
+ * turn. Only a full envelope can get this wrong (the shorthand stamps its own
+ * slots), and either failure makes the agent see its own history out of order.
  *
- * The shorthand stamps its own ascending pre-live timestamps, so it can't get
- * this wrong; a full envelope keeps what it was authored with, and a future
- * stamp sorts the seeded turn AFTER the live turn — the agent then sees its own
- * history out of order, and the judge grades a transcript that never happened.
+ * Restamps the WHOLE sequence, not just the offending entry: a per-message fix
+ * reorders relative to the array (`[future A, past B]` moves only A, leaving the
+ * store presenting B then A while the transcript still grades array order).
+ * Authored timestamps therefore survive only when already ascending and past.
  *
- * Restamps the WHOLE sequence, not just the offending entry. A per-message clamp
- * reorders relative to the array: `[future A, past B]` leaves B alone and moves A
- * to ~now, so the store presents B then A while `transcriptPrefixFromSeed` still
- * grades array order. Array order is the authority, so the rewrite reproduces it
- * on the same ascending slots the shorthand uses. Authored timestamps are
- * therefore only preserved when every one of them is already in the past.
- *
- * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a
- * real trace and never reaches this schema, so no real timestamp can be moved.
+ * Inline seeds only — a `replay` seed is reconstructed from a real trace and never
+ * reaches this schema, so no real timestamp can be moved.
  */
-export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
-	const now = Date.now();
+export function normalizeSeedTimestamps(messages: unknown[]): unknown[] {
 	const stampOf = (message: unknown): number | undefined => {
 		if (!isRecord(message) || typeof message.createdAt !== 'string') return undefined;
 		const at = Date.parse(message.createdAt);
 		// Unparseable is the envelope schema's error to report, not ours to paper over.
 		return Number.isNaN(at) ? undefined : at;
 	};
-	const anyFuture = messages.some((message) => (stampOf(message) ?? -Infinity) >= now);
-	if (!anyFuture) return messages;
 
-	const base = now - (messages.length + 1) * 1000;
+	const now = Date.now();
+	let previous = -Infinity;
+	const presentsInArrayOrder = messages.every((message) => {
+		const at = stampOf(message);
+		if (at === undefined) return true;
+		if (at >= now || at <= previous) return false;
+		previous = at;
+		return true;
+	});
+	if (presentsInArrayOrder) return messages;
+
 	return messages.map((message, index) => {
-		if (stampOf(message) === undefined) return message;
-		return {
-			...(message as Record<string, unknown>),
-			createdAt: new Date(base + index * 1000).toISOString(),
-		};
+		if (!isRecord(message) || stampOf(message) === undefined) return message;
+		return { ...message, createdAt: seedStampAt(index) };
 	});
 }
 
@@ -291,33 +355,58 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
 }
 
 /**
- * Give every seeded workflow a fresh id AND a per-restore unique name, rewriting
- * all references across the seed — so parallel iterations don't share (and
- * clobber) one workflow row, and a leftover copy can't be grounded on by name.
+ * Give every seeded workflow and agent a fresh id — and every workflow a
+ * per-restore unique name — rewriting all references across the seed, so parallel
+ * iterations don't share (and clobber) one row, and a leftover workflow copy can't
+ * be grounded on by name.
  *
- * The name rewrite is applied to `messages` ONLY, never inside `workflows[].nodes`.
- * Workflow names are short and human ("Batch loop"), so a blanket replace could hit
- * a node that happens to share the name and silently alter the restored graph —
- * which is exactly the "structural skeleton unchanged" guard a seeded case relies on.
+ * Agents get the id pass only: they are addressed by id, and an agent's name
+ * appears inside skill prose, where a blanket rename would rewrite instructions
+ * the case grades.
+ *
+ * The workflow name rewrite is applied to `messages` ONLY, never inside
+ * `workflows[].nodes` — names are short and human ("Batch loop"), so a blanket
+ * replace could hit a same-named node and silently alter the restored graph.
  */
-export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
-	if (seed.workflows.length === 0) return seed;
+export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
+	if (seed.workflows.length === 0 && seed.agents.length === 0) return seed;
 
-	const originalIds = new Set(seed.workflows.map((workflow) => workflow.id));
-	let serialized = JSON.stringify({ messages: seed.messages, workflows: seed.workflows });
-	for (const workflow of seed.workflows) {
-		// Workflow ids are long random tokens; a short id would risk rewriting
+	// Duplicates collapse in the id Set below, so both entries take ONE fresh id and
+	// the restore's second `create` on that pinned id aborts the whole seed. Refuse
+	// here rather than fail mid-restore — `workflows` has no such invariant either,
+	// but its duplicate NAMES are already refused further down.
+	const agentIds = seed.agents.map((agent) => agent.id);
+	const duplicateAgentId = agentIds.find((id, index) => agentIds.indexOf(id) !== index);
+	if (duplicateAgentId !== undefined) {
+		throw new Error(
+			`Seed declares two agents with id "${duplicateAgentId}". Each seeded agent is created at ` +
+				'its pinned id, so the second would abort the restore — give them distinct ids',
+		);
+	}
+
+	// Workflows and agents share one id space: a fresh id must miss every original,
+	// or this sequential replace could rewrite a not-yet-processed artifact's id.
+	const originalIds = new Set([
+		...seed.workflows.map((workflow) => workflow.id),
+		...seed.agents.map((agent) => agent.id),
+	]);
+	let serialized = JSON.stringify({
+		messages: seed.messages,
+		workflows: seed.workflows,
+		agents: seed.agents,
+	});
+	// Longest id first, for the same reason the name pass below sorts: if one id were a
+	// prefix of another ("abcdefgh" / "abcdefgh12"), rewriting the short one first would
+	// eat the long one's prefix and leave it with a derived id no later pass matches.
+	for (const id of [...originalIds].sort((a, b) => b.length - a.length)) {
+		// Artifact ids are long random tokens; a short id would risk rewriting
 		// unrelated substrings, so refuse instead of corrupting the seed.
-		if (workflow.id.length < 8) {
-			throw new Error(
-				`Seed workflow id "${workflow.id}" is too short to remap safely (need ≥8 chars)`,
-			);
+		if (id.length < 8) {
+			throw new Error(`Seed artifact id "${id}" is too short to remap safely (need ≥8 chars)`);
 		}
-		// Keep the fresh id disjoint from every original id so this sequential
-		// replace can't rewrite a not-yet-processed workflow's id.
 		let newId = generateNanoId();
 		while (originalIds.has(newId)) newId = generateNanoId();
-		serialized = serialized.replaceAll(workflow.id, newId);
+		serialized = serialized.replaceAll(id, newId);
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
@@ -365,9 +454,40 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	const rewrite = (s: string) => s.replace(mentionRe, (match) => renames.get(match) ?? match);
 	const messages = remapped.messages.map((message) => renameMentions(message, rewrite));
 
+	// A seeded agent's workflow tool addresses its workflow by DISPLAY NAME, so it
+	// has to follow the rename too or the restored agent points at a workflow that
+	// no longer exists under that name. Exact lookup, not the prose regex: the
+	// field holds nothing but the name.
+	const agents = remapped.agents.map((agent) => ({
+		...agent,
+		config: {
+			...agent.config,
+			...(agent.config.tools
+				? {
+						tools: agent.config.tools.map((tool) => {
+							if (tool.type !== 'workflow') return tool;
+							const renamed = renames.get(tool.workflow);
+							return renamed ? { ...tool, workflow: renamed } : tool;
+						}),
+					}
+				: {}),
+		},
+	}));
+
 	// Data table ids are remapped server-side on restore (id is generated, not
-	// pinnable), so carry them through untouched here.
-	return { ...remapped, messages, workflows, source: seed.source, dataTables: seed.dataTables };
+	// pinnable), so carry them through untouched here. `projects` likewise: the
+	// serialized blob above covers only the id-bearing artifacts, so anything not
+	// re-attached here comes back as the schema's `[]` default — silently dropping
+	// the fixture instead of failing.
+	return {
+		...remapped,
+		messages,
+		workflows,
+		agents,
+		source: seed.source,
+		dataTables: seed.dataTables,
+		projects: seed.projects,
+	};
 }
 
 // Transcript prefix — seeded history rendered for the judge/checks. Turns carry
@@ -445,7 +565,14 @@ const interpretPlan: SeedStepInterpreter = (call) => {
 // rendering as the live `workflows` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
-	if (!output || !(Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
+	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.
+	const setupOutcomeKeys = [
+		'completedNodes',
+		'nodesStillNeedingSetup',
+		'skippedByUser',
+		'skippedNodes',
+	];
+	if (!output || !setupOutcomeKeys.some((key) => Array.isArray(output[key]))) {
 		return null;
 	}
 	return extractSetupWizardOutcome(output);
@@ -512,4 +639,37 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 		args: call.input,
 		result: 'output' in block ? block.output : undefined,
 	};
+}
+
+/**
+ * The agent a seeded history LAST targeted — the one the restored thread continues,
+ * and so the one a case grades and executes.
+ *
+ * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
+ * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
+ * parent/helper seed would otherwise have the harness grade one agent while the
+ * thread continues the other.
+ */
+export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
+	const stamp = (m: Record<string, unknown>) => {
+		const raw = m.createdAt;
+		if (typeof raw !== 'string') return 0;
+		const parsed = Date.parse(raw);
+		return Number.isNaN(parsed) ? 0 : parsed;
+	};
+	const idOf = (m: Record<string, unknown>) => (typeof m.id === 'string' ? m.id : '');
+	let active: string | undefined;
+	for (const message of [...seed.messages].sort(
+		(a, b) => stamp(a) - stamp(b) || idOf(a).localeCompare(idOf(b)),
+	)) {
+		if (!Array.isArray(message.content)) continue;
+		for (const block of message.content) {
+			if (!isRecord(block) || block.type !== 'tool-call') continue;
+			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			const output = isRecord(block.output) ? block.output : undefined;
+			if (typeof output?.agentId === 'string') active = output.agentId;
+		}
+	}
+	return active;
 }

@@ -48,7 +48,7 @@ vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
-const user = mock<User>();
+const user = mock<User>({ id: 'user/123:raw' });
 
 const findByIdAndProjectId = vi.fn();
 const reconstructFromAgentEntity = vi.fn();
@@ -263,20 +263,22 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 
 		// The runtime was built with the eval instrumentation, uncached.
-		const [entityArg, , runType, integrationType, userArg, instrumentation] =
-			reconstructFromAgentEntity.mock.calls[0] as [
-				AgentEntity,
-				unknown,
-				string,
-				string | undefined,
-				User,
-				{ modelFetch?: unknown },
-			];
+		const call = reconstructFromAgentEntity.mock.calls[0] as [
+			AgentEntity,
+			unknown,
+			string,
+			string | undefined,
+			User,
+			{ modelFetch?: unknown },
+			...unknown[],
+		];
+		const [entityArg, , runType, integrationType, userArg, instrumentation] = call;
 		expect(entityArg.id).toBe('agent-1');
 		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
+		expect(call[7]).toBe('Gt4H3q6RzhJe9cTxQm6be0AdIZQlifuy3w9OPSykmYo');
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {
@@ -621,6 +623,38 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Agent run failed: aborted/);
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	// Killed for TIME, not by the builder. The harness classifies this off the wording
+	// ("exceeded its …s eval budget", `isServerBudgetStop`) and routes it to the timeout
+	// path; reported as a plain `Agent run failed:` it scored as a builder verdict —
+	// exactly the misattribution the budget plumbing exists to prevent.
+	it('reports a budget abort in the words the harness classifies as a timeout', async () => {
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate: vi
+					.fn()
+					.mockImplementation(async (_message, opts: { abortSignal: AbortSignal }) => {
+						// What AbortSignal.timeout does once the budget elapses.
+						await new Promise((resolve) => setTimeout(resolve, 5));
+						throw Object.assign(new Error('The operation was aborted due to timeout'), {
+							name: 'TimeoutError',
+							signalAborted: opts.abortSignal.aborted,
+						});
+					}),
+				close: vi.fn().mockResolvedValue(undefined),
+			},
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, {
+			...request,
+			timeoutMs: 1,
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
+		expect(result.errors[0]).not.toMatch(/Agent run failed/);
 	});
 
 	it('flips success off when the run finishes with a model error', async () => {

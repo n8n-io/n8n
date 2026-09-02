@@ -11,9 +11,12 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { AiUsageService } from './ai-usage.service';
+import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -21,8 +24,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -32,10 +34,6 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
-
-import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
-import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -115,8 +113,6 @@ export type PublicFrontendSettings = {
 export class FrontendService {
 	private settings: FrontendSettings;
 
-	private communityPackagesService?: CommunityPackagesService;
-
 	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
 
 	private publishedWorkflowCountRequest?: Promise<number>;
@@ -145,14 +141,6 @@ export class FrontendService {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
-		// @TODO: Move to community-packages module
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service.js').then(
-				({ CommunityPackagesService }) => {
-					this.communityPackagesService = Container.get(CommunityPackagesService);
-				},
-			);
-		}
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -220,6 +208,7 @@ export class FrontendService {
 			executionTimeout: this.globalConfig.executions.timeout,
 			maxExecutionTimeout: this.globalConfig.executions.maxTimeout,
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
+			excludeNodes: this.globalConfig.nodes.exclude,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
@@ -300,7 +289,7 @@ export class FrontendService {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: isApiKeyAuthEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
@@ -579,10 +568,6 @@ export class FrontendService {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
-		}
-
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
@@ -607,6 +592,7 @@ export class FrontendService {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 
@@ -621,7 +607,7 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+		if (this.licenseState.isWorkflowReviewsLicensed()) {
 			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
 		} else {
 			delete this.settings.workflowReviews;
@@ -764,11 +750,12 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
-		const { skipTypes } = this.globalConfig.credentials.overwrite;
+		const { showScopes = [], skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
 			delete credential.__skipManagedCreation;
+			delete credential.__showManagedOAuthScopes;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -791,6 +778,10 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			if (showScopes.includes(credential.name)) {
+				credential.__showManagedOAuthScopes = true;
 			}
 
 			// Inject the per-instance JWKS URI as the default of any `jwksUri`

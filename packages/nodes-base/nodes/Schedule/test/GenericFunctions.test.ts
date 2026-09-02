@@ -1,5 +1,6 @@
 import moment from 'moment-timezone';
-import type { INode } from 'n8n-workflow';
+import type { CronExpression, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import {
 	intervalToRecurrence,
@@ -7,9 +8,9 @@ import {
 	resetStaleRecurrence,
 	toCronExpression,
 	validateInterval,
+	withIntervalDefaults,
 } from '../GenericFunctions';
-import type { ScheduleInterval } from '../SchedulerInterface';
-import type { Mock } from 'vitest';
+import type { RawScheduleInterval, ScheduleInterval } from '../SchedulerInterface';
 
 vi.mock('moment-timezone');
 const mockedMoment = vi.mocked(moment);
@@ -207,6 +208,54 @@ describe('toCronExpression', () => {
 				'56 19 14 22 * *',
 			);
 		}
+	});
+});
+
+describe('withIntervalDefaults', () => {
+	it.each<[string, RawScheduleInterval, ScheduleInterval]>([
+		['an empty entry', {}, { field: 'days', daysInterval: 1 }],
+		[
+			'an entry with no field',
+			{ triggerAtHour: 7 },
+			{ field: 'days', daysInterval: 1, triggerAtHour: 7 },
+		],
+		[
+			'an unrecognized field',
+			{ field: 'daily' } as unknown as RawScheduleInterval,
+			{ field: 'days', daysInterval: 1 },
+		],
+		[
+			'a seconds entry with no size',
+			{ field: 'seconds' },
+			{ field: 'seconds', secondsInterval: 30 },
+		],
+		[
+			'a minutes entry with no size',
+			{ field: 'minutes' },
+			{ field: 'minutes', minutesInterval: 5 },
+		],
+		['an hours entry with no size', { field: 'hours' }, { field: 'hours', hoursInterval: 1 }],
+		['a days entry with no size', { field: 'days' }, { field: 'days', daysInterval: 1 }],
+		[
+			'a weeks entry with no size and no weekdays',
+			{ field: 'weeks' },
+			{ field: 'weeks', weeksInterval: 1, triggerAtDay: [0] },
+		],
+		['a months entry with no size', { field: 'months' }, { field: 'months', monthsInterval: 1 }],
+		[
+			'a cron entry with no expression',
+			{ field: 'cronExpression' },
+			{ field: 'cronExpression', expression: '' as CronExpression },
+		],
+	])('should complete %s', (_, stored, expected) => {
+		expect(withIntervalDefaults(stored)).toEqual(expected);
+	});
+
+	it('should keep an out-of-range size so validateInterval can report it', () => {
+		expect(withIntervalDefaults({ field: 'days', daysInterval: 0 })).toEqual({
+			field: 'days',
+			daysInterval: 0,
+		});
 	});
 });
 

@@ -140,7 +140,7 @@ Rules that apply to every migration — schema or data, common or DB-specific. R
 
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp must be strictly greater than every existing migration timestamp in this package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs unrecorded migrations in timestamp order, so inserting a value below the current max corrupts ordering on databases that have already executed the later migrations.
 
-Use the generator — it picks a safe timestamp, writes the scaffold, and registers the migration in the relevant `index.ts` files:
+Use the generator — it picks a safe timestamp, writes the scaffold, and regenerates the migration index files (`sqlite/index.ts` and `postgresdb/index.ts` are gitignored build artifacts, generated from the files on disk by `scripts/generate-migration-index.mjs` — never edit or commit them):
 
 ```sh
 pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,7 +19,14 @@ import type {
 import { Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { withOwnerKeys } from './owner-key';
 import { createSchedulerTracer } from './scheduler-tracer';
+
+/**
+ * Ceiling for a resolved misfire grace: the cap the config value carries, and well
+ * inside the column's `int` range.
+ */
+const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
 interface ProvisionScope {
@@ -28,6 +35,7 @@ interface ProvisionScope {
 	taskType: string;
 	payload: Record<string, unknown>;
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds?: number;
 }
 
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
@@ -107,9 +115,10 @@ export class DurableJobProvisioner {
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds?: number,
 	): Promise<ProvisionSummary> {
 		return await this.provisioner.provision(
-			{ workflowId, nodeId, taskType, payload, misfirePolicy },
+			{ workflowId, nodeId, taskType, payload, misfirePolicy, misfireGraceSeconds },
 			desired,
 		);
 	}
@@ -149,22 +158,29 @@ export class DurableJobProvisioner {
 		taskType,
 		payload,
 		misfirePolicy,
+		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
-		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
+		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
+			requestedMisfireGraceSeconds,
+			workflowId,
+			nodeId,
+		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
 				const outdatedPolicyJobIds: number[] = [];
+				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
 						for (const row of rows) {
-							if (
-								row.misfirePolicy !== misfirePolicy ||
-								row.misfireGraceSeconds !== misfireGraceSeconds
-							) {
+							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
+							if (graceChanged) {
+								outdatedGraceJobIds.push(row.id);
+							}
+							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
 								outdatedPolicyJobIds.push(row.id);
 							}
 						}
@@ -218,7 +234,7 @@ export class DurableJobProvisioner {
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
-					outdatedPolicyJobIds,
+					outdatedGraceJobIds,
 					misfireGraceSeconds,
 				);
 				// After all of provisioning's own writes (including withdrawing a
@@ -226,6 +242,52 @@ export class DurableJobProvisioner {
 				await this.seedInitialOccurrences(manager, seededJobIds);
 				return result;
 			});
+	}
+
+	private resolveMisfireGraceSeconds(
+		requested: unknown,
+		workflowId: string,
+		nodeId: string,
+	): number {
+		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
+			this.globalConfig.scheduler;
+
+		const numeric = Number(requested);
+		if (!Number.isFinite(numeric)) {
+			return misfireGraceSeconds;
+		}
+
+		const truncated = Math.trunc(numeric);
+		if (truncated < 1) {
+			return misfireGraceSeconds;
+		}
+
+		const floor = Math.min(
+			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
+			MAX_MISFIRE_GRACE_SECONDS,
+		);
+
+		if (!Number.isFinite(floor)) {
+			return misfireGraceSeconds;
+		}
+
+		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
+
+		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
+			this.logger.warn(
+				effective > truncated
+					? "Raised a node's misfire grace to the scheduler's minimum"
+					: "Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					workflowId,
+					nodeId,
+					requestedMisfireGraceSeconds: numeric,
+					misfireGraceSeconds: effective,
+				},
+			);
+		}
+
+		return effective;
 	}
 
 	/**
@@ -247,7 +309,7 @@ export class DurableJobProvisioner {
 
 		// DB time, not this instance's clock, so the seed sizes its window the way a
 		// poll would and every instance agrees on it (see `DueJobs.now`).
-		const now = await this.tasks.readDbTime();
+		const now = await this.tasks.readDbTime(manager);
 
 		const seedTransaction: RunInTransaction = async (work) =>
 			await work({
@@ -258,7 +320,9 @@ export class DurableJobProvisioner {
 					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
 						(job) => job.enabled && job.nextRunAt !== null,
 					);
-					return claimed.length > 0 ? { now, jobs: claimed } : undefined;
+					// Grouping never triggers here: every seeded job starts from a freshly
+					// computed `nextRunAt`, so none of them has missed anything yet.
+					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
 				},
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
