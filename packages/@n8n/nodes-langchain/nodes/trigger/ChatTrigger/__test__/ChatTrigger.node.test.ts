@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	INode,
 	INodeExecutionData,
+	IUser,
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
@@ -37,6 +38,9 @@ describe('ChatTrigger Node', () => {
 	const mockResponse = mock<Response>();
 	let chatTrigger: ChatTrigger;
 	let chatTriggerConfig: ChatTriggerConfig;
+	// Optional on `IWebhookFunctions`, so `mock<T>()` leaves it a plain function rather
+	// than a mock. Keep a typed handle and assign it onto the context each run.
+	const getTestWebhookUser = vi.fn<() => Promise<IUser | undefined>>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -73,6 +77,7 @@ describe('ChatTrigger Node', () => {
 
 		mockRequest.contentType = undefined;
 		mockContext.customData = mock<IWebhookFunctions['customData']>();
+		mockContext.getTestWebhookUser = getTestWebhookUser;
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
@@ -690,7 +695,7 @@ describe('ChatTrigger Node', () => {
 		beforeEach(() => {
 			mockContext.getMode.mockReturnValue('manual');
 			mockContext.isChatSessionTest.mockReturnValue(true);
-			mockContext.getTestWebhookUser.mockResolvedValue(editorUser);
+			getTestWebhookUser.mockResolvedValue(editorUser);
 		});
 
 		it('reports the editor user without running webhook auth', async () => {
@@ -707,7 +712,7 @@ describe('ChatTrigger Node', () => {
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(mockContext.getTestWebhookUser).not.toHaveBeenCalled();
+			expect(getTestWebhookUser).not.toHaveBeenCalled();
 			expect(emittedJson(result)).toEqual({ message: 'Hello' });
 		});
 
@@ -716,13 +721,13 @@ describe('ChatTrigger Node', () => {
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(mockContext.getTestWebhookUser).not.toHaveBeenCalled();
+			expect(getTestWebhookUser).not.toHaveBeenCalled();
 			expect(emittedJson(result)).toEqual({ message: 'Hello' });
 		});
 
 		it('emits no user, and does not throw, when the editor user cannot be resolved', async () => {
 			setParams();
-			mockContext.getTestWebhookUser.mockResolvedValue(undefined);
+			getTestWebhookUser.mockResolvedValue(undefined);
 
 			const result = await chatTrigger.webhook(mockContext);
 
@@ -806,7 +811,7 @@ describe('ChatTrigger Node', () => {
 			setParams();
 			mockContext.getMode.mockReturnValue('manual');
 			mockContext.isChatSessionTest.mockReturnValue(true);
-			mockContext.getTestWebhookUser.mockResolvedValue(undefined);
+			getTestWebhookUser.mockResolvedValue(undefined);
 
 			const result = await chatTrigger.webhook(mockContext);
 

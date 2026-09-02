@@ -952,7 +952,7 @@ export class ChatTrigger extends Node {
 				// Auth is skipped here, but the editor user who started the run is known, so
 				// report them under the same conditions production would.
 				if (authentication === 'n8nUserAuth') {
-					authedUser = await ctx.getTestWebhookUser();
+					authedUser = await ctx.getTestWebhookUser?.();
 				}
 			} else {
 				authedUser = await validateAuth(ctx);
