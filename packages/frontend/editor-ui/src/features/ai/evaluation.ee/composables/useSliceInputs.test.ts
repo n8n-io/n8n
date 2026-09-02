@@ -28,7 +28,7 @@ describe('readFirstInputItemViaGraph', () => {
 			runData,
 			connections,
 			'Agent',
-			new Set(['Eval Trigger']),
+			new Map([['Eval Trigger', false]]),
 		);
 		expect(result).toEqual({ chatInput: 'hello' });
 	});
@@ -45,16 +45,16 @@ describe('readFirstInputItemViaGraph', () => {
 			...runData,
 			'Webhook Trigger': runData['Manual Trigger'],
 		};
-		const result = readFirstInputItemViaGraph(bothRunData, ambiguous, 'Agent', new Set());
+		const result = readFirstInputItemViaGraph(bothRunData, ambiguous, 'Agent', new Map());
 		expect(result).toEqual({ chatInput: 'hello' });
 	});
 
 	it('returns undefined when the node has no parents', () => {
-		const result = readFirstInputItemViaGraph(runData, {}, 'Agent', new Set());
+		const result = readFirstInputItemViaGraph(runData, {}, 'Agent', new Map());
 		expect(result).toBeUndefined();
 	});
 
-	it("strips Evaluation Trigger metadata fields when it is the AI node's sole parent", () => {
+	it("strips Evaluation Trigger metadata fields when it is the AI node's sole parent (Google Sheets source)", () => {
 		// No Set node between the trigger and the AI node: the trigger's own
 		// output (including its `_rowsLeft`/`row_number` metadata) is read directly.
 		const evalOnlyConnections: IConnections = {
@@ -77,9 +77,40 @@ describe('readFirstInputItemViaGraph', () => {
 			evalOnlyRunData,
 			evalOnlyConnections,
 			'Agent',
-			new Set(['Eval Trigger']),
+			new Map([['Eval Trigger', false]]),
 		);
 		expect(result).toEqual({ ticket_text: 'help me' });
+	});
+
+	it('keeps a genuine `id`/`createdAt` sheet column for a Google Sheets-sourced trigger', () => {
+		// The Data table bookkeeping columns are only metadata for the Data table
+		// source — a Google Sheets dataset can legitimately have its own columns
+		// with these names, and they must survive.
+		const evalOnlyConnections: IConnections = {
+			'Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+		};
+		const evalOnlyRunData: IRunData = {
+			'Eval Trigger': [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: {
+						main: [
+							[{ json: { id: 'INV-1', createdAt: '2026-01-01', row_number: 1, _rowsLeft: 4 } }],
+						],
+					},
+				},
+			],
+		};
+		const result = readFirstInputItemViaGraph(
+			evalOnlyRunData,
+			evalOnlyConnections,
+			'Agent',
+			new Map([['Eval Trigger', false]]),
+		);
+		expect(result).toEqual({ id: 'INV-1', createdAt: '2026-01-01' });
 	});
 
 	it('strips Data table row bookkeeping columns (id/row_id/createdAt/updatedAt) from a Data table-sourced trigger', () => {
@@ -119,7 +150,7 @@ describe('readFirstInputItemViaGraph', () => {
 			evalOnlyRunData,
 			evalOnlyConnections,
 			'Agent',
-			new Set(['Eval Trigger']),
+			new Map([['Eval Trigger', true]]),
 		);
 		expect(result).toEqual({ ticket_text: 'help me' });
 	});
