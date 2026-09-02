@@ -7,7 +7,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
@@ -59,12 +59,12 @@ export class ProjectExporter {
 			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
 
-		const allocator = new UniqueFilenameAllocator('projects', 'project');
+		const projectsDir = packageDirectory('projects');
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const target = allocator.allocate(project.name);
-			results.push(await this.exportProject(project, target, request));
+			const entry = createManifestEntry('projects', projectsDir, project);
+			results.push(await this.exportProject(project, entry, request));
 		}
 
 		return this.mergeProjectExportResults(results);
@@ -72,15 +72,16 @@ export class ProjectExporter {
 
 	private async exportProject(
 		project: Project,
-		target: string,
+		entry: ManifestEntry,
 		request: ProjectExportRequest,
 	): Promise<ProjectExportResult> {
+		const { target } = entry;
 		await this.exportProjectShell(project, target, request.writer);
 		const folders = await this.exportProjectFolders(project.id, target, request);
 		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
 
 		return {
-			entries: [{ id: project.id, name: project.name, target }],
+			entries: [entry],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),

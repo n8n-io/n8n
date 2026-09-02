@@ -12,7 +12,7 @@ import type {
 	VariableExportResult,
 	WorkflowVariableRequirement,
 } from './variable.types';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
@@ -67,17 +67,6 @@ export class VariableExporter {
 
 		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
 
-		// One allocator per base directory: `variables/` and each
-		// `projects/<slug>/variables/` suffix collisions independently.
-		const allocators = new Map<string, UniqueFilenameAllocator>();
-		const allocatorFor = (baseDir: string) => {
-			const existing = allocators.get(baseDir);
-			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'variable');
-			allocators.set(baseDir, created);
-			return created;
-		};
-
 		const entries: ManifestEntry[] = [];
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
@@ -90,17 +79,20 @@ export class VariableExporter {
 				bundledVariableIds.add(variable.id);
 
 				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(variable.key);
-				await request.writer.writeDirectory(target);
+				const entry = createManifestEntry('variables', baseDir, {
+					id: variable.id,
+					name: variable.key,
+				});
+				await request.writer.writeDirectory(entry.target);
 				await request.writer.writeFile(
-					`${target}/variable.json`,
+					`${entry.target}/variable.json`,
 					JSON.stringify(
 						this.serializeOrBlock(variable, request.includeVariableValues),
 						null,
 						'\t',
 					),
 				);
-				entries.push({ id: variable.id, name: variable.key, target });
+				entries.push(entry);
 			}
 
 			requirements.push({ name, usedByWorkflows });
@@ -169,9 +161,9 @@ export class VariableExporter {
 	}
 
 	private resolveBaseDir(variable: Variables, projectTargetsById?: Map<string, string>): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return 'variables';
+		if (!projectTargetsById || projectTargetsById.size === 0) return packageDirectory('variables');
 		const prefix = variable.project ? projectTargetsById.get(variable.project.id) : undefined;
-		return prefix ? `${prefix}/variables` : 'variables';
+		return packageDirectory('variables', prefix);
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {

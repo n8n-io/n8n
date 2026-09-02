@@ -243,7 +243,7 @@ describe('folder package export', () => {
 		const { manifest, entries } = await readExport(stream);
 
 		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
-		expect(childEntry?.target).toBe('workflows/external-child');
+		expect(childEntry?.target).toBe(`workflows/external-child-${externalChild.id}`);
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
 		expect(manifest.requirements?.workflows).toEqual([
 			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
@@ -317,7 +317,7 @@ describe('folder package export', () => {
 		expect(folderShell(entries, grandchildEntry.target).parentFolderId).toBe(child.id);
 	});
 
-	it('disambiguates same-named sibling folders by creation order', async () => {
+	it('gives same-named sibling folders their own targets', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const older = await createFolder(project, {
@@ -338,9 +338,9 @@ describe('folder package export', () => {
 
 		const olderTarget = manifest.folders!.find((f) => f.id === older.id)!.target;
 		const newerTarget = manifest.folders!.find((f) => f.id === newer.id)!.target;
-		// Oldest keeps the bare slug; the allocator suffixes the newer one.
-		expect(olderTarget).toBe('folders/inprogress');
-		expect(newerTarget).toBe('folders/inprogress-2');
+		// Each keeps its own id, so neither target depends on which was created first.
+		expect(olderTarget).toBe(`folders/inprogress-${older.id}`);
+		expect(newerTarget).toBe(`folders/inprogress-${newer.id}`);
 	});
 
 	it('re-roots an exported folder whose parent is left out of the export', async () => {
@@ -507,7 +507,7 @@ describe('folder package export — with contained workflows', () => {
 			{
 				id: variable.id,
 				name: 'API_URL',
-				target: 'variables/apiurl',
+				target: `variables/apiurl-${variable.id}`,
 			},
 		]);
 		expect(manifest.requirements).toEqual({
@@ -602,8 +602,8 @@ describe('folder package export — with contained workflows', () => {
 		const subfolderTarget = manifest.folders!.find((f) => f.id === subfolder.id)!.target;
 		const workflowTarget = manifest.workflows!.find((w) => w.id === workflow.id)!.target;
 
-		// The subfolder is suffixed; the workflow stays under the parent's container.
-		expect(subfolderTarget).toMatch(/\/workflows-2$/);
+		// The subfolder carries its id; the workflow stays under the parent's container.
+		expect(subfolderTarget).toMatch(new RegExp(`/workflows-${subfolder.id}$`));
 		expect(workflowTarget.startsWith(`${subfolderTarget}/`)).toBe(false);
 	});
 

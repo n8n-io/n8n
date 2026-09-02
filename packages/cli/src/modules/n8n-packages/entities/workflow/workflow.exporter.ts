@@ -5,9 +5,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
+import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
@@ -77,28 +77,21 @@ export class WorkflowExporter {
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
-		const fileNames = new UniqueFilenameAllocator(
-			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
-			'workflow',
-		);
+		const workflowsDir = packageDirectory('workflows', request.basePrefix);
 
 		for (const workflow of workflowsForExport) {
-			const target = fileNames.allocate(workflow.name);
+			const entry = createManifestEntry('workflows', workflowsDir, workflow);
 			const serialized = this.workflowSerializer.serialize(workflow, {
 				includeTags: request.includeTags,
 			});
 
-			await request.writer.writeDirectory(target);
+			await request.writer.writeDirectory(entry.target);
 			await request.writer.writeFile(
-				`${target}/workflow.json`,
+				`${entry.target}/workflow.json`,
 				JSON.stringify(serialized, null, '\t'),
 			);
 
-			entries.push({
-				id: workflow.id,
-				name: workflow.name,
-				target,
-			});
+			entries.push(entry);
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));

@@ -8,7 +8,7 @@ import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { WorkflowCredentialRequirement } from './credential.types';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
@@ -42,16 +42,6 @@ export class CredentialExporter {
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
-		// One allocator per base directory: `credentials/` and each
-		// `projects/<slug>/credentials/` suffix collisions independently.
-		const allocators = new Map<string, UniqueFilenameAllocator>();
-		const allocatorFor = (baseDir: string) => {
-			const existing = allocators.get(baseDir);
-			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'credential');
-			allocators.set(baseDir, created);
-			return created;
-		};
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
@@ -82,13 +72,13 @@ export class CredentialExporter {
 						).getData(),
 				);
 				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(name);
-				await request.writer.writeDirectory(target);
+				const entry = createManifestEntry('credentials', baseDir, { id, name });
+				await request.writer.writeDirectory(entry.target);
 				await request.writer.writeFile(
-					`${target}/credential.json`,
+					`${entry.target}/credential.json`,
 					JSON.stringify(this.credentialSerializer.serialize(credential, { data }), null, '\t'),
 				);
-				entries.push({ id, name, target });
+				entries.push(entry);
 			}
 
 			requirements.push({ id, name, type, usedByWorkflows });
@@ -106,12 +96,13 @@ export class CredentialExporter {
 		credential: CredentialsEntity,
 		projectTargetsById?: Map<string, string>,
 	): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return 'credentials';
+		if (!projectTargetsById || projectTargetsById.size === 0)
+			return packageDirectory('credentials');
 		const ownerProjectId = credential.shared?.find(
 			(sharing) => sharing.role === 'credential:owner',
 		)?.projectId;
 		const prefix = ownerProjectId ? projectTargetsById.get(ownerProjectId) : undefined;
-		return prefix ? `${prefix}/credentials` : 'credentials';
+		return packageDirectory('credentials', prefix);
 	}
 
 	private groupByCredentialId(
