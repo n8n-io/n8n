@@ -15,6 +15,7 @@ import {
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishBlockedErrorPublicDto,
+	WorkflowPublishForbiddenErrorPublicDto,
 	WorkflowPublishPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
@@ -79,6 +80,11 @@ const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
 	'`workflowReviewRequestId` are present; the update itself is still saved as a draft) or a ' +
 	'webhook path conflict.';
+
+const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
+	'The update would re-publish the workflow, but the API key lacks `workflow:activate` or the ' +
+	'caller lacks `workflow:publish` on the project. The update is still saved as a draft, named ' +
+	'by `versionId`, and the published version stays live.';
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -379,10 +385,19 @@ export class WorkflowsPublicController {
 	@ApiSummary('Update a workflow')
 	@ApiDescription(
 		'Update a workflow. If the workflow is published, the updated version will be ' +
-			'automatically re-published unless `publishIfActive` is set to `false`.',
+			'automatically re-published unless `publishIfActive` is set to `false`. Because that ' +
+			're-publication puts a new version live, it additionally requires the `workflow:activate` ' +
+			'API key scope and the `workflow:publish` project permission. A caller without either can ' +
+			'still save: the new version is stored as a draft and the response is a `403` naming the ' +
+			'missing permission, leaving the published version live. Saving an unpublished workflow, ' +
+			'or saving with `publishIfActive=false`, only needs `workflow:update`.',
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(403, {
+		dto: WorkflowPublishForbiddenErrorPublicDto,
+		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
+	})
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(422)
 	@ApiErrorResponse(409, {
@@ -413,6 +428,8 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					// A save can publish, so the key's publish scope has to be enforced too
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
 				},
 			);

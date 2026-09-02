@@ -26,10 +26,6 @@ export type InstanceAiEventMap = {
 		latencyMs: number;
 		trees: number;
 	};
-	/** History rendered from the message-derived fallback ladder instead of a renderable snapshot tree. */
-	'instance-ai-parser-fallback': {
-		count: number;
-	};
 	/** The interrupted-run sweep resolved a crashed run. */
 	'instance-ai-run-swept': {
 		outcome: 'interrupted' | 'crash-resumed';
@@ -40,7 +36,9 @@ export type InstanceAiEventMap = {
 		status: 'completed' | 'cancelled' | 'error' | 'suspended';
 		/** Wall-clock duration of the run, or undefined when the start time is unknown. */
 		durationMs?: number;
-		/** Model identifier for built-in providers; 'custom' for OpenAI-compatible/native instances. */
+		/** Model identifier for managed models (built-in providers and proxy-built
+		 *  instances); 'custom' for user-configured OpenAI-compatible endpoints,
+		 *  whose free-form ids would inflate the metric label's cardinality. */
 		model: string;
 		toolCalls: number;
 		toolErrors: number;
