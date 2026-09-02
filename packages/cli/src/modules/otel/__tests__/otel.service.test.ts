@@ -487,6 +487,22 @@ describe('OtelService', () => {
 			);
 		});
 
+		it('tears down partially installed providers when the SDK start call throws', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			start.mockImplementationOnce(() => {
+				throw new Error('provider registration failed');
+			});
+
+			await expect(service.init()).resolves.not.toThrow();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to start OpenTelemetry tracing, so tracing stays off',
+				{ error: 'provider registration failed' },
+			);
+			expect(shutdown).toHaveBeenCalledTimes(1);
+			expect(trace.disable).toHaveBeenCalledTimes(1);
+		});
+
 		it('leaves the service in a non-exporting state when a restart fails', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			await service.init();
@@ -623,6 +639,21 @@ describe('OtelService', () => {
 					error: 'ECONNREFUSED on the new endpoint',
 				},
 			);
+		});
+
+		it('discards a probe that fails while the service is shutting down', async () => {
+			let rejectProbe!: (error: Error) => void;
+			fetchMock.mockImplementation(
+				async () => await new Promise<never>((_, reject) => (rejectProbe = reject)),
+			);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			await service.init();
+
+			await service.shutdown();
+			rejectProbe(new Error('ECONNREFUSED on the endpoint being left'));
+			await flushPromises();
+
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it('logs string errors that are not Error instances', async () => {

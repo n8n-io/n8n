@@ -122,6 +122,8 @@ export class OtelService {
 			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
 				error: error instanceof Error ? error.message : String(error),
 			});
+			// `NodeSDK.start()` can throw after it installed some global providers.
+			await this.shutdown();
 			return;
 		}
 
@@ -129,6 +131,8 @@ export class OtelService {
 	}
 
 	async shutdown(): Promise<void> {
+		// A probe that fails during teardown must not log for the endpoint n8n is leaving.
+		this.startGeneration++;
 		try {
 			await this.sdk?.shutdown();
 		} catch (error) {

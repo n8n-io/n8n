@@ -2,8 +2,9 @@ type: object
 additionalProperties: false
 description: >
   The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a
-  full replacement: every field must be provided. Fields managed declaratively via environment
-  variables are returned with their effective value and ignored on write.
+  full replacement: every field must be provided, except `exporterProtocol`, which defaults to
+  `http/protobuf` when omitted. Fields managed declaratively via environment variables are
+  returned with their effective value and ignored on write.
 required:
   - enabled
   - exporterEndpoint
