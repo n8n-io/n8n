@@ -15,7 +15,7 @@ const table = 'instance_ai_run_snapshots';
  * trace/LangSmith ids added by later migrations) so a rollback restores a
  * structurally-identical table — the historical rows are not recoverable.
  */
-export class DropInstanceAiRunSnapshotsTable1787816860559 implements ReversibleMigration {
+export class DropInstanceAiRunSnapshotsTable1788336311704 implements ReversibleMigration {
 	async up({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropTable(table);
 	}
