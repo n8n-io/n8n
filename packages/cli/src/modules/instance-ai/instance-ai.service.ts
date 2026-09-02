@@ -52,7 +52,6 @@ import {
 	createDomainAccessTracker,
 	BackgroundTaskManager,
 	MemoryTaskRegistry,
-	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
 	getDateTimeSection,
@@ -187,11 +186,11 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
+import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { isStreamTransportError } from './stream-transport-error';
@@ -630,7 +629,6 @@ type UnclaimedResumeContext = {
 	runId: string;
 	user: User;
 	signal: AbortSignal;
-	snapshotStorage: DbSnapshotStorage;
 	tracing?: InstanceAiTraceContext;
 	messageGroupId?: string;
 	unregisteredResumeTracing?: InstanceAiTraceContext;
@@ -823,7 +821,7 @@ export class InstanceAiService {
 		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
-		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
@@ -862,7 +860,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			pendingConfirmationRepo: this.pendingConfirmationRepo,
 			runState: this.runState,
-			dbSnapshotStorage: this.dbSnapshotStorage,
 			eventBus: this.eventBus,
 			rebuilder: {
 				rebuildSuspendedRun: this.rebuildSuspendedRunFromCheckpoint.bind(this),
@@ -894,7 +891,7 @@ export class InstanceAiService {
 				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
 			},
 			runState: this.runState,
-			dbSnapshotStorage: this.dbSnapshotStorage,
+			eventLog: this.eventLogRepository,
 			aiService: this.aiService,
 		});
 		this.sandboxService = new InstanceAiSandboxService({
@@ -915,7 +912,6 @@ export class InstanceAiService {
 				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
 				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
 			},
-			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
 			errorReporter: this.instanceAiErrorReporter,
@@ -926,8 +922,6 @@ export class InstanceAiService {
 			publishRunFinish: (threadId, runId, status, reason) => {
 				this.publishRunFinish(threadId, runId, status, reason);
 			},
-			saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
-				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
@@ -1434,15 +1428,7 @@ export class InstanceAiService {
 					status: 'cancelled',
 				},
 			});
-			void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
-				void this.saveAgentTreeSnapshot(
-					threadId,
-					task.runId,
-					this.dbSnapshotStorage,
-					true,
-					task.messageGroupId,
-				);
-			});
+			void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
@@ -1498,18 +1484,7 @@ export class InstanceAiService {
 			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
-		// Persist the updated agent tree so cancelled status survives page reload.
-		// The onSettled callback in executeTask is skipped for aborted tasks,
-		// so we must save the snapshot explicitly here.
-		void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
-			void this.saveAgentTreeSnapshot(
-				threadId,
-				task.runId,
-				this.dbSnapshotStorage,
-				true,
-				task.messageGroupId,
-			);
-		});
+		void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
@@ -1733,13 +1708,6 @@ export class InstanceAiService {
 			},
 			onSettled: async (task) => {
 				await this.terminalOutcome.recordBackgroundTerminalOutcome(task);
-				await this.saveAgentTreeSnapshot(
-					threadId,
-					runId,
-					this.dbSnapshotStorage,
-					true,
-					messageGroupId,
-				);
 			},
 		});
 
@@ -1880,10 +1848,9 @@ export class InstanceAiService {
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
 			// `restart_lost_confirmation` UserError + `run-finish` when (if)
-			// the user clicks confirm. If we publish run-finish + re-save the
-			// snapshot here, we'd permanently overwrite the plan/ask card with
-			// a `status: 'cancelled'` tree before the user has a chance to see
-			// it on reload.
+			// the user clicks confirm. If we publish run-finish here, the fold
+			// would render the plan/ask card as cancelled before the user has a
+			// chance to see it on reload.
 			if (threadsWithPendingHitl.has(run.threadId)) {
 				await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 					status: 'cancelled',
@@ -1892,20 +1859,16 @@ export class InstanceAiService {
 				// Record the policy *before* the abort fires so the run's catch
 				// handler (which runs synchronously off the abort) sees the
 				// flag. The catch path consults `shouldPreserveHitlOnShutdown`
-				// and skips the terminal-fallback / run-finish / snapshot
-				// writes that would otherwise overwrite the plan/ask card.
+				// and skips the terminal-fallback / run-finish writes that
+				// would otherwise overwrite the plan/ask card.
 				this.preserveHitlOnShutdown.add(run.runId);
 				run.abortController.abort();
 				continue;
 			}
 
-			// Truly mid-stream run: publish run-finish first so the terminal
-			// event lands in the event bus before the snapshot reads it;
-			// saveAgentTreeSnapshot rebuilds the tree from the bus, so without
-			// this order the persisted tree would still look mid-stream after
-			// the process is gone.
+			// Truly mid-stream run: the durable run-finish is all history needs —
+			// the fold derives the terminal tree from the log after restart.
 			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
-			await this.persistShutdownSnapshot(run.threadId, run.runId, run.messageGroupId);
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
@@ -2128,33 +2091,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Save the in-flight agent tree as a terminal snapshot so the UI doesn't
-	 * sit on a half-rendered turn after the process restarts. Best-effort: a
-	 * DB write failure here must not block the rest of shutdown.
-	 */
-	private async persistShutdownSnapshot(
-		threadId: string,
-		runId: string,
-		messageGroupId: string | undefined,
-	): Promise<void> {
-		try {
-			await this.saveAgentTreeSnapshot(
-				threadId,
-				runId,
-				this.dbSnapshotStorage,
-				true,
-				messageGroupId,
-			);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist shutdown snapshot', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
 	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
@@ -2345,11 +2281,8 @@ export class InstanceAiService {
 	 * reconnecting client never misses a result that completed while its stream
 	 * was closed. Delegates to {@link InstanceAiTerminalOutcomeService}.
 	 */
-	async replayUndeliveredTerminalOutcomes(
-		threadId: string,
-		options: { delivery?: 'snapshot' | 'event' } = {},
-	): Promise<void> {
-		await this.terminalOutcome.replayUndeliveredTerminalOutcomes(threadId, options);
+	async replayUndeliveredTerminalOutcomes(threadId: string): Promise<void> {
+		await this.terminalOutcome.replayUndeliveredTerminalOutcomes(threadId);
 	}
 
 	private async syncPlannedTasksToUi(threadId: string, graph: PlannedTaskGraph): Promise<void> {
@@ -2545,7 +2478,6 @@ export class InstanceAiService {
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
-		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTasks = this.createWorkflowTaskServiceWithUiSync(
 			threadId,
@@ -2653,7 +2585,6 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			eventBus: this.eventBus,
 			logger: this.logger,
-			outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
@@ -2714,19 +2645,10 @@ export class InstanceAiService {
 						messageGroupId,
 						kind: 'inline',
 					});
-
-					// Inline HITL (plan approval / sub-agent asks)
-					// keeps the orchestrator run active, so the normal suspended/completed
-					// snapshot paths do not execute. Queue a snapshot after the current
-					// confirmation-request event is published to preserve refresh recovery.
-					queueMicrotask(() => {
-						void this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-					});
 				});
 			},
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
-			spawnBackgroundTask: (opts) =>
-				this.spawnBackgroundTask(runId, opts, snapshotStorage, messageGroupId),
+			spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, messageGroupId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			plannedTaskService,
@@ -2748,7 +2670,6 @@ export class InstanceAiService {
 			memory,
 			taskStorage,
 			iterationLog,
-			snapshotStorage,
 			workflowTasks,
 			plannedTaskService,
 			modelId,
@@ -3665,7 +3586,6 @@ export class InstanceAiService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
-		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
 		let streamReached = false;
 		/** Declared out here so the terminal handlers below can see it. */
@@ -3766,14 +3686,24 @@ export class InstanceAiService {
 				this.runDebugBuffer.ensure(runId, threadId, buildRunDebugLabel({ message, resumeReason }));
 			}
 
-			// Publish run-start (includes userId for audit trail attribution)
+			// Publish run-start (includes userId for audit trail attribution). The
+			// LangSmith ids ride here so user feedback can annotate the trace after
+			// a restart — the durable log is their only home.
 			const traceId = tracing?.rootRun.otelTraceId;
+			const langsmithRunId = tracing?.rootRun.id;
+			const langsmithTraceId = tracing?.rootRun.traceId;
 			this.eventBus.publish(threadId, {
 				type: 'run-start',
 				runId,
 				agentId: orchestratorAgentId(runId),
 				userId: user.id,
-				payload: { messageId, messageGroupId, ...(traceId ? { traceId } : {}) },
+				payload: {
+					messageId,
+					messageGroupId,
+					...(traceId ? { traceId } : {}),
+					...(langsmithRunId ? { langsmithRunId } : {}),
+					...(langsmithTraceId ? { langsmithTraceId } : {}),
+				},
 			});
 
 			// Check if already cancelled before starting agent work
@@ -3802,13 +3732,10 @@ export class InstanceAiService {
 				executionPushRef,
 				proxyRunConfig,
 			);
-			activeSnapshotStorage = environment.snapshotStorage;
-
 			const {
 				context,
 				memory,
 				taskStorage,
-				snapshotStorage,
 				workflowTasks,
 				plannedTaskService,
 				modelId,
@@ -4110,7 +4037,6 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
-							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -4122,7 +4048,6 @@ export class InstanceAiService {
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
-						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
@@ -4206,7 +4131,6 @@ export class InstanceAiService {
 						threadId,
 						runId,
 						abortController,
-						snapshotStorage,
 						tracing,
 					});
 					return;
@@ -4217,10 +4141,6 @@ export class InstanceAiService {
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
-				// Persist the agent tree so the confirmation UI survives page refresh.
-				// The tree is rebuilt from in-memory events and includes the
-				// confirmation-request data that the frontend needs.
-				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				const suspensionOutputs = buildSuspensionTraceOutputs(runId, result.suspension);
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
@@ -4331,7 +4251,7 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
-			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
+			await this.finalizeRun(threadId, runId, result.status, {
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
@@ -4421,9 +4341,6 @@ export class InstanceAiService {
 					archivedWorkflowIds,
 					user.id,
 				);
-				if (activeSnapshotStorage) {
-					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
-				}
 				return;
 			}
 
@@ -4497,9 +4414,6 @@ export class InstanceAiService {
 				user.id,
 				{ errorMessage, errorSource: 'exception' },
 			);
-			if (activeSnapshotStorage) {
-				await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
-			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
@@ -5337,7 +5251,6 @@ export class InstanceAiService {
 					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
 					messageGroupId,
 					user: activeUser,
-					snapshotStorage: this.dbSnapshotStorage,
 				});
 				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
@@ -5357,7 +5270,6 @@ export class InstanceAiService {
 			suspendPayload,
 			signal: abortController.signal,
 			abortController,
-			snapshotStorage: this.dbSnapshotStorage,
 			tracing: effectiveTracing,
 			orchestrationContext: resumeOrchestrationContext,
 			modelId: resumeModelId,
@@ -5391,7 +5303,6 @@ export class InstanceAiService {
 			suspendPayload?: Record<string, unknown>;
 			signal: AbortSignal;
 			abortController: AbortController;
-			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
 			orchestrationContext?: OrchestrationContext;
 			modelId?: ModelConfig;
@@ -5489,7 +5400,6 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
-							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -5502,7 +5412,6 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
-						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
@@ -5591,7 +5500,6 @@ export class InstanceAiService {
 						threadId: opts.threadId,
 						runId: opts.runId,
 						abortController: opts.abortController,
-						snapshotStorage: opts.snapshotStorage,
 						tracing: opts.tracing,
 					});
 					return;
@@ -5602,9 +5510,6 @@ export class InstanceAiService {
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
-				// Persist the refreshed agent tree so repeated HITL waits
-				// survive page refresh after a resume as well.
-				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				const suspensionOutputs = buildSuspensionTraceOutputs(opts.runId, result.suspension);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
@@ -5718,7 +5623,7 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				userId: opts.user.id,
 				// Forward modelId so title refinement fires on the resume path too — a run
 				// that suspends for HITL and completes here would otherwise never be titled.
@@ -5815,7 +5720,6 @@ export class InstanceAiService {
 					archivedWorkflowIds,
 					opts.user.id,
 				);
-				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 
@@ -5892,7 +5796,6 @@ export class InstanceAiService {
 				opts.user.id,
 				{ errorMessage, errorSource: 'exception' },
 			);
-			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
@@ -6008,7 +5911,6 @@ export class InstanceAiService {
 					reason,
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
-					snapshotStorage: opts.snapshotStorage,
 				});
 				return;
 			}
@@ -6043,7 +5945,6 @@ export class InstanceAiService {
 					// message group has to come from the suspended run, not the trace registry.
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
-					snapshotStorage: opts.snapshotStorage,
 				});
 				return;
 
@@ -6055,8 +5956,7 @@ export class InstanceAiService {
 	/**
 	 * Terminalizes a run that ended in a stop or a failure. `publishRunFinish` is
 	 * the one step that has to land — without it the chat hangs forever — so every
-	 * DB-touching step around it is best-effort. `saveAgentTreeSnapshot` rebuilds
-	 * the agent tree by folding the event bus, so it has to come last.
+	 * DB-touching step around it is best-effort.
 	 */
 	private async emitTerminalRun(args: {
 		threadId: string;
@@ -6067,7 +5967,6 @@ export class InstanceAiService {
 		errorInfo?: RunFinishErrorInfo;
 		messageGroupId?: string;
 		user: User;
-		snapshotStorage: DbSnapshotStorage;
 	}): Promise<void> {
 		const { threadId, runId, status } = args;
 		const context = { threadId, runId };
@@ -6104,12 +6003,6 @@ export class InstanceAiService {
 			args.user.id,
 			args.errorInfo,
 		);
-
-		await this.bestEffort(
-			'Failed to save the agent tree snapshot for a settling run',
-			context,
-			async () => await this.saveAgentTreeSnapshot(threadId, runId, args.snapshotStorage),
-		);
 	}
 
 	private async bestEffort<T>(
@@ -6130,7 +6023,6 @@ export class InstanceAiService {
 	private spawnBackgroundTask(
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
 	): SpawnBackgroundTaskResult {
 		const outcome = this.backgroundTasks.spawn({
@@ -6215,13 +6107,6 @@ export class InstanceAiService {
 			},
 			onSettled: async (task) => {
 				await this.terminalOutcome.recordBackgroundTerminalOutcome(task);
-				await this.saveAgentTreeSnapshot(
-					opts.threadId,
-					runId,
-					snapshotStorage,
-					true,
-					task.messageGroupId,
-				);
 
 				// Auto-follow-up: when the last background task finishes and no
 				// orchestrator run is active, resume the orchestrator so it can
@@ -6536,14 +6421,6 @@ export class InstanceAiService {
 			suspended.user.id,
 		);
 
-		// Persist the snapshot so the run-finish event (which clears
-		// in-flight tool calls) is reflected in the stored tree.
-		await this.saveAgentTreeSnapshot(
-			suspended.threadId,
-			suspended.runId,
-			this.dbSnapshotStorage,
-			true,
-		);
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
@@ -6712,7 +6589,6 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
-		snapshotStorage: DbSnapshotStorage,
 		options?: {
 			userId?: string;
 			modelId?: ModelConfig;
@@ -6733,7 +6609,6 @@ export class InstanceAiService {
 			options?.errorInfo,
 		);
 		this.emitRunMetrics(threadId, status, options);
-		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
@@ -6888,70 +6763,6 @@ export class InstanceAiService {
 	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
-	}
-
-	/**
-	 * Build an agent tree from in-memory events and persist it as a thread metadata snapshot.
-	 * @param isUpdate If true, updates the existing snapshot for this runId (background task completion).
-	 */
-	private async saveAgentTreeSnapshot(
-		threadId: string,
-		runId: string,
-		snapshotStorage: DbSnapshotStorage,
-		isUpdate = false,
-		overrideMessageGroupId?: string,
-	): Promise<void> {
-		try {
-			const messageGroupId = overrideMessageGroupId ?? this.runState.getMessageGroupId(threadId);
-
-			let events: InstanceAiEvent[];
-			let groupRunIds: string[] | undefined;
-			if (messageGroupId) {
-				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
-				if (groupRunIds.length === 0) {
-					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
-					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
-				}
-				events = await this.readRunEvents(threadId, groupRunIds);
-			} else {
-				events = await this.readRunEvents(threadId, [runId]);
-			}
-			// The tree input comes from the DB, so long runs cannot out-evict their
-			// own snapshot input (the empty-agentTree bug class). The snapshot write
-			// itself stays for now so pre-log threads keep rendering; history moves
-			// to fold-on-read separately.
-			if (isUpdate && events.length === 0) {
-				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
-					threadId,
-					runId,
-					messageGroupId,
-				});
-				return;
-			}
-			const agentTree = buildAgentTreeFromEvents(events);
-
-			const tracing = this.tracing.getTraceContext(runId);
-			const saveOptions = {
-				messageGroupId,
-				runIds: groupRunIds,
-				traceId: tracing?.rootRun.otelTraceId,
-				spanId: tracing?.rootRun.otelSpanId,
-				langsmithRunId: tracing?.rootRun.id,
-				langsmithTraceId: tracing?.rootRun.traceId,
-			};
-
-			if (isUpdate) {
-				await snapshotStorage.updateLast(threadId, agentTree, runId, saveOptions);
-			} else {
-				await snapshotStorage.save(threadId, agentTree, runId, saveOptions);
-			}
-		} catch (error) {
-			this.logger.warn('Failed to save agent tree snapshot', {
-				threadId,
-				runId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 
 	private parseMcpServers(raw: string): McpServerConfig[] {
