@@ -175,7 +175,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// not translate `reasoningEffort` the way `@ai-sdk/openai-compatible`
 		// does — so the effort has to use OpenRouter's unified `reasoning.effort`
 		// parameter or it is silently dropped upstream.
-		thinkingToProviderOptions: (thinking) => {
+		thinkingToProviderOptions: (thinking): Record<string, Record<string, unknown>> => {
 			const cfg = thinking as OpenAIThinkingConfig;
 			if (cfg.reasoningEffort === undefined) return {};
 			return { openrouter: { reasoning: { effort: cfg.reasoningEffort } } };
