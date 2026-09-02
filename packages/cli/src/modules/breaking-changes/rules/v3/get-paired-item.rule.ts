@@ -22,7 +22,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: '$getPairedItem expression helper is removed',
 			description:
-				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
+				'The $getPairedItem expression helper is removed. Expressions calling it fail with an error naming the replacement.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 		};
@@ -50,10 +50,17 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			JSON.stringify(node.parameters ?? {}).includes(HELPER_NAME),
 		);
 
-		return reportAffectedNodes(affectedNodes, (node) => ({
-			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
-			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They will fail to evaluate after the update.`,
-			level: 'error',
-		}));
+		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
+
+		return {
+			isAffected: true,
+			issues: affectedNodes.map((node) => ({
+				title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
+				description: `Expressions in this node call ${HELPER_NAME}, which is removed. After the update they fail with an error naming the replacement.`,
+				level: 'error',
+				nodeId: node.id,
+				nodeName: node.name,
+			})),
+		};
 	}
 }
