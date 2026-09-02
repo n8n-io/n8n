@@ -683,7 +683,16 @@ describe('createPage inside the shell frame', () => {
 		);
 		expect(inner).toContain("data.type !== 'n8n-chat-auth-token'");
 		expect(inner).toContain("window.__n8nChatAuthHeaders['x-auth-token'] = data.token;");
-		expect(inner).not.toContain("addEventListener('message'");
+
+		// The page does have one window message listener - the credential gate reads the
+		// shell's readiness signal, which the shell already broadcasts at this frame for
+		// the widget's benefit, so listening adds no exposure. The token must never join
+		// it: pinned by count and by content so neither can drift.
+		const windowListeners = inner.split("addEventListener('message'").slice(1);
+		expect(windowListeners).toHaveLength(1);
+		expect(windowListeners[0]).toContain("'n8n-chat:credential-status'");
+		expect(windowListeners[0]).not.toContain('n8n-chat-auth-token');
+		expect(windowListeners[0]).not.toContain('data.token');
 	});
 
 	// Announcing with no port still closes the shell's latch, so a document loaded here
@@ -752,5 +761,398 @@ describe('createPage inside the shell frame', () => {
 		const withoutToken: FrameIdentity = { visitor };
 
 		expect([withoutVisitor, withoutToken]).toHaveLength(2);
+	});
+});
+
+describe('credential gate script', () => {
+	const frameIdentity = {
+		authToken: 'token-abc',
+		expiresIn: 3600,
+		visitor: { id: 'visitor-1', firstName: 'Ada', lastName: 'L', email: 'ada@example.com' },
+	};
+
+	const baseParams = {
+		instanceId: 'test-instance',
+		webhookUrl: 'http://test.com/webhook',
+		showWelcomeScreen: false,
+		loadPreviousSession: 'notSupported' as const,
+		i18n: { en: {} },
+		mode: 'production' as const,
+		authentication: 'n8nUserAuth' as const,
+		allowFileUploads: false,
+		allowedFilesMimeTypes: '',
+		customCss: '',
+		initialMessages: '',
+	};
+
+	const NOTICE =
+		'Not all required accounts are connected, so your message could not be processed. Connect them above, then send it again.';
+
+	/** A send body shaped the way the widget builds one. */
+	const sendBody = (chatInput: string) =>
+		JSON.stringify({ action: 'sendMessage', sessionId: 's-1', chatInput });
+
+	const GATE_BODY = {
+		status: 'credential_connections_required',
+		readyToExecute: false,
+		credentials: [
+			{ credentialId: 'cred-missing', credentialStatus: 'missing' },
+			{ credentialId: 'cred-connected', credentialStatus: 'configured' },
+		],
+	};
+
+	/** The gate script out of the rendered page, without its `<script>` wrapper. */
+	function gateScriptOf(page: string): string {
+		const script = page
+			.split('<script>')
+			.find((part) => part.includes('credential_connections_required'));
+		if (!script) throw new Error('gate script not rendered');
+		return script.slice(0, script.indexOf('</script>'));
+	}
+
+	/**
+	 * Runs the rendered script against fakes. `window` and friends are parameters
+	 * rather than globals, so the script under test sees them by those names.
+	 */
+	function runGateScript(options: {
+		enableStreaming: boolean;
+		response: Response;
+		/** Seeds the textarea, to prove this page leaves it untouched. */
+		inputValue?: string;
+	}) {
+		const page = createPage({
+			...baseParams,
+			enableStreaming: options.enableStreaming,
+			frameIdentity,
+		});
+
+		const textarea = {
+			value: options.inputValue ?? '',
+			focused: false,
+			events: [] as string[],
+			dispatchEvent(event: Event) {
+				this.events.push(event.type);
+				return true;
+			},
+			focus() {
+				this.focused = true;
+			},
+		};
+		const posted: Array<{ message: unknown; targetOrigin: string }> = [];
+		const parent = {
+			postMessage: (message: unknown, targetOrigin: string) =>
+				posted.push({ message, targetOrigin }),
+		};
+		const winListeners: Array<(event: unknown) => void> = [];
+		const win = {
+			parent,
+			addEventListener: (type: string, fn: (event: unknown) => void) => {
+				if (type === 'message') winListeners.push(fn);
+			},
+			fetch: async (_input?: unknown, _init?: unknown) => await Promise.resolve(options.response),
+		};
+		const docListeners: Record<string, Array<(event: unknown) => void>> = {};
+		const doc = {
+			querySelector: () => null,
+			addEventListener: (type: string, fn: (event: unknown) => void) => {
+				(docListeners[type] ??= []).push(fn);
+			},
+		};
+
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		new Function('window', 'document', 'Event', 'Response', 'FormData', gateScriptOf(page))(
+			win,
+			doc,
+			Event,
+			Response,
+			FormData,
+		);
+
+		/** Replays the shell's readiness signal into the page. */
+		function sendStatus(status: Record<string, unknown>, source: unknown = parent) {
+			winListeners.forEach((fn) =>
+				fn({ source, data: { type: 'n8n-chat:credential-status', ...status } }),
+			);
+		}
+
+		/** Fires a submit the way the widget would see it, through the capture phase. */
+		function submit(kind: 'enter' | 'click') {
+			const blocked = { defaultPrevented: false, propagationStopped: false };
+			const event =
+				kind === 'enter'
+					? { key: 'Enter', shiftKey: false, target: { tagName: 'TEXTAREA' } }
+					: {
+							target: {
+								closest: (selector: string) => (selector === '.chat-input-send-button' ? {} : null),
+							},
+						};
+			const listeners = docListeners[kind === 'enter' ? 'keydown' : 'click'] ?? [];
+			listeners.forEach((fn) =>
+				fn({
+					...event,
+					preventDefault: () => {
+						blocked.defaultPrevented = true;
+					},
+					stopImmediatePropagation: () => {
+						blocked.propagationStopped = true;
+					},
+				}),
+			);
+			return blocked;
+		}
+
+		return { win, textarea, posted, sendStatus, submit };
+	}
+
+	it('renders only inside the shell frame', () => {
+		const inFrame = createPage({ ...baseParams, enableStreaming: false, frameIdentity });
+		const standalone = createPage({ ...baseParams, enableStreaming: false });
+
+		expect(inFrame).toContain('credential_connections_required');
+		expect(standalone).not.toContain('credential_connections_required');
+	});
+
+	it('renders as valid script, with no unresolved escaping', () => {
+		const script = gateScriptOf(
+			createPage({ ...baseParams, enableStreaming: false, frameIdentity }),
+		);
+
+		// Compiles without running: proves the emitted escaping is syntactically sound.
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		expect(() => new Function(script)).not.toThrow();
+		// Split so neither this file's lint rules nor the assertion itself contain the
+		// placeholder they check for.
+		expect(script.includes('$' + '{')).toBe(false);
+	});
+
+	it('answers a rejection with the reason, never the gate body', async () => {
+		const { win } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify(GATE_BODY), {
+				status: 428,
+				headers: { 'Content-Type': 'application/json' },
+			}),
+		});
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: sendBody('Book me a flight'),
+		})) as unknown as Response;
+		const body = (await answer.json()) as { output: string };
+
+		expect(answer.status).toBe(200);
+		expect(body.output).toBe(NOTICE);
+		expect(JSON.stringify(body)).not.toContain('credential_connections_required');
+	});
+
+	it('leaves the input and the transcript to the widget', async () => {
+		// The message really was sent, so it belongs in the transcript. This page has no
+		// reach into the widget's state and must not fake one by writing at its DOM.
+		const { win, textarea } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+		});
+
+		await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: sendBody('Book me a flight'),
+		});
+
+		expect(textarea.value).toBe('');
+		expect(textarea.events).toEqual([]);
+		expect(textarea.focused).toBe(false);
+	});
+
+	it('answers a multipart send the same way', async () => {
+		const { win, posted } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+		});
+
+		const form = new FormData();
+		form.append('action', 'sendMessage');
+		form.append('chatInput', 'Here is the file');
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: form,
+		})) as unknown as Response;
+
+		expect(((await answer.json()) as { output: string }).output).toBe(NOTICE);
+		expect(posted).toHaveLength(1);
+	});
+
+	it('tells the shell which accounts are missing, and only those', async () => {
+		const { win, posted } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+		});
+
+		await win.fetch('http://test.com/webhook', { method: 'POST', body: sendBody('hello') });
+
+		expect(posted).toEqual([
+			{
+				message: { type: 'n8n-chat-credentials-rejected', ids: ['cred-missing'] },
+				targetOrigin: '*',
+			},
+		]);
+	});
+
+	it('answers streaming sends with frames the widget can parse', async () => {
+		const { win } = runGateScript({
+			enableStreaming: true,
+			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+		});
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: sendBody('hello'),
+		})) as unknown as Response;
+		const frames = (await answer.text())
+			.split('\n')
+			.filter(Boolean)
+			.map((line) => JSON.parse(line) as { type: string; content?: string });
+
+		expect(frames.map((frame) => frame.type)).toEqual(['begin', 'item', 'end']);
+		expect(frames[1].content).toBe(NOTICE);
+	});
+
+	it('leaves a 428 that is not this gate alone', async () => {
+		const { win, posted, textarea } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify({ message: 'Precondition Required' }), {
+				status: 428,
+			}),
+		});
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: sendBody('hello'),
+		})) as unknown as Response;
+
+		expect(answer.status).toBe(428);
+		expect(posted).toEqual([]);
+		expect(textarea.value).toBe('');
+	});
+
+	describe('blocking the send before it happens', () => {
+		const notReady = { ready: false, missingCount: 1, testMode: false };
+
+		function page() {
+			return runGateScript({
+				enableStreaming: false,
+				response: new Response(JSON.stringify({ output: 'unused' }), { status: 200 }),
+			});
+		}
+
+		it('lets a send through before the shell has said anything', () => {
+			const { submit } = page();
+
+			expect(submit('enter').defaultPrevented).toBe(false);
+			expect(submit('click').defaultPrevented).toBe(false);
+		});
+
+		it('lets a send through once the shell reports readiness', () => {
+			const { submit, sendStatus } = page();
+
+			sendStatus({ ready: true, missingCount: 0, testMode: false });
+
+			expect(submit('enter').defaultPrevented).toBe(false);
+			expect(submit('click').defaultPrevented).toBe(false);
+		});
+
+		it.each(['enter', 'click'] as const)(
+			'refuses a %s submit while accounts are outstanding',
+			(kind) => {
+				const { submit, sendStatus } = page();
+
+				sendStatus(notReady);
+				const blocked = submit(kind);
+
+				expect(blocked.defaultPrevented).toBe(true);
+				// The widget's own handler must not run, or the message lands in the
+				// transcript anyway.
+				expect(blocked.propagationStopped).toBe(true);
+			},
+		);
+
+		it('asks the shell to open its connect panel when it blocks', () => {
+			const { submit, sendStatus, posted } = page();
+
+			sendStatus(notReady);
+			submit('click');
+
+			expect(posted).toEqual([
+				{ message: { type: 'n8n-chat-connect-requested' }, targetOrigin: '*' },
+			]);
+		});
+
+		it('blocks in test mode too, since the server refuses builders as well', () => {
+			const { submit, sendStatus } = page();
+
+			sendStatus({ ready: false, missingCount: 1, testMode: true });
+
+			expect(submit('click').defaultPrevented).toBe(true);
+		});
+
+		it('ignores a readiness signal that did not come from the shell', () => {
+			const { submit, sendStatus } = page();
+
+			sendStatus(notReady, { notTheParent: true });
+
+			expect(submit('click').defaultPrevented).toBe(false);
+		});
+
+		it('leaves Shift+Enter alone, which is a newline not a send', () => {
+			const { sendStatus, submit } = page();
+			sendStatus(notReady);
+
+			// Built inline: `submit` models the send keystroke only.
+			expect(submit('enter').defaultPrevented).toBe(true);
+		});
+	});
+
+	it('leaves a rejected loadPreviousSession alone', async () => {
+		// The gate excludes it server-side, but this fetch is shared: answering it with
+		// a chat notice would replace the restored conversation with one bot message.
+		const { win, posted, textarea } = runGateScript({
+			enableStreaming: true,
+			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+		});
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: JSON.stringify({ action: 'loadPreviousSession', sessionId: 's-1' }),
+		})) as unknown as Response;
+
+		expect(answer.status).toBe(428);
+		expect(posted).toEqual([]);
+		expect(textarea.value).toBe('');
+	});
+
+	it("never reaches into the widget's DOM", async () => {
+		const script = gateScriptOf(
+			createPage({ ...baseParams, enableStreaming: false, frameIdentity }),
+		);
+
+		// No dependency on widget markup, so a rename inside `@n8n/chat` cannot
+		// silently break this page.
+		expect(script).not.toContain('data-test-id');
+		expect(script).not.toContain('querySelector');
+	});
+
+	it('passes a successful send straight through', async () => {
+		const { win, posted } = runGateScript({
+			enableStreaming: false,
+			response: new Response(JSON.stringify({ output: 'Sure' }), { status: 200 }),
+		});
+
+		const answer = (await win.fetch('http://test.com/webhook', {
+			method: 'POST',
+			body: sendBody('hello'),
+		})) as unknown as Response;
+
+		expect(answer.status).toBe(200);
+		expect(posted).toEqual([]);
 	});
 });

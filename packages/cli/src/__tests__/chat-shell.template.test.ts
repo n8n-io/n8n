@@ -323,5 +323,217 @@ describe('chat-shell.handlebars', () => {
 			expect(src).toContain("sub.classList.add('error')");
 			expect(src).toContain('if (!pendingPopup || pendingPopup.closed) onErrorSignal()');
 		});
+
+		it('carries the credential id on each row, so a rejection can find it', async () => {
+			expect(await renderView(withOneMissingAccount)).toContain("data-id='cred-1'");
+		});
+	});
+
+	/**
+	 * Runs the rendered connect-bar script against a fake DOM. Asserting on its source
+	 * cannot tell whether the reconciliation works, and this bar is a trust boundary:
+	 * the frame is sandboxed and everything it sends is suspect.
+	 */
+	describe('send-gate rejection from the frame', () => {
+		type Row = {
+			getAttribute: (key: string) => string | null;
+			setAttribute: (key: string, value: string) => void;
+			removeAttribute: (key: string) => void;
+			[key: string]: unknown;
+		};
+
+		function makeElement(attrs: Record<string, string> = {}): Row {
+			const own = { ...attrs };
+			const element: Row = {
+				getAttribute: (key: string) => (key in own ? own[key] : null),
+				setAttribute: (key: string, value: string) => {
+					own[key] = value;
+				},
+				removeAttribute: (key: string) => {
+					delete own[key];
+				},
+				classes: new Set<string>(),
+				classList: {
+					add(name: string) {
+						(this as unknown as { owner: { classes: Set<string> } }).owner.classes.add(name);
+					},
+					remove(name: string) {
+						(this as unknown as { owner: { classes: Set<string> } }).owner.classes.delete(name);
+					},
+					contains: () => false,
+				},
+				querySelector: () => null,
+				querySelectorAll: () => [],
+				addEventListener: () => {},
+				replaceWith: () => {},
+				style: {},
+			};
+			(element.classList as { owner?: Row }).owner = element;
+			return element;
+		}
+
+		async function runBarScript() {
+			const html = await renderView({
+				...baseView,
+				hasCredentials: true,
+				ready: true,
+				useDialog: false,
+				total: 2,
+				connectedCount: 2,
+				credentials: [
+					{ key: 'cred-1::system-n8n', id: 'cred-1', name: 'Slack account', connected: true },
+					{ key: 'cred-2::system-n8n', id: 'cred-2', name: 'Gmail account', connected: true },
+				],
+			});
+			const source = html.slice(html.lastIndexOf('<script>') + '<script>'.length);
+			const js = source.slice(0, source.indexOf('</script>'));
+
+			const rows = [
+				makeElement({
+					'data-row-key': 'cred-1::system-n8n',
+					'data-id': 'cred-1',
+					'data-connected': 'true',
+				}),
+				makeElement({
+					'data-row-key': 'cred-2::system-n8n',
+					'data-id': 'cred-2',
+					'data-connected': 'true',
+				}),
+			];
+
+			const posted: Array<Record<string, unknown>> = [];
+			const frame = {
+				...makeElement(),
+				contentWindow: { postMessage: (message: Record<string, unknown>) => posted.push(message) },
+			};
+			const bar = makeElement({ 'data-test-mode': 'false', 'data-use-dialog': 'false' });
+			const overlay = makeElement();
+			const byId: Record<string, Row> = {
+				'n8n-chat-frame': frame,
+				'n8n-connect-bar': bar,
+				'n8n-connect-overlay': overlay,
+			};
+
+			const listeners: Array<(event: unknown) => void> = [];
+			const doc = {
+				getElementById: (id: string) => byId[id] ?? makeElement(),
+				querySelector: () => makeElement(),
+				querySelectorAll: (selector: string) => {
+					if (selector === '.cred-row') return rows;
+					const key = /data-row-key="([^"]+)"/.exec(selector)?.[1];
+					return key ? rows.filter((row) => row.getAttribute('data-row-key') === key) : [];
+				},
+				addEventListener: () => {},
+				createElement: () => makeElement(),
+				body: makeElement(),
+			};
+			const win = {
+				addEventListener: (type: string, fn: (event: unknown) => void) => {
+					if (type === 'message') listeners.push(fn);
+				},
+				removeEventListener: () => {},
+				location: { reload: () => {}, href: '' },
+				parent: {},
+				open: () => null,
+			};
+
+			// The script names these as globals; passing them as parameters keeps the
+			// real Node globals out of its reach.
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval
+			new Function(
+				'window',
+				'document',
+				'setTimeout',
+				'setInterval',
+				'clearTimeout',
+				'clearInterval',
+				'fetch',
+				'MessageChannel',
+				js,
+			)(
+				win,
+				doc,
+				() => 0,
+				() => 0,
+				() => {},
+				() => {},
+				async () => await Promise.resolve(new Response('{}')),
+				class {},
+			);
+
+			function send(data: unknown, source: unknown = frame.contentWindow) {
+				posted.length = 0;
+				listeners.forEach((fn) => fn({ source, data }));
+				return posted;
+			}
+
+			return { rows, send, posted, overlay };
+		}
+
+		const rejection = (ids: unknown) => ({ type: 'n8n-chat-credentials-rejected', ids });
+
+		it('flips only the account the gate named, and re-signals the frame', async () => {
+			const { rows, send } = await runBarScript();
+
+			const posted = send(rejection(['cred-1']));
+
+			expect(rows[0].getAttribute('data-connected')).toBeNull();
+			expect(rows[1].getAttribute('data-connected')).toBe('true');
+			expect(posted).toEqual([
+				{ type: 'n8n-chat:credential-status', ready: false, missingCount: 1, testMode: false },
+			]);
+		});
+
+		it.each([
+			['an id the server never rendered', rejection(['not-a-row'])],
+			['a prototype key as an id', rejection(['__proto__'])],
+			['a constructor key as an id', rejection(['constructor'])],
+			['ids that are not strings', rejection([{}, 42, null])],
+			['ids that are not an array', rejection('cred-1')],
+			['a message of another type', { type: 'something-else', ids: ['cred-1'] }],
+		])('ignores %s', async (_label, data) => {
+			const { rows, send } = await runBarScript();
+
+			const posted = send(data);
+
+			expect(rows[0].getAttribute('data-connected')).toBe('true');
+			expect(posted).toEqual([]);
+		});
+
+		it('ignores a rejection that did not come from the frame', async () => {
+			const { rows, send } = await runBarScript();
+
+			const posted = send(rejection(['cred-1']), { notTheFrame: true });
+
+			expect(rows[0].getAttribute('data-connected')).toBe('true');
+			expect(posted).toEqual([]);
+		});
+
+		it('opens the connect panel when the frame refuses a send', async () => {
+			const { overlay, send } = await runBarScript();
+
+			send({ type: 'n8n-chat-connect-requested' });
+
+			expect([...(overlay.classes as Set<string>)]).toContain('open');
+		});
+
+		it('opens the panel only for the frame', async () => {
+			const { overlay, send } = await runBarScript();
+
+			send({ type: 'n8n-chat-connect-requested' }, { notTheFrame: true });
+
+			expect([...(overlay.classes as Set<string>)]).not.toContain('open');
+		});
+
+		it('never marks an account connected, whatever the frame sends', async () => {
+			const { rows, send } = await runBarScript();
+
+			send(rejection(['cred-1']));
+			expect(rows[0].getAttribute('data-connected')).toBeNull();
+
+			// No message can undo it: this path only ever disconnects.
+			send(rejection(['cred-1']));
+			expect(rows[0].getAttribute('data-connected')).toBeNull();
+		});
 	});
 });

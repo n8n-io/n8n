@@ -129,6 +129,7 @@
 			<div
 				class='cred-row'
 				data-row-key='{{key}}'
+				data-id='{{id}}'
 				data-resolver-id='{{resolverId}}'
 				data-not-connected-text='{{notConnectedText}}'
 				{{#if connected}} data-connected='true'{{/if}}
@@ -386,10 +387,19 @@
 					var ids = {};
 					var connected = {};
 					var failed = {};
+					// A rejection from the frame names credential ids, while every other bit of
+					// state here is keyed by row. Null-prototype so a crafted id cannot reach
+					// Object.prototype.
+					var rowKeysByCredentialId = Object.create(null);
 					document.querySelectorAll('.cred-row').forEach(function (row) {
 						var key = row.getAttribute('data-row-key');
 						ids[key] = true;
 						if (row.getAttribute('data-connected') === 'true') connected[key] = true;
+						var credentialId = row.getAttribute('data-id');
+						if (credentialId) {
+							if (!rowKeysByCredentialId[credentialId]) rowKeysByCredentialId[credentialId] = [];
+							rowKeysByCredentialId[credentialId].push(key);
+						}
 					});
 					var total = Object.keys(ids).length;
 					// Design: one account connects straight from the bar; two or more collapse
@@ -453,6 +463,46 @@
 						}
 						notifyFrame();
 					}
+
+					// The send gate refused a message, so a row this bar still shows as connected
+					// is not - revoked since the page loaded, or disconnected in another tab.
+					// Flip those rows so the bar stops telling the visitor the chat is ready to
+					// go while the server turns their sends away. `markDisconnected` re-renders
+					// the bar and re-signals the frame, which disables its input.
+					//
+					// Ids only, and only from the frame itself: a name, an icon or an authorize
+					// URL from in there is never trusted. This runs one direction only - nothing
+					// here can mark a row connected - so a frame that lies about a rejection
+					// costs its own visitor an unnecessary Connect prompt and nothing more.
+					window.addEventListener('message', function (event) {
+						// allow-popups means a popup the frame opened can reach us as
+						// opener.parent, so the sender has to be the frame itself.
+						if (!frame || event.source !== frame.contentWindow) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat-credentials-rejected' || !Array.isArray(data.ids)) return;
+
+						data.ids.forEach(function (credentialId) {
+							if (typeof credentialId !== 'string') return;
+							// Only rows the server actually rendered, so a crafted id can't walk
+							// the prototype chain. Never markConnected from here.
+							var keys = rowKeysByCredentialId[credentialId];
+							if (!keys) return;
+							keys.forEach(function (key) {
+								if (connected[key]) markDisconnected(key);
+							});
+						});
+					});
+
+					// The frame refused a send because accounts are outstanding, and is asking for
+					// the panel. With two or more accounts the rows sit behind the summary line, so
+					// the visitor would otherwise have nothing to act on. Opens the dialog only -
+					// never a provider popup, for the reason given on the bar's own control below.
+					window.addEventListener('message', function (event) {
+						if (!frame || event.source !== frame.contentWindow) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat-connect-requested') return;
+						if (overlay) overlay.classList.add('open');
+					});
 
 					// The widget mounts asynchronously, so its message listener may not be
 					// attached when the frame's load event fires. A short burst of retries
