@@ -89,3 +89,26 @@ jobs:
             packages/testing/playwright/sizing-matrix.md
           retention-days: 14
           if-no-files-found: error
+
+  # This workflow runs unattended at 02:00 UTC. Without this job a broken lane
+  # stays red for weeks with nobody told.
+  notify-on-failure:
+    name: Notify Cats on failure
+    runs-on: ubuntu-latest
+    needs: [prepare-docker, benchmark, sizing-matrix]
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-catalysts' \
+            --text 'E2E infrastructure benchmark failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
