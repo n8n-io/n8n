@@ -4,7 +4,7 @@ import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
 
 export default {
-	title: 'Core/Input Label',
+	title: 'Core/InputLabel',
 	component: N8nInputLabel,
 	argTypes: {},
 	parameters: {
@@ -24,15 +24,15 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nInputLabel,
 		N8nInput,
 	},
-	template: `<div style="margin-top:50px">
+	template: `
 			<n8n-input-label v-bind="args">
 				<n8n-input />
 			</n8n-input-label>
-		</div>`,
+		`,
 });
 
-export const InputLabel = Template.bind({});
-InputLabel.args = {
+export const Default = Template.bind({});
+Default.args = {
 	label: 'input label',
 	tooltipText: 'more info...',
 };

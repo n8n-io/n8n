@@ -85,7 +85,7 @@ export class ChatHubTitleService {
 		incomingCredentials: INodeCredentials,
 		incomingModel: ChatHubConversationModel,
 	) {
-		return await this.sessionRepository.manager.transaction(async (trx) => {
+		return await this.sessionRepository.runInTransaction({}, async (trx, ctx) => {
 			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
@@ -115,7 +115,7 @@ export class ChatHubTitleService {
 				attachments,
 				resolvedCredentials,
 				resolvedModel,
-				trx,
+				ctx,
 				providerSettings,
 			);
 		});

@@ -1,4 +1,5 @@
 import type { IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import {
 	resolveParameter,
@@ -1068,6 +1069,65 @@ describe('useWorkflowHelpers', () => {
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();
+		});
+	});
+
+	describe('removeForeignCredentialsFromWorkflow', () => {
+		const ownedCredential = { id: 'cred-1', name: 'Mine' } as ICredentialsResponse;
+		const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+		it('keeps n8n credits credentials that have no stored id', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: { openAiApi: gatewayCredential },
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('drops credentials the user cannot use', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: {
+							openAiApi: gatewayCredential,
+							slackApi: { id: 'foreign', name: 'Someone else' },
+						},
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('keeps owned credentials alongside n8n credits', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: {
+							openAiApi: gatewayCredential,
+							slackApi: { id: ownedCredential.id, name: ownedCredential.name },
+						},
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({
+				openAiApi: gatewayCredential,
+				slackApi: { id: ownedCredential.id, name: ownedCredential.name },
+			});
 		});
 	});
 

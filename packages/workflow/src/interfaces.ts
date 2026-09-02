@@ -155,7 +155,26 @@ export type N8nOAuth2ValidationResult =
 	| { valid: false; reason: OAuth2FailureReason };
 
 export type N8nOAuth2FlowResult =
-	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| {
+			valid: true;
+			token: string;
+			/** Rotated on every use. Never hand this to a browser document or to page script. */
+			refreshToken: string;
+			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
+			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
+			expiresIn: number;
+			user: IUser;
+			metadata?: Record<string, string>;
+	  }
+	| { valid: false; reason: string };
+
+/**
+ * Result of trading a refresh token for a fresh pair. Carries no user: the grant
+ * the token belongs to already fixes the subject, and the caller re-validates the
+ * access token when it needs the identity.
+ */
+export type N8nOAuth2RefreshResult =
+	| { valid: true; token: string; refreshToken: string; expiresIn: number }
 	| { valid: false; reason: string };
 
 export type ProjectSharingData = {
@@ -1004,10 +1023,10 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport, or `undefined` when egress filtering is not configured (callers
-	 * then use the default transport).
+	 * transport. When egress filtering is not configured, this is a passthrough
+	 * implementation, so callers can always use the returned filter unguarded.
 	 */
-	getSecureEgressFilter(): NodeEgressFilter | undefined;
+	getSecureEgressFilter(): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -1535,6 +1554,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
+	 * Trades the refresh token from a completed flow for a fresh access/refresh pair on
+	 * the same grant, keeping a long-lived page working past the access token's one-hour
+	 * life without a new redirect. The AS rotates the refresh token, so the caller must
+	 * store the returned one and drop the old one. `resourceUrl` must name the resource
+	 * the grant was approved for.
+	 */
+	refreshN8nOAuth2Flow(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/**
 	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
 	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
 	 * bearer token directly, and by browser triggers on the POST leg to re-check the
@@ -1555,8 +1582,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -3759,6 +3787,10 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
 	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
+	refreshN8nOAuth2Flow?: (
+		refreshToken: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2RefreshResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { assertClearedFor, workflowContentSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
@@ -11,6 +12,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -166,6 +168,30 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		const count = await qb.getCount();
 		return count > 0;
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<WorkflowEntity>,
+		ctx: OperationContext,
+	) {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+	}
+
+	/**
+	 * Persists a new workflow, gated on a clearance for its content.
+	 *
+	 * A create binds to the node hash, not the id — an id here is either generated on insert or
+	 * client-supplied, and neither is proof of what was checked. So nothing may mutate `nodes`
+	 * between the `enforceWorkflowSave` call and this write.
+	 *
+	 * `save`, not `insert`: only `save` writes the `workflows_tags` junction rows for a
+	 * populated `tags` relation, and returns the entity with its generated id.
+	 */
+	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
+		return await this.managerFor(ctx).save(workflow);
 	}
 
 	async findByCredentialResolverId(

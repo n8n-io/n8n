@@ -39,6 +39,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -114,9 +115,10 @@ beforeAll(async () => {
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
 		mock(), // workflowMutationHooks
-		// Real service on purpose: with no policy backend registered it clears every save,
-		// so these tests also prove save behavior is unchanged when the module is off.
+		// Real service on purpose: with no backend registered it clears every save and
+		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
+		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
 });
 
@@ -342,6 +344,29 @@ describe('update()', () => {
 });
 
 describe('activateWorkflow()', () => {
+	// The rest of this suite runs with no checks registered, proving activation is
+	// unchanged when the module is off. Spied rather than registered via
+	// `setImplementation`, which is single-shot and would leak into those tests.
+	test('should enforce the publish policy with the version being activated', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const policyEnforcementService = Container.get(PolicyEnforcementService);
+		vi.spyOn(policyEnforcementService, 'hasChecksFor').mockReturnValue(true);
+		const enforceSpy = vi.spyOn(policyEnforcementService, 'enforceWorkflowPublish');
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
+
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
+			workflow: {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: expect.any(Array),
+			},
+			projectId: expect.any(String),
+		});
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+	});
+
 	test('should activate current workflow version if no version provided', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
@@ -607,8 +632,9 @@ describe('activateWorkflow()', () => {
 
 		const workflow = await createWorkflowWithHistory({}, project);
 
+		// Resolvable through the member's update scope, so the refusal is about publishing, not access.
 		await expect(workflowService.activateWorkflow(member, workflow.id)).rejects.toThrow(
-			'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
 		);
 
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
@@ -1006,13 +1032,9 @@ describe('getMany()', () => {
 			await createWorkflow({ name: 'Member2 Private Workflow 2' }, member2);
 
 			// member1 (who has NO relation to member2's personal project) tries to query member2's personal project
-			const result = await workflowService.getMany(
-				member1,
-				{ filter: { projectId: member2PersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member1, {
+				filter: { projectId: member2PersonalProject.id },
+			});
 
 			// SECURITY: member1 should NOT see any of member2's workflows
 			expect(result.workflows).toHaveLength(0);
@@ -1033,13 +1055,9 @@ describe('getMany()', () => {
 			const workflow2 = await createWorkflow({ name: 'Member Private Workflow 2' }, member);
 
 			// owner (with global workflow:read) can query member's personal project
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			// Admin with global scope CAN see the workflows
 			expect(result.workflows).toHaveLength(2);
@@ -1067,13 +1085,9 @@ describe('getMany()', () => {
 				}),
 			);
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].id).toBe(memberOwnedWorkflow.id);
@@ -1099,13 +1113,9 @@ describe('getMany()', () => {
 				}),
 			);
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(0);
 			expect(result.count).toBe(0);
@@ -1114,13 +1124,9 @@ describe('getMany()', () => {
 		test('should return empty when filtering by non-existent project', async () => {
 			const owner = await createOwner();
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: 'non-existent-project-id' } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: 'non-existent-project-id' },
+			});
 
 			expect(result.workflows).toHaveLength(0);
 			expect(result.count).toBe(0);
@@ -1137,13 +1143,9 @@ describe('getMany()', () => {
 			const workflow1 = await createWorkflow({ name: 'Workflow 1' }, member);
 			const workflow2 = await createWorkflow({ name: 'Workflow 2' }, member);
 
-			const result = await workflowService.getMany(
-				member,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(2);
 			expect(result.count).toBe(2);
@@ -1161,13 +1163,9 @@ describe('getMany()', () => {
 			const teamWorkflow1 = await createWorkflow({ name: 'Team Workflow 1' }, teamProject);
 			const teamWorkflow2 = await createWorkflow({ name: 'Team Workflow 2' }, teamProject);
 
-			const result = await workflowService.getMany(
-				member,
-				{ filter: { projectId: teamProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member, {
+				filter: { projectId: teamProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(2);
 			expect(result.count).toBe(2);

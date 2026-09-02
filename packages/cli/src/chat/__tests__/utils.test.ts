@@ -12,6 +12,7 @@ import {
 import {
 	getMessage,
 	getLastNodeExecuted,
+	findResumeNode,
 	redirectIfToolExecutor,
 	getLastNodeMessage,
 	shouldResumeImmediately,
@@ -511,23 +512,23 @@ describe('redirectIfToolExecutor', () => {
 		disabled: false,
 	};
 
-	function makeExecution(lastNodeExecuted: string, startData?: object): IExecutionResponse {
+	function makeExecution(startData?: object): IExecutionResponse {
 		return {
 			id: 'exec-1',
 			data: {
-				resultData: { lastNodeExecuted, runData: {} },
+				resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
 				startData: startData ?? { runNodeFilter: ['SomeNode'], destinationNode: 'SomeNode' },
 			},
 			workflowData: { nodes: [] },
 		} as unknown as IExecutionResponse;
 	}
 
-	function makeExecutionData(toolNodeName: string): IExecuteData {
+	function executorData(toolNodeName?: string): IExecuteData {
 		return {
 			node: {
 				name: TOOL_EXECUTOR_NODE_NAME,
 				type: '@n8n/n8n-nodes-langchain.toolExecutor',
-				parameters: { node: toolNodeName },
+				parameters: toolNodeName ? { node: toolNodeName } : {},
 				typeVersion: 1,
 				position: [0, 0],
 				id: '',
@@ -538,9 +539,17 @@ describe('redirectIfToolExecutor', () => {
 		} as unknown as IExecuteData;
 	}
 
-	it('returns null when lastNodeExecuted is not TOOL_EXECUTOR_NODE_NAME', () => {
-		const execution = makeExecution('SomeOtherNode');
-		const executionData = makeExecutionData('My Tool');
+	function plainData(name: string): IExecuteData {
+		return {
+			node: { name, type: 'n8n-nodes-base.noOp', parameters: {}, typeVersion: 1 },
+			data: { main: [[]] },
+			source: null,
+		} as unknown as IExecuteData;
+	}
+
+	it('returns null when the parked node is not the executor', () => {
+		const execution = makeExecution();
+		const executionData = plainData('SomeOtherNode');
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		const result = redirectIfToolExecutor(execution, executionData, workflow);
@@ -550,32 +559,24 @@ describe('redirectIfToolExecutor', () => {
 	});
 
 	it('returns null when the referenced tool node is not found in the workflow', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = makeExecutionData('My Tool');
+		const execution = makeExecution();
+		const executionData = executorData('My Tool');
 		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
 
-		const result = redirectIfToolExecutor(execution, executionData, workflow);
-
-		expect(result).toBeNull();
+		expect(redirectIfToolExecutor(execution, executionData, workflow)).toBeNull();
 	});
 
 	it('returns null when executionData.node.parameters.node is missing', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = {
-			node: { name: TOOL_EXECUTOR_NODE_NAME, parameters: {} },
-			data: { main: [[]] },
-			source: null,
-		} as unknown as IExecuteData;
+		const execution = makeExecution();
+		const executionData = executorData();
 		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
 
-		const result = redirectIfToolExecutor(execution, executionData, workflow);
-
-		expect(result).toBeNull();
+		expect(redirectIfToolExecutor(execution, executionData, workflow)).toBeNull();
 	});
 
 	it('redirects executionData.node to the actual tool node', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = makeExecutionData('My Tool');
+		const execution = makeExecution();
+		const executionData = executorData('My Tool');
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
@@ -584,8 +585,8 @@ describe('redirectIfToolExecutor', () => {
 	});
 
 	it('updates lastNodeExecuted to the tool node name', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = makeExecutionData('My Tool');
+		const execution = makeExecution();
+		const executionData = executorData('My Tool');
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
@@ -594,8 +595,8 @@ describe('redirectIfToolExecutor', () => {
 	});
 
 	it('resets runIndex to 0', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = makeExecutionData('My Tool');
+		const execution = makeExecution();
+		const executionData = executorData('My Tool');
 		(executionData as any).runIndex = 5;
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
@@ -605,11 +606,11 @@ describe('redirectIfToolExecutor', () => {
 	});
 
 	it('clears runNodeFilter and destinationNode from startData', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME, {
+		const execution = makeExecution({
 			runNodeFilter: ['SomeNode'],
 			destinationNode: 'SomeNode',
 		});
-		const executionData = makeExecutionData('My Tool');
+		const executionData = executorData('My Tool');
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
@@ -619,13 +620,114 @@ describe('redirectIfToolExecutor', () => {
 	});
 
 	it('returns the tool node', () => {
-		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
-		const executionData = makeExecutionData('My Tool');
+		const execution = makeExecution();
+		const executionData = executorData('My Tool');
 		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
-		const result = redirectIfToolExecutor(execution, executionData, workflow);
+		expect(redirectIfToolExecutor(execution, executionData, workflow)).toBe(toolNode);
+	});
 
-		expect(result).toBe(toolNode);
+	it('leaves the execution unmodified when the parked node is not the executor', () => {
+		const execution = makeExecution();
+		execution.data.resultData.lastNodeExecuted = 'SomeOtherNode';
+		const executionData = plainData('SomeOtherNode');
+		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
+
+		redirectIfToolExecutor(execution, executionData, workflow);
+
+		// The mutating redirect must not fire for a non-executor parked node.
+		expect(execution.data.resultData.lastNodeExecuted).toBe('SomeOtherNode');
+		expect(executionData.node.name).toBe('SomeOtherNode');
+	});
+});
+
+describe('findResumeNode', () => {
+	const toolNode: INode = {
+		name: 'My Tool',
+		type: 'n8n-nodes-base.myTool',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		id: 'tool-id',
+		disabled: false,
+	};
+
+	function executorData(toolNodeName?: string): IExecuteData {
+		return {
+			node: {
+				name: TOOL_EXECUTOR_NODE_NAME,
+				type: '@n8n/n8n-nodes-langchain.toolExecutor',
+				parameters: toolNodeName ? { node: toolNodeName } : {},
+				typeVersion: 1,
+				position: [0, 0],
+				id: '',
+				disabled: false,
+			},
+			data: { main: [[]] },
+			source: null,
+		} as unknown as IExecuteData;
+	}
+
+	function parkedData(node: Partial<INode>): IExecuteData {
+		return { node, data: { main: [[]] }, source: null } as unknown as IExecuteData;
+	}
+
+	it('resolves the parked stack node from the workflow', () => {
+		const parkedNode = { ...toolNode, name: 'Gate' };
+		const executionData = parkedData({ name: 'Gate' });
+		const workflow = { getNode: vi.fn().mockReturnValue(parkedNode) } as unknown as Workflow;
+
+		const result = findResumeNode(executionData, workflow);
+
+		expect(result).toBe(parkedNode);
+		expect(workflow.getNode).toHaveBeenCalledWith('Gate');
+	});
+
+	it('resolves the wrapped tool node when the parked node is the virtual executor', () => {
+		const executionData = executorData('My Tool');
+		const getNode = vi
+			.fn()
+			.mockImplementation((name: string) => (name === 'My Tool' ? toolNode : null));
+		const workflow = { getNode } as unknown as Workflow;
+
+		expect(findResumeNode(executionData, workflow)).toBe(toolNode);
+	});
+
+	it('does not mutate the execution data while resolving the executor target', () => {
+		const executionData = executorData('My Tool');
+		const workflow = {
+			getNode: vi.fn().mockImplementation((n: string) => (n === 'My Tool' ? toolNode : null)),
+		} as unknown as Workflow;
+
+		findResumeNode(executionData, workflow);
+
+		expect(executionData.node.name).toBe(TOOL_EXECUTOR_NODE_NAME);
+	});
+
+	it('returns null when the executor references an unknown tool node', () => {
+		const executionData = executorData('Missing');
+		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
+
+		expect(findResumeNode(executionData, workflow)).toBeNull();
+	});
+
+	it('returns null when the parked node is not in the workflow', () => {
+		const executionData = parkedData({ name: 'Ghost' });
+		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
+
+		expect(findResumeNode(executionData, workflow)).toBeNull();
+	});
+
+	it('follows the parked stack node, ignoring a divergent lastNodeExecuted', () => {
+		// The engine resumes nodeExecutionStack[0]; if resultData.lastNodeExecuted
+		// named a different node, findResumeNode must still follow the stack entry.
+		const gate = { name: 'Gate', type: 'n8n-nodes-base.telegram', typeVersion: 1, parameters: {} };
+		const executionData = parkedData(gate);
+		const getNode = vi.fn().mockImplementation((name: string) => (name === 'Gate' ? gate : null));
+		const workflow = { getNode } as unknown as Workflow;
+
+		expect(findResumeNode(executionData, workflow)).toBe(gate);
+		expect(workflow.getNode).toHaveBeenCalledWith('Gate');
 	});
 });
 

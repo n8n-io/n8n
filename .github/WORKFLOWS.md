@@ -10,7 +10,7 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Team ownership for PR reviews
+├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -21,6 +21,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── config.yml                        # Routes to community/security
 │   └── 01-bug.yml                        # Structured bug report form
 ├── scripts/                              # Automation scripts
+│   ├── owners/                           # Owners scripts (the OWNERS file lives at the repo root)
 │   ├── bump-versions.mjs                 # Calculate next version
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
@@ -555,6 +556,8 @@ Scripts in `.github/scripts/`:
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
+| `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
+| `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 
 ### Validation Scripts
 
@@ -601,13 +604,63 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ---
 
-## CODEOWNERS
+## OWNERS
 
-Team ownership mappings in `CODEOWNERS`:
+Team ownership lives in the top-level `OWNERS` file (this replaces the
+GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
+that consume it live in `.github/scripts/owners/`. Line format:
 
-| Path Pattern                                                 | Team                       |
-|--------------------------------------------------------------|----------------------------|
-| `packages/@n8n/db/src/migrations/`                           | @n8n-io/migrations-review  |
+```
+<pattern> <@org/team> [required]
+```
+
+Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
+exact file path. Matching is last-match-wins, so specific rules must come
+after general rules.
+
+The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
+
+- Tokens on a line come in a fixed order: pattern, one team, then options
+  such as `required`.
+- Directory patterns end with `/` and must be existing directories; all other
+  patterns must be existing files. Duplicate patterns are rejected.
+
+Team existence is not checked by `--check` (it needs an org read token, which
+fork PRs do not have); a separate workflow covers it (DEVP-891).
+
+The file drives four workflows:
+
+| Workflow                          | Purpose                                                                  |
+|-----------------------------------|--------------------------------------------------------------------------|
+| `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
+| `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
+| `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
+| `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+
+### Required reviews
+
+An entry with the `required` option makes team approval mandatory: when a PR
+changes a file whose winning entry carries `required`, a member of each listed
+team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+PR changes and review events, and reports a commit status
+named **Required Reviews** on the head SHA. The ruleset for `master` must list
+that status as a required check for the block to take effect. Merge-queue runs
+report success on the queue head without re-evaluating: a PR cannot enter the
+queue unless the status is green on its head, and the queue does not change
+approvals.
+
+The workflow reads OWNERS and its scripts from the base branch only, so a PR
+cannot lift its own review requirement.
+
+### Transition from CODEOWNERS
+
+During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
+GitHub's native code-owner enforcement keeps gating merges while the
+"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
+holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
+and must not gain new entries; new ownership goes into OWNERS. After the
+trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
+from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 
@@ -803,14 +856,20 @@ Embargoed security work happens in `n8n-io/n8n-private`. `sec-sync-public-to-pri
 runs hourly there (and on `workflow_dispatch` with `force` for conflict recovery),
 mirroring public `master` and `1.x` into private with `reset --hard` +
 `--force-with-lease` — skipping a branch when private is ahead, ignoring `chore: Bundle`
-commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
-directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
-long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
+commits when judging "ahead". A skipped branch, or a hard failure, is reported to
+`#alerts-build`: a non-`chore: Bundle` commit on private `master`/`1.x` leaves the mirror
+stuck every hour until it is removed or a `force` dispatch overwrites it. Fixes are never
+committed to private `master`/`1.x` directly: `ci-restrict-private-merges.yml` requires
+PRs into them to come from the long-lived integration
+branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
 backported to `bundle/1.x` by `util-backport-bundle.yml`). Once a bundle branch is merged
 into private `master`/`1.x` as a `chore: Bundle/*` PR, `sec-publish-fix.yml` /
 `sec-publish-fix-1x.yml` cherry-pick that commit onto a fresh branch in the public repo and
 open the PR there. That PR **must stay a single-parent squash** — the publish step is a bare
-`git cherry-pick` of `HEAD`, which aborts on a merge commit.
+`git cherry-pick` of `HEAD`, which aborts on a merge commit. A `chore: Bundle/*` PR whose
+*Required Checks* go red holds back every fix batched into it, so `ci-pull-requests.yml`
+posts to `#alerts-build` when that gate fails on a PR opened *from* `bundle/2.x` or
+`bundle/1.x` (link only, no PR title, since the branch is embargoed).
 
 `sec-sync-bundle-branches.yml` keeps those branches current, daily plus whenever a PR is
 merged into one (and on `workflow_dispatch`). It **merges the base into** the bundle branch
@@ -884,7 +943,7 @@ If notify is a step inside an existing checked-out job, skip the `checkout` and 
 | `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
 | `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
 
-Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`, `sec-sync-public-to-private.yml`, and the bundle-PR alert in `ci-pull-requests.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
 
 ---
 

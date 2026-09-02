@@ -104,9 +104,10 @@ reviews:
     - name: Security
       file_paths:
         - .agents/review-rules/security/code-execution-and-sandboxing.md
-        - .agents/review-rules/security/credentials-and-secrets.md
+        - .agents/review-rules/security/outbound-requests.md
         - .agents/review-rules/security/auth-and-access-control.md
-        - .agents/review-rules/security/data-and-infrastructure.md
+        - .agents/review-rules/security/rendering-untrusted-content.md
+        - .agents/review-rules/security/credentials-and-secrets.md
         - .agents/review-rules/security/node-input-safety.md
       include:
         - packages/cli/**
@@ -115,17 +116,17 @@ reviews:
         - packages/workflow/**
         - packages/nodes-base/**
         - packages/@n8n/nodes-langchain/**
+        - packages/frontend/**
       exclude:
         - '**/__tests__/**'
         - '**/*.test.ts'
         - '**/*.spec.ts'
+        - '**/*.stories.ts'
         - '**/test/**'
       description: |-
-        Flag security defects introduced by this PR, using the linked rules.
-
-        Higher scrutiny for the expression engine, credential handling, code
-        execution nodes, license enforcement, and SSO integrations. Community
-        and custom nodes carry a higher risk profile than official ones.
+        Flag security defects introduced by this PR, using the linked rules,
+        ordered by how often each class shows up. Community and custom nodes
+        carry a higher risk profile than official ones.
     - name: Backend
       file_paths:
         - .agents/review-rules/backend/controller-request-validation.md
@@ -133,6 +134,7 @@ reviews:
         - .agents/review-rules/backend/explicit-any.md
         - .agents/review-rules/backend/lazy-load-heavy-modules.md
         - .agents/review-rules/backend/hand-rolled-delays.md
+        - .agents/review-rules/backend/license-enforcement.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/cli/**
@@ -156,6 +158,23 @@ reviews:
         ESLint already fails the build for `@n8n/typeorm` imports in
         `packages/cli` business logic, uncaught `JSON.parse`, and
         `JSON.parse(JSON.stringify())` — never spend a comment on those.
+    - name: DB migrations
+      file_paths:
+        - .agents/review-rules/db-migrations/necessity-and-schema-design.md
+        - .agents/review-rules/db-migrations/data-safety.md
+        - .agents/review-rules/db-migrations/performance-and-scale.md
+        - .agents/review-rules/db-migrations/cross-db-compatibility.md
+        - .agents/review-rules/db-migrations/conventions-and-tests.md
+      include:
+        - packages/@n8n/db/src/migrations/**
+        - packages/cli/test/migration/**
+      description: |-
+        Take the linked rules in order: if the migration should not exist, its
+        shape matters less.
+
+        A migration is permanent. It runs unattended at startup on every
+        instance, and blocks that instance until it finishes. Read it in full,
+        plus the entity it touches and the queries that will use any new column.
     - name: Frontend
       file_paths:
         - .agents/skills/design-system/SKILL.md
@@ -204,8 +223,8 @@ reviews:
         What this surface's scanners cannot see: a documented invariant being
         undone, a guard being widened, a gate that stops being able to fail.
 
-  # cubic silently drops any rule past the fifth, so the last slot is a decision,
-  # not somewhere to append. Merge into an existing agent instead.
+  # All five slots are now used. cubic silently drops any rule past the fifth, so
+  # a new domain has to merge into an existing agent, not append to this list.
 pr_descriptions:
   generate: false
 issues:
