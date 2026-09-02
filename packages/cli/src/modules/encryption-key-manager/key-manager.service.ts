@@ -1,4 +1,5 @@
 import type { ListEncryptionKeysQueryDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	DeploymentKeyRepository,
 	type DeploymentKey,
@@ -6,7 +7,7 @@ import {
 	type DeploymentKeySortField,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Cipher, type CipherAlgorithm } from 'n8n-core';
+import { Cipher, InstanceSettings, type CipherAlgorithm } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -15,9 +16,13 @@ type KeyInfo = { id: string; value: string; algorithm: string };
 
 @Service()
 export class KeyManagerService {
+	private cachedInstanceKeyInfo?: KeyInfo;
+
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
 		private readonly cipher: Cipher,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
 	) {}
 
 	/** Returns the current active encryption key. Throws if none exists or if multiple are found. */
@@ -42,15 +47,35 @@ export class KeyManagerService {
 		return { id: key.id, value: key.value, algorithm: key.algorithm! };
 	}
 
-	/** Returns the legacy CBC key (used to decrypt rows with NULL encryptionKeyId). */
+	/**
+	 * Returns the legacy CBC key used to decrypt old rows (no keyId prefix).
+	 *
+	 * Prefers the stored key so the real read path stays exercised. If the store
+	 * cannot serve it — the key is not seeded, or the store is unreachable — falls
+	 * back to the instance key directly. Old data is plain CBC under the instance
+	 * key, and the seeded legacy key IS the instance key, so both paths yield the
+	 * same result. This keeps reads of old data working while the store is degraded.
+	 */
 	async getLegacyKey(): Promise<KeyInfo> {
-		const key = await this.deploymentKeyRepository.findOne({
-			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
-		});
-		if (!key) {
-			throw new NotFoundError('No legacy aes-256-cbc encryption key found');
+		try {
+			const key = await this.deploymentKeyRepository.findOne({
+				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+			});
+			if (key) {
+				return { id: key.id, value: key.value, algorithm: key.algorithm! };
+			}
+			if (!this.cachedInstanceKeyInfo) {
+				this.logger.warn(
+					'Legacy aes-256-cbc encryption key not found; falling back to instance key',
+				);
+			}
+		} catch (error) {
+			this.logger.warn(
+				'Key store unavailable while reading legacy key; using the instance key directly',
+				{ error },
+			);
 		}
-		return { id: key.id, value: key.value, algorithm: key.algorithm! };
+		return this.instanceKeyLegacyInfo();
 	}
 
 	/**
@@ -71,6 +96,21 @@ export class KeyManagerService {
 			status: 'inactive',
 		});
 		await this.deploymentKeyRepository.save(entity);
+	}
+
+	/**
+	 * Builds the legacy KeyInfo from the instance key, the fallback when the store
+	 * cannot serve the legacy key. Wraps the instance key exactly as bootstrap
+	 * does, so `Cipher` unwraps it and decrypts old CBC data unchanged. Memoized
+	 * because the instance key does not change at runtime.
+	 */
+	private instanceKeyLegacyInfo(): KeyInfo {
+		this.cachedInstanceKeyInfo ??= {
+			id: 'instance-key',
+			value: this.cipher.encryptDEKWithInstanceKey(this.instanceSettings.encryptionKey),
+			algorithm: 'aes-256-cbc',
+		};
+		return this.cachedInstanceKeyInfo;
 	}
 
 	/**
