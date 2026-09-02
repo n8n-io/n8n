@@ -75,6 +75,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	it.each([
 		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
 		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		['createOrGet', { externalId: 'order-4711', options: {} }],
 		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
 		[
 			'update',
