@@ -339,26 +339,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 				.andWhere('"createdAt" <= :settledBefore', { settledBefore })
 				.execute();
 
-			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds, settledBefore);
+			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds);
 
 			return quarantined.affected ?? 0;
 		});
 	}
 
 	/**
-	 * Delete the pending occurrences of the settled jobs these owners hold.
+	 * Delete the pending occurrences of these owners' quarantined jobs.
 	 *
-	 * `settledBefore` bounds this as it bounds the quarantine: a job the bound
-	 * spared stays enabled, and would lose a run nothing requeues.
+	 * Keyed on the quarantine stamp rather than on the bounds the update used, so
+	 * it reaches only rows still quarantined when it runs: a job another instance
+	 * revived in between has no stamp and keeps the runs it just seeded.
 	 */
 	private async withdrawQueuedOccurrences(
 		manager: EntityManager,
 		ownerType: string,
 		ownerIds: string[],
-		settledBefore: Date,
 	): Promise<void> {
-		// A subquery rather than a job-id round-trip, so both writes see the same
-		// jobs. `tablePath` comes from entity metadata, never from caller input.
+		// `tablePath` comes from entity metadata, never from caller input.
 		const jobTable = this.metadata.tablePath;
 		await manager
 			.createQueryBuilder()
@@ -366,8 +365,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.from(ScheduledTask)
 			.where('"status" = :status', { status: ScheduledTaskStatus.Pending })
 			.andWhere(
-				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "createdAt" <= :settledBefore)`,
-				{ ownerType, ownerIds, settledBefore },
+				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "orphanedAt" IS NOT NULL)`,
+				{ ownerType, ownerIds },
 			)
 			.execute();
 	}
