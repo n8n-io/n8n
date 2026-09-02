@@ -110,12 +110,16 @@ responses:
                         enum:
                           - review_pending
                           - changes_requested
+                          - insufficient_api_key_scope
+                          - insufficient_permissions
                       workflowReviewRequestId:
+                        type: string
+                        minLength: 1
+                      versionId:
                         type: string
                         minLength: 1
                     required:
                       - reason
-                      - workflowReviewRequestId
                     additionalProperties: false
                   contentImportPolicy:
                     type: object
