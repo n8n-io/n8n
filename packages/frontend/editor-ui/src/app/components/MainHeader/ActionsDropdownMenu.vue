@@ -269,6 +269,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 			label: locale.baseText('menuActions.importJson'),
+			icon: { type: 'icon', value: 'upload' },
 			disabled: onExecutionsTab.value,
 		});
 	}
