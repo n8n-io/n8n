@@ -5,6 +5,7 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentBackgroundJobService, BackgroundJobView } from '../agent-background-job.service';
 import {
 	createCancelBackgroundJobTool,
@@ -15,6 +16,7 @@ import {
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
 
 const persistence = { threadId: 'thread-1', resourceId: 'resource-1' };
+const approval = { type: 'approval' as const, toolName: 'http', args: { url: 'x' } };
 
 function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView {
 	return {
@@ -27,8 +29,28 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		suspendPayload: null,
 		...overrides,
 	};
+}
+
+function parkedJob(): AgentBackgroundJob {
+	return {
+		id: 'job-1',
+		parentThreadId: 'thread-1',
+		title: 'research',
+		subAgentId: 'sub-1',
+		childThreadId: 'child-1',
+		suspension: {
+			childRunId: 'run-1',
+			childToolCallId: 'c1',
+			childAgentId: 'sub-1',
+			suspendPayload: approval,
+			taskPath: '/root/research_0',
+			resumeContext: { agentId: 'sub-1' },
+			goal: 'find things',
+		},
+	} as unknown as AgentBackgroundJob;
 }
 
 function setup() {
@@ -192,7 +214,7 @@ describe('check_background_jobs', () => {
 			jobView(),
 			jobView({ id: 'job-2', status: 'completed', result: 'the answer' }),
 		]);
-		const tool = createCheckBackgroundJobsTool(options.jobService);
+		const tool = createCheckBackgroundJobsTool(options);
 
 		const output = await tool.handler!({}, { persistence });
 
@@ -211,7 +233,7 @@ describe('check_background_jobs', () => {
 		jobService.listForThread.mockResolvedValue([
 			jobView({ status: 'completed', result: 'x'.repeat(10_000) }),
 		]);
-		const tool = createCheckBackgroundJobsTool(options.jobService);
+		const tool = createCheckBackgroundJobsTool(options);
 
 		const output = (await tool.handler!({}, { persistence })) as {
 			jobs: Array<{ result: string }>;
@@ -221,12 +243,84 @@ describe('check_background_jobs', () => {
 		expect(output.jobs[0].result).toContain('truncated');
 	});
 
+	it('pauses on the first parked job with its approval card', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView(),
+			jobView({ id: 'job-2', suspendPayload: approval }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options);
+		const suspend = vi.fn();
+
+		await tool.handler!({}, { persistence, suspend, resumeData: undefined });
+
+		expect(suspend).toHaveBeenCalledWith(
+			{ ...approval, displayName: 'research: http' },
+			{ continuation: { jobId: 'job-2' } },
+		);
+	});
+
+	it('forwards the answer to the parked job and returns the listing', async () => {
+		const { jobService, backgroundRunner, options } = setup();
+		const job = parkedJob();
+		jobService.findJob.mockResolvedValue(job);
+		jobService.claimSuspendedForResume.mockResolvedValue(true);
+		jobService.listForThread.mockResolvedValue([jobView()]);
+		const tool = createCheckBackgroundJobsTool(options);
+		const suspend = vi.fn();
+
+		const output = await tool.handler!(
+			{},
+			{
+				persistence,
+				suspend,
+				suspendPayload: approval,
+				continuation: { jobId: 'job-1' },
+				resumeData: { approved: true },
+			},
+		);
+
+		expect(backgroundRunner.resume).toHaveBeenCalledWith(
+			job,
+			job.suspension,
+			{ approved: true },
+			expect.objectContaining({ projectId: 'project-1', runType: 'production' }),
+		);
+		expect(suspend).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			jobs: [expect.objectContaining({ jobId: 'job-1' })],
+			note: expect.stringContaining('forwarded'),
+		});
+	});
+
+	it('does not forward when the job settled meanwhile', async () => {
+		const { jobService, backgroundRunner, options } = setup();
+		jobService.findJob.mockResolvedValue(parkedJob());
+		jobService.claimSuspendedForResume.mockResolvedValue(false);
+		jobService.listForThread.mockResolvedValue([]);
+		const tool = createCheckBackgroundJobsTool(options);
+
+		const output = await tool.handler!(
+			{},
+			{
+				persistence,
+				suspend: vi.fn(),
+				suspendPayload: approval,
+				continuation: { jobId: 'job-1' },
+				resumeData: { approved: true },
+			},
+		);
+
+		expect(backgroundRunner.resume).not.toHaveBeenCalled();
+		expect(output).toMatchObject({ note: expect.stringContaining('no longer') });
+	});
+
 	it('truncates oversized errors in the echo', async () => {
 		const { jobService, options } = setup();
 		jobService.listForThread.mockResolvedValue([
 			jobView({ status: 'failed', error: 'x'.repeat(10_000) }),
 		]);
-		const tool = createCheckBackgroundJobsTool(options.jobService);
+		const tool = createCheckBackgroundJobsTool(options);
 
 		const output = (await tool.handler!({}, { persistence })) as {
 			jobs: Array<{ error: string }>;
@@ -238,7 +332,7 @@ describe('check_background_jobs', () => {
 
 	it('returns an empty listing when no persisted thread is active', async () => {
 		const { jobService, options } = setup();
-		const tool = createCheckBackgroundJobsTool(options.jobService);
+		const tool = createCheckBackgroundJobsTool(options);
 
 		const output = await tool.handler!({}, {});
 

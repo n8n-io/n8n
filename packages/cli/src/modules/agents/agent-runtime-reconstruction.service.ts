@@ -990,23 +990,22 @@ export class AgentRuntimeReconstructionService {
 			'./background/sub-agent-background-runner.js'
 		);
 		const jobService = Container.get(AgentBackgroundJobService);
+		const options = {
+			jobService,
+			backgroundRunner: Container.get(SubAgentBackgroundRunner),
+			sourcesById: delegation.sourcesById,
+			availableSubAgents: delegation.availableSubAgents,
+			projectId,
+			parentAgentId,
+			runContext,
+		};
 
-		agent.tool(createCheckBackgroundJobsTool(jobService));
+		agent.tool(createCheckBackgroundJobsTool(options));
 		agent.tool(createCancelBackgroundJobTool(jobService));
 
 		// Attached even with no configured sub-agents: inline self-delegation is
 		// always available.
-		agent.tool(
-			createSpawnBackgroundSubAgentTool({
-				jobService,
-				backgroundRunner: Container.get(SubAgentBackgroundRunner),
-				sourcesById: delegation.sourcesById,
-				availableSubAgents: delegation.availableSubAgents,
-				projectId,
-				parentAgentId,
-				runContext,
-			}),
-		);
+		agent.tool(createSpawnBackgroundSubAgentTool(options));
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
 	}
 

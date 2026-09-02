@@ -4,15 +4,29 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import type {
+	AgentBackgroundJob,
+	AgentBackgroundJobSuspension,
+} from '../../entities/agent-background-job.entity';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import {
 	AgentBackgroundJobService,
 	MAX_RUNNING_JOBS_PER_THREAD,
 	SETTLED_JOB_RETENTION_MS,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 } from '../agent-background-job.service';
+
+const suspension: AgentBackgroundJobSuspension = {
+	childRunId: 'run-1',
+	childToolCallId: 'tool-1',
+	childAgentId: 'sub-1',
+	suspendPayload: { type: 'approval', toolName: 'http' },
+	taskPath: '/root/research_0',
+	resumeContext: { agentId: 'sub-1' },
+	goal: 'research',
+};
 
 function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJob {
 	return {
@@ -30,6 +44,7 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 		result: null,
 		error: null,
 		settledAt: null,
+		suspension: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...overrides,
@@ -40,6 +55,7 @@ function setup() {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const publisher = mock<Publisher>();
+	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 
@@ -49,15 +65,18 @@ function setup() {
 	jobRepository.findByParentThread.mockResolvedValue([]);
 	jobRepository.findRunningJobs.mockResolvedValue([]);
 	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
+	jobRepository.findParkedJobs.mockResolvedValue([]);
+	jobRepository.settleSuspendedIfRunning.mockResolvedValue(true);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
 		jobRepository,
 		executionRepository,
 		publisher,
+		checkpointStorage,
 		logger,
 	);
-	return { service, jobRepository, executionRepository, publisher };
+	return { service, jobRepository, executionRepository, publisher, checkpointStorage };
 }
 
 const registerParams = {
@@ -125,6 +144,29 @@ describe('settle', () => {
 		// A later cancel finds no handle to abort — the map does not leak.
 		await service.cancel('thread-1', 'job-1');
 		expect(controller.signal.aborted).toBe(false);
+	});
+});
+
+describe('park', () => {
+	it('lifts the timeout and drops the live abort handle', async () => {
+		const { service, jobRepository, executionRepository } = setup();
+		jobRepository.parkIfRunning.mockResolvedValue(true);
+		service.registerAbortController('job-1', new AbortController());
+
+		expect(await service.park('job-1', suspension)).toBe(true);
+		expect(jobRepository.parkIfRunning).toHaveBeenCalledWith('job-1', suspension);
+
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+		await service.listForThread('thread-1');
+		expect(executionRepository.findLatestStatusesByThreadIds).toHaveBeenCalled();
+	});
+
+	it('discards the child checkpoint when cancellation wins the race', async () => {
+		const { service, jobRepository, checkpointStorage } = setup();
+		jobRepository.parkIfRunning.mockResolvedValue(false);
+
+		expect(await service.park('job-1', suspension)).toBe(false);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'sub-1');
 	});
 });
 
@@ -211,6 +253,29 @@ describe('cancel', () => {
 		jobRepository.settleIfRunning.mockResolvedValue(false);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
+	});
+
+	it('discards the checkpoint and relays cancellation for a parked job', async () => {
+		const { service, jobRepository, checkpointStorage, publisher } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob({ timeoutAt: null, suspension })]);
+
+		expect(await service.cancel('thread-1', 'job-1')).toBe('cancelled');
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'sub-1');
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'cancel-agent-background-job',
+			payload: { jobId: 'job-1' },
+		});
+	});
+
+	it('aborts a resumed job when cancellation read its stale parked state', async () => {
+		const { service, jobRepository, checkpointStorage } = setup();
+		const controller = new AbortController();
+		service.registerAbortController('job-1', controller);
+		jobRepository.findByParentThread.mockResolvedValue([makeJob({ timeoutAt: null, suspension })]);
+
+		expect(await service.cancel('thread-1', 'job-1')).toBe('cancelled');
+		expect(controller.signal.aborted).toBe(true);
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
 	});
 });
 
@@ -308,5 +373,46 @@ describe('reconcile', () => {
 		await service.reconcile();
 
 		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+	});
+
+	it('fails expired parked jobs and keeps answerable parked jobs', async () => {
+		const { service, jobRepository, checkpointStorage } = setup();
+		jobRepository.findParkedJobs.mockResolvedValue([
+			makeJob({
+				id: 'job-expired',
+				timeoutAt: null,
+				suspension: { ...suspension, childRunId: 'run-expired' },
+			}),
+			makeJob({
+				id: 'job-active',
+				timeoutAt: null,
+				suspension: { ...suspension, childRunId: 'run-active' },
+			}),
+		]);
+		checkpointStorage.getStatus.mockImplementation(async (runId) =>
+			runId === 'run-expired'
+				? { status: 'expired' }
+				: { status: 'active', checkpoint: {} as never },
+		);
+
+		await service.reconcile();
+
+		expect(jobRepository.settleSuspendedIfRunning).toHaveBeenCalledWith('job-expired', {
+			status: 'failed',
+			error: 'Sub-agent request for human input expired before anyone answered',
+		});
+		expect(jobRepository.settleSuspendedIfRunning).not.toHaveBeenCalledWith(
+			'job-active',
+			expect.anything(),
+		);
+	});
+
+	it('leaves a parked job alone during orphan reconciliation', async () => {
+		const { service, jobRepository, executionRepository } = setup();
+		jobRepository.findRunningJobs.mockResolvedValue([makeJob({ timeoutAt: null, suspension })]);
+
+		await service.reconcile();
+
+		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
 	});
 });

@@ -8,7 +8,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.agent_background_job](public.agent_background_job.md) | 16 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 17 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -368,6 +368,7 @@ erDiagram
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
   varchar_36_ subAgentId
+  json suspension
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

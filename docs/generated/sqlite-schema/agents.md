@@ -114,6 +114,7 @@ erDiagram
   datetime_3_ settledAt
   varchar_16_ status
   varchar_36_ subAgentId
+  TEXT suspension
   datetime_3_ timeoutAt
   varchar_255_ title
   datetime_3_ updatedAt
