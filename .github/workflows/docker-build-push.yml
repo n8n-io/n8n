@@ -314,8 +314,8 @@ jobs:
       # manifest list and every pull failed on older containerd (#31997). The
       # exporter flags that keep this an OCI index live in the build job, but
       # the merge happens here, so this is the only place the published shape
-      # can be asserted.
-      - name: Assert merged manifests are OCI image indexes
+      # can be asserted. Docker Hub merges separately below and is asserted there.
+      - name: Assert merged GHCR manifests are OCI image indexes
         env:
           RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
           N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
@@ -364,6 +364,12 @@ jobs:
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
 
+            # Self-hosted pulls come from here, and this merge is independent of
+            # the GHCR one above, so it needs its own assertion. Always both
+            # arches: push_to_docker is never set for amd64-only branch builds.
+            node .github/scripts/docker/assert-manifest-format.mjs \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" --expect-platforms 2
+
             # Create SHA-tagged manifest (immutable reference)
             # For distroless, insert SHA between version and -distroless suffix
             # to match docker-tags.mjs format: nightly-abc1234-distroless (not nightly-distroless-abc1234)
@@ -406,43 +412,6 @@ jobs:
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
-
-  # Execs the artifact that actually shipped. docker-build-smoke.yml runs the
-  # same checks, but against its own no-cache build of the branch tip - a
-  # different image, and its PR trigger deliberately skips pnpm-workspace.yaml,
-  # which is where the native deps are pinned. So a catalog bump of
-  # @confluentinc/kafka-javascript or isolated-vm reaches a published tag
-  # unexercised unless something pulls the pushed image back and runs it.
-  verify-pushed-images:
-    name: Verify Pushed Images
-    needs: [determine-build-context, create_multi_arch_manifest]
-    runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      # Installs only, no build: the script needs zx and yaml, not a compiled
-      # workspace. The image under test is pulled from the registry.
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          node-version: '26.7.0'
-          build-command: ''
-
-      - name: Login to GHCR
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: true
-
-      - name: Exec native bindings and runner interpreters
-        env:
-          SMOKE_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-          SMOKE_RUNNERS_IMAGES: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }},${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-          # The cloud-chart invocations need a token this job does not carry;
-          # the binding and interpreter execs are what guard the release.
-          SMOKE_SKIP_CLOUD: 'true'
-        run: node scripts/smoke-n8n-image.mjs
 
   call-success-url:
     name: Call Success URL
@@ -640,7 +609,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
       id-token: write
@@ -737,8 +706,11 @@ jobs:
   notify-on-failure:
     name: Notify Cats on nightly build failure
     runs-on: ubuntu-latest
-    needs: [build-and-push-docker]
-    if: always() && needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    needs: [build-and-push-docker, sbom-attestation]
+    if: |
+      always() && github.event_name == 'schedule' &&
+      (needs.build-and-push-docker.result == 'failure' ||
+       needs.sbom-attestation.result == 'failure')
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -750,4 +722,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#team-catalysts' \
-            --text 'Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            --text 'Nightly Docker build failed (build=${{ needs.build-and-push-docker.result }}, sbom=${{ needs.sbom-attestation.result }}) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

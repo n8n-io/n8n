@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- Write all technical text (code comments, PR descriptions, issue and ticket
+  descriptions, docs) in ASD-STE100 Simplified Technical English: use short
+  sentences, the active voice, and one instruction for each sentence
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a

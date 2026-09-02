@@ -257,7 +257,7 @@ export class CredentialsTester {
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		targetUrl: string,
-		options: { acceptedStatusCodes?: number[] } = {},
+		options: { acceptedStatusCodes?: number[]; allowedDomains?: string } = {},
 	): Promise<CredentialAuthProbeResult> {
 		try {
 			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
@@ -274,7 +274,15 @@ export class CredentialsTester {
 			userId,
 			credentialType,
 			credentialsDecrypted,
-			{ testRequest: { request: { url: targetUrl, method: 'GET' } } },
+			{
+				testRequest: {
+					request: {
+						url: targetUrl,
+						method: 'GET',
+						...(options.allowedDomains ? { allowedDomains: options.allowedDomains } : {}),
+					},
+				},
+			},
 			'authProbe',
 			options.acceptedStatusCodes,
 		);

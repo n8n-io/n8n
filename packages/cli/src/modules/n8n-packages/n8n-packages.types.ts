@@ -230,11 +230,12 @@ export interface ExportPackageRequest {
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
-export type ImportPackageRequest = {
+export type PackageImportSource = 'package-import' | 'git-pull';
+
+export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
-	packageBuffer: Buffer;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
@@ -244,6 +245,10 @@ export type ImportPackageRequest = {
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
+
+export type ImportPackageRequest = ImportRequest & {
+	packageBuffer: Buffer;
+};
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -267,7 +272,8 @@ export type ResolvedImportFolderProperties = ImportFolderProperties & {
 	folderConflictPolicy: FolderConflictPolicy;
 };
 
-/** An import request every importer can read without re-deriving what the caller omitted. */
+export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
+
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
 
 export type ImportFolderProperties = {
@@ -590,6 +596,11 @@ export interface ImportVariableSummary {
 	updated: string[];
 }
 
+export interface ImportDataTableSummary {
+	matched: number;
+	created: number;
+}
+
 /** Tag names (not ids), grouped by how the import resolved them. */
 export interface ImportTagSummary {
 	matched: string[];
@@ -611,6 +622,7 @@ export interface ImportResult {
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }
