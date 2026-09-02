@@ -83,12 +83,14 @@ Dates and timestamps MUST be derived from the "## Date anchors" block at the end
 Special node types:
 - Trigger nodes (marked as the workflow's simulated event source): emit the EVENT PAYLOAD the trigger delivers into the workflow — the received email/message/record object itself — never an API response envelope, acknowledgement, or request metadata.
 - Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
-- Wait nodes: their real output is their INPUT passed through unchanged. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving.
+- Pass-through nodes (Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — Wait and Text Classifier pass it through unchanged; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
 
 Output: a single JSON object whose keys are node names and whose values are arrays of n8n pin-data items in the form { "json": { ... } }. One item per node is enough.
 
 Return only the JSON object. No prose, no markdown fences.`;
 
+// A Form page is not pass-through (it emits its own submitted fields), but its
+// prompt block still needs the upstream nodes for context.
 const USER_ACTION_NODE_TYPES = new Set(['n8n-nodes-base.form', 'n8n-nodes-base.wait']);
 
 function formatNodeBlock(
@@ -205,18 +207,23 @@ function createSchemaContextResolver(
 }
 
 /**
- * Layer the nearest upstream ancestor's shape under every SYNTHESIZED
- * pass-through fixture: that ancestor's own fixture when it has one,
- * otherwise the ancestor's schema placeholder. The node's own synthesized
- * fields stay on top, so a partial pass-through such as sentimentAnalysis
- * keeps its marker object and still carries the input fields.
+ * Layer the nearest upstream ancestor's shape UNDER every pass-through
+ * fixture: that ancestor's own fixture when it has one, otherwise the
+ * ancestor's schema placeholder. The node's own fields stay on top, so a
+ * partial pass-through such as sentimentAnalysis keeps its marker object and
+ * still carries the input.
  *
- * Only synthesized entries are touched. Items the model actually produced are
- * left alone even when they look thin — the model saw the upstream context.
+ * Model output is layered too, not just synthesized placeholders. The model
+ * routinely returns a thin item for these nodes — it is answering "what does
+ * this node emit" without knowing the run's data — and every field it leaves
+ * out is a downstream expression that resolves to undefined. Its own fields
+ * win on conflict, so a good answer is never overwritten.
+ *
+ * Cardinality follows the upstream items, since a pass-through node emits one
+ * output per input, unless the model asked for more.
  */
 function withPassThroughFloor(
 	fixtures: SimulationFixtures,
-	synthesized: ReadonlySet<string>,
 	workflow: WorkflowJSON,
 	connectionsByDestination: IConnections,
 	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
@@ -230,7 +237,6 @@ function withPassThroughFloor(
 	const result = { ...fixtures };
 
 	for (const nodeName of Object.keys(fixtures)) {
-		if (!synthesized.has(nodeName)) continue;
 		const nodeType = typeByName.get(nodeName);
 		if (!nodeType || !PASS_THROUGH_NODE_TYPES.has(nodeType)) continue;
 		const borrowed = findUpstreamShape(
@@ -241,8 +247,12 @@ function withPassThroughFloor(
 			now,
 		);
 		if (!borrowed) continue;
-		const ownFields = result[nodeName]?.[0] ?? {};
-		result[nodeName] = borrowed.map((item) => ({ ...item, ...ownFields }));
+		const own = result[nodeName] ?? [];
+		const items = own.length > borrowed.length ? own : borrowed;
+		result[nodeName] = items.map((_, index) => ({
+			...(borrowed[index] ?? borrowed[0]),
+			...(own[index] ?? own[0]),
+		}));
 	}
 
 	return result;
@@ -309,7 +319,6 @@ export function buildPlaceholderFixtures(
 	);
 	return withPassThroughFloor(
 		placeholderFixtures(nodeNames, schemaContextByName, now),
-		new Set(nodeNames),
 		workflow,
 		mapConnectionsByDestination(toEngineConnections(workflow.connections)),
 		resolveContext,
@@ -364,7 +373,7 @@ export async function generateSimulationFixtures(
 					n,
 					reasonByName.get(n.name) ?? '',
 					schemaContextByName.get(n.name),
-					USER_ACTION_NODE_TYPES.has(n.type)
+					USER_ACTION_NODE_TYPES.has(n.type) || PASS_THROUGH_NODE_TYPES.has(n.type)
 						? buildUpstreamContext(input.workflow, n.name, connectionsByDestination)
 						: undefined,
 				),
@@ -392,7 +401,6 @@ export async function generateSimulationFixtures(
 		);
 		return withPassThroughFloor(
 			placeholderFixtures(nodeNames, schemaContextByName, now),
-			new Set(nodeNames),
 			input.workflow,
 			connectionsByDestination,
 			resolveContext,
@@ -409,7 +417,6 @@ export async function generateSimulationFixtures(
 	pinData = repairStructuredOutput(pinData, input.workflow, schemaContexts);
 
 	const fixtures: SimulationFixtures = {};
-	const synthesized = new Set<string>();
 	for (const name of nodeNames) {
 		// An omitted node, an empty array, or items that unwrap to nothing all
 		// leave the branch below this node unreached, so each falls back to the
@@ -417,16 +424,12 @@ export async function generateSimulationFixtures(
 		const items = (pinData[name] ?? [])
 			.map((item) => (isRecord(item.json) ? item.json : {}))
 			.filter((item) => Object.keys(item).length > 0);
-		if (items.length) {
-			fixtures[name] = items;
-			continue;
-		}
-		fixtures[name] = [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
-		synthesized.add(name);
+		fixtures[name] = items.length
+			? items
+			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
 	}
 	return withPassThroughFloor(
 		fixtures,
-		synthesized,
 		input.workflow,
 		connectionsByDestination,
 		resolveContext,

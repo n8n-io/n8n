@@ -461,9 +461,9 @@ describe('generateSimulationFixtures', () => {
 		]);
 	});
 
-	it('leaves a thin model-produced pass-through item alone', async () => {
-		// The model saw the upstream context, so its answer stands even when it
-		// carries fewer fields than the borrowed shape would.
+	it('layers the upstream shape under a thin model-produced pass-through item', async () => {
+		// Every field the model leaves out of a pass-through item is a downstream
+		// expression that resolves to undefined.
 		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { onlyField: 'kept' } }] }));
 		const workflow = wf([
 			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
@@ -479,7 +479,7 @@ describe('generateSimulationFixtures', () => {
 			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
 		});
 
-		expect(result['Wait 2 Days']).toEqual([{ onlyField: 'kept' }]);
+		expect(result['Wait 2 Days']).toEqual([{ email: 'sample', onlyField: 'kept' }]);
 	});
 
 	it('does not borrow upstream data for a node that has its own output shape', async () => {
@@ -506,7 +506,79 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Send Slack']).toEqual([{ ok: true }]);
 	});
 
-	it('keeps the items the LLM produced for a Wait', async () => {
+	it('layers the upstream shape under a partial fixture for a pass-through AI root', async () => {
+		// The model answers "what does this node emit" without knowing the run's
+		// data, so a classifier fixture routinely arrives missing the input.
+		setupAgentMock(JSON.stringify({ 'Route Ticket': [{ json: { category: 'billing' } }] }));
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Route Ticket', type: '@n8n/n8n-nodes-langchain.textClassifier' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Route Ticket', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Route Ticket')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result['Route Ticket']).toEqual([{ email: 'sample', category: 'billing' }]);
+	});
+
+	it('gives pass-through AI roots the upstream context their prompt block needs', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ 'Route Ticket': [{ json: {} }] }));
+
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Route Ticket', type: '@n8n/n8n-nodes-langchain.textClassifier' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Route Ticket', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Route Ticket')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('Immediate upstream nodes (this node passes their data through)');
+		expect(promptText).toContain('"Get Contact" (n8n-nodes-base.brevo)');
+	});
+
+	it('emits one pass-through item per upstream item', async () => {
+		setupAgentMock(
+			JSON.stringify({
+				'Get Contact': [{ json: { email: 'a@example.com' } }, { json: { email: 'b@example.com' } }],
+			}),
+		);
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Wait 2 Days')],
+		});
+
+		expect(result['Wait 2 Days']).toEqual([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
+	});
+
+	it("keeps the model's own value when it conflicts with the borrowed shape", async () => {
 		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { email: 'real@example.com' } }] }));
 		const workflow = wf([
 			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
