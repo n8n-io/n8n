@@ -1,0 +1,39 @@
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_5ddf40544fde37::t_8403db071389ad 105-127
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_5ddf40544fde37::t_8403db071389ad 33-38,46-52,65-69,71,83,88-89,103-106,133-139,141-150,153,155-157,159-163,165-166,169
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_5ddf40544fde37::t_8403db071389ad 106-145
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_5ddf40544fde37::t_8403db071389ad 21,23,677-817
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_5ddf40544fde37::t_8403db071389ad 49-51,321-396
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_5ddf40544fde37::t_8403db071389ad 15-18,30-35,71,77,80-93,100,103-114,139,157,165,179
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_5ddf40544fde37::t_8403db071389ad 30-35,50-51,84-87,92,97-117,160,225
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5ddf40544fde37::t_8403db071389ad 178
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_8403db071389ad 225-230
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_5ddf40544fde37::t_8403db071389ad 230-334
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_5ddf40544fde37::t_8403db071389ad 183-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5cbce41c201c9e0bca404e6668ad3b993bc6eb76",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
