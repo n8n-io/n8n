@@ -1,5 +1,7 @@
 import type { ModuleInterface, ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
@@ -154,6 +156,60 @@ describe('loadModules', () => {
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
+	});
+
+	describe('when a module entrypoint exists but fails to evaluate', () => {
+		// A module whose own file is present but whose `require` of a dependency fails.
+		// This is what an npx-isolated n8n install produces: the entrypoint is on disk,
+		// but resolving a dependency from it throws `MODULE_NOT_FOUND`.
+		const MODULE_NAME = 'fixture-module';
+		const MISSING_DEPENDENCY = 'n8n-fixture-absent-dependency';
+
+		let tmpDir: string;
+		let originalArgv1: string;
+
+		beforeAll(async () => {
+			tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-module-registry-'));
+
+			// Mark the tree as CommonJS so the entrypoint below is evaluated as CJS.
+			await fs.writeFile(path.join(tmpDir, 'package.json'), '{ "type": "commonjs" }');
+
+			const moduleDir = path.join(tmpDir, 'dist', 'modules', MODULE_NAME);
+			await fs.mkdir(moduleDir, { recursive: true });
+			await fs.writeFile(
+				path.join(moduleDir, `${MODULE_NAME}.module.js`),
+				`require(${JSON.stringify(MISSING_DEPENDENCY)});\n`,
+			);
+		});
+
+		afterAll(async () => {
+			await fs.rm(tmpDir, { recursive: true, force: true });
+		});
+
+		beforeEach(() => {
+			originalArgv1 = process.argv[1];
+			// `n8n` is not a dependency of this package, so `loadModules` falls back to
+			// deriving `modulesDir` from the n8n binary path, two levels up.
+			process.argv[1] = path.join(tmpDir, 'bin', 'n8n');
+		});
+
+		afterEach(() => {
+			process.argv[1] = originalArgv1;
+		});
+
+		it('should report the underlying failure, not the enterprise fallback path', async () => {
+			const moduleRegistry = new ModuleRegistry(mock(), mock(), mock(), mock(), mock());
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const loading = moduleRegistry.loadModules([MODULE_NAME as any]);
+
+			// The user must see the dependency that could not be resolved. Today the
+			// `MODULE_NOT_FOUND` from the primary import is discarded, and the error
+			// from the `.ee` fallback - a directory that never existed - is reported
+			// instead, which sends the user looking for a naming mistake.
+			await expect(loading).rejects.toThrow(MISSING_DEPENDENCY);
+			await expect(loading).rejects.not.toThrow(`${MODULE_NAME}.ee`);
+		});
 	});
 });
 
