@@ -269,11 +269,13 @@ describe('emit-instance-ai', () => {
 			'normalizePinData',
 			// Mock/pin-data generation building blocks (src/mock-data/) — eval
 			// and simulated-verification tooling, never in workflow bodies
+			'buildAiRootPlaceholder',
 			'buildDateAnchors',
 			'buildFieldViolationRetryMessage',
 			'buildNodeSchemaSection',
 			'buildPinDataUserPrompt',
 			'buildSchemaContexts',
+			'buildSchemaPlaceholderItem',
 			'collectDownstreamConsumers',
 			'collectPinFieldViolations',
 			'describeAiRootShape',
