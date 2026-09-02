@@ -304,4 +304,10 @@ export class ProjectController {
 	) {
 		return await this.projectExecutionQuotaService.getSpikes(projectId);
 	}
+
+	@Get('/execution-quota')
+	@GlobalScope('project:manageExecutionQuota')
+	async getAllProjectsExecutionQuota(_req: AuthenticatedRequest, _res: Response) {
+		return await this.projectExecutionQuotaService.getAllProjectsConsumption();
+	}
 }

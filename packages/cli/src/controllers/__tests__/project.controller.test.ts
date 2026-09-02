@@ -325,5 +325,25 @@ describe('ProjectController', () => {
 			expect(projectExecutionQuotaService.getSpikes).toHaveBeenCalledWith('p1');
 			expect(result).toEqual(spikes);
 		});
+
+		it('getAllProjectsExecutionQuota delegates to the service', async () => {
+			const allConsumption = [
+				{
+					projectId: 'p1',
+					projectName: 'Project One',
+					limit: 100,
+					periodUnit: 'day' as const,
+					consumed: 5,
+					remaining: 95,
+					resetsAt: '2026-09-02T00:00:00.000Z',
+				},
+			];
+			projectExecutionQuotaService.getAllProjectsConsumption.mockResolvedValue(allConsumption);
+
+			const result = await controller.getAllProjectsExecutionQuota(req, makeRes());
+
+			expect(projectExecutionQuotaService.getAllProjectsConsumption).toHaveBeenCalled();
+			expect(result).toEqual(allConsumption);
+		});
 	});
 });
