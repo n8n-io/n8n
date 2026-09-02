@@ -41,8 +41,38 @@ describe('Test MicrosoftTeamsV2, channelMessage => getAllReplies', () => {
 			],
 		});
 
+	// Limit branch: `$top` goes to Graph, the page is truncated to `limit`, and the
+	// `@odata.nextLink` is not followed.
+	nock('https://graph.microsoft.com')
+		.get('/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages/1698324478896/replies')
+		.query({ $top: 1 })
+		.reply(200, {
+			'@odata.nextLink':
+				'https://graph.microsoft.com/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages/1698324478896/replies?$skiptoken=abc',
+			value: [
+				{
+					id: '1698324500123',
+					replyToId: '1698324478896',
+					messageType: 'message',
+					body: {
+						contentType: 'html',
+						content: '<div>First reply</div>',
+					},
+				},
+				{
+					id: '1698324500456',
+					replyToId: '1698324478896',
+					messageType: 'message',
+					body: {
+						contentType: 'html',
+						content: '<div>Second reply</div>',
+					},
+				},
+			],
+		});
+
 	new NodeTestHarness().setupTests({
 		credentials,
-		workflowFiles: ['getAllReplies.workflow.json'],
+		workflowFiles: ['getAllReplies.workflow.json', 'getAllReplies.limit.workflow.json'],
 	});
 });
