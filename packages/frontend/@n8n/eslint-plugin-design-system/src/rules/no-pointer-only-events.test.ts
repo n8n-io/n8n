@@ -25,6 +25,7 @@ ruleTester.run('no-pointer-only-events', NoPointerOnlyEventsRule, {
 		{ filename: 'Component.vue', code: vue('<div role="button" @mouseup="activate" />') },
 		{ filename: 'Component.vue', code: vue('<div :role="role" @pointerup="activate" />') },
 		{ filename: 'Component.vue', code: vue('<Widget @mousedown="activate" />') },
+		{ filename: 'Component.vue', code: vue('<component :is="tag" @mousedown="activate" />') },
 		{ filename: 'Component.vue', code: vue('<div @[event]="activate" />') },
 	],
 	invalid: [

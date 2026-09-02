@@ -19,6 +19,10 @@ ruleTester.run('no-redundant-roles', NoRedundantRolesRule, {
 		{ filename: 'Component.vue', code: vue('<button role="switch" aria-checked="false" />') },
 		{ filename: 'Component.vue', code: vue('<a role="button">Action</a>') },
 		{ filename: 'Component.vue', code: vue('<Widget role="button" />') },
+		{ filename: 'Component.vue', code: vue('<Button role="button" />') },
+		{ filename: 'Component.vue', code: vue('<form aria-label="" role="form" />') },
+		{ filename: 'Component.vue', code: vue('<input :list="items" role="combobox" />') },
+		{ filename: 'Component.vue', code: vue('<input :type="kind" role="textbox" />') },
 	],
 	invalid: [
 		{
@@ -34,6 +38,26 @@ ruleTester.run('no-redundant-roles', NoRedundantRolesRule, {
 		{
 			filename: 'Component.vue',
 			code: vue('<input type="checkbox" :role="\'checkbox\'" />'),
+			errors: [{ messageId: 'redundantRole' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<select multiple="false" role="listbox" />'),
+			errors: [{ messageId: 'redundantRole' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<input type="not-a-type" role="textbox" />'),
+			errors: [{ messageId: 'redundantRole' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<section aria-label="Details" role="region" />'),
+			errors: [{ messageId: 'redundantRole' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<table><tr><td role="cell" /></tr></table>'),
 			errors: [{ messageId: 'redundantRole' }],
 		},
 	],
