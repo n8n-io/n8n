@@ -364,8 +364,10 @@ interface ReviveResult {
 }
 
 /**
- * Lift the quarantine on jobs whose owner exists after all, recomputing each
- * clock from the stored schedule so the job resumes at its next instant.
+ * Lift the quarantine on jobs whose owner exists after all, seeding each clock
+ * from the stored schedule as a fresh registration would. Quarantine cleared the
+ * clock, so nothing anchors the revived job to its old cadence: a recurring cron
+ * restarts its every-N count at its next cron instant.
  *
  * A resolver answers existence, not intent, so a job is restored exactly as it
  * was stored, including one the owner would no longer provision. Bringing the

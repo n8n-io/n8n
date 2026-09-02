@@ -183,6 +183,31 @@ describe('reconcile', () => {
 			expect(summary.revived).toBe(1);
 		});
 
+		it('seeds a revived recurring cron at its next cron instant, restarting the every-N count', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({
+					id: 42,
+					kind: 'recurring_cron',
+					intervalSeconds: null,
+					cronExpression: '0 0 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: 'weeks',
+					recurrenceSize: 2,
+				}),
+			]);
+
+			await run();
+
+			// Quarantine cleared the clock, so the every-2-weeks rule has no fire to
+			// count from and the job restarts at the next midnight.
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, new Date('2026-03-02T00:00:00.000Z'));
+		});
+
 		it('revives a job whose stored schedule can no longer be planned with no clock, rather than failing the sweep', async () => {
 			registry.register('workflow', {
 				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
