@@ -102,6 +102,29 @@ describe('WorkflowFinderService', () => {
 		});
 	});
 
+	describe('findWorkflowNamesByIds', () => {
+		it('returns an empty map without querying when no ids are given', async () => {
+			const { service, workflowRepository } = makeService();
+
+			const result = await service.findWorkflowNamesByIds([]);
+
+			expect(result.size).toBe(0);
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+		});
+
+		it('maps the ids that exist to their names, unscoped by access', async () => {
+			const { service, workflowRepository } = makeService();
+			workflowRepository.findByIds.mockResolvedValue([{ id: 'wf-1', name: 'One' }] as never);
+
+			const result = await service.findWorkflowNamesByIds(['wf-1', 'wf-missing']);
+
+			expect(result).toEqual(new Map([['wf-1', 'One']]));
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-missing'], {
+				fields: ['id', 'name'],
+			});
+		});
+	});
+
 	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
 		it('merges workflows returned from different chunks', async () => {
 			const { service, sharedWorkflowRepository } = makeService();

@@ -12,7 +12,10 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
-import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
+import {
+	assertEveryRequestedEntityAccessible,
+	PackageEntityNotFoundError,
+} from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
@@ -24,6 +27,12 @@ export interface ProjectExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	workflowVersionPolicy: WorkflowVersionPolicy;
+	/**
+	 * Export only these workflows from the projects, with the folders on the
+	 * path to them. Omit to export whole projects. An empty array writes the
+	 * project shells only. Every id must belong to one of `projectIds`.
+	 */
+	workflowIds?: string[];
 }
 
 interface ProjectExportResult {
@@ -59,25 +68,50 @@ export class ProjectExporter {
 			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
 
+		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
 		const allocator = new UniqueFilenameAllocator('projects', 'project');
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
 			const target = allocator.allocate(project.name);
-			results.push(await this.exportProject(project, target, request));
+			results.push(await this.exportProject(project, target, request, selectedWorkflowIds));
 		}
 
-		return this.mergeProjectExportResults(results);
+		const merged = this.mergeProjectExportResults(results);
+		if (request.workflowIds) this.assertSelectionExported(request.workflowIds, merged);
+		return merged;
+	}
+
+	private assertSelectionExported(workflowIds: string[], result: ProjectExportResult): void {
+		const exported = new Set(result.workflowEntries.map(({ id }) => id));
+		const missing = workflowIds.filter((id) => !exported.has(id));
+		if (missing.length === 0) return;
+
+		throw new PackageEntityNotFoundError(
+			`${missing.length} workflow(s) not found in the requested project(s). Export aborted.`,
+			{ description: `Missing workflow IDs: ${missing.join(', ')}` },
+		);
 	}
 
 	private async exportProject(
 		project: Project,
 		target: string,
 		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<ProjectExportResult> {
 		await this.exportProjectShell(project, target, request.writer);
-		const folders = await this.exportProjectFolders(project.id, target, request);
-		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
+		const folders = await this.exportProjectFolders(
+			project.id,
+			target,
+			request,
+			selectedWorkflowIds,
+		);
+		const rootWorkflows = await this.exportProjectRootWorkflows(
+			project.id,
+			target,
+			request,
+			selectedWorkflowIds,
+		);
 
 		return {
 			entries: [{ id: project.id, name: project.name, target }],
@@ -102,6 +136,7 @@ export class ProjectExporter {
 		projectId: string,
 		target: string,
 		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<FolderExportResult> {
 		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
 		if (folderIds.length === 0) {
@@ -119,6 +154,7 @@ export class ProjectExporter {
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
+			selectedWorkflowIds,
 		});
 	}
 
@@ -126,6 +162,7 @@ export class ProjectExporter {
 		projectId: string,
 		target: string,
 		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<WorkflowExportResult> {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
 		if (rootWorkflowIds.length === 0) {
@@ -139,6 +176,7 @@ export class ProjectExporter {
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
+			selectedWorkflowIds,
 		});
 	}
 

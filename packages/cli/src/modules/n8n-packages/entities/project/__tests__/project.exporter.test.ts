@@ -227,6 +227,111 @@ describe('ProjectExporter', () => {
 		]);
 	});
 
+	describe('workflowIds selection', () => {
+		const emptyRequirements = {
+			credentials: [],
+			dataTables: [],
+			variables: [],
+			tags: [],
+			nodeTypes: [],
+		};
+
+		it('forwards the selection to the folder and root workflow exporters', async () => {
+			const project = makeProject();
+			const { exporter, folderFinder, workflowFinder, folderExporter, workflowExporter } =
+				makeExporter({ projects: [project] });
+			folderFinder.findFolderIdsInProject.mockResolvedValue(['f1']);
+			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w-root', 'w-root-2']);
+			folderExporter.export.mockResolvedValue({
+				entries: [{ id: 'f1', name: 'F1', target: 'projects/billing/folders/f1' }],
+				workflowEntries: [
+					{ id: 'w-in-f1', name: 'In F1', target: 'projects/billing/folders/f1/workflows/x' },
+				],
+				requirements: emptyRequirements,
+			});
+			workflowExporter.export.mockResolvedValue({
+				entries: [{ id: 'w-root', name: 'Root', target: 'projects/billing/workflows/root' }],
+				requirements: emptyRequirements,
+			});
+
+			const result = await exporter.export({
+				user,
+				projectIds: [project.id],
+				workflowIds: ['w-root', 'w-in-f1'],
+				writer: new CapturingWriter(),
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			});
+
+			const selected = new Set(['w-root', 'w-in-f1']);
+			expect(folderExporter.export).toHaveBeenCalledWith(
+				expect.objectContaining({ folderIds: ['f1'], selectedWorkflowIds: selected }),
+			);
+			expect(workflowExporter.export).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowIds: ['w-root', 'w-root-2'],
+					selectedWorkflowIds: selected,
+				}),
+			);
+			expect(result.workflowEntries.map((e) => e.id).sort()).toEqual(['w-in-f1', 'w-root']);
+		});
+
+		it('throws PackageEntityNotFoundError when a selected workflow is not in the projects', async () => {
+			const project = makeProject();
+			const { exporter, workflowFinder, workflowExporter } = makeExporter({
+				projects: [project],
+			});
+			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
+			workflowExporter.export.mockResolvedValue({
+				entries: [{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1' }],
+				requirements: emptyRequirements,
+			});
+
+			await expect(
+				exporter.export({
+					user,
+					projectIds: [project.id],
+					workflowIds: ['w1', 'w-elsewhere'],
+					writer: new CapturingWriter(),
+					includeTags: true,
+					workflowVersionPolicy: 'latest',
+				}),
+			).rejects.toMatchObject({
+				constructor: PackageEntityNotFoundError,
+				message: '1 workflow(s) not found in the requested project(s). Export aborted.',
+				description: 'Missing workflow IDs: w-elsewhere',
+			});
+		});
+
+		it('writes the project shell only for an empty selection', async () => {
+			const project = makeProject();
+			const { exporter, workflowFinder, workflowExporter } = makeExporter({
+				projects: [project],
+			});
+			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
+			workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				projectIds: [project.id],
+				workflowIds: [],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			});
+
+			expect(workflowExporter.export).toHaveBeenCalledWith(
+				expect.objectContaining({ selectedWorkflowIds: new Set() }),
+			);
+			expect(result.entries).toEqual([
+				{ id: project.id, name: 'billing', target: 'projects/billing' },
+			]);
+			expect(result.workflowEntries).toEqual([]);
+			expect(writer.files.map((f) => f.path)).toEqual(['projects/billing/project.json']);
+		});
+	});
+
 	it('exports a personal project', async () => {
 		const project = makeProject({ id: 'personal-1', name: 'Personal', type: 'personal' });
 		const { exporter } = makeExporter({ projects: [project] });

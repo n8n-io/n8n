@@ -180,6 +180,19 @@ export class WorkflowFinderService {
 		return new Set(workflows.map(({ id }) => id));
 	}
 
+	/**
+	 * Names of the given workflows, keyed by id, with no access check. Use it
+	 * only for file-name allocation; ids that do not exist are absent from the map.
+	 */
+	async findWorkflowNamesByIds(workflowIds: string[]): Promise<Map<string, string>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['id', 'name'],
+		});
+		return new Map(workflows.map(({ id, name }) => [id, name]));
+	}
+
 	async findWorkflowsByIdsForUser(
 		workflowIds: string[],
 		user: User,
