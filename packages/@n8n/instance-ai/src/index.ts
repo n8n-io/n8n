@@ -702,7 +702,7 @@ export type {
 	BuilderTurnStream,
 	BuilderOpenSuspension,
 	SessionWorkflowRef,
-	InstanceAiConversationHistoryService,
+	InstanceAiConversationHistoryReader,
 	ConversationHistoryMatchSource,
 	ConversationHistoryExcerpt,
 	ConversationHistorySearchHit,

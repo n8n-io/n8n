@@ -77,23 +77,16 @@ export class InstanceAiConversationHistoryRepository {
 		return await this.pageByRecency(() => this.buildSearchQuery(params), params.limit);
 	}
 
-	/**
-	 * The user's most recently updated threads in one project, no match filter.
-	 * `total` is exact — nothing verifies or drops these rows — and pays for the
-	 * count query only when the page comes back full.
-	 */
+	/** The user's most recently updated threads in one project, no match filter. */
 	async listRecentProjectThreadsForUser(
 		params: ConversationThreadScope & { limit: number },
-	): Promise<{ rows: ConversationThreadSearchRow[]; total: number }> {
-		const scope = () => this.scopedThreads(params);
-		const rows = await this.pageByRecency(scope, params.limit);
-		const total = rows.length < params.limit ? rows.length : await scope().getCount();
-
-		return { rows, total };
+	): Promise<ConversationThreadSearchRow[]> {
+		return await this.pageByRecency(() => this.scopedThreads(params), params.limit);
 	}
 
-	async threadHasMessages(threadId: string): Promise<boolean> {
-		return await this.messages().where('m.threadId = :threadId', { threadId }).getExists();
+	/** Exact count of the threads `listRecentProjectThreadsForUser` pages over. */
+	async countProjectThreadsForUser(scope: ConversationThreadScope): Promise<number> {
+		return await this.scopedThreads(scope).getCount();
 	}
 
 	/** Ownership is part of the query, so a foreign thread reads as missing. */
@@ -249,22 +242,31 @@ export class InstanceAiConversationHistoryRepository {
 	}
 
 	/**
-	 * One user, one project, never the thread the user is in. Sub-agent threads
-	 * drop out implicitly: their synthetic `instance-ai-subagent:*` resource id
-	 * never equals a user id.
+	 * One user, one project, never the current thread, and only threads that
+	 * hold a message (the client creates the thread row before the first send).
+	 * Sub-agent threads drop out implicitly: their synthetic
+	 * `instance-ai-subagent:*` resource id never equals a user id.
 	 */
 	private scopedThreads(scope: ConversationThreadScope): SelectQueryBuilder<InstanceAiThread> {
-		return this.threads()
+		const qb = this.threads();
+		const hasMessages = qb
+			.subQuery()
+			.select('1')
+			.from(InstanceAiMessage, 'started')
+			.where('started.threadId = t.id')
+			.getQuery();
+
+		return qb
 			.where('t.resourceId = :userId', { userId: scope.userId })
 			.andWhere('t.projectId = :projectId', { projectId: scope.projectId })
-			.andWhere('t.id != :excludeThreadId', { excludeThreadId: scope.excludeThreadId });
+			.andWhere('t.id != :excludeThreadId', { excludeThreadId: scope.excludeThreadId })
+			.andWhere(`EXISTS ${hasMessages}`);
 	}
 
 	/**
-	 * Scoping + match filter shared by the page and the count query. The
-	 * correlated `EXISTS` keeps this a single round trip, and reuses
-	 * `buildMessageMatchCondition` so what counts as a matching message stays
-	 * identical across thread search, match counting, and excerpt fetching.
+	 * Scoping + match filter. The correlated `EXISTS` keeps this a single round
+	 * trip, and reuses `buildMessageMatchCondition` so what counts as a matching
+	 * message stays identical across thread search and excerpt fetching.
 	 */
 	private buildSearchQuery(
 		params: ConversationThreadScope & { query: string },

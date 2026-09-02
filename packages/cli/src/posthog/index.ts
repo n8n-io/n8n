@@ -210,7 +210,7 @@ export class PostHogClient {
 		}
 
 		// `088_config_evaluations` is multivariate — the enabled arm is the
-		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
+		// `variant` string, not a boolean (`resolveExperimentGates` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
 		}

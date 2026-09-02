@@ -7,7 +7,7 @@ import type {
 	ConversationHistoryMessagesResult,
 	ConversationHistorySearchResult,
 	InstanceAiContext,
-	InstanceAiConversationHistoryService,
+	InstanceAiConversationHistoryReader,
 } from '../types';
 import { createConversationHistoryTool } from './conversation-history.tool';
 
@@ -49,8 +49,8 @@ interface GetMessagesOutput extends ConversationHistoryMessagesResult {
 }
 
 function makeService(
-	overrides: Partial<InstanceAiConversationHistoryService> = {},
-): InstanceAiConversationHistoryService {
+	overrides: Partial<InstanceAiConversationHistoryReader> = {},
+): InstanceAiConversationHistoryReader {
 	return {
 		search: vi.fn().mockResolvedValue(searchResult),
 		getMessages: vi.fn().mockResolvedValue(messagesResult),
@@ -59,7 +59,7 @@ function makeService(
 }
 
 function makeContext(
-	conversationHistoryService?: InstanceAiConversationHistoryService,
+	conversationHistoryService?: InstanceAiConversationHistoryReader,
 ): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
 	context.conversationHistoryService = conversationHistoryService;

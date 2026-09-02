@@ -1,6 +1,8 @@
 import { escapeLike, LIKE_ESCAPE_CLAUSE } from '@n8n/db';
 
-export const ASK_USER_CONTENT_MARKER = '%"toolName":"ask-user"%';
+import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from '../conversation-history-content';
+
+export const ASK_USER_CONTENT_MARKER = `%"toolName":"${ASK_USER_TOOL_NAME}"%`;
 
 export function buildSearchLikePattern(query: string): string {
 	return `%${escapeLike(query.toLowerCase())}%`;
@@ -13,8 +15,6 @@ export function buildVisibleRowCondition(alias: string): string {
 		` OR ${alias}.content LIKE :askUserMarker)`
 	);
 }
-
-export const TOOL_CALL_PART_TYPES: readonly string[] = ['tool-call', 'invalid-tool-call'];
 
 export const VISIBLE_ROW_MARKERS = {
 	askUserMarker: ASK_USER_CONTENT_MARKER,

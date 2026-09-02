@@ -51,12 +51,15 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		await testDb.terminate();
 	});
 
+	/** A thread with one opening message, as a thread the user actually sent to. */
 	async function createThread(options: {
 		id?: string;
 		resourceId?: string;
 		projectId?: string;
 		title?: string;
 		updatedAt?: Date;
+		/** `false` mimics a thread created by the client whose first send never happened. */
+		withOpeningMessage?: boolean;
 	}): Promise<string> {
 		const id = options.id ?? randomUUID();
 		await threadRepository.save(
@@ -69,6 +72,9 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				updatedAt: options.updatedAt ?? base,
 			}),
 		);
+		if (options.withOpeningMessage !== false) {
+			await createMessage({ threadId: id, role: 'user', content: userContent('opening message') });
+		}
 		return id;
 	}
 
@@ -205,6 +211,15 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(underscoreMatches.map((row) => row.id)).toEqual([underscore]);
 		});
 
+		it('ignores a thread that never received a message, even on a title match', async () => {
+			const sent = await createThread({ title: 'Slack digest' });
+			await createThread({ title: 'Slack digest draft', withOpeningMessage: false });
+
+			const rows = await search('slack');
+
+			expect(rows.map((row) => row.id)).toEqual([sent]);
+		});
+
 		it('returns the most recently updated threads first', async () => {
 			const oldest = await createThread({ title: 'Slack A', updatedAt: at(0) });
 			const newest = await createThread({ title: 'Slack B', updatedAt: at(2000) });
@@ -245,10 +260,18 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				resourceId: `instance-ai-subagent:${currentThreadId}:builder`,
 			});
 
-			const { rows, total } = await listRecent();
+			const rows = await listRecent();
 
 			expect(rows.map((row) => row.id)).toEqual([mine]);
-			expect(total).toBe(1);
+		});
+
+		it('ignores threads that never received a message', async () => {
+			const sent = await createThread({ title: 'Sent' });
+			await createThread({ title: 'Never sent', withOpeningMessage: false });
+
+			const rows = await listRecent();
+
+			expect(rows.map((row) => row.id)).toEqual([sent]);
 		});
 
 		it('orders by recency and applies the limit', async () => {
@@ -256,10 +279,27 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			const middle = await createThread({ title: 'Middle', updatedAt: at(1000) });
 			const newest = await createThread({ title: 'Newest', updatedAt: at(2000) });
 
-			const { rows, total } = await listRecent(2);
+			const rows = await listRecent(2);
 
 			expect(rows.map((row) => row.id)).toEqual([newest, middle]);
-			expect(total).toBe(3);
+		});
+	});
+
+	describe('countProjectThreadsForUser', () => {
+		it('counts exactly the threads the listing pages over', async () => {
+			await createThread({ title: 'A' });
+			await createThread({ title: 'B' });
+			await createThread({ title: 'Other user', resourceId: OTHER_USER_ID });
+			await createThread({ title: 'Other project', projectId: otherProject.id });
+			await createThread({ title: 'Never sent', withOpeningMessage: false });
+
+			await expect(
+				repository.countProjectThreadsForUser({
+					userId: USER_ID,
+					projectId: project.id,
+					excludeThreadId: currentThreadId,
+				}),
+			).resolves.toBe(2);
 		});
 	});
 
@@ -285,33 +325,6 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			await expect(
 				repository.findOwnedThread(randomUUID(), USER_ID, project.id),
 			).resolves.toBeNull();
-		});
-	});
-
-	// This is how the first turn of a thread is recognised, so it has to be exact.
-	describe('threadHasMessages', () => {
-		it('is false for a thread whose log is still empty', async () => {
-			const threadId = await createThread({ title: 'Empty' });
-
-			await expect(repository.threadHasMessages(threadId)).resolves.toBe(false);
-		});
-
-		it.each(['user', 'assistant', 'tool', 'system'])(
-			'is true once the thread holds a %s message',
-			async (role) => {
-				const threadId = await createThread({ title: 'Started' });
-				await createMessage({ threadId, role, content: userContent('hello') });
-
-				await expect(repository.threadHasMessages(threadId)).resolves.toBe(true);
-			},
-		);
-
-		it('is scoped to the thread it is asked about', async () => {
-			const threadId = await createThread({ title: 'Started' });
-			const otherThreadId = await createThread({ title: 'Untouched' });
-			await createMessage({ threadId, role: 'user', content: userContent('hello') });
-
-			await expect(repository.threadHasMessages(otherThreadId)).resolves.toBe(false);
 		});
 	});
 
@@ -384,7 +397,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 	describe('findFirstUserMessages', () => {
 		it('returns the earliest user row of each thread', async () => {
-			const threadId = await createThread({ title: 'Onboarding' });
+			const threadId = await createThread({ title: 'Onboarding', withOpeningMessage: false });
 			const first = await createMessage({
 				threadId,
 				role: 'user',
@@ -403,7 +416,10 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				content: assistantTextContent('on it'),
 				createdAt: at(0),
 			});
-			const emptyThreadId = await createThread({ title: 'No messages yet' });
+			const emptyThreadId = await createThread({
+				title: 'No messages yet',
+				withOpeningMessage: false,
+			});
 
 			const byThread = await repository.findFirstUserMessages([threadId, emptyThreadId]);
 
@@ -451,7 +467,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		let messageIds: Record<'a' | 'b' | 'c' | 'd' | 'e', string>;
 
 		beforeEach(async () => {
-			threadId = await createThread({ title: 'Long conversation' });
+			threadId = await createThread({ title: 'Long conversation', withOpeningMessage: false });
 			messageIds = {
 				a: await createMessage({
 					threadId,
@@ -621,7 +637,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		});
 
 		it('orders rows written in the same millisecond by id', async () => {
-			const sameTimestampThread = await createThread({ title: 'Burst' });
+			const sameTimestampThread = await createThread({ title: 'Burst', withOpeningMessage: false });
 			const sameMoment = at(9000);
 			await createMessage({
 				threadId: sameTimestampThread,
@@ -662,7 +678,10 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		it("spends window slots only on rows the caller's predicate accepts", async () => {
 			// The SQL filter cannot tell an internal auto-follow-up from a real user
 			// message, so the caller's predicate decides what a slot is spent on.
-			const mixedThread = await createThread({ title: 'Auto follow-ups' });
+			const mixedThread = await createThread({
+				title: 'Auto follow-ups',
+				withOpeningMessage: false,
+			});
 			const isVisibleRow = (row: { content: string }) => !row.content.includes('(continue)');
 
 			await createMessage({

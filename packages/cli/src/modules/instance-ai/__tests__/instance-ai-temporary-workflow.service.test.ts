@@ -41,6 +41,11 @@ function createService() {
 	const context = mock<InstanceAiContext>();
 	context.workflowService.archiveIfAiTemporary = archiveIfAiTemporary;
 	adapterService.createContext.mockReturnValue(context);
+	adapterService.resolveExperimentGates.mockResolvedValue({
+		configEvalsEnabled: false,
+		mcpConnectionsEnabled: false,
+		conversationHistoryEnabled: false,
+	});
 
 	const service = new InstanceAiTemporaryWorkflowService(
 		logger,
@@ -93,7 +98,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			).resolves.toEqual(['wf-marked', 'wf-created']);
 
 			expect(aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith('thread-a');
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 		});
@@ -173,7 +181,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			await service.reapForThreadCleanup('thread-a');
 
 			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-a');
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-b');
 		});

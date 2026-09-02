@@ -147,7 +147,7 @@ export class InstanceAiTemporaryWorkflowService {
 	}
 
 	private async archive(threadId: string, user: User, workflowIds: Set<string>): Promise<string[]> {
-		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
+		const { configEvalsEnabled } = await this.adapterService.resolveExperimentGates(user);
 		const adapter = this.adapterService.createContext(user, { threadId, configEvalsEnabled });
 		const archived: string[] = [];
 		for (const workflowId of workflowIds) {

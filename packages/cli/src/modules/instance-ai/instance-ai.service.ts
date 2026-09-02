@@ -2425,6 +2425,10 @@ export class InstanceAiService {
 
 		const { configEvalsEnabled, mcpConnectionsEnabled, conversationHistoryEnabled } =
 			await this.adapterService.resolveExperimentGates(user);
+		// One scoped reader backs both the tool and the first-turn hint.
+		const conversationHistory = conversationHistoryEnabled
+			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
+			: undefined;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2435,7 +2439,7 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
-			conversationHistoryEnabled,
+			conversationHistory,
 			modelId,
 		});
 
@@ -2748,6 +2752,7 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
+			conversationHistory,
 		};
 	}
 
@@ -3808,6 +3813,7 @@ export class InstanceAiService {
 				plannedTaskService,
 				modelId,
 				orchestrationContext,
+				conversationHistory,
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
@@ -3933,8 +3939,10 @@ export class InstanceAiService {
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+			// The heuristic title lands on the opening turn, so "no title yet" marks it.
+			const isOpeningTurn = Boolean(thread && !thread.title);
 
-			if (thread && !thread.title) {
+			if (isOpeningTurn) {
 				const handoffTitle =
 					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
 
@@ -3992,22 +4000,11 @@ export class InstanceAiService {
 			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
 			// so putting it in the cached system prefix would break caching.
 			//
-			// The past-conversations hint: nothing else tells the agent the
-			// conversation-history tool has anything in it, so a thread's opening turn
-			// names the project's recent conversations. `context.conversationHistoryService`
-			// presence doubles as the experiment gate — the adapter only wires it for
-			// flagged-in users. Self-gating and best-effort beyond that: the service
-			// returns undefined on a later turn, on a project with no history, and on
-			// any failure — the hint must never block a turn.
+			// The opening turn names the project's recent conversations; otherwise the
+			// agent has no reason to believe the conversation-history tool holds anything.
 			const [projectSection, pastConversationsSection] = await Promise.all([
 				this.resolveProjectContextSection(context),
-				context.conversationHistoryService && context.projectId
-					? this.conversationHistoryService.getPastConversationsSection(
-							user.id,
-							context.projectId,
-							threadId,
-						)
-					: undefined,
+				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)

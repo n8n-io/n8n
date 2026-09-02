@@ -1134,7 +1134,7 @@ tool's relevance self-evident.
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
 | `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
-| `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 20) |
+| `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
 | `before` | number | no | Messages before the anchor; without `aroundMessageId`, the last N messages (max 5) |
@@ -1143,13 +1143,14 @@ tool's relevance self-evident.
 `before` and `after` can only be combined with `aroundMessageId` — passing both
 without an anchor is a schema-level rejection.
 
-**`search`** → `{ hits: [{ threadId, title, updatedAt, matchedIn, firstMessageExcerpt?, excerpts: [{ messageId, text, createdAt }], totalMatches }], totalThreadsMatched, error? }`,
+**`search`** → `{ hits: [{ threadId, title, updatedAt, matchedIn, firstMessageExcerpt?, excerpts: [{ messageId, text, createdAt }] }], error? }`,
 recency-ordered. `matchedIn` is an array containing zero or more of `'title' | 'messages' | 'user-answers'`.
-`totalThreadsMatched` (like `totalMatches`) is a SQL-prefilter count — a LIKE
-over serialized JSON — so it can exceed the verified hits. Without a
-`query` the same shape carries a recency listing: empty `matchedIn`/`excerpts`
-and a zero `totalMatches` — pair it with a `get-messages` tail read to continue
-recent work.
+The SQL prefilter is a LIKE over serialized JSON, so candidates are re-checked
+against the text a reader would see, one page at a time; a thread with neither
+a title match nor a re-checked excerpt is dropped. There are no counts. Threads
+with no messages are never returned. Without a `query` the same shape carries a
+recency listing: empty `matchedIn`/`excerpts` — pair it with a `get-messages`
+tail read to continue recent work.
 
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
@@ -1159,12 +1160,13 @@ text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped) and so don't consume window slots; ask-user rows stay
-visible for their Q&A. A small residue is only recognizable after parsing and
-is dropped post-window — internal auto-follow-up user rows, ask-user rows
-still awaiting an answer, unreadable content — so `before`/`after` count
-SQL-visible rows: a window can return slightly fewer messages than asked for,
-and `hasMoreBefore`/`hasMoreAfter` are computed before that drop.
+text are escaped); ask-user rows stay visible for their Q&A. Rows only
+recognizable after parsing — internal auto-follow-up user rows, rows with no
+visible text, ask-user rows still awaiting an answer, unreadable content — are
+dropped by the same visibility predicate the window fetch uses, so
+`before`/`after` count returned messages. The fetch over-reads to fill its
+slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
+invisible rows, never under-report.
 
 Both actions return `{ ..., error: '...' }` with empty/default fields — never a
 thrown tool error — when the service is unavailable or a lookup fails.

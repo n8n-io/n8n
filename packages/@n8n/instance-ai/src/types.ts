@@ -1114,7 +1114,9 @@ export type ConversationHistoryMessagesResult = z.infer<
 	typeof conversationHistoryMessagesResultSchema
 >;
 
-export interface InstanceAiConversationHistoryService {
+/** Read-only recall over past conversations, pre-bound by the host to one
+ *  user, project and current thread. */
+export interface InstanceAiConversationHistoryReader {
 	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
 	getMessages(params: {
 		threadId: string;
@@ -1154,7 +1156,7 @@ export interface InstanceAiContext {
 	mcpService?: InstanceAiMcpService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
-	conversationHistoryService?: InstanceAiConversationHistoryService;
+	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

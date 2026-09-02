@@ -10,16 +10,16 @@ import type {
 	ConversationHistorySearchResult,
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
-	InstanceAiConversationHistoryService as ScopedConversationHistory,
+	InstanceAiConversationHistoryReader,
 } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
 import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
 import { cleanStoredUserMessage } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
-import { TOOL_CALL_PART_TYPES } from './repositories/conversation-history-search';
 import {
 	InstanceAiConversationHistoryRepository,
 	type ConversationThreadSearchRow,
@@ -82,7 +82,7 @@ const askUserAnswerSchema = z.object({
 
 const askUserPartSchema = z.object({
 	type: z.literal('tool-call'),
-	toolName: z.literal('ask-user'),
+	toolName: z.literal(ASK_USER_TOOL_NAME),
 	state: z.literal('resolved'),
 	output: z.object({
 		answered: z.boolean(),
@@ -91,6 +91,16 @@ const askUserPartSchema = z.object({
 });
 
 type AskUserAnswer = z.infer<typeof askUserAnswerSchema>;
+
+/** The reader bound to one run, plus the host-only first-turn hint. */
+export interface ScopedConversationHistory extends InstanceAiConversationHistoryReader {
+	/**
+	 * Body of the `<past-conversations>` block for a thread's opening turn.
+	 * Best-effort: `undefined` when the project has no other conversations or
+	 * on any failure — the hint must never fail a turn.
+	 */
+	getPastConversationsSection(): Promise<string | undefined>;
+}
 
 /** A resolved ask-user question with its answer rendered for reading. */
 interface QuestionAndAnswer {
@@ -243,37 +253,29 @@ export class InstanceAiConversationHistoryService {
 			search: async (params) =>
 				await this.search(userId, projectId, currentThreadId, params.query, params.limit),
 			getMessages: async (params) => await this.getMessages(userId, projectId, params),
+			getPastConversationsSection: async () =>
+				await this.getPastConversationsSection(userId, projectId, currentThreadId),
 		};
 	}
 
-	/**
-	 * Ambient hint naming the project's most recent conversations, for the
-	 * `<past-conversations>` block on a thread's opening turn. Without it the
-	 * agent has no reason to believe any history exists and never reaches for
-	 * the `conversation-history` tool.
-	 *
-	 * Returns `undefined` — no block — when this is not the thread's first turn,
-	 * when the project has no other conversations, or when anything at all goes
-	 * wrong. Strictly best-effort: a hint that cannot be built must degrade the
-	 * turn, never fail it.
-	 */
-	async getPastConversationsSection(
+	private async getPastConversationsSection(
 		userId: string,
 		projectId: string,
 		currentThreadId: string,
 	): Promise<string | undefined> {
 		try {
-			// The turn's own user message is persisted only after the agent receives
-			// it, so an empty log here means this is the thread's opening turn.
-			if (await this.repository.threadHasMessages(currentThreadId)) return undefined;
-
-			const { rows, total } = await this.repository.listRecentProjectThreadsForUser({
-				userId,
-				projectId,
-				excludeThreadId: currentThreadId,
+			const scope = { userId, projectId, excludeThreadId: currentThreadId };
+			const rows = await this.repository.listRecentProjectThreadsForUser({
+				...scope,
 				limit: PAST_CONVERSATIONS_HINT_LIMIT,
 			});
 			if (rows.length === 0) return undefined;
+
+			// Only a full page needs the count query.
+			const total =
+				rows.length < PAST_CONVERSATIONS_HINT_LIMIT
+					? rows.length
+					: await this.repository.countProjectThreadsForUser(scope);
 
 			const nowMs = Date.now();
 			const recent = rows
@@ -319,38 +321,52 @@ export class InstanceAiConversationHistoryService {
 			query: trimmedQuery,
 			limit: pageLimit * THREAD_PAGE_OVERFETCH_FACTOR,
 		});
-		if (rows.length === 0) return { hits: [] };
 
-		const candidatesByThread = await this.repository.findSearchMatchRows(
-			rows.map((row) => row.id),
-			trimmedQuery,
-			EXCERPT_CANDIDATES_PER_THREAD,
-		);
-
-		const needle = trimmedQuery.toLowerCase();
-		const matched = rows.flatMap((row) => {
-			const extracted = this.buildExcerpts(candidatesByThread.get(row.id) ?? [], trimmedQuery);
-			const titleMatched = row.title.toLowerCase().includes(needle);
-			// The SQL match ran over serialized JSON, so a thread whose title did
-			// not match and whose candidates all failed re-checking was a false
-			// positive (a key name, a tool payload) and is dropped.
-			if (!titleMatched && extracted.excerpts.length === 0) return [];
-			return [{ row, titleMatched, ...extracted }];
-		});
-
-		if (matched.length < rows.length) {
-			this.logger.debug('Dropped conversation-history hits with no verified match', {
-				dropped: rows.length - matched.length,
-			});
-		}
-
-		const page = matched.slice(0, pageLimit);
+		const page = await this.verifyHits(rows, trimmedQuery, pageLimit);
 		const firstUserMessages = await this.repository.findFirstUserMessages(
 			page.map((hit) => hit.row.id),
 		);
-		const hits = page.map((hit) => buildHit(hit, firstUserMessages));
 
-		return { hits };
+		return { hits: page.map((hit) => buildHit(hit, firstUserMessages)) };
+	}
+
+	/**
+	 * Re-check SQL candidates one page at a time, newest first, stopping once a
+	 * page of verified hits is full. The SQL match ran over serialized JSON, so a
+	 * thread with no title match and no re-checked excerpt is a false positive.
+	 */
+	private async verifyHits(
+		rows: ConversationThreadSearchRow[],
+		query: string,
+		pageLimit: number,
+	): Promise<ExtractedThreadMatch[]> {
+		const needle = query.toLowerCase();
+		const verified: ExtractedThreadMatch[] = [];
+		let dropped = 0;
+
+		for (let start = 0; start < rows.length && verified.length < pageLimit; start += pageLimit) {
+			const batch = rows.slice(start, start + pageLimit);
+			const candidatesByThread = await this.repository.findSearchMatchRows(
+				batch.map((row) => row.id),
+				query,
+				EXCERPT_CANDIDATES_PER_THREAD,
+			);
+
+			for (const row of batch) {
+				const extracted = this.buildExcerpts(candidatesByThread.get(row.id) ?? [], query);
+				const titleMatched = row.title.toLowerCase().includes(needle);
+				if (!titleMatched && extracted.excerpts.length === 0) {
+					dropped++;
+					continue;
+				}
+				verified.push({ row, titleMatched, ...extracted });
+			}
+		}
+
+		if (dropped > 0) {
+			this.logger.debug('Dropped conversation-history hits with no verified match', { dropped });
+		}
+		return verified.slice(0, pageLimit);
 	}
 
 	/**
@@ -364,7 +380,7 @@ export class InstanceAiConversationHistoryService {
 		currentThreadId: string,
 		limit: number,
 	): Promise<ConversationHistorySearchResult> {
-		const { rows } = await this.repository.listRecentProjectThreadsForUser({
+		const rows = await this.repository.listRecentProjectThreadsForUser({
 			userId,
 			projectId,
 			excludeThreadId: currentThreadId,
@@ -518,16 +534,11 @@ function buildHit(
 }
 
 /**
- * A stored row as the agent reads it — the conversation as the user
- * experienced it: their messages, ask-user answers, and each turn's final
- * text-only reply. Dropped rows: unreadable content, internal
- * auto-follow-up user rows the user never wrote or saw, and mid-turn
- * assistant rows (the loop only continues on tool calls, so a row carrying
- * them is working narration, not the reply that ended the turn). Ask-user
- * rows are mid-turn tool activity too, but they hold the user's own
- * answers — they stay.
- * This same check is the window's `isVisibleRow` predicate, so window slots are
- * spent on rows that survive it.
+ * A stored row as the agent reads it: user messages, ask-user answers, and each
+ * turn's final text-only reply. Dropped: unreadable content, internal
+ * auto-follow-ups, rows with nothing to read, and mid-turn assistant rows (the
+ * loop only continues on tool calls, so a row carrying them is narration, not
+ * the reply). Also the window's `isVisibleRow` predicate.
  */
 function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | undefined {
 	if (row.role !== 'user' && row.role !== 'assistant') return undefined;
@@ -544,7 +555,7 @@ function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | 
 	if (!isUserRow && userAnswers.length === 0 && hasToolActivity(parsed.content)) {
 		return undefined;
 	}
-	if (!isUserRow && text.trim().length === 0 && userAnswers.length === 0) return undefined;
+	if (text.trim().length === 0 && userAnswers.length === 0) return undefined;
 
 	return {
 		messageId: row.id,

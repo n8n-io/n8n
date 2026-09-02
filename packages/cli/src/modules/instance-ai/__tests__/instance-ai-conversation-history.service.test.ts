@@ -1,11 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
-import type { InstanceAiConversationHistoryService as ScopedConversationHistory } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
-import { InstanceAiConversationHistoryService } from '../instance-ai-conversation-history.service';
+import {
+	InstanceAiConversationHistoryService,
+	type ScopedConversationHistory,
+} from '../instance-ai-conversation-history.service';
 import type {
 	ConversationThreadSearchRow,
 	InstanceAiConversationHistoryRepository,
@@ -32,12 +34,12 @@ function setup() {
 
 	// Nothing matches and no thread exists unless a test says otherwise.
 	repository.searchProjectThreadsForUser.mockResolvedValue([]);
-	repository.listRecentProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	repository.listRecentProjectThreadsForUser.mockResolvedValue([]);
+	repository.countProjectThreadsForUser.mockResolvedValue(0);
 	repository.findOwnedThread.mockResolvedValue(null);
 	repository.findSearchMatchRows.mockResolvedValue(new Map());
 	repository.findFirstUserMessages.mockResolvedValue(new Map());
 	repository.findMessageInThread.mockResolvedValue(null);
-	repository.threadHasMessages.mockResolvedValue(false);
 	repository.getConversationWindow.mockResolvedValue({
 		rows: [],
 		hasMoreBefore: false,
@@ -160,10 +162,7 @@ describe('InstanceAiConversationHistoryService', () => {
 
 		it('builds listing hits without any match work', async () => {
 			const { history, repository } = setup();
-			repository.listRecentProjectThreadsForUser.mockResolvedValue({
-				rows: [threadHit()],
-				total: 7,
-			});
+			repository.listRecentProjectThreadsForUser.mockResolvedValue([threadHit()]);
 			repository.findFirstUserMessages.mockResolvedValue(
 				new Map([
 					[
@@ -188,6 +187,7 @@ describe('InstanceAiConversationHistoryService', () => {
 				],
 			});
 			expect(repository.findSearchMatchRows).not.toHaveBeenCalled();
+			expect(repository.countProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
 		it('centers each excerpt on the match and elides both open ends', async () => {
@@ -445,14 +445,16 @@ describe('InstanceAiConversationHistoryService', () => {
 
 			const result = await history.search({ query: 'slack', limit: 1 });
 
-			// The verified thread is only reachable because the page was over-fetched.
+			// The verified thread is only reachable because the page was over-fetched,
+			// and its candidates are only fetched because the first page came up short.
 			expect(repository.searchProjectThreadsForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ limit: 2 }),
 			);
+			expect(repository.findSearchMatchRows).toHaveBeenCalledTimes(2);
 			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-real']);
 		});
 
-		it('trims verified hits to the requested limit', async () => {
+		it('verifies one page at a time and skips the remainder once the page is full', async () => {
 			const { history, repository } = setup();
 			repository.searchProjectThreadsForUser.mockResolvedValue([
 				threadHit({ id: 'thread-1', title: 'Slack one' }),
@@ -463,6 +465,12 @@ describe('InstanceAiConversationHistoryService', () => {
 			const result = await history.search({ query: 'slack', limit: 2 });
 
 			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-1', 'thread-2']);
+			expect(repository.findSearchMatchRows).toHaveBeenCalledTimes(1);
+			expect(repository.findSearchMatchRows).toHaveBeenCalledWith(
+				['thread-1', 'thread-2'],
+				'slack',
+				expect.any(Number),
+			);
 			expect(repository.findFirstUserMessages).toHaveBeenCalledWith(['thread-1', 'thread-2']);
 		});
 	});
@@ -671,6 +679,29 @@ describe('InstanceAiConversationHistoryService', () => {
 			]);
 		});
 
+		it('drops a user row with no visible text', async () => {
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({
+						id: 'm-handoff',
+						role: 'user',
+						content: userContent(
+							'<editor-context>\n[]\nThe user opened "Digest".\n</editor-context>',
+						),
+					}),
+					messageRow({ id: 'm-text', role: 'user', content: userContent('add Slack') }),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages.map((message) => message.messageId)).toEqual(['m-text']);
+		});
+
 		it('renders ask-user answers, including custom text and skips', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
@@ -787,9 +818,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		}
 
 		it('asks for the three most recent conversations, scoped away from the current thread', async () => {
-			const { service, repository } = setup();
+			const { history, repository } = setup();
 
-			await service.getPastConversationsSection(USER_ID, PROJECT_ID, CURRENT_THREAD_ID);
+			await history.getPastConversationsSection();
 
 			expect(repository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
 				userId: USER_ID,
@@ -800,21 +831,15 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('names up to three conversations with their coarse ages, and the full count', async () => {
-			const { service, repository } = setup();
-			repository.listRecentProjectThreadsForUser.mockResolvedValue({
-				rows: [
-					threadHit({ id: 't-1', title: 'Weekly digest', updatedAt: daysAgo(0.2) }),
-					threadHit({ id: 't-2', title: 'Slack alerts', updatedAt: daysAgo(3.1) }),
-					threadHit({ id: 't-3', title: 'CRM sync', updatedAt: daysAgo(15) }),
-				],
-				total: 9,
-			});
+			const { history, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue([
+				threadHit({ id: 't-1', title: 'Weekly digest', updatedAt: daysAgo(0.2) }),
+				threadHit({ id: 't-2', title: 'Slack alerts', updatedAt: daysAgo(3.1) }),
+				threadHit({ id: 't-3', title: 'CRM sync', updatedAt: daysAgo(15) }),
+			]);
+			repository.countProjectThreadsForUser.mockResolvedValue(9);
 
-			const section = await service.getPastConversationsSection(
-				USER_ID,
-				PROJECT_ID,
-				CURRENT_THREAD_ID,
-			);
+			const section = await history.getPastConversationsSection();
 
 			expect(section).toBe(
 				'This project has 9 past conversations with you. Most recent: "Weekly digest" (today), "Slack alerts" (3d ago), "CRM sync" (2w ago).',
@@ -822,75 +847,43 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('uses the singular for a project with exactly one past conversation', async () => {
-			const { service, repository } = setup();
-			repository.listRecentProjectThreadsForUser.mockResolvedValue({
-				rows: [threadHit({ title: 'Weekly digest', updatedAt: daysAgo(1.4) })],
-				total: 1,
-			});
+			const { history, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue([
+				threadHit({ title: 'Weekly digest', updatedAt: daysAgo(1.4) }),
+			]);
 
-			const section = await service.getPastConversationsSection(
-				USER_ID,
-				PROJECT_ID,
-				CURRENT_THREAD_ID,
-			);
+			const section = await history.getPastConversationsSection();
 
 			expect(section).toContain('This project has 1 past conversation with you.');
 			expect(section).toContain('Most recent: "Weekly digest" (1d ago).');
+			// A short page is its own count.
+			expect(repository.countProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
 		it('labels a conversation the titler never got to', async () => {
-			const { service, repository } = setup();
-			repository.listRecentProjectThreadsForUser.mockResolvedValue({
-				rows: [
-					threadHit({ id: 't-1', title: '', updatedAt: daysAgo(0) }),
-					threadHit({ id: 't-2', title: '   ', updatedAt: daysAgo(0) }),
-				],
-				total: 2,
-			});
+			const { history, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue([
+				threadHit({ id: 't-1', title: '', updatedAt: daysAgo(0) }),
+				threadHit({ id: 't-2', title: '   ', updatedAt: daysAgo(0) }),
+			]);
 
-			const section = await service.getPastConversationsSection(
-				USER_ID,
-				PROJECT_ID,
-				CURRENT_THREAD_ID,
-			);
+			const section = await history.getPastConversationsSection();
 
 			expect(section).toContain('Most recent: "(untitled)" (today), "(untitled)" (today).');
 		});
 
-		// The hint is for the opening turn only; from turn two the agent has the tool
-		// description and the conversation itself.
-		it('returns undefined once the thread has messages of its own', async () => {
-			const { service, repository } = setup();
-			repository.threadHasMessages.mockResolvedValue(true);
-
-			const section = await service.getPastConversationsSection(
-				USER_ID,
-				PROJECT_ID,
-				CURRENT_THREAD_ID,
-			);
-
-			expect(section).toBeUndefined();
-			expect(repository.listRecentProjectThreadsForUser).not.toHaveBeenCalled();
-		});
-
 		it('returns undefined when the project has no other conversations', async () => {
-			const { service } = setup();
+			const { history } = setup();
 
-			expect(
-				await service.getPastConversationsSection(USER_ID, PROJECT_ID, CURRENT_THREAD_ID),
-			).toBeUndefined();
+			expect(await history.getPastConversationsSection()).toBeUndefined();
 		});
 
 		// Best-effort by design: a hint that cannot be built must not fail the turn.
 		it('returns undefined and warns when a repository read fails', async () => {
-			const { service, repository, logger } = setup();
+			const { history, repository, logger } = setup();
 			repository.listRecentProjectThreadsForUser.mockRejectedValue(new Error('db is down'));
 
-			const section = await service.getPastConversationsSection(
-				USER_ID,
-				PROJECT_ID,
-				CURRENT_THREAD_ID,
-			);
+			const section = await history.getPastConversationsSection();
 
 			expect(section).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
