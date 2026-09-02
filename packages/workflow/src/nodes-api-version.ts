@@ -1,14 +1,6 @@
-/**
- * Node-authoring API level supported by this runtime.
- *
- * Compatibility rule for community packages:
- * `package.n8n.n8nNodesApiVersion <= N8N_NODES_API_VERSION`.
- *
- * The level mirrors the n8n major for the v3 transition: `1` on master
- * (which ships as 2.x during the v3 window) and `3` on the `3.x` branch,
- * where it also serves as the v3 feature flag for node-authoring APIs.
- */
-export const N8N_NODES_API_VERSION = 1;
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
+
+export { N8N_NODES_API_VERSION };
 
 /** Minimal package.json shape needed to check node API compatibility. */
 export interface NodesApiVersionPackageJson {
