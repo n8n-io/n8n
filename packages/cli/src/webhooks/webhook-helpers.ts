@@ -55,6 +55,7 @@ import {
 	UnexpectedError,
 	UserError,
 	WAIT_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
@@ -96,7 +97,6 @@ import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
-import { shouldEstablishTriggerIdentity } from './webhook-trigger-identity';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
@@ -412,6 +412,23 @@ export function setupResponseNodePromise(
 			);
 			responseCallback(error, {});
 		});
+}
+
+/**
+ * Predicate (not an action): checks whether the start node will establish a
+ * triggering-user identity from within its `webhook()` method (via
+ * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
+ * created before the webhook runs, and the webhook output merged into the seeded
+ * execution stack afterwards.
+ *
+ * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
+ * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
+ */
+function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
+	return (
+		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
+		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
+	);
 }
 
 /**
@@ -741,11 +758,21 @@ export async function executeWebhook(
 	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
 	let runExecutionDataMerge = {};
+	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
 		let webhookResultData: IWebhookResponseData;
+
+		// Before the node runs: a streaming node, and the chat, MCP and Agent365
+		// triggers, answer the request themselves, so a later refusal could not send
+		// the 400. Also before the request body is parsed, so no file is stored for a
+		// run that will not start.
+		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
+		if (routesToEngineV2) {
+			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+		}
 
 		cleanupMultipartFiles = await parseRequestBody(
 			req,
@@ -887,6 +914,10 @@ export async function executeWebhook(
 			return;
 		}
 
+		// The node's output is the only place a file shows up, so this cannot run with
+		// the checks above.
+		if (routesToEngineV2) await engineV2Webhooks.assertPayloadSupported(webhookResultData);
+
 		// Reactive credential-status gate. Runs only once we know the workflow will
 		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
 		// above without surfacing a misleading 428. Once the webhook node has established
@@ -934,23 +965,15 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
+			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
+			// sets, so carrying it here changes nothing for v1. Engine 2.0 has no way to
+			// stop at a node, and its dispatcher refuses the run on this field.
+			destinationNode,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
 			runData.pushRef = runExecutionData.pushRef;
-		}
-
-		// Decided here, before the blocks below mutate `runData` or send headers.
-		const engineV2Webhooks = Container.get(EngineV2Webhooks);
-		routesToEngineV2 = engineV2Webhooks.handles(runData);
-		if (routesToEngineV2) {
-			engineV2Webhooks.assertSupported({
-				workflowStartNode,
-				responseMode,
-				webhookResultData,
-				executionId,
-			});
 		}
 
 		const executionsConfig = Container.get(ExecutionsConfig);

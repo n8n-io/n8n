@@ -33,6 +33,7 @@ import type {
 	CredentialCheckResult,
 	IRun,
 	IExecuteResponsePromiseData,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -1834,11 +1835,13 @@ describe('executeWebhook on engine 2.0', () => {
 		startNode = webhookNode(),
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
+		destinationNode,
 	}: {
 		responseMode?: string;
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
+		destinationNode?: IDestinationNode;
 	} = {}) => {
 		webhookService.runWebhook.mockResolvedValue(webhookResult);
 
@@ -1886,6 +1889,7 @@ describe('executeWebhook on engine 2.0', () => {
 			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
 			mock<express.Response>({ headersSent: false }),
 			responseCallback,
+			destinationNode,
 		);
 
 		return { responseCallback, returned };
@@ -1901,7 +1905,9 @@ describe('executeWebhook on engine 2.0', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
-		engineV2Dispatcher.routesToEngineV2.mockReturnValue(true);
+		// The webhook path asks before it can build the run data, so it goes through
+		// `handlesWorkflow`, not `routesToEngineV2`.
+		engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 		workflowRunner.run.mockResolvedValue(ENGINE_EXECUTION_ID);
 	});
 
@@ -1913,6 +1919,16 @@ describe('executeWebhook on engine 2.0', () => {
 			expect(returned).toBe(ENGINE_EXECUTION_ID);
 			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback.mock.calls[0][0]).toBeNull();
+		});
+
+		it('carries the destination node, so the dispatcher can refuse a partial run', async () => {
+			const destinationNode: IDestinationNode = { nodeName: 'Edit Fields', mode: 'inclusive' };
+
+			await startWebhook({ destinationNode });
+
+			// `prepareExecutionData` only stores it on `executionData.startData`, where
+			// the dispatcher's guard cannot see it.
+			expect(workflowRunner.run.mock.calls[0][0].destinationNode).toEqual(destinationNode);
 		});
 
 		it('does not touch the control-plane execution registry', async () => {
@@ -1972,27 +1988,77 @@ describe('executeWebhook on engine 2.0', () => {
 			{
 				name: 'an identity webhook',
 				options: { startNode: webhookNode(WEBHOOK_NODE_TYPE, { authentication: 'n8nOAuth2' }) },
-				message: 'Engine 2.0 cannot run the "Webhook" trigger yet.',
-			},
-			{
-				name: 'a file upload',
-				options: {
-					webhookResult: {
-						workflowData: [[{ json: {}, binary: { data: { data: '', mimeType: 'image/png' } } }]],
-					} as IWebhookResponseData,
-				},
-				message: 'Engine 2.0 cannot receive files from a webhook yet.',
+				message:
+					'Engine 2.0 cannot run the "Webhook" trigger yet, because it takes credentials from the request.',
 			},
 			{
 				name: 'a resumed execution',
 				options: { executionId: 'exec-1' },
 				message: 'Engine 2.0 cannot resume a waiting execution yet.',
 			},
-		])('answers 400 for $name and never starts the run', async ({ options, message }) => {
+			{
+				name: 'a trigger that takes credentials from the request',
+				options: {
+					startNode: webhookNode(WEBHOOK_NODE_TYPE, {
+						contextEstablishmentHooks: { hooks: [{ hookName: 'HttpHeaderExtractor' }] },
+					}),
+				},
+				message:
+					'Engine 2.0 cannot run the "Webhook" trigger yet, because it takes credentials from the request.',
+			},
+		])('answers 400 for $name before the node runs', async ({ options, message }) => {
 			const { responseCallback } = await startWebhook(options);
 
 			expect(reasonFrom(responseCallback)).toEqual({ status: 400, message });
+			// A streaming node, and the chat/MCP/Agent365 triggers, answer the request
+			// themselves. Refusing after that could not send this 400.
+			expect(webhookService.runWebhook).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('answers 400 for a file upload, and deletes what the node already stored', async () => {
+			const binaryDataService = Container.get(BinaryDataService);
+			const { responseCallback } = await startWebhook({
+				webhookResult: {
+					workflowData: [
+						[
+							{
+								json: {},
+								binary: { data: { id: 'filesystem:abc', data: '', mimeType: 'image/png' } },
+							},
+						],
+					],
+				} as IWebhookResponseData,
+			});
+
+			expect(reasonFrom(responseCallback)).toEqual({
+				status: 400,
+				message: 'Engine 2.0 cannot receive files from a webhook yet.',
+			});
+			// No execution will ever own the file, so nothing else would prune it.
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+				'filesystem:abc',
+			]);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('keeps the reason when the stored file cannot be deleted', async () => {
+			vi.mocked(Container.get(BinaryDataService).deleteManyByBinaryDataId).mockRejectedValueOnce(
+				new Error('disk gone'),
+			);
+
+			const { responseCallback } = await startWebhook({
+				webhookResult: {
+					workflowData: [
+						[{ json: {}, binary: { data: { id: 'filesystem:abc', data: '', mimeType: '' } } }],
+					],
+				} as IWebhookResponseData,
+			});
+
+			expect(reasonFrom(responseCallback)).toEqual({
+				status: 400,
+				message: 'Engine 2.0 cannot receive files from a webhook yet.',
+			});
 		});
 
 		it('surfaces the reason a rejected dispatch gives, rather than a generic failure', async () => {

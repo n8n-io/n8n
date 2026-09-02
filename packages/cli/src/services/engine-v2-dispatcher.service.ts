@@ -1,11 +1,13 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
+	INode,
 	INodeExecutionData,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { isTriggerNodeType, UserError } from 'n8n-workflow';
+import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -66,10 +68,18 @@ export class EngineV2Dispatcher {
 		existingExecution?: ResumableExecution,
 	): boolean {
 		return (
-			data.workflowData.settings?.engineType === 'v2' &&
-			ROUTED_MODES.has(data.executionMode) &&
-			existingExecution === undefined
+			this.handlesWorkflow(data.workflowData, data.executionMode) && existingExecution === undefined
 		);
+	}
+
+	/**
+	 * Whether a run of this workflow in this mode belongs on the data plane.
+	 *
+	 * Split out of {@link routesToEngineV2} for the webhook path, which must know
+	 * before the webhook node runs — and so before it can build the run data.
+	 */
+	handlesWorkflow(workflowData: IWorkflowBase, executionMode: WorkflowExecuteMode): boolean {
+		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
 	}
 
 	/** Returns the execution id this dispatch minted. */
@@ -171,6 +181,21 @@ export class EngineV2Dispatcher {
 			throw new UserError('Engine 2.0 cannot run a workflow as an AI tool yet.');
 		}
 
+		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
+		// execution context, so the hooks that mask a secret in the trigger item and
+		// carry its credential context never run. Starting the run anyway would send
+		// the raw secret to the data plane, which stores it.
+		// TODO(CAT-2880): run the context hooks on this path and drop this.
+		const firedNode = this.firedTriggerNode(data, trigger.name);
+		if (
+			firedNode !== undefined &&
+			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
+		) {
+			throw new UserError(
+				`Engine 2.0 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
+			);
+		}
+
 		// The trigger's own pinned data is the payload, so only the other nodes count.
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
 		if (pinnedNode !== undefined) {
@@ -178,6 +203,15 @@ export class EngineV2Dispatcher {
 				`Engine 2.0 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
+	}
+
+	/** The node the converter roots the graph at, mirroring its own resolution. */
+	private firedTriggerNode(data: IWorkflowExecutionDataProcess, name?: string): INode | undefined {
+		const liveNodes = data.workflowData.nodes.filter((node) => node.disabled !== true);
+
+		return name === undefined
+			? liveNodes.find((node) => isTriggerNodeType(node.type))
+			: liveNodes.find((node) => node.name === name);
 	}
 
 	/**

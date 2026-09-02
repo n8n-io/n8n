@@ -135,6 +135,12 @@ describe('EngineV2Dispatcher', () => {
 			},
 		);
 
+		it('answers the same question for a workflow and a mode alone', () => {
+			expect(dispatcher.handlesWorkflow(workflow(), 'webhook')).toBe(true);
+			expect(dispatcher.handlesWorkflow(workflow({ settings: {} }), 'webhook')).toBe(false);
+			expect(dispatcher.handlesWorkflow(workflow(), 'trigger')).toBe(false);
+		});
+
 		it('does not route a resumed execution', () => {
 			const existingExecution = mock<ResumableExecution>({ executionId: '42' });
 
@@ -332,6 +338,57 @@ describe('EngineV2Dispatcher', () => {
 				});
 
 				await expect(dispatcher.start(data)).resolves.toMatch(UUID_V7_PATTERN);
+			});
+		});
+
+		describe('a trigger that establishes an identity', () => {
+			const hookedTrigger = {
+				...node('hooked-id', 'Stripe Trigger', 'n8n-nodes-base.stripeTrigger'),
+				parameters: { contextEstablishmentHooks: { hooks: [{ hookName: 'HttpHeaderExtractor' }] } },
+			};
+
+			const hookedWorkflow = () =>
+				workflow({
+					nodes: [hookedTrigger, SET_NODE],
+					connections: {
+						[hookedTrigger.name]: {
+							main: [[{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 }]],
+						},
+					},
+				});
+
+			// The context hooks mask the secret in the trigger item. The v2 path returns
+			// before they run, so the raw value would reach the data plane.
+			it.each([
+				{ name: 'named by the caller', triggerName: hookedTrigger.name },
+				{ name: 'the only trigger', triggerName: undefined },
+			])('is refused when it is $name', async ({ triggerName }) => {
+				const data = runData({
+					workflowData: hookedWorkflow(),
+					triggerToStartFrom: triggerName ? { name: triggerName } : undefined,
+				});
+
+				await expect(dispatcher.start(data)).rejects.toThrow(
+					'Engine 2.0 cannot run the "Stripe Trigger" trigger yet, because it takes credentials from the request.',
+				);
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+			});
+
+			it('is refused on the webhook path too', async () => {
+				const data = webhookRunData(undefined, {
+					workflowData: workflow({
+						nodes: [{ ...WEBHOOK_TRIGGER, parameters: { authentication: 'n8nOAuth2' } }, SET_NODE],
+						connections: {},
+					}),
+				});
+
+				await expect(dispatcher.start(data)).rejects.toThrow(
+					'because it takes credentials from the request',
+				);
+			});
+
+			it('allows a trigger that configures no hooks', async () => {
+				await expect(dispatcher.start(webhookRunData())).resolves.toMatch(UUID_V7_PATTERN);
 			});
 		});
 
