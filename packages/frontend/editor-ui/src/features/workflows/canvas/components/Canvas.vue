@@ -661,11 +661,13 @@ watch(selectedNodes, (nodes) => {
 	}
 });
 
+// Group-expanded so a collapsed group (whose members are hidden, not selected)
+// still yields a preview — same ids the confirm path (onAddNodesToChat) uses.
 watch(
-	selectedNodeIds,
+	selectedNodeIdsWithGroupMembers,
 	(newIds) => {
 		if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-			focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
+			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
 		}
 		// Instance AI: mirror the selection as a greyed-out "add as context" preview,
 		// built with the same buildNodesAttachment as a confirmed add so the chips
@@ -1762,6 +1764,11 @@ onUnmounted(() => {
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
+	// Drop the greyed-out preview so a stale canvas selection can't bleed into a
+	// later Instance AI view (the preview lives in a global store).
+	if (isNodeContextEnabled.value) {
+		instanceAiStore.setUnconfirmedNodes(null);
+	}
 });
 
 onPaneReady(async () => {

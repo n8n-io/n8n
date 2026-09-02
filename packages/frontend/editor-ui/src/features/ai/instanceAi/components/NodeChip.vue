@@ -86,7 +86,7 @@ function handleKeydown(event: KeyboardEvent) {
 			]"
 			:data-test-id="testid"
 			tabindex="0"
-			role="group"
+			:role="unconfirmed ? 'button' : 'group'"
 			:aria-label="label"
 			@keydown="handleKeydown"
 			@click="unconfirmed ? emit('confirm') : expanded != null && emit('toggle-expand')"
