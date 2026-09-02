@@ -711,6 +711,7 @@ export function createThreadRuntime(
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
 		if (conf.targetApproval) return false;
+		if (conf.credentialDestination) return false;
 		if (conf.severity === 'destructive') return false;
 		if (conf.domainAccess) return false;
 		if (conf.inputType) return false;
