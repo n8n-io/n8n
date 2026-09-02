@@ -52,7 +52,7 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: [...otherNodes],
+		allLatestNodeTypes: otherNodes,
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},

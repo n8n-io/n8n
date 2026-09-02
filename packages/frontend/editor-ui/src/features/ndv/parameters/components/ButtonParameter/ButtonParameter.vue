@@ -47,7 +47,7 @@ const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
 const isSubmitEnabled = computed(() => {
-	if (props.isReadOnly) return false;
+	if (!prompt.value || props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
 	if (maxlength && prompt.value.length > maxlength) return false;
@@ -56,17 +56,6 @@ const isSubmitEnabled = computed(() => {
 });
 function getPath(parameter: string) {
 	return (props.path ? `${props.path}.` : '') + parameter;
-}
-
-function onSubmit() {
-	const action = props.parameter.typeOptions?.buttonConfig?.action;
-
-	if (!action || !activeNode.value) return;
-
-	emit('valueChanged', {
-		name: getPath(props.parameter.name),
-		value: prompt.value,
-	});
 }
 
 function onPromptInput(inputValue: string) {
@@ -161,7 +150,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			</DraggableTarget>
 		</div>
 		<div :class="$style.controls">
-			<N8nButton variant="subtle" :disabled="!isSubmitEnabled" size="small" @click="onSubmit">
+			<N8nButton variant="subtle" :disabled="!isSubmitEnabled" size="small">
 				{{ buttonLabel }}
 			</N8nButton>
 		</div>
