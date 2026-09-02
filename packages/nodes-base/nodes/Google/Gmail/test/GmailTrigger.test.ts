@@ -1621,9 +1621,10 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
-			// The queue belongs to non-manual polls; a manual one must not persist a
-			// queue that its own drain path skips.
+			// The queue and the no-progress count belong to non-manual polls; a manual
+			// one must not persist state that its own paths skip.
 			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('pendingMessageIds');
+			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
 		});
 	});
 
@@ -2434,8 +2435,9 @@ describe('GmailTrigger', () => {
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
 			// The queue belongs to v1.4+; older versions must not persist one their
-			// own drain path would ignore.
+			// own drain path would ignore. The same holds for the no-progress count.
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
+			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
 		});
 
 		it('should keep the beyond-budget remainder when a drain exactly consumed the budget', async () => {

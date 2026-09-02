@@ -417,10 +417,13 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			});
 
 			// A fetched message is progress, whether it came from the pending queue or
-			// a fresh scan, so the no-progress run starts over. Unconditional, unlike
-			// the clear in the scan path: a poll that fetched anything writes the
-			// boundary set below in any case, so this write costs no extra save.
-			nodeStaticData.noProgressTicks = 0;
+			// a fresh scan, so the no-progress run starts over. Gated like the queue
+			// write: a legacy node must not store state its own paths ignore. No value
+			// check here, unlike the clear in the scan path — a poll that fetched
+			// something saves its state in any case.
+			if (shouldLimitMessages) {
+				nodeStaticData.noProgressTicks = 0;
+			}
 
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
 				return;
