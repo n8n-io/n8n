@@ -435,12 +435,6 @@ function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
 			return data.$?.(msg.nodeName)?.item;
 		case 'evaluateExpression':
 			return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-		case 'getPairedItem':
-			return data.$getPairedItem?.(
-				msg.destinationNodeName,
-				msg.incomingSourceData,
-				msg.initialPairedItem,
-			);
 		default: {
 			// Unreachable at runtime — zod rejects unknown `type` values before
 			// the switch. The `never` assignment is the compile-time guard.

@@ -200,11 +200,6 @@ export interface WorkflowData {
 	$fromAi?: FromAi;
 	$fromai?: FromAi;
 	$evaluateExpression?: (expression: string, itemIndex?: number) => unknown;
-	$getPairedItem?: (
-		destinationNodeName: string,
-		incomingSourceData: SourceData | null,
-		initialPairedItem: PairedItemData,
-	) => unknown;
 	[key: string]: unknown;
 }
 
