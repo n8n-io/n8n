@@ -1,12 +1,12 @@
 import dagre from '@dagrejs/dagre';
 
-import { useVueFlow, type GraphEdge, type XYPosition } from '@vue-flow/core';
+import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
 import {
 	CanvasNodeRenderType,
 	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
-	type CanvasGroupNode,
+	type CanvasGroupNodeData,
 	type CanvasLayoutNode,
 	type CanvasLayoutNodeData,
 	type CanvasNodeData,
@@ -66,7 +66,7 @@ type CanvasLayoutTargetData = {
 };
 
 interface CanvasLayoutGroupUnit {
-	node: CanvasGroupNode;
+	node: GraphNode<CanvasGroupNodeData>;
 	memberIds: string[];
 	/** Stickies that cover the group and move with it. */
 	stickyIds: string[];
@@ -169,7 +169,7 @@ export function useCanvasLayout(
 
 	/** Returns a group as one layout unit when its full contents are in scope. */
 	function getGroupUnitForTarget(
-		groupNode: CanvasGroupNode,
+		groupNode: GraphNode<CanvasGroupNodeData>,
 		sourceNodeIds: Set<string>,
 	): CanvasLayoutGroupUnit | undefined {
 		const groupData = groupNode.data;
@@ -276,7 +276,6 @@ export function useCanvasLayout(
 	function getMeasuredDimensions(
 		node: CanvasLayoutNode,
 	): { width: number; height: number } | undefined {
-		if (!('dimensions' in node)) return undefined;
 		return hasMeasuredDimensions(node.dimensions) ? node.dimensions : undefined;
 	}
 
