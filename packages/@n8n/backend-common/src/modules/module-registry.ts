@@ -15,28 +15,11 @@ import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
 
+const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
+
 export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
-	pathToFileURL(
-		path.join(
-			modulesDir,
-			isEnterprise ? `${moduleName}.ee` : moduleName,
-			`${moduleName}.module.js`,
-		),
-	).href;
-
-/**
- * Whether the import failed because `entryUrl` itself is absent, as opposed to
- * an error thrown while evaluating an entrypoint that is present. Node reports
- * the absent entrypoint as `ERR_MODULE_NOT_FOUND` for `entryUrl`, but a
- * dependency the entrypoint fails to resolve as `MODULE_NOT_FOUND`.
- */
-const isEntryUrlMissing = (error: unknown, entryUrl: string) => {
-	if (!(error instanceof Error) || !('code' in error) || error.code !== 'ERR_MODULE_NOT_FOUND') {
-		return false;
-	}
-
-	return 'url' in error ? error.url === entryUrl : true;
-};
+	pathToFileURL(getModuleEntryPath(modulesDir, moduleName, isEnterprise)).href;
 
 @Service()
 export class ModuleRegistry {
@@ -130,26 +113,27 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
-			const entryUrl = getModuleEntryUrl(modulesDir, moduleName);
+			const entryPath = getModuleEntryPath(modulesDir, moduleName);
 
 			try {
-				await import(entryUrl);
+				await import(pathToFileURL(entryPath).href);
 			} catch (primaryError) {
 				// Only an absent entrypoint means the module may live in the enterprise
-				// directory instead. Any other failure comes from the entrypoint's own
-				// code, so surface it - retrying with the enterprise path would replace
-				// it with a "cannot find module" error for a directory that never
-				// existed, and send the reader looking for a naming mistake.
-				if (!isEntryUrlMissing(primaryError, entryUrl)) {
-					throw new ModuleLoadError(moduleName, primaryError);
-				}
+				// directory instead. If the entrypoint is on disk, the failure comes from
+				// its own code - e.g. a dependency it cannot resolve - so surface it.
+				// Retrying with the enterprise path would replace it with a "cannot find
+				// module" error for a directory that never existed, and send the reader
+				// looking for a naming mistake. The filesystem is the reliable test here:
+				// a missing dependency and a missing entrypoint can both surface as
+				// `ERR_MODULE_NOT_FOUND`.
+				if (existsSync(entryPath)) throw new ModuleLoadError(moduleName, primaryError);
 
-				const enterpriseEntryUrl = getModuleEntryUrl(modulesDir, moduleName, true);
+				const enterpriseEntryPath = getModuleEntryPath(modulesDir, moduleName, true);
 
 				try {
-					await import(enterpriseEntryUrl);
+					await import(pathToFileURL(enterpriseEntryPath).href);
 				} catch (enterpriseError) {
-					if (!isEntryUrlMissing(enterpriseError, enterpriseEntryUrl)) {
+					if (existsSync(enterpriseEntryPath)) {
 						throw new ModuleLoadError(moduleName, enterpriseError);
 					}
 
