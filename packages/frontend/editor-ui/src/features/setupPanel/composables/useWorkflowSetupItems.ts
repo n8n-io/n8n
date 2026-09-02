@@ -1,5 +1,4 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
-import { getActivePinia } from 'pinia';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
@@ -12,8 +11,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import {
 	createWorkflowDocumentId,
-	getWorkflowDocumentStoreId,
-	useWorkflowDocumentStore,
+	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
 	getNodeCredentialTypes,
@@ -52,19 +50,13 @@ export function useWorkflowSetupItems(
 	const workflowsListStore = useWorkflowsListStore();
 
 	/**
-	 * The canvas host's live document store, resolved through pinia's state
-	 * registry so a host dispose+recreate cycle reactively swaps this to the
-	 * live instance instead of pinning a disposed one. Never instantiates the
-	 * (heavyweight) store itself. The `in` check is what makes the swap
-	 * reactive; the id prefix rules out prototype keys.
+	 * The canvas host's live document store, if any. Resolved fresh so a host
+	 * dispose+recreate cycle reactively swaps this to the live instance instead
+	 * of pinning a disposed one. Never instantiates the (heavyweight) store.
 	 */
 	const documentStore = computed(() => {
 		const id = toValue(workflowId);
-		const pinia = getActivePinia();
-		if (!id || !pinia) return undefined;
-		const storeId = getWorkflowDocumentStoreId(createWorkflowDocumentId(id));
-		if (!(storeId in pinia.state.value)) return undefined;
-		return useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		return id ? useExistingWorkflowDocumentStore(createWorkflowDocumentId(id)) : undefined;
 	});
 
 	/**
