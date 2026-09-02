@@ -83,6 +83,30 @@ export async function getWorkflowSourceFileBinding(
 	return getFallbackBindings(context).get(normalizedFilePath);
 }
 
+/**
+ * Bindings that point at a workflow, or at a file path. Thread metadata wins over
+ * the in-memory fallback for the same path. `workflowId` undefined matches every
+ * binding, which lets a caller ask "who owns this path" regardless of workflow.
+ */
+export async function findWorkflowSourceFileBindingsForWorkflow(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+	filePath?: string,
+): Promise<WorkflowSourceFileBinding[]> {
+	const normalizedFilePath = filePath ? normalizeWorkflowSourceFilePath(filePath) : undefined;
+	const threadBindings = (await readThreadBindings(context)) ?? {};
+	const merged = new Map<string, WorkflowSourceFileBinding>(Object.entries(threadBindings));
+	for (const [path, binding] of getFallbackBindings(context)) {
+		if (!merged.has(path)) merged.set(path, binding);
+	}
+
+	return Array.from(merged.values()).filter(
+		(binding) =>
+			(workflowId === undefined || binding.workflowId === workflowId) &&
+			(normalizedFilePath === undefined || binding.filePath === normalizedFilePath),
+	);
+}
+
 export async function saveWorkflowSourceFileBinding(
 	context: InstanceAiContext,
 	binding: WorkflowSourceFileBinding,
