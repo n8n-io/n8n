@@ -203,6 +203,57 @@ rather than auto-blocking) rather than attempting real baseline learning.
   pattern already used for KPI cards.
 - A spike badge next to any flagged workflow in the project's workflow list.
 
+### Instance Admin: Cross-Project View (Addendum)
+
+Everything above is a project-admin journey: quotas are set and seen one
+project at a time. This addendum adds the instance-admin journey — a
+central place to see every project's limit and consumption, and edit any
+of them, without visiting each project individually.
+
+**Access:** every global owner and admin (not narrowed to owner-only).
+`GLOBAL_ADMIN_SCOPES` is currently defined as `GLOBAL_OWNER_SCOPES.concat()`
+in `global-scopes.ee.ts`, so granting the new capability to
+`GLOBAL_OWNER_SCOPES` covers both roles with one addition.
+
+**Editing reuses the existing endpoint — no new write path.**
+`userHasScopes()` (`packages/cli/src/permissions.ee/check-access.ts`) checks
+a user's *global* scopes before any project-specific check, regardless of
+which decorator gates the route. Granting `project:manageExecutionQuota` at
+the global owner/admin role level (today it's only granted to the
+project-admin role) makes the existing `PATCH /projects/:id/execution-quota`
+endpoint callable against *any* project by an instance admin, exactly as
+built in the project-admin journey. No new mutation endpoint is needed.
+
+**One new read endpoint**, e.g. `GET /admin/execution-quotas` (naming to be
+settled against this codebase's existing instance-admin route
+conventions), returning one row per project:
+`[{ projectId, projectName, limit, periodUnit, consumed, remaining, resetsAt }]`.
+Built from two things that already exist: the existing `GET /projects`
+listing (which already returns every project in the instance to an
+owner/admin, via `getAccessibleProjectsAndCount`) joined with
+`ProjectExecutionQuotaService.getConsumption(projectId)` called once per
+project. A loop is the right shape at realistic self-hosted instance scale
+(dozens to low hundreds of projects); a single aggregate query is a later
+optimization, not a blocker.
+
+**Frontend:** a new "Execution limits" section inside the existing
+`SecuritySettings.vue` instance-admin settings page
+(`packages/frontend/editor-ui/src/features/settings/security/`), alongside
+the existing `DataRedactionSection.vue` and `WorkflowReviewsSection.vue`.
+The page itself is the right precedent to extend; the *table* is not
+modeled on `DataRedactionSection.vue`, which turned out to be a single
+instance-wide toggle rather than a per-project list. The table pattern to
+follow instead is the existing API Keys settings table
+(`ApiKeyTable.vue`): one row per project, an inline-editable limit/period,
+consumed/remaining as read-only columns.
+
+**Non-goals for this addendum:** no aggregate SQL query (the per-project
+loop above is sufficient for the PoC), no bulk-edit UI (one row edited at a
+time, matching the project-admin journey's own UX), no new permission
+concept narrower than "global owner/admin" (e.g. a dedicated "governance
+admin" role) — that's a product question to revisit if this moves toward
+productionization, not something this PoC needs to answer.
+
 ## Testing Plan
 
 - Unit tests for `resolveProjectExecutionQuota()` (override → license →
