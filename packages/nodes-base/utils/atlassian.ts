@@ -138,7 +138,7 @@ export function getAtlassianSiteParameter(
 	const raw =
 		'getCurrentNodeParameter' in ctx
 			? ctx.getCurrentNodeParameter('site')
-			: ctx.getNodeParameter('site', 0);
+			: ctx.getNodeParameter('site', 0, null);
 
 	return isResourceLocator(raw) ? raw : undefined;
 }

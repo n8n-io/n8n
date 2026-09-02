@@ -186,6 +186,25 @@ describe('Jira -> GenericFunctions', () => {
 				);
 			});
 
+			it('should auto-resolve when the node carries no Site parameter at all', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) =>
+					parameterName === 'site' ? null : 'cloudServiceAccount',
+				);
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(
+					accessibleResources,
+				);
+
+				await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('site', 0, null);
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'atlassianServiceAccountApi',
+					expect.objectContaining({
+						uri: `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/2/myself`,
+					}),
+				);
+			});
+
 			it('should ask for a Site when the account reaches several sites and none is chosen', async () => {
 				mockParameters({ __rl: true, mode: 'list', value: '' });
 				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue([
