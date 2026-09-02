@@ -58,6 +58,7 @@ import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -1014,20 +1015,11 @@ export class WorkflowService {
 
 		// Polices what gets registered — the version row, not the hook's candidate.
 		// Enforced on a same-version republish too.
-		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-			// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
-			// not a passed one, so a failed lookup fails the publish.
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: {
-					id: workflowId,
-					name: workflow.name,
-					nodes: nodesToPublish,
-				},
-				projectId: project.id,
-			});
-		}
+		await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
+			id: workflowId,
+			name: workflow.name,
+			nodes: nodesToPublish,
+		});
 
 		// re-applying the already-published version (e.g. a settings-only update)
 		// publishes no new version, so the review gate must not block it.

@@ -15,6 +15,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
@@ -256,16 +257,11 @@ export class WorkflowPublicationApplier {
 		workflow: WorkflowEntity,
 		newVersion: WorkflowHistory,
 	): Promise<PublicationResult | null> {
-		if (!this.policyEnforcementService.hasChecksFor('workflowPublish')) return null;
-
-		// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is not
-		// a passed one, so a failed lookup fails the publication.
-		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-
 		try {
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: { id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
-				projectId: project.id,
+			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: newVersion.nodes,
 			});
 
 			return null;
