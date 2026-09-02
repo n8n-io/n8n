@@ -876,11 +876,11 @@ describe('credential gate script', () => {
 		}
 
 		/** Fires a submit the way the widget would see it, through the capture phase. */
-		function submit(kind: 'enter' | 'click') {
+		function submit(kind: 'enter' | 'click', keys: { shiftKey?: boolean } = {}) {
 			const blocked = { defaultPrevented: false, propagationStopped: false };
 			const event =
 				kind === 'enter'
-					? { key: 'Enter', shiftKey: false, target: { tagName: 'TEXTAREA' } }
+					? { key: 'Enter', shiftKey: keys.shiftKey ?? false, target: { tagName: 'TEXTAREA' } }
 					: {
 							target: {
 								closest: (selector: string) => (selector === '.chat-input-send-button' ? {} : null),
@@ -951,6 +951,9 @@ describe('credential gate script', () => {
 		const { win, textarea } = runGateScript({
 			enableStreaming: false,
 			response: new Response(JSON.stringify(GATE_BODY), { status: 428 }),
+			// Non-empty, so the assertions below fail if the page writes at the input at
+			// all - whether it clears it or restores the refused message over a draft.
+			inputValue: 'a draft the visitor started',
 		});
 
 		await win.fetch('http://test.com/webhook', {
@@ -958,7 +961,7 @@ describe('credential gate script', () => {
 			body: sendBody('Book me a flight'),
 		});
 
-		expect(textarea.value).toBe('');
+		expect(textarea.value).toBe('a draft the visitor started');
 		expect(textarea.events).toEqual([]);
 		expect(textarea.focused).toBe(false);
 	});
@@ -1107,8 +1110,10 @@ describe('credential gate script', () => {
 			const { sendStatus, submit } = page();
 			sendStatus(notReady);
 
-			// Built inline: `submit` models the send keystroke only.
-			expect(submit('enter').defaultPrevented).toBe(true);
+			const blocked = submit('enter', { shiftKey: true });
+
+			expect(blocked.defaultPrevented).toBe(false);
+			expect(blocked.propagationStopped).toBe(false);
 		});
 	});
 
