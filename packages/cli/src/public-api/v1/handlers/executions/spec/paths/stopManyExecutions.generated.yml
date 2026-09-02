@@ -52,7 +52,7 @@ responses:
           type: object
           properties:
             stopped:
-              type: number
+              type: integer
               description: The number of executions that were successfully stopped.
               example: 5
           required:

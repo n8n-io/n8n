@@ -18,7 +18,7 @@ export const stoppedExecutionPublicSchema = z.object({
 export class StoppedExecutionPublicDto extends Z.class(stoppedExecutionPublicSchema.shape) {}
 
 export const stoppedExecutionsPublicSchema = z.object({
-	stopped: z.number().openapi(stoppedCountOpenApi),
+	stopped: z.number().int().openapi(stoppedCountOpenApi),
 });
 
 export class StoppedExecutionsPublicDto extends Z.class(stoppedExecutionsPublicSchema.shape) {}
