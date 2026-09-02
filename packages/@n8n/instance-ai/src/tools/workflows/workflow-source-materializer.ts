@@ -79,6 +79,10 @@ export function indexSourceNodes(json: WorkflowJSON, code: string): SourceNodeIn
 	});
 }
 
+function escapeSingleQuotes(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 const CONFIG_OPEN = 'config: {';
 const ID_LINE = /^\s*id: '(?:[^'\\]|\\.)*',?$/;
 
