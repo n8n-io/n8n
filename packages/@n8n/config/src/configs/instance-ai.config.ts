@@ -230,6 +230,9 @@ export class InstanceAiConfig {
 	 * Size it against memory rather than throughput: measured peak is ~600MB
 	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
 	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
 	maxConcurrentRuns: number = -1;

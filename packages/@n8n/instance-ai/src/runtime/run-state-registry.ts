@@ -268,7 +268,13 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
-	/** Number of runs currently executing (excludes suspended/pending runs). */
+	/**
+	 * Runs holding a slot on this process, which is what the instance cap admits against.
+	 *
+	 * Includes a run parked on an inline approval card, which stays in `activeRuns`.
+	 * Excludes a suspended run, which leaves `activeRuns` but keeps its agent in memory.
+	 * So this bounds concurrent execution, not resident memory.
+	 */
 	activeRunCount(): number {
 		return this.activeRuns.size;
 	}
@@ -284,8 +290,9 @@ export class RunStateRegistry<TUser = unknown> {
 	 *  - runs blocked in `waitForConfirmation`, which stay in `activeRuns` while an inline
 	 *    approval card is open. `sweepTimedOut` skips these for the same reason.
 	 *
-	 * Contrast {@link activeRunCount}, which deliberately counts both: a parked run still
-	 * holds its heap, so it still occupies instance capacity even when it costs nothing.
+	 * {@link activeRunCount} differs on the second case only. An inline-parked run is still
+	 * in `activeRuns`, so it holds a slot there. A suspended run holds a slot in neither,
+	 * although it still retains its agent -- see {@link activeRunCount}.
 	 *
 	 * The scan is linear in concurrently-executing runs. That stays small in practice
 	 * regardless of the caps -- each run costs ~12-20MB, so a process cannot hold many --

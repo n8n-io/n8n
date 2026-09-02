@@ -1358,9 +1358,14 @@ export class InstanceAiService {
 	 * The ceiling is therefore soft by design -- it bounds how much new work starts, not how
 	 * much can be in flight.
 	 *
-	 * Counts are per process. That is the correct scope for the instance cap, since the
-	 * memory it protects is per process; for the per-user cap it means a multi-main
+	 * Counts are per process. That is the right scope for the instance cap, because the
+	 * pressure it relieves is per process; for the per-user cap it means a multi-main
 	 * deployment allows the cap once per main.
+	 *
+	 * The instance cap bounds concurrent execution, not resident memory: a suspended run
+	 * releases its slot but keeps its agent in memory. Counting those here would be worse
+	 * than the gap, because a few abandoned approval cards would then wall the whole
+	 * instance for the confirmation timeout. To close it, run state must leave memory.
 	 *
 	 * Either cap is disabled by setting it to `-1` (unlimited), matching
 	 * `N8N_CONCURRENCY_PRODUCTION_LIMIT`. The config schema rejects `0`, so it can't reach
