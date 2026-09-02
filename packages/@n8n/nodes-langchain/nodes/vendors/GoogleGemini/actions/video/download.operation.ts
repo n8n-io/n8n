@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { downloadFile, getFilenameFromMimeType } from '../../helpers/utils';
+import { downloadFile, getCredentialHostname, getFilenameFromMimeType } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -47,7 +47,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		'data',
 	) as string;
 	const credentials = await this.getCredentials('googlePalmApi');
-	const allowedDomains = new URL(credentials.host as string).hostname;
+	const allowedDomains = getCredentialHostname.call(this, credentials.host as string);
 	const { fileContent, mimeType } = await downloadFile.call(
 		this,
 		url,

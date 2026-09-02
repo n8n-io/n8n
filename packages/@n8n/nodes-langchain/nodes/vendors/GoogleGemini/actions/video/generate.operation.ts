@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { VeoResponse } from '../../helpers/interfaces';
-import { downloadFile, getFilenameFromMimeType } from '../../helpers/utils';
+import { downloadFile, getCredentialHostname, getFilenameFromMimeType } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -183,7 +183,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (returnAs === 'video') {
-		const allowedDomains = new URL(credentials.host as string).hostname;
+		const allowedDomains = getCredentialHostname.call(this, credentials.host as string);
 		const promises = response.response.generateVideoResponse.generatedSamples.map(
 			async (sample) => {
 				const { fileContent, mimeType } = await downloadFile.call(

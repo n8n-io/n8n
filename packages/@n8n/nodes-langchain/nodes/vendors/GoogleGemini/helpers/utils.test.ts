@@ -7,6 +7,7 @@ import {
 	createFileSearchStore,
 	deleteFileSearchStore,
 	downloadFile,
+	getCredentialHostname,
 	getFilenameFromMimeType,
 	listFileSearchStores,
 	transferFile,
@@ -42,6 +43,26 @@ describe('GoogleGemini -> utils', () => {
 			const fileName = getFilenameFromMimeType(undefined, 'video', 'mp4');
 
 			expect(fileName).toBe('video.mp4');
+		});
+	});
+
+	describe('getCredentialHostname', () => {
+		it('should return the hostname from the credential URL', () => {
+			const hostname = getCredentialHostname.call(
+				mockExecuteFunctions,
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+
+			expect(hostname).toBe('generativelanguage.googleapis.com');
+		});
+
+		it('should wrap an invalid credential URL in a NodeOperationError', () => {
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				NodeOperationError,
+			);
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				"The Google Gemini credential host isn't a valid URL",
+			);
 		});
 	});
 
