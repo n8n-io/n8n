@@ -5,10 +5,37 @@ import {
 	getAttribute,
 	getRole,
 	getStaticAttributeValue,
+	isCustomElement,
 	isDynamicAttribute,
+	isStaticBooleanAttributePresent,
 	toESTreeNode,
 	type VueParserServices,
 } from './a11y-utils.js';
+
+const VALID_INPUT_TYPES = new Set([
+	'button',
+	'checkbox',
+	'color',
+	'date',
+	'datetime-local',
+	'email',
+	'file',
+	'hidden',
+	'image',
+	'month',
+	'number',
+	'password',
+	'radio',
+	'range',
+	'reset',
+	'search',
+	'submit',
+	'tel',
+	'text',
+	'time',
+	'url',
+	'week',
+]);
 
 const IMPLICIT_ROLES: Record<string, string> = {
 	article: 'article',
@@ -42,8 +69,10 @@ const IMPLICIT_ROLES: Record<string, string> = {
 	option: 'option',
 	output: 'status',
 	progress: 'progressbar',
+	summary: 'button',
 	table: 'table',
 	tbody: 'rowgroup',
+	td: 'cell',
 	textarea: 'textbox',
 	tfoot: 'rowgroup',
 	thead: 'rowgroup',
@@ -67,9 +96,18 @@ function getImplicitRole(node: VElement): string | undefined {
 	const name = node.rawName.toLowerCase();
 	if (name === 'header') return isInsideSectioningElement(node) ? undefined : 'banner';
 	if (name === 'footer') return isInsideSectioningElement(node) ? undefined : 'contentinfo';
-	if (name === 'form') {
-		const label = getAttribute(node, 'aria-label') ?? getAttribute(node, 'aria-labelledby');
-		return label && !isDynamicAttribute(label) ? 'form' : undefined;
+	if (name === 'form' || name === 'section') {
+		const label = getAttribute(node, 'aria-labelledby') ?? getAttribute(node, 'aria-label');
+		if (!label || isDynamicAttribute(label)) return undefined;
+		return getStaticAttributeValue(label)?.trim()
+			? name === 'form'
+				? 'form'
+				: 'region'
+			: undefined;
+	}
+	if (name === 'th') {
+		const scope = getStaticAttributeValue(getAttribute(node, 'scope'))?.trim().toLowerCase();
+		return scope === 'row' || scope === 'rowgroup' ? 'rowheader' : 'columnheader';
 	}
 	if (name === 'a' || name === 'area') {
 		const href = getAttribute(node, 'href');
@@ -84,14 +122,21 @@ function getImplicitRole(node: VElement): string | undefined {
 		const multiple = getAttribute(node, 'multiple');
 		const size = getAttribute(node, 'size');
 		if (isDynamicAttribute(multiple) || isDynamicAttribute(size)) return undefined;
-		const hasMultiple = Boolean(multiple && getStaticAttributeValue(multiple) !== 'false');
+		const hasMultiple = isStaticBooleanAttributePresent(multiple);
 		return hasMultiple || Number(getStaticAttributeValue(size) ?? '0') > 1 ? 'listbox' : 'combobox';
 	}
 	if (name === 'input') {
 		const typeAttribute = getAttribute(node, 'type');
 		if (isDynamicAttribute(typeAttribute)) return undefined;
-		const type = getStaticAttributeValue(typeAttribute)?.toLowerCase() ?? 'text';
-		if (getAttribute(node, 'list') && ['email', 'search', 'tel', 'text', 'url'].includes(type)) {
+		const value = getStaticAttributeValue(typeAttribute)?.trim().toLowerCase() ?? 'text';
+		const type = VALID_INPUT_TYPES.has(value) ? value : 'text';
+		const list = getAttribute(node, 'list');
+		if (
+			list &&
+			!isDynamicAttribute(list) &&
+			getStaticAttributeValue(list)?.trim() &&
+			['email', 'search', 'tel', 'text', 'url'].includes(type)
+		) {
 			return 'combobox';
 		}
 		if (type === 'checkbox') return 'checkbox';
@@ -126,6 +171,7 @@ export const NoRedundantRolesRule = ESLintUtils.RuleCreator.withoutDocs({
 		if (!parserServices.defineTemplateBodyVisitor) return {};
 		return parserServices.defineTemplateBodyVisitor({
 			VElement(node) {
+				if (isCustomElement(node)) return;
 				const role = getRole(node);
 				if (!role || role !== getImplicitRole(node)) return;
 				const attribute = getAttribute(node, 'role');

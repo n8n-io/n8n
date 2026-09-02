@@ -13,13 +13,54 @@ interface CssState {
 	motionUses: MotionUse[];
 }
 
-const REDUCED_MOTION_QUERY = /prefers-reduced-motion\s*:\s*reduce/i;
+const REDUCED_MOTION_QUERY = /^\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)$/i;
 const STYLE_BLOCK = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
 
 function removeComments(source: string): string {
-	return source.replace(/\/\*[\s\S]*?\*\//g, function preserveLines(comment) {
-		return comment.replace(/[^\n]/g, ' ');
-	});
+	let result = '';
+	let quote: '"' | "'" | undefined;
+	for (let index = 0; index < source.length; index++) {
+		const character = source[index];
+		const next = source[index + 1];
+		if (quote) {
+			result += character;
+			if (character === '\\') result += source[++index] ?? '';
+			else if (character === quote) quote = undefined;
+			continue;
+		}
+		if (character === '"' || character === "'") {
+			quote = character;
+			result += character;
+			continue;
+		}
+		if (character === '/' && next === '*') {
+			result += '  ';
+			index += 2;
+			while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) {
+				result += source[index] === '\n' ? '\n' : ' ';
+				index++;
+			}
+			result += '  ';
+			index++;
+			continue;
+		}
+		if (character === '/' && next === '/') {
+			result += '  ';
+			index += 2;
+			while (index < source.length && source[index] !== '\n') {
+				result += ' ';
+				index++;
+			}
+			if (index < source.length) result += '\n';
+			continue;
+		}
+		result += character;
+	}
+	return result;
+}
+
+function isReducedMotionQuery(value: string): boolean {
+	return REDUCED_MOTION_QUERY.test(value.replace(/^@media\s+/i, '').trim());
 }
 
 function splitSelectors(value: string): string[] {
@@ -176,7 +217,7 @@ function inspectCssRange(
 				delimiter + 1,
 				closingBrace,
 				selectors,
-				inReducedMotionQuery || REDUCED_MOTION_QUERY.test(segment),
+				inReducedMotionQuery || isReducedMotionQuery(segment),
 				state,
 			);
 		} else if (segment.startsWith('@keyframes') || segment.startsWith('@-webkit-keyframes')) {

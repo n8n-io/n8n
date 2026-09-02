@@ -4,6 +4,7 @@ import type { Node, VDocumentFragment, VElement } from 'vue-eslint-parser/ast/no
 import {
 	getAttribute,
 	getStaticAttributeValue,
+	isCustomElement,
 	isDynamicAttribute,
 	toESTreeNode,
 	type VueParserServices,
@@ -19,10 +20,18 @@ const LABELABLE_ELEMENTS = new Set([
 	'textarea',
 ]);
 
+function isLabelableElement(node: VElement): boolean {
+	const name = node.rawName.toLowerCase();
+	if (isCustomElement(node)) return true;
+	if (!LABELABLE_ELEMENTS.has(name)) return false;
+	if (name !== 'input') return true;
+	return getStaticAttributeValue(getAttribute(node, 'type'))?.trim().toLowerCase() !== 'hidden';
+}
+
 function hasNestedControl(node: VElement): boolean {
 	for (const child of node.children) {
 		if (child.type !== 'VElement') continue;
-		if (LABELABLE_ELEMENTS.has(child.rawName.toLowerCase())) return true;
+		if (isLabelableElement(child)) return true;
 		if (hasNestedControl(child)) return true;
 	}
 	return false;
@@ -38,7 +47,7 @@ function containsControlId(root: VDocumentFragment, id: string): boolean {
 	function inspect(elements: VElement[]): boolean {
 		for (const element of elements) {
 			if (
-				LABELABLE_ELEMENTS.has(element.rawName.toLowerCase()) &&
+				isLabelableElement(element) &&
 				getStaticAttributeValue(getAttribute(element, 'id')) === id
 			) {
 				return true;

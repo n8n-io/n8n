@@ -22,6 +22,9 @@ ruleTester.run('role-has-required-aria-props', RoleHasRequiredAriaPropsRule, {
 			code: vue('<div role="combobox" aria-controls="options" :aria-expanded="open" />'),
 		},
 		{ filename: 'Component.vue', code: vue('<Widget :role="role" />') },
+		{ filename: 'Component.vue', code: vue('<div role="spinbutton" aria-valuenow="1" />') },
+		{ filename: 'Component.vue', code: vue('<div role="tab" :aria-selected="selected" />') },
+		{ filename: 'Component.vue', code: vue('<div role="treeitem">Item</div>') },
 	],
 	invalid: [
 		{
@@ -42,6 +45,16 @@ ruleTester.run('role-has-required-aria-props', RoleHasRequiredAriaPropsRule, {
 		{
 			filename: 'Component.vue',
 			code: vue('<Widget role="slider" />'),
+			errors: [{ messageId: 'missingProperty' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<div role="spinbutton" />'),
+			errors: [{ messageId: 'missingProperty' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<div role="tab" />'),
 			errors: [{ messageId: 'missingProperty' }],
 		},
 	],
