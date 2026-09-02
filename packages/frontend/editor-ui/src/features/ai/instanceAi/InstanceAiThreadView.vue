@@ -35,6 +35,8 @@ import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composable
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
@@ -876,6 +878,13 @@ function handleSubmit(
 	const submittedAttachments = agentAttachment
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
+
+	const nodeCount = countAttachedNodes(attachments);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
 
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
