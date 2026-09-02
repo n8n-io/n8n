@@ -26,7 +26,7 @@ const filterSchema = z.object({
 	filters: z.array(
 		z.object({
 			columnName: z.string(),
-			condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+			condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 			value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		}),
 	),
@@ -38,7 +38,7 @@ const filterSchemaWithMinOne = z.object({
 		.array(
 			z.object({
 				columnName: z.string(),
-				condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+				condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 			}),
 		)
@@ -98,6 +98,10 @@ const MAX_CELL_CHARS = 1024;
  *  cells are useful; dozens re-create the flood truncation exists to prevent. */
 const MAX_FULL_VALUE_ROWS = 5;
 
+const filterDescribe =
+	'Row filter conditions. For text matching use `ilike` (case-insensitive contains); `like` is ' +
+	'case-sensitive. Values without `%` are wrapped as `%value%`.';
+
 const projectIdDescribe =
 	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
@@ -145,7 +149,7 @@ const queryAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.optional().describe('Row filter conditions'),
+	filter: filterSchema.optional().describe(filterDescribe),
 	limit: z
 		.number()
 		.int()
@@ -254,7 +258,7 @@ const updateRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.describe('Row filter conditions'),
+	filter: filterSchema.describe(filterDescribe),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
 });
 
@@ -271,7 +275,7 @@ const deleteRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
+	filter: filterSchemaWithMinOne.describe(filterDescribe),
 });
 
 const allActions = [

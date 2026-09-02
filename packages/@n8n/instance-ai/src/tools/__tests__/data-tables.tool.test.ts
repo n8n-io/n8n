@@ -202,6 +202,30 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 		});
 
+		it('should accept ilike filters and pass them through to the service', async () => {
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue({ count: 0, data: [] });
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'ilike' as const, value: '%Vivo%' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, limit: 5 },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 5,
+				offset: undefined,
+				projectId: undefined,
+			});
+		});
+
 		it('should include hint when more rows are available', async () => {
 			const queryResult = { count: 100, data: Array.from({ length: 50 }, (_, i) => ({ id: i })) };
 			const context = createMockContext();
