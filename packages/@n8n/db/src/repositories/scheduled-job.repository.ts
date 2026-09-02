@@ -242,7 +242,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * Delete all jobs owned by exactly this owner member; their tasks cascade away.
 	 * @returns how many jobs were deleted (0 when the driver can't report it).
 	 */
-	async deleteByOwner(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
+	async deleteByOwnerMember(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
 		const result = await manager.delete(ScheduledJob, ownerCriteria(owner));
 		return result.affected ?? 0;
 	}
@@ -285,8 +285,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * One page of the distinct owners of a kind, keyset paginated on `ownerId` so
 	 * a long sweep stays on the `(ownerType, ownerId, ownerMemberId)` index.
 	 *
-	 * Only owners with a job older than `settledBefore`: a job inserted moments
-	 * ago may belong to an owner whose own row is not committed yet.
+	 * Only owners with a job older than `settledBefore`. A module may provision
+	 * before the transaction that creates the owner commits, and the resolver
+	 * would read that brand-new job as orphaned. The bound is on `createdAt`
+	 * because the poller rewrites `updatedAt` on every fire.
 	 *
 	 * @param after exclusive lower bound on `ownerId`; omit for the first page.
 	 * @returns at most `limit` owner ids, ascending.
@@ -312,10 +314,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Quarantine every not-yet-quarantined job of these owners: disabled, clock
-	 * cleared, `orphanedAt` stamped, and its queued occurrences withdrawn. Both
-	 * writes commit together, or the job would either still fire or requeue what
-	 * was withdrawn.
+	 * Quarantine every not-yet-quarantined job of these owners: clock cleared,
+	 * `orphanedAt` stamped, and its queued occurrences withdrawn. Both writes
+	 * commit together, or the job would either still fire or requeue what was
+	 * withdrawn. `enabled` is left as it was, so a lift restores the job's own
+	 * state rather than turning on one that was disabled before.
 	 *
 	 * `settledBefore` applies the same bound as {@link findOwnerIds}, sparing a
 	 * job written since the caller's liveness check.
@@ -336,33 +339,32 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			const quarantined = await manager
 				.createQueryBuilder()
 				.update(ScheduledJob)
-				.set({ enabled: false, nextRunAt: null, orphanedAt })
+				.set({ nextRunAt: null, orphanedAt })
 				.where('"ownerType" = :ownerType', { ownerType })
 				.andWhere('"ownerId" IN (:...ownerIds)', { ownerIds })
 				.andWhere('"orphanedAt" IS NULL')
 				.andWhere('"createdAt" <= :settledBefore', { settledBefore })
 				.execute();
 
-			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds, settledBefore);
+			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds);
 
 			return quarantined.affected ?? 0;
 		});
 	}
 
 	/**
-	 * Delete the pending occurrences of the settled jobs these owners hold.
+	 * Delete the pending occurrences of these owners' quarantined jobs.
 	 *
-	 * `settledBefore` bounds this as it bounds the quarantine: a job the bound
-	 * spared stays enabled, and would lose a run nothing requeues.
+	 * Keyed on the quarantine stamp rather than on the bounds the update used, so
+	 * it reaches only rows still quarantined when it runs: a job another instance
+	 * revived in between has no stamp and keeps the runs it just seeded.
 	 */
 	private async withdrawQueuedOccurrences(
 		manager: EntityManager,
 		ownerType: string,
 		ownerIds: string[],
-		settledBefore: Date,
 	): Promise<void> {
-		// A subquery rather than a job-id round-trip, so both writes see the same
-		// jobs. `tablePath` comes from entity metadata, never from caller input.
+		// `tablePath` comes from entity metadata, never from caller input.
 		const jobTable = this.metadata.tablePath;
 		await manager
 			.createQueryBuilder()
@@ -370,8 +372,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.from(ScheduledTask)
 			.where('"status" = :status', { status: ScheduledTaskStatus.Pending })
 			.andWhere(
-				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "createdAt" <= :settledBefore)`,
-				{ ownerType, ownerIds, settledBefore },
+				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "orphanedAt" IS NOT NULL)`,
+				{ ownerType, ownerIds },
 			)
 			.execute();
 	}
@@ -424,16 +426,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Lift the quarantine on one job: re-enabled, `orphanedAt` cleared, clock
-	 * restarted from `nextRunAt` (`null` when nothing is left to fire). A no-op
-	 * unless the job is still quarantined, so a concurrent lift or delete wins.
+	 * Lift the quarantine on one job: `orphanedAt` cleared, clock restarted from
+	 * `nextRunAt` (`null` when nothing is left to fire). A no-op unless the job is
+	 * still quarantined, so a concurrent lift or delete wins.
 	 *
 	 * @returns how many quarantines were lifted (0 when nothing was left to lift).
 	 */
 	async liftQuarantine(id: number, nextRunAt: Date | null): Promise<number> {
 		const result = await this.update(
 			{ id, orphanedAt: Not(IsNull()) },
-			{ enabled: true, orphanedAt: null, nextRunAt },
+			{ orphanedAt: null, nextRunAt },
 		);
 		return result.affected ?? 0;
 	}
@@ -441,6 +443,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	/**
 	 * Lift the quarantine on every quarantined job of this owner member, leaving
 	 * their clocks to the caller. Must run inside a transaction.
+	 *
+	 * A lifted job keeps its `createdAt`, so the settle window of
+	 * {@link findOwnerIds} does not shield it again. Call this only once the
+	 * owner is visible to its resolver, or the next sweep quarantines it anew.
 	 *
 	 * @returns how many quarantines were lifted (0 when the driver can't report it).
 	 */
@@ -451,7 +457,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		const result = await manager.update(
 			ScheduledJob,
 			{ ...ownerCriteria(owner), orphanedAt: Not(IsNull()) },
-			{ enabled: true, orphanedAt: null },
+			{ orphanedAt: null },
 		);
 		return result.affected ?? 0;
 	}

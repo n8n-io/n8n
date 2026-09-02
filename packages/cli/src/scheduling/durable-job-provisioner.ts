@@ -424,7 +424,7 @@ export class DurableJobProvisioner {
 	private async deleteScope(manager: EntityManager, target: DeprovisionScope): Promise<number> {
 		switch (target.scope) {
 			case 'member':
-				return await this.jobs.deleteByOwner(manager, target.owner);
+				return await this.jobs.deleteByOwnerMember(manager, target.owner);
 			case 'owner':
 				return await this.jobs.deleteByOwnerRef(manager, target.owner);
 			case 'task-type':

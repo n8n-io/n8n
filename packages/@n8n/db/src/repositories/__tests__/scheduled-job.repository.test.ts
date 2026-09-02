@@ -335,11 +335,11 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('deleteByOwner', () => {
+	describe('deleteByOwnerMember', () => {
 		it('deletes the owner member jobs and returns the affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 3, raw: [] });
 
-			const removed = await repository.deleteByOwner(entityManager, OWNER);
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
 			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, OWNER);
 			expect(removed).toBe(3);
@@ -348,7 +348,7 @@ describe('ScheduledJobRepository', () => {
 		it('returns 0 when the driver does not report an affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: null, raw: [] });
 
-			const removed = await repository.deleteByOwner(entityManager, OWNER);
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
 			expect(removed).toBe(0);
 		});
@@ -395,6 +395,32 @@ describe('ScheduledJobRepository', () => {
 			expect(await repository.quarantineByOwnerIds('workflow', [], CLOCK, CLOCK)).toBe(0);
 			expect(entityManager.transaction).not.toHaveBeenCalled();
 		});
+
+		it('withdraws the queued runs of quarantined rows only, so a row revived in between keeps its runs', async () => {
+			entityManager.transaction.mockImplementation(
+				async (work) =>
+					await (work as unknown as (manager: EntityManager) => Promise<unknown>)(entityManager),
+			);
+			const qb = {
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				delete: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected: 1, raw: [] }),
+			};
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			const quarantined = await repository.quarantineByOwnerIds('workflow', ['wf'], CLOCK, CLOCK);
+
+			expect(quarantined).toBe(1);
+			const [withdrawal] = qb.andWhere.mock.calls
+				.map(([sql]) => sql as string)
+				.filter((sql) => sql.includes('"jobId" IN'));
+			expect(withdrawal).toContain('"orphanedAt" IS NOT NULL');
+			expect(withdrawal).not.toContain('"createdAt"');
+		});
 	});
 
 	describe('deleteQuarantinedByOwnerIds', () => {
@@ -412,7 +438,7 @@ describe('ScheduledJobRepository', () => {
 	});
 
 	describe('liftQuarantine', () => {
-		it('re-enables the job, clears the stamp and restarts its clock, only while still quarantined', async () => {
+		it('clears the stamp and restarts the clock, only while still quarantined', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
 
 			const lifted = await repository.liftQuarantine(42, CLOCK);
@@ -420,7 +446,7 @@ describe('ScheduledJobRepository', () => {
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ScheduledJob,
 				{ id: 42, orphanedAt: Not(IsNull()) },
-				{ enabled: true, orphanedAt: null, nextRunAt: CLOCK },
+				{ orphanedAt: null, nextRunAt: CLOCK },
 			);
 			expect(lifted).toBe(1);
 		});

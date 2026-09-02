@@ -187,10 +187,10 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				// The durable rows are database state the node no longer owns, and a close
-				// function that never settles is abandoned by the caller rather than
-				// retried, so their removal must neither wait on the in-memory teardown
-				// nor let it hold back a durable failure the caller must retry.
+				// Start the in-memory teardown now, but await it only after the durable
+				// removal below. The durable rows are database state the node no longer
+				// owns, so a durable failure must reach the caller for a retry even when
+				// the in-memory teardown never settles.
 				const inMemory = this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
 				// Logs an in-memory failure a durable failure would otherwise swallow, and
 				// keeps its rejection handled while the durable removal is awaited first.
@@ -223,7 +223,15 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	private async removeDurableJobs(workflowId: WorkflowId, nodeId: INode['id']) {
-		await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
-		await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId),
+			this.pollTriggerJobRegistrar.remove(workflowId, nodeId),
+		]);
+		const failure = results.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (failure) {
+			throw ensureError(failure.reason);
+		}
 	}
 }

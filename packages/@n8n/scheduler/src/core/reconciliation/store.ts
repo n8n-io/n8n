@@ -1,7 +1,7 @@
 import type { StoredSchedule } from '../types';
 
 /** A quarantined row, carrying what a revival needs to recompute its clock. */
-export type QuarantinedJob = StoredSchedule & { ownerId: string };
+export type QuarantinedJob = StoredSchedule & { ownerId: string; enabled: boolean };
 
 /** The storage operations one owner reconciliation pass uses. */
 export interface ReconciliationJobStore {
@@ -26,8 +26,8 @@ export interface ReconciliationJobStore {
 
 	/**
 	 * Quarantine every not-yet-quarantined job of these owners, committing the
-	 * disable, the cleared clock, the `orphanedAt` stamp and the withdrawal of
-	 * its queued occurrences together.
+	 * cleared clock, the `orphanedAt` stamp and the withdrawal of its queued
+	 * occurrences together. `enabled` is left as it was.
 	 *
 	 * @param settledBefore excludes jobs written since the liveness check.
 	 * @returns how many jobs were quarantined.
@@ -63,7 +63,7 @@ export interface ReconciliationJobStore {
 	): Promise<QuarantinedJob[]>;
 
 	/**
-	 * Re-enable one job, clearing its stamp and restarting its clock from
+	 * Lift one job's quarantine, clearing its stamp and restarting its clock from
 	 * `nextRunAt` (`null` for a rule with nothing left to fire). Acts only while
 	 * the job is still quarantined, so a concurrent lift or delete is a no-op.
 	 *

@@ -26,6 +26,7 @@ const options: ReconciliationOptions = {
 const quarantinedJob = (over: Partial<QuarantinedJob> = {}): QuarantinedJob => ({
 	id: 1,
 	ownerId: 'wf-1',
+	enabled: true,
 	kind: 'interval',
 	intervalSeconds: 3600,
 	cronExpression: null,
@@ -112,6 +113,69 @@ describe('reconcile', () => {
 			expect(onQuarantined).toHaveBeenCalledWith({ ownerType: 'workflow', jobs: 1 });
 		});
 
+		it('asks the resolver again after a quarantine and lifts it in the same pass when the owner is back', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValueOnce(new Set())
+				.mockResolvedValueOnce(new Set(['wf-back']));
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-back', 'wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(2);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 7, ownerId: 'wf-back' }),
+			]);
+
+			const summary = await run();
+
+			expect(findExisting).toHaveBeenNthCalledWith(2, ['wf-back', 'wf-gone']);
+			expect(store.deleteQuarantinedByOwnerIds).toHaveBeenCalledWith(
+				'workflow',
+				['wf-gone'],
+				QUARANTINED_BEFORE,
+			);
+			expect(store.findQuarantinedByOwnerIds).toHaveBeenCalledWith(
+				'workflow',
+				['wf-back'],
+				BATCH_SIZE,
+			);
+			expect(store.liftQuarantine).toHaveBeenCalledWith(7, expect.any(Date) as Date);
+			expect(summary).toMatchObject({ quarantined: 2, revived: 1, drained: true });
+		});
+
+		it('does not ask the resolver again when nothing was quarantined', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValue(new Set());
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(0);
+
+			await run();
+
+			expect(findExisting).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the quarantine and abandons the walk when the second answer fails', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValueOnce(new Set())
+				.mockRejectedValueOnce(new Error('lookup failed'));
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(1);
+			const onResolverFailed = vi.fn();
+
+			const summary = await run({ onResolverFailed });
+
+			expect(store.deleteQuarantinedByOwnerIds).not.toHaveBeenCalled();
+			expect(store.liftQuarantine).not.toHaveBeenCalled();
+			expect(onResolverFailed).toHaveBeenCalledWith('workflow', expect.any(Error) as Error);
+			expect(summary).toMatchObject({ quarantined: 1, revived: 0, drained: false });
+		});
+
 		it('reports nothing quarantined when every job of a gone owner already was', async () => {
 			registry.register('workflow', {
 				findExisting: async () => await Promise.resolve(new Set()),
@@ -168,7 +232,7 @@ describe('reconcile', () => {
 	});
 
 	describe('revival', () => {
-		it('re-enables a quarantined job whose owner is alive again, restarting its clock', async () => {
+		it('revives a quarantined job whose owner is alive again, restarting its clock', async () => {
 			registry.register('workflow', {
 				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
 			});
@@ -181,6 +245,47 @@ describe('reconcile', () => {
 			// An hourly interval, restarted from the shared clock.
 			expect(store.liftQuarantine).toHaveBeenCalledWith(42, new Date(NOW.getTime() + 3600 * 1000));
 			expect(summary.revived).toBe(1);
+		});
+
+		it('revives a disabled job with no clock', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 42, enabled: false }),
+			]);
+
+			const summary = await run();
+
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, null);
+			expect(summary.revived).toBe(1);
+		});
+
+		it('seeds a revived recurring cron at its next cron instant, restarting the every-N count', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({
+					id: 42,
+					kind: 'recurring_cron',
+					intervalSeconds: null,
+					cronExpression: '0 0 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: 'weeks',
+					recurrenceSize: 2,
+				}),
+			]);
+
+			await run();
+
+			// Quarantine cleared the clock, so the every-2-weeks rule has no fire to
+			// count from and the job restarts at the next midnight.
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, new Date('2026-03-02T00:00:00.000Z'));
 		});
 
 		it('revives a job whose stored schedule can no longer be planned with no clock, rather than failing the sweep', async () => {
@@ -292,6 +397,63 @@ describe('reconcile', () => {
 			expect(summary.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-2' });
 		});
 
+		it('finishes an unfinished page on the next pass and moves past it', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			// The first pass re-reads nothing past the page: a full batch of
+			// quarantines leaves it unfinished. The second pass lifts the one left
+			// behind, then walks on.
+			store.findOwnerIds
+				.mockResolvedValueOnce(['wf-1', 'wf-2'])
+				.mockResolvedValueOnce(['wf-1', 'wf-2'])
+				.mockResolvedValueOnce(['wf-3'])
+				.mockResolvedValue([]);
+			store.findQuarantinedByOwnerIds
+				.mockResolvedValueOnce([quarantinedJob({ id: 42 }), quarantinedJob({ id: 43 })])
+				.mockResolvedValueOnce([quarantinedJob({ id: 44 })])
+				.mockResolvedValue([]);
+
+			const first = await run();
+			const second = await reconcile(
+				store,
+				registry,
+				now,
+				options,
+				{},
+				undefined,
+				first.resumeFrom,
+			);
+
+			expect(first).toMatchObject({
+				ownersChecked: 2,
+				revived: 2,
+				drained: false,
+				resumeFrom: { ownerType: 'workflow' },
+			});
+			expect(store.findOwnerIds).toHaveBeenCalledTimes(3);
+			expect(store.findOwnerIds).toHaveBeenNthCalledWith(
+				2,
+				'workflow',
+				SETTLED_BEFORE,
+				BATCH_SIZE,
+				undefined,
+			);
+			expect(store.findOwnerIds).toHaveBeenNthCalledWith(
+				3,
+				'workflow',
+				SETTLED_BEFORE,
+				BATCH_SIZE,
+				'wf-2',
+			);
+			// The re-read page counts as checked again, but only the lift it
+			// still had to do counts as revived.
+			expect(second).toMatchObject({ ownersChecked: 3, revived: 1, drained: true });
+			expect(second.resumeFrom).toBeUndefined();
+			expect(store.liftQuarantine).toHaveBeenCalledTimes(3);
+		});
+
 		it('resumes at the first unfinished page when a later owner type also leaves one', async () => {
 			const aliveResolver = {
 				findExisting: async (ownerIds: string[]) => await Promise.resolve(new Set(ownerIds)),
@@ -341,7 +503,7 @@ describe('reconcile', () => {
 			expect(store.quarantineByOwnerIds).not.toHaveBeenCalled();
 			expect(store.deleteQuarantinedByOwnerIds).not.toHaveBeenCalled();
 			expect(onUnclaimedOwnerType).toHaveBeenCalledWith('agent');
-			expect(summary.skippedOwnerTypes).toEqual(['agent']);
+			expect(summary).toMatchObject({ skippedOwnerTypes: ['agent'], drained: false });
 		});
 
 		it('leaves an owner type whose resolver threw entirely alone', async () => {
@@ -415,7 +577,11 @@ describe('reconcile', () => {
 				NOW,
 				SETTLED_BEFORE,
 			);
-			expect(summary).toMatchObject({ quarantined: 1, skippedOwnerTypes: ['workflow'] });
+			expect(summary).toMatchObject({
+				quarantined: 1,
+				skippedOwnerTypes: ['workflow'],
+				drained: false,
+			});
 		});
 	});
 
@@ -610,7 +776,7 @@ describe('reconcile', () => {
 			const summary = await run({ onUnclaimedOwnerType: thrower });
 
 			expect(store.findOwnerIds).not.toHaveBeenCalled();
-			expect(summary.skippedOwnerTypes).toEqual(['agent']);
+			expect(summary).toMatchObject({ skippedOwnerTypes: ['agent'], drained: false });
 		});
 
 		it('lifts every quarantine of the page even when the per-job hooks throw', async () => {

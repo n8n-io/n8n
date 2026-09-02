@@ -6,7 +6,6 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
-import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
@@ -36,9 +35,11 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -198,6 +199,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
+		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
@@ -498,6 +500,8 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				onConnectionFailed: (event) => {
 					this.logger.warn('Skipped MCP server that failed to connect', {
 						agentId: memoryOwnerAgentId,
@@ -607,6 +611,7 @@ export class AgentRuntimeReconstructionService {
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() });
 		});
+		const proxyManagedFetch = createAiProxyFetch(this.outboundHttp);
 
 		return {
 			baseURL,
@@ -625,7 +630,7 @@ export class AgentRuntimeReconstructionService {
 				)) {
 					headers.set(key, value);
 				}
-				return await proxyFetch(input as string, { ...init, headers });
+				return await proxyManagedFetch(input, { ...init, headers });
 			},
 		};
 	}
@@ -657,6 +662,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveWorkflowTool(ref, {
 					workflowLoader: Container.get(WorkflowToolWorkflowLoader),
 					workflowRunner: await getWorkflowRunner(),
+					subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
 					activeExecutions: this.activeExecutions,
 					projectId,
 					executionMode: workflowToolExecutionMode,

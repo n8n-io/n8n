@@ -30,6 +30,16 @@ vi.mock('@n8n/agents', () => ({
 const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
+function headersToCaseInsensitiveRecord(headers: HeadersInit | undefined): Record<string, string> {
+	const values = Object.fromEntries(new Headers(headers).entries());
+	return new Proxy(values, {
+		get: (target, property) => {
+			if (typeof property !== 'string') return Reflect.get(target, property);
+			return target[property] ?? target[property.toLowerCase()];
+		},
+	});
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -97,7 +107,7 @@ describe('buildMcpClientForServer — header derivation', () => {
 		const fetchFn = configs[0].fetch;
 		await fetchFn('https://example.test/mcp');
 		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		return (init.headers ?? {}) as Record<string, string>;
+		return headersToCaseInsensitiveRecord(init.headers);
 	}
 
 	it('sends no auth headers for authentication: "none"', async () => {
@@ -183,8 +193,8 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 		// First call uses the stale header, second uses the refreshed one.
 		const [, firstInit] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
 		const [, secondInit] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
-		expect((firstInit.headers as Record<string, string>).Authorization).toBe('Bearer stale-token');
-		expect((secondInit.headers as Record<string, string>).Authorization).toBe('Bearer fresh-token');
+		expect(new Headers(firstInit.headers).get('authorization')).toBe('Bearer stale-token');
+		expect(new Headers(secondInit.headers).get('authorization')).toBe('Bearer fresh-token');
 	});
 
 	it('does NOT call refreshOAuth2CredentialById for non-OAuth2 auth schemes', async () => {
@@ -332,7 +342,7 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await configs[0].fetch('https://example.test/mcp');
 		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		return (init.headers ?? {}) as Record<string, string>;
+		return headersToCaseInsensitiveRecord(init.headers);
 	}
 
 	it('sends no Authorization header for bearerAuth when the resolved token is an empty string', async () => {
@@ -378,12 +388,13 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 		expect(headers).toEqual({});
 	});
 
-	it('uses the OAuth2 path for service-specific McpOAuth2Api variants (e.g. notionMcpOAuth2Api)', async () => {
-		const headers = await captureInitialHeaders(
-			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ oauthTokenData: { access_token: 'notion-oauth-token' } },
-		);
-		expect(headers.Authorization).toBe('Bearer notion-oauth-token');
+	it('requires registry metadata for service-specific McpOAuth2Api credentials', async () => {
+		await expect(
+			captureInitialHeaders(
+				makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
+				{ oauthTokenData: { access_token: 'notion-oauth-token' } },
+			),
+		).rejects.toThrow('requires an MCP registry node');
 	});
 });
 
@@ -413,8 +424,24 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 		});
 
 		await buildMcpClientForServer(
-			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			makeServer({
+				authentication: 'notionMcpOAuth2Api' as never,
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+			}),
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.notion',
+					credentialType: 'notionMcpOAuth2Api',
+					endpointUrl: 'https://example.test/mcp',
+					endpointHostname: 'example.test',
+					transport: 'httpStreamable',
+				}),
+			},
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];

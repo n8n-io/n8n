@@ -177,9 +177,9 @@ export class ScheduledJob extends WithTimestamps {
 	 * When the reconciliation sweep last found this job's owner gone. `null`
 	 * while the owner is alive.
 	 *
-	 * A quarantine marker, not a delete: the job is disabled first and only
-	 * deleted once the stamp is older than the quarantine grace, leaving a window
-	 * for a wrong liveness answer to be corrected.
+	 * A quarantine marker, not a delete: the job's clock is cleared first and it
+	 * is only deleted once the stamp is older than the quarantine grace, leaving
+	 * a window for a wrong liveness answer to be corrected.
 	 */
 	@DateTimeColumn({ nullable: true })
 	orphanedAt: Date | null;

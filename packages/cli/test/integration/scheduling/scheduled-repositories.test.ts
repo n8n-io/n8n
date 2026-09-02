@@ -646,6 +646,21 @@ describe('scheduled repositories', () => {
 				enabled: false,
 			});
 		});
+
+		it('clears the stamp and leaves enabled as it was', async () => {
+			const owner = workflowOwned('wf-lift-disabled', 'node');
+			const job = await createJob({ ...owner, enabled: false, orphanedAt: new Date() });
+
+			const lifted = await dataSource.transaction(
+				async (trx) => await jobRepository.liftQuarantineByOwner(trx, owner),
+			);
+
+			expect(lifted).toBe(1);
+			expect(await jobRepository.findOneByOrFail({ id: job.id })).toMatchObject({
+				enabled: false,
+				orphanedAt: null,
+			});
+		});
 	});
 
 	describe('ScheduledTaskRepository.insertIgnoringDuplicates', () => {
