@@ -19,8 +19,11 @@ const API_KEY = 'n8n-sandbox-ci-key';
 const RUNNER_API_KEY = 'ci-runner-key';
 const REGISTRATION_TOKEN = 'ci-reg-token';
 const SANDBOX_READY_TIMEOUT_MS = 120_000;
-/** Preflight only — a slow answer means fall back, not wait it out. */
-const HOSTED_HEALTH_TIMEOUT_MS = 10_000;
+/** Preflight only — placing a sandbox on a runner is the slow part, and a create
+ *  that cannot finish in time is not usable for the specs either. */
+const HOSTED_CREATE_TIMEOUT_MS = 30_000;
+/** Bounds the probe's cleanup so a wedged deployment cannot stall startup. */
+const HOSTED_CLEANUP_TIMEOUT_MS = 10_000;
 const SANDBOX_READY_POLL_INTERVAL_MS = 1_000;
 const DOCKER_COMMAND_MAX_BUFFER = 10 * 1024 * 1024;
 
@@ -152,24 +155,45 @@ function hostedSandboxConfig(): SandboxMeta | undefined {
 	return { apiUrl, apiKey };
 }
 
+async function deleteHostedSandbox(meta: SandboxMeta, id: string): Promise<void> {
+	await fetch(`${meta.apiUrl}/sandboxes/${id}`, {
+		method: 'DELETE',
+		headers: { 'X-Api-Key': meta.apiKey },
+		signal: AbortSignal.timeout(HOSTED_CLEANUP_TIMEOUT_MS),
+	}).catch(() => {});
+}
+
 /**
- * `GET /sandboxes` is the cheapest call that proves the whole chain the tests
- * depend on: the deployment answers from this machine, and the key resolves to
- * a tenant. `/healthz` would be wrong here — it is unauthenticated and returns
- * a static 200, so it passes with a revoked or misspelled key.
+ * Creates and deletes one sandbox, the same probe the local stack waits on. A
+ * read-only call is not enough: `GET /sandboxes` (and `/healthz`, which is also
+ * unauthenticated) answers 200 from a deployment that can no longer place a
+ * sandbox on a runner, and the agent loads its skills from the sandbox — so
+ * every instance-ai spec then fails on its first turn with the service's generic
+ * error, which is not attributable to the sandbox.
  *
  * Returns `true` when healthy, otherwise the reason to report.
  */
 async function checkHostedSandbox(meta: SandboxMeta): Promise<true | string> {
+	let id: string | undefined;
 	try {
 		const response = await fetch(`${meta.apiUrl}/sandboxes`, {
+			method: 'POST',
 			headers: { 'X-Api-Key': meta.apiKey },
-			signal: AbortSignal.timeout(HOSTED_HEALTH_TIMEOUT_MS),
+			signal: AbortSignal.timeout(HOSTED_CREATE_TIMEOUT_MS),
 		});
-		if (response.ok) return true;
-		return `HTTP ${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim();
+		if (!response.ok) {
+			return `HTTP ${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim();
+		}
+
+		id = ((await response.json().catch(() => ({}))) as { id?: string }).id;
+		if (!id) return 'create returned no sandbox id';
+		return true;
 	} catch (error) {
 		return error instanceof Error ? error.message : String(error);
+	} finally {
+		// Runs on the healthy path too — the probe must not leave a sandbox behind,
+		// and a leak counts against the tenant's capacity for the rest of the run.
+		if (id) await deleteHostedSandbox(meta, id);
 	}
 }
 
