@@ -670,9 +670,9 @@ watch(selectedNodes, (nodes) => {
 	}
 });
 
-// Report multi-selection once it settles, so rubber-band drag doesn't emit per intermediate state.
-// Watch the selection identity (not just the count) so replacing one settled multi-selection with a
-// different one of the same size still reports.
+// Report a multi-selection once it settles. Debouncing keeps a rubber-band drag from emitting an
+// event for every node it sweeps over; keying the watch on the selected ids (not just the count)
+// means swapping one settled selection for a different one of the same size still reports.
 watchDebounced(
 	() => selectedNodeIds.value.join(','),
 	() => {

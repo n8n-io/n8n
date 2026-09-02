@@ -1996,7 +1996,37 @@ describe('Canvas', () => {
 
 			expect(trackSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'User selected multiple nodes' }),
-				expect.objectContaining({ node_count: 2, push_ref: expect.any(String) }),
+				expect.objectContaining({
+					workflow_id: 'wf-test',
+					node_count: 2,
+					push_ref: expect.any(String),
+				}),
+			);
+		});
+
+		it('excludes groups from the reported node count', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasGroupNode({ id: 'g1', nodeIds: ['node-1'] }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			// Two nodes plus the group are selected, but the group must not count.
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
 			);
 		});
 
