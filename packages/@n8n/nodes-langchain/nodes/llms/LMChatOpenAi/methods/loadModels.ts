@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../../vendors/OpenAi/helpers/credentials';
 import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 
@@ -9,10 +10,11 @@ export async function searchModels(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('openAiApi');
-	const baseURL =
-		(this.getNodeParameter('options.baseURL', '') as string) ||
-		(credentials.url as string) ||
-		'https://api.openai.com/v1';
+	const baseUrlOverride = this.getNodeParameter('options.baseURL', '') as string;
+	if (baseUrlOverride) {
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, baseUrlOverride);
+	}
+	const baseURL = baseUrlOverride || (credentials.url as string) || 'https://api.openai.com/v1';
 
 	const openai = new OpenAI({
 		baseURL,

@@ -13,6 +13,7 @@ import {
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -742,6 +743,7 @@ export class LmChatOpenAi implements INodeType {
 		const configuration: ClientOptions = {};
 
 		if (options.baseURL) {
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

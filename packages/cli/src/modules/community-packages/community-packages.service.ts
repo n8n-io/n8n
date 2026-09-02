@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { BUILTIN_NODES_PACKAGES, LICENSE_FEATURES } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
@@ -66,6 +66,9 @@ const {
 const asyncExecFile = promisify(execFile);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
+
+/** Built-in package names cannot be installed as community packages. */
+const RESERVED_PACKAGE_NAMES = new Set<string>(BUILTIN_NODES_PACKAGES);
 
 type PackageJson = {
 	name: 'installed-nodes';
@@ -158,6 +161,10 @@ export class CommunityPackagesService {
 		}
 
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
+
+		if (RESERVED_PACKAGE_NAMES.has(packageName)) {
+			throw new UserError(`Package name "${packageName}" is reserved for n8n built-in packages`);
+		}
 
 		return { packageName, scope, version, rawString };
 	}

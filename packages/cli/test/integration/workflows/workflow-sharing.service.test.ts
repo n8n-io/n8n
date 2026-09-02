@@ -116,4 +116,29 @@ describe('WorkflowSharingService', () => {
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
 		});
 	});
+
+	describe('getUserIdsWithAccessToWorkflow', () => {
+		it('includes the global owner and the owning member, and excludes an unrelated member', async () => {
+			const workflow = await createWorkflow({}, member);
+
+			const userIds = await workflowSharingService.getUserIdsWithAccessToWorkflow(workflow.id);
+
+			expect(userIds).toContain(owner.id);
+			expect(userIds).toContain(member.id);
+			expect(userIds).not.toContain(anotherMember.id);
+		});
+
+		it('includes a project member whose role grants workflow:read', async () => {
+			const project = await projectService.createTeamProject(member, { name: 'Team Project' });
+			const workflow = await createWorkflow(undefined, project);
+			await projectService.addUser(project.id, {
+				userId: anotherMember.id,
+				role: 'project:viewer',
+			});
+
+			const userIds = await workflowSharingService.getUserIdsWithAccessToWorkflow(workflow.id);
+
+			expect(userIds).toContain(anotherMember.id);
+		});
+	});
 });

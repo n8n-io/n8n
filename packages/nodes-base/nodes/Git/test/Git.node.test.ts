@@ -55,11 +55,23 @@ const mockMkdir = jest.mocked(mkdir);
 const mockRename = jest.mocked(rename);
 const mockRm = jest.mocked(rm);
 
+const REPOSITORY_OUT_OF_BOUNDS =
+	'The git repository containing this path is outside the allowed file paths';
+
 describe('Git Node', () => {
 	let gitNode: Git;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
 	let deploymentConfig: jest.Mocked<DeploymentConfig>;
 	let securityConfig: jest.Mocked<SecurityConfig>;
+	// `git rev-parse --show-toplevel --absolute-git-dir --git-common-dir`
+	let revParseLayout: string[];
+
+	// `raw` answers by argument rather than from a positional queue, so the layout lookup
+	// stays correct however many other raw calls an operation makes.
+	const rawResponse = async (args: string[]) => {
+		if (args[0] === 'rev-parse') return `${revParseLayout.join('\n')}\n`;
+		return '';
+	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -84,6 +96,9 @@ describe('Git Node', () => {
 				isFilePathBlocked: jest.fn(() => false),
 				assertNoSymlinkInPath: jest.fn(async () => {}),
 				ensureParentDirectoryWithoutFollowingSymlinks: jest.fn(async () => {}),
+				// Production returns the containing allowed base, not the target's parent, so no
+				// mocked clone test can tell the two apart. The real-git suite covers that
+				// ('rejects a clone source the staging base puts outside the allowed path').
 				resolveStagingBaseForTarget: jest.fn(
 					async (target: string) => dirname(target) as ResolvedFilePath,
 				),
@@ -96,7 +111,8 @@ describe('Git Node', () => {
 					case 'operation':
 						return 'log';
 					case 'repositoryPath':
-						return '/repo';
+						// A subdirectory of the top level, so the two candidate bases differ.
+						return '/repo/sub';
 					case 'options':
 						return {};
 					default:
@@ -104,13 +120,14 @@ describe('Git Node', () => {
 				}
 			},
 		);
+		revParseLayout = ['/repo', '/repo/.git', '/repo/.git'];
 		mockGit.listConfig.mockResolvedValue({
 			files: ['.git/config', 'command line:'],
 			values: { '.git/config': {}, 'command line:': {} },
 			all: {},
 		} as any);
 		mockGit.log.mockResolvedValue({ all: [] } as any);
-		mockGit.raw.mockResolvedValue('');
+		mockGit.raw.mockImplementation(rawResponse as unknown as typeof mockGit.raw);
 		mockMkdir.mockResolvedValue(undefined);
 		mockRename.mockResolvedValue(undefined);
 		mockRm.mockResolvedValue(undefined);
@@ -263,6 +280,139 @@ describe('Git Node', () => {
 					baseDir: resolvedPath,
 				}),
 			);
+		});
+	});
+
+	describe('Repository layout validation', () => {
+		it.each([
+			{ operation: 'add', params: ['add', '/repo', {}, 'file.txt'], guard: 'add' },
+			{
+				operation: 'addConfig',
+				params: ['addConfig', '/repo', {}, 'user.name', 'test user'],
+				guard: 'addConfig',
+			},
+			{
+				operation: 'commit',
+				params: ['commit', '/repo', { branch: 'feature' }, 'test commit'],
+				guard: 'commit',
+			},
+			{ operation: 'fetch', params: ['fetch', '/repo', {}], guard: 'fetch' },
+			{ operation: 'log', params: ['log', '/repo', {}], guard: 'log' },
+			{ operation: 'pull', params: ['pull', '/repo', {}], guard: 'pull' },
+			{ operation: 'push', params: ['push', '/repo', {}], guard: 'push' },
+			{ operation: 'pushTags', params: ['pushTags', '/repo', {}], guard: 'pushTags' },
+			{ operation: 'listConfig', params: ['listConfig', '/repo', {}], guard: 'listConfig' },
+			{ operation: 'status', params: ['status', '/repo', {}], guard: 'status' },
+			{
+				operation: 'switchBranch',
+				params: ['switchBranch', '/repo', {}, 'main'],
+				guard: 'checkout',
+			},
+			{ operation: 'tag', params: ['tag', '/repo', {}, 'v1.0.0'], guard: 'addTag' },
+		])(
+			'rejects $operation when the enclosing repository is outside the allowed path',
+			async ({ params, guard }) => {
+				for (const value of params) {
+					mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(value);
+				}
+				revParseLayout = ['/outside/top', '/outside/top/.git', '/outside/top/.git'];
+				mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+					(path: string) => path === '/outside/top',
+				);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					REPOSITORY_OUT_OF_BOUNDS,
+				);
+
+				expect(mockGit.listConfig).not.toHaveBeenCalled();
+				expect(mockGit.checkout).not.toHaveBeenCalled();
+				expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+			},
+		);
+
+		it('rejects a relative remote URL that the top level puts outside the allowed path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('addConfig')
+				.mockReturnValueOnce('/repo/sub')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('remote.origin.url')
+				.mockReturnValueOnce('../outside');
+			// Stands in for realpath on a symlink-free tree.
+			mockExecuteFunctions.helpers.resolvePath = jest.fn(
+				async (path: string) => resolve(path) as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/outside',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockGit.addConfig).not.toHaveBeenCalled();
+		});
+
+		it('resolves each item against its own repository', async () => {
+			mockExecuteFunctions.getInputData = jest.fn(() => [{ json: {} }, { json: {} }]);
+			mockExecuteFunctions.continueOnFail = jest.fn(() => true);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, itemIndex: number, fallbackValue?: unknown) => {
+					switch (name) {
+						case 'operation':
+							return 'addConfig';
+						case 'repositoryPath':
+							return itemIndex === 0 ? '/repo/sub' : '/deep/nest/sub';
+						case 'key':
+							return 'remote.origin.url';
+						case 'value':
+							// Lands on `/outside/x` from `/repo` and on `/deep/outside/x` from `/deep/nest`.
+							return '../outside/x';
+						case 'options':
+							return {};
+						default:
+							return fallbackValue ?? '';
+					}
+				},
+			);
+			// Like git, report the layout of whichever directory simple-git was pointed at.
+			mockGit.raw.mockImplementation((async (args: string[]) => {
+				if (args[0] !== 'rev-parse') return '';
+				const baseDir = mockSimpleGit.mock.calls.at(-1)?.[0]?.baseDir as string;
+				const topLevel = dirname(baseDir);
+				return `${topLevel}\n${topLevel}/.git\n${topLevel}/.git\n`;
+			}) as unknown as typeof mockGit.raw);
+			mockExecuteFunctions.helpers.resolvePath = jest.fn(
+				async (path: string) => resolve(path) as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn((path: string) =>
+				path.startsWith('/outside'),
+			);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2);
+			expect(result[0][0].json.error).toContain(
+				'Access to the source repository path is not allowed',
+			);
+			expect(result[0][1].json).toEqual({ success: true });
+			expect(mockGit.addConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not read the repository config when the layout cannot be determined', async () => {
+			mockGit.raw.mockImplementation((async (args: string[]) => {
+				if (args[0] === 'rev-parse') throw new Error('fatal: not a git repository');
+				return '';
+			}) as unknown as typeof mockGit.raw);
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('listConfig')
+				.mockReturnValueOnce('/repo/sub')
+				.mockReturnValueOnce({});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Could not determine the git repository for this path',
+			);
+
+			expect(mockGit.listConfig).not.toHaveBeenCalled();
 		});
 	});
 
@@ -440,6 +590,8 @@ describe('Git Node', () => {
 				'Access to the target repository path is not allowed',
 			);
 
+			expect(mockGit.listConfig).not.toHaveBeenCalled();
+			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).not.toHaveBeenCalled();
 		});
 

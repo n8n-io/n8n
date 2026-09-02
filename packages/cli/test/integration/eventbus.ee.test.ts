@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
@@ -17,6 +17,7 @@ import { v4 as uuid } from 'uuid';
 
 import { mock } from 'jest-mock-extended';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
@@ -89,6 +90,7 @@ async function confirmIdSent(id: string) {
 }
 
 mockInstance(ExecutionRecoveryService);
+const credentialsFinderService = mockInstance(CredentialsFinderService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
@@ -170,6 +172,74 @@ describe('POST /eventbus/destination', () => {
 			.post('/eventbus/destination')
 			.send(testWebhookDestination);
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('credential access enforcement', () => {
+	const webhookWithCredential = (
+		id: string,
+		credentialId: string,
+	): MessageEventBusDestinationWebhookOptions => ({
+		...defaultMessageEventBusDestinationWebhookOptions,
+		id,
+		url: 'http://localhost:3456',
+		method: 'POST',
+		label: 'With credentials',
+		enabled: false,
+		subscribedEvents: ['n8n.test.message'],
+		authentication: 'genericCredentialType',
+		genericAuthType: 'httpHeaderAuth',
+		credentials: { httpHeaderAuth: { id: credentialId, name: 'Some cred' } },
+	});
+
+	afterEach(() => {
+		credentialsFinderService.findCredentialForUser.mockReset();
+	});
+
+	test('rejects creating a destination referencing a credential the user cannot access with 403', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		const response = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(webhookWithCredential(uuid(), 'some-credential-id'));
+
+		expect(response.statusCode).toBe(403);
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'some-credential-id',
+			expect.objectContaining({ id: owner.id }),
+			['credential:read'],
+		);
+	});
+
+	test('allows creating a destination when the user can access the referenced credential', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'some-credential-id',
+		} as CredentialsEntity);
+
+		const response = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(webhookWithCredential(uuid(), 'some-credential-id'));
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('rejects testing a destination whose credentials the user cannot access with 403', async () => {
+		const destinationId = uuid();
+
+		// create it while access is granted, so a destination with credentials is persisted
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'some-credential-id',
+		} as CredentialsEntity);
+		const created = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(webhookWithCredential(destinationId, 'some-credential-id'));
+		expect(created.statusCode).toBe(200);
+
+		// access revoked → testing must be rejected before the credential is decrypted/sent
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const response = await authOwnerAgent.get('/eventbus/testmessage').query({ id: destinationId });
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

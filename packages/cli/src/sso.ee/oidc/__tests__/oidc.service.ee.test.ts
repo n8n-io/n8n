@@ -53,6 +53,12 @@ describe('OidcService', () => {
 		loadOnStartup: true,
 	};
 
+	const setOidcState = (loginEnabled: boolean, isActive: boolean) => {
+		jest.spyOn(ssoHelpers, 'isOidcCurrentAuthenticationMethod').mockReturnValue(isActive);
+		const svc = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+		svc.oidcConfig = { ...svc.oidcConfig, loginEnabled };
+	};
+
 	beforeEach(async () => {
 		jest.resetAllMocks();
 		Container.reset();
@@ -88,6 +94,32 @@ describe('OidcService', () => {
 		);
 
 		await oidcService.init();
+		setOidcState(true, true);
+	});
+
+	describe('login flow requires OIDC to be the active, enabled method', () => {
+		const login = async () =>
+			await oidcService.loginUser(new URL('https://example.com/callback'), 'state', 'nonce');
+
+		it('generateLoginUrl is rejected when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('generateLoginUrl is rejected when another authentication method is active', async () => {
+			setOidcState(true, false);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('loginUser is rejected when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('loginUser is rejected when another authentication method is active', async () => {
+			setOidcState(true, false);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+		});
 	});
 
 	describe('reload', () => {

@@ -1,6 +1,8 @@
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { OAUTH_SESSION_COOKIE_NAME } from '@/modules/mcp/oauth-session.service';
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
 
 describe('webhookRequestSanitizer', () => {
@@ -263,6 +265,40 @@ describe('webhookRequestSanitizer', () => {
 			expect(mockRequest.cookies).toEqual({
 				'other-cookie': 'value',
 			});
+		});
+	});
+
+	describe('cookies n8n issues for its own flows', () => {
+		const N8N_ISSUED_COOKIES = [
+			OAUTH_SESSION_COOKIE_NAME,
+			OIDC_STATE_COOKIE_NAME,
+			OIDC_NONCE_COOKIE_NAME,
+		];
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the cookie header', (name) => {
+			mockRequest.headers = { cookie: `${name}=abc123; other-cookie=value` };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the parsed cookies', (name) => {
+			mockRequest.cookies = { [name]: 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+
+		it('should match on the exact name, not on the n8n- prefix', () => {
+			mockRequest.headers = { cookie: 'n8n-other=abc123; n8n-auth=def456' };
+			mockRequest.cookies = { 'n8n-other': 'abc123', 'n8n-auth': 'def456' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('n8n-other=abc123');
+			expect(mockRequest.cookies).toEqual({ 'n8n-other': 'abc123' });
 		});
 	});
 });

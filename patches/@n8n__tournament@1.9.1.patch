@@ -1,0 +1,164 @@
+diff --git a/dist/ExpressionBuilder.js b/dist/ExpressionBuilder.js
+index 64a15f6aafe12fa6252b59afc686c42964ddc67e..65fe5eb5bc082f9ba08ada6737f355d554716342 100644
+--- a/dist/ExpressionBuilder.js
++++ b/dist/ExpressionBuilder.js
+@@ -76,7 +76,7 @@ const maybeWrapExpr = (expr) => {
+ const buildFunctionBody = (expr) => {
+     return ast_types_1.builders.blockStatement([
+         ast_types_1.builders.expressionStatement(ast_types_1.builders.assignmentExpression('=', v, expr)),
+-        ast_types_1.builders.returnStatement(ast_types_1.builders.conditionalExpression(ast_types_1.builders.logicalExpression('||', ast_types_1.builders.logicalExpression('||', v, ast_types_1.builders.binaryExpression('===', v, ast_types_1.builders.literal(0))), ast_types_1.builders.binaryExpression('===', v, ast_types_1.builders.literal(false))), v, ast_types_1.builders.literal(''))),
++        ast_types_1.builders.returnStatement(ast_types_1.builders.conditionalExpression(ast_types_1.builders.logicalExpression('||', ast_types_1.builders.logicalExpression('||', v, ast_types_1.builders.binaryExpression('===', v, ast_types_1.builders.literal(0))), ast_types_1.builders.binaryExpression('===', v, ast_types_1.builders.literal(false))), v, (0, VariablePolyfill_1.rawStringLiteral)(''))),
+     ]);
+ };
+ const fixStringNewLines = (node) => {
+@@ -129,7 +129,7 @@ const getExpressionCode = (expr, dataNodeName, hooks) => {
+         let parts = [];
+         for (const chunk of chunks) {
+             if (chunk.type === 'text') {
+-                parts.push(ast_types_1.builders.literal(chunk.text));
++                parts.push((0, VariablePolyfill_1.rawStringLiteral)(chunk.text));
+             }
+             else {
+                 const fixed = fixStringNewLines(chunk.parsed);
+@@ -160,7 +160,7 @@ const getExpressionCode = (expr, dataNodeName, hooks) => {
+         else {
+             parts = parts.filter((i) => !(i.type === 'Literal' && i.value === ''));
+             newProg.body.push(ast_types_1.builders.returnStatement(ast_types_1.builders.callExpression(ast_types_1.builders.memberExpression(ast_types_1.builders.arrayExpression(parts), ast_types_1.builders.identifier('join')), [
+-                ast_types_1.builders.literal(''),
++                (0, VariablePolyfill_1.rawStringLiteral)(''),
+             ])));
+         }
+     }
+diff --git a/dist/VariablePolyfill.d.ts b/dist/VariablePolyfill.d.ts
+index b260c8d497dd35ab28487984e445bd2b37d198d1..c32a78680b5adf5a488b4722ebace284a49f24ad 100644
+--- a/dist/VariablePolyfill.d.ts
++++ b/dist/VariablePolyfill.d.ts
+@@ -1,6 +1,7 @@
+ import type { namedTypes } from 'ast-types';
+ import type { StatementKind } from 'ast-types/lib/gen/kinds';
+ import type { types } from 'recast';
++export declare const rawStringLiteral: (value: string) => namedTypes.Literal;
+ export declare const globalIdentifier: namedTypes.Identifier;
+ export type DataNode = namedTypes.ThisExpression | namedTypes.Identifier;
+ export declare const jsVariablePolyfill: (ast: types.namedTypes.File, dataNode: DataNode) => StatementKind[] | undefined;
+diff --git a/dist/VariablePolyfill.js b/dist/VariablePolyfill.js
+index 75b4a03da26b04b07cd06fb2fa4b57552eff3119..b603a9bbc724b33e5de232901d028432cb03382e 100644
+--- a/dist/VariablePolyfill.js
++++ b/dist/VariablePolyfill.js
+@@ -1,15 +1,34 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+-exports.jsVariablePolyfill = exports.globalIdentifier = void 0;
++exports.jsVariablePolyfill = exports.globalIdentifier = exports.rawStringLiteral = void 0;
+ const ast_types_1 = require("ast-types");
+ const recast_1 = require("recast");
+ const Constants_1 = require("./Constants");
+ function assertNever(_value) {
+     return true;
+ }
++// Captured at module load so printing stays stable even if the global is later replaced.
++const safeStringify = JSON.stringify;
++// A string literal carrying its own printed form. recast's printer emits `extra.raw`
++// verbatim (when it matches the value) instead of stringifying at print time.
++const rawStringLiteral = (value) => {
++    const literal = ast_types_1.builders.literal(value);
++    // JSON.stringify leaves U+2028/U+2029 unescaped; since the raw form is printed
++    // verbatim, escape them so the emitted literal stays single-line and valid.
++    const raw = safeStringify(value)
++        .replace(/\u2028/g, '\\u2028')
++        .replace(/\u2029/g, '\\u2029');
++    // Attach `extra` in place so the ast-types node identity is preserved.
++    literal.extra = {
++        raw,
++        rawValue: value,
++    };
++    return literal;
++};
++exports.rawStringLiteral = rawStringLiteral;
+ exports.globalIdentifier = ast_types_1.builders.identifier(typeof window !== 'object' ? 'global' : 'window');
+ const buildGlobalSwitch = (node, dataNode) => {
+-    return ast_types_1.builders.memberExpression(ast_types_1.builders.conditionalExpression(ast_types_1.builders.binaryExpression('in', ast_types_1.builders.literal(node.name), dataNode), dataNode, exports.globalIdentifier), ast_types_1.builders.identifier(node.name));
++    return ast_types_1.builders.memberExpression(ast_types_1.builders.conditionalExpression(ast_types_1.builders.binaryExpression('in', rawStringLiteral(node.name), dataNode), dataNode, exports.globalIdentifier), ast_types_1.builders.identifier(node.name));
+ };
+ const isInScope = (path) => {
+     let scope = path.scope;
+diff --git a/src/ExpressionBuilder.ts b/src/ExpressionBuilder.ts
+index df0b6e168eeec22fa41a582f8b31c99d727cba84..c7c51807a92796d80204ba14625568636fa1a611 100644
+--- a/src/ExpressionBuilder.ts
++++ b/src/ExpressionBuilder.ts
+@@ -8,7 +8,7 @@ import type { TournamentHooks } from './ast';
+ import { splitExpression } from './ExpressionSplitter';
+ import type { ExpressionCode, ExpressionText } from './ExpressionSplitter';
+ import { parseWithEsprimaNext } from './Parser';
+-import { globalIdentifier, jsVariablePolyfill } from './VariablePolyfill';
++import { globalIdentifier, jsVariablePolyfill, rawStringLiteral } from './VariablePolyfill';
+ import type { DataNode } from './VariablePolyfill';
+ 
+ export interface ExpressionAnalysis {
+@@ -123,7 +123,7 @@ const buildFunctionBody = (expr: ExpressionKind) => {
+ 					b.binaryExpression('===', v, b.literal(false)),
+ 				),
+ 				v,
+-				b.literal(''),
++				rawStringLiteral(''),
+ 			),
+ 		),
+ 	]);
+@@ -211,7 +211,7 @@ export const getExpressionCode = (
+ 		for (const chunk of chunks) {
+ 			// This is just a text chunks, push it up as a literal.
+ 			if (chunk.type === 'text') {
+-				parts.push(b.literal(chunk.text));
++				parts.push(rawStringLiteral(chunk.text));
+ 				// This is a code chunk so do some magic
+ 			} else {
+ 				const fixed = fixStringNewLines(chunk.parsed);
+@@ -264,7 +264,7 @@ export const getExpressionCode = (
+ 			newProg.body.push(
+ 				b.returnStatement(
+ 					b.callExpression(b.memberExpression(b.arrayExpression(parts), b.identifier('join')), [
+-						b.literal(''),
++						rawStringLiteral(''),
+ 					]),
+ 				),
+ 			);
+diff --git a/src/VariablePolyfill.ts b/src/VariablePolyfill.ts
+index e716ec9e446fa075ffce1b4487eb8f615a62d314..31adc56c49e0a89801f934784a28fcd79c0cdf34 100644
+--- a/src/VariablePolyfill.ts
++++ b/src/VariablePolyfill.ts
+@@ -13,6 +13,26 @@ function assertNever(_value: never): _value is never {
+ 	return true;
+ }
+ 
++// Captured at module load so printing stays stable even if the global is later replaced.
++const safeStringify = JSON.stringify;
++
++// A string literal carrying its own printed form. recast's printer emits `extra.raw`
++// verbatim (when it matches the value) instead of stringifying at print time.
++export const rawStringLiteral = (value: string) => {
++	const literal = b.literal(value);
++	// JSON.stringify leaves U+2028/U+2029 unescaped; since the raw form is printed
++	// verbatim, escape them so the emitted literal stays single-line and valid.
++	const raw = safeStringify(value)
++		.replace(/\u2028/g, '\\u2028')
++		.replace(/\u2029/g, '\\u2029');
++	// Attach `extra` in place so the ast-types node identity is preserved.
++	(literal as namedTypes.Literal & { extra?: { raw: string; rawValue: string } }).extra = {
++		raw,
++		rawValue: value,
++	};
++	return literal;
++};
++
+ export const globalIdentifier = b.identifier(
+ 	// @ts-expect-error window not in lib target
+ 	typeof window !== 'object' ? 'global' : 'window',
+@@ -21,7 +41,7 @@ export const globalIdentifier = b.identifier(
+ const buildGlobalSwitch = (node: types.namedTypes.Identifier, dataNode: DataNode) => {
+ 	return b.memberExpression(
+ 		b.conditionalExpression(
+-			b.binaryExpression('in', b.literal(node.name), dataNode),
++			b.binaryExpression('in', rawStringLiteral(node.name), dataNode),
+ 			dataNode,
+ 			globalIdentifier,
+ 		),

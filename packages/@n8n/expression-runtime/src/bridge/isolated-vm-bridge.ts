@@ -22,6 +22,10 @@ function getIvm(): IsolatedVm {
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
+// Captured at module load so values rendered into generated code stay stable
+// even if the global is later replaced.
+const safeStringify = JSON.stringify;
+
 /** Check if a value is an error sentinel returned by serializeError. */
 function isErrorSentinel(value: unknown): value is ErrorSentinel {
 	return (
@@ -730,7 +734,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		const callHost = this.createCallHostRef(data);
 
 		try {
-			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
+			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
 			// Tournament generates: this.$json.email, this.$items(), etc.

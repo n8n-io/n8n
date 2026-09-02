@@ -1,6 +1,8 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { CommunityPackagesController } from '@/modules/community-packages/community-packages.controller';
 import type { NodeRequest } from '@/requests';
 
@@ -91,6 +93,40 @@ describe('CommunityPackagesController', () => {
 					packageVersion: '1.0.0',
 				}),
 			);
+		});
+
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			const request = mock<NodeRequest.Post>({
+				user: { id: 'user123' },
+				body: { name: 'n8n-nodes-invalid', version: undefined },
+			});
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = controller.installPackage(request);
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('uninstallPackage', () => {
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			const request = mock<NodeRequest.Delete>({
+				user: { id: 'user123' },
+				query: { name: 'n8n-nodes-invalid' },
+			});
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = controller.uninstallPackage(request);
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
 		});
 	});
 

@@ -13,6 +13,10 @@ import { Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -237,6 +241,212 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(workflowData.nodes).toEqual(activeNodes);
 			expect(workflowData.nodes[0].name).toBe('Active Webhook');
+		});
+	});
+
+	describe('handleAddWebhooksTriggersAndPollers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+		const workflowSharingService = mock<WorkflowSharingService>();
+		const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
+		const sharedUserIds = ['user-1', 'user-2'];
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(sharedUserIds);
+			publisher.publishCommand.mockResolvedValue(undefined);
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				workflowPushNotifier,
+			);
+		});
+
+		test('pushes `workflowActivated` only to users with workflow access on successful activation', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowActivated', data: { workflowId: 'wf-1' } },
+				sharedUserIds,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation',
+				payload: { workflowId: 'wf-1' },
+			});
+		});
+
+		test('pushes `workflowFailedToActivate` only to users with workflow access when activation fails', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+				},
+				sharedUserIds,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation-error',
+				payload: { workflowId: 'wf-1', errorMessage: 'Some error' },
+			});
+		});
+
+		test('does not roll back a successfully activated workflow when nobody can be resolved to notify', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValueOnce([]);
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({ workflowId: 'wf-1' });
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowActivated', data: { workflowId: 'wf-1' } },
+				[],
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation',
+				payload: { workflowId: 'wf-1' },
+			});
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('does not roll back a successfully activated workflow even if the recipient lookup itself throws', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				webhooks: true,
+				triggersAndPollers: true,
+			});
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockRejectedValueOnce(
+				new Error('db unavailable'),
+			);
+
+			await expect(
+				activeWorkflowManager.handleAddWebhooksTriggersAndPollers({ workflowId: 'wf-1' }),
+			).rejects.toThrow('db unavailable');
+
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(push.sendToUsers).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'workflowFailedToActivate' }),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('display and removal pubsub handlers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+		const workflowSharingService = mock<WorkflowSharingService>();
+		const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
+		const sharedUserIds = ['user-1', 'user-2'];
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(sharedUserIds);
+			publisher.publishCommand.mockResolvedValue(undefined);
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				workflowPushNotifier,
+			);
+		});
+
+		test('pushes `workflowActivated` only to users with workflow access', async () => {
+			await activeWorkflowManager.handleDisplayWorkflowActivation({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowActivated', data: { workflowId: 'wf-1' } },
+				sharedUserIds,
+			);
+		});
+
+		test('pushes `workflowDeactivated` only to users with workflow access', async () => {
+			await activeWorkflowManager.handleDisplayWorkflowDeactivation({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+				sharedUserIds,
+			);
+		});
+
+		test('pushes `workflowFailedToActivate` only to users with workflow access', async () => {
+			await activeWorkflowManager.handleDisplayWorkflowActivationError({
+				workflowId: 'wf-1',
+				errorMessage: 'Some error',
+			});
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+				},
+				sharedUserIds,
+			);
+		});
+
+		test('pushes `workflowDeactivated` only to users with workflow access and relays it to followers on removal', async () => {
+			await activeWorkflowManager.handleRemoveTriggersAndPollers({ workflowId: 'wf-1' });
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+				'wf-1',
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+				sharedUserIds,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-deactivation',
+				payload: { workflowId: 'wf-1' },
+			});
 		});
 	});
 });

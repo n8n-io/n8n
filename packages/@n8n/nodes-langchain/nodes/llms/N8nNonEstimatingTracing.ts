@@ -13,6 +13,8 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 
 import { logAiEvent } from '@utils/helpers';
 
+import { redactHeaderValues } from './redact-headers';
+
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
@@ -41,12 +43,14 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	options = {
 		// Default(OpenAI format) parser
 		errorDescriptionMapper: (error: NodeError) => error.description,
+		redactedHeaders: [] as string[],
 	};
 
 	constructor(
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -111,7 +115,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders,
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[

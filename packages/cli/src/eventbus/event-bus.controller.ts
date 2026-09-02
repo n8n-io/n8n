@@ -7,9 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { eventNamesAll } from './event-message-classes';
+import { assertUserCanUseDestinationCredentials } from './message-event-bus-destination/destination-credentials-access';
 import { MessageEventBus } from './message-event-bus/message-event-bus';
 import {
 	isMessageEventBusDestinationSentryOptions,
@@ -46,7 +48,10 @@ const isMessageEventBusDestinationOptions = (
 
 @RestController('/eventbus')
 export class EventBusController {
-	constructor(private readonly eventBus: MessageEventBus) {}
+	constructor(
+		private readonly eventBus: MessageEventBus,
+		private readonly credentialsFinderService: CredentialsFinderService,
+	) {}
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
@@ -70,6 +75,11 @@ export class EventBusController {
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
 		let result: MessageEventBusDestination | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
+			await assertUserCanUseDestinationCredentials(
+				this.credentialsFinderService,
+				req.user,
+				req.body,
+			);
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
 					if (isMessageEventBusDestinationSentryOptions(req.body)) {
@@ -112,8 +122,18 @@ export class EventBusController {
 	@Licensed('feat:logStreaming')
 	@Get('/testmessage')
 	@GlobalScope('eventBusDestination:test')
-	async sendTestMessage(req: express.Request): Promise<boolean> {
+	async sendTestMessage(req: AuthenticatedRequest): Promise<boolean> {
 		if (isWithIdString(req.query)) {
+			// Testing decrypts and sends the destination's stored credential, so the
+			// caller must have access to it — mirrors the check on create.
+			const [destination] = await this.eventBus.findDestination(req.query.id);
+			if (destination) {
+				await assertUserCanUseDestinationCredentials(
+					this.credentialsFinderService,
+					req.user,
+					destination,
+				);
+			}
 			return await this.eventBus.testDestination(req.query.id);
 		}
 		return false;
