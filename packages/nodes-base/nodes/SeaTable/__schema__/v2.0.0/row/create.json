@@ -15,7 +15,10 @@
         },
         "_mtime": {
             "type": "string"
+        },
+        "0000": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

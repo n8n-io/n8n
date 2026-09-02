@@ -71,6 +71,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
+	/**
+	 * Enable durable background jobs for agents: spawning sub-agents that outlive
+	 * the parent's turn, and detached tracking of waiting workflow tools. Must be
+	 * set to the same value on mains and workers — workers settle workflow jobs.
+	 */
+	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
+	backgroundTasksEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

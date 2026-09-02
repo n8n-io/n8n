@@ -311,15 +311,13 @@ describe('McpClientTool', () => {
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
 			const customFetch = vi.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
-			expect(mockedProxyFetch).toHaveBeenCalledWith(
-				url,
-				{
-					headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
-					redirect: 'manual',
-				},
-				undefined,
-				undefined,
-			);
+			expect(mockedProxyFetch).toHaveBeenCalledOnce();
+			const [requestedUrl, requestInit] = mockedProxyFetch.mock.calls[0];
+			expect(requestedUrl).toBe(url);
+			expect(requestInit?.redirect).toBe('manual');
+			const sentHeaders = new Headers(requestInit?.headers);
+			expect(sentHeaders.get('accept')).toBe('text/event-stream');
+			expect(sentHeaders.get('my-header')).toBe('header-value');
 		});
 
 		it('should support bearer auth', async () => {
@@ -368,15 +366,13 @@ describe('McpClientTool', () => {
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
 			const customFetch = vi.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
-			expect(mockedProxyFetch).toHaveBeenCalledWith(
-				url,
-				{
-					headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
-					redirect: 'manual',
-				},
-				undefined,
-				undefined,
-			);
+			expect(mockedProxyFetch).toHaveBeenCalledOnce();
+			const [requestedUrl, requestInit] = mockedProxyFetch.mock.calls[0];
+			expect(requestedUrl).toBe(url);
+			expect(requestInit?.redirect).toBe('manual');
+			const sentHeaders = new Headers(requestInit?.headers);
+			expect(sentHeaders.get('accept')).toBe('text/event-stream');
+			expect(sentHeaders.get('authorization')).toBe('Bearer my-token');
 		});
 
 		it('should successfully execute a tool', async () => {

@@ -1904,6 +1904,7 @@
 	"mainSidebar.credentials": "Credentials",
 	"mainSidebar.variables": "Variables",
 	"mainSidebar.help": "Help",
+	"mainSidebar.helpMenuItems.contactSupport": "Contact Support",
 	"mainSidebar.helpMenuItems.course": "Course",
 	"mainSidebar.helpMenuItems.documentation": "Documentation",
 	"mainSidebar.helpMenuItems.forum": "Forum",
