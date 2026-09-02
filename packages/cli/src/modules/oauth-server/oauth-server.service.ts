@@ -271,7 +271,10 @@ export class OAuthServerService implements OAuthServerProvider {
 				id: clientId,
 				name: resource.displayName ?? clientId,
 				redirectUris: [clientId],
-				grantTypes: ['authorization_code'],
+				// `refresh_token` so the column matches what the grant actually supports:
+				// the AS issues a refresh token on every authorization-code exchange, and
+				// long-lived trigger pages rotate it rather than redirect again.
+				grantTypes: ['authorization_code', 'refresh_token'],
 				tokenEndpointAuthMethod: 'none',
 				clientSecret: null,
 				clientSecretExpiresAt: null,
@@ -284,7 +287,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			client_id: clientId,
 			client_name: resource.displayName ?? clientId,
 			redirect_uris: [clientId],
-			grant_types: ['authorization_code'],
+			grant_types: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_method: 'none',
 			response_types: ['code'],
 			logo_uri: undefined,
