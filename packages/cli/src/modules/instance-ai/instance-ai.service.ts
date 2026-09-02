@@ -257,10 +257,12 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 				? `Node "${names[0]}"`
 				: `A chain of connected nodes: ${names.join(' → ')}`;
 
-		const input = set.inputNode ? `, preceded by "${set.inputNode.name ?? set.inputNode.id}"` : '';
+		const input = set.inputNode
+			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
+			: '';
 
 		const output = set.outputNode
-			? `, followed by "${set.outputNode.name ?? set.outputNode.id}"`
+			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
 			: '';
 
 		const group = set.canvasGroupName
@@ -272,7 +274,12 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		return `  - ${label}${input}${output}${group}.`;
 	});
 
-	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}`;
+	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
+	const boundaryNote = hasBoundary
+		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
+		: '';
+
+	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
 export function buildContextResourcesBlock(
