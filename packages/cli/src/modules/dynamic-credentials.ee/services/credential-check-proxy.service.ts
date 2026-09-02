@@ -63,7 +63,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		const statuses = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			plaintext,
-			{ reachableNodeNames: options?.reachableNodeNames },
+			{ rootNodes: options?.rootNodes },
 		);
 
 		const credentials: CredentialCheckStatus[] = await Promise.all(

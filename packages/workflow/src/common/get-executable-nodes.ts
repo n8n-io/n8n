@@ -1,5 +1,6 @@
 import { getChildNodes } from './get-child-nodes';
 import { getParentNodes } from './get-parent-nodes';
+import { NodeConnectionTypes } from '../interfaces';
 import type { IConnections } from '../interfaces';
 
 /**
@@ -26,7 +27,15 @@ export function getExecutableNodeNames(
 ): Set<string> {
 	const reachable = new Set<string>([startNodeName]);
 
-	for (const node of getChildNodes(connectionsBySourceNode, startNodeName, 'ALL')) {
+	// Forward walk follows `main` only. A sub-node wired into a reachable node is its
+	// source over an `ai_*` connection, so walking 'ALL' forward here would also cross
+	// that edge backwards and pull in the sub-node's own (possibly unreachable) parent.
+	// The reverse ALL_NON_MAIN pass below is what attaches sub-nodes, correctly.
+	for (const node of getChildNodes(
+		connectionsBySourceNode,
+		startNodeName,
+		NodeConnectionTypes.Main,
+	)) {
 		reachable.add(node);
 	}
 

@@ -89,19 +89,20 @@ export class CredentialResolverWorkflowService {
 	 * @param workflowId - The (root) workflow ID to check
 	 * @param credentialContext - Identity context used for credential authorization
 	 * @param options.user - Optional n8n session user whose access is enforced on the root workflow
-	 * @param options.reachableNodeNames - Optional set of root-workflow node names that can run on
-	 *   this trigger; when given, credentials on other root nodes (disjoint branches, other triggers'
-	 *   chains) are ignored. Omit to check every enabled node.
+	 * @param options.rootNodes - Optional root-workflow nodes from the caller's own snapshot (the
+	 *   running workflow version). When given, the root's credentials are collected from these nodes
+	 *   instead of the persisted entity, so only nodes that can run on this trigger are checked and
+	 *   the check stays pinned to the running version (a draft rename can't skip a credential). Omit
+	 *   to collect from every enabled node of the persisted workflow.
 	 * @returns Array of credential statuses (configured/missing) with resolver info
 	 * @throws {Error} When the root workflow is not found or resolver configuration is invalid
 	 */
 	async getWorkflowStatus(
 		workflowId: string,
 		credentialContext: ICredentialContext,
-		options: { user?: User; reachableNodeNames?: string[] } = {},
+		options: { user?: User; rootNodes?: INode[] } = {},
 	): Promise<CredentialStatus[]> {
-		const { user, reachableNodeNames } = options;
-		const reachable = reachableNodeNames ? new Set(reachableNodeNames) : undefined;
+		const { user, rootNodes } = options;
 		const visited = new Set<string>();
 		// credentialId -> set of distinct effective resolverIds of the workflows it appears in
 		// (fallback only; a credential-level resolverId still takes priority during the status
@@ -115,7 +116,7 @@ export class CredentialResolverWorkflowService {
 			visited,
 			user,
 			true,
-			reachable,
+			rootNodes,
 		);
 
 		if (credentialFallbackResolvers.size === 0) {
@@ -158,10 +159,13 @@ export class CredentialResolverWorkflowService {
 	 * Recursively walks a workflow and its sub-workflows, recording every resolvable-credential id
 	 * on an enabled node, mapped to the effective resolver of the workflow it was found in.
 	 * Disabled nodes are skipped so their accounts never appear in the status result. When
-	 * `reachableRootNodeNames` is given, root-workflow nodes outside that set are skipped too —
-	 * they can't run on the firing trigger. The set applies to the root only; sub-workflow nodes
-	 * are named independently and always checked (over-inclusive, never fail-open). The `visited`
-	 * set prevents processing the same workflow twice (cycles, self-references, diamond references).
+	 * `rootNodesOverride` is given, the root workflow's nodes are taken from it (the caller's
+	 * running snapshot) instead of the persisted entity — the entity is still loaded for access
+	 * enforcement and resolver settings, but its node list is not used for the root. This both
+	 * scopes the root to nodes that can run on the trigger and keeps the check pinned to the
+	 * running version. The override applies to the root only; sub-workflows are always read from
+	 * the persisted entity by id (over-inclusive, never fail-open). The `visited` set prevents
+	 * processing the same workflow twice (cycles, self-references, diamond references).
 	 */
 	private async collectResolvableCredentials(
 		workflowId: string,
@@ -169,7 +173,7 @@ export class CredentialResolverWorkflowService {
 		visited: Set<string>,
 		user: User | undefined,
 		isRoot: boolean,
-		reachableRootNodeNames: Set<string> | undefined,
+		rootNodesOverride: INode[] | undefined,
 	): Promise<void> {
 		if (visited.has(workflowId)) {
 			return;
@@ -200,16 +204,12 @@ export class CredentialResolverWorkflowService {
 
 		const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
 
-		// Nodes that can actually run: enabled, and — on the root workflow when a reachable
-		// set is given — reachable from the firing trigger. Both credential collection and
-		// sub-workflow traversal use this, so an unreachable Execute Sub-workflow node doesn't
-		// drag its sub-workflow's accounts in either. Sub-workflow nodes (isRoot=false) name
-		// their nodes independently, so the reachable filter never applies to them.
-		const runnableNodes = (workflow.nodes ?? []).filter((node) => {
-			if (node.disabled) return false;
-			if (isRoot && reachableRootNodeNames && !reachableRootNodeNames.has(node.name)) return false;
-			return true;
-		});
+		// Source of nodes to check. On the root, prefer the caller's running snapshot when given
+		// (already scoped to trigger-reachable nodes and pinned to the executing version); the
+		// entity's node list is used only as the fallback and for every sub-workflow. Disabled
+		// nodes never run, so their accounts must not gate — skip them either way.
+		const nodeSource = isRoot && rootNodesOverride ? rootNodesOverride : (workflow.nodes ?? []);
+		const runnableNodes = nodeSource.filter((node) => !node.disabled);
 
 		for (const node of runnableNodes) {
 			for (const credentialName in node.credentials ?? {}) {
@@ -224,8 +224,8 @@ export class CredentialResolverWorkflowService {
 		}
 
 		for (const subWorkflowId of this.extractSubWorkflowIds(runnableNodes)) {
-			// Reachability is a root-node-name filter; sub-workflows name their nodes
-			// independently, so it isn't propagated into them.
+			// The root-node override is the caller's root snapshot; sub-workflows resolve by id
+			// from the persisted entity, so it isn't propagated into them.
 			await this.collectResolvableCredentials(subWorkflowId, acc, visited, user, false, undefined);
 		}
 	}

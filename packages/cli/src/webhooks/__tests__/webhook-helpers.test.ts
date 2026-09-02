@@ -1177,6 +1177,9 @@ describe('executeWebhook credential-status gate', () => {
 			name: 'Test Workflow',
 			connectionsBySourceNode: {},
 			connectionsByDestinationNode: {},
+			// The gate reads the reachable nodes off the executing workflow, so `nodes` must
+			// resolve the start node by name (a bare deep mock would auto-vivify a fake node).
+			nodes: { Webhook: workflowStartNode },
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -1212,21 +1215,21 @@ describe('executeWebhook credential-status gate', () => {
 			responseCallback,
 		);
 
-		return { checkCredentialStatus, responseCallback };
+		return { checkCredentialStatus, responseCallback, workflowStartNode };
 	};
 
 	it('responds 428 with the missing-credential list and signed connect links when the caller has unconnected credentials', async () => {
-		const { checkCredentialStatus, responseCallback } = await runGate({
+		const { checkCredentialStatus, responseCallback, workflowStartNode } = await runGate({
 			authentication: 'n8nOAuth2',
 			gateResult: missingGateResult,
 		});
 
-		// Checked using the established identity and the workflow being called,
-		// scoped to the nodes the firing trigger can reach (here: just the start node).
+		// Checked using the established identity and the workflow being called, scoped to the
+		// nodes of the executing workflow the trigger can reach (here: just the start node).
 		expect(checkCredentialStatus).toHaveBeenCalledWith(
 			WORKFLOW_ID,
 			{ credentials: 'encrypted-runner-identity' },
-			{ reachableNodeNames: ['Webhook'] },
+			{ rootNodes: [workflowStartNode] },
 		);
 
 		expect(responseCallback).toHaveBeenCalledWith(null, {

@@ -92,6 +92,22 @@ describe('getExecutableNodeNames', () => {
 		expect(result.has('Tool')).toBe(false);
 	});
 
+	it("does not follow a reachable node's outgoing ai_* edge to an unreachable parent", () => {
+		// Trigger → Tool (main). Tool is ALSO wired as a tool of DisjointAgent — Tool is
+		// the source of the ai_tool edge, DisjointAgent the destination. DisjointAgent runs
+		// on its own branch; a reachable node serving as its tool must not pull it in. (A
+		// plain forward 'ALL' walk would cross Tool's outgoing ai_tool edge and add it.)
+		const connections: IConnections = {
+			Trigger: main('Tool'),
+			Tool: aiTool('DisjointAgent'),
+		};
+
+		const result = run(connections, 'Trigger');
+
+		expect(result).toEqual(new Set(['Trigger', 'Tool']));
+		expect(result.has('DisjointAgent')).toBe(false);
+	});
+
 	it('is safe on cycles', () => {
 		// A → B → A
 		const connections: IConnections = { A: main('B'), B: main('A') };
