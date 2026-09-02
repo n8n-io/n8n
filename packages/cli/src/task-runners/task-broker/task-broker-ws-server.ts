@@ -1,13 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
@@ -102,6 +103,23 @@ export class TaskBrokerWsServer {
 				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', { runnerId });
 			}
 		}
+	}
+
+	/**
+	 * Runs at the start of shutdown, concurrently with the worker's execution drain.
+	 * The regular `stop()` runs only after that drain, which is too late: an execution
+	 * stuck on a runner task blocks the drain, and its task timeout (default 300s) can
+	 * fire long after the force-kill deadline. Capping the timers up front lets such
+	 * executions fail inside the window, so the drain can complete.
+	 */
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	capTaskTimeoutsForShutdown() {
+		const deadline =
+			Date.now() +
+			Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8) *
+				Time.seconds.toMilliseconds;
+
+		this.taskBroker.capTaskTimeoutsForShutdown(deadline);
 	}
 
 	async stop() {

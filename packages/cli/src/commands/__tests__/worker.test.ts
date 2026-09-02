@@ -176,6 +176,32 @@ describe('Worker', () => {
 		});
 	});
 
+	describe('init', () => {
+		it('should reflect QUEUE_WORKER_TIMEOUT in the graceful shutdown config', async () => {
+			const globalConfig = Container.get(GlobalConfig);
+			const originalTimeout = globalConfig.generic.gracefulShutdownTimeout;
+			process.env.QUEUE_WORKER_TIMEOUT = '90';
+
+			const worker = new Worker();
+			// The config write-back happens before the crash journal; abort there to
+			// keep the rest of the heavy init path out of this test.
+			const abort = new Error('stop init after shutdown timeout resolution');
+			vi.spyOn(
+				worker as unknown as { initCrashJournal: () => Promise<void> },
+				'initCrashJournal',
+			).mockRejectedValue(abort);
+
+			try {
+				await expect(worker.init()).rejects.toThrow(abort);
+
+				expect(globalConfig.generic.gracefulShutdownTimeout).toBe(90);
+			} finally {
+				delete process.env.QUEUE_WORKER_TIMEOUT;
+				globalConfig.generic.gracefulShutdownTimeout = originalTimeout;
+			}
+		});
+	});
+
 	describe('stopProcess', () => {
 		it('should keep the DB connection open until in-flight executions have persisted', async () => {
 			// In-process executions on a worker e.g. sub-workflows started by

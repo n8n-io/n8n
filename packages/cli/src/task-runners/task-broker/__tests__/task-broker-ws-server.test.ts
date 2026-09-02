@@ -276,6 +276,25 @@ describe('TaskBrokerWsServer', () => {
 		});
 	});
 
+	describe('capTaskTimeoutsForShutdown', () => {
+		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
+			vi.useFakeTimers();
+			try {
+				const taskBroker = mock<TaskBroker>();
+				const server = createServer({ taskBroker });
+
+				server.capTaskTimeoutsForShutdown();
+
+				expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
+					Date.now() +
+						0.8 * globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds,
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('heartbeat timer', () => {
 		const DEAD = false;
 

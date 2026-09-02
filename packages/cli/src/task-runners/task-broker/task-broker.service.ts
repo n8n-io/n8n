@@ -32,6 +32,8 @@ export interface Task {
 	requesterId: string;
 	taskType: string;
 	timeout?: NodeJS.Timeout;
+	/** Epoch ms when `timeout` fires. Node timers expose no remaining time, so capping a timer without ever extending it requires tracking this. */
+	timesOutAt?: number;
 }
 
 export interface TaskOffer {
@@ -97,6 +99,13 @@ export class TaskBroker {
 	 * While draining, the broker instructs runners to stop sending task offers, rejects incoming task requests, and waits for active tasks to complete, up to a timeout.
 	 */
 	private isDraining = false;
+
+	/**
+	 * Epoch ms by which every task timeout must fire once shutdown has begun.
+	 * A task held past this point would outlive the graceful-shutdown window, so the
+	 * execution waiting on it would be force-killed and stall permanently.
+	 */
+	private shutdownDeadline?: number;
 
 	private runnerAcceptRejects: Map<
 		Task['id'],
@@ -594,9 +603,11 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		const taskTimeoutMs = this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds;
+		task.timesOutAt = Math.min(Date.now() + taskTimeoutMs, this.shutdownDeadline ?? Infinity);
 		task.timeout = setTimeout(async () => {
 			await this.handleTaskTimeout(taskId);
-		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+		}, task.timesOutAt - Date.now());
 
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
@@ -610,9 +621,13 @@ export class TaskBroker {
 		if (!task) return;
 
 		if (this.taskRunnersConfig.mode === 'internal') {
-			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
-				runnerId: task.runnerId,
-			});
+			// During shutdown, restarting the runner would respawn a process that the
+			// runner module is about to stop again; failing the task below is enough.
+			if (this.shutdownDeadline === undefined) {
+				this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
+					runnerId: task.runnerId,
+				});
+			}
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',
@@ -977,6 +992,41 @@ export class TaskBroker {
 
 	hasActiveTasks() {
 		return this.tasks.size > 0;
+	}
+
+	/**
+	 * Caps every armed task timeout so it fires no later than `deadline`, and makes
+	 * timers armed afterwards respect the same deadline. Once shutdown has begun, a
+	 * task held by an unresponsive runner must fail inside the graceful-shutdown
+	 * window - the execution waiting on it then errors normally and the worker drain
+	 * can complete, instead of the process being force-killed with the job in flight.
+	 * A timer already due before the deadline is never extended.
+	 */
+	capTaskTimeoutsForShutdown(deadline: number) {
+		this.shutdownDeadline = deadline;
+
+		const cappedTaskIds: Array<Task['id']> = [];
+
+		for (const [taskId, task] of this.tasks) {
+			if (!task.timeout) continue;
+			if (task.timesOutAt !== undefined && task.timesOutAt <= deadline) continue;
+
+			clearTimeout(task.timeout);
+			task.timesOutAt = deadline;
+			task.timeout = setTimeout(
+				async () => {
+					await this.handleTaskTimeout(taskId);
+				},
+				Math.max(deadline - Date.now(), 0),
+			);
+			cappedTaskIds.push(taskId);
+		}
+
+		if (cappedTaskIds.length > 0) {
+			this.logger.info(
+				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
+			);
+		}
 	}
 
 	/**
