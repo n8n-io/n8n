@@ -81,4 +81,10 @@ defineExpose({
 		}
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.button {
+		transition: none;
+	}
+}
 </style>

@@ -66,6 +66,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 });
 
 const editor = ref<HTMLDivElement | undefined>(undefined);
+const contentRole = 'document';
 
 // The shared `.n8n-markdown` styles (css/markdown.scss) change markdown's
 // vertical rhythm. Stickies opt out to keep their legacy layout, so hand-sized
@@ -283,6 +284,7 @@ const onCheckboxChange = (index: number) => {
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]"
+			:role="contentRole"
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"

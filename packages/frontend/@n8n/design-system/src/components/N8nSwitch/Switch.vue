@@ -191,4 +191,11 @@ const getRootAttrs = () => {
 .large .switchRoot[data-state='checked']:not([data-disabled]):active .switchThumb {
 	left: calc(100% - 20px);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.switchRoot,
+	.switchThumb {
+		transition: none;
+	}
+}
 </style>

@@ -238,4 +238,13 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	opacity: 1;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.codeBlock:hover .actions,
+	.codeBlock:focus-within .actions,
+	.codeBlock:hover .expandButton,
+	.codeBlock:focus-within .expandButton {
+		transition: none;
+	}
+}
 </style>

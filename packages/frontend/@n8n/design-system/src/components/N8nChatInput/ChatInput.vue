@@ -23,6 +23,8 @@ defineOptions({
 	inheritAttrs: false,
 });
 
+const focusableRegionRole = 'presentation';
+
 export interface N8nChatInputProps {
 	modelValue?: string;
 	placeholder?: string;
@@ -331,6 +333,7 @@ defineExpose({
 					},
 				]"
 				:style="containerStyle()"
+				:role="focusableRegionRole"
 				@click.self="handleContainerClick"
 			>
 				<slot name="leading" />
@@ -369,6 +372,7 @@ defineExpose({
 							[$style.adaptiveActions]: effectiveLayout() === 'adaptive',
 						},
 					]"
+					:role="focusableRegionRole"
 					@click="handleFocusableRegionClick"
 				>
 					<div

@@ -179,4 +179,10 @@ defineExpose({ isOpen });
 	height: var(--spacing--sm);
 	border-radius: 50%;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.swatch {
+		transition: none;
+	}
+}
 </style>

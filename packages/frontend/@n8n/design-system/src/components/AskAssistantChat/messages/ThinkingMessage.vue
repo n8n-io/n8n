@@ -182,4 +182,11 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	opacity: 1;
 	max-height: 500px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.expand-enter-active,
+	.expand-leave-active {
+		transition: none;
+	}
+}
 </style>

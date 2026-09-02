@@ -63,4 +63,11 @@ defineProps<DialogOverlayProps>();
 
 	@include motion.reduced-motion;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.overlay[data-state='open'],
+	.overlay[data-state='closed'] {
+		animation: none;
+	}
+}
 </style>
