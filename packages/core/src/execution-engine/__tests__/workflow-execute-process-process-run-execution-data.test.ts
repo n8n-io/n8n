@@ -4,7 +4,6 @@ import type {
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
-	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
 	IRunExecutionData,
@@ -1380,14 +1379,8 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions, response?: EngineResponse) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData =
-							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
-								.connectionInputData || [];
-						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
-						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$('DataNode').item as INodeExecutionData;
 						const fieldValue = dataNodeItem?.json?.field;
 						const nestedValue = (dataNodeItem?.json?.nested as IDataObject)?.value;
 
@@ -1524,14 +1517,8 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData =
-							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
-								.connectionInputData ?? [];
-						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
-						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$('DataNode').item as INodeExecutionData;
 						const email = dataNodeItem?.json?.email;
 
 						return [
