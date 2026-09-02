@@ -222,7 +222,6 @@ export default defineConfig(
 			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
 			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 			'./src/modules/instance-ai/eval/thread-restore.service.ts',
-			'./src/modules/chat-hub/chat-hub-workflow.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-unsealed-workflow-entity-write': 'off' },
 	},
