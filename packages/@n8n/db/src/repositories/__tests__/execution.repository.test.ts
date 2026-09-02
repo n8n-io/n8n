@@ -413,23 +413,23 @@ describe('ExecutionRepository', () => {
 			expect(condition.startedAt).toBeUndefined();
 		});
 
-		test('should use MoreThanOrEqual when only startedAfter is provided', () => {
+		test('should use And(MoreThanOrEqual) when only startedAfter is provided', () => {
 			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {
 				startedAfter,
 			});
 
 			expect(condition.startedAt).toEqual(
-				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+				And(MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter)))),
 			);
 		});
 
-		test('should use LessThanOrEqual when only startedBefore is provided', () => {
+		test('should use And(LessThanOrEqual) when only startedBefore is provided', () => {
 			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {
 				startedBefore,
 			});
 
 			expect(condition.startedAt).toEqual(
-				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+				And(LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore)))),
 			);
 		});
 
