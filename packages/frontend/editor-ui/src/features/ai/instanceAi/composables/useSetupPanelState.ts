@@ -31,8 +31,12 @@ export function useSetupPanelState(options: {
 }) {
 	const { thread } = options;
 
-	/** Mirrors the artifact preview's edit lock (see `InstanceAiWorkflowPreview`). */
-	const isAgentEditing = computed(() => {
+	/**
+	 * Detects an in-flight agent edit of this workflow. Blocks nothing — it
+	 * only picks the row source (agent events over deriving from a mid-mutation
+	 * workflow) and pauses the derivation's refetches until the edit settles.
+	 */
+	const isAgentBuilding = computed(() => {
 		const id = toValue(options.workflowId);
 		if (!id) return false;
 		return thread.messages.some(
@@ -41,7 +45,7 @@ export function useSetupPanelState(options: {
 	});
 
 	const derivation = useWorkflowSetupItems(options.workflowId, {
-		paused: () => isAgentEditing.value,
+		paused: () => isAgentBuilding.value,
 	});
 
 	const eventItems = computed<InstanceAiSetupItem[]>(() => {
@@ -62,7 +66,7 @@ export function useSetupPanelState(options: {
 	 * right after a thread refresh.
 	 */
 	const rowSource = computed<'events' | 'derived'>(() =>
-		!isAgentEditing.value && derivation.isWorkflowAvailable.value ? 'derived' : 'events',
+		!isAgentBuilding.value && derivation.isWorkflowAvailable.value ? 'derived' : 'events',
 	);
 
 	const rows = computed<SetupPanelRow[]>(() => {
@@ -87,5 +91,5 @@ export function useSetupPanelState(options: {
 		}));
 	});
 
-	return { rows, rowSource, isAgentEditing };
+	return { rows, rowSource, isAgentBuilding };
 }

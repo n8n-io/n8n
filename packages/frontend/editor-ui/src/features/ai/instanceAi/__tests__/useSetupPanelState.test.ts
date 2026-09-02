@@ -76,7 +76,7 @@ describe('useSetupPanelState', () => {
 	it('uses agent events as the row source while the agent edits the workflow', () => {
 		const { state } = createHarness({ agentEditing: true, workflowAvailable: true });
 
-		expect(state.isAgentEditing.value).toBe(true);
+		expect(state.isAgentBuilding.value).toBe(true);
 		expect(state.rowSource.value).toBe('events');
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
 	});
@@ -112,12 +112,12 @@ describe('useSetupPanelState', () => {
 	it('produces no rows without an active artifact workflow', () => {
 		const { state } = createHarness({ workflowId: undefined });
 
-		expect(state.isAgentEditing.value).toBe(false);
+		expect(state.isAgentBuilding.value).toBe(false);
 		expect(state.rows.value).toEqual([]);
 		expect(vi.mocked(isAgentEditingWorkflow)).not.toHaveBeenCalled();
 	});
 
-	it('passes isAgentEditing to the derivation as its paused signal', () => {
+	it('passes isAgentBuilding to the derivation as its paused signal', () => {
 		const { editing } = createHarness({ agentEditing: true });
 
 		const options = vi.mocked(useWorkflowSetupItems).mock.calls[0][1];
