@@ -136,11 +136,17 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 
 	/**
 	 * Trade a refresh token from a completed flow for a fresh pair on the same grant.
+	 * The client comes from `resourceUrl` alone, so this serves virtual clients only — the
+	 * first-party trigger resources where client_id = redirect_uri = resource. A registered
+	 * (DCR) client cannot refresh here; it uses the public `/oauth/token` endpoint.
 	 * The AS rotates: the returned refresh token replaces the one passed in, and the
 	 * old access token stays valid until its own expiry, so requests already in flight
 	 * survive the rotation.
 	 */
-	async refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
+	async refreshVirtualClientToken(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
 		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
 		if (!resource?.isFirstParty) {
 			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);

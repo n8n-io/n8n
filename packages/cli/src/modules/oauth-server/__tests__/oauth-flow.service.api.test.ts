@@ -305,7 +305,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		const refreshed = await flow.refresh(granted.refreshToken, resourceUrl);
+		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
 
 		expect(refreshed.valid).toBe(true);
 		if (refreshed.valid) {
@@ -323,7 +323,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		await flow.refresh(granted.refreshToken, resourceUrl);
+		await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
 
 		await expect(
 			tokenService.verifyOAuthAccessToken(granted.token, resourceUrl),
@@ -336,10 +336,10 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		const first = await flow.refresh(granted.refreshToken, resourceUrl);
+		const first = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
 		expect(first.valid).toBe(true);
 
-		const replay = await flow.refresh(granted.refreshToken, resourceUrl);
+		const replay = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
 
 		expect(replay).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
@@ -348,7 +348,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		await grantFor(resourceUrl);
 
-		const result = await flow.refresh('not-a-refresh-token', resourceUrl);
+		const result = await flow.refreshVirtualClientToken('not-a-refresh-token', resourceUrl);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
@@ -359,22 +359,22 @@ describe('refresh', () => {
 		const resourceUrlB = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrlA);
 
-		const result = await flow.refresh(granted.refreshToken, resourceUrlB);
+		const result = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrlB);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
 
 	test('refuses a resource URL that is not a first-party protected resource', async () => {
-		await expect(flow.refresh('any-token', resourceUrlFor(randomUUID()))).rejects.toThrow(
-			UserError,
-		);
+		await expect(
+			flow.refreshVirtualClientToken('any-token', resourceUrlFor(randomUUID())),
+		).rejects.toThrow(UserError);
 	});
 
 	test('rotates a chat grant the same way', async () => {
 		const chatResourceUrl = await createProtectedChatWorkflow();
 		const granted = await grantFor(chatResourceUrl, member.id);
 
-		const refreshed = await flow.refresh(granted.refreshToken, chatResourceUrl);
+		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, chatResourceUrl);
 
 		expect(refreshed.valid).toBe(true);
 		if (refreshed.valid) {
@@ -390,7 +390,7 @@ describe('refresh', () => {
 		let current = (await grantFor(resourceUrl)).refreshToken;
 
 		for (let i = 0; i < 3; i++) {
-			const refreshed = await flow.refresh(current, resourceUrl);
+			const refreshed = await flow.refreshVirtualClientToken(current, resourceUrl);
 			if (!refreshed.valid) throw new Error(`rotation ${i} failed: ${refreshed.reason}`);
 			current = refreshed.refreshToken;
 		}
