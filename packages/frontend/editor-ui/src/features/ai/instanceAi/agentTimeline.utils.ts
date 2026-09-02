@@ -69,6 +69,17 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	return 'trace';
 }
 
+/**
+ * A trace tool call that suspended on a confirmation the user must act on
+ * (setup card, credential flow, approval). It still renders as a trace row,
+ * but the text the model wrote right before it is the caption of that card —
+ * the user reads the two together — so that text must not fold into the
+ * thinking block as narration.
+ */
+function suspendedOnConfirmation(tc: InstanceAiToolCallState): boolean {
+	return tc.confirmation !== undefined;
+}
+
 function hasBuilderChildInResponse(
 	responseId: string | undefined,
 	builderChildResponseIds: Set<string>,
@@ -116,6 +127,7 @@ export function buildTimelineBlocks(
 			if (
 				tc &&
 				classifyToolCall(tc) === 'trace' &&
+				!suspendedOnConfirmation(tc) &&
 				!(
 					tc.toolName === 'build-agent' &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)

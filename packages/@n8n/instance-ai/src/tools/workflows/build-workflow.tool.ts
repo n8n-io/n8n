@@ -314,6 +314,7 @@ function getInlineSkillInstructions(skillId: string): string {
  *  progressive mode. The upfront sections (slice scoping, question shape) are
  *  covered by the system prompt + loadable skill and would be noise here. */
 const PROGRESSIVE_INLINE_SECTIONS = [
+	'## Setup handoff',
 	'## Execution gate',
 	'## Extending on real data',
 	'## Roadmap framing',

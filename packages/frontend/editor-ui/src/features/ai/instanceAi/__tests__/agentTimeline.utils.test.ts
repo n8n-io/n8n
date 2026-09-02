@@ -3,6 +3,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowSetupNode,
 } from '@n8n/api-types';
 import {
 	buildTimelineBlocks,
@@ -370,6 +371,52 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('text before a tool call that suspended on a setup card stays user-facing', () => {
+		const setupCard = makeToolCall({
+			toolCallId: 'tc-setup',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'wf-1' },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Set up credentials',
+				setupRequests: [{ nodeName: 'Slack' } as unknown as InstanceAiWorkflowSetupNode],
+			},
+		});
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('This first version posts to Slack; Gmail comes next.', 'r1'),
+				toolEntry('tc-setup', 'r1'),
+			],
+			[setupCard],
+			'active',
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
+	test('text before an approval-gated tool call stays user-facing', () => {
+		const approval = makeToolCall({
+			toolCallId: 'tc-run',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Run?',
+				inputType: 'approval',
+			},
+		});
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Running it live now.', 'r1'), toolEntry('tc-run', 'r1')],
+			[approval],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
 	});
 
 	test('trailing text of a response is user-facing and splits blocks', () => {

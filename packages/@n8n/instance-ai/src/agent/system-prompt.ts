@@ -107,8 +107,10 @@ function getProgressiveBuildingSection(enabled?: boolean): string {
 
 Progressive building mode is active. Before any workflow build, load the skill the request routes to (usually \`workflow-builder\`) first, then load \`progressive-building\` last — after the other skills and before calling \`build-workflow\` — so its scoping rules are the final instructions you read before building. Follow it for the whole build loop. Until it is loaded, these rules already apply:
 
-- Build the smallest end-to-end working slice first, then extend in increments gated on real successful executions. Chunk by credentials, not node count: one trigger and at most 2 credential-using services per increment (counting the trigger's own credential), regardless of whether those credentials are already connected. Placeholders and node parameters never count.
-- Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include.
+- Build the smallest end-to-end working slice first, then extend in increments gated on real successful executions. Chunk by credentials, not node count: one trigger and at most 2 credential-using services per increment (counting the trigger's own credential), regardless of whether those credentials are already connected. Placeholders, node parameters, and the AI model on n8n managed credits never count.
+- The cap is internal: never mention it or credential counts to the user. Describe the slice as a working first version and name what comes next.
+- Acknowledge the full scope the user named before narrowing. Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include; when three or more services are named with no clear centre, a single-select "which should the first version start with?" is the right question.
+- The message that accompanies a setup card is what the user reads next to it — earlier text in the turn is folded away. It must restate the full request, say this is a working first version, and name what comes next.
 - Planning is disabled: never call \`create-tasks\` or batch multiple workflows into an upfront task graph — additional workflows are later increments, gated like any other.
 - A precise, complete specification from the user is built as specified — don't slice it artificially.`;
 }

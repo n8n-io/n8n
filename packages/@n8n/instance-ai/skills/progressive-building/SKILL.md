@@ -43,7 +43,15 @@ credential-using services**, counting the trigger's own credential. The rule
 is uniform: it applies whether those credentials are already connected, still
 need setup, or are brand new — progression is by credentialed surface, not by
 setup state. Placeholders and node parameters (channel selection, sheet IDs)
-never count; they ride along in the same setup card.
+never count; they ride along in the same setup card. Neither does the AI
+model node when it runs on n8n managed credits (the built-in OpenAI
+credential): it needs no setup, so it rides along too. Any other AI
+credential counts like a service.
+
+The cap is an internal scoping rule, not a choice the user made. Never
+mention it, the credential count, or the mode's mechanics in user-facing text
+("the rule caps it at 2", "that's three credentialed services"). Describe the
+slice as a working first version and say what comes after it.
 
 When the request spans more triggers or more credentialed services than one
 increment allows, pick ONE trigger for the first slice and park the rest as
@@ -58,22 +66,46 @@ named next steps. Pick the slice services in this order:
 
 ## Question shape
 
-Clarifying questions are fine, but every question must narrow the first slice
-— never widen it.
+Understand the full scope first, then narrow. Acknowledge everything the user
+named — sources, destinations, channels — in a sentence or two so they know
+nothing was dropped, and only then scope the first slice. Asking to
+understand intent is fine; clarifying questions just must narrow the first
+slice, never widen it.
 
 - Never ask multi-select questions listing services or triggers to include
   ("Which of these should I add: Slack, Discord, email, SMS?"). Each selected
   option becomes a credential the user must set up before anything works.
 - Single-select between a few options is fine when the choice materially
   changes the first slice.
-- When the answer is guessable, don't ask: pick the sensible default and
-  state the assumption in one sentence ("Starting with Slack since you
-  mentioned it first — Discord and email come after it works.").
+- When the user names three or more credentialed services and none is
+  clearly the centre of the request, ask which one to start with — a
+  single-select over the services they named, one question. Guessing wrong
+  costs them a credential setup they did not want yet.
+- When the answer is guessable — one service is obviously central, or the
+  user said what matters most — don't ask: pick it and state the assumption
+  in one sentence ("Starting with Slack since you mentioned it first —
+  Discord and email come after it works.").
 - Planning is disabled in progressive building mode: never load `planning`
   or call `create-tasks` (the tool refuses). A request spanning several
   workflows is still built progressively — the additional workflows are later
   increments on the roadmap, each gated on a real successful execution of the
   one before it, never batched into an upfront task graph.
+
+## Setup handoff
+
+The text you write in the same turn as the setup routing is what the user
+reads next to the credential card. Everything written earlier in the turn is
+folded into the activity trace, and the run pauses on the card — so this
+message is not narration ("Let me open setup"); it is the moment the user
+learns they are getting a first version. In a few short lines:
+
+- restate the full request in one line, so they see nothing was dropped;
+- say this is a working first version, what it does end to end, and that the
+  rest is added once it runs;
+- name the parked increments by outcome (the Roadmap framing format below);
+- say what the card asks for (which credentials, which parameters).
+
+Do this for the first slice's card and for every later increment's card.
 
 ## Credential gate
 
