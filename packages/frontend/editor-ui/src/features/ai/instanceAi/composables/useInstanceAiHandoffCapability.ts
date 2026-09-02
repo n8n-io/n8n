@@ -7,7 +7,7 @@ import type {
 	InstanceAiEditorActionSource,
 	InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -15,9 +15,17 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { INSTANCE_AI_VIEW } from '../constants';
+import {
+	INSTANCE_AI_PROJECT_ID_QUERY,
+	INSTANCE_AI_SOURCE_QUERY,
+	INSTANCE_AI_VIEW,
+} from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useInstanceAiHandoff';
+import {
+	buildInstanceAiCredentialHandoffContext,
+	buildInstanceAiCredentialQuestion,
+	useInstanceAiHandoff,
+} from './useInstanceAiHandoff';
 
 /**
  * The standalone editor's `InstanceAiEditorCapability` (behavior; visibility is the
@@ -56,13 +64,21 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	}
 
 	/**
+	 * `initializeWorkspaceForNewWorkflow` seeds homeProject from the current project, so
+	 * this holds for an unsaved canvas too. Sharing-unlicensed instances omit homeProject
+	 * from the workflow response, so fall back to the personal project (their only one).
+	 */
+	function resolveEditorProjectId(): string | undefined {
+		return documentStore.value.homeProject?.id ?? projectsStore.personalProject?.id;
+	}
+
+	/**
 	 * Whether the editor's workflow exists on the backend — a new workflow has a
 	 * temporary id before it's saved, so the id alone isn't enough.
 	 */
 	function persistedWorkflow(): { workflowId: string; projectId: string } | null {
-		const doc = documentStore.value;
-		const workflowId = doc.workflowId;
-		const projectId = doc.homeProject?.id;
+		const workflowId = documentStore.value.workflowId;
+		const projectId = resolveEditorProjectId();
 		const isPersisted = !!workflowId && !!workflowsListStore.getWorkflowById(workflowId)?.id;
 		return isPersisted && workflowId && projectId ? { workflowId, projectId } : null;
 	}
@@ -113,6 +129,14 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		await startThread(
 			projectId,
 			openingMessage,
+			{
+				source,
+				origin: 'internal',
+				sourceContext: {
+					workflowId,
+					...(executionId ? { executionId } : {}),
+				},
+			},
 			[attachment],
 			(threadId) => {
 				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
@@ -135,12 +159,22 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		// Hand off only persisted workflows — the agent can't act on one the server
 		// doesn't know, and an unsaved canvas is a "build something new" intent.
 		if (!persisted) {
+			const projectId = resolveEditorProjectId();
 			telemetry.track('Instance AI opened from editor', {
 				source,
 				workflow_id: null,
 				execution_id: null,
 			});
-			await router.push({ name: INSTANCE_AI_VIEW });
+			// EmptyView creates the thread on the first message, so both have to survive the
+			// navigation. The source keeps the eventual syncThread from attributing the
+			// thread to assistant_page instead of the canvas entry point.
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: {
+					[INSTANCE_AI_SOURCE_QUERY]: source,
+					...(projectId ? { [INSTANCE_AI_PROJECT_ID_QUERY]: projectId } : {}),
+				},
+			});
 			return;
 		}
 		await handOffWorkflow('', source, persisted.workflowId, persisted.projectId);
@@ -151,14 +185,20 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		source: InstanceAiEditorActionSource,
 	): Promise<boolean> {
 		const question = buildInstanceAiCredentialQuestion(credential);
-		// New tab with just the question (no workflow/execution) so the user keeps the
-		// credential form open beside the chat. Scope to the editor's project, else personal.
-		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
+		// A new tab with just the question (no workflow/execution) so the user keeps the
+		// credential form open beside the chat.
+		const projectId = resolveEditorProjectId();
 		if (!projectId) {
-			await router.push({ name: INSTANCE_AI_VIEW });
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: { [INSTANCE_AI_SOURCE_QUERY]: source },
+			});
 			return false;
 		}
-		await startThread(projectId, question, undefined, undefined, { newTab: true });
+		await startThread(projectId, question, { source, origin: 'internal' }, undefined, undefined, {
+			newTab: true,
+			context: buildInstanceAiCredentialHandoffContext(credential),
+		});
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,

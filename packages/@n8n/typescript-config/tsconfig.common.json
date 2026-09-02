@@ -23,6 +23,5 @@
 		"sourceMap": true,
 		"skipLibCheck": true,
 		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo"
-	},
-	"files": ["../../../node_modules/jest-expect-message/types/index.d.ts"]
+	}
 }

@@ -1,7 +1,7 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -14,13 +14,14 @@ import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 import { executeNpmCommand } from '../npm-utils';
 
-jest.mock('../npm-utils', () => ({
-	...jest.requireActual('../npm-utils'),
-	executeNpmCommand: jest.fn(),
-	isNpmExecErrorWithStdout: jest.requireActual('../npm-utils').isNpmExecErrorWithStdout,
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
+	isNpmExecErrorWithStdout: (await vi.importActual<typeof import('../npm-utils')>('../npm-utils'))
+		.isNpmExecErrorWithStdout,
 }));
 
-const mockedExecuteNpmCommand = jest.mocked(executeNpmCommand);
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 
 describe('CommunityPackagesLifecycleService', () => {
 	const logger = mock<Logger>();
@@ -60,7 +61,8 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 	});
 
 	describe('install', () => {
@@ -94,8 +96,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
 			});
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
 				status: 'OK',
 			});
@@ -123,6 +124,74 @@ describe('CommunityPackagesLifecycleService', () => {
 				}),
 			);
 		});
+
+		it('should reject install when the package is already installed and loaded', async () => {
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+			communityPackagesService.isPackageLoaded.mockReturnValue(true);
+
+			await expect(lifecycle.install({ name: 'n8n-nodes-test' }, user, 'ui')).rejects.toThrow(
+				'already installed',
+			);
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+		});
+
+		it('should repair a broken package when installing with a version-suffixed name', async () => {
+			// Regression test: `install()` used to derive "is it loaded" from the raw request
+			// name via broken string matching, so `{ name: "pkg@1.0.0" }` on a broken package
+			// was rejected with "already installed" instead of being repaired. It now derives
+			// that from the installed row itself, so the raw name's shape doesn't matter.
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test@1.0.0',
+				packageName: 'n8n-nodes-test',
+				version: '1.0.0',
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+			communityPackagesService.isPackageLoaded.mockReturnValue(false);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(
+				mock<InstalledPackages>({ installedNodes: [] }),
+			);
+
+			await lifecycle.install({ name: 'n8n-nodes-test@1.0.0' }, user, 'ui');
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'n8n-nodes-test',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = lifecycle.install({ name: 'n8n-nodes-invalid' }, user, 'ui');
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('uninstall', () => {
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = lifecycle.uninstall('n8n-nodes-invalid', user, 'notFound');
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('listInstalledPackages', () => {
@@ -138,7 +207,6 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
 				{ ...installedPackage, updateAvailable: '2.0.0' },
 			]);
-			Object.defineProperty(communityPackagesService, 'hasMissingPackages', { value: false });
 
 			await lifecycle.listInstalledPackages();
 
@@ -152,7 +220,6 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesConfig.unverifiedEnabled = false;
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([installedPackage]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([installedPackage]);
-			Object.defineProperty(communityPackagesService, 'hasMissingPackages', { value: false });
 
 			await lifecycle.listInstalledPackages();
 
@@ -181,7 +248,6 @@ describe('CommunityPackagesLifecycleService', () => {
 				installedNodes: [],
 			};
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([returnedPackage as never]);
-			Object.defineProperty(communityPackagesService, 'hasMissingPackages', { value: false });
 
 			const result = await lifecycle.listInstalledPackages();
 
@@ -208,7 +274,6 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesConfig.unverifiedEnabled = true;
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([installedPackage]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([installedPackage]);
-			Object.defineProperty(communityPackagesService, 'hasMissingPackages', { value: false });
 
 			const npmOutdatedOutput = JSON.stringify({
 				'n8n-nodes-test': { current: '1.0.0', wanted: '2.0.0', latest: '2.0.0' },

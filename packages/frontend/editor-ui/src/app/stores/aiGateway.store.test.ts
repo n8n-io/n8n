@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
-import { useAiGatewayStore } from './aiGateway.store';
+import type { INode } from 'n8n-workflow';
+import { useAiGatewayStore, usesFreeCreditsLabel } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
 const mockGetGatewayWallet = vi.fn();
@@ -44,6 +45,9 @@ const MOCK_CONFIG = {
 		'n8n-nodes-pdfco.PDFco Api': {
 			[OPERATION_ONLY]: ['AI Invoice Parser', 'Merge PDF'],
 		},
+	},
+	hiddenNodeProperties: {
+		'n8n-nodes-browserbase.browserbase': ['modelSource'],
 	},
 };
 
@@ -120,14 +124,19 @@ describe('aiGateway.store', () => {
 	});
 
 	describe('fetchWallet()', () => {
-		it('should update balance and budget', async () => {
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+		it('should update balance, budget, and hasEverToppedUp', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
 			const store = useAiGatewayStore();
 
 			await store.fetchWallet();
 
 			expect(store.balance).toBe(7);
 			expect(store.budget).toBe(10);
+			expect(store.hasEverToppedUp).toBe(true);
 			expect(store.fetchError).toBeNull();
 		});
 
@@ -152,6 +161,167 @@ describe('aiGateway.store', () => {
 
 			expect(store.fetchError).toBeNull();
 			expect(store.balance).toBe(3);
+		});
+
+		it('shares an in-flight wallet fetch', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet();
+			const second = store.fetchWallet();
+			resolveWallet({ balance: 1, budget: 2, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(1);
+		});
+
+		it('serves a cached balance within the TTL', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet();
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(4);
+		});
+
+		it('bypasses the cache when force is set', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet({ force: true });
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not let a forced fetch reuse an in-flight unforced request', async () => {
+			let resolveFirst!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+				)
+				.mockResolvedValueOnce({ balance: 9, budget: 10, hasEverToppedUp: true });
+			const store = useAiGatewayStore();
+
+			// A passive request is already in flight (e.g. started before a run);
+			// the forced post-run refresh must wait it out and fetch fresh data.
+			const passive = store.fetchWallet();
+			const forced = store.fetchWallet({ force: true });
+			resolveFirst({ balance: 1, budget: 10, hasEverToppedUp: false });
+			await Promise.all([passive, forced]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			expect(store.balance).toBe(9);
+		});
+
+		it('coalesces concurrent forced fetches', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet({ force: true });
+			const second = store.fetchWallet({ force: true });
+			resolveWallet({ balance: 2, budget: 3, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+		});
+
+		it('retries within the TTL window after a failed fetch', async () => {
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			const store = useAiGatewayStore();
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(1);
+
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('down'));
+			await store.fetchWallet({ force: true });
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+
+			// A passive read that would normally be cache-served must retry, because the
+			// last (forced) fetch failed.
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 6,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(3);
+			expect(store.balance).toBe(6);
+		});
+
+		it('re-fetches once the TTL has elapsed', async () => {
+			vi.useFakeTimers();
+			try {
+				mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+				const store = useAiGatewayStore();
+
+				await store.fetchWallet();
+				vi.advanceTimersByTime(61_000);
+				await store.fetchWallet();
+
+				expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('usesFreeCreditsLabel()', () => {
+		it.each([
+			{ hasEverToppedUp: false, balance: 1.26, expected: true },
+			{ hasEverToppedUp: true, balance: 1.26, expected: false },
+			{ hasEverToppedUp: false, balance: 0, expected: false },
+			{ hasEverToppedUp: true, balance: 0, expected: false },
+			{ hasEverToppedUp: undefined, balance: undefined, expected: true },
+		])(
+			'hasEverToppedUp=$hasEverToppedUp balance=$balance → $expected',
+			({ hasEverToppedUp, balance, expected }) => {
+				expect(usesFreeCreditsLabel(hasEverToppedUp, balance)).toBe(expected);
+			},
+		);
+
+		it('drives creditsLabelKey from the fetched wallet', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
+			const store = useAiGatewayStore();
+			expect(store.creditsLabelKey).toBe('generic.freeCredits');
+
+			await store.fetchWallet();
+
+			expect(store.creditsLabelKey).toBe('generic.n8nCredits');
 		});
 	});
 
@@ -339,6 +509,20 @@ describe('aiGateway.store', () => {
 			);
 		});
 
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "openAiTool" is not a config key, but its base "openAi" is.
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'text', 'message'),
+			).toBe(true);
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
 		describe('operation-only nodes (no resource)', () => {
 			it('should return true when operation is in the OPERATION_ONLY list', async () => {
 				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
@@ -369,6 +553,240 @@ describe('aiGateway.store', () => {
 					store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', undefined, 'message'),
 				).toBe(false);
 			});
+		});
+	});
+
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-browserbase.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should return true when a managed credential is attached and the property is listed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
+		});
+
+		it('should return false when a managed credential is attached but the property is not listed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'driverModel')).toBe(false);
+		});
+
+		it('should return false when the node type has no hiddenNodeProperties entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when config has no hiddenNodeProperties field', async () => {
+			const configWithout = { ...MOCK_CONFIG, hiddenNodeProperties: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when no credential is gateway-managed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: 'n8n-nodes-browserbase.browserbase',
+				credentials: { browserbaseApi: { id: 'cred-1', name: 'My Key' } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node has no credentials', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = { type: 'n8n-nodes-browserbase.browserbase' } as unknown as INode;
+
+			expect(store.isNodePropertyHidden(node, 'modelSource')).toBe(false);
+		});
+
+		it('should return false when the node is null', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isNodePropertyHidden(null, 'modelSource')).toBe(false);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const toolNode = {
+				type: 'n8n-nodes-browserbase.browserbaseTool',
+				credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(toolNode, 'modelSource')).toBe(true);
+		});
+	});
+
+	describe('isActionOptionVisible()', () => {
+		const managedNode = (parameters: Record<string, unknown> = {}) =>
+			({
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}) as unknown as INode;
+
+		it('should return true for parameters other than resource/operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionOptionVisible(managedNode(), 'model', 'anything')).toBe(true);
+		});
+
+		it('should return true when no credential is gateway-managed', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters: {},
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(node, 'resource', 'file')).toBe(true);
+		});
+
+		it('should return true when the node has no supportedActions entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const node = {
+				type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				parameters: {},
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(node, 'resource', 'anything')).toBe(true);
+		});
+
+		describe('resource options', () => {
+			it('should show a supported resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(store.isActionOptionVisible(managedNode(), 'resource', 'text')).toBe(true);
+			});
+
+			it('should hide an unsupported resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(store.isActionOptionVisible(managedNode(), 'resource', 'file')).toBe(false);
+			});
+
+			it('should keep all resources for operation-only nodes', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				const node = {
+					type: 'n8n-nodes-pdfco.PDFco Api',
+					parameters: {},
+					credentials: { pdfcoApi: { id: null, name: '', __aiGatewayManaged: true } },
+				} as unknown as INode;
+
+				expect(store.isActionOptionVisible(node, 'resource', 'anything')).toBe(true);
+			});
+		});
+
+		describe('operation options', () => {
+			it('should show a supported operation for the selected resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'text' }), 'operation', 'message'),
+				).toBe(true);
+			});
+
+			it('should hide an unsupported operation for the selected resource', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'text' }), 'operation', 'unknownOp'),
+				).toBe(false);
+			});
+
+			it('should hide operations when the selected resource is unsupported', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				expect(
+					store.isActionOptionVisible(managedNode({ resource: 'file' }), 'operation', 'upload'),
+				).toBe(false);
+			});
+
+			it('should filter operations by the OPERATION_ONLY list for operation-only nodes', async () => {
+				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+				const store = useAiGatewayStore();
+				await store.fetchConfig();
+
+				const node = {
+					type: 'n8n-nodes-pdfco.PDFco Api',
+					parameters: {},
+					credentials: { pdfcoApi: { id: null, name: '', __aiGatewayManaged: true } },
+				} as unknown as INode;
+
+				expect(store.isActionOptionVisible(node, 'operation', 'AI Invoice Parser')).toBe(true);
+				expect(store.isActionOptionVisible(node, 'operation', 'Unknown Operation')).toBe(false);
+			});
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const toolNode = {
+				type: '@n8n/n8n-nodes-langchain.openAiTool',
+				parameters: { resource: 'text' },
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isActionOptionVisible(toolNode, 'resource', 'file')).toBe(false);
+			expect(store.isActionOptionVisible(toolNode, 'operation', 'message')).toBe(true);
 		});
 	});
 
@@ -429,6 +847,16 @@ describe('aiGateway.store', () => {
 			// config not loaded → no minNodeTypeVersion entry → no version gate → pass through
 			// node support when config is unloaded is handled by isCredentialTypeSupported / isNodeSupported
 			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "SomeNodeTool" has no entry, but the base "SomeNode" requires >= 1.1.
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.1)).toBe(true);
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.0)).toBe(false);
 		});
 	});
 });

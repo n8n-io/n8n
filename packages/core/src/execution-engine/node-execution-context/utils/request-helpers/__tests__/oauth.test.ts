@@ -1,6 +1,16 @@
-import type { IAllExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { LockNamespace, LockService } from '@n8n/backend-common';
+import type { SsrfBridge } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import FormData from 'form-data';
+import type {
+	IAllExecuteFunctions,
+	ICredentialDataDecryptedObject,
+	INode,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 import nock from 'nock';
+import { Readable } from 'stream';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { refreshOAuth2Token, requestOAuth2 } from '../oauth';
@@ -10,9 +20,10 @@ describe('refreshOAuth2Token', () => {
 	const mockThis = mockDeep<IAllExecuteFunctions>();
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
-	// mockDeep auto-creates a proxy for module-augmented keys; the OAuth2
-	// flow tests must opt out of the JWE proxy unless they wire one in.
+	// mockDeep auto-creates a proxy for optional keys; the OAuth2 flow tests must
+	// opt out of the JWE proxy and the outbound network guard unless they wire one in.
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 	const mockCredentialData = {
 		clientId: 'test-client-id',
 		clientSecret: 'test-client-secret',
@@ -30,6 +41,13 @@ describe('refreshOAuth2Token', () => {
 	beforeEach(() => {
 		nock.cleanAll();
 		vi.resetAllMocks();
+		// A successful refresh mutates `credentials.oauthTokenData` in place, and some
+		// tests pass this shared object by reference — reset it so each test starts from
+		// the same stored token.
+		mockCredentialData.oauthTokenData = {
+			access_token: 'old-token',
+			refresh_token: 'old-refresh-token',
+		};
 		mockNode.name = 'test-node-name';
 		mockNode.credentials = {
 			'test-credentials-type': {
@@ -37,6 +55,15 @@ describe('refreshOAuth2Token', () => {
 				name: 'test-credentials-name',
 			},
 		};
+		// Recheck re-reads the credential; return the same access token so it
+		// detects "unchanged" and proceeds to the real refresh.
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'old-token' },
+		} as unknown as ICredentialDataDecryptedObject);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	test('should refresh the OAuth2 token with pkce grant type', async () => {
@@ -82,6 +109,106 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	test('should store an absolute expiry when refreshed token has expires_in', async () => {
+		const now = 1_700_000_000_000;
+		const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			clientSecret: undefined,
+			grantType: 'pkce',
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				grant_type: 'refresh_token',
+				refresh_token: 'old-refresh-token',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+				expires_in: '3600',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+			expires_in: '3600',
+			n8n_expires_at: String(now + 3_600_000),
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					n8n_expires_at: String(now + 3_600_000),
+				}),
+			}),
+			mockAdditionalData,
+		);
+		dateNow.mockRestore();
+	});
+
+	describe('outbound network policy', () => {
+		const makeBridge = (validateUrl: SsrfBridge['validateUrl']): SsrfBridge => ({
+			validateUrl,
+			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+		});
+
+		afterEach(() => {
+			mockAdditionalData.ssrfBridge = undefined;
+		});
+
+		test('should apply the bridge from additionalData to the token request', async () => {
+			const blocked = new Error('Address not allowed');
+			const bridge = makeBridge(vi.fn().mockResolvedValue({ ok: false, error: blocked }));
+			mockAdditionalData.ssrfBridge = bridge as unknown as typeof mockAdditionalData.ssrfBridge;
+			mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData });
+			const tokenScope = nock(baseUrl).post('/token').reply(200, { access_token: 'new-token' });
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toBe(blocked);
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/token`));
+			expect(tokenScope.isDone()).toBe(false);
+		});
+
+		test('should refresh normally when additionalData carries no bridge', async () => {
+			mockAdditionalData.ssrfBridge = undefined;
+			mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData });
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				}),
+			);
+		});
+	});
+
 	test('should refresh the OAuth2 token with client credentials grant type', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -119,6 +246,56 @@ describe('refreshOAuth2Token', () => {
 				oauthTokenData: expect.objectContaining({
 					access_token: 'new-token',
 					refresh_token: 'new-refresh-token',
+				}),
+			}),
+			mockAdditionalData,
+		);
+	});
+
+	test('should include resource when fetching a client credentials token', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			grantType: 'clientCredentials',
+			oauthTokenData: {
+				...mockCredentialData.oauthTokenData,
+				resource: 'https://mcp.example.com/',
+			},
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				client_secret: 'test-client-secret',
+				grant_type: 'client_credentials',
+				scope: 'openid',
+				resource: 'https://mcp.example.com/',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+			resource: 'https://mcp.example.com/',
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+					resource: 'https://mcp.example.com/',
 				}),
 			}),
 			mockAdditionalData,
@@ -187,9 +364,11 @@ describe('refreshOAuth2Token', () => {
 			refresh_token: 'new-refresh-token',
 		});
 
+		// Without a credential id the refresh can't be keyed/persisted, so it fails fast
+		// before any network call (same error the persist path raises).
 		await expect(
 			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
-		).rejects.toThrow('Node does not have credential type');
+		).rejects.toThrow('Found credential with no ID.');
 		expect(
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 		).not.toHaveBeenCalled();
@@ -213,8 +392,10 @@ describe('refreshOAuth2Token', () => {
 			'The credential "test-credentials-name" needs to be reconnected.',
 		);
 		await expect(promise).rejects.toMatchObject({
+			name: 'NodeOperationError',
 			description: expect.stringContaining('reconnect'),
 			level: 'warning',
+			failure: { cause: 'credential-invalid' },
 		});
 		expect(
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
@@ -281,6 +462,9 @@ describe('refreshOAuth2Token', () => {
 			mockNode.credentials = {
 				'test-credentials-type': { id: 'test-credentials-id', name: 'test-credentials-name' },
 			};
+			mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+				oauthTokenData: { access_token: 'old-token' },
+			} as unknown as ICredentialDataDecryptedObject);
 		});
 
 		test('decrypts the refreshed token via the proxy when present', async () => {
@@ -384,6 +568,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 
 	const makeCredentialData = (overrides?: Record<string, unknown>) => ({
 		clientId: 'test-client-id',
@@ -409,6 +594,9 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 				name: 'cred-name',
 			},
 		};
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'expired-token' },
+		} as unknown as ICredentialDataDecryptedObject);
 	});
 
 	test('should retry on 401 by default (isN8nRequest path)', async () => {
@@ -572,6 +760,7 @@ describe('requestOAuth2 - client credentials initial token fetch', () => {
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 
 	beforeEach(() => {
 		nock.cleanAll();
@@ -701,6 +890,7 @@ describe('requestOAuth2 - preAuthentication', () => {
 	const mockThis = mockDeep<IAllExecuteFunctions>();
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	mockAdditionalData.ssrfBridge = undefined;
 
 	const credentialData = () => ({
 		clientId: 'client-id',
@@ -724,6 +914,9 @@ describe('requestOAuth2 - preAuthentication', () => {
 		mockNode.credentials = {
 			testOAuth2: { id: 'cred-id', name: 'cred-name' },
 		};
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'raw-token' },
+		} as unknown as ICredentialDataDecryptedObject);
 	});
 
 	test('initial path: signs request with token transformed by preAuthentication', async () => {
@@ -904,5 +1097,427 @@ describe('requestOAuth2 - preAuthentication', () => {
 			}),
 			mockAdditionalData,
 		);
+	});
+});
+
+describe('requestOAuth2 - concurrent refresh serialization', () => {
+	const baseUrl = 'https://api.example.com';
+	const tokenUrl = 'https://auth.example.com';
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
+
+	const credentialData = () => ({
+		clientId: 'test-client-id',
+		clientSecret: 'test-client-secret',
+		grantType: 'clientCredentials',
+		accessTokenUrl: `${tokenUrl}/token`,
+		authentication: 'body',
+		scope: 'read',
+		oauthTokenData: { access_token: 'expired-token', token_type: 'bearer' },
+	});
+
+	const error401 = () => Object.assign(new Error('401'), { response: { status: 401 } });
+
+	const call = async () =>
+		await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true,
+		);
+
+	beforeEach(() => {
+		nock.cleanAll();
+		vi.resetAllMocks();
+		mockNode.name = 'test-node';
+		mockNode.credentials = { testOAuth2: { id: 'cred-id', name: 'cred-name' } };
+		mockThis.getCredentials.mockResolvedValue(credentialData());
+		// Recheck reads the stored token; unchanged by default so the refresh proceeds.
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'expired-token', token_type: 'bearer' },
+		} as unknown as ICredentialDataDecryptedObject);
+	});
+
+	test('coalesces concurrent refreshes of the same credential into one network call', async () => {
+		// Single interceptor IS the assertion: a second refresh finds none and rejects.
+		const tokenScope = nock(tokenUrl)
+			.post('/token')
+			.reply(200, { access_token: 'new-token', token_type: 'bearer' });
+
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		const [r1, r2] = await Promise.all([call(), call()]);
+
+		expect(r1).toEqual({ success: true });
+		expect(r2).toEqual({ success: true });
+		expect(tokenScope.isDone()).toBe(true);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledTimes(1);
+	});
+
+	test('adopts the stored token without a network refresh when it already rotated', async () => {
+		// No /token interceptor: a network refresh would throw on an unmatched request.
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'rotated-elsewhere', token_type: 'bearer' },
+		} as unknown as ICredentialDataDecryptedObject);
+
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		const result = await call();
+
+		expect(result).toEqual({ success: true });
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+		expect(mockThis.helpers.httpRequest).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer rotated-elsewhere' }),
+			}),
+		);
+	});
+
+	test('refreshes when oAuth2Options.property resolves to an unchanged nested token', async () => {
+		// Slack-style credential: the signing token comes from a nested path, not the
+		// top-level access_token. The fencing check must compare the same nested value,
+		// otherwise it always reports "rotated elsewhere" and never refreshes.
+		const property = 'authed_user.access_token';
+		const storedTokenData = {
+			access_token: 'bot-token',
+			authed_user: { access_token: 'user-token' },
+			token_type: 'bearer',
+		};
+		mockThis.getCredentials.mockResolvedValue({
+			...credentialData(),
+			oauthTokenData: storedTokenData,
+		});
+		// Post-lease re-read returns the same nested token: no concurrent refresh happened.
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: storedTokenData,
+		} as unknown as ICredentialDataDecryptedObject);
+
+		const tokenScope = nock(tokenUrl)
+			.post('/token')
+			.reply(200, { access_token: 'new-token', token_type: 'bearer' });
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			{ tokenType: 'Bearer', property },
+			true,
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(tokenScope.isDone()).toBe(true);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledTimes(1);
+	});
+
+	test('adopts the stored token when oAuth2Options.property nested token already rotated', async () => {
+		// Same Slack-style credential, but the nested token changed between reads → another
+		// process refreshed it. No /token interceptor: a network refresh would throw.
+		const property = 'authed_user.access_token';
+		mockThis.getCredentials.mockResolvedValue({
+			...credentialData(),
+			oauthTokenData: {
+				access_token: 'bot-token',
+				authed_user: { access_token: 'user-token' },
+				token_type: 'bearer',
+			},
+		});
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: {
+				access_token: 'bot-token',
+				authed_user: { access_token: 'user-token-rotated' },
+				token_type: 'bearer',
+			},
+		} as unknown as ICredentialDataDecryptedObject);
+
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			{ tokenType: 'Bearer', property },
+			true,
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+		expect(mockThis.helpers.httpRequest).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer user-token-rotated' }),
+			}),
+		);
+	});
+
+	test('rejects all waiters on a failed refresh and clears the map for a later retry', async () => {
+		const failScope = nock(tokenUrl).post('/token').reply(500, { error: 'server_error' });
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockRejectedValueOnce(error401());
+
+		const results = await Promise.allSettled([call(), call()]);
+
+		expect(results[0].status).toBe('rejected');
+		expect(results[1].status).toBe('rejected');
+		expect(failScope.isDone()).toBe(true);
+
+		// Map cleared on settle → a fresh attempt re-refreshes and succeeds.
+		nock(tokenUrl).post('/token').reply(200, { access_token: 'new-token', token_type: 'bearer' });
+		mockThis.helpers.httpRequest.mockReset();
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		await expect(call()).resolves.toEqual({ success: true });
+	});
+
+	test('wraps the refresh in LockService.withLease keyed by the credential id', async () => {
+		// In-process the coalescing map masks the lock, so this is the only proof the
+		// (cross-process) lock path is actually wired.
+		const withLeaseSpy = vi.spyOn(Container.get(LockService), 'withLease');
+		nock(tokenUrl).post('/token').reply(200, { access_token: 'new-token', token_type: 'bearer' });
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401())
+			.mockResolvedValue({ success: true });
+
+		await call();
+
+		expect(withLeaseSpy).toHaveBeenCalledWith(
+			LockNamespace.CREDENTIALS,
+			'cred-id',
+			expect.any(Function),
+			expect.objectContaining({
+				waitTimeoutMs: expect.any(Number),
+				leaseTtlMs: expect.any(Number),
+			}),
+		);
+		withLeaseSpy.mockRestore();
+	});
+});
+
+describe('requestOAuth2 - single-use request bodies', () => {
+	const baseUrl = 'https://api.example.com';
+	const tokenUrl = 'https://auth.example.com';
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
+
+	const mockTokenRefresh = () =>
+		nock(tokenUrl).post('/token').reply(200, { access_token: 'new-token', token_type: 'bearer' });
+
+	const buildFormData = () => {
+		const formData = new FormData();
+		formData.append('file', Buffer.from('content'), { filename: 'file.txt' });
+		return formData;
+	};
+
+	beforeEach(() => {
+		nock.cleanAll();
+		vi.resetAllMocks();
+		mockNode.name = 'test-node';
+		mockNode.credentials = { testOAuth2: { id: 'cred-id', name: 'cred-name' } };
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'expired-token' },
+		} as unknown as ICredentialDataDecryptedObject);
+		mockThis.getCredentials.mockResolvedValue({
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'clientCredentials',
+			accessTokenUrl: `${tokenUrl}/token`,
+			authentication: 'body',
+			scope: 'read',
+			oauthTokenData: { access_token: 'expired-token', token_type: 'bearer' },
+		});
+	});
+
+	test('surfaces the original 401 instead of replaying a FormData body (httpRequest path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401 - scope does not match'), {
+			response: { status: 401 },
+		});
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'POST', url: `${baseUrl}/upload`, body: buildFormData() },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		// The refresh still ran and persisted, so the next execution starts with a valid token
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledTimes(1);
+	});
+
+	test('surfaces the original 401 instead of replaying a stream body (httpRequest path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'POST', url: `${baseUrl}/upload`, body: Readable.from(['content']) },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+	});
+
+	test('surfaces the original 401 when a formData descriptor field is a stream (legacy path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+		mockThis.helpers.request.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{
+					method: 'POST',
+					uri: `${baseUrl}/upload`,
+					formData: {
+						minorEdit: 'true',
+						file: { value: Readable.from(['content']), options: { filename: 'file.txt' } },
+					},
+				},
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+	});
+
+	test('surfaces the original 401 when a multipart body field is a stream (legacy path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+		mockThis.helpers.request.mockRejectedValueOnce(error401);
+
+		// The legacy transport merges body fields into the form payload under an
+		// explicit multipart content-type, so their streams are single-use too
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{
+					method: 'POST',
+					uri: `${baseUrl}/upload`,
+					headers: { 'Content-Type': 'multipart/form-data' },
+					body: { file: { value: Readable.from(['content']), options: { filename: 'file.txt' } } },
+				},
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+	});
+
+	test('surfaces the original 401 when formData is a FormData instance (legacy path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+		mockThis.helpers.request.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'POST', uri: `${baseUrl}/upload`, formData: buildFormData() },
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+	});
+
+	test('still retries when the formData descriptor holds only replayable values (legacy path)', async () => {
+		mockTokenRefresh();
+		const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+		mockThis.helpers.request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{
+				method: 'POST',
+				uri: `${baseUrl}/upload`,
+				formData: {
+					minorEdit: 'true',
+					file: { value: Buffer.from('content'), options: { filename: 'file.txt' } },
+					tags: ['a', 'b'],
+				},
+			},
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+	});
+
+	test('resolves with the original 401 response for a single-use body under simple:false + resolveWithFullResponse (legacy path)', async () => {
+		mockTokenRefresh();
+		const response = { statusCode: 401, body: 'Unauthorized' };
+		mockThis.helpers.request.mockResolvedValueOnce(response);
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{
+				method: 'POST',
+				uri: `${baseUrl}/upload`,
+				simple: false,
+				resolveWithFullResponse: true,
+				formData: { file: { value: Readable.from(['x']), options: { filename: 'f' } } },
+			},
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toBe(response);
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
 	});
 });

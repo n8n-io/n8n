@@ -33,6 +33,7 @@ defineProps<{
 	backButtonText: string;
 	labels: RoleEditorLabels;
 	displayNameValidationRules?: ValidationRule[];
+	showDisplayNameError?: boolean;
 }>();
 
 const displayName = defineModel<string>('displayName', { required: true });
@@ -115,6 +116,7 @@ const emit = defineEmits<{
 					:label="labels.roleName"
 					validate-on-blur
 					:validation-rules="displayNameValidationRules"
+					:show-validation-warnings="showDisplayNameError"
 					class="mb-s"
 					show-required-asterisk
 					required

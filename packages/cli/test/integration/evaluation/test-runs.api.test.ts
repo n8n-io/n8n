@@ -262,7 +262,7 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 	test('should cancel test run', async () => {
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
-		jest.spyOn(testRunRepository, 'markAsCancelled');
+		vi.spyOn(testRunRepository, 'markAsCancelled');
 
 		const resp = await authOwnerAgent.post(
 			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/cancel`,

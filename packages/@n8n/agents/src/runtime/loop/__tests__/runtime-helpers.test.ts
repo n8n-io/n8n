@@ -1,5 +1,5 @@
 import type { TokenUsage } from '../../../types/sdk/agent';
-import { accumulateUsage, mergeUsage } from '../runtime-helpers';
+import { mergeUsage } from '../runtime-helpers';
 
 describe('mergeUsage — input token details', () => {
 	it('sums noCache across both sides', () => {
@@ -52,25 +52,5 @@ describe('mergeUsage — input token details', () => {
 		const merged = mergeUsage(a, b);
 
 		expect(merged?.inputTokenDetails).toEqual({ noCache: 30, cacheRead: 10, cacheWrite: 20 });
-	});
-});
-
-describe('accumulateUsage — input token details', () => {
-	it('carries noCacheTokens from the raw AI SDK usage into the running total', () => {
-		const current: TokenUsage = {
-			promptTokens: 10,
-			completionTokens: 5,
-			totalTokens: 15,
-			inputTokenDetails: { noCache: 10 },
-		};
-
-		const accumulated = accumulateUsage(current, {
-			inputTokens: 20,
-			outputTokens: 3,
-			totalTokens: 23,
-			inputTokenDetails: { noCacheTokens: 20 },
-		});
-
-		expect(accumulated?.inputTokenDetails).toMatchObject({ noCache: 30 });
 	});
 });

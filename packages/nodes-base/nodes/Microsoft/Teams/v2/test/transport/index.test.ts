@@ -3,18 +3,29 @@ import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
-import { getTeams } from '../../methods/listSearch';
-import { getTeamsCredentialType, microsoftApiRequest } from '../../transport/index';
+import {
+	getBuckets,
+	getChannels,
+	getChats,
+	getGroups,
+	getMembers,
+	getPlans,
+	getTeams,
+} from '../../methods/listSearch';
+import { joinedTeamsEndpoint, SERVICE_PRINCIPAL_AUTH } from '../../transport/index';
 
 describe('Microsoft Teams Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 	let mockRequestOAuth2: Mock;
+	let mockRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestOAuth2 = vi.fn();
+		mockRequestWithAuthentication = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
+		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
 
 		mockNode = {
 			id: 'test-node',
@@ -33,277 +44,31 @@ describe('Microsoft Teams Transport', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('microsoftApiRequest', () => {
-		describe('graphApiBaseUrl from credentials', () => {
-			it('should use base URL from credentials', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
+	describe('joinedTeamsEndpoint', () => {
+		it('returns /v1.0/teams under the Service Principal credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: '',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should fall back to default when credentials.graphApiBaseUrl is undefined', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip trailing slashes from base URL using regex', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com/',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip multiple trailing slashes from base URL', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com///',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government DOD cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://dod-graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use China cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://microsoftgraph.chinacloudapi.cn/teams',
-						json: true,
-					}),
-				);
-			});
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/teams');
 		});
 
-		describe('authentication credential resolution', () => {
-			beforeEach(() => {
-				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-			});
-
-			it('should use microsoftTeamsOAuth2Api when authentication is not set (backward compatibility)', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.anything(),
-				);
-			});
-
-			it('should use microsoftTeamsOAuth2Api when explicitly selected', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.anything(),
-				);
-			});
-
-			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
-			});
-
-			it('should resolve the credential name from the authentication parameter at index 0', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
-			});
-
-			it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftOAuth2Api',
-					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/teams',
-					}),
-				);
-			});
-		});
-	});
-
-	describe('getTeamsCredentialType', () => {
-		it('should default to microsoftTeamsOAuth2Api when authentication is undefined', () => {
+		it('returns /v1.0/me/joinedTeams under OAuth2 (default)', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
-		});
-
-		it('should return microsoftTeamsOAuth2Api when selected', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
-		});
-
-		it('should return microsoftOAuth2Api when the generic credential is selected', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-
-			expect(getTeamsCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/me/joinedTeams');
 		});
 	});
 
 	describe('listSearch credential routing', () => {
 		let mockLoadOptions: Mocked<ILoadOptionsFunctions>;
 		let loadOptionsRequestOAuth2: Mock;
+		let loadOptionsRequestWithAuthentication: Mock;
 
 		beforeEach(() => {
 			mockLoadOptions = mockDeep<ILoadOptionsFunctions>();
 			loadOptionsRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
+			loadOptionsRequestWithAuthentication = vi.fn().mockResolvedValue({ value: [] });
 			mockLoadOptions.helpers.requestOAuth2 = loadOptionsRequestOAuth2;
+			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuthentication;
 			mockLoadOptions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 		});
 
@@ -317,6 +82,7 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftOAuth2Api',
 				expect.anything(),
 			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should default list-search requests to the Teams credential', async () => {
@@ -329,37 +95,162 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftTeamsOAuth2Api',
 				expect.anything(),
 			);
-		});
-	});
-
-	describe('microsoftApiRequest under a webhook hook (IHookFunctions) context', () => {
-		let mockHookFunctions: Mocked<IHookFunctions>;
-		let hookRequestOAuth2: Mock;
-
-		beforeEach(() => {
-			mockHookFunctions = mockDeep<IHookFunctions>();
-			hookRequestOAuth2 = vi.fn().mockResolvedValue({ value: [] });
-			mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
-			mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
-			mockHookFunctions.getNode.mockReturnValue(mockNode);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('should resolve the generic credential when selected', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+		it('should resolve a legacy node to Teams when getNodeParameter returns the fallback 0 (never getCredentials(0))', async () => {
+			// load-options getNodeParameter('authentication', 0) returns the literal fallback
+			// `0` for a legacy node — must resolve to Teams, never reach getCredentials(0).
+			mockLoadOptions.getNodeParameter.mockReturnValue(0);
 
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
+			await getTeams.call(mockLoadOptions);
 
-			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
-			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
+			expect(mockLoadOptions.getCredentials).not.toHaveBeenCalledWith(0);
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftTeamsOAuth2Api',
+				expect.anything(),
+			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('should default to the Teams credential', async () => {
-			mockHookFunctions.getNodeParameter.mockReturnValue(undefined);
+		it('getTeams hits /v1.0/teams (not /me/joinedTeams) through requestWithAuthentication under SP', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			mockLoadOptions.getCredentials.mockResolvedValue({
+				accessToken: 'token',
+				graphApiBaseUrl: '',
+			});
 
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
+			await getTeams.call(mockLoadOptions);
 
-			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
-			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftTeamsOAuth2Api', expect.anything());
+			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledWith(
+				SERVICE_PRINCIPAL_AUTH,
+				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/teams' }),
+			);
+			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri as string;
+			expect(calledUri).not.toContain('/me/joinedTeams');
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('getTeams pages through @odata.nextLink under SP (all org teams, not just page 1)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			mockLoadOptions.getCredentials.mockResolvedValue({
+				accessToken: 'token',
+				graphApiBaseUrl: '',
+			});
+			// page 1 carries @odata.nextLink → the paginator must follow it to page 2.
+			loadOptionsRequestWithAuthentication
+				.mockResolvedValueOnce({
+					value: [{ id: 't1', displayName: 'Team 1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/teams?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: 't2', displayName: 'Team 2' }] });
+
+			const { results } = await getTeams.call(mockLoadOptions);
+
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			// page 2 fetched via the absolute nextLink uri
+			expect(loadOptionsRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				SERVICE_PRINCIPAL_AUTH,
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/teams?$skiptoken=p2',
+				}),
+			);
+			expect(results.map((r) => r.value)).toEqual(['t1', 't2']);
+		});
+
+		it('getGroups lists the joined teams (/v1.0/me/joinedTeams), not tenant groups (/v1.0/groups)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+			loadOptionsRequestOAuth2.mockResolvedValue({
+				value: [
+					{ id: 'g1', displayName: 'Team 1' },
+					{ id: 'g2', displayName: 'Team 2' },
+				],
+			});
+
+			const { results } = await getGroups.call(mockLoadOptions);
+
+			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri as string;
+			expect(calledUri).toContain('/v1.0/me/joinedTeams');
+			expect(calledUri).not.toContain('/v1.0/groups');
+			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
+		});
+
+		it('getGroups pages through @odata.nextLink (teams past the first page are found)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+			// page 1 carries @odata.nextLink → the paginator must follow it to page 2.
+			loadOptionsRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: 'g1', displayName: 'Team 1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/joinedTeams?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: 'g2', displayName: 'Team 2' }] });
+
+			const { results } = await getGroups.call(mockLoadOptions);
+
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledTimes(2);
+			expect(loadOptionsRequestOAuth2).toHaveBeenNthCalledWith(
+				2,
+				'microsoftTeamsOAuth2Api',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/me/joinedTeams?$skiptoken=p2',
+				}),
+			);
+			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
+		});
+
+		it('getChats throws a static error under SP and never issues a request', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+
+			await expect(getChats.call(mockLoadOptions)).rejects.toThrow(
+				'Chats are not available with the Service Principal credential',
+			);
+			expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
+		// must reject a malformed id via buildTeamsPath, before any request.
+		describe('SP id validation gate (enumerated)', () => {
+			const malformedId = 'x/../../groups/abc';
+
+			beforeEach(() => {
+				mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+				mockLoadOptions.getCredentials.mockResolvedValue({
+					accessToken: 'token',
+					graphApiBaseUrl: '',
+				});
+			});
+
+			it('getChannels rejects a malformed teamId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getChannels.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getPlans rejects a malformed groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getPlans.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getBuckets rejects a malformed planId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getBuckets.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getMembers rejects a malformed groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
 		});
 	});
 

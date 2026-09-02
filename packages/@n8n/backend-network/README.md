@@ -39,7 +39,7 @@ const data = await client.request({ method: 'GET', url: 'https://api.example.com
 ```
 
 `HttpRequestClientOptions` carry policy that applies to every call on the
-client — SSRF level, a `baseURL`, and default `headers`. Set them once at
+client — the `useDefaultSsrfPolicy`, a `baseURL`, and default `headers`. Set them once at
 creation instead of repeating them per request:
 
 ```ts
@@ -58,70 +58,81 @@ dictated by what the consuming library accepts.
 
 ## SSRF protection
 
-### On by default
+### Safe by default
 
-Both `requests()` and `transport()` apply the container's
-`SsrfProtectionService` **unless you explicitly opt out** with `ssrf: 'disabled'`.
+Both `requests()` and `transport()` guard every call — and every redirect hop —
+by default. You do not pass a bridge, a service, or a config flag; the default
+`useDefaultSsrfPolicy: 'safe'` is applied for you. The only way to skip the guard is to
+opt out explicitly with `useDefaultSsrfPolicy: 'unsafe'`.
 
 This default is deliberate. Outbound HTTP in n8n is frequently driven by
 user-controlled input — credential URLs, workflow parameters, redirect targets
 returned by a remote server. Without guarding, that input can be pointed at
 internal-only addresses (cloud metadata endpoints, `localhost`, private ranges),
 turning the n8n backend into a confused deputy (a Server-Side Request Forgery,
-or SSRF). Centralizing the call here means every backend request — and every
-redirect hop — is validated by default, so a new call site is safe unless
-someone consciously turns the guard off.
+or SSRF). Because the secure default lives in the factory rather than at each
+call site, forgetting to add protection cannot silently introduce a
+vulnerability — the unsafe choice is the explicit one, and a new call site is
+safe unless someone consciously writes `useDefaultSsrfPolicy: 'unsafe'`.
 
-Because the secure default lives in the factory rather than at each call site,
-forgetting to add protection cannot silently introduce a vulnerability — the
-unsafe choice is the explicit one.
+### `enabled` is resolved inside `OutboundHttp`, not by callers
 
-### Why the choice is explicit per call, not read from config
+`useDefaultSsrfPolicy` answers one question: *is this destination trusted enough to skip
+the guard?* Only the calling code knows that, so it is decided per call. Whether
+the guard actually runs for a `'safe'` call is a separate, instance-wide
+decision that `OutboundHttp` resolves internally from
+`SsrfProtectionConfig.enabled` (`N8N_SSRF_PROTECTION_ENABLED`). Callers neither
+read that flag nor inject the `SsrfProtectionService` — passing `'safe'` (or
+nothing) is enough.
 
-The `ssrf` option is passed **per call**; it is **not** derived automatically
-from `SsrfProtectionConfig`. That is intentional: whether a request is dangerous
-is a property of *its destination*, and only the calling code knows that. A
-global flag cannot tell a fixed, n8n-owned URL apart from a URL a user just
-pasted into a credential. So each call site makes a single, local, reviewable
-decision — and a reviewer reading a `ssrf: 'disabled'` knows to ask "is this
-destination really not user-controlled?".
+Concretely, a `'safe'` call is guarded when the instance enables protection and
+passes through untouched when it does not; an `'enforced'` call is always
+guarded and an `'unsafe'` call is never guarded, regardless of the flag.
 
-`SsrfProtectionConfig` (env-driven) configures *how* the guard behaves once it
-runs — the blocked/allowed IP ranges (`N8N_SSRF_BLOCKED_IP_RANGES`,
-`N8N_SSRF_ALLOWED_IP_RANGES`), the allowed hostnames
-(`N8N_SSRF_ALLOWED_HOSTNAMES`), and the DNS-cache size. Its `enabled` flag
-(`N8N_SSRF_PROTECTION_ENABLED`) is the **instance-wide gate that high-risk call
-sites consult** to decide whether to turn the guard on (see below). The config
-sets the policy; the call site decides whether that policy applies to *this*
-destination.
+`SsrfProtectionConfig` (env-driven) also configures *how* the guard behaves once
+it runs — the blocked/allowed IP ranges (`N8N_SSRF_BLOCKED_IP_RANGES`,
+`N8N_SSRF_ALLOWED_IP_RANGES`), the allowed and blocked hostnames
+(`N8N_SSRF_ALLOWED_HOSTNAMES`, `N8N_SSRF_BLOCKED_HOSTNAMES`), and the DNS-cache
+size.
 
-### Choosing an SSRF level: low-risk vs high-risk calls
+### Choosing a safety mode: when to opt out
 
-Classify the **destination**, then pick:
+Leave the default `'safe'` unless the destination genuinely cannot be
+user-controlled. Classify the **destination**, then pick:
 
 | Destination | Risk | What to pass |
 | --- | --- | --- |
-| Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `ssrf: 'disabled'` + a one-line "fixed host" comment |
-| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `ssrf: 'disabled'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the escape hatch when the instance runs with protection globally on. |
-| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry, an LLM/web-research target) | **High** — attacker-influenceable | gate on the instance setting: `ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled'` |
+| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry) | **High** — attacker-influenceable | nothing — the default `'safe'` guards it when the instance enables protection |
+| URL an autonomous component picks on its own (an LLM/web-research target) | **High** — attacker-influenceable, and the operator never sees the URL | `useDefaultSsrfPolicy: 'enforced'` — guarded even when the instance leaves protection off |
+| Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `useDefaultSsrfPolicy: 'unsafe'` + a one-line "fixed host" comment |
+| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `useDefaultSsrfPolicy: 'unsafe'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the alternative when the instance runs with protection globally on. |
 
 ```ts
-// LOW risk — fixed, n8n-owned host.
-const client = this.outboundHttp.requests({ ssrf: 'disabled' });
+// HIGH risk — `url` comes from user input. Guarded by default.
+const client = this.outboundHttp.requests();
 
-// HIGH risk — `url` comes from user input. Guard when the instance enables it.
-const client = this.outboundHttp.requests({
-	ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
-});
+// LOW risk — fixed, n8n-owned host. Opt out explicitly.
+const client = this.outboundHttp.requests({ useDefaultSsrfPolicy: 'unsafe' });
 ```
 
-Whatever you pick, **write a one-line comment stating why** — that comment is
-what a security reviewer reads. Reference implementations:
-`packages/cli/src/oauth/oauth.service.ts` (config-gated high-risk) and
+Whenever you opt out, **write a one-line comment stating why** — that comment is
+what a security reviewer reads. Reference implementation:
 `packages/nodes-base/credentials/common/token-request.ts`, which lifts the
 low/high-risk choice into the type system with a
 `'fixed-vendor' | 'user-controlled'` parameter so the caller is forced to
 classify the destination.
+
+### The node execution path
+
+Node request helpers (`this.helpers.httpRequest`,
+`httpRequestWithAuthentication`, and the deprecated `request`) go through
+`OutboundHttp.requests()` with the default safe mode. `IHttpRequestOptions`
+exposes no `useDefaultSsrfPolicy` field, so node code — community nodes included — cannot
+opt out of the instance's policy.
+
+The raw `httpRequest` function is not exported from the package barrel. It is
+reachable only through the `@n8n/backend-network/testing` entry point, so
+production code cannot reach an unguarded request function.
 
 ## The boundary rule
 

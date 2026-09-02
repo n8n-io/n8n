@@ -33,4 +33,19 @@ describe('Instance AI observability', () => {
 			messageId: 'message-1',
 		});
 	});
+
+	it('omits runId when absent and includes projectId for thread creation', () => {
+		expect(
+			buildInstanceAiObservabilityContext({
+				threadId: 'thread-1',
+				userId: 'user-1',
+				projectId: 'project-1',
+			}),
+		).toEqual({
+			source: 'instance-ai',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			projectId: 'project-1',
+		});
+	});
 });

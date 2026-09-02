@@ -1,19 +1,24 @@
+import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { McpConfig } from './mcp.config';
+import { McpSettingsService } from './mcp.settings.service';
 
 /**
- * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
- * user-delegations: a successful consent authorizes the client to act on
- * behalf of the user with the user's full permission set, equivalent to a
- * Personal API Key. Advertising scopes we don't enforce would misrepresent
- * that contract, so this stays empty until per-tool enforcement ships.
+ * Scopes a user can grant on the consent screen. Enforced per-tool via the
+ * mapping in `mcp-scopes.ts` when the MCP server registers tools.
  */
-export const SUPPORTED_SCOPES: string[] = [];
+export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
+const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -34,8 +39,6 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
 
-	readonly scopes = SUPPORTED_SCOPES;
-
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
 	 * indicator — the instance MCP server predates resource indicators, so
@@ -46,20 +49,88 @@ export class McpProtectedResource implements ProtectedResource {
 	constructor(
 		private readonly urlService: UrlService,
 		private readonly mcpSettingsService: McpSettingsService,
+		private readonly mcpConfig: McpConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly licenseState: LicenseState,
 	) {}
 
+	get scopes(): string[] {
+		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
+		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+	}
+
+	/**
+	 * Filtered to the tools this instance actually exposes, so the consent
+	 * screen never advertises tools a grant cannot deliver.
+	 */
+	getScopeTools(): Record<string, string[]> {
+		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const tagsDisabled = this.globalConfig.tags.disabled;
+		const foldersLicensed = this.licenseState.isFoldersLicensed();
+		const supportedScopes = new Set(this.scopes);
+
+		return Object.fromEntries(
+			Object.entries(TOOLS_BY_SCOPE)
+				.filter(([scope]) => supportedScopes.has(scope))
+				.map(([scope, tools]) => [
+					scope,
+					tools.filter(
+						(tool) =>
+							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
+							(!tagsDisabled || tool !== 'list_workflow_tags') &&
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+					),
+				]),
+		);
+	}
+
 	getResourceUrl(): string {
+		// A dedicated MCP base URL (split-hostname deployments) takes precedence
+		// as the canonical resource: it is what clients are told to use.
+		if (this.mcpConfig.baseUrl) {
+			return `${this.mcpConfig.baseUrl}${MCP_RESOURCE_PATH}`;
+		}
 		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
 		return `${baseUrl}${MCP_RESOURCE_PATH}`;
+	}
+
+	/**
+	 * RFC 9728 §3.1 metadata URL for this resource: `/.well-known/
+	 * oauth-protected-resource` with the resource's path inserted after it.
+	 * Advertised in `WWW-Authenticate: resource_metadata=...` on 401s so clients
+	 * discover the metadata directly instead of guessing the well-known path.
+	 */
+	getProtectedResourceMetadataUrl(): string {
+		const url = new URL(this.getResourceUrl());
+		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
+	}
+
+	/**
+	 * Canonical resource URL first, then the instance-base-URL-derived one when
+	 * a dedicated MCP base URL is configured — clients connecting through the
+	 * main hostname (and tokens minted before the config change) must keep
+	 * working.
+	 */
+	getResourceUrls(): string[] {
+		const instanceUrl = `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}${MCP_RESOURCE_PATH}`;
+		return [...new Set([this.getResourceUrl(), instanceUrl])];
 	}
 
 	getAudiences(): string[] {
 		// The legacy audience stays scoped to this resource only — it must never
 		// be accepted at another protected resource's gate.
-		return [this.getResourceUrl(), LEGACY_MCP_AUDIENCE];
+		return [...this.getResourceUrls(), LEGACY_MCP_AUDIENCE];
 	}
 
 	async getAllowedRedirectUris(): Promise<string[]> {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
+	}
+
+	async authorize(_user: User): Promise<boolean> {
+		// The instance MCP server has no per-user authorization rule: any
+		// authenticated user may access it while the server is enabled, and all
+		// users are denied when it is disabled.
+		return await this.mcpSettingsService.getEnabled();
 	}
 }

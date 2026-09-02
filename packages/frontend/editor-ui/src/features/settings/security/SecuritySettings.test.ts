@@ -5,8 +5,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -18,7 +18,7 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 
 const showToast = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast, showError }),
 }));
 
@@ -30,7 +30,12 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-const pinia = createTestingPinia();
+const checkEnvFeatureFlag = vi.fn().mockReturnValue(false);
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
+}));
+
+const pinia = createTestingPinia({ stubActions: false });
 
 const renderView = createComponentRenderer(SecuritySettings, {
 	pinia,
@@ -60,6 +65,8 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
+		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
@@ -800,6 +807,149 @@ describe('SecuritySettings', () => {
 
 				expect(showError).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('workflow reviews', () => {
+		beforeEach(() => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = true;
+			checkEnvFeatureFlag.mockReturnValue(true);
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: false },
+			});
+		});
+
+		it('should not render workflow reviews section when dev flag is off', async () => {
+			checkEnvFeatureFlag.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getSecuritySettings).toHaveBeenCalled();
+			});
+
+			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
+		});
+
+		it('should not render workflow reviews section when license is off', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
+			checkEnvFeatureFlag.mockReturnValue(true);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getSecuritySettings).toHaveBeenCalled();
+			});
+
+			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
+		});
+
+		it('should render workflow reviews toggle when licensed and dev flag are on', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+		});
+
+		it('should show a Preview tag on the workflow reviews toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+		});
+
+		it('should persist workflow reviews toggle changes', async () => {
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { enabled: true },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			});
+		});
+
+		it('should disable workflow reviews toggle when managed by env', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveClass('is-disabled');
+		});
+
+		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: false },
+			});
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { enabled: false },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: false });
+			});
+		});
+
+		it('should not call updateSecuritySettings when user cancels disable workflow reviews confirmation', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
 		});
 	});
 });

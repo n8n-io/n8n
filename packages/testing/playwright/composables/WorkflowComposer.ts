@@ -16,7 +16,6 @@ export class WorkflowComposer {
 		notificationMessage: string,
 		options: { timeout?: number } = {},
 	) {
-		const { timeout = 3000 } = options;
 		const responsePromise = this.n8n.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') &&
@@ -26,7 +25,7 @@ export class WorkflowComposer {
 
 		await this.n8n.canvas.clickExecuteWorkflowButton();
 		await responsePromise;
-		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, { timeout });
+		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, options);
 	}
 
 	/**
@@ -133,7 +132,7 @@ export class WorkflowComposer {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
 		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 
-		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
 		await folderOption.click();
 	}

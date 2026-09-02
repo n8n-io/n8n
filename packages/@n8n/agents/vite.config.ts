@@ -18,7 +18,6 @@ import { configDefaults } from 'vitest/config';
 const REWRITE_REQUIRE_TARGETS = [
 	'/src/runtime/model/lazy-ai.ts',
 	'/src/runtime/model/model-factory.ts',
-	'/src/utils/parse.ts',
 ];
 
 function rewriteSourceRequire(): Plugin {
@@ -52,9 +51,6 @@ function rewriteSourceRequire(): Plugin {
 
 export default mergeConfig(
 	createVitestConfig({
-		// The n8n root jest.config sets `restoreMocks: true`, and test files silently rely on
-		// it — omit this and mocks bleed between tests.
-		restoreMocks: true,
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
 	}),

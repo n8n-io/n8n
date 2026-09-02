@@ -6,6 +6,9 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 
+import { EventService } from '@/events/event.service';
+import type { PublicationOperationResult } from '@/events/maps/workflow-publication-metrics.event-map';
+
 /**
  * Periodically deletes terminal workflow publication outbox records on the leader
  * so the table doesn't grow unbounded (one terminal row per publish/unpublish, plus
@@ -28,6 +31,7 @@ export class WorkflowPublicationOutboxCleanupService {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
@@ -75,10 +79,12 @@ export class WorkflowPublicationOutboxCleanupService {
 			this.workflowsConfig.publicationOutboxFailedRetentionHours * Time.hours.toSeconds;
 		const batchSize = this.workflowsConfig.publicationOutboxCleanupBatchSize;
 
+		const startedAt = Date.now();
 		await this.tracing.startSpan(
 			{ name: 'Publication outbox cleanup', op: 'publication.outbox.cleanup' },
 			async (span) => {
 				let totalDeleted = 0;
+				let result: PublicationOperationResult = 'success';
 				try {
 					let deleted: number;
 					// Stop looping if a shutdown begins mid-cleanup; the next leader picks up
@@ -100,10 +106,16 @@ export class WorkflowPublicationOutboxCleanupService {
 						});
 					}
 				} catch (error) {
+					result = 'failure';
 					span.setStatus({ code: SpanStatus.error });
 					this.logger.error('Failed to clean up workflow publication outbox records', { error });
 				} finally {
 					span.setAttribute('n8n.publication.records_deleted', totalDeleted);
+					this.eventService.emit('workflow-publication-outbox-cleanup', {
+						result,
+						deletedCount: totalDeleted,
+						durationMs: Date.now() - startedAt,
+					});
 				}
 			},
 		);

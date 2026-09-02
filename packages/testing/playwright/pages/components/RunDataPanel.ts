@@ -48,7 +48,7 @@ export class RunDataPanel {
 	}
 
 	getPaginationPages() {
-		return this.getPagination().locator('li');
+		return this.getPagination().getByTestId('pagination-item');
 	}
 
 	getHighlightMarks() {
@@ -64,7 +64,7 @@ export class RunDataPanel {
 	}
 
 	getActiveDisplayMode() {
-		return this.root.locator('[class*="active"]');
+		return this.root.getByTestId('ndv-run-data-display-mode').getByRole('radio', { checked: true });
 	}
 
 	getPinDataButton() {
@@ -141,6 +141,14 @@ export class RunDataPanel {
 
 	getSchemaItemText(text: string) {
 		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
+	}
+
+	getSchemaItemToggle(text: string) {
+		return this.getSchemaItem(text).locator('.toggle');
+	}
+
+	getSchemaItemPill(text: string) {
+		return this.getSchemaItemText(text).locator('span');
 	}
 
 	getNodeInputOptions() {

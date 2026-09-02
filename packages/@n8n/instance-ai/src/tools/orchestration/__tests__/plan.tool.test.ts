@@ -22,14 +22,9 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getEventsAfter: vi.fn(),
-			getNextEventId: vi.fn(),
-			getEventsForRun: vi.fn().mockReturnValue([]),
-			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),
@@ -261,7 +256,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain(
-			'must call `create-tasks` with `planningContext.source: "replan"`',
+			'must load `create-tasks` via `load_tool` if needed, then call `create-tasks`',
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});
@@ -297,13 +292,18 @@ describe('createPlanTool — approval and revision flow', () => {
 	});
 
 	it('flips graph to active via approvePlan before scheduling on approval', async () => {
-		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const requestRunHandoff = vi.fn();
+		const context = createMockContext({
+			currentUserMessage: 'ordinary message',
+			requestRunHandoff,
+		});
 		const tool = createPlanTool(context);
 
 		await executeTool(tool, planInput(), { resumeData: { approved: true } });
 
 		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+		expect(requestRunHandoff).toHaveBeenCalledWith('planned-tasks-scheduled');
 	});
 
 	it('returns the rejection result even when taskStorage.save fails so the revision flow can proceed', async () => {

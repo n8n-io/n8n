@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type { InMemoryDnsCache } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
@@ -5,7 +6,7 @@ import promClient from 'prom-client';
 
 import { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusDnsCacheMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -17,7 +18,7 @@ describe('PrometheusDnsCacheMetricsService', () => {
 		enabled: true,
 	});
 
-	const dnsEvents = { on: jest.fn() };
+	const dnsEvents = { on: vi.fn() };
 	let cacheSizeValue = 0;
 	const dnsCache = {
 		events: dnsEvents,
@@ -27,22 +28,22 @@ describe('PrometheusDnsCacheMetricsService', () => {
 	} as unknown as InMemoryDnsCache;
 
 	let service: PrometheusDnsCacheMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockGaugeSet: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockGaugeSet: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeDnsCacheMetrics: true });
 		Object.assign(ssrfConfig, { enabled: true });
 		cacheSizeValue = 0;
 		service = new PrometheusDnsCacheMetricsService(dnsCache, config, ssrfConfig);
-		mockCounterInc = jest.fn();
-		mockGaugeSet = jest.fn();
+		mockCounterInc = vi.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getEventsHandler(eventName: string) {
@@ -164,7 +165,7 @@ describe('PrometheusDnsCacheMetricsService', () => {
 		it('should pass collect function that reads current cache size to the gauge', () => {
 			service.init();
 
-			const gaugeOptions = (promClient.Gauge as jest.Mock).mock.calls[0][0] as {
+			const gaugeOptions = (promClient.Gauge as Mock).mock.calls[0][0] as {
 				collect: () => void;
 			};
 			expect(typeof gaugeOptions.collect).toBe('function');

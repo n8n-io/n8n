@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -7,6 +8,8 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestAgentConfigMutation,
+	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -14,37 +17,43 @@ import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table';
+	type: 'workflow' | 'data-table' | 'agent';
 	name: string;
 	icon: IconName;
 	projectId?: string;
+	/** An agent artifact with no agent row behind it yet. */
+	pending?: boolean;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
+	initialAgentId?: () => string | undefined;
 }
 
-export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
+	const isPreviewOpen = ref(false);
 
-	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
+	// All previewable artifacts in the current thread, derived from resource registry.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type === 'workflow' || entry.type === 'data-table') {
+			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 				result.push({
 					id: entry.id,
 					type: entry.type,
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
+					pending: entry.pending,
 				});
 			}
 		}
@@ -68,6 +77,21 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
 	});
 
+	const activeAgentId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' ? tab.id : null;
+	});
+
+	const activeAgentProjectId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
+	});
+
+	const activeAgentPending = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' && tab.pending === true;
+	});
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -86,28 +110,43 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
+	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
-	// --- Workflow attachments (e.g. an editor hand-off) ---
-	// A workflow attached to a message surfaces as an artifact tab via the
+	// --- Resource attachments (workflow or agent hand-offs) ---
+	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
-	const firstAttachedWorkflowId = computed(() => {
+	const firstAttachedArtifactId = computed(() => {
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				if (attachment.type === 'workflow') return attachment.id;
+				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
 			}
 		}
 		return undefined;
 	});
 
-	// Open the attached workflow on arrival. Only when nothing is open, so it
-	// never steals focus from an agent-driven open or a user selection.
+	// An unsaved new-agent artifact carries no attachment (there is no agent to
+	// attach yet), so it opens off the thread's pending marker instead — the user
+	// arrived here by asking for a new agent, so it should already be on screen.
+	const pendingAgentTabId = computed(() => allArtifactTabs.value.find((tab) => tab.pending)?.id);
+	const initialAgentTabId = computed(() => {
+		const agentId = initialAgentId?.();
+		if (!agentId) return undefined;
+		return allArtifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
+	});
+
+	const initialArtifactId = computed(
+		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
+	);
+
+	// Open the arriving resource. Only when nothing is open, so it never steals
+	// focus from an agent-driven open or a user selection.
 	watch(
-		firstAttachedWorkflowId,
+		initialArtifactId,
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
+			isPreviewOpen.value = true;
 		},
 		{ immediate: true },
 	);
@@ -116,10 +155,11 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 
 	function selectTab(tabId: string) {
 		activeTabId.value = tabId;
+		isPreviewOpen.value = true;
 	}
 
 	function closePreview() {
-		activeTabId.value = undefined;
+		isPreviewOpen.value = false;
 	}
 
 	/**
@@ -128,8 +168,9 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openWorkflowPreview(workflowId: string): boolean {
-		if (activeTabId.value === workflowId) return false;
+		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
 		activeTabId.value = workflowId;
+		isPreviewOpen.value = true;
 		return true;
 	}
 
@@ -139,8 +180,21 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
-		if (activeTabId.value === dataTableId) return false;
+		if (activeTabId.value === dataTableId && isPreviewOpen.value) return false;
 		activeTabId.value = dataTableId;
+		isPreviewOpen.value = true;
+		return true;
+	}
+
+	/**
+	 * Open or switch the preview to an agent.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openAgentPreview(agentId: string, _projectId: string): boolean {
+		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
+		activeTabId.value = agentId;
+		isPreviewOpen.value = true;
 		return true;
 	}
 
@@ -154,20 +208,6 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
 		}
-	});
-
-	// --- Reset preview on thread switch ---
-	// Each thread is stateless for the preview panel: switching threads
-	// closes the panel. Past artifacts are reachable via their inline
-	// references in the message timeline.
-	watch(threadId, (nextThreadId, oldThreadId) => {
-		// Skip if this is the initial route setup (e.g. URL updated from
-		// /instance-ai to /instance-ai/:threadId after the first message)
-		if (!oldThreadId) return;
-		// Skip if the thread ID hasn't actually changed
-		if (nextThreadId === oldThreadId) return;
-
-		activeTabId.value = undefined;
 	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
@@ -201,6 +241,7 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuildResult.value.workflowId;
+			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -231,6 +272,36 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuilderTarget.value.workflowId;
+			isPreviewOpen.value = true;
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
+	// Mirrors the workflow-builder spawn-open above. The builder node id is
+	// stable per target agent (`agent-builder:<id>`), so this opens once per
+	// target per thread — later spawns for the same agent intentionally don't
+	// re-yank the view. Config refreshes are driven by the agents event bus.
+
+	const latestAgentBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestAgentBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestAgentBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestAgentBuilderTarget.value.targetAgentId;
+			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },
 	);
@@ -285,14 +356,15 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		() => latestUpdateResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestUpdateResult.value) return;
+			if (thread.isHydratingThread) return;
 
 			const targetId = latestUpdateResult.value.workflowId;
 
-			// Only refresh if the update targeted the currently active workflow tab
-			if (activeTabId.value === targetId) {
-				workflowRefreshKey.value++;
-			}
+			activeTabId.value = targetId;
+			isPreviewOpen.value = true;
+			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
@@ -315,6 +387,7 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestDataTableResult.value.dataTableId;
+			isPreviewOpen.value = true;
 			dataTableRefreshKey.value++;
 		},
 		{ flush: 'sync' },
@@ -337,8 +410,40 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		if (deletedId && deletedId === activeTabId.value) {
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
 			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
+			if (!activeTabId.value) {
+				isPreviewOpen.value = false;
+			}
 		}
 	});
+
+	// --- Signal persisted builder config mutations onto the agents event bus ---
+	// Every successful config-mutating builder tool call (stamped configMutated
+	// by the backend) notifies any mounted AgentBuilderView for that agent —
+	// the artifact panel, or a full-page builder in another route.
+
+	const latestAgentConfigMutation = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestAgentConfigMutation(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentConfigMutation.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAgentConfigMutation.value) return;
+			if (thread.isHydratingThread) return;
+			agentsEventBus.emit('agentUpdated', {
+				agentId: latestAgentConfigMutation.value.agentId,
+				source: 'instance-ai',
+			});
+		},
+		{ flush: 'sync' },
+	);
 
 	return {
 		activeTabId,
@@ -346,6 +451,9 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,
+		activeAgentId,
+		activeAgentProjectId,
+		activeAgentPending,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
@@ -354,5 +462,6 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		closePreview,
 		openWorkflowPreview,
 		openDataTablePreview,
+		openAgentPreview,
 	};
 }

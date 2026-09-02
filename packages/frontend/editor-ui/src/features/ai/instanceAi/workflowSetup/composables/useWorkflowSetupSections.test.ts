@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { makeSetupRequest } from '../__tests__/factories';
 import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 
@@ -36,6 +37,21 @@ describe('useWorkflowSetupSections', () => {
 
 		expect(sections.value).toHaveLength(1);
 		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
+	});
+
+	it('carries preferNewCredential from the setup request onto the section', () => {
+		const setupRequests = ref([
+			makeSetupRequest({ credentialType: 'slackApi', preferNewCredential: true }),
+			makeSetupRequest({
+				credentialType: 'telegramApi',
+				node: { id: 'telegram', name: 'Telegram' },
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].preferNewCredential).toBe(true);
+		expect(sections.value[1].preferNewCredential).toBeUndefined();
 	});
 
 	it('creates sections for editable parameter-only setup requests', () => {
@@ -92,6 +108,66 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].node.parameters).toMatchObject({ method: 'GET', url: '' });
 	});
 
+	it('drops stale cached display values from editable resource locators with no value', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: {
+					id: 'slack',
+					name: 'Get Channel History',
+					type: 'n8n-nodes-base.slack',
+					parameters: {
+						channelId: {
+							__rl: true,
+							mode: 'list',
+							value: '',
+							cachedResultName: 'mission-competitor-automatic-changelog',
+						},
+					},
+				},
+				parameterIssues: { channelId: ['Parameter "Channel" is required.'] },
+				editableParameters: [
+					{ name: 'channelId', displayName: 'Channel', type: 'resourceLocator' },
+				],
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].node.parameters.channelId).toEqual({
+			__rl: true,
+			mode: 'list',
+			value: '',
+		});
+	});
+
+	it('keeps cached display values on resource locators that have a value', () => {
+		const channelId = {
+			__rl: true,
+			mode: 'list',
+			value: 'C078Q83RKPZ',
+			cachedResultName: 'mission-competitor-automatic-changelog',
+		};
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: {
+					id: 'slack',
+					name: 'Get Channel History',
+					type: 'n8n-nodes-base.slack',
+					parameters: { channelId },
+				},
+				editableParameters: [
+					{ name: 'channelId', displayName: 'Channel', type: 'resourceLocator' },
+				],
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].node.parameters.channelId).toEqual(channelId);
+	});
+
 	it('uses a stable node-name and credential-type id', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
@@ -127,6 +203,43 @@ describe('useWorkflowSetupSections', () => {
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value[0].currentCredentialId).toBe('node-cred');
+	});
+
+	it('does not seed the existing credential when the request prefers a new one', () => {
+		// preferNewCredential reopens the card to replace the current credential;
+		// seeding it would make the step read as complete and resubmit the old one.
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'httpBasicAuth',
+				preferNewCredential: true,
+				node: {
+					credentials: {
+						httpBasicAuth: { id: 'node-cred', name: 'Node credential' },
+					},
+				},
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].currentCredentialId).toBeNull();
+	});
+
+	it('seeds the AI Gateway-managed tag for gateway-managed node credentials', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'googlePalmApi',
+				node: {
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].currentCredentialId).toBe(AI_GATEWAY_MANAGED_TAG);
 	});
 
 	it('does not preselect unrelated store credentials', () => {

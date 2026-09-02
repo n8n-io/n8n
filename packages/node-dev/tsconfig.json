@@ -7,7 +7,8 @@
 		"outDir": "dist",
 		"preserveSymlinks": true,
 		// TODO: remove all options below this line
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"types": ["node"]
 	},
 	"include": ["commands/**/*.ts", "src/**/*.ts"]
 }

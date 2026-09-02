@@ -193,7 +193,7 @@ export class AgentBrowserAdapter implements Adapter {
 		}
 
 		if (!this.relay.isExtensionConnected()) {
-			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort);
 			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` mirrors the playwright adapter — see
 			// `playwright.ts` for the full justification. The extension only honors
 			// the flag when the relay URL is localhost, which it always is here.
@@ -221,7 +221,7 @@ export class AgentBrowserAdapter implements Adapter {
 			log.debug('launch: extension already connected to existing relay');
 		}
 
-		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort!);
+		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort);
 		log.debug('launch: cdp endpoint:', this.cdpEndpoint);
 
 		this.relay.onExtensionDisconnect = (reason) => {
@@ -266,7 +266,10 @@ export class AgentBrowserAdapter implements Adapter {
 		return (await this.listTabs()).map((t) => t.id);
 	}
 
-	async newPage(url?: string): Promise<PageInfo> {
+	async newPage(
+		url?: string,
+		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<PageInfo> {
 		if (url) AgentBrowserAdapter.assertSafeArg(url, 'URL');
 		await this.run(['tab', 'new', ...(url ? [url] : [])]);
 		const tabs = await this.refreshTabs();
@@ -305,13 +308,19 @@ export class AgentBrowserAdapter implements Adapter {
 		return { title: tab?.title ?? '', url: currentUrl, status: 200 };
 	}
 
-	async back(pageId: string): Promise<NavigateResult> {
+	async back(
+		pageId: string,
+		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult> {
 		await this.switchToTab(pageId);
 		await this.run(['back']);
 		return await this.navResult(pageId);
 	}
 
-	async forward(pageId: string): Promise<NavigateResult> {
+	async forward(
+		pageId: string,
+		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult> {
 		await this.switchToTab(pageId);
 		await this.run(['forward']);
 		return await this.navResult(pageId);
@@ -347,6 +356,11 @@ export class AgentBrowserAdapter implements Adapter {
 		await this.switchToTab(pageId);
 		const ref = this.resolveTarget(target);
 		const baseCmd = options?.clear ? 'fill' : 'type';
+
+		// TODO: `mode: 'paste'` is accepted but not honoured here — this adapter still
+		// types key by key, so code editors are still corrupted. Implementing it needs an
+		// atomic insert that replaces existing content (the CLI's `fill` does not, on a
+		// contenteditable) and that reports failure (the `eval` channel does not).
 
 		// agent-browser's CLI scans all raw args for "--help"/"-h" before parsing,
 		// so any arg starting with "-" would be misinterpreted as a flag.

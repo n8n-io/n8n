@@ -3,18 +3,19 @@ import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { isPostMessageOriginAllowed } from '@/app/utils/postMessageUtils';
 import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -48,7 +49,7 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
-	const uiStore = useUIStore();
+	const notificationsStore = useNotificationsStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
 	const credentialsStore = useCredentialsStore();
@@ -92,7 +93,7 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		canOpenNDV.value =
 			canOpenNDVFromRouteQuery(route.query.canOpenNDV) && json.canOpenNDV !== false;
 
-		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
+		notificationsStore.setNotificationsSuppressed(json.suppressNotifications === true, {
 			allowErrors: json.allowErrorNotifications === true,
 		});
 
@@ -149,7 +150,7 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 			return;
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+		await credentialsStore.fetchUsableCredentials({ workflowId: data.workflowData.id });
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
@@ -233,7 +234,8 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		if (
 			!messageEvent ||
 			typeof messageEvent.data !== 'string' ||
-			!messageEvent.data?.includes?.('"command"')
+			!messageEvent.data?.includes?.('"command"') ||
+			!isPostMessageOriginAllowed(messageEvent.origin)
 		) {
 			return;
 		}

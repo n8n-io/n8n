@@ -1,20 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
 import { ApiError } from '../client';
-import { toPackagesError } from '../commands/package/shared';
+import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);
-	});
-
-	it('adds a beta-enablement hint for a 404', () => {
-		const result = toPackagesError(new ApiError(404, 'Not Found'));
-
-		expect(result).toBeInstanceOf(ApiError);
-		expect((result as ApiError).statusCode).toBe(404);
-		expect((result as ApiError).hint).toContain('N8N_PUBLIC_API_PACKAGES_ENABLED=true');
 	});
 
 	it('lists workflow-conflict issues for a 409', () => {
@@ -37,6 +29,19 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('e1');
 	});
 
+	it('lists project-conflict issues for a 409', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{ type: 'project-conflict', kind: 'fail-policy', sourceProjectId: 'P1', name: 'brie' },
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('project "brie" (source P1) already exists on this instance');
+	});
+
 	it('lists credential-unresolved issues for a 422', () => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {
@@ -54,6 +59,98 @@ describe('toPackagesError', () => {
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('credential c1 unresolved (not_found)');
 		expect(hint).toContain('w1, w2');
+	});
+
+	it('lists variable-unresolved issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-unresolved',
+						name: 'var1',
+						usedByWorkflows: ['w1', 'w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable "var1" unresolved');
+		expect(hint).toContain('w1, w2');
+	});
+
+	it('lists variable-conflict issues for a 409, naming the scope', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-conflict',
+						name: 'API_URL',
+						projectId: 'p1',
+						usedByWorkflows: ['w1'],
+					},
+					{ type: 'variable-conflict', name: 'DB_URL', usedByWorkflows: ['w2'] },
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable "API_URL" in project p1 holds a different value');
+		expect(hint).toContain('w1');
+		expect(hint).toContain('variable "DB_URL" in the global scope holds a different value');
+		expect(hint).toContain('w2');
+	});
+
+	it('lists variable-limit-exceeded issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-limit-exceeded',
+						limit: 5,
+						remaining: 1,
+						requested: 3,
+						names: ['API_URL', 'DB_URL', 'TOKEN'],
+						usedByWorkflows: ['w1', 'w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable limit reached: 3 new variable(s)');
+		expect(hint).toContain('API_URL, DB_URL, TOKEN');
+		expect(hint).toContain('1 of 5 remaining');
+		expect(hint).toContain('w1, w2');
+	});
+
+	it('lists tag-unresolved issues for a 409', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'tag-unresolved',
+						kind: 'rename-drift',
+						sourceId: 't1',
+						name: 'prod',
+						existingName: 'production',
+						usedByWorkflows: ['w1'],
+					},
+					{
+						type: 'tag-unresolved',
+						kind: 'permission-denied',
+						missingScope: 'tag:create',
+						usedByWorkflows: ['w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('tag "prod" (t1) unresolved (rename-drift)');
+		expect(hint).toContain('w1');
+		expect(hint).toContain('requires the tag:create scope');
+		expect(hint).toContain('w2');
 	});
 
 	it('leaves other ApiErrors without issue details unchanged', () => {

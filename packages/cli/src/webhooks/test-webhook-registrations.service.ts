@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -9,7 +10,6 @@ import {
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
-import { isObjectLiteral } from '@n8n/backend-common';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 
@@ -21,6 +21,13 @@ export type TestWebhookRegistration = {
 	workflowEntity: IWorkflowBase;
 	destinationNode?: IDestinationNode;
 	webhook: IWebhookData;
+	/**
+	 * Encrypted credential context carrying the identity of the builder who started
+	 * this test run. A manual run normally picks this up from the auth cookie when its
+	 * execution data is built, but a run that waits for a webhook returns before that,
+	 * so the identity has to travel on the registration instead.
+	 */
+	encryptedRunnerIdentity?: string;
 };
 
 // Type guard for TestWebhookRegistration.

@@ -1,14 +1,15 @@
+import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { License } from '@/license';
+import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -16,13 +17,14 @@ import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
-jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
-	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
-	getWorkflowHistoryPruneTime: jest.fn(() => 24),
+vi.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
+	getWorkflowHistoryLicensePruneTime: vi.fn(() => 24),
+	getWorkflowHistoryPruneTime: vi.fn(() => 24),
 }));
 
 describe('FrontendService', () => {
@@ -77,6 +79,8 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		aiAssistant: { baseUrl: '' },
+		aiGateway: { enabled: false },
 		queue: { workerPool: { enabled: false } },
 	});
 
@@ -91,8 +95,8 @@ describe('FrontendService', () => {
 	const logger = mock<Logger>();
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
-		addPostProcessor: jest.fn(),
-		collectTypes: jest.fn().mockResolvedValue({
+		addPostProcessor: vi.fn(),
+		collectTypes: vi.fn().mockResolvedValue({
 			credentials: [],
 			nodes: [],
 		}),
@@ -108,38 +112,38 @@ describe('FrontendService', () => {
 	});
 
 	const credentialTypes = mock<CredentialTypes>({
-		getParentTypes: jest.fn().mockReturnValue([]),
+		getParentTypes: vi.fn().mockReturnValue([]),
 	});
 
 	const credentialsOverwrites = mock<CredentialsOverwrites>({
-		getAll: jest.fn().mockReturnValue({}),
+		getAll: vi.fn().mockReturnValue({}),
 	});
 
 	const license = mock<License>({
-		getUsersLimit: jest.fn().mockReturnValue(100),
-		getPlanName: jest.fn().mockReturnValue('Community'),
-		getConsumerId: jest.fn().mockReturnValue('test-consumer'),
-		isSharingEnabled: jest.fn().mockReturnValue(false),
-		isLogStreamingEnabled: jest.fn().mockReturnValue(false),
-		isLdapEnabled: jest.fn().mockReturnValue(false),
-		isSamlEnabled: jest.fn().mockReturnValue(false),
-		isAdvancedExecutionFiltersEnabled: jest.fn().mockReturnValue(false),
-		isVariablesEnabled: jest.fn().mockReturnValue(false),
-		isSourceControlLicensed: jest.fn().mockReturnValue(false),
-		isExternalSecretsEnabled: jest.fn().mockReturnValue(false),
-		isLicensed: jest.fn().mockReturnValue(false),
-		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
-		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
-		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
+		getUsersLimit: vi.fn().mockReturnValue(100),
+		getPlanName: vi.fn().mockReturnValue('Community'),
+		getConsumerId: vi.fn().mockReturnValue('test-consumer'),
+		isSharingEnabled: vi.fn().mockReturnValue(false),
+		isLogStreamingEnabled: vi.fn().mockReturnValue(false),
+		isLdapEnabled: vi.fn().mockReturnValue(false),
+		isSamlEnabled: vi.fn().mockReturnValue(false),
+		isAdvancedExecutionFiltersEnabled: vi.fn().mockReturnValue(false),
+		isVariablesEnabled: vi.fn().mockReturnValue(false),
+		isSourceControlLicensed: vi.fn().mockReturnValue(false),
+		isExternalSecretsEnabled: vi.fn().mockReturnValue(false),
+		isLicensed: vi.fn().mockReturnValue(false),
+		isDebugInEditorLicensed: vi.fn().mockReturnValue(false),
+		isWorkerViewLicensed: vi.fn().mockReturnValue(false),
+		isAdvancedPermissionsLicensed: vi.fn().mockReturnValue(false),
 
-		getVariablesLimit: jest.fn().mockReturnValue(0),
-		getTeamProjectLimit: jest.fn().mockReturnValue(0),
-		isBinaryDataS3Licensed: jest.fn().mockReturnValue(false),
-		isAiAssistantEnabled: jest.fn().mockReturnValue(false),
-		isAskAiEnabled: jest.fn().mockReturnValue(false),
-		isAiCreditsEnabled: jest.fn().mockReturnValue(false),
-		getAiCredits: jest.fn().mockReturnValue(0),
-		isFoldersEnabled: jest.fn().mockReturnValue(false),
+		getVariablesLimit: vi.fn().mockReturnValue(0),
+		getTeamProjectLimit: vi.fn().mockReturnValue(0),
+		isBinaryDataS3Licensed: vi.fn().mockReturnValue(false),
+		isAiAssistantEnabled: vi.fn().mockReturnValue(false),
+		isAskAiEnabled: vi.fn().mockReturnValue(false),
+		isAiCreditsEnabled: vi.fn().mockReturnValue(false),
+		getAiCredits: vi.fn().mockReturnValue(0),
+		isFoldersEnabled: vi.fn().mockReturnValue(false),
 	});
 
 	const mailer = mock<UserManagementMailer>({
@@ -147,15 +151,14 @@ describe('FrontendService', () => {
 	});
 
 	const urlService = mock<UrlService>({
-		getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
-		getWebhookBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
-		getInstanceJwksUri: jest
-			.fn()
-			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
+		getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
+		getWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
+		getInstanceJwksUri: vi.fn().mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({
@@ -163,31 +166,33 @@ describe('FrontendService', () => {
 	});
 
 	const licenseState = mock<LicenseState>({
-		isOidcLicensed: jest.fn().mockReturnValue(false),
-		isMFAEnforcementLicensed: jest.fn().mockReturnValue(false),
-		isOtelCustomSpanAttributesLicensed: jest.fn().mockReturnValue(false),
-		getMaxWorkflowsWithEvaluations: jest.fn().mockReturnValue(0),
+		isOidcLicensed: vi.fn().mockReturnValue(false),
+		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
+		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
+		getMaxWorkflowsWithEvaluations: vi.fn().mockReturnValue(0),
 	});
 
 	const moduleRegistry = mock<ModuleRegistry>({
-		getActiveModules: jest.fn().mockReturnValue([]),
+		getActiveModules: vi.fn().mockReturnValue([]),
 	});
 
 	const mfaService = mock<MfaService>({
-		isMFAEnforced: jest.fn().mockReturnValue(false),
+		isMFAEnforced: vi.fn().mockReturnValue(false),
 	});
 
 	const ownershipService = mock<OwnershipService>({
-		hasInstanceOwner: jest.fn().mockReturnValue(false),
+		hasInstanceOwner: vi.fn().mockReturnValue(false),
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: jest.fn().mockResolvedValue(true),
+		getAiUsageSettings: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({
-		getPublishedCount: jest.fn().mockResolvedValue(7),
+		getPublishedCount: vi.fn().mockResolvedValue(7),
 	});
+
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -196,6 +201,9 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
+		// isApiKeyAuthEnabled() reads License via the container directly, so the
+		// constructor-injected mock above must also be registered here.
+		Container.set(License, license);
 
 		return {
 			service: new FrontendService(
@@ -217,20 +225,44 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				workflowReviewPolicyService,
 			),
 			license,
 		};
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
-		jest.clearAllMocks();
+		originalEnv = { ...process.env };
+		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.aiAssistant.baseUrl = '';
+		globalConfig.aiGateway.enabled = false;
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 		process.env = originalEnv;
+	});
+
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('getSettings', () => {
@@ -245,8 +277,82 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should expose excluded node types from NODES_EXCLUDE', async () => {
+			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.excludeNodes).toEqual(['n8n-nodes-base.executeWorkflow']);
+		});
+
+		it('should enable the AI Gateway when configured and licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+				'data:text/html;foo',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
+		});
+
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
+		});
+
 		it('should cache dynamic banner filters for 30 seconds', async () => {
-			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
 			workflowRepository.getPublishedCount.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
@@ -259,7 +365,7 @@ describe('FrontendService', () => {
 			});
 			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(29_999);
+			vi.advanceTimersByTime(29_999);
 			const cachedSettings = await service.getSettings();
 
 			expect(cachedSettings.dynamicBanners.filters).toEqual({
@@ -267,7 +373,7 @@ describe('FrontendService', () => {
 			});
 			expect(workflowRepository.getPublishedCount).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(1);
+			vi.advanceTimersByTime(1);
 			const refreshedSettings = await service.getSettings();
 
 			expect(refreshedSettings.dynamicBanners.filters).toEqual({
@@ -294,7 +400,7 @@ describe('FrontendService', () => {
 		});
 
 		it('should fall back to the last published workflow count when refresh fails', async () => {
-			jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+			vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.diagnostics.frontendConfig = 'key;http://localhost';
 			workflowRepository.getPublishedCount
@@ -303,7 +409,7 @@ describe('FrontendService', () => {
 
 			const { service } = createMockService();
 			await service.getSettings();
-			jest.advanceTimersByTime(30_000);
+			vi.advanceTimersByTime(30_000);
 
 			const settings = await service.getSettings();
 
@@ -405,7 +511,7 @@ describe('FrontendService', () => {
 			// rather than the tier default.
 			delete process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
 			license.getPlanName.mockReturnValue('Community');
-			(license.getValue as jest.Mock).mockImplementation((feature: string) =>
+			(license.getValue as Mock).mockImplementation((feature: string) =>
 				feature === 'quota:evaluations:concurrencyLimit' ? 4 : undefined,
 			);
 
@@ -423,6 +529,30 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should surface useWorkflowPublicationService from workflows config', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: true,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(true);
+		});
+
+		it('should default useWorkflowPublicationService to false when flag is off', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: false,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(false);
 		});
 	});
 
@@ -733,8 +863,52 @@ describe('FrontendService', () => {
 	describe('overwriteCredentialsProperties', () => {
 		afterEach(() => {
 			// Restore globalConfig.credentials to the default so other tests are unaffected
-			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
 			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should expose managed OAuth scopes only for configured credential types', () => {
+			const baseCredential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { showScopes: ['googleOAuth2Api'], skipTypes: [] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(baseCredential.__showManagedOAuthScopes).toBe(true);
+			expect(childCredential.__showManagedOAuthScopes).toBeUndefined();
+		});
+
+		it('should clear stale managed OAuth scope visibility metadata', () => {
+			const credential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+				__showManagedOAuthScopes: true,
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__showManagedOAuthScopes).toBeUndefined();
 		});
 
 		it('should set __skipManagedCreation for types in the skip list', () => {
@@ -797,6 +971,50 @@ describe('FrontendService', () => {
 			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
 
+		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
+			// An overwrite keyed at a base type is inherited by extending types
+			// (__overwrittenProperties), but the skip list is exact-name: skipping the
+			// base must not disable managed creation for the extending types.
+			const baseCredential = {
+				name: 'microsoftOAuth2Api',
+				displayName: 'Microsoft OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'microsoftOutlookOAuth2Api',
+				displayName: 'Microsoft Outlook OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['microsoftOAuth2Api'] },
+			};
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				microsoftOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialTypes.getParentTypes as Mock).mockImplementation((name: string) =>
+				name === 'microsoftOutlookOAuth2Api' ? ['microsoftOAuth2Api', 'oAuth2Api'] : ['oAuth2Api'],
+			);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			// both are marked overwritten (the extending type inherits the base entry)
+			expect(baseCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			expect(childCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			// but only the exact skip-list entry loses managed creation
+			expect(baseCredential.__skipManagedCreation).toBe(true);
+			expect(childCredential.__skipManagedCreation).toBeUndefined();
+
+			// restore shared mock defaults for subsequent tests
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialTypes.getParentTypes as Mock).mockReturnValue([]);
+		});
+
 		describe('JWKS URI injection', () => {
 			const expectedJwksUri = 'http://localhost:5678/rest/.well-known/jwks.json';
 
@@ -855,7 +1073,7 @@ describe('FrontendService', () => {
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
+				(credentialTypes.getParentTypes as Mock).mockReturnValue(['oAuth2Api']);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();
@@ -897,14 +1115,14 @@ describe('FrontendService', () => {
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
 			];
 
-			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
+			(loadNodesAndCredentials.collectTypes as Mock).mockResolvedValue({
 				nodes: testNodes,
 				credentials: [],
 			});
 
 			const { service } = createMockService();
 
-			const writeStaticJSONSpy = jest
+			const writeStaticJSONSpy = vi
 				.spyOn(service as any, 'writeStaticJSON')
 				.mockImplementation(() => {});
 

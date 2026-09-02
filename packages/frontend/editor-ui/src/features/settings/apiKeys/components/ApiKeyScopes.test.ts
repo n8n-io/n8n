@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -70,6 +71,19 @@ describe('ApiKeyScopes', () => {
 
 		await userEvent.click(getByTestId('scopes-mode-read-only'));
 
+		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
+	});
+
+	it('selects read only when navigating with arrow keys inside a keydown.stop container', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: availableScopes, availableScopes },
+			attrs: { onKeydown: (event: KeyboardEvent) => event.stopPropagation() },
+		});
+
+		getByTestId('scopes-mode-all').focus();
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(getByTestId('scopes-mode-read-only')).toBeChecked();
 		expect(emitted('update:modelValue').at(-1)).toEqual([readOnlyScopes]);
 	});
 
@@ -212,8 +226,10 @@ describe('ApiKeyScopes', () => {
 
 		expect(getByTestId('scopes-mode-all')).toBeChecked();
 		expect(getByTestId('scopes-mode-custom')).not.toBeChecked();
-		// The programmatic mode flip must also collapse the tree, not just move the radio.
-		expect(queryByTestId('scopes-search')).not.toBeInTheDocument();
+		// The programmatic mode flip must also collapse the tree, not just move the
+		// radio. The collapse cascades through two watchers plus the collapsible's
+		// unmount, which settles a couple of ticks after the rerender.
+		await waitFor(() => expect(queryByTestId('scopes-search')).not.toBeInTheDocument());
 	});
 
 	it('toggling a group while searching only affects scopes in that group, not the visible subset', async () => {

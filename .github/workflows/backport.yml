@@ -4,7 +4,7 @@ run-name: Backport pull request ${{ github.event.pull_request.number || inputs.p
 
 on:
   pull_request:
-    types: [closed]
+    types: [closed, labeled]
   workflow_dispatch:
     inputs:
       pull-request-id:
@@ -12,16 +12,22 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   backport:
+    permissions:
+      contents: write
+      pull-requests: write
+    # Runs on: PR merge, a "Backport to ..." label added to a merged PR, or manual dispatch
     if: |
-      github.event.pull_request.merged == true ||
-      github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-slim
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'closed' && github.event.pull_request.merged == true) ||
+      (github.event.action == 'labeled' && github.event.pull_request.merged == true && startsWith(github.event.label.name, 'Backport to'))
+    # ubuntu-slim still ships git 2.54.0, whose shallow-fetch regression makes
+    # the backport action's `git fetch --depth=1` die on a target branch that
+    # exists. ubuntu-latest is on 2.55.0, which has the fix.
+    runs-on: ubuntu-latest
     outputs:
       created_pull_numbers: ${{ steps.backport.outputs.created_pull_numbers }}
     steps:
@@ -35,7 +41,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ steps.generate-token.outputs.token }}
-          fetch-depth: 1
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -87,6 +92,9 @@ jobs:
             }
 
   prepare-auto-merge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [backport]
     if: needs.backport.outputs.created_pull_numbers != ''
     runs-on: ubuntu-slim
@@ -113,6 +121,9 @@ jobs:
           echo "pr_numbers_json=$mergeable_json" >> "$GITHUB_OUTPUT"
 
   auto-merge-successful-backports:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [prepare-auto-merge]
     if: needs.prepare-auto-merge.outputs.pr_numbers_json != '[]'
     strategy:

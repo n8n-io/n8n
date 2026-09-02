@@ -7,6 +7,9 @@ import { positiveIntSchema } from '../schemas';
 const callerPolicySchema = z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']);
 type CallerPolicy = z.infer<typeof callerPolicySchema>;
 
+// Bounded so lease-derived timeouts stay far below Node's max timer delay (~24.8 days).
+const outboxLeaseSecondsSchema = positiveIntSchema.max(Time.days.toSeconds);
+
 @Config
 export class WorkflowsConfig {
 	/** Default name suggested when creating a new workflow. */
@@ -34,9 +37,14 @@ export class WorkflowsConfig {
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
 
 	/** Seconds after which an `in_progress` workflow publication outbox record
-	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle. */
-	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
+	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle.
+	 *  Must be at most one day. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS', outboxLeaseSecondsSchema)
 	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
+
+	/** Number of workflow publication outbox records the leader processes in parallel per drain. */
+	@Env('N8N_WORKFLOW_PUBLICATION_CONCURRENCY', positiveIntSchema)
+	workflowPublicationConcurrency: number = 5;
 
 	/** Hours to keep `completed` workflow publication outbox records before the cleanup deletes them. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_COMPLETED_RETENTION_HOURS')
@@ -53,6 +61,11 @@ export class WorkflowsConfig {
 	/** Maximum number of terminal workflow publication outbox records deleted per batch during cleanup. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE', positiveIntSchema)
 	publicationOutboxCleanupBatchSize: number = 1000;
+
+	/** Interval in seconds between trigger reconciliation runs on the leader, which
+	 *  re-publish workflows whose in-memory triggers went missing (e.g. after a leader transition). */
+	@Env('N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
+	publicationReconcileIntervalSeconds: number = 10;
 
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')

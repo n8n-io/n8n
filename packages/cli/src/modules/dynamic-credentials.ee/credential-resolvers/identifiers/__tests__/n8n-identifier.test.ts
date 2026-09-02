@@ -1,29 +1,39 @@
-import type { User } from '@n8n/db';
+import type { Mocked } from 'vitest';
+import type { User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
-import { N8NIdentifier } from '../n8n-identifier';
+import {
+	carriesN8nIdentity,
+	N8N_IDENTITY_SOURCES,
+	N8NIdentifierMetadataSchema,
+	N8NIdentifier,
+} from '../n8n-identifier';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
-	let mockAuthService: jest.Mocked<AuthService>;
-	let mockOAuthVerifier: jest.Mocked<OAuthTokenVerifierProxy>;
+	let mockAuthService: Mocked<AuthService>;
+	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
+	let mockUserRepository: Mocked<UserRepository>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
 	beforeEach(() => {
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(true);
+		mockUserRepository = mock<UserRepository>();
+		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier);
+		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier, mockUserRepository);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateOptions', () => {
@@ -338,9 +348,57 @@ describe('N8NIdentifier', () => {
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
 					'oauth-access-token',
 					'https://host/mcp/workflow-a',
+					undefined,
 				);
 				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
 				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should pass the sealed grant through, for a run that outlived its trigger', async () => {
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+
+				const grant = {
+					audiences: ['https://host/mcp/workflow-a'],
+					executeAccessWorkflowId: 'workflow-a',
+				};
+
+				const result = await identifier.resolve(
+					{
+						identity: 'oauth-access-token',
+						version: 1 as const,
+						metadata: {
+							source: 'n8n-oauth' as const,
+							resource: 'https://host/mcp/workflow-a',
+							grant,
+						},
+					},
+					{},
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+					'oauth-access-token',
+					'https://host/mcp/workflow-a',
+					grant,
+				);
+			});
+
+			it('should reject a grant that names no audience', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								resource: 'https://host/mcp/workflow-a',
+								grant: { audiences: [] },
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(CredentialResolverError);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 			});
 
 			it('should throw CredentialResolverError when the token resolves to no user', async () => {
@@ -361,5 +419,150 @@ describe('N8NIdentifier', () => {
 				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
 			});
 		});
+
+		describe('n8n-oauth branch — sealed (subject present)', () => {
+			const sealedContext = (metaOverrides: Record<string, unknown> = {}) => ({
+				identity: 'oauth-access-token',
+				version: 1 as const,
+				metadata: {
+					source: 'n8n-oauth' as const,
+					resource: 'https://host/mcp/wf',
+					subject: 'user-123',
+					establishedAt: 1,
+					executionPath: ['exec-root'],
+					...metaOverrides,
+				},
+			});
+
+			it('returns the subject when the execution is in the path, without verifying the token', async () => {
+				const result = await identifier.resolve(sealedContext(), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('accepts a sub-workflow execution present in the inherited path', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ executionPath: ['exec-root', 'exec-child'] }),
+					{},
+					'exec-child',
+				);
+
+				expect(result).toBe('user-123');
+			});
+
+			it('rejects a seal used in a different execution of the same workflow', async () => {
+				await expect(identifier.resolve(sealedContext(), {}, 'exec-other')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('fails closed when a bound seal reaches resolution with no execution id', async () => {
+				await expect(identifier.resolve(sealedContext(), {}, undefined)).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the sealed principal is disabled', async () => {
+				mockUserRepository.findOneBy.mockResolvedValue(
+					mock<User>({ id: 'user-123', disabled: true }),
+				);
+
+				await expect(identifier.resolve(sealedContext(), {}, 'exec-root')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the sealed principal no longer exists', async () => {
+				mockUserRepository.findOneBy.mockResolvedValue(null);
+
+				await expect(identifier.resolve(sealedContext(), {}, 'exec-root')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('resolves however long after establishment (no token, no TTL)', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ establishedAt: 0 }),
+					{},
+					'exec-root',
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('returns the subject ungated for an unbound seal (empty path, pre-execution probe)', async () => {
+				const result = await identifier.resolve(
+					sealedContext({ executionPath: [] }),
+					{},
+					undefined,
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unbound seal (empty path) when resolving inside an execution', async () => {
+				await expect(
+					identifier.resolve(sealedContext({ executionPath: [] }), {}, 'exec-root'),
+				).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('re-takes the sealed grant and returns the subject when still authorized', async () => {
+				const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+				const result = await identifier.resolve(sealedContext({ grant }), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.authorizeSealedGrant).toHaveBeenCalledWith('user-123', grant);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects when the sealed grant is no longer authorized', async () => {
+				mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(false);
+				const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+				await expect(identifier.resolve(sealedContext({ grant }), {}, 'exec-root')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('skips the grant re-take for a grant-less seal and checks the principal locally', async () => {
+				const result = await identifier.resolve(sealedContext(), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.authorizeSealedGrant).not.toHaveBeenCalled();
+				expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
+			});
+		});
+	});
+});
+
+describe('carriesN8nIdentity', () => {
+	it.each(N8N_IDENTITY_SOURCES)('recognises the %s source', (source) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source } })).toBe(true);
+	});
+
+	it('recognises an n8n source even when the rest of the metadata is missing', () => {
+		// Fail-safe: an incomplete `cookie-source` context still carries an n8n token, and
+		// must not be waved through to a resolver that would treat it as an external one.
+		expect(
+			carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source: 'cookie-source' } }),
+		).toBe(true);
+	});
+
+	it.each([
+		['slack-signature', { source: 'slack-signature' }],
+		['http-header', { source: 'http-header', headerName: 'authorization' }],
+		['no source at all', {}],
+	])('does not claim %s', (_label, metadata) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata })).toBe(false);
+	});
+
+	it('covers every source the identifier accepts', () => {
+		// Guards against a source being added to the schema but not to the list, which
+		// would silently hand an n8n token to an external-subject resolver.
+		expect(N8NIdentifierMetadataSchema.options).toHaveLength(3);
 	});
 });

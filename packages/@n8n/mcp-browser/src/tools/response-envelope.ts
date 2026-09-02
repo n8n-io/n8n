@@ -27,6 +27,26 @@ export function resolvePageContext(
 // ---------------------------------------------------------------------------
 
 /**
+ * Attach a snapshot to the record and probe the page for sensitive values so
+ * the caller can redact them. Best-effort — failures leave the record as-is.
+ */
+async function attachSnapshot(
+	record: Record<string, unknown>,
+	state: ConnectionState,
+	pageId: string,
+	options: ConnectedToolOptions,
+): Promise<SensitivityResult | undefined> {
+	try {
+		const snap = await state.adapter.snapshot(pageId, undefined, options.snapshotInteractive);
+		record.snapshot = snap.tree;
+		return analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
+	} catch {
+		// Snapshot failure shouldn't break the response
+		return undefined;
+	}
+}
+
+/**
  * Inject snapshot, modal state, console summary, and new-tab diff into a
  * structured response. All injections are best-effort — failures are silently
  * ignored so the primary tool result is never lost.
@@ -44,13 +64,7 @@ export async function enrichResponse(
 	let sensitivity: SensitivityResult | undefined;
 
 	if (options.autoSnapshot) {
-		try {
-			const snap = await state.adapter.snapshot(pageId);
-			record.snapshot = snap.tree;
-			sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
-		} catch {
-			// Snapshot failure shouldn't break the tool response
-		}
+		sensitivity = await attachSnapshot(record, state, pageId, options);
 	}
 
 	if (!options.autoSnapshot && shouldProbeResult(record)) {
@@ -132,18 +146,14 @@ export async function buildErrorResponse(
 
 	const errorData: Record<string, unknown> = { error: mcpError.message };
 	if (mcpError.hint) errorData.hint = mcpError.hint;
+	let sensitivity: SensitivityResult | undefined;
 
 	// Best-effort enrichment — connection itself may be broken
 	try {
 		const { state, pageId } = resolvePageContext(connection, args);
 
 		if (options.autoSnapshot) {
-			try {
-				const snap = await state.adapter.snapshot(pageId);
-				errorData.snapshot = snap.tree;
-			} catch {
-				// Snapshot failure on error path is expected
-			}
+			sensitivity = await attachSnapshot(errorData, state, pageId, options);
 		}
 
 		try {
@@ -156,9 +166,17 @@ export async function buildErrorResponse(
 		// Connection lookup failure — nothing more we can enrich
 	}
 
-	return {
+	const result: CallToolResult = {
 		content: [{ type: 'text' as const, text: JSON.stringify(errorData, null, 2) }],
 		structuredContent: errorData,
 		isError: true,
 	};
+
+	if (sensitivity?.ok) {
+		applyRedactions(result, sensitivity);
+	} else if (sensitivity && !sensitivity.ok) {
+		log.warn('sensitivity analysis failed during error enrichment', { error: sensitivity.error });
+	}
+
+	return result;
 }

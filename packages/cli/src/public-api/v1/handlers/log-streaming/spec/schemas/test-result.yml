@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required:
+  - success
+properties:
+  success:
+    type: boolean
+    description: Whether the test message was delivered to the destination successfully.
+    example: true

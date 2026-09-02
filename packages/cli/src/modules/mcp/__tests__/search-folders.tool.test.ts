@@ -1,16 +1,22 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { FolderRepository, User } from '@n8n/db';
+import { User } from '@n8n/db';
 
-import { createSearchFoldersTool } from '../tools/search-folders.tool';
-
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+
+import { createSearchFoldersTool } from '../tools/search-folders.tool';
 
 describe('search-folders MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
 	const createMocks = (overrides?: {
-		folders?: Array<{ id: string; name: string; parentFolderId: string | null }>;
+		folders?: Array<{
+			id: string;
+			name: string;
+			parentFolder?: { id: string } | null;
+			path?: string[];
+		}>;
 		count?: number;
 		projectAccessible?: boolean;
 	}) => {
@@ -18,21 +24,21 @@ describe('search-folders MCP tool', () => {
 		const count = overrides?.count ?? folders.length;
 		const projectAccessible = overrides?.projectAccessible ?? true;
 
-		const folderRepository = mockInstance(FolderRepository, {
-			getManyAndCount: jest.fn().mockResolvedValue([folders, count]),
+		const folderService = mockInstance(FolderService, {
+			getManyAndCount: vi.fn().mockResolvedValue([folders, count]),
 		});
 
 		const projectService = mockInstance(ProjectService, {
-			getProjectWithScope: jest
+			getProjectWithScope: vi
 				.fn()
 				.mockResolvedValue(projectAccessible ? { id: 'proj-1', type: 'team' } : null),
 		});
 
 		const telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 
-		return { folderRepository, projectService, telemetry };
+		return { folderService, projectService, telemetry };
 	};
 
 	const callHandler = async (
@@ -49,14 +55,9 @@ describe('search-folders MCP tool', () => {
 		);
 
 	test('creates tool correctly', () => {
-		const { folderRepository, projectService, telemetry } = createMocks();
+		const { folderService, projectService, telemetry } = createMocks();
 
-		const tool = createSearchFoldersTool(
-			user,
-			folderRepository as unknown as FolderRepository,
-			projectService as unknown as ProjectService,
-			telemetry,
-		);
+		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 
 		expect(tool.name).toBe('search_folders');
 		expect(tool.config).toBeDefined();
@@ -67,24 +68,24 @@ describe('search-folders MCP tool', () => {
 
 	test('returns folders for a project', async () => {
 		const folders = [
-			{ id: 'folder-1', name: 'Production', parentFolderId: null },
-			{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1' },
+			{ id: 'folder-1', name: 'Production', parentFolder: null, path: ['Production'] },
+			{
+				id: 'folder-2',
+				name: 'Dev',
+				parentFolder: { id: 'folder-1' },
+				path: ['Production', 'Dev'],
+			},
 		];
-		const { folderRepository, projectService, telemetry } = createMocks({ folders });
+		const { folderService, projectService, telemetry } = createMocks({ folders });
 
-		const tool = createSearchFoldersTool(
-			user,
-			folderRepository as unknown as FolderRepository,
-			projectService as unknown as ProjectService,
-			telemetry,
-		);
+		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 
 		const result = await callHandler(tool, { projectId: 'proj-1' });
 
 		expect(result.structuredContent).toEqual({
 			data: [
-				{ id: 'folder-1', name: 'Production', parentFolderId: null },
-				{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1' },
+				{ id: 'folder-1', name: 'Production', parentFolderId: null, path: ['Production'] },
+				{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1', path: ['Production', 'Dev'] },
 			],
 			count: 2,
 		});
@@ -93,41 +94,33 @@ describe('search-folders MCP tool', () => {
 			'folder:list',
 		]);
 
-		expect(folderRepository.getManyAndCount).toHaveBeenCalledWith({
-			filter: { projectId: 'proj-1' },
+		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
+			filter: {},
+			select: { name: true, parentFolder: true, path: true, updatedAt: true },
 			take: 100,
 		});
 	});
 
 	test('filters by query', async () => {
-		const { folderRepository, projectService, telemetry } = createMocks();
+		const { folderService, projectService, telemetry } = createMocks();
 
-		const tool = createSearchFoldersTool(
-			user,
-			folderRepository as unknown as FolderRepository,
-			projectService as unknown as ProjectService,
-			telemetry,
-		);
+		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 
 		await callHandler(tool, { projectId: 'proj-1', query: 'prod' });
 
-		expect(folderRepository.getManyAndCount).toHaveBeenCalledWith({
-			filter: { projectId: 'proj-1', name: 'prod' },
+		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
+			filter: { name: 'prod' },
+			select: { name: true, parentFolder: true, path: true, updatedAt: true },
 			take: 100,
 		});
 	});
 
 	test('returns error when user lacks access to project', async () => {
-		const { folderRepository, projectService, telemetry } = createMocks({
+		const { folderService, projectService, telemetry } = createMocks({
 			projectAccessible: false,
 		});
 
-		const tool = createSearchFoldersTool(
-			user,
-			folderRepository as unknown as FolderRepository,
-			projectService as unknown as ProjectService,
-			telemetry,
-		);
+		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 
 		const result = await callHandler(tool, { projectId: 'proj-no-access' });
 
@@ -137,24 +130,19 @@ describe('search-folders MCP tool', () => {
 			count: 0,
 			error: 'Project not found or access denied',
 		});
-		expect(folderRepository.getManyAndCount).not.toHaveBeenCalled();
+		expect(folderService.getManyAndCount).not.toHaveBeenCalled();
 	});
 
 	test('handles errors', async () => {
-		const folderRepository = mockInstance(FolderRepository, {
-			getManyAndCount: jest.fn().mockRejectedValue(new Error('DB error')),
+		const folderService = mockInstance(FolderService, {
+			getManyAndCount: vi.fn().mockRejectedValue(new Error('DB error')),
 		});
 		const projectService = mockInstance(ProjectService, {
-			getProjectWithScope: jest.fn().mockResolvedValue({ id: 'proj-1', type: 'team' }),
+			getProjectWithScope: vi.fn().mockResolvedValue({ id: 'proj-1', type: 'team' }),
 		});
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 
-		const tool = createSearchFoldersTool(
-			user,
-			folderRepository as unknown as FolderRepository,
-			projectService as unknown as ProjectService,
-			telemetry,
-		);
+		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 
 		const result = await callHandler(tool, { projectId: 'proj-1' });
 

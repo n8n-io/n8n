@@ -4,10 +4,12 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import ResourcesListEmptyState, {
+	isEmptyStateResourceKey,
+} from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
@@ -15,9 +17,7 @@ import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuar
 import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
-import { ElPagination } from 'element-plus';
 import {
-	N8nActionBox,
 	N8nDatatable,
 	N8nIcon,
 	N8nInfoTip,
@@ -25,6 +25,7 @@ import {
 	N8nLink,
 	N8nLoading,
 	N8nOption,
+	N8nPagination,
 	N8nRecycleScroller,
 	N8nSelect,
 	N8nText,
@@ -38,7 +39,6 @@ type UIConfig = {
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
-const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
@@ -159,6 +159,18 @@ const showEmptyState = computed(() => {
 		!hasFilters.value &&
 		!filtersModel.value.search &&
 		!props.resourcesRefreshing
+	);
+});
+
+// Skeleton instead of list chrome while a refresh is deciding whether an
+// unfiltered list is empty — prevents a chrome flash before the empty state.
+const showLoadingState = computed(() => {
+	return (
+		props.loading ||
+		(props.resourcesRefreshing &&
+			props.resources.length === 0 &&
+			!hasFilters.value &&
+			!filtersModel.value.search)
 	);
 });
 
@@ -592,32 +604,18 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<div v-if="loading" class="resource-list-loading">
+		<div v-if="showLoadingState" class="resource-list-loading">
 			<N8nLoading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
-					<N8nActionBox
-						data-test-id="empty-resources-list"
-						:icon="{ type: 'emoji', value: '👋' }"
-						:heading="
-							getResourceText(
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								{ name: usersStore.currentUser?.firstName ?? '' },
-							)
-						"
-						:description="getResourceText('empty.description')"
-						:button-text="getResourceText('empty.button')"
-						button-type="secondary"
+					<ResourcesListEmptyState
+						v-if="isEmptyStateResourceKey(props.resourceKey)"
+						:resource-key="props.resourceKey"
 						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
-					>
-						<template #disabledButtonTooltip>
-							{{ getResourceText('empty.button.disabled.tooltip') }}
-						</template>
-					</N8nActionBox>
+					/>
 				</slot>
 			</div>
 			<PageViewLayoutList v-else>
@@ -736,17 +734,15 @@ defineExpose({
 							</div>
 						</div>
 						<div :class="$style.listPagination">
-							<ElPagination
-								v-model:current-page="currentPage"
-								v-model:page-size="rowsPerPage"
-								background
+							<N8nPagination
+								:page="currentPage"
+								:items-per-page="rowsPerPage"
 								:total="totalItems"
 								:page-sizes="availablePageSizeOptions"
-								layout="total, prev, pager, next, sizes"
 								data-test-id="resources-list-pagination"
-								@update:current-page="setCurrentPage"
-								@size-change="setRowsPerPage"
-							></ElPagination>
+								@update:page="setCurrentPage"
+								@update:items-per-page="setRowsPerPage"
+							/>
 						</div>
 					</div>
 					<!-- DATATABLE -->
@@ -855,21 +851,6 @@ defineExpose({
 	display: flex;
 	justify-content: flex-end;
 	margin-bottom: var(--spacing--lg);
-
-	:global(.el-pagination__sizes) {
-		height: 100%;
-		position: relative;
-		top: -1px;
-
-		input {
-			height: 100%;
-			min-height: 28px;
-		}
-
-		:global(.el-input__suffix) {
-			width: var(--spacing--md);
-		}
-	}
 }
 
 .sort-and-filter {

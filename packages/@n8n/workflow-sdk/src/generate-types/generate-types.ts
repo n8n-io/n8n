@@ -18,6 +18,7 @@
  * @generated - This file generates code, but is itself manually maintained.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
@@ -37,7 +38,10 @@ import { checkConditions } from '../validation/display-options';
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
 
-const NODES_BASE_TYPES = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+export const NODES_BASE_TYPES = path.resolve(
+	__dirname,
+	'../../../../nodes-base/dist/types/nodes.json',
+);
 const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
@@ -65,6 +69,28 @@ const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
  */
 const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
 
+function buildNodeConfigType(
+	paramsTypeName: string,
+	options: {
+		credentialsTypeName?: string;
+		subnodeConfigTypeName?: string;
+		subnodesRequired?: boolean;
+	} = {},
+): string {
+	const parts = [`NodeConfig<${paramsTypeName}>`];
+
+	if (options.credentialsTypeName) {
+		parts.push(`{ credentials?: ${options.credentialsTypeName} }`);
+	}
+
+	if (options.subnodeConfigTypeName) {
+		const optionalMark = options.subnodesRequired ? '' : '?';
+		parts.push(`{ subnodes${optionalMark}: ${options.subnodeConfigTypeName} }`);
+	}
+
+	return parts.join(' & ');
+}
+
 /**
  * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
  * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
@@ -72,8 +98,8 @@ const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credential
 const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`); see useResourceLocatorModes.ts.
  * Stored as an INodeParameterResourceLocator, or as an Expression string.
  */
 const WORKFLOW_SELECTOR_TS_TYPE =
@@ -112,7 +138,7 @@ ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
-function isCustomApiCall(operation: string): boolean {
+export function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
 
@@ -168,6 +194,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -335,8 +362,15 @@ export interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	/**
+	 * Connections may be a runtime expression string (`={{ ... }}`) for nodes
+	 * whose shape depends on parameters (e.g. AI Agent, Merge). Generation
+	 * handles those lexically: `ai_*` connection types are extracted from the
+	 * expression source, and dynamic `main` connections don't influence
+	 * heuristics like trigger detection.
+	 */
+	inputs: string | string[] | Array<{ type: string; displayName?: string }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
@@ -521,13 +555,18 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 		return undefined;
 	}
 
+	// Case-insensitive: node names don't round-trip folder casing reliably
+	// (chainLlm -> ChainLLM), and exact matching only appeared to work on
+	// macOS because APFS ignores case.
+	const targetsLower = targetNames.map((n) => n.toLowerCase());
+
 	for (const entry of entries) {
 		if (!entry.isDirectory()) continue;
 
 		const entryPath = path.join(dir, entry.name);
 
 		// Check if this directory matches our target and has __schema__
-		if (targetNames.includes(entry.name)) {
+		if (targetsLower.includes(entry.name.toLowerCase())) {
 			const schemaPath = path.join(entryPath, '__schema__');
 			if (fs.existsSync(schemaPath)) {
 				return schemaPath;
@@ -545,17 +584,35 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 }
 
 /**
+ * Schema roots to search, in priority order: the package currently being
+ * generated (generate-node-defs-cli runs with CWD = that package, so e.g.
+ * nodes-langchain's own `__schema__` dirs resolve), then nodes-base as the
+ * shared fallback.
+ */
+export function schemaSearchRoots(): string[] {
+	const cwdRoot = path.resolve(process.cwd(), 'dist', 'nodes');
+	if (cwdRoot !== NODES_BASE_DIST && fs.existsSync(cwdRoot)) {
+		return [cwdRoot, NODES_BASE_DIST];
+	}
+	return [NODES_BASE_DIST];
+}
+
+/**
  * Find the schema directory for a node, searching both flat and nested paths
  *
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
 function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+	const roots = schemaSearchRoots();
+
 	// If explicit schemaPath is provided, use it directly
 	if (schemaPath) {
-		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
-		if (fs.existsSync(explicitPath)) {
-			return explicitPath;
+		for (const root of roots) {
+			const explicitPath = path.join(root, schemaPath, '__schema__');
+			if (fs.existsSync(explicitPath)) {
+				return explicitPath;
+			}
 		}
 	}
 
@@ -565,16 +622,32 @@ function findSchemaDirectory(baseName: string, schemaPath?: string): string | un
 		baseName.toUpperCase(), // GMAIL
 	];
 
-	// Try flat paths first (most common case)
-	for (const folderName of possibleNames) {
-		const flatPath = path.join(NODES_BASE_DIST, folderName, '__schema__');
-		if (fs.existsSync(flatPath)) {
-			return flatPath;
+	// Try flat paths first (most common case). Match folder names
+	// case-insensitively — fs.existsSync with a guessed casing only works on
+	// case-insensitive filesystems (macOS), not on Linux CI.
+	const namesLower = possibleNames.map((n) => n.toLowerCase());
+	for (const root of roots) {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync(root, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			if (!entry.isDirectory() || !namesLower.includes(entry.name.toLowerCase())) continue;
+			const flatPath = path.join(root, entry.name, '__schema__');
+			if (fs.existsSync(flatPath)) {
+				return flatPath;
+			}
 		}
 	}
 
 	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
-	return findNestedSchemaDir(NODES_BASE_DIST, possibleNames);
+	for (const root of roots) {
+		const found = findNestedSchemaDir(root, possibleNames);
+		if (found) return found;
+	}
+	return undefined;
 }
 
 /**
@@ -610,14 +683,24 @@ export function discoverSchemasForNode(
 		return schemas;
 	}
 
-	// Try to find version directory - try exact match first, then closest lower version
-	const versionDir = findVersionDirectory(schemaDir, version);
-	if (!versionDir) {
-		schemaCache.set(cacheKey, schemas);
-		return schemas;
+	// Per-file fallback across version directories: the best-matching dir wins
+	// for every (resource, operation) it covers, and older dirs only fill the
+	// gaps. Without this, a sparse exact-version dir (e.g. Slack v2.7.0 holding
+	// only message/search.json) hides every schema a lower minor already has.
+	const seen = new Set<string>();
+	for (const versionDir of orderedVersionDirectories(schemaDir, version)) {
+		collectSchemasFromVersionDir(versionDir, schemas, seen);
 	}
 
-	// Scan version directory entries
+	schemaCache.set(cacheKey, schemas);
+	return schemas;
+}
+
+function collectSchemasFromVersionDir(
+	versionDir: string,
+	schemas: OutputSchema[],
+	seen: Set<string>,
+): void {
 	try {
 		const entries = fs.readdirSync(versionDir, { withFileTypes: true });
 
@@ -625,6 +708,10 @@ export function discoverSchemasForNode(
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
 				const operationName = entry.name.replace('.json', '');
+				// `output.<variant>.json` files are context-conditional layout
+				// variants (e.g. with-parser), not operations — skip them here.
+				if (operationName.includes('.')) continue;
+				if (seen.has(`/${operationName}`)) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -635,6 +722,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -651,6 +739,7 @@ export function discoverSchemasForNode(
 				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
 				const operationName = opEntry.name.replace('.json', '');
+				if (seen.has(`${entry.name}/${operationName}`)) continue;
 				const schemaPath = path.join(resourceDir, opEntry.name);
 
 				try {
@@ -661,6 +750,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`${entry.name}/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -669,49 +759,120 @@ export function discoverSchemasForNode(
 	} catch {
 		// Skip if directory can't be read
 	}
+}
 
-	schemaCache.set(cacheKey, schemas);
-	return schemas;
+/** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
+export function padVersion(version: number): string {
+	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
 }
 
 /**
- * Find the best matching version directory for a given version
- * Tries exact match first (v{version}.0.0), then scans for closest lower version
- *
- * @param schemaDir Path to the __schema__ directory
- * @param version Target version number
- * @returns Path to version directory, or undefined if not found
+ * Hash every `__schema__/**\/*.json` file under the given roots (default: the
+ * same roots schema discovery searches). Schema content isn't part of
+ * `nodes.json`, so the build-time hash-skip in generate-node-defs-cli needs
+ * this to notice schema-only changes (e.g. a newly harvested output schema)
+ * and regenerate.
  */
-function findVersionDirectory(schemaDir: string, version: number): string | undefined {
-	// Try exact match first: v1.0.0, v2.0.0, etc.
-	const exactPath = path.join(schemaDir, `v${version}.0.0`);
-	if (fs.existsSync(exactPath)) {
-		return exactPath;
+export function computeSchemaCorpusHash(baseDirs: string[] = schemaSearchRoots()): string {
+	const hash = createHash('sha256');
+	for (const baseDir of baseDirs) {
+		const files: string[] = [];
+		collectSchemaDirs(baseDir, files);
+		files.sort();
+
+		for (const file of files) {
+			hash.update(path.relative(baseDir, file));
+			hash.update(fs.readFileSync(file));
+		}
+	}
+	return hash.digest('hex');
+}
+
+function collectSchemaDirs(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
 	}
 
-	// Scan for available versions and find closest lower
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue;
+		const entryPath = path.join(dir, entry.name);
+		if (entry.name === '__schema__') {
+			collectJsonFiles(entryPath, results);
+		} else {
+			collectSchemaDirs(entryPath, results);
+		}
+	}
+}
+
+function collectJsonFiles(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
+	}
+
+	for (const entry of entries) {
+		const entryPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			collectJsonFiles(entryPath, results);
+		} else if (entry.name.endsWith('.json')) {
+			results.push(entryPath);
+		}
+	}
+}
+
+/** Parse a `vX.Y.Z` directory name into a comparable [X, Y, Z] tuple. */
+function parseVersionDir(name: string): number[] {
+	return name.slice(1).split('.').map(Number);
+}
+
+function compareVersionTuplesDesc(a: number[], b: number[]): number {
+	for (let i = 0; i < Math.max(a.length, b.length); i++) {
+		const diff = (b[i] ?? 0) - (a[i] ?? 0);
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
+
+/**
+ * Order version directories by how well they match the target version:
+ * exact/nearest same-major below first, then nearest same-major above (a v2.x
+ * node must not lose its schemas just because only a higher v2 minor was
+ * recorded), then lower majors newest-first. Schemas resolve per file across
+ * this list — the first directory covering a (resource, operation) wins.
+ *
+ * NOTE: unlike n8n-core's runtime resolver this never falls forward to a
+ * NEWER major — generated types should not describe a next-generation API
+ * shape; converging the two is tracked in the harmonization spec.
+ */
+function orderedVersionDirectories(schemaDir: string, version: number): string[] {
+	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
 		const versionDirs = entries
 			.filter((e) => e.isDirectory() && /^v\d+(\.\d+)*$/.test(e.name))
-			.map((e) => {
-				const match = e.name.match(/^v(\d+)/);
-				return {
-					name: e.name,
-					majorVersion: match ? parseInt(match[1], 10) : 0,
-				};
-			})
-			.filter((v) => v.majorVersion <= version)
-			.sort((a, b) => b.majorVersion - a.majorVersion);
+			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }));
 
-		if (versionDirs.length > 0) {
-			return path.join(schemaDir, versionDirs[0].name);
-		}
+		const sameMajor = versionDirs.filter((v) => v.tuple[0] === target[0]);
+		const ordered = [
+			...sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+			...sameMajor
+				.filter((v) => compareVersionTuplesDesc(v.tuple, target) < 0)
+				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple)),
+			...versionDirs
+				.filter((v) => v.tuple[0] < target[0])
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+		];
+		return ordered.map((v) => path.join(schemaDir, v.name));
 	} catch {
-		// Ignore read errors
+		return [];
 	}
-
-	return undefined;
 }
 
 /**
@@ -973,6 +1134,7 @@ function mapNestedPropertyTypeInner(
 		case 'icon':
 			return ICON_TS_TYPE;
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1680,6 +1842,7 @@ function mapPropertyTypeInner(
 			return ICON_TS_TYPE;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
@@ -1857,10 +2020,13 @@ export function getPropertiesForCombination(
  */
 interface VersionCondition {
 	_cnd: {
+		eq?: number;
+		not?: number;
 		gt?: number;
 		gte?: number;
 		lt?: number;
 		lte?: number;
+		between?: { from: number; to: number };
 	};
 }
 
@@ -1875,11 +2041,14 @@ function versionMatchesCondition(version: number, condition: number | VersionCon
 
 	// It's a conditional expression like { _cnd: { gte: 3.1 } }
 	if (condition._cnd) {
-		const { gt, gte, lt, lte } = condition._cnd;
+		const { eq, not, gt, gte, lt, lte, between } = condition._cnd;
+		if (eq !== undefined && version !== eq) return false;
+		if (not !== undefined && version === not) return false;
 		if (gt !== undefined && !(version > gt)) return false;
 		if (gte !== undefined && !(version >= gte)) return false;
 		if (lt !== undefined && !(version < lt)) return false;
 		if (lte !== undefined && !(version <= lte)) return false;
+		if (between !== undefined && !(version >= between.from && version <= between.to)) return false;
 		return true;
 	}
 
@@ -2187,6 +2356,17 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
+	// Steer generic-auth selection at the moment the model reads this type: a
+	// bare union invites httpBearerAuth for any provider documenting
+	// `Authorization: Bearer <token>`.
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType' && !prop.description) {
+		prop = {
+			...prop,
+			description:
+				'For NEW credentials prefer \'httpTemplatedCustomAuth\' whenever the auth fits header/query/body values — `Authorization: Bearer <token>` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}; do NOT use httpBearerAuth for it. Plain generic types are only for reusing an existing credential or for what a template cannot express (basic, digest, OAuth).',
+		};
+	}
+
 	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property
@@ -2550,9 +2730,6 @@ export function generateSharedFile(
 	lines.push(`export interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -2728,19 +2905,18 @@ export function generateDiscriminatorFile(
 	lines.push(`export type ${nodeTypeName} = {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${version};`);
-	if (node.credentials && node.credentials.length > 0) {
-		lines.push(`${INDENT}credentials?: Credentials;`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
 	// Include subnodes in config if AI inputs exist
 	// subnodes field is required if any AI input type is required
 	const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-	const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-	const configType = subnodeConfigTypeName
-		? `NodeConfig<${configName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} }`
-		: `NodeConfig<${configName}>`;
+	const configType = buildNodeConfigType(configName, {
+		credentialsTypeName:
+			node.credentials && node.credentials.length > 0 ? 'Credentials' : undefined,
+		subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+		subnodesRequired: hasRequiredSubnodes,
+	});
 	lines.push(`${INDENT}config: ${configType};`);
 	if (schema) {
 		lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
@@ -3183,9 +3359,6 @@ export function generateSingleVersionTypeFile(
 	lines.push(`interface ${baseTypeName} {`);
 	lines.push(`${INDENT}type: '${node.name}';`);
 	lines.push(`${INDENT}version: ${specificVersion};`);
-	if (credTypeName) {
-		lines.push(`${INDENT}credentials?: ${credTypeName};`);
-	}
 	if (isTrigger) {
 		lines.push(`${INDENT}isTrigger: true;`);
 	}
@@ -3211,15 +3384,13 @@ export function generateSingleVersionTypeFile(
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
 		// subnodes field is required if any AI input type is required
-		if (subnodeConfigTypeName) {
-			const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-			const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
-			lines.push(
-				`${INDENT}config: NodeConfig<${configInfo.typeName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} };`,
-			);
-		} else {
-			lines.push(`${INDENT}config: NodeConfig<${configInfo.typeName}>;`);
-		}
+		const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
+		const configType = buildNodeConfigType(configInfo.typeName, {
+			credentialsTypeName: credTypeName,
+			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+			subnodesRequired: hasRequiredSubnodes,
+		});
+		lines.push(`${INDENT}config: ${configType};`);
 		if (outputTypeName) {
 			lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
 		}
@@ -3243,7 +3414,9 @@ export function generateSingleVersionTypeFile(
 	} else {
 		// No config types - shouldn't happen, but handle gracefully
 		lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
-		lines.push(`${INDENT}config: NodeConfig<Record<string, unknown>>;`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType('Record<string, unknown>', { credentialsTypeName: credTypeName })};`,
+		);
 		lines.push('};');
 	}
 
@@ -3443,13 +3616,16 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		const credType =
 			n.credentials && n.credentials.length > 0
 				? `${nodeName}${entryVersionSuffix}Credentials`
-				: 'Record<string, never>';
+				: undefined;
 
 		lines.push(`export type ${nodeTypeName} = {`);
 		lines.push(`${INDENT}type: '${n.name}';`);
 		lines.push(`${INDENT}version: ${versionUnion};`);
-		lines.push(`${INDENT}config: NodeConfig<${nodeName}${entryVersionSuffix}Params>;`);
-		lines.push(`${INDENT}credentials?: ${credType};`);
+		lines.push(
+			`${INDENT}config: ${buildNodeConfigType(`${nodeName}${entryVersionSuffix}Params`, {
+				credentialsTypeName: credType,
+			})};`,
+		);
 
 		if (isTrigger) {
 			lines.push(`${INDENT}isTrigger: true;`);

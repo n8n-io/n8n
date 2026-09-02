@@ -106,18 +106,16 @@ test.describe(
 			await saveSettings(n8n);
 
 			// Verify branch switched by checking preferences
-			let preferencesResponse = await api.request.get('/rest/source-control/preferences');
-			let preferences = await preferencesResponse.json();
-			expect(preferences.data.branchName).toBe('development');
+			let preferences = await api.sourceControl.getPreferences();
+			expect(preferences.branchName).toBe('development');
 
 			// Switch back to 'main'
 			await n8n.settingsEnvironment.selectBranch('main');
 			await saveSettings(n8n);
 
 			// Verify switched back
-			preferencesResponse = await api.request.get('/rest/source-control/preferences');
-			preferences = await preferencesResponse.json();
-			expect(preferences.data.branchName).toBe('main');
+			preferences = await api.sourceControl.getPreferences();
+			expect(preferences.branchName).toBe('main');
 		});
 
 		test('should enable read-only mode and restrict operations', async ({ n8n, api }) => {

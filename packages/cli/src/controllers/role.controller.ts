@@ -1,6 +1,7 @@
 import {
 	CreateRoleDto,
 	RoleAssignmentsResponseDto,
+	RoleDeleteQueryDto,
 	RoleGetQueryDto,
 	RoleListQueryDto,
 	RoleMembersResponseDto,
@@ -28,7 +29,10 @@ import {
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 @RestController('/roles')
@@ -36,6 +40,7 @@ export class RoleController {
 	constructor(
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	@Get('/')
@@ -54,26 +59,65 @@ export class RoleController {
 	}
 
 	@Get('/:slug/assignments/:projectId/members')
-	@GlobalScope('role:manage')
 	async getRoleProjectMembers(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
 		@Param('projectId') projectId: string,
 	): Promise<RoleProjectMembersResponse> {
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
+
+		// Managing a role is an instance-wide capability, but the identities of a project's
+		// members are project data. Gate them on the same `project:list` check the sibling
+		// user and project routes use, so a role manager only sees projects it can already see.
+		const project = await this.projectService.getProjectWithScope(req.user, projectId, [
+			'project:list',
+		]);
+		if (!project) {
+			throw new NotFoundError('Project not found');
+		}
+
 		const result = await this.roleService.getRoleProjectMembers(slug, projectId);
 		return RoleProjectMembersResponseDto.parse(result);
 	}
 
 	@Get('/:slug/assignments')
-	@GlobalScope('role:manage')
 	async getRoleAssignments(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
 	): Promise<RoleAssignmentsResponse> {
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.getRoleAssignments(slug);
-		return RoleAssignmentsResponseDto.parse(result);
+
+		if (result.projects.length === 0) {
+			return RoleAssignmentsResponseDto.parse(result);
+		}
+
+		// `projects` only names the projects the caller can already see. `totalProjects` stays
+		// the instance-wide count so the assignments tab can say "showing 1 of 3" rather than
+		// claim the role is unassigned; a bare number names no project and no member. The
+		// delete-impact warning is a different field — `usedByProjects`, served by `getRole`.
+		const visibleProjectIds = new Set(
+			await this.projectService.getProjectIdsWithScope(
+				req.user,
+				['project:list'],
+				result.projects.map((project) => project.projectId),
+			),
+		);
+
+		return RoleAssignmentsResponseDto.parse({
+			...result,
+			projects: result.projects.filter((project) => visibleProjectIds.has(project.projectId)),
+		});
 	}
 
 	@Get('/:slug/members')
@@ -98,7 +142,6 @@ export class RoleController {
 	}
 
 	@Patch('/:slug')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async updateRole(
 		req: AuthenticatedRequest,
@@ -106,39 +149,52 @@ export class RoleController {
 		@Param('slug') slug: string,
 		@Body updateRole: UpdateRoleDto,
 	): Promise<RoleDTO> {
-		const result = await this.roleService.updateCustomRole(slug, updateRole);
-		this.eventService.emit('custom-role-updated', {
-			userId: req.user.id,
-			roleSlug: result.slug,
-			scopes: result.scopes,
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
 		});
-		return result;
+		return await this.roleService.updateCustomRole({
+			slug,
+			newRole: updateRole,
+			userId: req.user.id,
+		});
 	}
 
 	@Delete('/:slug')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async deleteRole(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
+		@Query query: RoleDeleteQueryDto,
 	): Promise<RoleDTO> {
-		const result = await this.roleService.removeCustomRole(slug);
-		this.eventService.emit('custom-role-deleted', {
-			userId: req.user.id,
-			roleSlug: result.slug,
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
 		});
-		return result;
+		const reassignRoleSlug = canReassignUsers({ role, user: req.user })
+			? query.reassignRoleSlug
+			: undefined;
+		return await this.roleService.removeCustomRole({
+			slug,
+			reassignRoleSlug,
+			userId: req.user.id,
+		});
 	}
 
 	@Post('/')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async createRole(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RoleDTO> {
+		assertCanManageRoleType({
+			roleType: createRole.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.createCustomRole(createRole);
 		this.eventService.emit('custom-role-created', {
 			userId: req.user.id,

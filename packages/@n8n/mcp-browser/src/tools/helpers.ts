@@ -1,8 +1,8 @@
 import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import { ConnectionLostError } from '../errors';
 import { createLogger } from '../logger';
+import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 import { redactCallToolResult } from '../redaction/redact';
 import type {
 	AffectedResource,
@@ -11,7 +11,6 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '../types';
-import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 
 const log = createLogger('connected-tool');
 
@@ -24,6 +23,7 @@ export {
 	elementTargetSchema,
 	modalStateSchema,
 	pageIdField,
+	snapshotField,
 	withSnapshotEnvelope,
 } from './schemas';
 export type { ElementTargetInput } from './schemas';
@@ -32,7 +32,7 @@ export type { ElementTargetInput } from './schemas';
 // Connected tool input constraint — every tool must have at least pageId
 // ---------------------------------------------------------------------------
 
-type ConnectedToolInput = { pageId?: string };
+type ConnectedToolInput = { pageId?: string; snapshot?: 'interactive' | 'non-interactive' };
 
 // ---------------------------------------------------------------------------
 // Connected tool options
@@ -41,6 +41,8 @@ type ConnectedToolInput = { pageId?: string };
 export interface ConnectedToolOptions {
 	/** Append an accessibility snapshot to the response after the action. */
 	autoSnapshot?: boolean;
+	/** Annotate the auto-snapshot with interactive refs. Defaults to the adapter default (true). */
+	snapshotInteractive?: boolean;
 	/** Wrap the action in waitForCompletion (network/navigation settle). */
 	waitForCompletion?: boolean;
 	/** Skip post-action enrichment (snapshot, tab diff, etc.). Use for destructive actions like tab close. */
@@ -91,6 +93,10 @@ export function createConnectedTool<
 		inputSchema,
 		outputSchema,
 		async execute(args: z.infer<TSchema>, context: ToolContext) {
+			const effectiveOptions: ConnectedToolOptions = args.snapshot
+				? { ...options, autoSnapshot: true, snapshotInteractive: args.snapshot === 'interactive' }
+				: (options ?? {});
+			connection.beginToolCall();
 			try {
 				const { state, pageId } = resolvePageContext(connection, args);
 
@@ -111,7 +117,7 @@ export function createConnectedTool<
 				if (!options?.skipEnrichment) {
 					// Re-resolve: tab-creating actions (tab_open) update activePageId
 					const enrichPageId = state.activePageId || pageId;
-					await enrichResponse(result, state, enrichPageId, options ?? {}, tabsBefore);
+					await enrichResponse(result, state, enrichPageId, effectiveOptions, tabsBefore);
 				}
 				// Sync live URL back to state.pages so the cache stays fresh
 				const currentUrl = state.adapter.getPageUrl(pageId);
@@ -122,20 +128,13 @@ export function createConnectedTool<
 
 				return redactCallToolResult(result);
 			} catch (error) {
-				// Playwright throws TargetClosedError when browser/page dies mid-operation.
-				// Re-throw as our typed error so the AI gets a clear message + hint.
-				if (error instanceof Error && error.name === 'TargetClosedError') {
-					return redactCallToolResult(
-						await buildErrorResponse(
-							new ConnectionLostError('browser_closed'),
-							connection,
-							args,
-							options ?? {},
-						),
-					);
-				}
 				return redactCallToolResult(
-					await buildErrorResponse(error, connection, args, options ?? {}),
+					await buildErrorResponse(
+						connection.explainFailure(error),
+						connection,
+						args,
+						effectiveOptions,
+					),
 				);
 			}
 		},
@@ -143,7 +142,9 @@ export function createConnectedTool<
 			const resource = getResourceFromArgs
 				? getResourceFromArgs(args)
 				: getConnectionResource(connection);
-			return [{ toolGroup: 'browser', resource, description: `Browser: ${resource}` }];
+			return [
+				{ toolGroup: 'browser', kind: 'host', resource, description: `Browser: ${resource}` },
+			];
 		},
 	};
 }

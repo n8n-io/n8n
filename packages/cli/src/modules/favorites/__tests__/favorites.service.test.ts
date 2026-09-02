@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -8,14 +7,18 @@ import {
 	type User,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
+import {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceResolver,
+} from '../favorite-resource-resolver.registry';
 import { FavoritesService } from '../favorites.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 const makeUserFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite =>
 	({
@@ -45,18 +48,30 @@ describe('FavoritesService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const dataTableRepository = mock<DataTableRepository>();
 	const folderRepository = mock<FolderRepository>();
+	const dataTableResolver = {
+		globalReadScope: 'dataTable:read',
+		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
+		exists: vi.fn<FavoriteResourceResolver['exists']>(),
+	} satisfies FavoriteResourceResolver;
+	const agentResolver = {
+		globalReadScope: 'agent:read',
+		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
+		exists: vi.fn<FavoriteResourceResolver['exists']>(),
+	} satisfies FavoriteResourceResolver;
+	const resolverRegistry = new FavoriteResourceResolverRegistry();
+	resolverRegistry.register('dataTable', dataTableResolver);
+	resolverRegistry.register('agent', agentResolver);
 	const service = new FavoritesService(
 		repo,
 		workflowRepository,
 		projectRepository,
 		sharedWorkflowRepository,
-		dataTableRepository,
 		folderRepository,
+		resolverRegistry,
 	);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getEnrichedFavorites', () => {
 		it('should return empty array when user has no favorites', async () => {
@@ -140,12 +155,13 @@ describe('FavoritesService', () => {
 			projectRepository.getAccessibleProjects.mockResolvedValue([
 				{ id: 'proj1', name: 'Project 1' } as never,
 			]);
-			dataTableRepository.find.mockResolvedValue([
-				{ id: 'dt1', name: 'My Table', projectId: 'proj1' } as never,
-			]);
+			dataTableResolver.findMeta.mockResolvedValue(
+				new Map([['dt1', { name: 'My Table', projectId: 'proj1' }]]),
+			);
 
 			const result = await service.getEnrichedFavorites(makeUser());
 
+			expect(dataTableResolver.findMeta).toHaveBeenCalledWith(['dt1']);
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({
 				resourceId: 'dt1',
@@ -160,11 +176,31 @@ describe('FavoritesService', () => {
 			projectRepository.getAccessibleProjects.mockResolvedValue([
 				{ id: 'proj1', name: 'Project 1' } as never,
 			]);
-			dataTableRepository.find.mockResolvedValue([
-				{ id: 'dt1', name: 'My Table', projectId: 'proj-other' } as never,
-			]);
+			dataTableResolver.findMeta.mockResolvedValue(
+				new Map([['dt1', { name: 'My Table', projectId: 'proj-other' }]]),
+			);
 
 			const result = await service.getEnrichedFavorites(makeUser());
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should exclude favorites of a type that has no registered resolver', async () => {
+			const favorite = makeUserFavorite({ resourceId: 'dt1', resourceType: 'dataTable' });
+			repo.findByUser.mockResolvedValue([favorite]);
+			projectRepository.getAccessibleProjects.mockResolvedValue([
+				{ id: 'proj1', name: 'Project 1' } as never,
+			]);
+			const serviceWithoutResolvers = new FavoritesService(
+				repo,
+				workflowRepository,
+				projectRepository,
+				sharedWorkflowRepository,
+				folderRepository,
+				new FavoriteResourceResolverRegistry(),
+			);
+
+			const result = await serviceWithoutResolvers.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -231,28 +267,68 @@ describe('FavoritesService', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('should enrich agent favorites with name and projectId for accessible agents', async () => {
+			const favorite = makeUserFavorite({ resourceId: 'agent1', resourceType: 'agent' });
+			repo.findByUser.mockResolvedValue([favorite]);
+			projectRepository.getAccessibleProjects.mockResolvedValue([
+				{ id: 'proj1', name: 'Project 1' } as never,
+			]);
+			agentResolver.findMeta.mockResolvedValue(
+				new Map([['agent1', { name: 'My Agent', projectId: 'proj1' }]]),
+			);
+
+			const result = await service.getEnrichedFavorites(makeUser());
+
+			expect(agentResolver.findMeta).toHaveBeenCalledWith(['agent1']);
+			expect(result).toHaveLength(1);
+			expect(result[0]).toMatchObject({
+				resourceId: 'agent1',
+				resourceName: 'My Agent',
+				resourceProjectId: 'proj1',
+			});
+		});
+
+		it('should exclude agent favorites for inaccessible projects', async () => {
+			const favorite = makeUserFavorite({ resourceId: 'agent1', resourceType: 'agent' });
+			repo.findByUser.mockResolvedValue([favorite]);
+			projectRepository.getAccessibleProjects.mockResolvedValue([
+				{ id: 'proj1', name: 'Project 1' } as never,
+			]);
+			agentResolver.findMeta.mockResolvedValue(
+				new Map([['agent1', { name: 'My Agent', projectId: 'proj-other' }]]),
+			);
+
+			const result = await service.getEnrichedFavorites(makeUser());
+
+			expect(result).toHaveLength(0);
+		});
+
 		it('should handle multiple resource types in one call', async () => {
 			repo.findByUser.mockResolvedValue([
 				makeUserFavorite({ id: 1, resourceId: 'wf1', resourceType: 'workflow' }),
 				makeUserFavorite({ id: 2, resourceId: 'proj1', resourceType: 'project' }),
 				makeUserFavorite({ id: 3, resourceId: 'dt1', resourceType: 'dataTable' }),
 				makeUserFavorite({ id: 4, resourceId: 'folder1', resourceType: 'folder' }),
+				makeUserFavorite({ id: 5, resourceId: 'agent1', resourceType: 'agent' }),
 			]);
 			projectRepository.getAccessibleProjects.mockResolvedValue([
 				{ id: 'proj1', name: 'My Project' } as never,
 			]);
 			workflowRepository.findByIds.mockResolvedValue([{ id: 'wf1', name: 'My Workflow' } as never]);
 			sharedWorkflowRepository.find.mockResolvedValue([{ workflowId: 'wf1' } as never]);
-			dataTableRepository.find.mockResolvedValue([
-				{ id: 'dt1', name: 'My Table', projectId: 'proj1' } as never,
-			]);
+			dataTableResolver.findMeta.mockResolvedValue(
+				new Map([['dt1', { name: 'My Table', projectId: 'proj1' }]]),
+			);
 			folderRepository.find.mockResolvedValue([
 				{ id: 'folder1', name: 'My Folder', homeProject: { id: 'proj1' } } as never,
 			]);
+			agentResolver.findMeta.mockResolvedValue(
+				new Map([['agent1', { name: 'My Agent', projectId: 'proj1' }]]),
+			);
 
 			const result = await service.getEnrichedFavorites(makeUser());
 
-			expect(result).toHaveLength(4);
+			expect(result).toHaveLength(5);
 		});
 
 		describe('global admin access', () => {
@@ -292,9 +368,9 @@ describe('FavoritesService', () => {
 				const favorite = makeUserFavorite({ resourceId: 'dt1', resourceType: 'dataTable' });
 				repo.findByUser.mockResolvedValue([favorite]);
 				projectRepository.getAccessibleProjects.mockResolvedValue([]);
-				dataTableRepository.find.mockResolvedValue([
-					{ id: 'dt1', name: 'My Table', projectId: 'proj-other' } as never,
-				]);
+				dataTableResolver.findMeta.mockResolvedValue(
+					new Map([['dt1', { name: 'My Table', projectId: 'proj-other' }]]),
+				);
 
 				const result = await service.getEnrichedFavorites(makeAdmin());
 
@@ -324,6 +400,24 @@ describe('FavoritesService', () => {
 				expect(result[0]).toMatchObject({
 					resourceId: 'folder1',
 					resourceName: 'My Folder',
+					resourceProjectId: 'proj-other',
+				});
+			});
+
+			it('should enrich agent favorites without explicit project membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'agent1', resourceType: 'agent' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([]);
+				agentResolver.findMeta.mockResolvedValue(
+					new Map([['agent1', { name: 'My Agent', projectId: 'proj-other' }]]),
+				);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					resourceId: 'agent1',
+					resourceName: 'My Agent',
 					resourceProjectId: 'proj-other',
 				});
 			});
@@ -415,7 +509,6 @@ describe('FavoritesService', () => {
 		it.each([
 			{ resourceType: 'workflow' as const, repository: 'workflowRepository' },
 			{ resourceType: 'project' as const, repository: 'projectRepository' },
-			{ resourceType: 'dataTable' as const, repository: 'dataTableRepository' },
 			{ resourceType: 'folder' as const, repository: 'folderRepository' },
 		])(
 			'should check existence using the correct repository for $resourceType',
@@ -423,7 +516,6 @@ describe('FavoritesService', () => {
 				const repositories = {
 					workflowRepository,
 					projectRepository,
-					dataTableRepository,
 					folderRepository,
 				};
 				repo.findOne.mockResolvedValue(null);
@@ -437,6 +529,65 @@ describe('FavoritesService', () => {
 				);
 			},
 		);
+
+		it.each([
+			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
+			{ resourceType: 'agent' as const, resolver: agentResolver },
+		])(
+			'should check existence using the registered resolver for $resourceType',
+			async ({ resourceType, resolver }) => {
+				repo.findOne.mockResolvedValue(null);
+				resolver.exists.mockResolvedValue(false);
+
+				await expect(service.addFavorite('user1', 'res1', resourceType)).rejects.toThrow(
+					NotFoundError,
+				);
+				expect(resolver.exists).toHaveBeenCalledWith('res1');
+			},
+		);
+
+		it.each([
+			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
+			{ resourceType: 'agent' as const, resolver: agentResolver },
+		])(
+			'should create the favorite when the resolver reports the $resourceType exists',
+			async ({ resourceType, resolver }) => {
+				const favorite = mock<UserFavorite>();
+				repo.findOne.mockResolvedValue(null);
+				resolver.exists.mockResolvedValue(true);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite('user1', 'res1', resourceType);
+
+				expect(resolver.exists).toHaveBeenCalledWith('res1');
+				expect(repo.create).toHaveBeenCalledWith({
+					userId: 'user1',
+					resourceId: 'res1',
+					resourceType,
+				});
+				expect(repo.save).toHaveBeenCalledWith(favorite);
+				expect(result).toBe(favorite);
+			},
+		);
+
+		it('should throw NotFoundError when the resource type has no registered resolver', async () => {
+			const serviceWithoutResolvers = new FavoritesService(
+				repo,
+				workflowRepository,
+				projectRepository,
+				sharedWorkflowRepository,
+				folderRepository,
+				new FavoriteResourceResolverRegistry(),
+			);
+			repo.findOne.mockResolvedValue(null);
+
+			await expect(serviceWithoutResolvers.addFavorite('user1', 'res1', 'agent')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(repo.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('removeFavorite', () => {

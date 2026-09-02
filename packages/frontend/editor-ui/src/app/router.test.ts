@@ -1,17 +1,24 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { Response } from 'miragejs';
 import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { get } from '@n8n/rest-api-client';
+import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
+import { middleware } from '@/app/utils/rbac/middleware';
 
 const App = {
 	template: '<div />',
@@ -22,7 +29,8 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
-	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
+	// `restoreMocks` restores this spy before each test, so it is re-created in beforeEach.
+	let initializeAuthenticatedFeaturesSpy: MockInstance;
 
 	beforeAll(async () => {
 		server = setupServer();
@@ -33,13 +41,23 @@ describe('router', () => {
 		renderComponent({ pinia });
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
-			await usersStore.initialize();
-		});
-	});
+		initializeAuthenticatedFeaturesSpy = vi
+			.spyOn(init, 'initializeAuthenticatedFeatures')
+			.mockImplementation(async () => {
+				await usersStore.initialize();
+			});
+		// Reset to a neutral route (an id no test targets) so each test's push is a
+		// real navigation that triggers the guard. `restoreMocks` clears call history
+		// per test, so a duplicate navigation (e.g. the '/' → '/workflows' redirect
+		// leaving us at '/workflows') would otherwise record zero calls and fail the
+		// toHaveBeenCalled assertion.
+		await router.replace('/workflow/router-test-reset');
+		initializeAuthenticatedFeaturesSpy.mockClear();
+	}, 20000);
 
 	afterAll(() => {
 		server.shutdown();
@@ -181,6 +199,38 @@ describe('router', () => {
 		20000,
 	);
 
+	const gitConnectionScopes: Scope[] = [
+		'gitConnection:list',
+		'gitConnection:read',
+		'gitConnection:create',
+		'gitConnection:update',
+		'gitConnection:delete',
+	];
+
+	test.each<[string, RouteRecordName, Scope[], boolean, boolean]>([
+		['/settings/git-connections', VIEWS.WORKFLOWS, [], true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], true, true],
+		['/settings/git-connections', VIEWS.GIT_CONNECTIONS_SETTINGS, gitConnectionScopes, true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, false, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, true, false],
+	])(
+		'should resolve %s to %s with %s permissions, module active %s and flag on %s (git connections)',
+		async (path, name, scopes, isModuleActive, isFlagOn) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.activeModules = isModuleActive ? ['git-connections'] : [];
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_PROMOTIONS: isFlagOn ? 'true' : 'false',
+			} as typeof settingsStore.settings.envFeatureFlags;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
 		[VIEWS.USAGE, false],
@@ -188,6 +238,22 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should block Gateway credits settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
@@ -253,7 +319,9 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
@@ -327,23 +395,18 @@ describe('router', () => {
 			await router.push('/workflows');
 		});
 
-		test('resolves /settings/project-roles to project roles when custom instance roles disabled', async () => {
-			settingsStore.settings.envFeatureFlags = {} as typeof settingsStore.settings.envFeatureFlags;
-
-			await router.push('/settings/project-roles');
-
-			expect(router.currentRoute.value.name).toBe(VIEWS.PROJECT_ROLES_SETTINGS);
-		});
-
-		test('redirects /settings/project-roles to the Roles shell (project tab) when enabled', async () => {
-			settingsStore.settings.envFeatureFlags = {
-				N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: true,
-			} as typeof settingsStore.settings.envFeatureFlags;
-
+		test('redirects /settings/project-roles to the Roles shell (project tab)', async () => {
 			await router.push('/settings/project-roles');
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
 			expect(router.currentRoute.value.query.tab).toBe('project');
+		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
 		});
 	});
 
@@ -357,5 +420,74 @@ describe('router', () => {
 		);
 		expect(editRoleRoute?.props).toBe(true);
 		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
+	});
+
+	// Kept last and self-contained: it logs the shared `currentUser` out for real
+	// and flips session-expiry store state that every other test in this file
+	// implicitly relies on staying logged in, so it restores both in its own
+	// `afterEach` rather than depending on file/test order.
+	describe('session-expiry redirect (registered on rest-api-client, see router.ts)', () => {
+		afterEach(async () => {
+			useSessionExpiryStore().handled = false;
+			useNotificationsStore().setNotificationsSuppressed(false);
+			window.preventNodeViewBeforeUnload = undefined;
+			await useUsersStore().initialize();
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		// The actual `window.location.href` assignment isn't asserted on here: jsdom doesn't
+		// implement real navigation, and swapping out `window.location` to spy on it breaks the
+		// (also real, jsdom-hosted) HTTP request this test drives, since the mocked object lacks
+		// the properties the request layer needs to resolve a relative baseURL. Asserting on
+		// `router.resolve` (the same call the redirect makes to build its href) and on
+		// `preventNodeViewBeforeUnload` (set immediately before the redirect) verifies the same
+		// behavior without touching the real `window.location`.
+		test('reloads to sign-in when a REST call to the app backend comes back 401', async () => {
+			const rootStore = useRootStore();
+			server.get('/rest/__test_401__', () => new Response(401, {}, { message: 'Unauthorized' }));
+			const resolveSpy = vi.spyOn(router, 'resolve');
+
+			await expect(get(rootStore.restApiContext.baseUrl, '/__test_401__')).rejects.toThrow();
+
+			await vi.waitFor(() => {
+				expect(window.preventNodeViewBeforeUnload).toBe(true);
+			});
+
+			expect(resolveSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.SIGNIN,
+					query: expect.objectContaining({ sessionExpired: 'true' }),
+				}),
+			);
+		});
+	});
+
+	describe('error thrown during authenticated-features init', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test('still settles the navigation and runs the normal permission checks, instead of leaving it unresolved', async () => {
+			// The mock skips real authentication, so the guard redirects to sign-in.
+			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
+	});
+
+	describe('error thrown from a route middleware', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test("redirects to sign-in instead of authorizing the route the check didn't complete for", async () => {
+			vi.spyOn(middleware, 'authenticated').mockImplementation(() => {
+				throw new Error('boom');
+			});
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
 	});
 });

@@ -1,14 +1,9 @@
+import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -23,9 +18,32 @@ import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
 
+const {
+	mcpClientCloseMock,
+	mcpClientConstructorMock,
+	mcpClientGetConnectionFailuresMock,
+	mcpClientListToolsMock,
+} = vi.hoisted(() => ({
+	mcpClientCloseMock: vi.fn<() => Promise<void>>(),
+	mcpClientConstructorMock: vi.fn<(configs: unknown) => void>(),
+	mcpClientGetConnectionFailuresMock: vi.fn(),
+	mcpClientListToolsMock: vi.fn<() => Promise<BuiltTool[]>>(),
+}));
+
+vi.mock('@n8n/agents', () => ({
+	McpClient: vi.fn(function (configs: unknown) {
+		mcpClientConstructorMock(configs);
+		return {
+			close: mcpClientCloseMock,
+			getConnectionFailures: mcpClientGetConnectionFailuresMock,
+			listTools: mcpClientListToolsMock,
+		};
+	}),
+}));
+
 // Stands in for the proxy-aware transport fetch the service builds from its
 // injected `OutboundHttp`.
-const proxyFetchMock = jest.fn();
+const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 function makeRegistryServer(
@@ -71,7 +89,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	};
 
 	function createService() {
-		const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+		const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 		const connectionRepository = mock<InstanceAiMcpRegistryConnectionRepository>();
 		const mcpRegistryService = mock<McpRegistryService>();
 		const credentialsFinderService = mock<CredentialsFinderService>();
@@ -92,8 +110,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
-			mock<SsrfProtectionConfig>({ enabled: true }),
-			mock<SsrfProtectionService>(),
 		);
 
 		return {
@@ -110,7 +126,14 @@ describe('InstanceAiMcpRegistryService', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		mcpClientCloseMock.mockReset();
+		mcpClientCloseMock.mockResolvedValue(undefined);
+		mcpClientConstructorMock.mockReset();
+		mcpClientGetConnectionFailuresMock.mockReset();
+		mcpClientGetConnectionFailuresMock.mockReturnValue([]);
+		mcpClientListToolsMock.mockReset();
+		mcpClientListToolsMock.mockResolvedValue([]);
 		proxyFetchMock.mockReset();
 	});
 
@@ -175,6 +198,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:1',
 				toolFilter: { mode: 'allow', tools: ['issues'] },
 				fetch: expect.any(Function),
+				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[1]).toEqual(
@@ -185,6 +209,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:2',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
+				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[2]).toEqual(
@@ -195,6 +220,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:3',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
+				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
@@ -227,7 +253,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		await service.getRegistryMcpServers(user);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith(
-			expect.not.objectContaining({ ssrf: 'disabled' }),
+			expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 		);
 	});
 
@@ -356,7 +382,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('credential domain restrictions', () => {
-		it('returns a fetch that blocks when credential mode is "none" (block all)', async () => {
+		it('pins registry requests to the MCP hostname when credential mode is "none"', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -377,11 +403,13 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
-		it('returns a fetch that blocks when endpoint URL is not in the credential allowlist', async () => {
+		it('pins registry requests independently of the credential allowlist', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -403,8 +431,10 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
 		it('allows connection when endpoint URL matches the credential allowlist', async () => {
@@ -460,6 +490,317 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].fetch).toBeDefined();
+		});
+	});
+
+	describe('connection tools', () => {
+		function makeConnection(
+			overrides: Partial<InstanceAiMcpRegistryConnection> = {},
+		): InstanceAiMcpRegistryConnection {
+			return {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: credential.id,
+				...overrides,
+			} as InstanceAiMcpRegistryConnection;
+		}
+
+		function arrangeResolvableConnection({
+			connectionRepository,
+			mcpRegistryService,
+			credentialsFinderService,
+			credentialsService,
+		}: Pick<
+			ReturnType<typeof createService>,
+			| 'connectionRepository'
+			| 'mcpRegistryService'
+			| 'credentialsFinderService'
+			| 'credentialsService'
+		>) {
+			const connection = makeConnection();
+			connectionRepository.findOneBy.mockResolvedValue(connection);
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
+
+			return connection;
+		}
+
+		function getConfiguredFetch(): CustomFetch {
+			const [configs] = mcpClientConstructorMock.mock.lastCall ?? [];
+			return (configs as Array<{ fetch: CustomFetch }>)[0].fetch;
+		}
+
+		it('lists tools with connection-local names and closes the MCP client', async () => {
+			const deps = createService();
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } = deps;
+			arrangeResolvableConnection(deps);
+			mcpClientListToolsMock.mockResolvedValue([
+				{ name: 'mcp_linear_search', description: 'Search Linear issues' },
+				{ name: 'mcp_linear_create_issue', description: 'Create a Linear issue' },
+				{ name: 'mcp_linear_no_description', description: '' },
+			] satisfies BuiltTool[]);
+
+			const result = await service.listConnectionTools(user, 'conn-1');
+
+			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'conn-1',
+				userId: user.id,
+			});
+			expect(mcpRegistryService.get).toHaveBeenCalledWith('linear');
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credential.id,
+				user,
+				['credential:read'],
+			);
+			expect(mcpClientConstructorMock).toHaveBeenCalledWith([
+				expect.objectContaining({
+					name: 'mcp_linear',
+					url: 'https://linear.example.com/mcp',
+					transport: 'streamableHttp',
+					fetch: expect.any(Function),
+					connectionTimeoutMs: 10_000,
+				}),
+			]);
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [
+					{ name: 'search', description: 'Search Linear issues' },
+					{ name: 'create_issue', description: 'Create a Linear issue' },
+					{ name: 'no_description' },
+				],
+			});
+			expect(mcpClientCloseMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns the original MCP name for collision-suffixed tools', async () => {
+			const deps = createService();
+			const { service } = deps;
+			arrangeResolvableConnection(deps);
+			mcpClientListToolsMock.mockResolvedValue([
+				{
+					name: 'mcp_linear_read_file_12345678',
+					description: 'Read a file',
+					mcpTool: true,
+					mcpServerName: 'mcp_linear',
+					mcpToolName: 'read file',
+				},
+			] satisfies BuiltTool[]);
+
+			const result = await service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'read file', description: 'Read a file' }],
+			});
+		});
+
+		it('treats a successful empty tool list as connected', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({ id: 'conn-1', status: 'connected', tools: [] });
+		});
+
+		it('throws NotFoundError when the connection does not belong to the user', async () => {
+			const { service, connectionRepository, mcpRegistryService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.listConnectionTools(user, 'missing')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+
+			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'missing',
+				userId: user.id,
+			});
+			expect(mcpRegistryService.get).not.toHaveBeenCalled();
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the registry server is missing', async () => {
+			const { service, connectionRepository, mcpRegistryService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			mcpRegistryService.get.mockResolvedValue(undefined);
+
+			await expect(service.listConnectionTools(user, 'conn-1')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+
+			expect(mcpRegistryService.get).toHaveBeenCalledWith('linear');
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+		});
+
+		it('returns disconnected when the server has no supported remote transport', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				logger,
+			} = createService();
+			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear', { remotes: [] }));
+
+			const result = await service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'unknown',
+			});
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping MCP registry connection without supported remote transport',
+				expect.objectContaining({ connectionId: 'conn-1', serverSlug: 'linear' }),
+			);
+		});
+
+		it('returns disconnected when OAuth credential data is unavailable', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				logger,
+			} = createService();
+			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			const result = await service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'authentication',
+			});
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping MCP registry connection with inaccessible credential',
+				expect.objectContaining({
+					connectionId: 'conn-1',
+					serverSlug: 'linear',
+					credentialId: credential.id,
+					userId: user.id,
+				}),
+			);
+		});
+
+		it('returns disconnected when the MCP client records a connection failure', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			mcpClientGetConnectionFailuresMock.mockReturnValue([
+				{ server: 'mcp_linear', error: 'Connection timed out' },
+			]);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'unknown',
+			});
+		});
+
+		it.each([
+			[401, 'authentication'],
+			[403, 'authentication'],
+			[503, 'server_unavailable'],
+		] as const)('classifies an HTTP %i connection failure as %s', async (status, failureReason) => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			proxyFetchMock.mockResolvedValue(new Response(null, { status }));
+			mcpClientListToolsMock.mockImplementation(async () => {
+				await getConfiguredFetch()('https://linear.example.com/mcp');
+				return [];
+			});
+			mcpClientGetConnectionFailuresMock.mockReturnValue([
+				{ server: 'mcp_linear', error: 'Connection failed' },
+			]);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason,
+			});
+		});
+
+		it('classifies a rejected request as server unavailable', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			proxyFetchMock.mockRejectedValue(new Error('Connection refused'));
+			mcpClientListToolsMock.mockImplementation(async () => {
+				await getConfiguredFetch()('https://linear.example.com/mcp').catch(() => undefined);
+				return [];
+			});
+			mcpClientGetConnectionFailuresMock.mockReturnValue([
+				{ server: 'mcp_linear', error: 'Connection failed' },
+			]);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'server_unavailable',
+			});
+		});
+
+		it('returns statuses for all connections when one check throws', async () => {
+			const deps = createService();
+			const { connectionRepository, credentialsFinderService, credentialsService, logger } = deps;
+			connectionRepository.findBy.mockResolvedValue([
+				makeConnection(),
+				makeConnection({ id: 'conn-2', serverSlug: 'notion' }),
+			]);
+			deps.mcpRegistryService.get.mockImplementation(async (slug) => {
+				if (slug === 'notion') throw new Error('Registry unavailable');
+				return makeRegistryServer(slug);
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
+
+			const result = await deps.service.listAllConnectionTools(user);
+
+			expect(result).toEqual([
+				{ id: 'conn-1', status: 'connected', tools: [] },
+				{
+					id: 'conn-2',
+					status: 'disconnected',
+					tools: [],
+					failureReason: 'unknown',
+				},
+			]);
+			expect(logger.warn).toHaveBeenCalledWith('Failed to check MCP connection', {
+				connectionId: 'conn-2',
+				serverSlug: 'notion',
+				error: expect.any(Error),
+			});
+		});
+
+		it('closes the MCP client when listing tools fails', async () => {
+			const deps = createService();
+			const { service } = deps;
+			arrangeResolvableConnection(deps);
+			mcpClientListToolsMock.mockRejectedValue(new Error('list failed'));
+
+			await expect(service.listConnectionTools(user, 'conn-1')).rejects.toThrow('list failed');
+
+			expect(mcpClientCloseMock).toHaveBeenCalledTimes(1);
 		});
 	});
 

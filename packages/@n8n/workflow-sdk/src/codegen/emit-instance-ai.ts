@@ -59,6 +59,14 @@ export const SDK_FUNCTIONS = [
 	'expr',
 ] as const;
 
+/** Names a workflow source file may import: `SDK_FUNCTIONS` plus helpers used inside node configs. */
+export const SDK_IMPORTABLE_FUNCTIONS = [
+	...SDK_FUNCTIONS,
+	'nodeJson',
+	'runOnceForAllItems',
+	'runOnceForEachItem',
+] as const;
+
 export interface EmitInstanceAiOptions {
 	/**
 	 * Optional JSDoc header to prepend (already wrapped in a comment block).

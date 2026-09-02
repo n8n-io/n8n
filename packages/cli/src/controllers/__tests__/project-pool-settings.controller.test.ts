@@ -1,6 +1,6 @@
 import { UpdateProjectPoolSettingsDto } from '@n8n/api-types';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ProjectPoolSettingsController } from '@/controllers/project-pool-settings.controller';
 import type { PoolConfigService } from '@/scaling/pool-config.service';
@@ -14,7 +14,7 @@ describe('ProjectPoolSettingsController', () => {
 	const projectId = 'project-1';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getPoolSettings', () => {

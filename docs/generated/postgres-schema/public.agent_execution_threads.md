@@ -82,24 +82,28 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
 }
 "public.agent_execution" {
-  text assistantResponse
+  json attachments
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
   text error
+  json failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
@@ -108,9 +112,9 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   json timeline
-  json toolCalls
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
   text userMessage

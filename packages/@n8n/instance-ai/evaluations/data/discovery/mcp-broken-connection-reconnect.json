@@ -1,0 +1,18 @@
+{
+	"id": "mcp-broken-connection-reconnect",
+	"userMessage": "Search my Notion for the Q3 roadmap page and tell me what's in it.",
+	"instanceState": {
+		"mcp": {
+			"registry": ["notion", "linear"],
+			"connected": [{ "slug": "notion", "tools": [] }]
+		}
+	},
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{ "toolName": "mcp-servers", "args": { "action": "connect", "serverSlugs": ["notion"] } }
+		],
+		"noneOfToolCalls": [{ "toolName": "mcp-servers", "args": { "action": "search" } }]
+	},
+	"rationale": "A connected server serving no tools is a broken connection: the agent must reconnect the slug it already has, not fall back to a registry search that filters connected servers out and dead-ends.",
+	"maxSteps": 12
+}

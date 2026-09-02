@@ -1,34 +1,51 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
-
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import {
+	createCreateWorkflowFromCodeTool,
+	type CreateWorkflowFromCodeToolOptions,
+} from '../tools/workflow-builder/create-workflow-from-code.tool';
+
+// Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
+// factory (hoisted above these declarations) silently loads the real module.
+const {
+	mockAutoPopulateNodeCredentials,
+	mockTrackAutoassignOutcomes,
+	mockParseAndValidate,
+	mockStripImportStatements,
+} = vi.hoisted(() => ({
+	mockAutoPopulateNodeCredentials: vi.fn(),
+	mockTrackAutoassignOutcomes: vi.fn(),
+	mockParseAndValidate: vi.fn(),
+	mockStripImportStatements: vi.fn((code: string) => code),
+}));
+
 // Mock credentials auto-assign
-const mockAutoPopulateNodeCredentials = jest.fn();
-jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
-	stripNullCredentialStubs: jest.fn(),
+	stripNullCredentialStubs: vi.fn(),
+	trackAutoassignOutcomes: (...args: unknown[]) => mockTrackAutoassignOutcomes(...args) as unknown,
 }));
 
 // Mock dynamic imports
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
@@ -36,6 +53,7 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 		displayTitle: 'Create Workflow from Code',
 	},
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
+	MCP_UPDATE_WORKFLOW_TOOL: { toolName: 'update_workflow', displayTitle: 'Update Workflow' },
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'suggest', displayTitle: 'Suggest' },
@@ -75,22 +93,22 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
 type DataTableOpsMock = {
-	getManyAndCount: jest.Mock;
+	getManyAndCount: Mock;
 };
 
 describe('create-workflow-from-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowCreationService: WorkflowCreationService;
-	let createWorkflowMock: jest.Mock;
+	let createWorkflowMock: Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let dataTableOps: DataTableOpsMock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		createWorkflowMock = jest
+		createWorkflowMock = vi
 			.fn()
 			.mockImplementation(async (_user, workflow) =>
 				Object.assign(new WorkflowEntity(), { ...workflow, id: 'wf-saved-1' }),
@@ -99,33 +117,39 @@ describe('create-workflow-from-code MCP tool', () => {
 			createWorkflow: createWorkflowMock,
 		});
 		urlService = mockInstance(UrlService, {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
-				return { description: { outputs: [NodeConnectionTypes.Main] } };
+				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
 			}
 			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
-				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.AiTool] } };
 			}
-			return { description: {} };
+			// The group validator resolves trigger-ness via description.group; an
+			// empty (non-trigger) group keeps that check from crashing on `undefined`.
+			return { description: { group: ['transform'] } };
 		}) as typeof nodeTypes.getByNameAndVersion);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
 		mockStripImportStatements.mockImplementation((code: string) => code);
-		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockAutoPopulateNodeCredentials.mockResolvedValue({
+			assignments: [],
+			skippedHttpNodes: [],
+			outcomes: [],
+		});
 
 		dataTableOps = {
-			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+			getManyAndCount: vi.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
-		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
+		getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue([]),
 	});
 	const personalProjectEntity = {
 		id: 'personal-project-1',
@@ -133,8 +157,8 @@ describe('create-workflow-from-code MCP tool', () => {
 		type: 'personal' as const,
 	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
-		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: vi.fn().mockImplementation(async ({ id }: { id: string }) => {
 			if (id === 'personal-project-1') return personalProjectEntity;
 			if (id === 'custom-project-id') {
 				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
@@ -143,10 +167,12 @@ describe('create-workflow-from-code MCP tool', () => {
 		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
-		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
+	const aiGatewayService = mock<AiGatewayService>();
+	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
-	const createTool = () =>
+	const createTool = (options?: CreateWorkflowFromCodeToolOptions) =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -157,6 +183,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			credentialsService,
 			projectRepository,
 			dataTableOps as never,
+			aiGatewayService,
+			options,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -166,6 +194,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			skillsUsed?: string[];
 			name?: string;
 			description?: string;
+			versionName?: string;
+			versionDescription?: string;
 			projectId?: string;
 			folderId?: string;
 		},
@@ -177,6 +207,8 @@ describe('create-workflow-from-code MCP tool', () => {
 				skillsUsed: input.skillsUsed,
 				name: input.name as string,
 				description: input.description as string,
+				versionName: input.versionName as string,
+				versionDescription: input.versionDescription as string,
 				projectId: input.projectId as string,
 				folderId: input.folderId as string,
 			},
@@ -210,6 +242,38 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const response = parseResult(result);
 			expect(response.error).toBe('projectId is required when folderId is provided');
+		});
+
+		test('passes the folder to the creation service and echoes it as targetFolder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow) =>
+				Object.assign(new WorkflowEntity(), {
+					...workflow,
+					id: 'wf-saved-1',
+					parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+				}),
+			);
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(createWorkflowMock).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({ projectId: 'custom-project-id', parentFolderId: 'folder-1' }),
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
+		});
+
+		test('omits targetFolder when no folderId is provided', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBeUndefined();
+			expect(parseResult(result).targetFolder).toBeUndefined();
 		});
 	});
 
@@ -308,7 +372,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'personal-project-1', source: 'n8n-mcp' },
+				expect.objectContaining({ projectId: 'personal-project-1', source: 'n8n-mcp' }),
 			);
 		});
 
@@ -318,7 +382,37 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
+				expect.objectContaining({ projectId: 'custom-project-id', source: 'n8n-mcp' }),
+			);
+		});
+
+		test('passes client-provided version metadata to the service', async () => {
+			await callHandler({
+				code: 'const wf = ...',
+				versionName: 'Initial Slack notification workflow',
+				versionDescription: 'Posts to #ops when the webhook fires',
+			});
+
+			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
+				user,
+				expect.any(WorkflowEntity),
+				expect.objectContaining({
+					versionName: 'Initial Slack notification workflow',
+					versionDescription: 'Posts to #ops when the webhook fires',
+				}),
+			);
+		});
+
+		test('falls back to generated version metadata when the client omits it', async () => {
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
+				user,
+				expect.any(WorkflowEntity),
+				expect.objectContaining({
+					versionName: 'Initial version',
+					versionDescription: 'Created with 2 nodes: Webhook, Set',
+				}),
 			);
 		});
 
@@ -365,7 +459,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				workflow.id = 'wf-recovery-1';
 				throw new Error('Post-save hook failed');
 			});
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
 				id: 'wf-recovery-1',
 				name: 'Recovered',
 				nodes: mockNodes,
@@ -383,6 +477,35 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: 'Marketing',
 				type: 'team',
 			});
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('includes targetFolder in recovery output from the persisted parent folder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-2';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-2',
+				name: 'Recovered',
+				nodes: mockNodes,
+				parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-recovery-2',
+				user,
+				['workflow:read'],
+				{ includeParentFolder: true },
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
 			expect(response.note).toContain('post-save operation failed');
 		});
 
@@ -456,7 +579,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -465,7 +588,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
 			await callHandler({ code: 'const wf = ...', skillsUsed: [] });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -492,7 +615,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			const result = await callHandler({ code: 'const wf = ...', skillsUsed: oversized });
 
 			expect(result.isError).toBeUndefined();
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: { skillsUsed: string[] };
 			};
 			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
@@ -674,17 +797,13 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			afterEach(() => {
 				// Restore module-scoped defaults so later suites aren't polluted.
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
-					[],
-				);
-				(credentialsService.getOne as jest.Mock).mockReset();
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockReset();
 			});
 
 			test('rejects a credential id that belongs to another project', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
-					[],
-				);
-				(credentialsService.getOne as jest.Mock).mockResolvedValue({
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockResolvedValue({
 					id: '6CoUMkVOJRNsbmr2',
 					name: 'GitHub account',
 					type: 'githubApi',
@@ -709,10 +828,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 
 			test('rejects a credential id that does not exist', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
-					[],
-				);
-				(credentialsService.getOne as jest.Mock).mockRejectedValue(
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockRejectedValue(
 					new NotFoundError('Credential with ID "ghost" could not be found.'),
 				);
 
@@ -733,7 +850,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			});
 
 			test('accepts a credential id that is reachable from the project', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'in-project-cred', name: 'GitHub account 2', type: 'githubApi' },
 				]);
 
@@ -750,6 +867,37 @@ describe('create-workflow-from-code MCP tool', () => {
 				expect(result.isError).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
 			});
+		});
+
+		test('tracks auto-assign outcomes with the persisted workflow id after save', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'OpenAI',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('create_workflow_from_code');
+			expect(trackArgs[5]).toBe('wf-saved-1');
+		});
+
+		test('does not track auto-assign outcomes when the save fails', async () => {
+			createWorkflowMock.mockRejectedValueOnce(new Error('save failed'));
+
+			await callHandler({ code: 'const wf = ...' });
+
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
 		});
 
 		test('refuses to save when an agent is wired as a tool to another agent', async () => {
@@ -798,9 +946,21 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so any field returned by the handler but missing from the schema breaks strict clients.
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [
-					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+					{
+						nodeName: 'Webhook',
+						credentialName: 'My Cred',
+						credentialType: 'webhookAuth',
+						source: 'user',
+					},
+					{
+						nodeName: 'OpenAI',
+						credentialName: 'Gateway credits',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+					},
 				],
 				skippedHttpNodes: [],
+				outcomes: [],
 			});
 
 			const tool = createTool();
@@ -850,6 +1010,329 @@ describe('create-workflow-from-code MCP tool', () => {
 			// so strict clients no longer reject it with -32602.
 			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+	});
+
+	describe('canvas groups (102_mcp_canvas_groups)', () => {
+		const nodeGroups = [{ id: 'g1', name: 'Ingestion', nodeIds: ['node-1', 'node-2'] }];
+
+		/** results.data of the last tracked telemetry event */
+		const trackedData = () => {
+			const payload = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1] as {
+				results?: { data?: Record<string, unknown> };
+			};
+			return payload.results?.data;
+		};
+
+		test('flag off: groups from the code are dropped and telemetry is unchanged', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { ...mockWorkflowJson, nodeGroups },
+				warnings: [],
+			});
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow).not.toHaveProperty('nodeGroups');
+			// Telemetry payload is byte-identical to the pre-flag shape.
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2 });
+		});
+
+		test('flag on: groups from the code are persisted on the created workflow', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					...mockWorkflowJson,
+					// Webhook -> Set, so { Webhook, Set } is a structurally valid group
+					// (a single connected subgraph) once structural rules are enforced.
+					connections: { Webhook: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+					nodeGroups,
+				},
+				warnings: [],
+			});
+
+			const result = await callHandler(
+				{ code: 'const wf = ...' },
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			expect(parseResult(result).workflowId).toBe('wf-saved-1');
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual(nodeGroups);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 1 });
+		});
+
+		test('flag on: code without groups persists an empty group list', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			await callHandler({ code: 'const wf = ...' }, createTool({ canvasGroupsEnabled: true }));
+
+			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.nodeGroups).toEqual([]);
+			expect(trackedData()).toEqual({ workflowId: 'wf-saved-1', nodeCount: 2, groupCount: 0 });
+		});
+
+		// Structural group rules (no triggers, single connected subgraph, no non-main connection
+		// crossing the group boundary) aren't checked before `workflowCreationService.createWorkflow`
+		// yet — that service's own `validateWorkflowNodeGroups` (a shared safety net used by the public
+		// API, editor controller, importer, etc.) still rejects the whole creation for an invalid group.
+		// These tests describe the target behavior for that follow-up: with canvasGroupsEnabled on, an
+		// invalid group should be dropped and reported in `skippedGroups` instead, while the rest of the
+		// workflow is still created.
+		describe('structural validation', () => {
+			beforeEach(() => {
+				// The group validator resolves trigger-ness via description.group.
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.webhook') {
+						return { description: { group: ['trigger'], outputs: [NodeConnectionTypes.Main] } };
+					}
+					if (type === '@n8n/n8n-nodes-langchain.agent') {
+						return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
+					}
+					if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+						return {
+							description: { group: ['transform'], outputs: [NodeConnectionTypes.AiTool] },
+						};
+					}
+					return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
+				}) as typeof nodeTypes.getByNameAndVersion);
+			});
+
+			test('a group with a trigger inside is skipped; the rest of the workflow is still created', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodeGroups }, // Ingestion = [Webhook (trigger), Set]
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+				expect(parseResult(result).workflowId).toBe('wf-saved-1');
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Ingestion',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					}),
+				]);
+			});
+
+			test('a group that splits an AI sub-node from its Agent is skipped', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'agent',
+								name: 'Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.agentTool',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+						connections: {
+							Model: {
+								ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+							},
+						},
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [{ id: 'g2', name: 'Group', nodeIds: ['agent'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Group',
+						reason: expect.stringContaining('cannot cross the') as string,
+					}),
+				]);
+			});
+
+			test('a group whose nodes form a disconnected subgraph is skipped', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'a',
+								name: 'A',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'b',
+								name: 'B',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [{ id: 'g3', name: 'Group', nodeIds: ['a', 'b'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Group',
+						reason: expect.stringContaining('single connected subgraph') as string,
+					}),
+				]);
+			});
+
+			test('one invalid group among valid ones only drops the invalid one', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						name: 'Code Workflow',
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Webhook',
+								type: 'n8n-nodes-base.webhook',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'a',
+								name: 'A',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0],
+								parameters: {},
+							},
+							{
+								id: 'b',
+								name: 'B',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [400, 0],
+								parameters: {},
+							},
+						],
+						connections: { Webhook: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
+						settings: {},
+						pinData: {},
+						meta: {},
+						nodeGroups: [
+							{ id: 'g1', name: 'Bad', nodeIds: ['node-1'] },
+							{ id: 'g2', name: 'Good', nodeIds: ['a'] },
+						],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([{ id: 'g2', name: 'Good', nodeIds: ['a'] }]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					expect.objectContaining({
+						groupName: 'Bad',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					}),
+				]);
+			});
+
+			test('all groups valid: no skippedGroups are reported', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['node-2'] }],
+					},
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				expect(result.isError).toBeUndefined();
+
+				const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+				expect(passedWorkflow.nodeGroups).toEqual([
+					{ id: 'g1', name: 'Group', nodeIds: ['node-2'] },
+				]);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups ?? []).toEqual([]);
+			});
+
+			test('the response reports skippedGroups with a human-readable reason', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodeGroups },
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				const response = parseResult(result);
+				expect(response.skippedGroups).toEqual([
+					{
+						groupName: 'Ingestion',
+						reason: expect.stringContaining('cannot contain trigger nodes') as string,
+					},
+				]);
+			});
 		});
 	});
 });

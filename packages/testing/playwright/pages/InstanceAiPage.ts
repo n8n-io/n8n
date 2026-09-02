@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { hoverToReveal } from '../utils/retry-utils';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -24,8 +25,66 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async goto(): Promise<void> {
-		await this.page.goto('/instance-ai');
+		await this.page.goto('/');
 		await this.enableInstanceAiIfPrompted();
+		await this.getChatInput()
+			.waitFor({ state: 'visible', timeout: 10_000 })
+			.catch(async () => {
+				const aiMenuItem = this.page.getByRole('menuitem', { name: 'AI Assistant' });
+				await aiMenuItem.click({ timeout: 10_000 });
+				await this.enableInstanceAiIfPrompted();
+			});
+		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
+		await expect(this.getSendButton()).toBeVisible({ timeout: 30_000 });
+	}
+
+	async gotoOnboarding(): Promise<void> {
+		await this.page.goto('/assistant');
+		await expect(
+			this.container
+				.getByTestId('assistant-setup-intro')
+				.or(this.container.getByTestId('assistant-setup-incomplete')),
+		).toBeVisible({ timeout: 30_000 });
+	}
+
+	getSetupButton(): Locator {
+		return this.container
+			.getByTestId('assistant-setup-cta')
+			.or(this.container.getByTestId('assistant-finish-setup-cta'));
+	}
+
+	getOnboardingWizard(): Locator {
+		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
+	}
+
+	getWizardPrimaryButton(): Locator {
+		return this.getOnboardingWizard().getByTestId('wizard-primary');
+	}
+
+	getSearchProvider(provider: 'searxng' | 'brave' | 'disabled'): Locator {
+		return this.getOnboardingWizard().getByTestId(`assistant-search-${provider}`);
+	}
+
+	getSearchValueInput(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-search-value');
+	}
+
+	getVerificationError(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-verification-error');
+	}
+
+	getOnboardingDoneHeading(): Locator {
+		return this.getOnboardingWizard().getByRole('heading', {
+			name: 'AI Assistant is on for everyone on this instance',
+		});
+	}
+
+	async mockSearchVerification(
+		response: { ok: true; resultCount: number } | { ok: false; failure: string },
+	): Promise<void> {
+		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+			await route.fulfill({ json: { data: response } });
+		});
 	}
 
 	async enableInstanceAiIfPrompted(): Promise<void> {
@@ -42,7 +101,14 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
-		await this.page.goto(`/instance-ai/${threadId}`);
+		await this.page.goto(`/assistant/${threadId}`);
+	}
+
+	/** Thread id of the conversation currently open, read from the URL. */
+	getCurrentThreadId(): string {
+		const threadId = new URL(this.page.url()).pathname.split('/').pop();
+		if (!threadId) throw new Error(`No thread id in URL: ${this.page.url()}`);
+		return threadId;
 	}
 
 	getContainer(): Locator {
@@ -95,6 +161,25 @@ export class InstanceAiPage extends BasePage {
 		return this.getAssistantMessages().getByText(text);
 	}
 
+	/**
+	 * Text anywhere in the chat panel. Broader than `getAssistantMessageText`: a run's
+	 * output can land outside an assistant-message bubble (an error callout, a status
+	 * line), so use this when the assertion is "the panel says this" rather than "this
+	 * message says this".
+	 */
+	getPanelText(text: string | RegExp): Locator {
+		return this.getContainer().getByText(text);
+	}
+
+	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
+	getOutOfCreditsError(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits');
+	}
+
+	getOutOfCreditsUpgradeButton(): Locator {
+		return this.container.getByTestId('instance-ai-out-of-credits-upgrade');
+	}
+
 	getStatusBar(): Locator {
 		return this.container.getByTestId('instance-ai-status-bar');
 	}
@@ -118,10 +203,27 @@ export class InstanceAiPage extends BasePage {
 		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
+	/**
+	 * Files staged in the composer but not yet sent, counted via each preview's remove
+	 * control. Two markers are needed: `AttachmentPreview` renders
+	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
+	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
+	 * first would silently count 0 for a staged PDF or CSV.
+	 */
+	getComposerAttachments(): Locator {
+		return this.getContainer().locator(
+			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+		);
+	}
+
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {
 		return this.container.getByTestId('instance-ai-panel-confirm-approve');
+	}
+
+	getConfirmAlwaysAllowButton(): Locator {
+		return this.container.getByTestId('instance-ai-panel-confirm-always-allow');
 	}
 
 	getConfirmDenyButton(): Locator {
@@ -129,7 +231,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getDomainAccessApprove(): Locator {
-		return this.container.getByTestId('domain-access-primary');
+		return this.container.getByTestId('domain-access-allow-once');
+	}
+
+	getDomainAccessAlwaysAllow(): Locator {
+		return this.container.getByTestId('domain-access-allow-domain');
+	}
+
+	getGatewayDecisionApprove(): Locator {
+		return this.container.getByTestId('gateway-decision-approve');
 	}
 
 	getCredentialContinue(): Locator {
@@ -186,6 +296,12 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewPanel().getByTestId('instance-ai-artifacts-preview-toggle');
 	}
 
+	getShowPreviewButton(): Locator {
+		return this.container.locator(
+			'[data-test-id="instance-ai-artifacts-preview-toggle"][aria-pressed="false"]',
+		);
+	}
+
 	getPreviewPanel(): Locator {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
@@ -210,13 +326,72 @@ export class InstanceAiPage extends BasePage {
 	async runPreviewWorkflow(): Promise<void> {
 		const runButton = this.getPreviewRunWorkflowButton();
 		const approvalButton = this.getConfirmApproveButton();
-		await runButton.or(approvalButton).first().waitFor({ state: 'visible', timeout: 30_000 });
-		if (await approvalButton.isVisible()) {
-			await approvalButton.click();
+		let action: 'approve' | 'run' | undefined;
+		await expect
+			.poll(
+				async () => {
+					if (await approvalButton.isVisible().catch(() => false)) {
+						action = 'approve';
+						return action;
+					}
+					if (await runButton.isEnabled().catch(() => false)) {
+						action = 'run';
+						return action;
+					}
+					return undefined;
+				},
+				{ intervals: [500, 1_000, 2_000], timeout: 120_000 },
+			)
+			.toBeDefined();
+
+		if (action === 'approve') {
+			await approvalButton.dispatchEvent('click');
 		} else {
-			await expect(runButton).toBeEnabled({ timeout: 120_000 });
 			await runButton.click();
 		}
+	}
+
+	async waitForPreviewCanvasNode(nodeName?: string, timeout = 150_000): Promise<void> {
+		const node = nodeName
+			? this.getPreviewNodeByName(nodeName)
+			: this.getPreviewCanvasNodes().first();
+		await expect
+			.poll(
+				async () => {
+					for (const button of [
+						this.getConfirmAlwaysAllowButton(),
+						this.getDomainAccessAlwaysAllow(),
+						this.getConfirmApproveButton(),
+						this.getPlanApproveButton(),
+						this.getDomainAccessApprove(),
+						this.getGatewayDecisionApprove(),
+						this.getCredentialContinue(),
+					]) {
+						if (
+							(await button.isVisible().catch(() => false)) &&
+							(await button.isEnabled().catch(() => false))
+						) {
+							await button.dispatchEvent('click');
+							return false;
+						}
+					}
+
+					if (await node.isVisible().catch(() => false)) return true;
+
+					const showPreviewButton = this.getShowPreviewButton();
+					if (
+						(await showPreviewButton.isVisible().catch(() => false)) &&
+						(await showPreviewButton.isEnabled().catch(() => false))
+					) {
+						await showPreviewButton.dispatchEvent('click');
+					}
+
+					return await node.isVisible().catch(() => false);
+				},
+				{ intervals: [500, 1_000, 2_000, 5_000], timeout },
+			)
+			.toBe(true);
+		await expect(node).toBeVisible({ timeout: 10_000 });
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
@@ -231,13 +406,24 @@ export class InstanceAiPage extends BasePage {
 		await node.dblclick();
 	}
 
+	async openPreviewNodeByName(nodeName: string): Promise<void> {
+		const node = this.getPreviewNodeByName(nodeName);
+		await node.waitFor({ state: 'visible', timeout: 10_000 });
+		await node.dblclick();
+	}
+
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
 	}
 
+	/**
+	 * The "Execute step" toolbar button only renders once the AI build has
+	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar,
+	 * so reveal it with a re-hovering poll.
+	 */
 	async executePreviewNodeByName(nodeName: string): Promise<void> {
 		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
-		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await hoverToReveal(this.getPreviewNodeByName(nodeName), executeNodeButton);
 		await executeNodeButton.dispatchEvent('click');
 	}
 
@@ -268,7 +454,9 @@ export class InstanceAiPage extends BasePage {
 	// ── Convenience Actions ───────────────────────────────────────────
 
 	async sendMessage(text: string): Promise<void> {
+		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
 		await this.getChatInput().fill(text);
+		await expect(this.getSendButton()).toBeEnabled({ timeout: 30_000 });
 		await this.getSendButton().click();
 	}
 

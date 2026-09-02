@@ -1,0 +1,45 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  repositoryUrl:
+    type: string
+  branchName:
+    type: string
+    nullable: true
+  connectionType:
+    type: string
+    enum:
+      - ssh
+      - https
+  publicKey:
+    type: string
+    nullable: true
+  keyGeneratorType:
+    type: string
+    nullable: true
+    enum:
+      - ed25519
+      - rsa
+  baseCommit:
+    type: string
+    nullable: true
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - id
+  - name
+  - repositoryUrl
+  - branchName
+  - connectionType
+  - publicKey
+  - keyGeneratorType
+  - baseCommit
+  - createdAt
+  - updatedAt

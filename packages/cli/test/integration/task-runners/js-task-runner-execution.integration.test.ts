@@ -1,6 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -17,12 +16,13 @@ import {
 	NodeConnectionTypes,
 	Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-// `restoreMocks: true` in the root jest config restores spies between tests,
+// `restoreMocks: true` in the root vi config restores spies between tests,
 // but the Python runtime check is invoked from inner describes' `beforeAll`
 // hooks (which run after the previous test's restore). Patching the static
 // method directly keeps the stub active for the whole test file.
@@ -233,13 +233,45 @@ describe('JS TaskRunner execution on internal mode', () => {
 				}),
 			});
 		});
+
+		// The host's `Function.prototype` is reachable from user code
+		// via `$input.constructor.constructor.prototype`, so it must be frozen
+		// like the other host prototypes to keep its members immutable.
+		it('should freeze the host Function.prototype so it cannot be mutated', async () => {
+			// Act
+			const result = await runTaskWithCode(`
+				const hostFunctionPrototype = $input.constructor.constructor.prototype;
+				const originalApply = hostFunctionPrototype.apply;
+				let applyReassigned = false;
+				let propertyAdded = false;
+				try { hostFunctionPrototype.apply = function () {}; } catch (e) {}
+				applyReassigned = hostFunctionPrototype.apply !== originalApply;
+				try { hostFunctionPrototype.injected = 'value'; } catch (e) {}
+				propertyAdded = hostFunctionPrototype.injected === 'value';
+				return {
+					frozen: Object.isFrozen(hostFunctionPrototype),
+					applyReassigned,
+					propertyAdded,
+				};
+			`);
+
+			// Assert
+			expect(result).toEqual({
+				ok: true,
+				result: {
+					frozen: true,
+					applyReassigned: false,
+					propertyAdded: false,
+				},
+			});
+		});
 	});
 
 	describe('Internal and external libs', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
-			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service.js');
 			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});
@@ -306,6 +338,93 @@ describe('JS TaskRunner execution on internal mode', () => {
 				error: expect.objectContaining({
 					message: "Module 'lodash' is disallowed [line 2]",
 				}),
+			});
+		});
+
+		// A host module object exposes the host's own reflection via its
+		// constructor (`require('crypto').constructor.getPrototypeOf`), which
+		// bypasses the sandbox's shimmed `Object.getPrototypeOf` and lets user
+		// code walk a host object's prototype chain up to the internal
+		// `EventEmitter` prototype.
+		const walkToEventEmitterPrototype = `
+			const crypto = require('crypto');
+			const hostGetProto = crypto.constructor.getPrototypeOf;
+			const hostGetOwnDesc = crypto.constructor.getOwnPropertyDescriptor;
+
+			let proto = crypto.createHash('sha256');
+			let emitterProto = null;
+			for (let i = 0; i < 12; i++) {
+				proto = hostGetProto(proto);
+				if (!proto) break;
+				if (hostGetOwnDesc(proto, 'emit') && hostGetOwnDesc(proto, 'on')) {
+					emitterProto = proto;
+					break;
+				}
+			}
+
+			const methods = ['emit', 'on', 'once', 'addListener', 'prependListener', 'prependOnceListener'];
+		`;
+
+		// `process` inherits `emit` (and the listener registration methods) from
+		// the internal `EventEmitter` prototype, so overriding one would
+		// intercept a host `process.emit(...)` call, hand user code a reference
+		// to `process`, and allow requiring arbitrary modules. Those members
+		// must therefore stay immutable.
+		it('should keep EventEmitter members reachable from host modules immutable', async () => {
+			// Act
+			const result = await runTaskWithCode(`
+				${walkToEventEmitterPrototype}
+
+				const overridden = [];
+				for (const method of methods) {
+					const original = emitterProto[method];
+					try { emitterProto[method] = function () {}; } catch (e) {}
+					if (emitterProto[method] !== original) overridden.push(method);
+				}
+
+				return {
+					found: emitterProto !== null,
+					overridden,
+				};
+			`);
+
+			// Assert
+			expect(result).toEqual({
+				ok: true,
+				result: {
+					found: true,
+					overridden: [],
+				},
+			});
+		});
+
+		// `EventEmitter.prototype` is shared by the whole process, so locking
+		// these members must not make them non-enumerable: that would hide them
+		// from `for...in`, `Object.keys` and spreads on every emitter, changing
+		// behaviour host code and third-party modules already rely on.
+		it('should keep locked EventEmitter members enumerable', async () => {
+			// Act
+			const result = await runTaskWithCode(`
+				${walkToEventEmitterPrototype}
+
+				const nonEnumerable = [];
+				for (const method of methods) {
+					if (!hostGetOwnDesc(emitterProto, method).enumerable) nonEnumerable.push(method);
+				}
+
+				return {
+					found: emitterProto !== null,
+					nonEnumerable,
+				};
+			`);
+
+			// Assert
+			expect(result).toEqual({
+				ok: true,
+				result: {
+					found: true,
+					nonEnumerable: [],
+				},
 			});
 		});
 	});

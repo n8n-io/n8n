@@ -2,6 +2,7 @@ import type { INodeCredentialDescription, INodeProperties } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../MicrosoftTeamsTrigger.node';
 import { versionDescription } from '../v2/actions/versionDescription';
+import { SERVICE_PRINCIPAL_AUTH } from '../v2/transport';
 
 /**
  * These tests pin the backward-compatibility contract introduced alongside the
@@ -36,12 +37,13 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 		expect(authProperty?.noDataExpression).toBe(true);
 	});
 
-	it('should offer both the Teams and the generic Microsoft credential', () => {
+	it('should offer the Teams, generic Microsoft, and Service Principal credentials', () => {
 		const values = (authProperty?.options ?? []).map((option) =>
 			'value' in option ? option.value : undefined,
 		);
 		expect(values).toContain('microsoftTeamsOAuth2Api');
 		expect(values).toContain('microsoftOAuth2Api');
+		expect(values).toContain(SERVICE_PRINCIPAL_AUTH);
 	});
 
 	it('should default to the Teams credential (backward compatibility)', () => {
@@ -62,6 +64,15 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 		expect(genericCredential?.displayOptions?.show?.authentication).toEqual(['microsoftOAuth2Api']);
 		expect(teamsCredential?.required).toBe(true);
 		expect(genericCredential?.required).toBe(true);
+	});
+
+	it('should gate the Service Principal credential behind its authentication value', () => {
+		const spCredential = credentials.find(
+			(credential) => credential.name === SERVICE_PRINCIPAL_AUTH,
+		);
+
+		expect(spCredential?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		expect(spCredential?.required).toBe(true);
 	});
 
 	it('should keep the default aligned with the Teams credential gate value', () => {

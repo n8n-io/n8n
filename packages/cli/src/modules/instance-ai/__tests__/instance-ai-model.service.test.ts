@@ -1,9 +1,24 @@
-import { UNLIMITED_CREDITS } from '@n8n/api-types';
+import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
+
+const capturedTokenGetters: Array<() => Promise<unknown>> = [];
+vi.mock('@/services/proxy-token-manager', () => ({
+	ProxyTokenManager: class {
+		constructor(fetchToken: () => Promise<unknown>) {
+			capturedTokenGetters.push(fetchToken);
+		}
+		getAuthHeaders = vi.fn();
+	},
+}));
+
+const createProxyLanguageModel = vi.hoisted(() => vi.fn());
+vi.mock('@/utils/ai-proxy-language-model', () => ({
+	createProxyLanguageModel: (...args: unknown[]) => createProxyLanguageModel(...args),
+}));
 
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -12,12 +27,11 @@ const fakeUser = { id: 'user-1' } as User;
 
 function createClient() {
 	return {
-		getBuilderApiProxyToken: jest
+		getApiProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+		getInstanceAiApiProxyToken: vi
 			.fn()
-			.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-		getBuilderInstanceCredits: jest
-			.fn()
-			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
+			.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'ia-tok' }),
+		getInstanceAiCredits: vi.fn().mockResolvedValue({ creditsQuota: 5700, creditsClaimed: 12 }),
 	};
 }
 
@@ -29,8 +43,13 @@ describe('InstanceAiModelService', () => {
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		capturedTokenGetters.length = 0;
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	describe('isProxyEnabled', () => {
@@ -54,16 +73,36 @@ describe('InstanceAiModelService', () => {
 			expect(aiService.getClient).not.toHaveBeenCalled();
 		});
 
-		it('should fetch credits from the proxy client when enabled', async () => {
+		it('should fetch instance-ai credits from the proxy client when enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			const client = createClient();
 			aiService.getClient.mockResolvedValue(client as never);
 
 			await expect(service.getCredits(fakeUser)).resolves.toEqual({
-				creditsQuota: 100,
-				creditsClaimed: 5,
+				creditsQuota: 5700,
+				creditsClaimed: 12,
 			});
-			expect(client.getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'user-1' });
+			expect(client.getInstanceAiCredits).toHaveBeenCalledWith({ id: 'user-1' });
+		});
+
+		it('should retry transient failures when fetching credits', async () => {
+			vi.useFakeTimers();
+			aiService.isProxyEnabled.mockReturnValue(true);
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			const client = createClient();
+			client.getInstanceAiCredits
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ creditsQuota: 5700, creditsClaimed: 12 });
+			aiService.getClient.mockResolvedValue(client as never);
+
+			const promise = service.getCredits(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toEqual({
+				creditsQuota: 5700,
+				creditsClaimed: 12,
+			});
+			expect(client.getInstanceAiCredits).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -73,6 +112,84 @@ describe('InstanceAiModelService', () => {
 			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude' as never);
 
 			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
+		});
+
+		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			const client = createClient();
+			aiService.getClient.mockResolvedValue(client as never);
+			vi.spyOn(service, 'resolveProxyModel').mockResolvedValue('model' as never);
+
+			await service.resolveAgentModelConfig(fakeUser);
+
+			expect(capturedTokenGetters).toHaveLength(1);
+			await capturedTokenGetters[0]();
+
+			expect(client.getInstanceAiApiProxyToken).toHaveBeenCalledWith(
+				{ id: fakeUser.id },
+				expect.objectContaining({ userMessageId: expect.any(String) }),
+			);
+		});
+	});
+
+	describe('resolveProxyModel', () => {
+		const tokenManager = { getAuthHeaders: vi.fn() } as never;
+
+		it('passes the exact Kimi id to the shared proxy factory', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager);
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith({
+				proxyBaseUrl: 'https://proxy.base/',
+				modelId: MOONSHOTAI_KIMI_K3_MODEL_ID,
+				tokenManager,
+				feature: 'instance-ai',
+				n8nVersion: expect.any(String),
+				outboundHttp,
+				runId: undefined,
+				threadId: undefined,
+			});
+			expect(settingsService.resolveModelName).not.toHaveBeenCalled();
+		});
+
+		it('forwards the caller-provided run and thread ids to the proxy factory', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager, {
+				runId: 'run-42',
+				threadId: 'thread-7',
+			});
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-42', threadId: 'thread-7' }),
+			);
+		});
+
+		it('keeps Anthropic routing for other configured models', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5');
+			settingsService.resolveModelName.mockReturnValue('claude-opus-5');
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-opus-5',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager);
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'claude-opus-5',
+					feature: 'instance-ai',
+				}),
+			);
 		});
 	});
 });

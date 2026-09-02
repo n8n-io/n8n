@@ -3,7 +3,13 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { BridgeResumeExecutionContext, PlatformAgentContext } from './agent-chat-integration';
+import type {
+	ActionDecisionMessageFormatter,
+	BridgeResumeExecutionContext,
+	PlatformAgentContext,
+	SettleActionMessage,
+} from './agent-chat-integration';
+import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
@@ -27,6 +33,9 @@ interface AgentChatHitlResumeHandlerOptions {
 	agentService: ResumeExecutor;
 	logger: Logger;
 	callbackStore?: CallbackStore;
+	deleteActionMessageBeforeResume: boolean;
+	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
+	settleActionMessage?: SettleActionMessage;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -73,9 +82,12 @@ export class AgentChatHitlResumeHandler {
 			messageId: event.messageId,
 			interactingUserId: event.user.userId,
 			...this.options.getPlatformAgentContext(),
+			// The resume response streams back to this thread like any chat turn,
+			// so the same reply-delivery rules apply.
+			replyExpectation: 'required',
 		});
 
-		await this.cleanUpBeforeResume(event);
+		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
@@ -123,7 +135,12 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 		thread: Thread<unknown, unknown>,
-	): Promise<{ actionId: string; value: string | undefined } | null> {
+	): Promise<{
+		actionId: string;
+		value: string | undefined;
+		kind?: 'approval';
+		label?: string;
+	} | null> {
 		if (!this.options.callbackStore) return { actionId, value };
 
 		const resolved = await this.options.callbackStore.resolve(actionId);
@@ -134,51 +151,117 @@ export class AgentChatHitlResumeHandler {
 			);
 			return null;
 		}
-		return { actionId: resolved.actionId, value: resolved.value };
+		return {
+			actionId: resolved.actionId,
+			value: resolved.value,
+			kind: resolved.kind,
+			label: resolved.label,
+		};
 	}
 
-	/**
-	 * Delete the card message and apply platform-specific workarounds before
-	 * resuming the agent.
-	 */
-	private async cleanUpBeforeResume(event: ActionEvent): Promise<void> {
+	/** Clean up the action message according to integration policy before resuming. */
+	private async cleanUpBeforeResume(
+		event: ActionEvent,
+		resumeData: unknown,
+		callbackData: { kind?: 'approval'; label?: string },
+	): Promise<void> {
+		if (this.options.deleteActionMessageBeforeResume) {
+			try {
+				await event.adapter.deleteMessage(event.threadId, event.messageId);
+			} catch (deleteError) {
+				this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
+					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+				});
+			}
+			return;
+		}
+
 		try {
-			await event.adapter.deleteMessage(event.threadId, event.messageId);
-		} catch (deleteError) {
-			this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
-				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+			const approved =
+				callbackData.kind === 'approval' ? this.getApprovalDecision(resumeData) : undefined;
+			const message = this.options.formatActionDecisionMessage?.({
+				...(approved !== undefined ? { approved } : {}),
+				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
+				raw: event.raw,
+				user: event.user,
+			});
+			if (!message) return;
+
+			if (this.options.settleActionMessage) {
+				await this.options.settleActionMessage({
+					agentId: this.options.agentId,
+					integration: this.options.integration,
+					threadId: event.threadId,
+					messageId: event.messageId,
+					content: message,
+				});
+			} else {
+				await event.adapter.editMessage(event.threadId, event.messageId, message);
+			}
+		} catch (editError) {
+			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
+				error: editError instanceof Error ? editError.message : String(editError),
 			});
 		}
+	}
+
+	private getApprovalDecision(resumeData: unknown): boolean | undefined {
+		if (
+			typeof resumeData !== 'object' ||
+			resumeData === null ||
+			!('approved' in resumeData) ||
+			typeof resumeData.approved !== 'boolean'
+		) {
+			return undefined;
+		}
+		return resumeData.approved;
 	}
 
 	/**
 	 * Guard against double resumption, then resume the agent and stream the
 	 * response back into the thread.
+	 *
+	 * Public because a resume is not always user-driven — `AgentChatBridge` also
+	 * calls this when a sub-workflow finishing wakes a suspended run. Note the
+	 * `activeResumedRuns` guard is per instance, so it only covers this process.
 	 */
-	private async executeResume(
+	async executeResume(
 		thread: Thread<unknown, unknown>,
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		/** Tell the user the action was already handled. Only for their own clicks. */
+		notifyOnDuplicate = true,
 	): Promise<void> {
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			await thread.post('This action has already been handled');
+			if (notifyOnDuplicate) await thread.post('This action has already been handled');
 			return;
 		}
 
 		this.activeResumedRuns.add(runId);
 		try {
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const stream = this.options.agentService.resumeForChat({
-				agentId: this.options.agentId,
-				projectId: this.options.projectId,
-				runId,
-				toolCallId,
-				resumeData,
-				integrationType: this.options.integration.type,
-			});
-			await this.options.streamConsumer.consume(stream, thread, resumeExecutionContext);
+			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
+			try {
+				const stream = this.options.agentService.resumeForChat({
+					agentId: this.options.agentId,
+					projectId: this.options.projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					integrationType: this.options.integration.type,
+				});
+				await this.options.streamConsumer.consume(stream, thread, {
+					...resumeExecutionContext,
+					statusHandle,
+				});
+			} finally {
+				// The stream consumer clears the status right before the first response;
+				// this clear covers failures before/outside consumption. The
+				// once-wrapped handle makes it a no-op await when that already ran.
+				await statusHandle?.clearBeforeResponse();
+			}
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}

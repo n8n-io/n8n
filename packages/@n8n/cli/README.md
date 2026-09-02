@@ -1,6 +1,6 @@
 # @n8n/cli
 
-> **Beta** — Client CLI for n8n. Manage workflows, executions, credentials, and more from the terminal.
+> Client CLI for n8n. Manage workflows, executions, credentials, and more from the terminal.
 
 A lightweight, zero-dependency CLI that talks to any n8n instance via its public API. Designed for humans, scripts, and AI coding agents alike.
 

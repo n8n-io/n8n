@@ -1,0 +1,30 @@
+
+> @n8n/instance-ai@1.15.0 eval:instance-ai /Users/robin/Documents/n8n/packages/@n8n/instance-ai
+> tsx evaluations/cli/index.ts --filter contact-form-automation,workflow-scheduled-weather-and-agent --verbose
+
+2026-07-07T12:21:59.107Z [INFO] Authenticating with http://localhost:5678...
+2026-07-07T12:21:59.387Z [OK] Authenticated
+2026-07-07T12:21:59.388Z [INFO] Seeding MCP registry...
+2026-07-07T12:21:59.399Z [VERBOSE]   Skipping MCP registry seed: n8n API POST /rest/mcp-registry/test/seed failed (404): <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /rest/mcp-registry/test/seed</pre>
+</body>
+</html>
+
+2026-07-07T12:21:59.400Z [INFO] Skipped MCP registry seed (test endpoint unavailable)
+2026-07-07T12:21:59.436Z [INFO] No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)
+2026-07-07T12:21:59.436Z [INFO] Running 2 test case(s) with 5 scenario(s) × 1 iteration(s) across 1 lane(s)
+2026-07-07T12:21:59.437Z [INFO]   Running case [multi-turn]: "I want a workflow that handles contact-form submissions comi..."
+2026-07-07T12:21:59.438Z [INFO]   Running case: "This is not a request to build or execute anything. Do not c..."
+2026-07-07T12:22:19.923Z [VERBOSE] [d86b059d-efcc-4e4e-837a-48b7b9f4ba09] Run #1 finished -- time: 20485ms
+2026-07-07T12:22:19.924Z [VERBOSE] No background agent tasks spawned -- skipping background task wait
+2026-07-07T12:22:19.925Z [VERBOSE] [d86b059d-efcc-4e4e-837a-48b7b9f4ba09] Waiting for observational-memory jobs (timeout 30000ms)...
+2026-07-07T12:22:20.400Z [VERBOSE] [d86b059d-efcc-4e4e-837a-48b7b9f4ba09] Memory task poll #1 (475ms): 0 pending, 0 tracked — none
+2026-07-07T12:22:20.400Z [VERBOSE] [d86b059d-efcc-4e4e-837a-48b7b9f4ba09] Memory tasks idle after 475ms (1 poll(s))
+2026-07-07T12:22:21.402Z [VERBOSE] [confirm] Responding to confirmation: 9Xug-3uyhaQGZA9iYzLFN
+2026-07-07T12:22:26.281Z [VERBOSE] [user-proxy] decision action=answer_questions category=questions

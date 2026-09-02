@@ -18,7 +18,7 @@
 // even though they synchronously return canned data — there's nothing to
 // await here.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -81,7 +81,7 @@ export async function createStubServices(
 
 	const workflowService: InstanceAiWorkflowService = {
 		async list() {
-			return [];
+			return { workflows: [], total: 0, totalInScope: 0 };
 		},
 		async get(workflowId: string) {
 			return emptyWorkflowDetail(workflowId);
@@ -243,6 +243,18 @@ export async function createStubServices(
 				returned: { from: 0, to: 0 },
 			};
 		},
+		async getResolvedNodeParameters(_executionId: string, nodeName: string) {
+			return {
+				nodeName,
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: null,
+				resolved: null,
+				failedExpressions: [],
+				emptyResolutions: [],
+				suppressed: 'parameter-values-disabled' as const,
+			};
+		},
 	};
 
 	const dataTableService: InstanceAiDataTableService = {
@@ -298,11 +310,13 @@ export async function createStubServices(
 
 	const context: InstanceAiContext = {
 		userId: options.userId ?? 'eval-user',
+		logger: { info() {}, warn() {}, error() {}, debug() {} },
 		workflowService,
 		executionService,
 		credentialService,
 		nodeService,
 		dataTableService,
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 
 	return { context, capturedWorkflows };
@@ -481,7 +495,7 @@ function coerceCodex(value: unknown): SearchableNodeDescription['codex'] | undef
 function coerceBuilderHint(value: unknown): SearchableNodeDescription['builderHint'] | undefined {
 	if (!isRecord(value)) return undefined;
 	const hint: NonNullable<SearchableNodeDescription['builderHint']> = {};
-	if (typeof value.message === 'string') hint.message = value.message;
+	if (typeof value.searchHint === 'string') hint.searchHint = value.searchHint;
 	const inputs = coerceHintPortMap(value.inputs);
 	if (inputs) hint.inputs = inputs;
 	const outputs = coerceHintPortMap(value.outputs);

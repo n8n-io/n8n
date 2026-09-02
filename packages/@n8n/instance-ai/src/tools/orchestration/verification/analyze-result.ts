@@ -1,0 +1,519 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
+
+import type { ExecutionRunResult, VerificationNodePreview } from './types';
+import {
+	createRemediation,
+	terminalRemediationFromState,
+} from '../../../workflow-loop/remediation';
+import type {
+	RemediationMetadata,
+	WorkflowBuildOutcome,
+	WorkflowLoopState,
+} from '../../../workflow-loop/workflow-loop-state';
+import {
+	buildChatModelFailureGuidance,
+	classifyChatModelFailure,
+	type ChatModelRecoveryContext,
+} from '../../workflows/chat-model-validation';
+
+export type ChatModelRecoveryOptions = Pick<
+	ChatModelRecoveryContext,
+	'suggestionsByNodeName' | 'creditsCoveredNodeNames'
+>;
+
+type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
+const CREDENTIAL_FAILURE_KEYWORDS = [
+	'credential',
+	'unauthorized',
+	'forbidden',
+	'401',
+	'403',
+	'free tier',
+	'quota',
+];
+const TRANSIENT_FAILURE_KEYWORDS = ['429', 'rate limit', '502', 'bad gateway', 'timed out'];
+
+function stringifyForToolOutput(value: unknown): string {
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function unwrapUntrustedData(value: string): unknown {
+	const match = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/i.exec(value);
+	if (!match) return value;
+	const content = match[1];
+	if (content === undefined) return value;
+
+	try {
+		const parsed: unknown = JSON.parse(content);
+		return parsed;
+	} catch {
+		return value;
+	}
+}
+
+function outputForInspection(nodeOutput: unknown): unknown {
+	return typeof nodeOutput === 'string' ? unwrapUntrustedData(nodeOutput) : nodeOutput;
+}
+
+function getCountFromMetadata(value: unknown): number | undefined {
+	if (!isRecord(value)) return undefined;
+
+	for (const key of ['totalItems', '_itemCount']) {
+		const count = value[key];
+		if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
+			return count;
+		}
+	}
+
+	return undefined;
+}
+
+function countOutputItems(nodeOutput: unknown): number | undefined {
+	const output = outputForInspection(nodeOutput);
+	if (Array.isArray(output)) return output.length;
+	const metadataCount = getCountFromMetadata(output);
+	if (metadataCount !== undefined) return metadataCount;
+	if (output === undefined || output === null) return 0;
+	return 1;
+}
+
+function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
+	const serialized = stringifyForToolOutput(value);
+	if (maxChars <= 0) {
+		return { preview: '', truncated: serialized.length > 0 };
+	}
+	if (serialized.length <= maxChars) {
+		return { preview: serialized, truncated: false };
+	}
+	return { preview: `${serialized.slice(0, maxChars)}...`, truncated: true };
+}
+
+export function buildNodePreviews(
+	resultData: Record<string, unknown> | undefined,
+	maxChars: number,
+	simulatedNodeNames?: ReadonlySet<string>,
+): VerificationNodePreview[] {
+	if (!resultData) return [];
+
+	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
+		const serialized = stringifyForToolOutput(nodeOutput);
+		const preview = previewValue(nodeOutput, maxChars);
+		return {
+			nodeName,
+			itemCount: countOutputItems(nodeOutput),
+			preview: preview.preview,
+			truncated: preview.truncated,
+			chars: serialized.length,
+			...(simulatedNodeNames?.has(nodeName) ? { simulated: true } : {}),
+		};
+	});
+}
+
+export function countProducedOutputRows(
+	resultData: Record<string, unknown> | undefined,
+): number | undefined {
+	if (!resultData) return undefined;
+	let count = 0;
+	for (const nodeOutput of Object.values(resultData)) {
+		const itemCount = countOutputItems(nodeOutput);
+		if (itemCount !== undefined) count += itemCount;
+	}
+	return count;
+}
+
+function maxEmittedItemCount(resultData: Record<string, unknown> | undefined): number {
+	if (!resultData) return 0;
+
+	let max = 0;
+	for (const nodeOutput of Object.values(resultData)) {
+		const count = countOutputItems(nodeOutput) ?? 0;
+		if (count > max) max = count;
+	}
+	return max;
+}
+
+function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
+	return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function isChatModelScopedFailure(
+	nodeErrors: ExecutionNodeError[],
+	errorMessage: string | undefined,
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+): boolean {
+	if (!chatModelRelatedNodeNames || chatModelRelatedNodeNames.size === 0) return false;
+	if (nodeErrors.some((nodeError) => chatModelRelatedNodeNames.has(nodeError.nodeName))) {
+		return true;
+	}
+	if (lastNodeExecuted && chatModelRelatedNodeNames.has(lastNodeExecuted)) return true;
+	if (!errorMessage) return false;
+	for (const nodeName of chatModelRelatedNodeNames) {
+		if (errorMessage.includes(nodeName)) return true;
+	}
+	return false;
+}
+
+/** Failing node names in match-priority order: erroring nodes first, then the last executed node. */
+function failingNodeCandidates(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+): string[] {
+	const candidates = nodeErrors.map((nodeError) => nodeError.nodeName);
+	if (lastNodeExecuted) candidates.push(lastNodeExecuted);
+	return candidates;
+}
+
+/**
+ * Suggestions scoped to the identified failing node only. When the failing
+ * node cannot be identified, return none rather than another provider's model
+ * IDs — the guidance then falls back to verified-resource discovery.
+ */
+function replacementSuggestionsForFailure(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	suggestionsByNodeName: ChatModelRecoveryOptions['suggestionsByNodeName'] | undefined,
+): string[] {
+	if (!suggestionsByNodeName) return [];
+	for (const name of failingNodeCandidates(nodeErrors, lastNodeExecuted)) {
+		const suggestions = suggestionsByNodeName.get(name);
+		if (suggestions && suggestions.length > 0) return suggestions;
+	}
+	return [];
+}
+
+/** Whether n8n credits cover the identified failing node's credential type. */
+function creditsCoverFailingNode(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	creditsCoveredNodeNames: ChatModelRecoveryOptions['creditsCoveredNodeNames'] | undefined,
+): boolean {
+	if (!creditsCoveredNodeNames || creditsCoveredNodeNames.size === 0) return false;
+	return failingNodeCandidates(nodeErrors, lastNodeExecuted).some((name) =>
+		creditsCoveredNodeNames.has(name),
+	);
+}
+
+function classifyVerificationFailure(
+	error: string | undefined,
+	status: string | undefined,
+	buildOutcome: WorkflowBuildOutcome,
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+	chatModelRecovery: ChatModelRecoveryOptions | undefined,
+): RemediationMetadata {
+	if (status === 'waiting') {
+		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: hasSimulationPlan ? 'unsimulated_user_action_node' : 'execution_waiting',
+			guidance: hasSimulationPlan
+				? 'Verification paused on a node that waits for user action and was not simulated — ' +
+					'nodes downstream of it were not verified. This is not a workflow bug: do not edit ' +
+					'the code. Report to the user which node paused and that the rest of the workflow ' +
+					'needs a manual test.'
+				: 'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
+		});
+	}
+
+	const normalized = (error ?? '').toLowerCase();
+	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
+	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
+	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
+	if (isPlaceholderValue(error)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance:
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflows(action="setup").',
+		});
+	}
+
+	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
+		const quotaGuidance =
+			normalized.includes('quota') &&
+			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+				? creditsCoverFailingNode(
+						nodeErrors,
+						lastNodeExecuted,
+						chatModelRecovery?.creditsCoveredNodeNames,
+					)
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
+					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
+				: '';
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: hasMockedCredentialContext
+				? 'mocked_credentials_or_placeholders'
+				: 'credential_or_setup_failure',
+			guidance: hasMockedCredentialContext
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
+		});
+	}
+
+	if (messageMatchesAny(normalized, TRANSIENT_FAILURE_KEYWORDS)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'external_service_or_timeout',
+			guidance:
+				'Workflow submitted successfully, but verification is blocked by an external service or timeout. Stop code edits and explain the blocker to the user.',
+		});
+	}
+
+	const modelFailureKind = classifyChatModelFailure(error);
+	if (
+		modelFailureKind !== undefined &&
+		error &&
+		isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+	) {
+		return createRemediation({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'chat_model_failure',
+			guidance: buildChatModelFailureGuidance(
+				modelFailureKind,
+				error,
+				replacementSuggestionsForFailure(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.suggestionsByNodeName,
+				),
+				creditsCoverFailingNode(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.creditsCoveredNodeNames,
+				),
+			),
+		});
+	}
+
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason: 'runtime_failure',
+		guidance:
+			'Verification found a workflow runtime failure. Diagnose it and apply one batched workflow-code repair if the guard allows it.',
+	});
+}
+
+export function buildSimulationNote(
+	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>,
+	planMissing: boolean,
+): string | undefined {
+	if (reachedSimulatedNodes.length > 0) {
+		return (
+			`Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+			reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
+			'. Relay this to the user when presenting the result.'
+		);
+	}
+	if (planMissing) {
+		return (
+			'No simulation plan was available for this verification run — nodes were NOT ' +
+			'simulated and may have performed real external writes (sent messages, created or ' +
+			'modified records). Relay this to the user when presenting the result.'
+		);
+	}
+	return undefined;
+}
+
+function buildCoverageNote(
+	nodesNotReached: string[],
+	result: ExecutionRunResult,
+	success: boolean,
+	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
+): string | undefined {
+	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
+	if (success && reachedHaltedGates.length > 0) {
+		return (
+			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
+			'workflow stops there (for a human response or a wait condition), so execution past the ' +
+			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
+			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
+			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
+			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
+			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
+			'treating it as verified.' +
+			triggerScopeNote
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			" Any unreached node that IS on this trigger's branch did not receive input items " +
+			'(usually an empty lookup or query) — seed matching test data and re-run before treating ' +
+			'it as verified.'
+		);
+	}
+	const ending = result.lastNodeExecuted
+		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
+		: '.';
+	const collapsedFromCollection = success && maxEmittedItemCount(result.data) >= 2;
+	const guidance = success
+		? collapsedFromCollection
+			? ' An upstream node emitted multiple items but the chain collapsed to zero before reaching them. The usual cause is a Code node reading `$input.first().json` (a single split item) instead of `$input.all().map(i => i.json)` — an HTTP Request node splits a top-level array (including a bare array of IDs) into one item per element. Fix the node that dropped the items to read every item, then re-run verification. Do NOT report the workflow as fully verified.'
+			: ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+		: '';
+	return (
+		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
+		nodesNotReached.join(', ') +
+		ending +
+		guidance
+	);
+}
+
+function buildNodeErrorMessage(nodeErrors: ExecutionNodeError[]): string | undefined {
+	if (nodeErrors.length === 0) return undefined;
+
+	return nodeErrors
+		.map((nodeError) =>
+			nodeError.message
+				? `${nodeError.nodeName}: ${nodeError.message}`
+				: `${nodeError.nodeName}: node execution failed`,
+		)
+		.join('; ');
+}
+
+export function namesOrDataKeys(
+	reachedNames: Set<string>,
+	data: Record<string, unknown> | undefined,
+): string[] | undefined {
+	if (reachedNames.size > 0) return [...reachedNames];
+	return data ? Object.keys(data) : undefined;
+}
+
+export interface VerificationAnalysis {
+	success: boolean;
+	reachedNames: Set<string>;
+	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	nodesNotReached: string[];
+	remediation?: RemediationMetadata;
+	nodesExecuted?: string[];
+	simulationNote?: string;
+	coverageNote?: string;
+	errorMessage?: string;
+	nodeErrors: ExecutionNodeError[];
+}
+
+export function analyzeVerificationResult(args: {
+	result: ExecutionRunResult;
+	buildOutcome: WorkflowBuildOutcome;
+	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+	/** Wait-gate nodes pinned with zero items — the run is expected to stop at these. */
+	haltedGateNames?: string[];
+	stateBefore: WorkflowLoopState | undefined;
+	runId: string;
+	/**
+	 * Chat-model nodes plus parents they feed via `ai_languageModel`. Model
+	 * failure keywords are only applied when the failure is scoped to these
+	 * nodes — never globally.
+	 */
+	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
+	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
+}): VerificationAnalysis {
+	const {
+		result,
+		buildOutcome,
+		simulatedNodes,
+		haltedGateNames,
+		stateBefore,
+		runId,
+		chatModelRelatedNodeNames,
+		chatModelRecovery,
+		triggerNodeName,
+	} = args;
+	const nodeErrors = result.nodeErrors ?? [];
+	const reachedNames = new Set(
+		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
+	);
+	// Nodes fed by pinned data saved on the workflow did not really execute
+	// either — count them as simulated so a pin-fed run never passes as a live
+	// test (INS-1216: stale AI fixtures adopted as pins looked fully verified).
+	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
+		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
+		.map((name) => ({
+			nodeName: name,
+			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
+		}));
+	const reachedSimulatedNodes = [
+		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
+		...workflowPinnedNodes,
+	];
+	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
+		.map((verdict) => verdict.nodeName)
+		.filter((name) => !reachedNames.has(name));
+	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
+	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
+	const errorMessage = result.error ?? buildNodeErrorMessage(nodeErrors);
+	const success =
+		nodeErrors.length === 0 &&
+		(result.status === 'success' ||
+			(!hasSimulationPlan && result.status === 'waiting' && !errorMessage && hasOutput));
+	const failureRemediation = success
+		? undefined
+		: classifyVerificationFailure(
+				errorMessage,
+				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
+				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
+				buildOutcome,
+				nodeErrors,
+				result.lastNodeExecuted,
+				chatModelRelatedNodeNames,
+				chatModelRecovery,
+			);
+	const budgetRemediation =
+		failureRemediation?.shouldEdit === true
+			? terminalRemediationFromState(stateBefore, runId)
+			: undefined;
+	const remediation = budgetRemediation ?? failureRemediation;
+
+	return {
+		success,
+		reachedNames,
+		reachedSimulatedNodes,
+		nodesNotReached,
+		remediation,
+		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
+		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
+		coverageNote: buildCoverageNote(
+			nodesNotReached,
+			result,
+			success,
+			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
+		),
+		errorMessage,
+		nodeErrors,
+	};
+}

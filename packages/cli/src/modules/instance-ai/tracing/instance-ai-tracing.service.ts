@@ -1,9 +1,12 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	continueInstanceAiTraceContext,
+	orchestratorAgentId,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
+	type BrowserExtensionTraceContext,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
 	type ModelConfig,
@@ -17,15 +20,12 @@ import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from '../run-trace-metadata';
 import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
 import { TraceReplayState } from '../trace-replay-state';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
@@ -57,7 +57,14 @@ export type OrchestratorResumeReason =
 
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
-export type InstanceAiTracingEventBus = Pick<InProcessEventBus, 'getEventsForRun'>;
+/**
+ * Run-event read from the durable log. Async because it flushes the thread's
+ * open coalesce buffers and then queries — which is what makes the streamed
+ * text of a run visible to `first_visible_state` at all.
+ */
+export type InstanceAiTracingEventReader = {
+	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;
+};
 
 export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
 
@@ -67,7 +74,7 @@ export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'get
 
 export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
-	eventBus: InstanceAiTracingEventBus;
+	eventReader: InstanceAiTracingEventReader;
 	runState: InstanceAiTracingRunState;
 	dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
 	aiService: InstanceAiTracingAiService;
@@ -101,7 +108,7 @@ export class InstanceAiTracingService {
 
 	private readonly logger: Logger;
 
-	private readonly eventBus: InstanceAiTracingEventBus;
+	private readonly eventReader: InstanceAiTracingEventReader;
 
 	private readonly runState: InstanceAiTracingRunState;
 
@@ -111,7 +118,7 @@ export class InstanceAiTracingService {
 
 	constructor(options: InstanceAiTracingServiceOptions) {
 		this.logger = options.logger;
-		this.eventBus = options.eventBus;
+		this.eventReader = options.eventReader;
 		this.runState = options.runState;
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.aiService = options.aiService;
@@ -173,6 +180,16 @@ export class InstanceAiTracingService {
 		return sameGroup ?? entries.find((entry) => entry.threadId === threadId)?.tracing;
 	}
 
+	registerTraceContext(
+		runId: string,
+		threadId: string,
+		tracing: InstanceAiTraceContext,
+		messageGroupId?: string,
+	): void {
+		this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+		this.runState.attachTracing(threadId, tracing);
+	}
+
 	async createOrchestratorResumeTraceContext(options: {
 		baseTracing?: InstanceAiTraceContext;
 		threadId: string;
@@ -185,6 +202,9 @@ export class InstanceAiTracingService {
 		proxyConfig?: ServiceProxyConfig;
 		resumeReason: OrchestratorResumeReason;
 		metadata?: Record<string, unknown>;
+		browserExtension?: BrowserExtensionTraceContext;
+		/** Defer process-local registration until the durable resume claim succeeds. */
+		register?: boolean;
 	}): Promise<InstanceAiTraceContext | undefined> {
 		const baseTracing =
 			options.baseTracing ??
@@ -202,17 +222,19 @@ export class InstanceAiTracingService {
 			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
 			metadata: {
 				resume_reason: options.resumeReason,
-				agent_id: ORCHESTRATOR_AGENT_ID,
+				agent_id: orchestratorAgentId(options.runId),
 				...options.metadata,
 			},
 			n8nVersion: N8N_VERSION,
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
+			browserExtension: options.browserExtension,
 		});
 
 		if (tracing) {
 			await this.configureTraceReplayMode(tracing);
-			this.storeTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
-			this.runState.attachTracing(options.threadId, tracing);
+			if (options.register !== false) {
+				this.registerTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
+			}
 		}
 
 		return tracing;
@@ -268,11 +290,11 @@ export class InstanceAiTracingService {
 		await this.finalizeMessageTraceRoot(runId, tracing, options);
 	}
 
-	buildMessageTraceMetadata(
+	async buildMessageTraceMetadata(
 		threadId: string,
 		runId: string,
 		options: InstanceAiRunTraceMetadataOptions,
-	): Record<string, unknown> {
+	): Promise<Record<string, unknown>> {
 		const traceOptions = {
 			status: options.status,
 			...(options.cancellationReason !== undefined
@@ -281,12 +303,29 @@ export class InstanceAiTracingService {
 			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
 		};
 
+		// The events read hits the DB under the durable log, and most callers run
+		// inside a run's terminal catch block — throwing there would skip
+		// run-finish and leave the client spinning until the liveness sweep. This
+		// is a trace annotation, not a correctness input, so degrade instead.
+		let events: InstanceAiEvent[] = [];
+		let eventsUnavailable = false;
+		try {
+			events = await this.eventReader.getEventsForRun(threadId, runId);
+		} catch (error) {
+			eventsUnavailable = true;
+			this.logger.warn('Failed to read run events for Instance AI trace metadata', {
+				runId,
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+
 		return {
 			completion_source: 'orchestrator',
-			...buildInstanceAiRunTraceMetadata(
-				this.eventBus.getEventsForRun(threadId, runId),
-				traceOptions,
-			),
+			...buildInstanceAiRunTraceMetadata(events, traceOptions),
+			// Without this, a failed read is indistinguishable from a run that
+			// genuinely produced nothing — both report `first_visible_state: empty`.
+			...(eventsUnavailable ? { first_visible_state_unavailable: true } : {}),
 		};
 	}
 
@@ -467,7 +506,7 @@ export class InstanceAiTracingService {
 				const baseUrl = client.getApiProxyBaseUrl();
 				const manager = new ProxyTokenManager(
 					async () =>
-						await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+						await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
 				);
 				tracingProxyConfig = {
 					apiUrl: baseUrl + '/langsmith',

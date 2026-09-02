@@ -1,30 +1,86 @@
+strictDepBuilds: true
+strictPeerDependencies: false
+preferWorkspacePackages: true
+autoInstallPeers: true
+linkWorkspacePackages: deep
+hoist: true
+hoistWorkspacePackages: false
+# pnpm 11 hoists TS7 into node_modules/.pnpm/node_modules, where it shadows the root's real
+# TS6 and breaks vue-tsc — it needs `typescript/lib/_tsc`, which TS7 and the
+# `@typescript/typescript6` alias both lack — in packages on the typescript-tooling catalog.
+hoistPattern:
+  - '*'
+  - '!typescript'
+allowUnusedPatches: true
+# The docker build trims frontend manifests and deploys with --prod before later
+# scripts run; pnpm 11's pre-run install would reinstall production-only and prune
+# the devDependencies those scripts import.
+verifyDepsBeforeRun: false
+
+pmOnFail: warn
+fund: false
+updateNotifier: false
+loglevel: warn
+packageImportMethod: clone-or-copy
+
+minimumReleaseAge: 2880
+# Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
+# for tens of seconds while aggregate throughput stays at ~1Gbit/s. The 60s
+# default turns those stalls into failed installs; a probe caught the same
+# request completing at 39.6s on one runner and aborting at exactly 60.0s on
+# another. See https://github.com/n8n-io/n8n/actions/runs/32991441403
+fetchTimeout: 300000
+
+minimumReleaseAgeExclude:
+  - '@n8n/*'
+  - '@n8n_io/*'
+  # Fresh Claude model IDs (e.g. Opus 5) ship in @ai-sdk/anthropic patches; allow
+  # installing before the 2-day minimumReleaseAge so agents/evals aren't stuck on
+  # the unknown-model 4096 max_tokens default.
+  - '@ai-sdk/anthropic'
+  # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
+  - '@xmldom/xmldom'
+
 packages:
   - packages/*
   - packages/@n8n/*
   - packages/frontend/**
+  # `packages/*` stops one level short of `<module>/frontend`, so feature modules need their own
+  # glob or they are not workspace packages at all.
+  - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
 
 catalog:
-  '@ai-sdk/amazon-bedrock': ^4.0.113
-  '@ai-sdk/anthropic': ^3.0.81
-  '@ai-sdk/azure': ^3.0.70
-  '@ai-sdk/cohere': ^3.0.36
-  '@ai-sdk/deepseek': ^2.0.35
-  '@ai-sdk/gateway': ^3.0.125
-  '@ai-sdk/google': ^3.0.80
-  '@ai-sdk/groq': ^3.0.39
-  '@ai-sdk/mistral': ^3.0.37
-  '@ai-sdk/openai': ^3.0.68
-  '@ai-sdk/openai-compatible': ^2.0.48
-  '@ai-sdk/provider-utils': ^4.0.27
-  '@ai-sdk/xai': ^3.0.93
+  '@ai-sdk/alibaba': ^2.0.32
+  '@ai-sdk/amazon-bedrock': ^5.0.31
+  '@ai-sdk/anthropic': ^4.0.32
+  '@ai-sdk/azure': ^4.0.21
+  '@ai-sdk/cohere': ^4.0.12
+  '@ai-sdk/deepseek': ^3.0.13
+  '@ai-sdk/gateway': ^4.0.52
+  '@ai-sdk/google': ^4.0.24
+  '@ai-sdk/google-vertex': ^5.0.47
+  '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/minimax': ^3.0.15
+  '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/moonshotai': ^3.0.35
+  '@ai-sdk/openai': ^4.0.20
+  '@ai-sdk/openai-compatible': ^3.0.14
+  '@ai-sdk/otel': ^1.0.66
+  '@ai-sdk/provider-utils': ^5.0.27
+  '@ai-sdk/xai': ^4.0.18
+  '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
-  '@chat-adapter/linear': ^4.28.1
-  '@chat-adapter/slack': ^4.28.1
-  '@chat-adapter/state-memory': ^4.28.1
-  '@chat-adapter/telegram': ^4.28.1
+  # Exact pin: the adapters share an internal protocol with `chat`, and a range
+  # that resolves higher than the locked `chat` pulls a second copy of it into
+  # the tree. Bump this together with `chat` and the other adapters below.
+  '@chat-adapter/discord': 4.37.0
+  '@chat-adapter/linear': 4.37.0
+  '@chat-adapter/slack': 4.37.0
+  '@chat-adapter/state-memory': 4.37.0
+  '@chat-adapter/telegram': 4.37.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -36,11 +92,18 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
-  '@daytona/sdk': 0.187.0
+  '@confluentinc/kafka-javascript': 1.9.1
+  '@daytona/sdk': 0.205.1
+  '@e965/xlsx': 0.20.3
+  '@iconify-json/lucide': ^1.2.112
+  '@iconify-json/mdi': ^1.1.63
+  '@iconify/json': ^2.2.488
   '@joplin/turndown-plugin-gfm': 1.0.64
-  '@langchain/anthropic': 1.3.27
+  '@langchain/anthropic': 1.5.6
   '@langchain/community': 1.1.27
-  '@langchain/core': 1.1.41
+  '@langchain/core': 1.2.8
+  '@langchain/langgraph': 1.0.2
+  '@langchain/langgraph-checkpoint': 1.0.0
   '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/css': 1.3.0
@@ -50,74 +113,105 @@ catalog:
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
+  '@modelcontextprotocol/node': 2.0.0
   '@modelcontextprotocol/sdk': 1.26.0
+  '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
-  '@n8n/typeorm': 0.3.20-17
-  '@n8n_io/ai-assistant-sdk': 1.22.0
-  '@openrouter/ai-sdk-provider': ^2.8.0
+  '@n8n_io/ai-assistant-sdk': 1.26.0
+  '@openrouter/ai-sdk-provider': ^3.0.0
+  '@opentelemetry/api': 1.9.1
+  '@pinecone-database/pinecone': ^5.0.2
+  '@qdrant/js-client-rest': ^1.16.2
   '@rudderstack/rudder-sdk-node': 3.0.5
-  '@sentry/node': ^10.55.0
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
-  '@supabase/supabase-js': 2.50.0
+  '@stryker-mutator/core': 10.0.0
+  '@stryker-mutator/vitest-runner': 10.0.0
+  '@supabase/supabase-js': 2.112.3
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
   '@testcontainers/mysql': ^11.13.0
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
-  '@tiptap/core': 3.22.5
-  '@tiptap/extension-link': 3.22.5
-  '@tiptap/extension-placeholder': 3.22.5
-  '@tiptap/extension-strike': 3.22.5
-  '@tiptap/extension-table': 3.22.5
-  '@tiptap/extension-table-cell': 3.22.5
-  '@tiptap/extension-table-header': 3.22.5
-  '@tiptap/extension-table-row': 3.22.5
-  '@tiptap/extension-task-item': 3.22.5
-  '@tiptap/extension-task-list': 3.22.5
-  '@tiptap/markdown': 3.22.5
-  '@tiptap/starter-kit': 3.22.5
-  '@tiptap/vue-3': 3.22.5
+  '@tiptap/core': 3.27.0
+  '@tiptap/extension-link': 3.27.0
+  '@tiptap/extension-placeholder': 3.27.0
+  '@tiptap/extension-strike': 3.27.0
+  '@tiptap/extension-table': 3.27.0
+  '@tiptap/extension-table-cell': 3.27.0
+  '@tiptap/extension-table-header': 3.27.0
+  '@tiptap/extension-table-row': 3.27.0
+  '@tiptap/extension-task-item': 3.27.0
+  '@tiptap/extension-task-list': 3.27.0
+  '@tiptap/extension-underline': 3.27.0
+  '@tiptap/markdown': 3.27.0
+  '@tiptap/pm': 3.27.0
+  '@tiptap/starter-kit': 3.27.0
+  '@tiptap/vue-3': 3.27.0
   '@types/basic-auth': ^1.1.3
+  '@types/estree': ^1.0.8
   '@types/express': ^5.0.1
+  '@types/jsdom': ^21.1.7
+  '@types/json-schema': ^7.0.15
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
+  '@types/lodash-es': ^4.17.12
+  '@types/luxon': 3.2.0
+  '@types/markdown-it': ^13.0.2
+  '@types/markdown-it-link-attributes': '^3.0.5'
   '@types/mime-types': 3.0.1
+  '@types/ms': 2.1.0
   '@types/node': 24.10.1
+  '@types/nodemailer': 8.0.1
+  '@types/oracledb': 6.10.3
   '@types/proxy-from-env': ^1.0.4
+  '@types/qs': 6.9.15
   '@types/sanitize-html': ^2.11.0
+  '@types/semver': ^7.7.0
+  '@types/ssh2': 1.15.0
+  '@types/turndown': ^5.0.6
   '@types/uuid': ^11.0.0
+  '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
-  '@vitest/coverage-v8': 4.1.1
+  '@vitest/browser-playwright': ^4.1.9
+  '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
+  ai: ^7.0.66
   axios: 1.18.0
-  babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
-  chat: ^4.28.1
+  change-case: ^5.4.4
+  chat: 4.37.0
   cheerio: 1.1.0
   chokidar: 4.0.3
+  citty: ^0.1.6
+  consola: ^3.4.2
   cron: 4.4.0
+  cron-parser: 5.6.1
   cross-env: ^7.0.3
-  csv-parse: 6.2.1
-  electron: ^41.7.2
+  csv-parse: 7.0.2
+  dotenv: 17.2.3
+  electron: 41.10.4
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-oxlint: ^1.61.0
+  eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-oxlint: 1.78.0
+  express: 5.1.0
   fast-check: ^3.23.2
-  fast-glob: 3.2.12
+  fast-glob: 3.3.3
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
+  fflate: 0.8.3
+  file-type: 21.3.3
   flatted: 3.4.2
   form-data: 4.0.6
   get-tsconfig: ^4.13.0
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^6.1.2
+  isolated-vm: ^7.0.0
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
+  json-schema: 0.4.0
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
@@ -125,50 +219,61 @@ catalog:
   langsmith: 0.6.0
   ldapts: 8.1.7
   lodash: 4.18.1
+  lodash-es: 4.18.1
+  lru-cache: 11.5.1
   luxon: 3.7.2
+  markdown-it: ^13.0.2
+  markdown-it-link-attributes: ^4.0.1
   mime-types: 3.0.2
   moment-timezone: 0.5.48
-  mysql2: 3.17.0
-  nanoid: 3.3.8
+  mqtt-packet: 9.0.0
+  ms: 2.1.3
+  mysql2: 3.23.1
+  nanoid: 3.3.18
   nock: 14.0.14
   nodemailer: 8.0.10
-  openai: 6.19.0
-  oxlint: ^1.61.0
+  openai: 6.46.0
+  oracledb: 6.10.0
+  oxlint: 1.78.0
   oxlint-tsgolint: ^0.21.1
+  p-limit: ^3.1.0
   pdf-parse: 2.4.5
-  pg: 8.17.0
+  pdfjs-dist: 5.4.296
+  pg: 8.21.0
   picocolors: 1.0.1
-  playwright-core: 1.60.0
-  posthog-node: 5.33.4
+  playwright-core: 1.62.1
+  posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
   qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  sanitize-html: 2.17.4
+  sanitize-html: 2.17.7
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
   source-map-support: 0.5.21
+  ssh2: 1.15.0
   stream-json: 1.9.1
-  tar: ^7.5.16
+  stylelint: ^16.23.0
+  tar: 7.5.21
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
-  turndown: ^7.2.2
+  turndown: ^7.2.4
   typescript: 6.0.2
   uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
   vite-plugin-singlefile: 2.3.3
-  vitest: ^4.1.1
+  vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.5
+  vm2: 3.11.6
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
-  zod: 3.25.67
+  zod: 3.25.76
   zod-to-json-schema: 3.23.3
 
 catalogMode: strict
@@ -177,22 +282,24 @@ catalogs:
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
-    '@playwright/test': 1.60.0
+    '@playwright/test': 1.62.1
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.60.0
-    playwright-core: 1.60.0
+    playwright: 1.62.1
+    playwright-core: 1.62.1
   frontend:
     '@internationalized/date': ^3.9.0
-    '@sentry/vue': ^10.36.0
+    '@sentry/vue': 10.70.0
+    '@testing-library/dom': ^10.4.0
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
-    '@vitejs/plugin-vue': ^5.2.4
+    '@vitejs/plugin-vue': ^6.0.8
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
-    '@vueuse/core': ^10.11.0
+    '@vueuse/core': ^14.3.0
+    autoprefixer: ^10.4.19
     element-plus: 2.4.3
-    highlight.js: 11.8.0
+    highlight.js: 11.12.0
     pinia: ^2.2.4
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
@@ -201,26 +308,214 @@ catalogs:
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
+  nanoid-v6:
+    nanoid: 6.0.1
+  p-limit-v7:
+    p-limit: ^7.3.1
+  # Sentry pins its sibling packages to an exact version of @sentry/core, so this
+  # group has to move in lockstep — a caret would let the entries re-resolve to
+  # different releases and pull two copies of @sentry/core into the tree.
   sentry:
-    '@sentry/node': ^10.55.0
-    '@sentry/node-native': ^10.55.0
-    '@sentry/profiling-node': ^10.55.0
+    '@sentry/core': 10.70.0
+    '@sentry/node': 10.70.0
+    '@sentry/node-native': 10.70.0
+    '@sentry/profiling-node': 10.70.0
   storybook:
     '@chromatic-com/storybook': ^4.1.3
-    '@storybook/addon-a11y': ^10.1.11
-    '@storybook/addon-docs': ^10.1.11
-    '@storybook/addon-themes': ^10.1.11
-    '@storybook/addon-vitest': ^10.1.11
-    '@storybook/vue3-vite': ^10.1.11
-    eslint-plugin-storybook: ^10.1.11
-    storybook: ^10.1.11
+    '@storybook/addon-a11y': ^10.5.10
+    '@storybook/addon-docs': ^10.5.10
+    '@storybook/addon-vitest': ^10.5.10
+    '@storybook/vue3': ^10.5.10
+    '@storybook/vue3-vite': ^10.5.10
+    '@vueless/storybook-dark-mode': ^10.0.8
+    eslint-plugin-storybook: ^10.5.10
+    storybook: ^10.5.10
+  typescript:
+    tsdown: ^0.22.8
+    typescript: 7.0.2
+  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
+  # (as `typescript`) for tooling that needs the programmatic compiler API —
+  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
+  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
+  typescript-tooling:
+    '@typescript/native': 'npm:typescript@7.0.2'
+    typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
-    undici: ^6.24.0
+    undici: ^6.28.0
   undici-v7:
-    undici: ^7.28.0
+    undici: ^7.29.0
 
-minimumReleaseAge: 4320
+overrides:
+  libphonenumber-js: npm:empty-npm-package@1.0.0
+  '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
+  sharp: npm:empty-npm-package@1.0.0
+  ast-types: 0.16.1
+  baseline-browser-mapping: ^2.10.31
+  '@azure/identity': 4.13.0
+  '@lezer/common': ^1.2.0
+  '@mistralai/mistralai': ^1.10.0
+  '@n8n/typeorm>@sentry/node': catalog:sentry
+  '@opentelemetry/api': 'catalog:'
+  '@opentelemetry/core': 2.10.0
+  '@opentelemetry/propagator-jaeger': 2.10.0
+  '@types/node': ^20.17.50
+  chokidar: 4.0.3
+  esbuild: 'catalog:'
+  multer: ^2.3.0
+  prebuild-install: 7.1.3
+  pug: ^3.0.3
+  semver: 'catalog:'
+  tar-fs: 2.1.5
+  tslib: ^2.6.2
+  tsconfig-paths: ^4.2.0
+  vue-tsc: catalog:frontend
+  gaxios: '>=7.1.1'
+  google-gax: ^4.3.7
+  ws: '>=8.21.1'
+  date-fns: 2.30.0
+  date-fns-tz: 2.0.0
+  form-data: 4.0.6
+  pdf-parse: 'catalog:'
+  pdfjs-dist: 'catalog:'
+  tmp: 0.2.7
+  nodemailer: 8.0.10
+  validator: 13.15.26
+  zod: 3.25.76
+  js-yaml: 4.3.1
+  katex: 0.18.2
+  body-parser: 2.3.0
+  glob@10: 10.5.0
+  glob@7: 7.2.3
+  jws@3: 3.2.2
+  jws@4: 4.0.1
+  qs: 'catalog:'
+  '@smithy/config-resolver': '>=4.4.0'
+  '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
+  diff: 8.0.3
+  tar: 'catalog:'
+  ajv@6: 6.15.0
+  ajv@7: 8.20.0
+  ajv@8: 8.20.0
+  bn.js@4: 5.2.3
+  bn.js@5: 5.2.3
+  lodash: 4.18.1
+  minimatch@<=5.1.8: 5.1.8
+  minimatch@10: 10.2.3
+  '@hono/node-server': 1.19.15
+  follow-redirects: 1.16.0
+  express-rate-limit: 8.2.2
+  underscore: 1.13.8
+  flatted: 3.4.2
+  handlebars: 4.7.9
+  path-to-regexp: 8.4.0
+  path-to-regexp@<0.1.13: 0.1.13
+  picomatch@2: 2.3.2
+  picomatch@4: 4.0.4
+  avsc: 5.7.9
+  brace-expansion@<2.1.4: 2.1.4
+  '@xmldom/xmldom': 0.8.14
+  yaml@<=2.8.3: 2.8.3
+  axios: 'catalog:'
+  fast-xml-builder: 1.2.1
+  fast-xml-parser: 5.7.2
+  postcss@<=8.5.22: 8.5.23
+  '@anthropic-ai/sdk@<=0.91.1': 0.91.1
+  uuid@<=13.0.1: 13.0.1
+  fast-uri: 3.1.6
+  cjs-module-lexer@<2.2.0: 2.2.0
+  protobufjs: 7.6.5
+  shell-quote: 1.9.0
+  adm-zip: 0.6.0
+  ip-address@10: 10.3.1
+  brace-expansion@5: 5.0.9
+  '@tootallnate/once@2': 2.0.1
+  '@vue/server-renderer@3.5.26': 3.5.40
+  '@vue/shared@3.5.26': 3.5.40
+  '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
+  '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
+  '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
+  '@daytona/sdk@0.205.1>@aws-sdk/lib-storage': 3.808.0
+  '@daytona/sdk@0.205.1>@opentelemetry/sdk-trace-base': 2.7.1
+  langsmith: 0.6.0
+  hono: 4.12.34
+  '@tiptap/core': 'catalog:'
+  pg: 'catalog:'
+  file-type: 'catalog:'
+  linkify-it@<=5.0.1: 5.0.2
+  highlight.js@11: catalog:frontend
+  jose@<6.2.9: 6.2.9
+  node-rsa: 2.0.0
+  '@turbo/darwin-64@<=2.9.18': 2.9.18
+  '@turbo/linux-64@<=2.9.18': 2.9.18
+  '@turbo/windows-64@<=2.9.18': 2.9.18
+  ibm-cloud-sdk-core: ^5.5.0
+  undici@5: catalog:undici-v6
+  undici@6: catalog:undici-v6
+  undici@7: catalog:undici-v7
+  node-gyp>undici: catalog:undici-v7
+  '@babel/traverse@<7.23.2': ^7.23.2
+  '@vitest/browser@<4.1.10': 4.1.10
+  immutable: 5.1.8
+  nanoid@<3.3.18: 'catalog:'
+  '@zone-eu/mailsplit@<5.4.15': 5.4.15
+  'strnum@<2.4.2': 2.4.2
 
-minimumReleaseAgeExclude:
-  - '@n8n/*'
-  - '@n8n_io/*'
+patchedDependencies:
+  axios: patches/axios.patch
+  bull@4.16.4: patches/bull@4.16.4.patch
+  pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
+  pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
+  '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
+  '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
+  vue-tsc@2.2.8: patches/vue-tsc@2.2.8.patch
+  element-plus@2.4.3: patches/element-plus@2.4.3.patch
+  ics: patches/ics.patch
+  minifaker: patches/minifaker.patch
+  z-vue-scan: patches/z-vue-scan.patch
+  '@lezer/highlight': patches/@lezer__highlight.patch
+  v-code-diff: patches/v-code-diff.patch
+  vuedraggable@4.1.0: patches/vuedraggable@4.1.0.patch
+  assert@2.1.0: patches/assert@2.1.0.patch
+  reka-ui@2.5.0: patches/reka-ui@2.5.0.patch
+  lodash@4.18.1: patches/lodash@4.18.1.patch
+  '@langchain/openai@1.4.4': patches/@langchain__openai@1.4.4.patch
+  '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
+  '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
+
+allowBuilds:
+  '@biomejs/biome': false
+  '@confluentinc/kafka-javascript': true
+  '@jitsi/robotjs': false
+  '@parcel/watcher': false
+  '@sentry-internal/node-cpu-profiler': false
+  '@sentry-internal/node-native-stacktrace': false
+  '@sentry/cli': false
+  '@sentry/node-cpu-profiler': false
+  '@sentry/node-native-stacktrace': false
+  '@swc/core': false
+  '@vscode/ripgrep': true
+  agent-browser: false
+  bufferutil: false
+  core-js: false
+  cpu-features: false
+  electron: false
+  electron-winstaller: false
+  es5-ext: false
+  esbuild: false
+  eslint-plugin-n8n-nodes-base: false
+  isolated-vm: true
+  lefthook: false
+  libpq: false
+  msgpackr-extract: false
+  oracledb: false
+  protobufjs: false
+  puppeteer: false
+  sleep: false
+  sqlite3: true
+  ssh2: false
+  tree-sitter: false
+  tree-sitter-bash: false
+  unrs-resolver: false
+  utf-8-validate: false
+  v-code-diff: false
+  vue-demi: false

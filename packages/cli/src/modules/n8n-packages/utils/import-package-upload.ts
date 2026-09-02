@@ -1,7 +1,6 @@
+import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import multer from 'multer';
-
-import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 

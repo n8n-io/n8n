@@ -1,6 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectPoolSettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { PoolConfigService } from '@/scaling/pool-config.service';
 import type { WorkerPoolsService } from '@/scaling/worker-pools.service';
@@ -24,7 +24,7 @@ describe('PoolConfigService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		setEnabled(true);
 		// Default: cache miss, no workers registered
 		cacheService.get.mockResolvedValue(undefined);

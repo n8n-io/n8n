@@ -8,11 +8,11 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -21,7 +21,7 @@ import ProjectCardBadge from '@/features/collaboration/projects/components/Proje
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
@@ -30,7 +30,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -44,6 +44,9 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
+import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -296,6 +299,9 @@ const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openInAssistant = useOpenInAssistantCard(props);
+
 // Optimistic state for the legacy 3-dot menu fallback (used when the
 // 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
@@ -325,6 +331,9 @@ const hasDynamicCredentials = computed(() => {
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	if (openInAssistant(event)) return;
+
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
@@ -622,14 +631,15 @@ const tags = computed(
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
-				>{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" /> |
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
+			<span v-show="data" :class="$style.divider">|</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
+			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
 			<span
 				v-show="showLegacyMcpIndicator"
 				:class="$style.legacyMcpIndicator"
@@ -639,17 +649,18 @@ const tags = computed(
 					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
 			</span>
-			<template v-if="hasDynamicCredentials">
-				<span>|</span>
-				<span
-					:class="$style.privateCredentialIndicator"
-					data-test-id="workflow-card-private-credential"
-				>
-					<PrivateCredentialIcon
-						:tooltip-text="locale.baseText('workflows.privateCredential.tooltip')"
-					/>
-				</span>
-			</template>
+			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+			<span
+				v-if="hasDynamicCredentials"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="workflow-card-private-credential"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+					size="small"
+				/>
+			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
 				v-show="data"
@@ -730,6 +741,8 @@ const tags = computed(
 					:is-mcp-module-active="props.isMcpModuleActive"
 					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
+				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"
@@ -788,6 +801,11 @@ const tags = computed(
 .legacyMcpIndicator {
 	display: inline-flex;
 	align-items: center;
+}
+
+.divider {
+	// Standalone flex item so the row `gap` applies evenly on both sides.
+	user-select: none;
 }
 
 .privateCredentialIndicator {

@@ -1,7 +1,16 @@
 import { defineConfig } from 'vitest/config';
 
+// In CI, many package suites run concurrently under turbo, and an uncapped
+// per-suite fork pool (sized to the core count) oversubscribes a small runner
+// and flakes timing-sensitive tests. Cap each suite to half the cores in CI;
+// off locally, so behaviour is unchanged. Mirrors `@n8n/vitest-config/node`,
+// which this standalone config doesn't extend.
+const forkPoolOptions =
+	process.env.CI === 'true' ? { pool: 'forks' as const, maxWorkers: '50%' } : {};
+
 export default defineConfig({
 	test: {
+		...forkPoolOptions,
 		globals: true,
 		environment: 'node',
 		include: ['src/**/*.test.ts'],

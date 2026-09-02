@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -15,6 +15,27 @@ export class InstanceAiConfig {
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
+
+	/**
+	 * Google Cloud project for `google-vertex-anthropic/*` models.
+	 * Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT_ID')
+	vertexProjectId: string = '';
+
+	/**
+	 * Vertex location for `google-vertex-anthropic/*` models (e.g. `global`, `us-east5`).
+	 * Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
+	vertexLocation: string = '';
+
+	/**
+	 * Service-account JSON for `google-vertex-anthropic/*` models.
+	 * Omit to use ADC (`gcloud auth application-default login`).
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON')
+	vertexServiceAccountJson: string = '';
 
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
@@ -28,13 +49,12 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
-	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
-	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
-	subAgentMaxSteps: number = 100;
-
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
+
+	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
+	browserUseEnabled: boolean = true;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
@@ -97,17 +117,17 @@ export class InstanceAiConfig {
 
 	/**
 	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
-	 * Default 7 days. `0` uses Daytona's maximum interval.
+	 * Default 1 hour. `0` uses Daytona's maximum interval.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
-	sandboxAutoArchiveMinutes: number = 7 * 24 * 60;
+	sandboxAutoArchiveMinutes: number = 60;
 
 	/**
-	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 30 days. A negative
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 7 days. A negative
 	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
-	sandboxAutoDeleteMinutes: number = 30 * 24 * 60;
+	sandboxAutoDeleteMinutes: number = 7 * 24 * 60;
 
 	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
@@ -135,7 +155,7 @@ export class InstanceAiConfig {
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
-	threadTtlDays: number = 90;
+	threadTtlDays: number = 30;
 
 	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
@@ -145,25 +165,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
+
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
-
-	/** Scan and redact secrets/PII from agent output before it reaches the user. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
-	outputRedactionEnabled: boolean = true;
-
-	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
-	outputRedactionSecrets: boolean = true;
-
-	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
-	outputRedactionPii: string = 'credit-card';
-
-	/** Replacement text substituted for each redacted match in agent output. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
-	outputRedactionPlaceholder: string = '[REDACTED]';
 
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
@@ -172,4 +180,42 @@ export class InstanceAiConfig {
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
+
+	/**
+	 * Let the assistant discover and connect MCP registry servers.
+	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
+	 */
+	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
+	mcpConnectionsEnabled: boolean = false;
+
+	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
+
+	/**
+	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
+	 * the chat input replaces the suspending setup wizard. Env-settable so eval
+	 * lanes can exercise both paths; a managed rollout flag may layer on top
+	 * later behind the same accessors.
+	 */
+	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
+	instanceAiSetupPanelEnabled: boolean = false;
+
+	/**
+	 * Activation-capped trial variant for n8n cloud experiment.
+	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
+	activationCapped: boolean = false;
+
+	/**
+	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
+	activationLockMessageThreshold: number = 1;
 }

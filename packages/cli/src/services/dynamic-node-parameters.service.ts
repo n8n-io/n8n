@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { CredentialsRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
@@ -20,18 +22,21 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+	findDisplayedProperty,
+} from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { withExpressionIsolate } from '@/utils';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { SharedWorkflowRepository, User } from '@n8n/db';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { Logger } from '@n8n/backend-common';
-import { withExpressionIsolate } from '@/utils';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -63,6 +68,7 @@ export class DynamicNodeParametersService {
 		private workflowLoaderService: WorkflowLoaderService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private credentialsFinderService: CredentialsFinderService,
+		private credentialsRepository: CredentialsRepository,
 	) {}
 
 	async refineResourceIds(
@@ -119,7 +125,36 @@ export class DynamicNodeParametersService {
 				if (forbiddenId !== undefined) {
 					throw new ForbiddenError();
 				}
+
+				await this.assertMayUseEndUserCredentials(user, credentialIds);
 			}
+		}
+	}
+
+	/**
+	 * Loading a list with an end-user credential resolves it against the requesting
+	 * user's own connection, so it requires `credential:connect` — the same scope the
+	 * connect flow itself demands — on top of the `credential:read` checked above.
+	 *
+	 * Read access alone is not enough: a project viewer holds `credential:read` but may
+	 * not connect an account, and should be told so rather than shown a list built from
+	 * a connection they are not allowed to hold.
+	 */
+	private async assertMayUseEndUserCredentials(user: User, credentialIds: string[]) {
+		const credentials = await this.credentialsRepository.getManyByIds(credentialIds);
+		const endUserIds = credentials.filter((c) => c.isResolvable).map((c) => c.id);
+		if (endUserIds.length === 0) return;
+
+		const connectableIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+			endUserIds,
+			user,
+			['credential:connect'],
+		);
+
+		if (endUserIds.some((id) => !connectableIds.has(id))) {
+			throw new ForbiddenError(
+				'You need permission to connect your own account to this end-user credential before you can load this list',
+			);
 		}
 	}
 
@@ -143,6 +178,43 @@ export class DynamicNodeParametersService {
 		});
 	}
 
+	/**
+	 * Resolves the property's loadOptions routing from the node definition via the parameter path
+	 * (not from the request body), then runs it.
+	 */
+	async getOptionsViaLoadOptionsByPath(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<INodePropertyOptions[]> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const property = findDisplayedProperty(
+			path,
+			nodeType.description.properties,
+			currentNodeParameters,
+			{ typeVersion: nodeTypeAndVersion.version },
+			nodeType.description,
+		);
+		const routing =
+			property && 'typeOptions' in property
+				? property.typeOptions?.loadOptions?.routing
+				: undefined;
+		if (!routing) {
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" has no loadOptions routing for parameter path "${path}"`,
+			);
+		}
+		return await this.getOptionsViaLoadOptions(
+			{ routing },
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			credentials,
+		);
+	}
+
 	/** Returns the available options via a loadOptions param */
 	async getOptionsViaLoadOptions(
 		loadOptions: ILoadOptions,
@@ -153,12 +225,6 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This is in here for now for security reasons.
-			// Background: As the full data for the request to make does get send, and the auth data
-			// will then be applied, would it be possible to retrieve that data like that. By at least
-			// requiring a baseURL to be defined can at least not a random server be called.
-			// In the future this code has to get improved that it does not use the request information from
-			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new BadRequestError(
 				`Node type "${nodeType.description.name}" does not exist or does not have "requestDefaults.baseURL" defined!`,
 			);
@@ -167,7 +233,12 @@ export class DynamicNodeParametersService {
 		const mode = 'internal';
 		const runIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData = createEmptyRunExecutionData();
+		// `runtimeData` is where `ExecuteContext` looks for the execution context, so the
+		// design-time context has to be threaded through it for declarative nodes to resolve
+		// end-user credentials. `LoadOptionsContext` reads `additionalData` directly instead.
+		const runExecutionData = createRunExecutionData({
+			executionData: { runtimeData: additionalData.executionContext },
+		});
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 

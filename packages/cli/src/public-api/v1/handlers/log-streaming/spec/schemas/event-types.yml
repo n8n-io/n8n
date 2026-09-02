@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required:
+  - data
+properties:
+  data:
+    type: array
+    description: Event names that can be streamed to a destination.
+    items:
+      type: string
+    example: [n8n.workflow.started, n8n.workflow.success, n8n.workflow.failed]

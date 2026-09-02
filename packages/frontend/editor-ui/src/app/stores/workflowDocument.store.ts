@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
+import { computed, inject, provide, ref, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -31,6 +31,7 @@ import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflo
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDocumentNodeGroups';
+import { useWorkflowDocumentPublicationStatus } from './workflowDocument/useWorkflowDocumentPublicationStatus';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -111,6 +112,22 @@ void (0 as unknown as [
 
 export type WorkflowDocumentId = `${string}@${string}`;
 
+/**
+ * `GET /workflows/:id` only assembles `homeProject` when the sharing license
+ * is active; otherwise it returns the raw `shared` relation instead. Derive
+ * the owning project from `shared` so features that depend on `homeProject`
+ * (e.g. the evaluations wizard) work regardless of the sharing license.
+ */
+export function deriveHomeProject(
+	workflow: Pick<IWorkflowDb, 'homeProject' | 'shared'>,
+): ProjectSharingData | null {
+	return (
+		workflow.homeProject ??
+		workflow.shared?.find((share) => share.role === 'workflow:owner')?.project ??
+		null
+	);
+}
+
 export function createWorkflowDocumentId(
 	workflowId: string,
 	version: string = 'latest',
@@ -175,6 +192,7 @@ export function getWorkflowDocumentStoreId(id: string) {
 export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
+		const hydrated = ref(false);
 
 		const nodeTypesStore = useNodeTypesStore();
 
@@ -185,6 +203,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
 		});
 		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentPublicationStatus = useWorkflowDocumentPublicationStatus();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -296,6 +315,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return data;
 		}
 
+		function setHydrated(value: boolean) {
+			hydrated.value = value;
+		}
+
 		function hydrate(workflow: IWorkflowDb) {
 			if (workflow.id !== workflowId) {
 				throw new Error(
@@ -317,7 +340,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				activeVersion: workflow.activeVersion ?? null,
 			});
 			workflowDocumentIsArchived.setIsArchived(workflow.isArchived ?? false);
-			workflowDocumentHomeProject.setHomeProject(workflow.homeProject ?? null);
+			workflowDocumentHomeProject.setHomeProject(deriveHomeProject(workflow));
 			workflowDocumentSharedWithProjects.setSharedWithProjects(workflow.sharedWithProjects ?? []);
 			workflowDocumentScopes.setScopes(workflow.scopes ?? []);
 			workflowDocumentTags.setTags(workflow.tags ?? []);
@@ -346,12 +369,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
 				pinData: workflow.pinData ?? {},
 			});
+			setHydrated(true);
 		}
 
 		function reset() {
+			setHydrated(false);
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentPublicationStatus.setPublicationStatus({ status: 'idle' });
 			workflowDocumentIsArchived.setIsArchived(false);
 			workflowDocumentHomeProject.setHomeProject(null);
 			workflowDocumentSharedWithProjects.setSharedWithProjects([]);
@@ -437,8 +463,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			documentId: id,
 			workflowId,
 			workflowVersion,
+			hydrated,
 			...workflowDocumentName,
 			...workflowDocumentActive,
+			...workflowDocumentPublicationStatus,
 			...workflowDocumentHomeProject,
 			...workflowDocumentSharedWithProjects,
 			...workflowDocumentChecksum,
@@ -462,6 +490,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
 			removeAllNodes,
+			setHydrated,
 			hydrate,
 			reset,
 			getSnapshot,

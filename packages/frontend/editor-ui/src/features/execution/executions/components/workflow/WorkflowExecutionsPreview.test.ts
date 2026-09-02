@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
 import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -22,7 +22,7 @@ import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 const showMessage = vi.fn();
 const showError = vi.fn();
 const showToast = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
 }));
 

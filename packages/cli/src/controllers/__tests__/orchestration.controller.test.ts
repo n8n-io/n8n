@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OrchestrationController } from '@/controllers/orchestration.controller';
 import type { License } from '@/license';
@@ -13,7 +13,7 @@ describe('OrchestrationController', () => {
 	const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkersStatusAll', () => {

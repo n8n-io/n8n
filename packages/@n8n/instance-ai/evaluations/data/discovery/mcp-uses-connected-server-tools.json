@@ -1,0 +1,16 @@
+{
+	"id": "mcp-uses-connected-server-tools",
+	"userMessage": "Pull up the notes from my last product review in Notion and give me a short summary.",
+	"instanceState": {
+		"mcp": { "registry": ["notion", "linear"], "connected": [{ "slug": "notion" }] }
+	},
+	"expectedToolInvocations": {
+		"anyOfToolCalls": [
+			{ "toolName": "mcp_notion_notion-search" },
+			{ "toolName": "mcp_notion_notion-fetch" }
+		],
+		"noneOfToolCalls": [{ "toolName": "mcp-servers", "args": { "action": "connect" } }]
+	},
+	"rationale": "Notion is already connected: the agent must use its tools instead of re-offering a connection the user already has.",
+	"maxSteps": 12
+}

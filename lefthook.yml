@@ -32,6 +32,12 @@ pre-commit:
       skip:
         - merge
         - rebase
+    workspace_private_deps_check:
+      glob: '**/package.json'
+      run: node scripts/check-workspace-private-deps.mjs
+      skip:
+        - merge
+        - rebase
     skill_links_check:
       glob: '.agents/skills/**'
       run: node scripts/sync-agent-skill-links.mjs --check

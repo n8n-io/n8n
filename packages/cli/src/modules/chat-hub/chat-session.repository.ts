@@ -1,14 +1,15 @@
+import { BaseRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
-
-import { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
+
 @Service()
-export class ChatHubSessionRepository extends Repository<ChatHubSession> {
-	constructor(dataSource: DataSource) {
-		super(ChatHubSession, dataSource.manager);
+export class ChatHubSessionRepository extends BaseRepository<ChatHubSession> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ChatHubSession, dataSource.manager, transactionRunner);
 	}
 
 	async createChatSession(

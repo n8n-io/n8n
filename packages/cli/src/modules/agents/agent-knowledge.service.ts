@@ -7,23 +7,21 @@ import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import type { Readable } from 'node:stream';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
-	fromVolumeStorageReference,
-	isFilesystemNotFoundError,
-	KNOWLEDGE_FILES_DIR,
-	storageFileNameForOriginalFileName,
-	toAgentFileDto,
-	toVolumeStorageReference,
-	type AgentKnowledgeFileUpload,
-	type AgentKnowledgeFilesystem,
-} from './agent-knowledge-storage';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+	AgentKnowledgeFileStore,
+	type StoredAgentKnowledgeFile,
+} from './agent-knowledge-file-store';
+import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -51,7 +49,9 @@ export class AgentKnowledgeService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
-		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
+		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly logger: Logger,
 	) {}
 
@@ -59,36 +59,23 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-		userId: string,
 	): Promise<AgentFileDto[]> {
 		try {
 			await this.ensureAgentBelongsToProject(agentId, projectId);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
-			const uploadedFiles: AgentFile[] = [];
 
-			await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
-				projectId,
-				agentId,
-				userId,
-				async (filesystem) => {
-					const volumeUploads: AgentKnowledgeFileUpload[] = [];
-					try {
-						for (const file of files) {
-							const storageFileName = storageFileNameForOriginalFileName(file.originalname);
-							const agentFile = await this.reserveAgentFile(agentId, file, storageFileName);
-							uploadedFiles.push(agentFile);
-							const upload = await this.prepareVolumeUpload(file, storageFileName);
-							volumeUploads.push(upload);
-						}
-						await filesystem.ensureDir(KNOWLEDGE_FILES_DIR);
-						await filesystem.uploadFiles(volumeUploads);
-					} catch (error) {
-						await this.cleanupUploadedFiles(filesystem, uploadedFiles);
-						throw error;
-					}
-				},
-			);
+			const uploadedFiles: AgentFile[] = [];
+			try {
+				for (const file of files) {
+					uploadedFiles.push(await this.storeAgentFile(agentId, file));
+				}
+			} catch (error) {
+				await this.cleanupUploadedFiles(uploadedFiles);
+				throw error;
+			}
+
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
 		} finally {
@@ -102,17 +89,14 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async warmSandbox(agentId: string, projectId: string, userId: string): Promise<void> {
+	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId, userId);
+		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
+
+		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
-	async deleteFile(
-		agentId: string,
-		projectId: string,
-		fileId: string,
-		userId: string,
-	): Promise<void> {
+	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -121,32 +105,62 @@ export class AgentKnowledgeService {
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
-		this.deleteVolumeFileInBackground(projectId, agentId, userId, file);
+		await this.agentKnowledgeFileStore
+			.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
+			.catch((error) => {
+				this.logger.warn('Failed to delete knowledge file blob', {
+					agentId,
+					fileId: file.id,
+					error: error instanceof Error ? error.message : error,
+				});
+			});
+		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		} else {
+			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+		}
 	}
 
-	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
+	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
+		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
-		this.deleteKnowledgeDirectoryInBackground(projectId, agentId, userId);
+		if (files.length > 0) {
+			await this.agentKnowledgeFileStore
+				.delete(
+					files.map((file) => ({
+						storedAt: file.storedAt,
+						storageKey: file.storageKey,
+					})),
+				)
+				.catch((error) => {
+					this.logger.warn('Failed to delete knowledge file blobs', {
+						agentId,
+						error: error instanceof Error ? error.message : error,
+					});
+				});
+		}
 	}
 
-	private async reserveAgentFile(
-		agentId: string,
-		file: Express.Multer.File,
-		storageFileName: string,
-	): Promise<AgentFile> {
+	/** Best-effort passthrough for agent/project deletion; never throws. */
+	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
+		await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+	}
+
+	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */
+	private async storeAgentFile(agentId: string, file: Express.Multer.File): Promise<AgentFile> {
 		const fileId = generateNanoId();
-		const agentFile = this.agentFileRepository.create({
-			id: fileId,
-			agentId,
-			binaryDataId: toVolumeStorageReference(storageFileName),
-			fileName: file.originalname,
+		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+		const content = await this.prepareUploadContent(file);
+
+		const stored = await this.agentKnowledgeFileStore.write({ agentId, fileId }, content, {
+			fileName: storageFileName,
 			mimeType: file.mimetype,
-			fileSizeBytes: file.size,
 		});
 
 		try {
-			return await this.agentFileRepository.save(agentFile);
+			return await this.saveAgentFile(agentId, fileId, file, stored);
 		} catch (error) {
+			await this.agentKnowledgeFileStore.delete([stored]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -154,10 +168,26 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private async prepareVolumeUpload(
+	private async saveAgentFile(
+		agentId: string,
+		fileId: string,
 		file: Express.Multer.File,
-		storageFileName: string,
-	): Promise<AgentKnowledgeFileUpload> {
+		stored: StoredAgentKnowledgeFile,
+	): Promise<AgentFile> {
+		const agentFile = this.agentFileRepository.create({
+			id: fileId,
+			agentId,
+			storedAt: stored.storedAt,
+			storageKey: stored.storageKey,
+			fileName: file.originalname,
+			mimeType: file.mimetype,
+			fileSizeBytes: file.size,
+		});
+
+		return await this.agentFileRepository.save(agentFile);
+	}
+
+	private async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
 		if (!file.path) {
 			throw new BadRequestError('Uploaded file path is missing');
 		}
@@ -165,24 +195,17 @@ export class AgentKnowledgeService {
 		const extension = path.extname(file.originalname).toLowerCase();
 		if (extension === '.pdf') {
 			const extractedText = await this.extractPdfText(file.path);
-			return {
-				source: Buffer.from(extractedText, 'utf-8'),
-				destination: this.storagePathFor(storageFileName),
-			};
+			return Buffer.from(extractedText, 'utf-8');
 		}
 
-		return {
-			source: file.path,
-			destination: this.storagePathFor(storageFileName),
-		};
+		return createReadStream(file.path);
 	}
 
-	private async cleanupUploadedFiles(
-		filesystem: AgentKnowledgeFilesystem,
-		files: AgentFile[],
-	): Promise<void> {
+	private async cleanupUploadedFiles(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
-			await this.deleteVolumeFile(filesystem, file).catch(() => {});
+			await this.agentKnowledgeFileStore
+				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
+				.catch(() => {});
 			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
 		}
 	}
@@ -193,6 +216,9 @@ export class AgentKnowledgeService {
 		const extractedText = documents
 			.map((document: { pageContent: string }) => document.pageContent)
 			.join('\n\n')
+			// PDF extraction can leak NUL bytes, which make grep-like tools
+			// treat the stored text as binary.
+			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
 			throw new BadRequestError(
@@ -200,70 +226,6 @@ export class AgentKnowledgeService {
 			);
 		}
 		return extractedText;
-	}
-
-	private async deleteVolumeFile(
-		filesystem: AgentKnowledgeFilesystem,
-		file: AgentFile,
-	): Promise<void> {
-		const storageFileName = fromVolumeStorageReference(file.binaryDataId);
-		try {
-			await filesystem.deleteFile(this.storagePathFor(storageFileName));
-		} catch (error) {
-			if (!isFilesystemNotFoundError(error)) {
-				throw error;
-			}
-		}
-	}
-
-	private deleteVolumeFileInBackground(
-		projectId: string,
-		agentId: string,
-		userId: string,
-		file: AgentFile,
-	): void {
-		void this.agentKnowledgeSandboxService
-			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
-				await this.deleteVolumeFile(filesystem, file);
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to delete knowledge file from volume', {
-					agentId,
-					fileId: file.id,
-					error: error instanceof Error ? error.message : error,
-				});
-			});
-	}
-
-	private deleteKnowledgeDirectoryInBackground(
-		projectId: string,
-		agentId: string,
-		userId: string,
-	): void {
-		void this.agentKnowledgeSandboxService
-			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
-				await this.deleteKnowledgeDirectory(filesystem);
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to delete knowledge files from volume', {
-					agentId,
-					error: error instanceof Error ? error.message : error,
-				});
-			});
-	}
-
-	private async deleteKnowledgeDirectory(filesystem: AgentKnowledgeFilesystem): Promise<void> {
-		try {
-			await filesystem.deleteFile(KNOWLEDGE_FILES_DIR, true);
-		} catch (error) {
-			if (!isFilesystemNotFoundError(error)) {
-				throw error;
-			}
-		}
-	}
-
-	private storagePathFor(storageFileName: string): string {
-		return `${KNOWLEDGE_FILES_DIR}/${storageFileName}`;
 	}
 
 	private validateUploadMetadata(files: Express.Multer.File[]) {
@@ -287,15 +249,9 @@ export class AgentKnowledgeService {
 		}
 
 		const existingFileNames = new Set(existingFiles.map((file) => file.fileName));
-		const existingStorageNames = new Set<string>();
-
-		for (const file of existingFiles) {
-			try {
-				existingStorageNames.add(fromVolumeStorageReference(file.binaryDataId));
-			} catch {
-				// Ignore unknown legacy storage references during duplicate checks.
-			}
-		}
+		const existingStorageNames = new Set(
+			existingFiles.map((file) => storageFileNameForOriginalFileName(file.fileName)),
+		);
 
 		const batchFileNames = new Set<string>();
 		const batchStorageNames = new Set<string>();
@@ -341,6 +297,7 @@ export class AgentKnowledgeService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+		return agent;
 	}
 
 	private async cleanupUploadTempFiles(files: Express.Multer.File[]) {

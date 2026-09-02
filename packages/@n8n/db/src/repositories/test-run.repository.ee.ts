@@ -4,8 +4,9 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
 import { TestRun } from '../entities';
+import type { TestRunStatus } from '../entities/test-run.ee';
 import { TestRunErrorCode } from '../entities/types-db';
-import type { AggregatedTestRunMetrics, TestRunFinalResult, ListQuery } from '../entities/types-db';
+import type { AggregatedTestRunMetrics, TestRunFinalResult } from '../entities/types-db';
 import { getTestRunFinalResult } from '../utils/get-final-test-result';
 
 export type TestRunSummary = TestRun & {
@@ -97,17 +98,25 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { runningInstanceId: null, cancelRequested: false });
 	}
 
-	async getMany(workflowId: string, options: ListQuery.Options) {
-		// FIXME: optimize fetching final result of each test run
+	async getMany(
+		workflowId: string,
+		{ offset, limit }: { offset?: number; limit?: number } = {},
+		status?: TestRunStatus,
+	) {
 		const findManyOptions: FindManyOptions<TestRun> = {
-			where: { workflow: { id: workflowId } },
-			order: { createdAt: 'DESC' },
-			relations: ['testCaseExecutions'],
+			where: { workflow: { id: workflowId }, ...(status ? { status } : {}) },
+			// `id` tiebreaker keeps offset pagination stable when runs share a `createdAt` (ms precision).
+			order: { createdAt: 'DESC', id: 'DESC' },
+			// Only `status` is needed per case — `finalResult` is derived from case
+			// statuses and `testCaseCount` from the row count — so avoid loading the
+			// heavy JSON columns (inputs/outputs/metrics/errorDetails) of every case.
+			relations: { testCaseExecutions: true },
+			select: { testCaseExecutions: { id: true, status: true } },
 		};
 
-		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
+		if (limit) {
+			findManyOptions.skip = offset;
+			findManyOptions.take = limit;
 		}
 
 		const testRuns = await this.find(findManyOptions);
@@ -115,7 +124,39 @@ export class TestRunRepository extends Repository<TestRun> {
 		return testRuns.map(({ testCaseExecutions, ...testRun }) => {
 			const finalResult =
 				testRun.status === 'completed' ? getTestRunFinalResult(testCaseExecutions) : null;
-			return { ...testRun, finalResult };
+			// `testCaseExecutions` is already loaded above, so the count is free —
+			// no extra query. Consumed by the public API's `TestRunSummaryDto`.
+			return { ...testRun, finalResult, testCaseCount: testCaseExecutions.length };
+		});
+	}
+
+	/**
+	 * Count test runs for a workflow, optionally filtered by status. Used by the
+	 * public API to compute the pagination cursor without loading rows.
+	 */
+	async countByWorkflowId(workflowId: string, status?: TestRunStatus) {
+		return await this.countBy({
+			workflow: { id: workflowId },
+			...(status ? { status } : {}),
+		});
+	}
+
+	/**
+	 * Whether a test run exists and belongs to the given workflow. Scoped and
+	 * relation-free, so callers can authorize access to a run without loading
+	 * its (potentially large) set of test case executions.
+	 */
+	async existsInWorkflow(testRunId: string, workflowId: string): Promise<boolean> {
+		return await this.existsBy({ id: testRunId, workflow: { id: workflowId } });
+	}
+
+	/**
+	 * Relation-free lookup scoped to a workflow. Cross-workflow ids return
+	 * `null` so a caller cannot reach another workflow's run by guessing ids.
+	 */
+	async findOneByIdAndWorkflowId(testRunId: string, workflowId: string): Promise<TestRun | null> {
+		return await this.findOne({
+			where: { id: testRunId, workflow: { id: workflowId } },
 		});
 	}
 
@@ -126,14 +167,43 @@ export class TestRunRepository extends Repository<TestRun> {
 	 * Test Run is considered failed if at least one test case execution is failed.
 	 */
 	async getTestRunSummaryById(testRunId: string): Promise<TestRunSummary> {
-		const testRun = await this.findOne({
-			where: { id: testRunId },
-			relations: ['testCaseExecutions'],
-		});
+		const summary = await this.findTestRunSummary({ id: testRunId });
 
-		if (!testRun) {
+		if (!summary) {
 			throw new UnexpectedError('Test run not found');
 		}
+
+		return summary;
+	}
+
+	/**
+	 * Scoped variant of {@link getTestRunSummaryById}: returns the summary only
+	 * when the run belongs to `workflowId`, else `null`. A single query (no
+	 * separate existence check) that also prevents cross-workflow access.
+	 */
+	async getTestRunSummaryByWorkflowId(
+		testRunId: string,
+		workflowId: string,
+	): Promise<TestRunSummary | null> {
+		return await this.findTestRunSummary(
+			{ id: testRunId, workflow: { id: workflowId } },
+			{ minimalCases: true },
+		);
+	}
+
+	private async findTestRunSummary(
+		where: FindManyOptions<TestRun>['where'],
+		{ minimalCases = false }: { minimalCases?: boolean } = {},
+	): Promise<TestRunSummary | null> {
+		const testRun = await this.findOne({
+			where,
+			relations: { testCaseExecutions: true },
+			// `minimalCases` loads only what `finalResult`/`testCaseCount` need;
+			// `getTestRunSummaryById` serializes the full relation, so keeps all columns.
+			...(minimalCases ? { select: { testCaseExecutions: { id: true, status: true } } } : {}),
+		});
+
+		if (!testRun) return null;
 
 		testRun.finalResult =
 			testRun.status === 'completed' ? getTestRunFinalResult(testRun.testCaseExecutions) : null;

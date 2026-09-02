@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "deletedCount": {
+            "type": "integer"
+        },
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 2
+}

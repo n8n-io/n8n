@@ -1,11 +1,10 @@
-import { mockDeep } from 'vitest-mock-extended';
-import nock from 'nock';
-import * as XLSX from 'xlsx';
-
+import * as XLSX from '@e965/xlsx';
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
+import nock from 'nock';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
 import { getGoogleAccessToken } from '../../GenericFunctions';
+import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
 
 // Mock only the service-account token mint so the service-account branch in the
 // shared transport does not perform real JWT signing / token network calls.

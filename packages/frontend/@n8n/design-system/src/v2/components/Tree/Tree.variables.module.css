@@ -1,0 +1,7 @@
+.root {
+	--tree-item-height: var(--spacing--xl);
+	--tree-icon-size: var(--spacing--lg);
+	--tree-item-padding-block: var(--spacing--4xs);
+	--tree-item-padding-inline: var(--tree-item-padding-block);
+	--tree-indent-unit: calc(var(--tree-item-padding-inline) + var(--tree-icon-size));
+}

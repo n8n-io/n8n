@@ -1,0 +1,88 @@
+{
+	"$comment": "Single source of truth for how project-owned entities are handled when a project's resources change owner (user deletion with transfer, LDAP reset). Read by: OwnershipTransferService consumers via ownership-transfer.manifest.ts, the manifest guard test, and the n8n-local-rules/project-owned-entity-transfer lint rule via the eslint configs of @n8n/db and cli. Adding a new project-owned entity requires an entry here: either in 'transferred' (and handling in OwnershipTransferService.transferAllResources) or in 'notTransferred' with the reason for the decision. The 'path' pins the entry to the declaring file: the lint rule rejects a same-named entity in a different file, and the guard test fails when a listed file no longer declares the entity.",
+	"transferred": [
+		{
+			"name": "SharedWorkflow",
+			"path": "packages/@n8n/db/src/entities/shared-workflow.ts"
+		},
+		{
+			"name": "SharedCredentials",
+			"path": "packages/@n8n/db/src/entities/shared-credentials.ts"
+		},
+		{
+			"name": "Folder",
+			"path": "packages/@n8n/db/src/entities/folder.ts"
+		},
+		{
+			"name": "DataTable",
+			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+		}
+	],
+	"notTransferred": [
+		{
+			"name": "ProjectRelation",
+			"path": "packages/@n8n/db/src/entities/project-relation.ts",
+			"reason": "Membership rows; they describe the deleted project itself."
+		},
+		{
+			"name": "ProjectSecretsProviderAccess",
+			"path": "packages/@n8n/db/src/entities/project-secrets-provider-access.ts",
+			"reason": "Per-project secrets-provider config; scoped to the deleted project."
+		},
+		{
+			"name": "ProjectPoolSettings",
+			"path": "packages/@n8n/db/src/entities/project-pool-settings.ts",
+			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
+		},
+		{
+			"name": "RoleMappingRule",
+			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
+			"reason": "SSO role-mapping config attached to the project, not user data."
+		},
+		{
+			"name": "TypeAvailabilityPolicyScope",
+			"path": "packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-scope.entity.ts",
+			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
+		},
+		{
+			"name": "Variables",
+			"path": "packages/@n8n/db/src/entities/variables.ts",
+			"reason": "Project-scoped variables are dropped via FK cascade; personal projects do not expose them."
+		},
+		{
+			"name": "Agent",
+			"path": "packages/cli/src/modules/agents/entities/agent.entity.ts",
+			"reason": "Dropped via FK cascade today. Revisit: agents created by the deleted user are lost on transfer."
+		},
+		{
+			"name": "AgentExecutionThread",
+			"path": "packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts",
+			"reason": "Dropped via FK cascade together with its Agent."
+		},
+		{
+			"name": "AgentChatAttachment",
+			"path": "packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts",
+			"reason": "Conversation attachments; dropped via FK cascade together with their Agent/project, like the threads and messages they belong to."
+		},
+		{
+			"name": "InstanceAiThread",
+			"path": "packages/cli/src/modules/instance-ai/entities/instance-ai-thread.entity.ts",
+			"reason": "AI assistant conversation history; personal to the deleted user."
+		},
+		{
+			"name": "InsightsMetadata",
+			"path": "packages/cli/src/modules/insights/database/entities/insights-metadata.ts",
+			"reason": "Denormalized analytics snapshot; historical insights keep the original project reference by design."
+		},
+		{
+			"name": "WorkflowReviewRequest",
+			"path": "packages/@n8n/db/src/entities/workflow-review-request.ee.ts",
+			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows. WorkflowReviewActivity and WorkflowReviewActivityComment ride this entity's cascade and have no projectId of their own, so they never appear in this manifest."
+		},
+		{
+			"name": "GitConnectionProject",
+			"path": "packages/cli/src/modules/git-connections.ee/database/entities/git-connection-project.entity.ts",
+			"reason": "Project-scoped git configuration (which connection the project is linked to), not user data. Dropped via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
+		}
+	]
+}

@@ -47,6 +47,16 @@ export class SentryConfig {
 	tracesSlowSpanThresholdMs: number = 1000;
 
 	/**
+	 * Sample rate (0.0 to 1.0) for successful production webhook transaction
+	 * traces. These are by far the highest-volume route, so they are sampled
+	 * below the base rate. Errored webhook transactions are always kept.
+	 *
+	 * @default 0.05
+	 */
+	@Env('N8N_SENTRY_WEBHOOK_TRACES_SAMPLE_RATE', sampleRateSchema)
+	webhookTracesSampleRate: number = 0.05;
+
+	/**
 	 * Whether Sentry's native event-loop-block detection is enabled. When on, a
 	 * native watchdog (`@sentry/node-native`) captures the main thread's stack
 	 * whenever the event loop is blocked beyond the threshold below.

@@ -1,10 +1,11 @@
 import type { InstanceType } from '@n8n/constants';
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
@@ -12,6 +13,15 @@ import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
+
+export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	pathToFileURL(
+		path.join(
+			modulesDir,
+			isEnterprise ? `${moduleName}.ee` : moduleName,
+			`${moduleName}.module.js`,
+		),
+	).href;
 
 @Service()
 export class ModuleRegistry {
@@ -28,6 +38,7 @@ export class ModuleRegistry {
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly modulesConfig: ModulesConfig,
+		private readonly systemTaskMetadata: SystemTaskMetadata,
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
@@ -61,6 +72,8 @@ export class ModuleRegistry {
 		'n8n-packages',
 		'runtime-credentials',
 		'mcp-registry',
+		'workflow-reviews',
+		'instance-ai',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -103,10 +116,10 @@ export class ModuleRegistry {
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
+				await import(getModuleEntryUrl(modulesDir, moduleName));
 			} catch (primaryError) {
 				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
+					await import(getModuleEntryUrl(modulesDir, moduleName, true));
 				} catch (error) {
 					const loggedError =
 						primaryError instanceof Error &&
@@ -160,6 +173,12 @@ export class ModuleRegistry {
 			}
 
 			await Container.get(ModuleClass).init?.();
+
+			const systemTasks = await Container.get(ModuleClass).systemTasks?.();
+
+			for (const taskClass of systemTasks ?? []) {
+				this.systemTaskMetadata.register(taskClass);
+			}
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 

@@ -1,5 +1,6 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { NodeOperationError, sleepWithAbort, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
@@ -11,14 +12,12 @@ import type {
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import type { MockedFunction } from 'vitest';
 
-// Mock the sleep functions
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual('n8n-workflow')),
+// Mock the sleep function
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
-	sleepWithAbort: vi.fn().mockResolvedValue(undefined),
 }));
 
-const sleepWithAbortMock = vi.mocked(sleepWithAbort);
+const sleepMock = vi.mocked(sleep);
 
 function createMockClonedContext(
 	baseContext: ISupplyDataFunctions,
@@ -47,6 +46,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		executeWorkflow: vi.fn(),
 		addInputData: vi.fn(),
 		addOutputData: vi.fn(),
+		logAiEvent: vi.fn(),
 		getCredentials: vi.fn(),
 		getCredentialsProperties: vi.fn(),
 		getInputData: vi.fn(),
@@ -127,6 +127,13 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify(TEST_RESPONSE, null, 2));
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: JSON.stringify(TEST_RESPONSE, null, 2),
+				}),
+			);
 
 			// Here we validate that the runIndex is correctly updated
 			expect(context.cloneWith).toHaveBeenCalledWith({
@@ -139,6 +146,37 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				runIndex: 1,
 				inputData: [[{ json: { query: 'another query' } }]],
 			});
+		});
+
+		it('should sanitize credential-shaped values in the tool-called event', async () => {
+			const TEST_RESPONSE = { api_key: 'sk-live-abcdef123456' };
+
+			const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool({
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+			const result = await tool.func('test query');
+
+			expect(result).toContain('sk-live-abcdef123456');
+			const payload = vi.mocked(context.logAiEvent).mock.calls[0][1];
+			expect(payload).toContain('[REDACTED]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 
 		it('returns un-stringified data if manualLogging is false (meaning it was called from the engine)', async () => {
@@ -168,6 +206,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toEqual([{ json: TEST_RESPONSE }]);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle errors during tool execution', async () => {
@@ -183,6 +222,10 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			);
 			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
 			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
 			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
 
 			const tool = await service.createTool(toolParams);
@@ -190,6 +233,13 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toContain('There was an error');
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Workflow execution failed"',
+				}),
+			);
 		});
 
 		it('should throw on tool error when manualLogging is false so the engine records the failure', async () => {
@@ -215,6 +265,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const tool = await service.createTool(toolParams);
 
 			await expect(tool.func('test query')).rejects.toThrow(/Workflow execution failed/);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 	});
 
@@ -762,8 +813,8 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(expected);
 		});
 
-		it('should respect waitBetweenTries with sleepWithAbort', async () => {
-			sleepWithAbortMock.mockClear();
+		it('should respect waitBetweenTries with sleep', async () => {
+			sleepMock.mockClear();
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
@@ -803,7 +854,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			await tool.func('test query');
 
-			expect(sleepWithAbortMock).toHaveBeenCalledWith(1500, undefined);
+			expect(sleepMock).toHaveBeenCalledWith(1500, undefined);
 		});
 	});
 
@@ -875,10 +926,47 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
 			expect(executeWorkflowMock).not.toHaveBeenCalled();
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when cancelled and manualLogging is false', async () => {
+			const executeWorkflowMock = vi.fn().mockResolvedValue({
+				data: [[{ json: { result: 'success' } }]],
+				executionId: 'success-exec-id',
+			});
+
+			abortController.abort();
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).not.toHaveBeenCalled();
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			sleepWithAbortMock.mockRejectedValue(new Error('Execution was cancelled'));
+			sleepMock.mockRejectedValue(new Error('Execution was cancelled'));
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -904,8 +992,57 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
-			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepMock).toHaveBeenCalledWith(100, abortController.signal);
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(1); // Only first attempt
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(2);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenNthCalledWith(
+				1,
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "First attempt fails"',
+				}),
+			);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenNthCalledWith(
+				2,
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when retry wait is cancelled and manualLogging is false', async () => {
+			sleepMock.mockRejectedValue(new Error('Execution was cancelled'));
+
+			const executeWorkflowMock = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('First attempt fails'))
+				.mockResolvedValueOnce({
+					data: [[{ json: { result: 'success' } }]],
+					executionId: 'success-exec-id',
+				});
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle abort signal during execution', async () => {
@@ -932,10 +1069,45 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Execution was cancelled"',
+				}),
+			);
+		});
+
+		it('should not emit ai-tool-called when execution is cancelled and manualLogging is false', async () => {
+			const executeWorkflowMock = vi.fn().mockImplementation(() => {
+				abortController.abort();
+				throw new UnexpectedError('Workflow execution failed');
+			});
+
+			const contextWithRetryNode = createAbortSignalContext(
+				executeWorkflowMock,
+				abortController.signal,
+			);
+
+			service = new WorkflowToolService(contextWithRetryNode);
+			const tool = await service.createTool({
+				ctx: contextWithRetryNode,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			const result = await tool.func('test query');
+
+			expect(result).toBe('There was an error: "Execution was cancelled"');
+			expect(executeWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(contextWithRetryNode.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should complete successfully if not aborted', async () => {
-			sleepWithAbortMock.mockClear().mockResolvedValue(undefined);
+			sleepMock.mockClear().mockResolvedValue(undefined);
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -962,11 +1134,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(2);
-			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepMock).toHaveBeenCalledWith(100, abortController.signal);
 		});
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
-			sleepWithAbortMock.mockClear().mockResolvedValue(undefined);
+			sleepMock.mockClear().mockResolvedValue(undefined);
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -990,7 +1162,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
-			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, undefined);
+			expect(sleepMock).toHaveBeenCalledWith(100, undefined);
 		});
 	});
 });

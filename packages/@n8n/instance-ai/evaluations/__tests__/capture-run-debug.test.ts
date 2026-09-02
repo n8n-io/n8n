@@ -33,7 +33,8 @@ describe('captureThreadRunDebug', () => {
 		expect(records).toHaveLength(1);
 		expect(records[0]?.label).toBe('Build workflow');
 		expect(records[0]?.steps).toHaveLength(1);
-		expect(client.getRunDebug).toHaveBeenCalledWith('run-1');
+		// Per-request timeout so a stalled call releases its socket.
+		expect(client.getRunDebug).toHaveBeenCalledWith('run-1', expect.any(Number));
 	});
 
 	it('returns an empty array when the debug API is unavailable', async () => {

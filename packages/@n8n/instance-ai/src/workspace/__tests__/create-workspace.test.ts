@@ -207,7 +207,7 @@ describe('createSandbox', () => {
 		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
 	});
 
-	it('prepares snapshot and image in Daytona proxy snapshot fallback mode', async () => {
+	it('creates from the snapshot only in Daytona proxy snapshot fallback mode', async () => {
 		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
 		const config: SandboxConfig = {
 			enabled: true,
@@ -227,7 +227,8 @@ describe('createSandbox', () => {
 		).resolves.toBe(sandbox);
 
 		expect(mockSnapshotName).toHaveBeenCalledWith();
-		expect(mockEnsureImage).toHaveBeenCalledWith();
+		// Image builds cannot run through the sandbox proxy, so no image is prepared or passed.
+		expect(mockEnsureImage).not.toHaveBeenCalled();
 		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
@@ -236,13 +237,62 @@ describe('createSandbox', () => {
 				id: sharedConfig.id,
 				daytonaApiUrl: 'https://proxy.example.com',
 				getAuthToken,
-				image: { dockerfile: 'FROM node:20' },
 				labels: {
 					'n8n-instance-ai-sandbox-id': sharedConfig.id,
 				},
 				snapshot: 'n8n/instance-ai:1.2.3',
 			},
 			{ logger, errorReporter },
+		);
+	});
+
+	it('fails fast in proxy mode when no snapshot can be resolved', async () => {
+		mockSnapshotName.mockReturnValue(undefined);
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken: vi.fn().mockResolvedValue('jwt-token'),
+			image: 'node:20',
+		};
+
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).rejects.toThrow('No Instance AI sandbox snapshot is available');
+
+		expect(mockEnsureImage).not.toHaveBeenCalled();
+		expect(mockCreateSharedSandbox).not.toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					'No Instance AI sandbox snapshot is available for this n8n version (unknown) and sandbox images cannot be built through the sandbox proxy',
+			}),
+			{ tags: { component: 'instance-ai-snapshot' } },
+		);
+	});
+
+	it('reports an error-level alert when the snapshot-only create fails in proxy mode', async () => {
+		const createFailure = new Error('snapshot not found');
+		mockCreateSharedSandbox.mockRejectedValue(createFailure);
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken: vi.fn().mockResolvedValue('jwt-token'),
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).rejects.toBe(createFailure);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Instance AI sandbox snapshot "n8n/instance-ai:1.2.3" is missing or unusable',
+				cause: createFailure,
+			}),
+			{ tags: { component: 'instance-ai-snapshot' } },
 		);
 	});
 

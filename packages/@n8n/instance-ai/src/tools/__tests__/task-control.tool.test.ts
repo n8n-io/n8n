@@ -14,7 +14,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'user-1',
 		orchestratorAgentId: 'orchestrator-1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 10,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
@@ -35,6 +34,15 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('task-control tool', () => {
+	it('describes update-checklist as lightweight and non-scheduler', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		expect(tool.description).toContain('update-checklist');
+		expect(tool.description).toContain('lightweight visible checklists');
+		expect(tool.description).toContain('do not need scheduler-driven execution');
+		expect(tool.description).toContain('create-tasks');
+	});
+
 	// ── update-checklist ────────────────────────────────────────────────────
 
 	describe('update-checklist action', () => {

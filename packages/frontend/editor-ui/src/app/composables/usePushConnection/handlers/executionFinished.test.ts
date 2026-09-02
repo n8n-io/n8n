@@ -6,10 +6,11 @@ import {
 	getRunExecutionData,
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
+	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -21,12 +22,15 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
@@ -47,7 +51,7 @@ const opts: PushHandlerOptions = {
 };
 
 const mockShowMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 	}),
@@ -66,6 +70,52 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 		runWorkflow,
 	})),
 }));
+
+describe('refreshWalletAfterBilledRun()', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	function stubSnapshotNodes(nodes: INodeUi[]) {
+		vi.spyOn(useWorkflowDocumentStore(documentId), 'getSnapshot').mockReturnValue({
+			nodes,
+		} as IWorkflowDb);
+	}
+
+	it('does nothing when the AI gateway is disabled', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = false;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('does not refresh the wallet when no node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(false);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('force-refreshes the wallet when a node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(true);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).toHaveBeenCalledWith({ force: true });
+	});
+});
 
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {
@@ -630,6 +680,70 @@ describe('executionFinished', () => {
 		);
 
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
+	});
+
+	it('keeps fetched execution pin data available after a live execution finishes', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+
+		const executionId = 'exec-with-pin-data';
+		const nodeName = 'Get Berlin Weather';
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		useExecutionDataStore(createExecutionDataId(executionId)).setExecution(
+			mock<IExecutionResponse>({
+				id: executionId,
+				workflowId: '1',
+				status: 'running',
+				data: { resultData: { runData: {} } },
+			}),
+		);
+		workflowExecutionStateStore.setActiveExecutionId(executionId);
+
+		const fetchedExecution: IExecutionResponse = {
+			id: executionId,
+			workflowId: '1',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date(),
+			createdAt: new Date(),
+			workflowData: mock<IWorkflowDb>({ id: '1', nodes: [], connections: {} }),
+			data: createRunExecutionData({
+				resultData: {
+					lastNodeExecuted: nodeName,
+					runData: {
+						[nodeName]: [
+							{
+								executionStatus: 'success',
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: { ok: true } }]] },
+							},
+						],
+					},
+					pinData: {
+						[nodeName]: [{ json: { source: 'verification-fixture' } }],
+					},
+				},
+			}),
+		};
+
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(fetchedExecution);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId, workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
+		expect(workflowExecutionStateStore.displayedExecutionId).toBe(executionId);
+		expect(workflowExecutionStateStore.activeExecutionPinDataByNodeName).toEqual({
+			[nodeName]: [{ json: { source: 'verification-fixture' } }],
+		});
 	});
 
 	it('processes a late finish for the execution this document just stopped', async () => {

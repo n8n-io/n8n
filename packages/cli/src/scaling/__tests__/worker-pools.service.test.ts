@@ -1,5 +1,5 @@
 import type { InstanceRegistration } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRegistryService } from '@/modules/instance-registry/instance-registry.service';
 import { WorkerPoolsService } from '@/scaling/worker-pools.service';
@@ -21,7 +21,7 @@ describe('WorkerPoolsService', () => {
 	const service = new WorkerPoolsService(instanceRegistryService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAvailablePools', () => {

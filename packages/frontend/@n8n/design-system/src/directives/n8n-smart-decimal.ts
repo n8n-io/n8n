@@ -1,4 +1,4 @@
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import type { DirectiveBinding, FunctionDirective } from 'vue';
 
 /**

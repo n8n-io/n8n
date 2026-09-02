@@ -1,0 +1,99 @@
+{
+	"name": "issue create",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "create",
+				"owner": "test-owner",
+				"repository": "test-repo",
+				"title": "Found a bug",
+				"body": "Steps to reproduce...",
+				"due_date": "2025-01-15",
+				"labels": [
+					{
+						"label": "bug"
+					},
+					{
+						"label": "critical"
+					}
+				],
+				"assignee_ids": [
+					{
+						"assignee": 42
+					},
+					{
+						"assignee": 7
+					}
+				]
+			},
+			"type": "n8n-nodes-base.gitlab",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "gitlab-node-id",
+			"name": "GitLab",
+			"credentials": {
+				"gitlabApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Response"
+		}
+	],
+	"pinData": {
+		"Response": [
+			{
+				"json": {
+					"iid": 1,
+					"title": "Found a bug",
+					"labels": ["bug", "critical"],
+					"assignee_ids": [42, 7]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "GitLab",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GitLab": {
+			"main": [
+				[
+					{
+						"node": "Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

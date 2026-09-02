@@ -1,12 +1,12 @@
 import { ref } from 'vue';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 
 import {
 	NodeHelpers,
 	NodeConnectionTypes,
-	MANUAL_TRIGGER_NODE_TYPES,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	classifyTriggerIdentity,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -19,7 +19,6 @@ import type {
 	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
-	IRunData,
 	IBinaryKeyData,
 	INode,
 	INodeCredentialsDetails,
@@ -43,12 +42,13 @@ import { getNodeSubtitle, hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/app/models/history';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
@@ -70,6 +70,7 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
@@ -416,16 +417,35 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	function workflowHasIncompatibleTrigger(): boolean {
-		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
-		return triggers.some(
-			(trigger) =>
-				!trigger.disabled &&
-				!MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type) &&
-				// Sub-workflows inherit the identity context from the parent execution,
-				// so a private credential resolves as long as the parent provides one.
-				trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	// Returns which resolver kind is in effect when a trigger blocks end-user
+	// credentials, or null when the workflow is compatible. Mirror the backend publish
+	// check: the effective resolver decides which identity every enabled trigger must
+	// establish, so a single incompatible trigger blocks publish even when a compatible
+	// one (e.g. a manual trigger) is also present. The system resolver (self-connect)
+	// keys on the n8n user identity; a custom resolver keys on an external identity
+	// extracted from the trigger data.
+	//
+	// A workflow with no triggers is left un-warned: it's a transient state while
+	// building. The backend still catches it at publish time.
+	function getBlockingTrigger(): { isSystemResolver: boolean } | null {
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
+			(trigger) => !trigger.disabled,
 		);
+		if (triggers.length === 0) return null;
+
+		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
+		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+
+		const hasBlockingTrigger = triggers.some((trigger) => {
+			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
+				trigger.type,
+				trigger.parameters,
+				{ isChatOAuth2Enabled: envFeatureFlag.value('CHAT_TRIGGER_OAUTH2') },
+			);
+			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
+		});
+
+		return hasBlockingTrigger ? { isSystemResolver } : null;
 	}
 
 	function collectPrivateCredentialIssues(
@@ -434,7 +454,7 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const incompatibleTrigger = workflowHasIncompatibleTrigger();
+		const blockingTrigger = getBlockingTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -443,13 +463,17 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// An unconnected private credential is a missing setup step, not a hard
-			// error — it's surfaced as a warning via the credential callout/banner in
-			// the UI rather than a node issue, so we don't add it here.
-			if (credential.connectedByMe && incompatibleTrigger) {
-				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
-				];
+			// Mirror the backend publish check: trigger incompatibility blocks publish
+			// regardless of who connected the credential, so warn on it here too. A
+			// merely-not-yet-connected credential is surfaced via the callout/banner.
+			// The message depends on the resolver: the system resolver needs a trigger
+			// that establishes the n8n user identity, a custom resolver needs one that
+			// extracts an external identity.
+			if (blockingTrigger) {
+				const messageKey: BaseTextKey = blockingTrigger.isSystemResolver
+					? 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook'
+					: 'nodeIssues.credentials.privateRequiresIdentityExtractor';
+				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
 			}
 		}
 	}
@@ -722,19 +746,10 @@ export function useNodeHelpers() {
 	}
 
 	function getBinaryData(
-		workflowRunData: IRunData | null,
-		node: string | null,
-		runIndex: number,
+		runDataOfNode: ITaskDataConnections | undefined,
 		outputIndex: number,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
-		if (node === null) {
-			return [];
-		}
-
-		const runData: IRunData | null = workflowRunData;
-
-		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
 		if (!runDataOfNode) {
 			return [];
 		}

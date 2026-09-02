@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';

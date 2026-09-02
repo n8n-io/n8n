@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
@@ -75,58 +76,58 @@ const createMockNode = (overrides: Partial<INode> = {}): INode => {
 
 describe('CredentialResolverWorkflowService', () => {
 	let service: CredentialResolverWorkflowService;
-	let mockWorkflowRepository: jest.Mocked<WorkflowRepository>;
-	let mockCredentialRepository: jest.Mocked<CredentialsRepository>;
-	let mockResolverRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
-	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
-	let mockCipher: jest.Mocked<Cipher>;
-	let mockResolverImplementation: jest.Mocked<ICredentialResolver>;
-	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
-	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
+	let mockWorkflowRepository: Mocked<WorkflowRepository>;
+	let mockCredentialRepository: Mocked<CredentialsRepository>;
+	let mockResolverRegistry: Mocked<DynamicCredentialResolverRegistry>;
+	let mockResolverRepository: Mocked<DynamicCredentialResolverRepository>;
+	let mockCipher: Mocked<Cipher>;
+	let mockResolverImplementation: Mocked<ICredentialResolver>;
+	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWorkflowRepository = {
-			get: jest.fn(),
-		} as unknown as jest.Mocked<WorkflowRepository>;
+			get: vi.fn(),
+		} as unknown as Mocked<WorkflowRepository>;
 
 		mockCredentialRepository = {
-			find: jest.fn(),
-		} as unknown as jest.Mocked<CredentialsRepository>;
+			find: vi.fn(),
+		} as unknown as Mocked<CredentialsRepository>;
 
 		mockResolverRegistry = {
-			getResolverByTypename: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
+			getResolverByTypename: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRegistry>;
 
 		mockResolverRepository = {
-			findOneBy: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
+			findOneBy: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRepository>;
 
 		mockCipher = {
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockResolverImplementation = {
 			metadata: {
 				name: 'test.resolver',
 				description: 'A test resolver',
 			},
-			getSecret: jest.fn(),
-			setSecret: jest.fn(),
-			validateOptions: jest.fn(),
+			getSecret: vi.fn(),
+			setSecret: vi.fn(),
+			validateOptions: vi.fn(),
 		};
 
 		mockDynamicCredentialsProxy = {
-			getSystemResolverId: jest.fn().mockReturnValue(null),
+			getSystemResolverId: vi.fn().mockReturnValue(null),
 			// Default to the real semantics with no system resolver seeded:
 			// pass through the workflow override if any, otherwise null.
-			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
-		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
+			getEffectiveResolverId: vi.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as Mocked<DynamicCredentialsProxy>;
 
 		mockWorkflowFinderService = {
-			findWorkflowForUser: jest.fn(),
-		} as unknown as jest.Mocked<WorkflowFinderService>;
+			findWorkflowForUser: vi.fn(),
+		} as unknown as Mocked<WorkflowFinderService>;
 
 		service = new CredentialResolverWorkflowService(
 			mockWorkflowRepository,
@@ -586,6 +587,31 @@ describe('CredentialResolverWorkflowService', () => {
 				expect(result.map((s) => s.credentialId)).toEqual(['cred-sub']);
 			});
 
+			it('follows Workflow Retriever (retrieverWorkflow) references', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							createExecuteWorkflowNode(
+								{ value: 'sub-1' },
+								{ type: '@n8n/n8n-nodes-langchain.retrieverWorkflow' },
+							),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+					'sub-1': createMockWorkflow({
+						id: 'sub-1',
+						nodes: [nodeWithCredential('cred-sub')],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-sub' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result.map((s) => s.credentialId)).toEqual(['cred-sub']);
+			});
+
 			it('handles cycles and self-references without re-processing workflows', async () => {
 				mockWorkflowsById({
 					'workflow-1': createMockWorkflow({
@@ -681,6 +707,62 @@ describe('CredentialResolverWorkflowService', () => {
 				await expect(service.getWorkflowStatus('workflow-1', credentialContext)).rejects.toThrow(
 					/too many sub-workflows/i,
 				);
+			});
+
+			it('skips credentials on disabled nodes', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							nodeWithCredential('cred-active'),
+							nodeWithCredential('cred-disabled', { id: 'disabled-node', disabled: true }),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([
+					createMockCredential({ id: 'cred-active' }),
+					createMockCredential({ id: 'cred-disabled' }),
+				]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result.map((s) => s.credentialId)).toEqual(['cred-active']);
+			});
+
+			it('returns no credentials when every account belongs to a disabled node', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [nodeWithCredential('cred-disabled', { id: 'disabled-node', disabled: true })],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-disabled' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result).toEqual([]);
+				expect(mockCredentialRepository.find).not.toHaveBeenCalled();
+			});
+
+			it('still includes a credential that also appears on an enabled node', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							nodeWithCredential('cred-shared', { id: 'enabled-node' }),
+							nodeWithCredential('cred-shared', { id: 'disabled-node', disabled: true }),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-shared' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].credentialId).toBe('cred-shared');
 			});
 
 			it('skips disabled sub-workflow nodes', async () => {

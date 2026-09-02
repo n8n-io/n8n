@@ -1,6 +1,6 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OtelLifecycleHandler } from '../otel-lifecycle-handler';
 import { OtelSettingsController } from '../otel-settings.controller';
@@ -41,7 +41,7 @@ describe('OtelSettingsController', () => {
 	let controller: OtelSettingsController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		otelSettingsService = mock<OtelSettingsService>();
 		otelService = mock<OtelService>();
 		otelLifecycleHandler = mock<OtelLifecycleHandler>();

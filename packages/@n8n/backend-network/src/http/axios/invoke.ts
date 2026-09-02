@@ -4,6 +4,13 @@ import axios from 'axios';
 import { digestAuthAxiosConfig } from './utils';
 
 export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmediately?: boolean) {
+	// For challenge-response schemes (sendImmediately === false, e.g. Digest), the first
+	// request must go out unauthenticated so the server issues its challenge. Withhold the
+	// credentials here and keep a copy to answer the challenge with.
+	const challengeAuth = authSendImmediately === false ? axiosConfig.auth : undefined;
+	if (challengeAuth) {
+		delete axiosConfig.auth;
+	}
 	try {
 		return await axios(axiosConfig);
 	} catch (error) {
@@ -20,9 +27,7 @@ export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmed
 		) {
 			throw error;
 		}
-		const { auth } = axiosConfig;
-		delete axiosConfig.auth;
-		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, challengeAuth);
 		return await axios(axiosConfig);
 	}
 }

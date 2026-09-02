@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 const MAX_LOG_ERROR_LENGTH = 1_000;
 const MAX_LOG_ERROR_INPUT_LENGTH = 8_000;

@@ -14,6 +14,23 @@ type TriggerRegistration = {
 export class WorkflowActiveTriggersState {
 	private readonly registrationsByNodeId = new Map<string, TriggerRegistration>();
 
+	private pendingRegistrations = 0;
+
+	/** Marks an in-flight registration using this state object. */
+	beginRegistration() {
+		this.pendingRegistrations += 1;
+	}
+
+	/** Marks an in-flight registration as finished. */
+	finishRegistration() {
+		this.pendingRegistrations -= 1;
+	}
+
+	/** Whether this state object is still being populated by an activation. */
+	get hasPendingRegistrations() {
+		return this.pendingRegistrations > 0;
+	}
+
 	/** Records a trigger response for a registered node. */
 	addTriggerResponse(nodeId: string, response: ITriggerResponse): TriggerRegistrationToken {
 		const registration = this.getOrCreateRegistration(nodeId);
@@ -72,10 +89,14 @@ export class WorkflowActiveTriggersState {
 		return this.registrationsByNodeId.keys();
 	}
 
-	/** All recorded trigger responses, in insertion order. */
-	*triggerResponses(): IterableIterator<ITriggerResponse> {
-		for (const registration of this.registrationsByNodeId.values()) {
-			if (registration.response) yield registration.response;
+	/**
+	 * Registrations that hold a trigger response to close, with their node ids,
+	 * in insertion order. Response-less registrations (schedule and poll
+	 * markers) are excluded — they have nothing to close.
+	 */
+	*closableTriggers() {
+		for (const [nodeId, registration] of this.registrationsByNodeId.entries()) {
+			if (registration.response) yield { nodeId, response: registration.response };
 		}
 	}
 }

@@ -20,4 +20,5 @@ export class AiGatewayConfigDto extends Z.class({
 	providerConfig: z.record(z.object(aiGatewayProviderConfigEntryShape)),
 	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 	minNodeTypeVersion: z.record(z.number()).optional(),
+	hiddenNodeProperties: z.record(z.array(z.string())).optional(),
 }) {}

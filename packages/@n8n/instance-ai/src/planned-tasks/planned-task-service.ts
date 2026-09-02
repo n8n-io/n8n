@@ -40,9 +40,6 @@ function validateDependencies(tasks: PlannedTask[]): void {
 				throw new PlanValidationError(`Task "${task.id}" depends on unknown task "${depId}"`);
 			}
 		}
-		if (task.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
-			throw new PlanValidationError(`Delegate task "${task.id}" must include at least one tool`);
-		}
 		if (task.kind === 'checkpoint') {
 			if (task.deps.length === 0) {
 				throw new PlanValidationError(

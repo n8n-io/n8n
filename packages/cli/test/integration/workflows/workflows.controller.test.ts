@@ -12,6 +12,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	User,
 	ListQueryDb,
@@ -29,8 +30,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -41,7 +40,16 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { createFolder } from '@test-integration/db/folders';
+
 import { saveCredential } from '../shared/db/credentials';
+import { getAllExecutions } from '../shared/db/executions';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import {
@@ -55,11 +63,6 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { EventService } from '@/events/event.service';
-import { ProjectService } from '@/services/project.service.ee';
 
 let owner: User;
 let member: User;
@@ -75,7 +78,15 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-const { objectContaining, arrayContaining, any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured or bound off `expect` (a bare `const { objectContaining } = expect`
+// throws "Cannot read properties of undefined (reading '__flags')"). Wrap them in thin
+// functions that call `expect.*` inline to keep the existing call sites unchanged.
+const objectContaining = (...args: Parameters<typeof expect.objectContaining>) =>
+	expect.objectContaining(...args);
+const arrayContaining = (...args: Parameters<typeof expect.arrayContaining>) =>
+	expect.arrayContaining(...args);
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -130,7 +141,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -157,6 +168,52 @@ describe('POST /workflows', () => {
 		workflow.pinData = { data: [{ json: { data: largeValue } }] };
 		const response = await authOwnerAgent.post('/workflows').send(workflow);
 		expect(response.statusCode).toBe(400);
+	});
+
+	// CAT-3966: static data is backend-owned (poll cursors, third-party webhook registrations).
+	test('should ignore client-supplied `staticData`', async () => {
+		const payload = {
+			...makeWorkflow({ withPinData: false }),
+			staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+		const created = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(created.staticData).toBeNull();
+	});
+
+	test('should reject a workflow whose nodes share a node id', async () => {
+		const payload = {
+			name: 'duplicate node ids',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
 	});
 
 	test('should retain accept `workflow.id`', async () => {
@@ -1150,7 +1207,7 @@ describe('GET /workflows', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -1458,8 +1515,8 @@ describe('GET /workflows', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],
@@ -2028,8 +2085,14 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'A' }] }),
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'B' }] }),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
+					}),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) }],
+					}),
 				]),
 			});
 		});
@@ -2438,7 +2501,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -2838,6 +2901,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				data: [
 					objectContaining({
 						name: 'First Folder',
+						// Folder tags come from FolderRepository, which selects id/name only.
 						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
@@ -2846,8 +2910,8 @@ describe('GET /workflows?includeFolders=true', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],
@@ -3266,7 +3330,7 @@ describe('PATCH /workflows/:workflowId', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -3303,6 +3367,91 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(newVersion).not.toBeNull();
 		expect(newVersion!.connections).toEqual(payload.connections);
 		expect(newVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	// CAT-3966: see the matching POST test — static data is backend-owned.
+	test('should ignore client-supplied `staticData`', async () => {
+		const workflow = await createWorkflow(
+			{ staticData: { 'node:Trello Trigger': { webhookId: 'registered-by-the-engine' } } },
+			owner,
+		);
+
+		await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				name: 'name updated',
+				staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+			})
+			.expect(200);
+
+		const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.staticData).toEqual({
+			'node:Trello Trigger': { webhookId: 'registered-by-the-engine' },
+		});
+	});
+
+	test('should allow a metadata-only update of a workflow whose stored nodes share a node id', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Cron',
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+						position: [400, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'name updated' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('name updated');
+	});
+
+	test('should reject an update that sends nodes sharing a node id', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
@@ -3491,7 +3640,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update workflow without updating its active version', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3627,7 +3776,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should not deactivate workflow when updating with active: false', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -4040,7 +4189,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -4073,7 +4222,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	test('should send activated event', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
@@ -4315,7 +4464,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Activation failed'));
 
@@ -4359,7 +4508,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		await authOwnerAgent
@@ -4378,7 +4527,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 	test('should emit only activation event when activating inactive workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4403,7 +4552,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4445,11 +4594,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4483,11 +4632,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4527,9 +4676,82 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 });
 
+describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
+	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
+	// server-side checksum even though no editable content changed. An editor that captured its
+	// checksum before the activation push therefore autosaves with a stale checksum and gets a
+	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
+	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
+	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
+
+	test('changes the workflow checksum when a version is activated', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		expect(beforeActivation.body.data.activeVersionId).toBeNull();
+		const checksumBeforeActivation = beforeActivation.body.data.checksum;
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
+		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
+		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
+	});
+
+	test('rejects an autosave whose checksum was captured before activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// The editor loads the workflow and holds its checksum while the user keeps editing.
+		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const checksumHeldByEditor = loaded.body.data.checksum;
+
+		// A server-side activation lands while the canvas is still dirty.
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
+		// stands in for the node drag in the original report — the conflict is checksum-driven,
+		// not content-driven).
+		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Edited while activation landed',
+			expectedChecksum: checksumHeldByEditor,
+		});
+
+		expect(autosave.statusCode).toBe(409);
+		expect(autosave.body.code).toBe(409);
+	});
+
+	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
+		// post-activation value before the autosave fires.
+		const refreshedChecksum = activated.body.data.checksum;
+
+		const autosave = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
+			.expect(200);
+
+		// The in-progress edit is persisted and the activation state is preserved.
+		expect(autosave.body.data.name).toBe('Edited while activation landed');
+		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
+	});
+});
+
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4552,7 +4774,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should send deactivated event', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
@@ -4570,7 +4792,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4719,7 +4941,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: tamperedWorkflowData });
 
 		// The endpoint should accept the request (the DB workflow exists)
 		// It should NOT use the tampered workflowData
@@ -4732,9 +4954,120 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${nonExistentId}/run`)
-			.send({ workflowData: fakeWorkflow });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: fakeWorkflow });
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when neither a trigger nor a destination node is provided', async () => {
+		const dbWorkflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ startNodes: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'To run the workflow manually, specify either a trigger to start from or a destination node.',
+		);
+	});
+
+	describe('with engineType v2', () => {
+		const TRIGGER_NAME = 'When clicking Execute';
+		const SET_NAME = 'Edit Fields';
+
+		const startExecution = vi.fn();
+		const getExecution = vi.fn();
+
+		beforeAll(() => {
+			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+		});
+
+		beforeEach(() => {
+			// Deliberately not the id the control plane minted, so a response echoing
+			// the data plane back would fail the assertion below.
+			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
+		});
+
+		const createV2Workflow = async () =>
+			await createWorkflow(
+				{
+					nodes: [
+						{
+							id: uuid(),
+							name: TRIGGER_NAME,
+							type: 'n8n-nodes-base.manualTrigger',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: uuid(),
+							name: SET_NAME,
+							type: 'n8n-nodes-base.set',
+							parameters: {},
+							typeVersion: 3.4,
+							position: [200, 0],
+						},
+					],
+					connections: {
+						[TRIGGER_NAME]: { main: [[{ node: SET_NAME, type: 'main', index: 0 }]] },
+					},
+					settings: { engineType: 'v2' },
+				},
+				owner,
+			);
+
+		test('should run on the data plane and persist no execution', async () => {
+			const dbWorkflow = await createV2Workflow();
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${dbWorkflow.id}/run`)
+				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
+
+			expect(response.statusCode).toBe(200);
+
+			// The control plane mints the id, dispatches under it, and reports that
+			// same id — the data plane's response never renames the run.
+			const { executionId } = response.body.data;
+			expect(executionId).toMatch(UUID_V7_PATTERN);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({
+					executionId,
+					workflowId: dbWorkflow.id,
+					mode: 'manual',
+					triggerOutputs: [[{ json: {} }]],
+				}),
+			);
+
+			const executions = await getAllExecutions();
+			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
+		});
+
+		test('should return 400 for a partial execution', async () => {
+			const dbWorkflow = await createV2Workflow();
+
+			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
+				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
+				runData: {
+					[TRIGGER_NAME]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: { main: [[{ json: {} }]] },
+						},
+					],
+				},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+			);
+			expect(startExecution).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -5171,7 +5504,7 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const { createSuccessfulExecution } = await import('../shared/db/executions');
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
 
 		// Create multiple executions with different statuses
 		await createSuccessfulExecution(workflow);

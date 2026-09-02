@@ -13,7 +13,7 @@ import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';

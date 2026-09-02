@@ -1,12 +1,32 @@
-import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
+import {
+	type Folder,
+	type Project,
+	type ProjectRepository,
+	type User,
+	WorkflowEntity,
+} from '@n8n/db';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	stripNullCredentialStubs,
+	trackAutoassignOutcomes,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildCreateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -15,13 +35,32 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import {
+	dropInvalidWorkflowGroups,
+	makeGetNodeTypeForGrouping,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
+	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
+	 * default — groups are then dropped at the entity assembly, exactly like
+	 * before groups were supported. With the flag on, an invalid group does not
+	 * fail the creation: it is dropped and reported in `skippedGroups` instead,
+	 * while the rest of the workflow is still created. This tool pre-validates
+	 * with the same rules `WorkflowCreationService.createWorkflow` enforces, so
+	 * that shared service's own (fatal) group check never actually triggers here.
+	 */
+	canvasGroupsEnabled?: boolean;
+};
 
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
@@ -38,15 +77,11 @@ function normalizeWorkflowDescription(description?: string) {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
-		),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
 		.string()
 		.max(128)
@@ -56,6 +91,12 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what this version does, shown in the version history alongside the version name.',
+	),
 	projectId: z
 		.string()
 		.optional()
@@ -66,7 +107,7 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
+			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project; when multiple folders match the name, ask the user which one they meant before creating.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -88,6 +129,12 @@ const outputSchema = {
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
+				source: z
+					.enum(['user', 'aiGateway'])
+					.optional()
+					.describe(
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
+					),
 			}),
 		)
 		.optional()
@@ -102,12 +149,30 @@ const outputSchema = {
 		})
 		.optional()
 		.describe('The project the workflow was actually created in.'),
+	targetFolder: z
+		.object({
+			id: z.string().describe('The ID of the folder the workflow was created in'),
+			name: z.string().describe('The name of the folder the workflow was created in'),
+		})
+		.optional()
+		.describe(
+			'The folder the workflow was created in. Absent when the workflow was created at the project root.',
+		),
 	note: z
 		.string()
 		.optional()
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
 		),
+	skippedGroups: z
+		.array(
+			z.object({
+				groupName: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
 	hint: z
 		.string()
 		.optional()
@@ -150,10 +215,12 @@ export const createCreateWorkflowFromCodeTool = (
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
+	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If the user named a target folder, resolve it via search_folders. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project — and folder, if any — the workflow landed in (see the targetProject and targetFolder fields in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -169,6 +236,8 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed,
 		name,
 		description,
+		versionName,
+		versionDescription,
 		projectId,
 		folderId,
 	}: {
@@ -176,6 +245,8 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed?: string[];
 		name?: string;
 		description?: string;
+		versionName?: string;
+		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
 	}) => {
@@ -189,6 +260,8 @@ export const createCreateWorkflowFromCodeTool = (
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
+				hasVersionName: !!versionName,
+				hasVersionDescription: !!versionDescription,
 			},
 		};
 
@@ -205,6 +278,7 @@ export const createCreateWorkflowFromCodeTool = (
 
 		let newWorkflow: WorkflowEntity | undefined;
 		let landingProject: Project | null = null;
+		let landingFolder: Folder | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -237,6 +311,8 @@ export const createCreateWorkflowFromCodeTool = (
 				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
+				// Flag off: groups keep being dropped here, exactly like before.
+				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
@@ -245,6 +321,17 @@ export const createCreateWorkflowFromCodeTool = (
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
 
 			stripNullCredentialStubs(newWorkflow.nodes);
+
+			// Structural group rules (no triggers, single connected subgraph, no
+			// non-main connection crossing the group boundary) aren't checked by the
+			// parser above. Validate them here, before the shared persistence layer's
+			// own (fatal) check, so an invalid group is dropped and reported instead
+			// of aborting the whole creation.
+			const skippedGroups = options.canvasGroupsEnabled
+				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
+					)
+				: [];
 
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })
@@ -265,14 +352,18 @@ export const createCreateWorkflowFromCodeTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
-			const { assignments: credentialAssignments, skippedHttpNodes } =
-				await autoPopulateNodeCredentials(
-					newWorkflow,
-					user,
-					nodeTypes,
-					credentialsService,
-					effectiveProjectId,
-				);
+			const {
+				assignments: credentialAssignments,
+				skippedHttpNodes,
+				outcomes: autoAssignOutcomes,
+			} = await autoPopulateNodeCredentials(
+				newWorkflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				effectiveProjectId,
+				aiGatewayService,
+			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,
 			// so verify they're reachable from the target project. This matches the
@@ -289,11 +380,31 @@ export const createCreateWorkflowFromCodeTool = (
 				throw new Error(credentialCheck.error);
 			}
 
+			const versionMetadata = resolveVersionMetadata(
+				{ versionName, versionDescription },
+				buildCreateVersionMetadata(newWorkflow.nodes),
+			);
+
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId: effectiveProjectId,
 				parentFolderId: folderId,
 				source: 'n8n-mcp',
+				versionName: versionMetadata.name,
+				versionDescription: versionMetadata.description,
 			});
+			// The saved workflow carries the project-validated parent folder, echoed
+			// back as targetFolder.
+			landingFolder = savedWorkflow.parentFolder ?? null;
+
+			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+			trackAutoassignOutcomes(
+				telemetry,
+				user.id,
+				'create_workflow_from_code',
+				autoAssignOutcomes,
+				nodeTypesByName,
+				savedWorkflow.id,
+			);
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
@@ -303,6 +414,11 @@ export const createCreateWorkflowFromCodeTool = (
 				data: {
 					workflowId: savedWorkflow.id,
 					nodeCount: savedWorkflow.nodes.length,
+					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+					// flag is off so the payload stays identical across cohorts.
+					...(options.canvasGroupsEnabled
+						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -327,7 +443,11 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
+				targetFolder: landingFolder
+					? { id: landingFolder.id, name: landingFolder.name }
+					: undefined,
 				note: notes.length ? notes.join(' ') : undefined,
+				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
 			const output =
 				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
@@ -347,9 +467,15 @@ export const createCreateWorkflowFromCodeTool = (
 				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
 					null;
 				try {
-					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
-						'workflow:read',
-					]);
+					persisted = await workflowFinderService.findWorkflowForUser(
+						newWorkflow.id,
+						user,
+						['workflow:read'],
+						// landingFolder is only assigned after createWorkflow returns, so a
+						// post-save failure inside it leaves the variable unset — load the
+						// relation here so targetFolder still reflects where the row landed.
+						{ includeParentFolder: true },
+					);
 				} catch {
 					// Verification lookup failed — fall through and report the original error.
 				}
@@ -379,6 +505,9 @@ export const createCreateWorkflowFromCodeTool = (
 							name: landingProject.name,
 							type: landingProject.type,
 						},
+						targetFolder: persisted.parentFolder
+							? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
+							: undefined,
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
 

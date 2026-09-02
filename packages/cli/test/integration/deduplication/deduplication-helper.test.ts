@@ -15,7 +15,7 @@ import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 let workflow: Workflow;
 
-jest.mock('../../../src/telemetry');
+vi.mock('../../../src/telemetry');
 
 const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['set']);
 mockInstance(LoadNodesAndCredentials, {

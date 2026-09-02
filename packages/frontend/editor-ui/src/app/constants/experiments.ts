@@ -1,8 +1,12 @@
-function createExperiment<T extends Record<string, string>>(
-	name: string,
-	variants: T,
-): { name: string } & T;
-function createExperiment(name: string): { name: string; control: 'control'; variant: 'variant' };
+import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
+
+function createExperiment<
+	const TName extends string,
+	const TVariants extends Record<string, string>,
+>(name: TName, variants: TVariants): { name: TName } & TVariants;
+function createExperiment<const TName extends string>(
+	name: TName,
+): { name: TName; control: 'control'; variant: 'variant' };
 function createExperiment(name: string, variants?: Record<string, string>) {
 	return { name, ...(variants ?? { control: 'control', variant: 'variant' }) } as const;
 }
@@ -27,12 +31,6 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-});
-
 export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
@@ -44,8 +42,6 @@ export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3'
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
 export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
-
-export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
 export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
 	'075_ai_builder_review_changes',
@@ -68,11 +64,6 @@ export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
-export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
-	control: 'control',
-	variantBuilderPrompt: 'variant-builder-prompt',
-	variantTemplates: 'variant-templates',
-});
 
 export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	control: 'control',
@@ -108,14 +99,9 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 	},
 );
 
-export const CANVAS_NODES_GROUPING_EXPERIMENT = createExperiment('083_canvas_nodes_grouping');
-
 export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
-export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'087_instance_ai_workflow_preview_suggestions',
-);
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',
@@ -124,7 +110,37 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 );
 
 export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	'089_instance_ai_mcp_connections',
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+);
+
+export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
+	'089_instance_ai_split_empty_state',
+);
+
+export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
+
+export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
+
+export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
+	'092_instance_ai_template_examples',
+);
+export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
+	'094_instance_ai_browser_credential_setup',
+);
+
+export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
+	'095_expose_all_workflows_to_mcp',
+);
+export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
+export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
+export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_ai_free_nudge', {
+	control: 'control',
+	variant1: 'variant-1',
+	variant2: 'variant-2',
+});
+
+export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
+	'108_open_workflow_in_assistant',
 );
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -133,14 +149,12 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	AI_BUILDER_PLAN_MODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
-	EMPTY_STATE_EXPERIMENT.name,
 	SETUP_PANEL.name,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
@@ -154,9 +168,17 @@ export const EXPERIMENTS_TO_TRACK = [
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
-	CANVAS_NODES_GROUPING_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
-	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
+	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
+	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
+	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
+	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
+	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	INLINE_AGENTS_EXPERIMENT.name,
+	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
+	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
 ];

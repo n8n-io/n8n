@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
@@ -15,10 +16,11 @@ import type { ModelConfig } from '../../types/sdk/agent';
  * model calls route through the configured HTTP(S)_PROXY.
  */
 export type FetchFn = typeof globalThis.fetch;
-type EmbeddingProviderOptions = {
+export type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
-};
+	fetch?: FetchFn;
+} & Partial<ProviderCredentials<'aws-bedrock'>>;
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
@@ -64,6 +66,88 @@ type ProviderRegistry = {
 	[P in ProviderId]: RegistryEntry<P>;
 };
 
+type OpenAiCompatibleCreds = {
+	apiKey?: string;
+	baseURL?: string;
+	headers?: Record<string, string>;
+};
+
+/**
+ * Parse a Vertex service-account JSON string into `googleAuthOptions`.
+ * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
+ * Returns undefined when unset so ADC can take over.
+ */
+function parseGoogleVertexAuthOptions(
+	googleCredentials: string | undefined,
+): { credentials: Record<string, unknown> } | undefined {
+	if (!googleCredentials?.trim()) return undefined;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(googleCredentials);
+	} catch {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
+		);
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
+		);
+	}
+	const credentials = { ...(parsed as Record<string, unknown>) };
+	// SA keys often arrive with literal `\n` escapes when pasted into env files.
+	if (typeof credentials.private_key === 'string') {
+		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+	}
+	return { credentials };
+}
+
+/**
+ * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
+ * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
+ */
+function buildOpenAiCompatible(
+	name: string,
+	defaultBaseURL: string | undefined,
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn | undefined,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): LanguageModel {
+	const { createOpenAICompatible } =
+		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+	const baseURL = creds.baseURL ?? defaultBaseURL;
+	if (!baseURL) {
+		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
+	}
+	return createOpenAICompatible({
+		name,
+		baseURL,
+		apiKey: creds.apiKey,
+		headers: creds.headers,
+		fetch,
+		includeUsage: options?.includeUsage,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs,
+	})(model);
+}
+
+type OpenAiCompatibleProviderId = 'nvidia';
+
+function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
+	name: P,
+	defaultBaseURL: string,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): RegistryEntry<P> {
+	return {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch, options),
+	};
+}
+
 /**
  * Registry of language model providers.
  * Each entry maps a provider id to a builder that loads its @ai-sdk/* package
@@ -73,27 +157,78 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			return createOpenAI({ ...creds, fetch })(model);
+			const { apiStyle, ...providerCreds } = creds;
+			const provider = createOpenAI({ ...providerCreds, fetch });
+			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
+			// vLLM, Ollama), which speaks /chat/completions; the provider's default
+			// model targets OpenAI's own Responses API (/responses) that those
+			// servers do not implement. OpenAI credentials also carry the official
+			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
+			// explicitly support one API or the other.
+			const useChat =
+				apiStyle === 'chat' ||
+				(apiStyle === undefined &&
+					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
+			return useChat ? provider.chat(model) : provider(model);
 		},
+	},
+	custom: {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
+				supportsStructuredOutputs: creds.supportsStructuredOutputs,
+			}),
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
-			return createAnthropic({ ...creds, fetch })(model);
+			let normalizedBaseURL = creds.baseURL;
+			// The SDK expects the versioned base (default `https://api.anthropic.com/v1`),
+			// but n8n Anthropic credentials store the host without `/v1` — their
+			// consumers append the version segment themselves.
+			if (normalizedBaseURL) {
+				const url = new URL(normalizedBaseURL);
+				if (!url.pathname.replace(/\/$/, '').endsWith('/v1')) {
+					url.pathname = url.pathname.replace(/\/?$/, '/v1');
+					normalizedBaseURL = url.toString();
+				}
+			}
+			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	'google-vertex-anthropic': {
+		build: (creds, model, fetch) => {
+			const { createVertexAnthropic } =
+				require('@ai-sdk/google-vertex/anthropic') as typeof import('@ai-sdk/google-vertex/anthropic');
+			const googleAuthOptions = parseGoogleVertexAuthOptions(creds.googleCredentials);
+			return createVertexAnthropic({
+				project: creds.project,
+				location: creds.location,
+				baseURL: creds.baseURL,
+				headers: creds.headers,
+				...(googleAuthOptions ? { googleAuthOptions } : {}),
+				fetch,
+			})(model);
 		},
 	},
 	google: {
 		build: (creds, model, fetch) => {
-			const { createGoogleGenerativeAI } =
-				require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogleGenerativeAI({ ...creds, fetch })(model);
+			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
+			// The SDK expects a version-qualified base (its own default ends in
+			// `/v1beta`), but `googlePalmApi.host` stores the bare host — the Gemini
+			// node's SDK appends the API version itself. Passing the host through
+			// unqualified drops the version from every request path, and Google
+			// answers 404 for any model.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/v1beta')
+				: creds.baseURL;
+			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');
-			return createXai({ ...creds, fetch })(model);
+			return createXai({ ...creds, fetch }).chat(model);
 		},
 	},
 	groq: {
@@ -133,17 +268,35 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	nvidia: {
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
+	moonshotai: {
 		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'nvidia',
-				baseURL: creds.baseURL ?? 'https://integrate.api.nvidia.com/v1',
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-			})(model);
+			const { createMoonshotAI } =
+				require('@ai-sdk/moonshotai') as typeof import('@ai-sdk/moonshotai');
+			return createMoonshotAI({ ...creds, fetch })(model);
+		},
+	},
+	alibaba: {
+		build: (creds, model, fetch) => {
+			const { createAlibaba } = require('@ai-sdk/alibaba') as typeof import('@ai-sdk/alibaba');
+			// The SDK expects the OpenAI-compatible base, but n8n Alibaba credentials
+			// store the region's bare host — Alibaba serves its native and its
+			// OpenAI-compatible API under different paths on that host.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/compatible-mode/v1')
+				: creds.baseURL;
+			return createAlibaba({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	minimax: {
+		build: (creds, model, fetch) => {
+			const { createMiniMax } = require('@ai-sdk/minimax') as typeof import('@ai-sdk/minimax');
+			// The SDK speaks MiniMax's Anthropic-compatible API, which MiniMax also
+			// recommends, but n8n MiniMax credentials store the OpenAI-compatible base.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/anthropic/v1', { stripSuffix: '/v1' })
+				: creds.baseURL;
+			return createMiniMax({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	'azure-openai': {
@@ -215,6 +368,15 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
 		credFields = rest;
 	}
+	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
+	// endpoints) spell the base URL as `url`; the provider schemas only know
+	// `baseURL`, and Zod strips unknown keys, so normalize before validation.
+	// An EMPTY url means "no custom endpoint" (Instance AI emits `url: ''` for
+	// the api-key-only config) and must keep the provider default.
+	if (typeof credFields.url === 'string' && credFields.baseURL === undefined) {
+		const { url, ...restCreds } = credFields;
+		credFields = url ? { ...restCreds, baseURL: url } : restCreds;
+	}
 
 	const schema = PROVIDER_CREDENTIAL_SCHEMAS[provider];
 	const parsed = schema.safeParse(credFields);
@@ -244,7 +406,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
  */
 const EMBEDDING_PROVIDERS = {
 	openai: { pkg: '@ai-sdk/openai', factory: 'createOpenAI' },
-	google: { pkg: '@ai-sdk/google', factory: 'createGoogleGenerativeAI' },
+	google: { pkg: '@ai-sdk/google', factory: 'createGoogle' },
 	mistral: { pkg: '@ai-sdk/mistral', factory: 'createMistral' },
 	cohere: { pkg: '@ai-sdk/cohere', factory: 'createCohere' },
 	amazon: { pkg: '@ai-sdk/amazon-bedrock', factory: 'createAmazonBedrock' },

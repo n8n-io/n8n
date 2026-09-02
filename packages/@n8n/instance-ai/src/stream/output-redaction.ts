@@ -6,7 +6,7 @@ import {
 	type RedactionOptions,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { Logger } from '../logger';
 
@@ -15,8 +15,10 @@ import type { Logger } from '../logger';
  * secret patterns plus credit-card numbers. Other PII categories (`email`,
  * `ssn-us`) are implemented but off by default until we decide which to enable.
  *
- * Instance AI always redacts matches. The SDK's `GuardrailStrategy` also defines
- * `block` and `warn`, but those are not implemented here.
+ * Instance AI's own streams pass `false` (raw-at-rest, INS-837), so this policy
+ * applies only to callers that opt in. When it does run it always redacts
+ * matches; the SDK's `GuardrailStrategy` also defines `block` and `warn`, but
+ * those are not implemented here.
  */
 export const DEFAULT_OUTPUT_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
@@ -29,10 +31,29 @@ interface OutputRedactorContext {
 	runId: string;
 	agentId: string;
 	/**
-	 * Redaction policy: omit for the safe default, pass options to customise, or
-	 * `false` to disable scanning entirely (events pass through untouched).
+	 * Redaction policy: omit for the default policy, pass options to customise,
+	 * or `false` to disable scanning entirely (events pass through untouched).
+	 * NOTE: omission means ENABLED — callers on a persistence path must pass
+	 * `false` explicitly or the stored text is redacted.
 	 */
 	options?: RedactionOptions | false;
+}
+
+const MAX_TARGET_APPROVAL_ARG_DEPTH = 8;
+const WITHHELD_TARGET_APPROVAL_ARG = '[REDACTED]';
+
+function withholdDeepTargetApprovalArgs(value: unknown, depth = 0): unknown {
+	if (value === null || typeof value !== 'object') return value;
+	if (depth >= MAX_TARGET_APPROVAL_ARG_DEPTH) return WITHHELD_TARGET_APPROVAL_ARG;
+	if (Array.isArray(value)) {
+		return value.map((item) => withholdDeepTargetApprovalArgs(item, depth + 1));
+	}
+	return Object.fromEntries(
+		Object.entries(value).map(([key, item]) => [
+			key,
+			withholdDeepTargetApprovalArgs(item, depth + 1),
+		]),
+	);
 }
 
 type DeltaType = 'text-delta' | 'reasoning-delta';
@@ -50,9 +71,12 @@ interface Channel {
  * Text/reasoning deltas are streamed through a holdback-buffered redactor so a
  * secret split across chunk boundaries is caught. Buffered text is released
  * (with its original `responseId`) whenever a structural event (tool call,
- * result, …) or a new step boundary arrives — secrets never span those
- * boundaries — so event ordering and step grouping are preserved. Tool
- * results/errors are redacted one-shot.
+ * result, …), a new step boundary, or a channel switch (reasoning → text or
+ * back) arrives — secrets never span those boundaries — so cross-channel
+ * event ordering and step grouping are preserved. Without the channel-switch
+ * drain, a reasoning tail held back by the redactor would be published after
+ * the text that followed it, rendering as a stray mid-sentence reasoning
+ * block in the UI. Tool results/errors are redacted one-shot.
  *
  * One instance per run. Call {@link processEvent} on each mapped event; it
  * returns the ordered events to publish. Call {@link flush} when the active
@@ -83,8 +107,10 @@ export class OutputRedactor {
 	/** Redact an outgoing event; returns the ordered events that should be published. */
 	processEvent(event: InstanceAiEvent): InstanceAiEvent[] {
 		if (!this.enabled) return [event];
-		if (event.type === 'text-delta') return this.processDelta(event, this.text);
-		if (event.type === 'reasoning-delta') return this.processDelta(event, this.reasoning);
+		if (event.type === 'text-delta') return this.processDelta(event, this.text, this.reasoning);
+		if (event.type === 'reasoning-delta') {
+			return this.processDelta(event, this.reasoning, this.text);
+		}
 
 		// Structural event: release any buffered text first so ordering is kept.
 		return [
@@ -105,8 +131,14 @@ export class OutputRedactor {
 	private processDelta(
 		event: Extract<InstanceAiEvent, { type: DeltaType }>,
 		channel: Channel,
+		otherChannel: Channel,
 	): InstanceAiEvent[] {
 		const events: InstanceAiEvent[] = [];
+		// Channel switch: release the other channel's held-back tail first so
+		// true chronological order is kept. The model emits one channel at a
+		// time (a switch is a content-block boundary), so a secret never spans
+		// it and the drain is safe.
+		events.push(...this.drainChannel(otherChannel));
 		// A new step: release the previous step's text under its own responseId.
 		if (channel.responseId !== undefined && channel.responseId !== event.responseId) {
 			events.push(...this.drainChannel(channel));
@@ -164,8 +196,8 @@ export class OutputRedactor {
 	}
 
 	/**
-	 * Redact the human-readable text of a HITL confirmation card (message, intro,
-	 * question/option labels, and task/plan-item descriptions). Control and
+	 * Redact the human-readable content of a HITL confirmation card (message, intro,
+	 * question/option labels, task/plan-item descriptions, and target-tool labels/args). Control and
 	 * identifier fields — `requestId`, `toolCallId`, `inputType`,
 	 * `credentialRequests`, task `id`/`status`, plan `kind`/`deps`, etc. — are
 	 * left untouched so suspend/resume routing keeps working.
@@ -196,6 +228,20 @@ export class OutputRedactor {
 			title: this.redactString(item.title),
 			spec: this.redactString(item.spec),
 		}));
+		let targetApproval = payload.targetApproval;
+		if (targetApproval) {
+			const boundedArgs = withholdDeepTargetApprovalArgs(targetApproval.args);
+			const { value, matches } = redactDeep(boundedArgs, this.options);
+			this.recordMatches(matches);
+			targetApproval = {
+				...targetApproval,
+				toolName: this.redactString(targetApproval.toolName),
+				...(targetApproval.displayName
+					? { displayName: this.redactString(targetApproval.displayName) }
+					: {}),
+				args: value,
+			};
+		}
 
 		return {
 			...event,
@@ -206,6 +252,7 @@ export class OutputRedactor {
 				...(questions ? { questions } : {}),
 				...(tasks ? { tasks } : {}),
 				...(planItems ? { planItems } : {}),
+				...(targetApproval ? { targetApproval } : {}),
 			},
 		};
 	}

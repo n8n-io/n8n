@@ -5,32 +5,40 @@ import type {
 	ActionResultRequestDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { ExecutionContextService } from 'n8n-core';
 import type {
 	ILoadOptions,
 	IWorkflowExecuteAdditionalData,
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { AuthService } from '@/auth/auth.service';
 import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
-	let service: jest.Mocked<DynamicNodeParametersService>;
+	let service: Mocked<DynamicNodeParametersService>;
+	let authService: Mocked<AuthService>;
+	let executionContextService: Mocked<ExecutionContextService>;
 	let controller: DynamicNodeParametersController;
 	let mockUser: { id: string };
 	let baseAdditionalData: IWorkflowExecuteAdditionalData;
 
 	beforeEach(() => {
 		service = mock<DynamicNodeParametersService>();
-		controller = new DynamicNodeParametersController(service);
+		authService = mock<AuthService>();
+		authService.getCookieToken.mockReturnValue(undefined);
+		executionContextService = mock<ExecutionContextService>();
+		controller = new DynamicNodeParametersController(service, authService, executionContextService);
 
 		mockUser = { id: 'user123' };
 		baseAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-		jest.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
+		vi.spyOn(AdditionalData, 'getBase').mockResolvedValue(baseAdditionalData);
 	});
 
 	describe('getOptions', () => {
@@ -63,7 +71,7 @@ describe('DynamicNodeParametersController', () => {
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should call getOptionsViaLoadOptions when loadOptions is provided', async () => {
+		it('should call getOptionsViaLoadOptionsByPath when loadOptions is provided', async () => {
 			const loadOptions: ILoadOptions = {
 				routing: {
 					operations: {},
@@ -76,12 +84,12 @@ describe('DynamicNodeParametersController', () => {
 			const req = { user: mockUser } as AuthenticatedRequest;
 
 			const expectedResult: INodePropertyOptions[] = [{ name: 'test', value: 'value' }];
-			service.getOptionsViaLoadOptions.mockResolvedValue(expectedResult);
+			service.getOptionsViaLoadOptionsByPath.mockResolvedValue(expectedResult);
 
 			const result = await controller.getOptions(req, mock(), payload);
 
-			expect(service.getOptionsViaLoadOptions).toHaveBeenCalledWith(
-				loadOptions,
+			expect(service.getOptionsViaLoadOptionsByPath).toHaveBeenCalledWith(
+				'/test/path',
 				baseAdditionalData,
 				{ name: 'TestNode', version: 1 },
 				{},
@@ -218,6 +226,61 @@ describe('DynamicNodeParametersController', () => {
 				undefined,
 			);
 			expect(result).toEqual(expectedResult);
+		});
+	});
+	describe('execution context', () => {
+		const payload: ResourceLocatorRequestDto = {
+			path: '/test/path',
+			nodeTypeAndVersion: { name: 'TestNode', version: 1 },
+			currentNodeParameters: {},
+			methodName: 'testMethod',
+		};
+
+		it("seals the request's own auth cookie and request context", async () => {
+			// Design-time loading resolves end-user credentials against the requesting
+			// user's connection, so their identity has to travel with the request.
+			authService.getCookieToken.mockReturnValue('n8n-auth-cookie-jwt');
+			authService.getMethod.mockReturnValue('POST');
+			authService.getEndpoint.mockReturnValue('/rest/dynamic-node-parameters/options');
+			authService.getBrowserId.mockReturnValue('browser-abc');
+			executionContextService.buildRequestBoundCredentials.mockResolvedValue('sealed');
+			service.getResourceLocatorResults.mockResolvedValue({ results: [] });
+
+			await controller.getResourceLocatorResults(
+				{ user: mockUser } as AuthenticatedRequest,
+				mock(),
+				payload,
+			);
+
+			expect(executionContextService.buildRequestBoundCredentials).toHaveBeenCalledWith(
+				'n8n-auth-cookie-jwt',
+				{
+					method: 'POST',
+					endpoint: '/rest/dynamic-node-parameters/options',
+					browserId: 'browser-abc',
+				},
+			);
+			expect(baseAdditionalData.executionContext).toEqual({
+				version: 1,
+				establishedAt: expect.any(Number),
+				source: 'internal',
+				credentials: 'sealed',
+			});
+		});
+
+		it('leaves a caller without an auth cookie without a context', async () => {
+			// API-key callers keep the existing static-data behaviour rather than failing.
+			authService.getCookieToken.mockReturnValue(undefined);
+			service.getResourceLocatorResults.mockResolvedValue({ results: [] });
+
+			await controller.getResourceLocatorResults(
+				{ user: mockUser } as AuthenticatedRequest,
+				mock(),
+				payload,
+			);
+
+			expect(executionContextService.buildRequestBoundCredentials).not.toHaveBeenCalled();
+			expect(baseAdditionalData.executionContext).toBeUndefined();
 		});
 	});
 });

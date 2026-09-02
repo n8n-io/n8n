@@ -69,6 +69,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:editor' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		store.currentProject = project;
 		return store;
@@ -164,6 +165,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u2', email: 'a@b.c', firstName: 'A', lastName: 'B', role: 'project:viewer' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -191,6 +193,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:viewer' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -218,6 +221,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 			updatedAt: now,
 			relations: [],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -254,6 +258,7 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 		updatedAt: now,
 		relations: [],
 		scopes: [] as Scope[],
+		rolesManaged: false,
 	});
 
 	const makeStore = () => {

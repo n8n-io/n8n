@@ -85,6 +85,10 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getSaveButton(): Locator {
+		// Not scoped to `this.container`: the container test-id lives on the
+		// modal's content slot, while the save button renders in the modal's
+		// footer slot — a sibling of the content, so a container-scoped lookup
+		// never matches.
 		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 

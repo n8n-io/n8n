@@ -1,14 +1,15 @@
+import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CustomFetch,
 	HttpTransport,
 	SsrfBridge,
-	SsrfOption,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
-import { createResultError, createResultOk } from 'n8n-workflow';
+import type { SsrfProtectionConfig } from '@n8n/config';
+import { mock } from 'vitest-mock-extended';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo, LookupFunction } from 'node:net';
@@ -26,7 +27,7 @@ const validatedUrl = (href: string) => expect.objectContaining({ href }) as unkn
  * with deterministic responses.
  */
 function mockTransport(fetchImpl: CustomFetch) {
-	const transportFetch = jest.fn(fetchImpl);
+	const transportFetch = vi.fn(fetchImpl);
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(transportFetch);
 	return { transport, transportFetch };
@@ -66,7 +67,7 @@ function createMockResponse(
 
 describe('fetchAndExtract', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('extracts markdown from HTML', async () => {
@@ -144,7 +145,7 @@ describe('fetchAndExtract', () => {
 
 	it('caps the body at maxResponseBytes and cancels the stream', async () => {
 		const encoder = new TextEncoder();
-		const cancel = jest.fn().mockResolvedValue(undefined);
+		const cancel = vi.fn().mockResolvedValue(undefined);
 		// A stream that never closes on its own — emits a 4-byte chunk per pull so
 		// the byte cap is reached mid-stream and we must cancel to stop reading.
 		const body = new ReadableStream({
@@ -326,15 +327,22 @@ describe('fetchAndExtract', () => {
 
 		// Builds a real transport (the wiring the adapter service performs) so the
 		// SSRF (and optional authorize) interceptors run for real against the
-		// redirecting server below.
-		function realTransport(ssrf: SsrfOption, authorize?: (url: URL) => Promise<void>) {
-			return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport({
-				ssrf,
+		// redirecting server below. A given bridge is installed as the instance's
+		// protection service; `'disabled'` builds an unsafe transport instead.
+		function realTransport(ssrf: SsrfBridge | 'disabled', authorize?: (url: URL) => Promise<void>) {
+			const service =
+				ssrf === 'disabled' ? mock<SsrfProtectionService>() : mock<SsrfProtectionService>(ssrf);
+			return new OutboundHttp(
+				service,
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				mock<Logger>(),
+			).transport({
+				useDefaultSsrfPolicy: ssrf === 'disabled' ? 'unsafe' : 'safe',
 				authorize,
 			});
 		}
 
-		function makeBridge(blockedPath?: string): jest.Mocked<SsrfBridge> {
+		function makeBridge(blockedPath?: string): Mocked<SsrfBridge> {
 			const bridge = mock<SsrfBridge>();
 			bridge.validateUrl.mockImplementation(async (url) => {
 				const href = typeof url === 'string' ? url : url.href;
@@ -397,7 +405,7 @@ describe('fetchAndExtract', () => {
 
 		it('authorizes the redirect target before it is fetched', async () => {
 			const ssrf = makeBridge();
-			const authorize = jest.fn(async (target: URL) => {
+			const authorize = vi.fn(async (target: URL) => {
 				if (target.href.includes('/internal')) throw new Error('Redirect not allowed');
 			});
 

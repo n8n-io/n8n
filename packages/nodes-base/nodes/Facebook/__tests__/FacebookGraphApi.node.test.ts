@@ -1,11 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type {
-	IBinaryData,
-	IDataObject,
-	IExecuteFunctions,
-	IGetNodeParameterOptions,
-} from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 
 import { FacebookGraphApi } from '../FacebookGraphApi.node';
 import type { Mock } from 'vitest';
@@ -114,148 +109,83 @@ describe('FacebookGraphApi node — binary upload', () => {
 	});
 });
 
-describe('FacebookGraphApi Node — continueOnFail error handling', () => {
-	const node = new FacebookGraphApi();
+describe('FacebookGraphApi node — error handling', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	let node: FacebookGraphApi;
 
-	const defaultNodeParameters: IDataObject = {
-		hostUrl: 'graph.facebook.com',
-		httpRequestMethod: 'GET',
-		graphApiVersion: 'v23.0',
-		node: 'me',
-		edge: '',
-		allowUnauthorizedCerts: false,
-		sendBinaryData: false,
-		options: {},
-	};
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		node = new FacebookGraphApi();
 
-	const createMockExecuteFunction = (
-		nodeParameters: IDataObject,
-		{ continueOnFail = false }: { continueOnFail?: boolean } = {},
-	) => {
-		const merged = { ...defaultNodeParameters, ...nodeParameters };
-
-		const fakeExecuteFunction = {
-			getCredentials: vi.fn().mockResolvedValue({
-				accessToken: 'test-access-token',
-			}),
-			getNodeParameter(
-				parameterName: string,
-				_itemIndex: number,
-				fallbackValue?: IDataObject,
-				_options?: IGetNodeParameterOptions,
-			) {
-				return merged[parameterName] ?? fallbackValue;
-			},
-			getNode: vi.fn().mockReturnValue({
-				name: 'Facebook Graph API',
-				typeVersion: 1,
-			}),
-			continueOnFail: () => continueOnFail,
-			getInputData: () => [{ json: {} }],
-			helpers: {
-				request: vi.fn(),
-			},
-		} as unknown as IExecuteFunctions;
-
-		return fakeExecuteFunction;
-	};
-
-	it('should return { json: { error: … } } when a 4xx Graph API error occurs with continueOnFail enabled', async () => {
-		const graphApiError = {
-			message: 'Invalid OAuth access token.',
-			type: 'OAuthException',
-			code: 190,
-			fbtrace_id: 'abc123',
-		};
-
-		const requestError = {
-			statusCode: 400,
-			response: {
-				body: {
-					error: graphApiError,
-				},
-				headers: {
-					'x-fb-trace-id': 'abc123',
-					'content-type': 'application/json',
-				},
-			},
-		};
-
-		const fakeExecuteFunction = createMockExecuteFunction({}, { continueOnFail: true });
-
-		(fakeExecuteFunction.helpers.request as Mock).mockRejectedValue(requestError);
-
-		const result = await node.execute.call(fakeExecuteFunction);
-
-		expect(result).toHaveLength(1);
-
-		const returnItems = result[0];
-		expect(returnItems).toHaveLength(1);
-
-		const item = returnItems[0];
-		expect(item).toHaveProperty('json.error');
-
-		const errorPayload = item.json.error as IDataObject;
-
-		// statusCode is spread at the top level of the error item
-		expect(errorPayload).toHaveProperty('statusCode', 400);
-
-		// Graph API error fields are spread from response.body.error
-		expect(errorPayload).toHaveProperty('message', 'Invalid OAuth access token.');
-		expect(errorPayload).toHaveProperty('type', 'OAuthException');
-		expect(errorPayload).toHaveProperty('code', 190);
-		expect(errorPayload).toHaveProperty('fbtrace_id', 'abc123');
-
-		// Response headers are included
-		expect(errorPayload).toHaveProperty('headers');
-		expect((errorPayload.headers as IDataObject)['x-fb-trace-id']).toBe('abc123');
-
-		// pairedItem tracks lineage back to input item 0
-		expect(item).toHaveProperty('pairedItem', { item: 0 });
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockExecuteFunctions.getNode.mockReturnValue({
+			id: 'test-node-id',
+			name: 'Facebook Graph API',
+			type: 'n8n-nodes-base.facebookGraphApi',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		mockExecuteFunctions.getCredentials.mockResolvedValue({ accessToken: 'TOKEN' });
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			const params: Record<string, unknown> = {
+				authType: 'accessToken',
+				hostUrl: 'graph.facebook.com',
+				httpRequestMethod: 'GET',
+				graphApiVersion: 'v23.0',
+				node: '123456',
+				edge: 'feed',
+				options: {},
+				sendBinaryData: false,
+			};
+			return params[name] as never;
+		});
 	});
 
-	it('should throw NodeApiError when a 4xx Graph API error occurs with continueOnFail disabled', async () => {
-		const requestError = {
-			statusCode: 400,
-			response: {
-				body: {
-					error: {
-						message: 'Invalid OAuth access token.',
-						type: 'OAuthException',
-						code: 190,
-					},
-				},
-			},
-		};
+	it('throws when the request fails and continueOnFail is disabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockRejectedValue({ statusCode: 400 }),
+		} as never;
 
-		const fakeExecuteFunction = createMockExecuteFunction({}, { continueOnFail: false });
-
-		(fakeExecuteFunction.helpers.request as Mock).mockRejectedValue(requestError);
-
-		await expect(node.execute.call(fakeExecuteFunction)).rejects.toThrow();
+		await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
 	});
 
-	it('should handle errors without a response property when continueOnFail is enabled', async () => {
-		const networkError = new Error('ECONNREFUSED');
+	it('routes the failed item to the error output when continueOnFail is enabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockRejectedValue({
+				statusCode: 400,
+				response: {
+					body: { error: { message: 'Invalid token', type: 'OAuthException', code: 190 } },
+					headers: { 'x-fb-trace-id': 'abc' },
+				},
+			}),
+		} as never;
 
-		const fakeExecuteFunction = createMockExecuteFunction({}, { continueOnFail: true });
+		const result = await node.execute.call(mockExecuteFunctions);
 
-		(fakeExecuteFunction.helpers.request as Mock).mockRejectedValue(networkError);
+		const item = result[0][0];
+		// The engine routes an item to the error output only when `error` is set,
+		// and needs `pairedItem` to resolve the originating input item.
+		expect(item.error).toBeDefined();
+		expect(item.pairedItem).toEqual({ item: 0 });
+		// The Graph API error detail is still preserved on the item.
+		expect(item.json).toMatchObject({ statusCode: 400, message: 'Invalid token', code: 190 });
+	});
 
-		const result = await node.execute.call(fakeExecuteFunction);
+	it('marks a non-JSON string response as an error item when continueOnFail is enabled', async () => {
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+		mockExecuteFunctions.helpers = {
+			request: vi.fn().mockResolvedValue('<html>not json</html>'),
+		} as never;
 
-		expect(result).toHaveLength(1);
+		const result = await node.execute.call(mockExecuteFunctions);
 
-		const returnItems = result[0];
-		expect(returnItems).toHaveLength(1);
-
-		const item = returnItems[0];
-		expect(item).toHaveProperty('json.error');
-
-		// When there's no response property, the raw error object is used
-		expect((item.json.error as Error).message).toBe('ECONNREFUSED');
-
-		// pairedItem tracks lineage back to input item 0
-		expect(item).toHaveProperty('pairedItem', { item: 0 });
+		const item = result[0][0];
+		expect(item.error).toBeDefined();
+		expect(item.pairedItem).toEqual({ item: 0 });
+		expect(item.json).toEqual({ message: '<html>not json</html>' });
 	});
 });

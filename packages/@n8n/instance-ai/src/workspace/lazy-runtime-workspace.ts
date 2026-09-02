@@ -1,7 +1,11 @@
 import {
 	BaseFilesystem,
 	BaseSandbox,
+	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
+	raceWithAbort,
+	type AbortableOptions,
+	type AppendOptions,
 	type CommandResult,
 	type CopyOptions,
 	type ExecuteCommandOptions,
@@ -9,6 +13,7 @@ import {
 	type FileEntry,
 	type FileStat,
 	type ListOptions,
+	type MkdirOptions,
 	type ProviderStatus,
 	type ReadOptions,
 	type RemoveOptions,
@@ -23,6 +28,16 @@ export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
 	id?: string;
 	name?: string;
+	/**
+	 * Stable sandbox / filesystem instructions surfaced to the agent's system
+	 * prompt. When set, each is returned verbatim regardless of lazy-resolution
+	 * state so the cached prompt prefix stays byte-stable across agent
+	 * rebuilds/resumes (see {@link LazyRuntimeSandbox.getInstructions} and
+	 * {@link LazyRuntimeFilesystem.getInstructions}). Omit only when prompt
+	 * caching is irrelevant.
+	 */
+	sandboxInstructions?: string;
+	filesystemInstructions?: string;
 }
 
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
@@ -32,15 +47,23 @@ export function createLazyRuntimeWorkspace({
 	ensureWorkspace,
 	id = 'instance-ai-runtime-workspace',
 	name = 'Instance AI runtime workspace',
+	sandboxInstructions,
+	filesystemInstructions,
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
-	return new Workspace({
+	const workspace = new Workspace({
 		id,
 		name,
-		filesystem: new LazyRuntimeFilesystem(resolver),
-		sandbox: new LazyRuntimeSandbox(resolver),
+		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
+		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
+
+	const baseGetTools = workspace.getTools.bind(workspace);
+	workspace.getTools = () =>
+		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+
+	return workspace;
 }
 
 class LazyRuntimeWorkspaceResolver {
@@ -147,7 +170,10 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	readonly provider = 'lazy';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly resolver: LazyRuntimeWorkspaceResolver) {
+	constructor(
+		private readonly resolver: LazyRuntimeWorkspaceResolver,
+		private readonly staticInstructions?: string,
+	) {
 		super();
 		this.resolver.onResolved((workspace) => {
 			this.status = workspace.filesystem?.status ?? this.status;
@@ -176,6 +202,13 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	}
 
 	getInstructions(): string {
+		// Prefer the caller-provided stable text so the agent's cached prompt
+		// prefix stays byte-stable across rebuilds/resumes. Branching on the
+		// resolved (scoped) filesystem would otherwise flip the prompt text once
+		// the workspace resolves and bust prompt caching (see LazyRuntimeSandbox).
+		// Empty string is intentional (e.g. guidance lives in the system prompt).
+		if (this.staticInstructions !== undefined) return this.staticInstructions;
+
 		const instructions = this.resolver.current?.filesystem?.getInstructions?.();
 		if (instructions) return instructions;
 
@@ -186,51 +219,54 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
-		return await (await this.getFilesystem()).readFile(path, options);
+		return await (await this.getFilesystem(options?.abortSignal)).readFile(path, options);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		await (await this.getFilesystem()).writeFile(path, content, options);
+		await (await this.getFilesystem(options?.abortSignal)).writeFile(path, content, options);
 	}
 
-	async appendFile(path: string, content: FileContent): Promise<void> {
-		await (await this.getFilesystem()).appendFile(path, content);
+	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
+		await (await this.getFilesystem(options?.abortSignal)).appendFile(path, content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem()).deleteFile(path, options);
+		await (await this.getFilesystem(options?.abortSignal)).deleteFile(path, options);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem()).copyFile(src, dest, options);
+		await (await this.getFilesystem(options?.abortSignal)).copyFile(src, dest, options);
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem()).moveFile(src, dest, options);
+		await (await this.getFilesystem(options?.abortSignal)).moveFile(src, dest, options);
 	}
 
-	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-		await (await this.getFilesystem()).mkdir(path, options);
+	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
+		await (await this.getFilesystem(options?.abortSignal)).mkdir(path, options);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem()).rmdir(path, options);
+		await (await this.getFilesystem(options?.abortSignal)).rmdir(path, options);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
-		return await (await this.getFilesystem()).readdir(path, options);
+		return await (await this.getFilesystem(options?.abortSignal)).readdir(path, options);
 	}
 
-	async exists(path: string): Promise<boolean> {
-		return await (await this.getFilesystem()).exists(path);
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		return await (await this.getFilesystem(options?.abortSignal)).exists(path, options);
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		return await (await this.getFilesystem()).stat(path);
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await (await this.getFilesystem(options?.abortSignal)).stat(path, options);
 	}
 
-	private async getFilesystem(): Promise<WorkspaceFilesystem> {
-		const filesystem = await this.resolver.getFilesystem();
+	private async getFilesystem(abortSignal?: AbortSignal): Promise<WorkspaceFilesystem> {
+		const filesystem = await raceWithAbort(
+			async () => await this.resolver.getFilesystem(),
+			abortSignal,
+		);
 		this.syncStatus(filesystem);
 		return filesystem;
 	}
@@ -246,7 +282,10 @@ class LazyRuntimeSandbox extends BaseSandbox {
 	readonly provider = 'lazy';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly resolver: LazyRuntimeWorkspaceResolver) {
+	constructor(
+		private readonly resolver: LazyRuntimeWorkspaceResolver,
+		private readonly staticInstructions?: string,
+	) {
 		super();
 		this.resolver.onResolved((workspace) => {
 			this.status = workspace.sandbox?.status ?? this.status;
@@ -273,40 +312,40 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		await this.resolver.destroyResolvedWorkspace();
 	}
 
-	getDefaultCommandEnv(): NodeJS.ProcessEnv {
-		return this.resolver.current?.sandbox?.getDefaultCommandEnv?.() ?? {};
-	}
-
 	override async executeCommand(
 		command: string,
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		const sandbox = await this.getSandbox();
+		const sandbox = await this.getSandbox(options?.abortSignal);
 		if (!sandbox.executeCommand) {
 			throw new Error('Instance AI runtime sandbox does not support command execution.');
 		}
 
-		const defaultEnv = sandbox.getDefaultCommandEnv?.();
 		try {
-			return await sandbox.executeCommand(command, args, {
-				...options,
-				...(defaultEnv ? { env: { ...defaultEnv, ...options?.env } } : {}),
-			});
+			return await sandbox.executeCommand(command, args, options);
 		} finally {
 			this.syncStatus(sandbox);
 		}
 	}
 
 	override getInstructions(): string {
+		// Prefer the caller-provided stable text: it is returned regardless of
+		// resolution state so the agent's cached prompt prefix stays byte-stable
+		// across rebuilds/resumes. Branching on the live sandbox (which is only
+		// resolved once a workspace tool runs in this rebuilt instance) would
+		// otherwise flip the prompt text between resumes and bust prompt caching.
+		// Empty string is intentional (e.g. guidance lives in the system prompt).
+		if (this.staticInstructions !== undefined) return this.staticInstructions;
+
 		const instructions = this.resolver.current?.sandbox?.getInstructions?.();
 		if (instructions) return instructions;
 
 		return 'Workspace command tools are available and create the runtime sandbox on first use.';
 	}
 
-	private async getSandbox(): Promise<WorkspaceSandbox> {
-		const sandbox = await this.resolver.getSandbox();
+	private async getSandbox(abortSignal?: AbortSignal): Promise<WorkspaceSandbox> {
+		const sandbox = await raceWithAbort(async () => await this.resolver.getSandbox(), abortSignal);
 		this.syncStatus(sandbox);
 		return sandbox;
 	}

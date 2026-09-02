@@ -8,8 +8,10 @@ import {
 	matchGlob,
 	parseFilters,
 	evaluateFilter,
+	formatChangedFilesOutput,
 	runValidate,
 	getChangedFiles,
+	getAddedFiles,
 	getMergeBase,
 } from '../ci-filter.mjs';
 
@@ -201,6 +203,32 @@ describe('evaluateFilter', () => {
 	});
 });
 
+// --- formatChangedFilesOutput (oversized change-set cap) ---
+
+describe('formatChangedFilesOutput', () => {
+	it('joins the list with newlines when under the cap', () => {
+		const files = ['packages/cli/src/a.ts', 'packages/core/src/b.ts'];
+		assert.equal(
+			formatChangedFilesOutput(files, 10),
+			'packages/cli/src/a.ts\npackages/core/src/b.ts',
+		);
+	});
+
+	it('returns the full list at exactly the cap', () => {
+		const files = ['a', 'b', 'c'];
+		assert.equal(formatChangedFilesOutput(files, 3), 'a\nb\nc');
+	});
+
+	it('returns an empty string when the list exceeds the cap', () => {
+		const files = ['a', 'b', 'c', 'd'];
+		assert.equal(formatChangedFilesOutput(files, 3), '');
+	});
+
+	it('empty input stays empty', () => {
+		assert.equal(formatChangedFilesOutput([], 10), '');
+	});
+});
+
 // --- runtime filter (E2E-chain scoping) ---
 
 describe('runtime filter', () => {
@@ -350,6 +378,20 @@ describe('getChangedFiles', () => {
 	it('rejects unsafe base refs', () => {
 		assert.throws(() => getChangedFiles('main; rm -rf /'), /Unsafe/);
 		assert.throws(() => getChangedFiles('main$evil'), /Unsafe/);
+	});
+
+	it('getAddedFiles returns only added files, not modified ones', () => {
+		// Modify shared.ts on the PR branch alongside the existing add, then
+		// confirm getAddedFiles excludes the modification (--diff-filter=A).
+		writeFileSync(join(repoDir, 'shared.ts'), 'shared\npr-edit\n');
+		git(['commit', '-am', 'PR modifies shared']);
+		getChangedFiles('main'); // ensure FETCH_HEAD is populated
+		assert.deepEqual(getAddedFiles('main').sort(), ['pr-only.ts']);
+		assert.deepEqual(getChangedFiles('main').sort(), ['pr-only.ts', 'shared.ts']);
+	});
+
+	it('getAddedFiles rejects unsafe base refs', () => {
+		assert.throws(() => getAddedFiles('main; rm -rf /'), /Unsafe/);
 	});
 });
 

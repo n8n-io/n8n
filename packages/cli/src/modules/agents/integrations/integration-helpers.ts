@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 

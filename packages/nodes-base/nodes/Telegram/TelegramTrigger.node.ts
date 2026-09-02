@@ -1,4 +1,7 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import crypto from 'crypto';
+import { HITL_CALLBACK_PREFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,8 +13,36 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { apiRequest, getSecretToken } from './GenericFunctions';
+import { deriveHitlSecretToken } from './hitl/tokens';
 import type { IEvent } from './IEvent';
 import { downloadFile } from './util/triggerUtils';
+
+/**
+ * Builds the fixed HITL endpoint URL from this trigger's own webhook URL, preserving
+ * any reverse-proxy path prefix (everything before the live-webhook segment). Using
+ * `.origin` alone would silently drop that prefix on instances served under a subpath.
+ */
+function hitlForwardUrl(ownWebhookUrl: string): string {
+	const parsed = new URL(ownWebhookUrl);
+	const endpoints = Container.get(GlobalConfig).endpoints;
+	const liveWebhookSegment = `/${endpoints.webhook}/`;
+	const prefixEnd = parsed.pathname.indexOf(liveWebhookSegment);
+	const prefix = prefixEnd >= 0 ? parsed.pathname.slice(0, prefixEnd) : '';
+	return `${parsed.origin}${prefix}/${endpoints.webhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`;
+}
+
+/** Update-type keys that `updates` (the "Trigger On" parameter) can select. */
+const UPDATE_TYPE_KEYS = [
+	'message',
+	'edited_message',
+	'channel_post',
+	'edited_channel_post',
+	'callback_query',
+	'inline_query',
+	'pre_checkout_query',
+	'shipping_query',
+	'poll',
+] as const;
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,8 +50,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -220,6 +251,14 @@ export class TelegramTrigger implements INodeType {
 
 				if ((allowedUpdates || []).includes('*')) {
 					allowedUpdates = [];
+				} else if (
+					this.getNode().typeVersion >= 1.5 &&
+					!allowedUpdates.includes('callback_query')
+				) {
+					// So Telegram delivers HITL callback-button taps too, even when this
+					// trigger never subscribed to them; `webhook()` filters them back out
+					// before they'd otherwise start this trigger's workflow.
+					allowedUpdates = [...allowedUpdates, 'callback_query'];
 				}
 
 				const endpoint = 'setWebhook';
@@ -279,6 +318,45 @@ export class TelegramTrigger implements INodeType {
 			}
 		}
 
+		if (bodyData.callback_query?.data?.startsWith(HITL_CALLBACK_PREFIX)) {
+			// Forward the raw update to the fixed HITL endpoint instead of starting this
+			// trigger's workflow. This trigger never learns HITL internals; the endpoint
+			// and the Telegram node's own webhook handler do all verification. Best-effort:
+			// ack Telegram either way so it doesn't retry: the approver can retap.
+			try {
+				const ownWebhookUrl = this.getNodeWebhookUrl('default');
+				if (ownWebhookUrl) {
+					await this.helpers.httpRequest({
+						method: 'POST',
+						url: hitlForwardUrl(ownWebhookUrl),
+						body: bodyData,
+						json: true,
+						headers: {
+							'x-telegram-bot-api-secret-token': deriveHitlSecretToken(
+								credentials.accessToken as string,
+							),
+						},
+						ignoreHttpStatusErrors: true,
+					});
+				}
+			} catch {
+				// intentional: forwarding is best-effort
+			}
+			return {};
+		}
+
+		if (nodeVersion >= 1.5) {
+			// Empty (or unset) means "all updates", matching how `create()` already
+			// converts a `*` selection to an empty `allowed_updates` list for Telegram.
+			const updates = (this.getNodeParameter('updates', []) as string[]) ?? [];
+			if (updates.length > 0 && !updates.includes('*')) {
+				const updateType = UPDATE_TYPE_KEYS.find((key) => bodyData[key] !== undefined);
+				if (updateType && !updates.includes(updateType)) {
+					return {};
+				}
+			}
+		}
+
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
 		if (additionalFields.download) {
@@ -291,7 +369,17 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.chatIds) {
 				const chatIds = additionalFields.chatIds as string;
 				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
-				if (!splitIds.includes(String(bodyData.message?.chat?.id))) {
+				// Versions < 1.4 only resolve the chat ID from `message` updates; later
+				// versions resolve it from every update type that carries a chat.
+				const chatId =
+					nodeVersion >= 1.4
+						? (bodyData.message?.chat?.id ??
+							bodyData.edited_message?.chat?.id ??
+							bodyData.channel_post?.chat?.id ??
+							bodyData.edited_channel_post?.chat?.id ??
+							bodyData.callback_query?.message?.chat?.id)
+						: bodyData.message?.chat?.id;
+				if (!splitIds.includes(String(chatId))) {
 					return {};
 				}
 			}
@@ -299,7 +387,20 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.userIds) {
 				const userIds = additionalFields.userIds as string;
 				const splitIds = userIds.split(',').map((userId) => userId.trim());
-				if (!splitIds.includes(String(bodyData.message?.from?.id))) {
+				// Versions < 1.4 only resolve the user ID from `message` updates; later
+				// versions resolve it from every update type that carries a sender.
+				const userId =
+					nodeVersion >= 1.4
+						? (bodyData.message?.from?.id ??
+							bodyData.edited_message?.from?.id ??
+							bodyData.channel_post?.from?.id ??
+							bodyData.edited_channel_post?.from?.id ??
+							bodyData.callback_query?.from?.id ??
+							bodyData.inline_query?.from?.id ??
+							bodyData.pre_checkout_query?.from?.id ??
+							bodyData.shipping_query?.from?.id)
+						: bodyData.message?.from?.id;
+				if (!splitIds.includes(String(userId))) {
 					return {};
 				}
 			}

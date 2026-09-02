@@ -10,6 +10,8 @@ import { bench, describe } from 'vitest';
 import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 
+import { BENCH_OPTIONS } from '../bench-options';
+
 const MAIN = 'main';
 
 function link(conn: IConnections, from: string, to: string): void {
@@ -53,23 +55,39 @@ function wideFanOut(width: number): IConnections {
 
 describe('Workflow graph traversal', () => {
 	const linear = linearChain(500);
-	bench('getChildNodes: linear chain (501 nodes)', () => {
-		getChildNodes(linear, 'n0');
-	});
+	bench(
+		'getChildNodes: linear chain (501 nodes)',
+		() => {
+			getChildNodes(linear, 'n0');
+		},
+		BENCH_OPTIONS,
+	);
 
 	const wide = wideFanOut(184);
-	bench('getChildNodes: wide fan-out (184 branches into one sink)', () => {
-		getChildNodes(wide, 'trigger');
-	});
+	bench(
+		'getChildNodes: wide fan-out (184 branches into one sink)',
+		() => {
+			getChildNodes(wide, 'trigger');
+		},
+		BENCH_OPTIONS,
+	);
 
 	// exponential paths, must stay linear.
 	const diamonds = diamondChain(14); // 2^14 ≈ 16k paths, 43 nodes
-	bench('getChildNodes: diamond chain (14 diamonds, 43 nodes)', () => {
-		getChildNodes(diamonds, 'start');
-	});
+	bench(
+		'getChildNodes: diamond chain (14 diamonds, 43 nodes)',
+		() => {
+			getChildNodes(diamonds, 'start');
+		},
+		BENCH_OPTIONS,
+	);
 
 	const diamondsByDestination = mapConnectionsByDestination(diamonds);
-	bench('getParentNodes: diamond chain (14 diamonds, 43 nodes)', () => {
-		getParentNodes(diamondsByDestination, 'm13');
-	});
+	bench(
+		'getParentNodes: diamond chain (14 diamonds, 43 nodes)',
+		() => {
+			getParentNodes(diamondsByDestination, 'm13');
+		},
+		BENCH_OPTIONS,
+	);
 });

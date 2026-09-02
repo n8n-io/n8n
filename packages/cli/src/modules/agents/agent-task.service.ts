@@ -1,7 +1,8 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
+import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
@@ -14,9 +15,15 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import {
+	AgentModificationTelemetryService,
+	type AgentMutationTelemetryContext,
+	diffAgentConfigParts,
+} from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import {
@@ -25,7 +32,8 @@ import {
 } from './repositories/agent-task-run-lock.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { isUnconfiguredAgent } from './utils/agent-capabilities';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
@@ -39,8 +47,9 @@ const agentTaskScheduleGroup = (agentId: string): ScheduledTaskGroup => ({
 });
 
 /**
- * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron) live
- * in the `agent_task_definition` table; membership and the `enabled` flag live
+ * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron and
+ * the timezone that cron is evaluated in — null meaning the instance timezone)
+ * live in the `agent_task_definition` table; membership and the `enabled` flag live
  * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
  * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
  * `activeVersionId`. `ScheduledTaskManager` registers a cron per enabled
@@ -58,11 +67,11 @@ export class AgentTaskService {
 		private readonly taskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly taskRunLockRepository: AgentTaskRunLockRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -77,45 +86,122 @@ export class AgentTaskService {
 	 * agent's draft config in one transaction. Does not register a cron job —
 	 * scheduling follows the published config (see `registerEnabledForAgent`).
 	 */
-	async create(agentId: string, dto: CreateAgentTaskDto): Promise<AgentTaskDto> {
-		this.assertValidCron(dto.cronExpression);
-
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
-
-		const taskId = generateAgentResourceId(
-			'task',
-			(agent.schema.tasks ?? []).map((ref) => ref.id),
-		);
-		const task = this.taskRepository.create({
-			id: taskId,
-			agentId,
-			name: dto.name,
-			objective: dto.objective,
-			cronExpression: dto.cronExpression,
-		});
-
-		this.attachTaskRef(agent, taskId, dto.enabled ?? true);
-		markAgentDraftDirty(agent);
-
-		await this.agentRepository.manager.transaction(async (em) => {
-			await em.save(task);
-			await em.save(agent);
-		});
-
-		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId });
-		return this.toDto(task);
+	async create(
+		agentId: string,
+		projectId: string,
+		dto: CreateAgentTaskDto,
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto> {
+		const [task] = await this.createTasksBatch(agentId, projectId, [dto], context);
+		return task;
 	}
 
 	/**
-	 * Update a task body (name/objective/cron) in the draft. Marks the agent draft
+	 * Create multiple task bodies and attach their `{ type:'task', id, enabled }`
+	 * refs to the agent's draft config in one transaction. Scoped to
+	 * `projectId` to match the builder tool's existing project check. Does not
+	 * register cron jobs — scheduling follows the published config.
+	 */
+	async createTasks(
+		agentId: string,
+		projectId: string,
+		dtos: CreateAgentTaskDto[],
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto[]> {
+		return await this.createTasksBatch(agentId, projectId, dtos, context);
+	}
+
+	/**
+	 * Shared implementation behind `create` and `createTasks`. Rejects an empty
+	 * batch before loading the agent. All-or-nothing: every cron is validated
+	 * before any row is created, so an invalid item leaves the agent untouched.
+	 *
+	 * Task rows and the agent config refs are saved in one transaction.
+	 */
+	private async createTasksBatch(
+		agentId: string,
+		projectId: string,
+		dtos: CreateAgentTaskDto[],
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto[]> {
+		if (dtos.length === 0) {
+			throw new BadRequestError('At least one task is required');
+		}
+
+		for (const dto of dtos) {
+			this.assertValidCron(dto.cronExpression);
+			this.assertValidTimezone(dto.timezone);
+		}
+
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
+
+		const previousSchema = agent.schema;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
+		const tasks = dtos.map((dto) => {
+			const taskId = generateAgentResourceId(
+				'task',
+				(agent.schema?.tasks ?? []).map((ref) => ref.id),
+			);
+			this.attachTaskRef(agent, taskId, dto.enabled ?? true);
+			return this.taskRepository.create({
+				id: taskId,
+				agentId,
+				name: dto.name,
+				objective: dto.objective,
+				cronExpression: dto.cronExpression,
+				timezone: dto.timezone ?? null,
+			});
+		});
+
+		markAgentDraftDirty(agent);
+
+		await this.agentRepository.manager.transaction(async (em) => {
+			for (const task of tasks) {
+				await em.save(task);
+			}
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
+		});
+
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
+		});
+
+		this.logger.debug('[AgentTaskService] Created tasks', {
+			agentId,
+			taskIds: tasks.map((task) => task.id),
+		});
+		return tasks.map((task) => this.toDto(task));
+	}
+
+	/**
+	 * Update a task body (name/objective/cron/timezone) in the draft. Marks the agent draft
 	 * dirty but does NOT touch live scheduling: scheduled runs read the published
 	 * task snapshot rows, so any body edit only takes effect on the next
 	 * (re)publish — the "republish to apply" contract. Manual "Run now" uses the
 	 * draft body immediately.
 	 */
-	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
+	async update(
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		dto: UpdateAgentTaskDto,
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
 
 		let changed = false;
@@ -123,6 +209,16 @@ export class AgentTaskService {
 			this.assertValidCron(dto.cronExpression);
 			if (dto.cronExpression !== task.cronExpression) {
 				task.cronExpression = dto.cronExpression;
+				changed = true;
+			}
+		}
+		// `null` resets to the instance timezone; omitting the field keeps the
+		// current one, so an older client can still update name/objective/cron.
+		if (dto.timezone !== undefined) {
+			this.assertValidTimezone(dto.timezone);
+			const timezone = dto.timezone ?? null;
+			if (timezone !== task.timezone) {
+				task.timezone = timezone;
 				changed = true;
 			}
 		}
@@ -138,33 +234,76 @@ export class AgentTaskService {
 		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
 		if (!changed) return this.toDto(task);
 
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
 
 		const saved = await this.agentRepository.manager.transaction(async (em) => {
 			const savedTask = await em.save(task);
-			if (agent) {
-				markAgentDraftDirty(agent);
-				await em.save(agent);
-			}
+			markAgentDraftDirty(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
 			return savedTask;
+		});
+
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
 		});
 
 		return this.toDto(saved);
 	}
 
 	/** Delete a task body and remove its config ref in one transaction. */
-	async delete(agentId: string, taskId: string): Promise<void> {
+	async delete(
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		context: AgentMutationTelemetryContext,
+	): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		if (agent?.schema?.tasks) {
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
+		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
 			markAgentDraftDirty(agent);
 		}
 
 		await this.agentRepository.manager.transaction(async (em) => {
 			await em.remove(task);
-			if (agent) await em.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
+		});
+
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
 		});
 
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });
@@ -292,14 +431,15 @@ export class AgentTaskService {
 
 		if (enabledIds.size === 0) return;
 
-		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective are all
-		// frozen at publish time; draft edits only apply on the next publish.
+		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective/timezone
+		// are all frozen at publish time; draft edits only apply on the next publish.
 		for (const snapshot of snapshots) {
-			this.registerOrRefresh(snapshot.taskId, agent.id, snapshot.cronExpression);
+			this.registerOrRefresh(agent.id, snapshot);
 		}
 	}
 
-	private registerOrRefresh(taskId: string, agentId: string, cronExpression: string): void {
+	private registerOrRefresh(agentId: string, snapshot: AgentTaskSnapshot): void {
+		const { taskId, cronExpression } = snapshot;
 		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId });
 			this.deregister(agentId, taskId);
@@ -308,7 +448,7 @@ export class AgentTaskService {
 
 		this.deregister(agentId, taskId);
 
-		const timezone = this.globalConfig.generic.timezone;
+		const timezone = this.resolveTaskTimezone(snapshot.timezone, taskId);
 		const registered = this.scheduledTaskManager.register(
 			{
 				group: agentTaskScheduleGroup(agentId),
@@ -438,23 +578,18 @@ export class AgentTaskService {
 				return;
 			}
 
-			const executionUserId = await this.resolveExecutionUserId(agent);
-			if (!executionUserId) {
-				this.logger.warn('[AgentTaskService] No project member available for task run', {
-					taskId,
-					agentId,
-					projectId,
-				});
-				return;
-			}
-
-			const { message, threadId } = this.buildTaskRunMessage(taskId, snapshot.objective);
+			const { message, threadId } = this.buildTaskRunMessage(
+				taskId,
+				snapshot.objective,
+				snapshot.timezone,
+			);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
 				agentId,
 				projectId,
 				cronExpression: snapshot.cronExpression,
+				timezone: snapshot.timezone,
 			});
 
 			await this.consumeTaskRun(
@@ -487,10 +622,17 @@ export class AgentTaskService {
 	private buildTaskRunMessage(
 		taskId: string,
 		objective: string,
+		taskTimezone: string | null,
 	): { message: string; threadId: string } {
+		// Timestamped in the instance timezone so it agrees with the `get_environment`
+		// tool the agent also reads "today" from; the schedule's own zone is named
+		// instead of substituted, so the two can never contradict each other.
 		const timezone = this.globalConfig.generic.timezone;
 		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
-		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
+		const scheduleTimezone = this.resolveTaskTimezone(taskTimezone, taskId);
+		const scheduleNote =
+			scheduleTimezone === timezone ? '' : `\nThis task is scheduled in ${scheduleTimezone}.`;
+		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}`;
 		const threadId = `task-${taskId}-${randomUUID()}`;
 		return { message, threadId };
 	}
@@ -530,18 +672,18 @@ export class AgentTaskService {
 	 * agent run can be long, so it is kicked off in the background and surfaces
 	 * as a session; only the lookup is awaited so a missing task still 404s.
 	 */
-	async runNow(agentId: string, taskId: string, userId: string): Promise<void> {
+	async runNow(agentId: string, taskId: string, user: User): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		void this.executeNow(task, agent.projectId, userId);
+		void this.executeNow(task, agent.projectId, user);
 	}
 
-	private async executeNow(task: AgentTask, projectId: string, userId: string): Promise<void> {
-		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective);
+	private async executeNow(task: AgentTask, projectId: string, user: User): Promise<void> {
+		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective, task.timezone);
 
 		this.logger.info('[AgentTaskService] Manual task run started', {
 			taskId: task.id,
@@ -555,24 +697,12 @@ export class AgentTaskService {
 			this.agentExecutionOrchestratorService.executeForTaskNow({
 				agentId: task.agentId,
 				projectId,
-				userId,
+				user,
 				message,
 				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
 				taskId: task.id,
 			}),
 		);
-	}
-
-	private async resolveExecutionUserId(agent: Agent): Promise<string | undefined> {
-		const userIds = await this.projectRelationRepository.findUserIdsByProjectId(agent.projectId);
-		if (userIds.length === 0) return undefined;
-
-		const publishedById = agent.activeVersion?.publishedById;
-		if (publishedById && userIds.includes(publishedById)) {
-			return publishedById;
-		}
-
-		return undefined;
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────
@@ -591,12 +721,38 @@ export class AgentTaskService {
 		}
 	}
 
+	private assertValidTimezone(timezone: string | null | undefined): void {
+		if (timezone === null || timezone === undefined) return;
+		if (!isValidTimeZone(timezone)) {
+			throw new BadRequestError('Invalid timezone');
+		}
+	}
+
+	/**
+	 * Timezone a task's cron is evaluated in. Null means "instance timezone" —
+	 * the only option before tasks carried their own zone. An unresolvable zone
+	 * falls back to the instance timezone rather than dropping the task, since
+	 * `CronTime` would throw and take the agent's whole reconcile with it.
+	 */
+	private resolveTaskTimezone(taskTimezone: string | null | undefined, taskId: string): string {
+		if (!taskTimezone) return this.globalConfig.generic.timezone;
+		if (!isValidTimeZone(taskTimezone)) {
+			this.logger.warn('[AgentTaskService] Task has unknown timezone, using instance timezone', {
+				taskId,
+				timezone: taskTimezone,
+			});
+			return this.globalConfig.generic.timezone;
+		}
+		return taskTimezone;
+	}
+
 	private toDto(task: AgentTask): AgentTaskDto {
 		return {
 			id: task.id,
 			name: task.name,
 			objective: task.objective,
 			cronExpression: task.cronExpression,
+			timezone: task.timezone,
 			createdAt: task.createdAt.toISOString(),
 			updatedAt: task.updatedAt.toISOString(),
 		};

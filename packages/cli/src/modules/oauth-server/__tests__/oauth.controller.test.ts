@@ -1,7 +1,7 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	ProtectedResource,
@@ -22,7 +22,7 @@ beforeAll(async () => {
 	// The SDK's `clientRegistrationHandler` validates `clientsStore.registerClient`
 	// when the module builds its routers, so the mock needs a real store.
 	mockInstance(OAuthServerService, { clientsStore: mock<OAuthRegisteredClientsStore>() });
-	({ OAuthController } = await import('../oauth.controller'));
+	({ OAuthController } = await import('../oauth.controller.js'));
 });
 
 const urlService = mock<UrlService>();
@@ -36,19 +36,21 @@ const makeRes = () => {
 };
 
 // Express 5 delivers wildcard params as an array of segments; the handler also
-// tolerates a plain string. Only `params` is read, so a cast keeps the fixture small.
-const makeReq = (resourcePath: string | string[]): Request =>
-	({ params: { resourcePath } }) as unknown as Request;
+// tolerates a plain string. Only `params` and `originalUrl` are read, so a cast keeps
+// the fixture small.
+const makeReq = (resourcePath: string | string[], originalUrl?: string): Request =>
+	({ params: { resourcePath }, originalUrl }) as unknown as Request;
 
 const resource = (scopes: string[]): ProtectedResource => ({
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
+	authorize: async () => true,
 	scopes,
 });
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
 	controller = new OAuthController(urlService, registry);
 });
@@ -77,6 +79,21 @@ describe('OAuthController', () => {
 			await controller.protectedResourceMetadata(makeReq(['mcp', 'wf-123', 'trigger']), makeRes());
 
 			expect(registry.getByResourcePath).toHaveBeenCalledWith('/mcp/wf-123/trigger');
+		});
+
+		test('forwards the raw query component, which the wildcard param drops', async () => {
+			// some resources select on a query (e.g. a webhook trigger's `?method=`)
+			registry.getByResourcePath.mockResolvedValue(resource([]));
+
+			await controller.protectedResourceMetadata(
+				makeReq(
+					['webhook', 'orders'],
+					'/.well-known/oauth-protected-resource/webhook/orders?method=GET',
+				),
+				makeRes(),
+			);
+
+			expect(registry.getByResourcePath).toHaveBeenCalledWith('/webhook/orders?method=GET');
 		});
 
 		test('returns the RFC 9728 metadata document for a resolved resource', async () => {

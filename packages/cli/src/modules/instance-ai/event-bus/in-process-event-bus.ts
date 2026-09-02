@@ -1,43 +1,111 @@
-import { Service } from '@n8n/di';
-import { EventEmitter } from 'node:events';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
+import { InstanceSettings } from 'n8n-core';
+import { EventEmitter } from 'node:events';
 
-const MAX_EVENTS_PER_THREAD = 500;
-const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { DurableEventLog, type DrainedEvent } from './durable-event-log';
+
+/**
+ * Live fan-out for Instance AI events. `instance_ai_events` is the source of
+ * truth: this bus persists nothing and reads nothing back. Every replay and
+ * run-scoped read goes to {@link DurableEventLog}, so all this owns is the
+ * local SSE emitter and the cross-main relay.
+ */
 @Service()
 export class InProcessEventBus implements InstanceAiEventBus {
 	private readonly emitter = new EventEmitter();
 
-	private readonly store = new Map<string, StoredEvent[]>();
-
-	/** Approximate serialized size per thread for eviction. */
-	private readonly sizeBytes = new Map<string, number>();
-
-	/** Monotonic counter per thread — never resets even after eviction. */
-	private readonly nextId = new Map<string, number>();
-
-	constructor() {
+	constructor(
+		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
+		private readonly eventLog: DurableEventLog,
+	) {
+		this.logger = this.logger.scoped('instance-ai');
 		// Avoid warnings when many SSE clients connect (each adds a listener per thread)
 		this.emitter.setMaxListeners(0);
 	}
 
+	/**
+	 * Publish an event for a thread: a synchronous enqueue into the durable
+	 * log's per-thread drain, which assigns `seq` from the DB, persists durable
+	 * facts, and hands each event back here ({@link onDrained}) for fan-out.
+	 *
+	 * Ephemeral events (deltas, status) carry NO id, so their SSE frames have no
+	 * `id:` line and the browser's replay cursor only ever points at durable
+	 * facts.
+	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		const events = this.getOrCreateStore(threadId);
-		const id = (this.nextId.get(threadId) ?? 0) + 1;
-		this.nextId.set(threadId, id);
+		// Stamp publish time once — replays (SSE reconnect, snapshot rebuilds)
+		// rely on it to reconstruct real timing instead of processing time, and
+		// persisted events must carry it too.
+		if (event.ts === undefined) {
+			event = { ...event, ts: Date.now() };
+		}
+		this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
+	}
 
-		const stored: StoredEvent = { id, event };
-		const eventSize = JSON.stringify(event).length;
-
-		events.push(stored);
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + eventSize);
-
-		// Evict oldest events if count or size exceeds caps
-		this.evictIfNeeded(threadId, events);
-
+	/**
+	 * An event handed back by the durable log's drain: fan it out to local SSE
+	 * subscribers and sibling mains. Coalesced blocks are durable but NOT live
+	 * (subscribers already saw their deltas), so they fan out to nobody.
+	 */
+	private onDrained(threadId: string, drained: DrainedEvent): void {
+		if (!drained.live) return;
+		const stored: StoredEvent = {
+			...(drained.id !== undefined ? { id: drained.id } : {}),
+			event: drained.event,
+		};
 		this.emitter.emit(threadId, stored);
+		this.relayToSiblings(
+			threadId,
+			stored,
+			Buffer.byteLength(JSON.stringify(drained.event), 'utf8'),
+		);
+	}
+
+	private relayToSiblings(threadId: string, stored: StoredEvent, sizeBytes: number): void {
+		if (!this.instanceSettings.isMultiMain) return;
+
+		if (sizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
+			this.logger.warn(
+				`Skipping cross-main relay of "${stored.event.type}" event (${sizeBytes} bytes exceeds ${MAX_PUBSUB_PAYLOAD_BYTES})`,
+				{ threadId, runId: stored.event.runId },
+			);
+			return;
+		}
+
+		void this.publisher
+			.publishCommand({
+				command: 'relay-instance-ai-event',
+				payload: { threadId, storedEvent: stored },
+			})
+			.catch((error: unknown) =>
+				this.logger.error('Failed to relay Instance AI event to sibling mains', {
+					threadId,
+					error,
+				}),
+			);
+	}
+
+	/**
+	 * A relayed event from another main, carrying its DB-assigned seq (id-less =
+	 * ephemeral, live-only). Pure live delivery: reconnect replay reads the log,
+	 * so a relayed frame is only ever needed by a subscriber attached right now,
+	 * and a frame delivered twice is dropped client-side by its id.
+	 */
+	@OnPubSubEvent('relay-instance-ai-event', { instanceType: 'main' })
+	handleRelayInstanceAiEvent({
+		threadId,
+		storedEvent,
+	}: { threadId: string; storedEvent: StoredEvent }): void {
+		if (this.hasSubscribers(threadId)) this.emitter.emit(threadId, storedEvent);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {
@@ -45,63 +113,20 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		return () => this.emitter.off(threadId, handler);
 	}
 
-	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
-		const events = this.store.get(threadId);
-		if (!events) return [];
-		return events.filter((e) => e.id > afterId);
+	/** Whether this main currently holds an SSE subscription for the thread. */
+	hasSubscribers(threadId: string): boolean {
+		return this.emitter.listenerCount(threadId) > 0;
 	}
 
-	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] {
-		const events = this.store.get(threadId);
-		if (!events) return [];
-		return events.filter((e) => e.event.runId === runId).map((e) => e.event);
-	}
-
-	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[] {
-		const events = this.store.get(threadId);
-		if (!events || runIds.length === 0) return [];
-		const runIdSet = new Set(runIds);
-		return events.filter((e) => runIdSet.has(e.event.runId)).map((e) => e.event);
-	}
-
-	getNextEventId(threadId: string): number {
-		return (this.nextId.get(threadId) ?? 0) + 1;
-	}
-
-	/** Clear stored events for a specific thread (e.g. on thread expiration). */
+	/** Drop a thread's live state (e.g. on thread deletion or expiration). */
 	clearThread(threadId: string): void {
-		this.store.delete(threadId);
-		this.sizeBytes.delete(threadId);
-		this.nextId.delete(threadId);
+		this.eventLog.clearThread(threadId);
 		this.emitter.removeAllListeners(threadId);
 	}
 
-	/** Clear all stored events. Used during module shutdown. */
+	/** Drop every thread's live state. Used during module shutdown. */
 	clear(): void {
-		this.store.clear();
-		this.sizeBytes.clear();
-		this.nextId.clear();
+		this.eventLog.clear();
 		this.emitter.removeAllListeners();
-	}
-
-	private evictIfNeeded(threadId: string, events: StoredEvent[]): void {
-		let totalSize = this.sizeBytes.get(threadId) ?? 0;
-
-		while (events.length > MAX_EVENTS_PER_THREAD || totalSize > MAX_BYTES_PER_THREAD) {
-			const evicted = events.shift();
-			if (!evicted) break;
-			totalSize -= JSON.stringify(evicted.event).length;
-		}
-
-		this.sizeBytes.set(threadId, Math.max(0, totalSize));
-	}
-
-	private getOrCreateStore(threadId: string): StoredEvent[] {
-		let events = this.store.get(threadId);
-		if (!events) {
-			events = [];
-			this.store.set(threadId, events);
-		}
-		return events;
 	}
 }

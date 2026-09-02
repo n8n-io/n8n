@@ -9,7 +9,17 @@ import {
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+
+import { ActiveExecutions } from '@/active-executions';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
 
 import {
 	createAnnotationTags,
@@ -23,13 +33,6 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ExecutionService } from '@/executions/execution.service';
-import { Telemetry } from '@/telemetry';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-
 let owner: User;
 let user1: User;
 let user2: User;
@@ -39,6 +42,10 @@ let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
 
 mockInstance(Telemetry);
+mockInstance(InstanceSettings, {
+	isMultiMain: false,
+	n8nFolder: '/tmp/n8n-test',
+});
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -87,6 +94,18 @@ describe('GET /executions/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
+
+	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.get(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
 
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -251,6 +270,17 @@ describe('DELETE /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/executions/1', 'abcXYZ'));
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should delete an execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -272,6 +302,8 @@ describe('DELETE /executions/:id', () => {
 		} = response.body;
 
 		expect(id).toBeDefined();
+		expect(typeof id).toBe('number');
+		expect(id).toBe(Number(execution.id));
 		expect(finished).toBe(true);
 		expect(mode).toEqual(execution.mode);
 		expect(retrySuccessId).toBeNull();
@@ -282,6 +314,30 @@ describe('DELETE /executions/:id', () => {
 		expect(waitTill).toBeNull();
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
+	});
+
+	test('should return 400 when deleting a running execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createdExecutionWithStatus(workflow, 'running');
+
+		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
+
+	test('member should not delete an execution of another user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
 	});
 });
 
@@ -295,7 +351,7 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should retry an execution', async () => {
 		const mockedExecutionResponse = { status: 'waiting' } as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockResolvedValue(mockedExecutionResponse);
 
@@ -320,7 +376,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry a queued execution', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new QueuedExecutionRetryError());
 
@@ -338,7 +394,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry an aborted execution without execution data', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new AbortedExecutionRetryError());
 
@@ -365,7 +421,7 @@ describe('POST /executions/:id/retry', () => {
 	test('should return 404 when user only has read access to the workflow via project viewer role', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'retry');
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'retry');
 
 		const project = await createTeamProject('project with viewer', owner);
 		await linkUserToProject(user1, project, 'project:viewer');
@@ -386,7 +442,7 @@ describe('POST /executions/:id/retry', () => {
 		testServer.license.enable('feat:sharing');
 
 		const mockedExecutionResponse = { status: 'waiting' } as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockResolvedValue(mockedExecutionResponse);
 
@@ -405,7 +461,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry a finished execution', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new ConflictError('The execution succeeded, so it cannot be retried.'));
 
@@ -491,14 +547,24 @@ describe('GET /executions', () => {
 	});
 
 	describe('with query status', () => {
-		type AllowedQueryStatus = 'canceled' | 'error' | 'running' | 'success' | 'waiting';
+		type AllowedQueryStatus =
+			| 'canceled'
+			| 'crashed'
+			| 'error'
+			| 'new'
+			| 'running'
+			| 'success'
+			| 'unknown'
+			| 'waiting';
 		test.each`
 			queryStatus   | entityStatus
 			${'canceled'} | ${'canceled'}
+			${'crashed'}  | ${'crashed'}
 			${'error'}    | ${'error'}
-			${'error'}    | ${'crashed'}
+			${'new'}      | ${'new'}
 			${'running'}  | ${'running'}
 			${'success'}  | ${'success'}
+			${'unknown'}  | ${'unknown'}
 			${'waiting'}  | ${'waiting'}
 		`(
 			'should retrieve all $queryStatus executions',
@@ -530,6 +596,102 @@ describe('GET /executions', () => {
 				expect(status).toBe(expectedExecution.status);
 			},
 		);
+	});
+
+	describe('with executions held in the active-executions map', () => {
+		// Mirrors a running instance: a `waiting` execution is persisted in the DB
+		// and its id is also held in the in-process active-executions map.
+		let activeExecutionsSpy: MockInstance | undefined;
+
+		const holdInActiveExecutions = (
+			stubs: Array<{ executionId: string; workflowId: string; status: ExecutionStatus }>,
+		) => {
+			activeExecutionsSpy = vi
+				.spyOn(Container.get(ActiveExecutions), 'getActiveExecutions')
+				.mockReturnValue(
+					stubs.map(({ executionId, workflowId, status }) => ({
+						id: executionId,
+						retryOf: undefined,
+						startedAt: new Date(),
+						mode: 'manual',
+						workflowId,
+						status,
+					})),
+				);
+		};
+
+		afterEach(() => {
+			activeExecutionsSpy?.mockRestore();
+			activeExecutionsSpy = undefined;
+		});
+
+		test.each`
+			query                    | description
+			${undefined}             | ${'in the default list'}
+			${{ status: 'waiting' }} | ${'when filtering by status=waiting'}
+		`(
+			'should return a held waiting execution $description',
+			async ({ query }: { query?: { status: string } }) => {
+				const workflow = await createWorkflow({}, owner);
+				const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+				holdInActiveExecutions([
+					{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+				]);
+
+				const response = await authOwnerAgent.get('/executions').query(query ?? {});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.map((e: { id: string }) => e.id)).toContain(waitingExecution.id);
+			},
+		);
+
+		test('should return both a held waiting execution and a finished one in the default list', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const finishedExecution = await createdExecutionWithStatus(workflow, 'success');
+			const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+			holdInActiveExecutions([
+				{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			const ids = response.body.data.map((e: { id: string }) => e.id);
+			expect(ids).toContain(finishedExecution.id);
+			expect(ids).toContain(waitingExecution.id);
+		});
+
+		test('should still exclude a genuinely running execution from the default list', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const runningExecution = await createdExecutionWithStatus(workflow, 'running');
+			holdInActiveExecutions([
+				{ executionId: runningExecution.id, workflowId: workflow.id, status: 'running' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((e: { id: string }) => e.id)).not.toContain(
+				runningExecution.id,
+			);
+		});
+
+		test('should return a held waiting execution and exclude a held running execution when both are active', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const waitingExecution = await createdExecutionWithStatus(workflow, 'waiting');
+			const runningExecution = await createdExecutionWithStatus(workflow, 'running');
+			holdInActiveExecutions([
+				{ executionId: waitingExecution.id, workflowId: workflow.id, status: 'waiting' },
+				{ executionId: runningExecution.id, workflowId: workflow.id, status: 'running' },
+			]);
+
+			const response = await authOwnerAgent.get('/executions');
+
+			expect(response.statusCode).toBe(200);
+			const ids = response.body.data.map((e: { id: string }) => e.id);
+			expect(ids).toContain(waitingExecution.id);
+			expect(ids).not.toContain(runningExecution.id);
+		});
 	});
 
 	test('should retrieve all executions of specific workflow', async () => {
@@ -607,6 +769,135 @@ describe('GET /executions', () => {
 		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
 			expect.arrayContaining([firstExecution.id, secondExecution.id]),
 		);
+	});
+
+	describe('with startedAfter and startedBefore filters', () => {
+		test('should retrieve executions started after a given time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				later.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toContain(
+				earlier.id,
+			);
+		});
+
+		test('should retrieve executions started before a given time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedBefore: '2020-07-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				earlier.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toContain(
+				later.id,
+			);
+		});
+
+		test('should retrieve executions started within a time range', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-01-01T00:00:00.000Z') },
+				workflow,
+			);
+			const inRange = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-03-01T00:00:00.000Z',
+				startedBefore: '2020-09-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				inRange.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toEqual(
+				expect.arrayContaining([earlier.id, later.id]),
+			);
+		});
+
+		test('should combine start-time filters with status and workflowId', async () => {
+			const [workflow, otherWorkflow] = await createManyWorkflows(2, {}, owner);
+			const matching = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'success' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'error' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z'), status: 'success' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'success' },
+				otherWorkflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-03-01T00:00:00.000Z',
+				startedBefore: '2020-09-01T00:00:00.000Z',
+				status: 'success',
+				workflowId: workflow.id,
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				matching.id,
+			]);
+		});
+
+		test('should return 400 for a malformed startedAfter value', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: 'not-a-date',
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('startedAfter');
+		});
+
+		test('should return 400 for a malformed startedBefore value', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedBefore: 'not-a-date',
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('startedBefore');
+		});
 	});
 
 	test('owner should retrieve all executions regardless of ownership', async () => {
@@ -808,7 +1099,7 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stop')
 			.mockResolvedValue({
 				...mockedStopResponse,
@@ -861,7 +1152,7 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stop')
 			.mockResolvedValue({
 				...mockedStopResponse,
@@ -905,7 +1196,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop multiple running executions', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(3);
 
@@ -931,7 +1222,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop executions filtered by workflowId', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 
@@ -957,7 +1248,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop executions with date filters', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
@@ -990,7 +1281,7 @@ describe('POST /executions/stop', () => {
 		// Create a workflow for user1
 		const workflow = await createWorkflow({}, user1);
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
@@ -1007,7 +1298,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should return 0 stopped when user has no workflows', async () => {
-		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'stopMany');
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'stopMany');
 
 		// Create a new user with no workflows
 		const userWithNoWorkflows = await createMemberWithApiKey();
@@ -1029,7 +1320,7 @@ describe('POST /executions/stop', () => {
 		// Create some workflows so owner has workflows to access
 		await createManyWorkflows(2, {}, owner);
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(5);
 
@@ -1046,7 +1337,7 @@ describe('POST /executions/stop', () => {
 	test('member should only stop executions in their accessible workflows', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 

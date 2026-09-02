@@ -115,6 +115,35 @@ describe('evaluation.store.ee', () => {
 			expect(result).toEqual({ success: true, testRunId: 'run1' });
 		});
 
+		test('Starting Test Run with rowIndices forwards them to api', async () => {
+			const result = await store.startTestRun('1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+				rowIndices: [2],
+			});
+
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+				rowIndices: [2],
+			});
+			expect(result).toEqual({ success: true, testRunId: 'run1' });
+		});
+
+		test('Starting Test Run without rowIndices omits the field (backward compatible)', async () => {
+			await store.startTestRun('1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
+
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
+			const callOptions = startTestRun.mock.calls[0][2] as Record<string, unknown>;
+			expect(callOptions).not.toHaveProperty('rowIndices');
+		});
+
 		test('fetchEvaluationConfigs stores configs by workflowId', async () => {
 			const mockConfig = { id: 'config-1', name: 'Test Config' };
 			listEvaluationConfigs.mockResolvedValue([mockConfig]);

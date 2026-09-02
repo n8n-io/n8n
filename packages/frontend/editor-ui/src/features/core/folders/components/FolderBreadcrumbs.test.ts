@@ -29,6 +29,7 @@ const TEST_PROJECT: Project = {
 	updatedAt: new Date().toISOString(),
 	relations: [],
 	scopes: [],
+	rolesManaged: false,
 };
 
 const TEST_FOLDER: FolderShortInfo = {

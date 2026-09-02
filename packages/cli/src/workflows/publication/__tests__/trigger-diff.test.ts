@@ -44,6 +44,19 @@ describe('computeTriggerDiff', () => {
 		expect(diff).toEqual({ toAdd: new Set(['a']), toRemove: new Set(['a']) });
 	});
 
+	test('ignores changes to settings that do not affect registration', () => {
+		const before = makeNode('a');
+		const after = makeNode('a', {
+			notes: 'some note',
+			onError: 'continueRegularOutput',
+			retryOnFail: true,
+		});
+
+		const diff = computeTriggerDiff([before], [after]);
+
+		expect(diff).toEqual({ toAdd: new Set(), toRemove: new Set() });
+	});
+
 	test('treats a typeVersion change as a modification', () => {
 		const diff = computeTriggerDiff(
 			[makeNode('a', { typeVersion: 1 })],

@@ -48,14 +48,14 @@ describe('Similarity Evaluator', () => {
 
 	describe('createSimilarityEvaluator()', () => {
 		it('should create an evaluator with correct name', async () => {
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			expect(evaluator.name).toBe('similarity');
 		});
 
 		it('should return error feedback when no reference workflow provided', async () => {
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -76,7 +76,7 @@ describe('Similarity Evaluator', () => {
 		it('should call evaluateWorkflowSimilarity with single reference workflow', async () => {
 			mockEvaluateWorkflowSimilarity.mockResolvedValue(createMockSimilarityResult());
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator({ preset: 'strict' });
 
 			const workflow = createMockWorkflow();
@@ -98,7 +98,7 @@ describe('Similarity Evaluator', () => {
 		it('should call evaluateWorkflowSimilarityMultiple with multiple reference workflows', async () => {
 			mockEvaluateWorkflowSimilarityMultiple.mockResolvedValue(createMockSimilarityResult());
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator({ preset: 'lenient' });
 
 			const workflow = createMockWorkflow();
@@ -120,7 +120,7 @@ describe('Similarity Evaluator', () => {
 		it('should use default preset when not specified', async () => {
 			mockEvaluateWorkflowSimilarity.mockResolvedValue(createMockSimilarityResult());
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -142,7 +142,7 @@ describe('Similarity Evaluator', () => {
 		it('should return feedback with similarity score', async () => {
 			mockEvaluateWorkflowSimilarity.mockResolvedValue(createMockSimilarityResult({ score: 0.92 }));
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -172,7 +172,7 @@ describe('Similarity Evaluator', () => {
 				}),
 			);
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -213,7 +213,7 @@ describe('Similarity Evaluator', () => {
 				}),
 			);
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -236,7 +236,7 @@ describe('Similarity Evaluator', () => {
 		it('should handle evaluation errors gracefully', async () => {
 			mockEvaluateWorkflowSimilarity.mockRejectedValue(new Error('uvx command not found'));
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
@@ -260,7 +260,7 @@ describe('Similarity Evaluator', () => {
 		it('should pass custom config path when provided', async () => {
 			mockEvaluateWorkflowSimilarity.mockResolvedValue(createMockSimilarityResult());
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator({
 				preset: 'standard',
 				customConfigPath: '/path/to/config.json',
@@ -285,7 +285,7 @@ describe('Similarity Evaluator', () => {
 		it('should use evaluateWorkflowSimilarityMultiple when referenceWorkflows has multiple items', async () => {
 			mockEvaluateWorkflowSimilarityMultiple.mockResolvedValue(createMockSimilarityResult());
 
-			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
+			const { createSimilarityEvaluator } = await import('../../evaluators/similarity/index.js');
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Run Stryker on a single source file of a workspace package and emit an
- * actionable summary. Package-agnostic: the nightly matrix and the per-package
- * `mutate` npm scripts both call this one script.
+ * Run Stryker over a workspace package and write an actionable summary. This
+ * script works for any package. Run it as `pnpm mutate` from the repo root.
  *
- * Usage (also exposed as `pnpm mutate <file>` from the repo root):
- *   node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]
+ *   pnpm mutate <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
+ *   pnpm mutate --diff [--base <ref>] [--config <path>]
  *
- * The package is inferred from a repo-relative file path; pass --package-dir when
- * the target is package-relative (the nightly does this).
- *   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts   # inferred
- *   node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
+ * Use `--diff` before you merge. It reads the changed line ranges from
+ * `git diff -U0 $(git merge-base <base> HEAD)`, which covers committed branch
+ * work and uncommitted edits. It mutates only those lines, in one Stryker run
+ * per package. This makes the gate apply to the patch: it scores the lines you
+ * changed, not the debt you inherited.
  *
  * Stryker config resolution (first match wins):
  *   1. --config <path>                         explicit override
@@ -21,42 +21,37 @@
  *
  * Outputs (under <package-dir>/reports/mutation/):
  *   raw.json      — full Stryker Mutation Testing Elements report
- *   raw.html      — Stryker's HTML report (browse for human review)
- *   summary.json  — compact actionable summary (this script)
+ *   summary.json  — compact actionable summary (this script). Emitted even on a
+ *                   non-zero / timed-out Stryker exit, as long as Stryker wrote
+ *                   a (partial) raw.json — a run that can't finish still surfaces
+ *                   the survivors it found rather than dying with nothing.
  *
  * Each summary file row also carries a `coverage` fraction in [0,1] — the share
- * of mutants a test actually exercised — so the global picker can read
- * `(1 − coverage)` from the ledger next cycle (DEVP-496). `emit-payload.mjs`
- * forwards it onto the ledger row.
+ * of mutants a test actually exercised.
  *
  * Gate semantics:
- *   A run passes only when the mutation score meets `STRYKER_THRESHOLD` AND
- *   every remaining mutant is either killed or explicitly justified via a
- *   `// Stryker disable …` comment (status `Ignored`). Any `Survived` or
- *   `NoCoverage` mutant is an unjustified survivor and fails the gate even
- *   above the threshold — raw score alone counts low-value and equivalent
- *   mutants in the denominator and lets agents pad the suite to 80%. See
- *   DEVP-442.
+ *   A run passes only when the score meets `STRYKER_THRESHOLD` and no mutant
+ *   survives without a reason. To give a reason, add a `// Stryker disable …`
+ *   comment. Stryker then reports the mutant as `Ignored` and keeps it out of
+ *   the score. Each `Survived` or `NoCoverage` mutant fails the gate, also
+ *   above the threshold. The score alone lets an author add weak tests to reach
+ *   80% and leave real gaps. See DEVP-442.
  *
  * Exit codes:
- *   0  — gate passed (score ≥ threshold AND no unjustified survivors)
- *   1  — gate failed: score < threshold OR at least one Survived/NoCoverage
- *        mutant remains (AI loop should iterate). Also used when Stryker
- *        reports "No tests were executed" — the file has no covering tests,
- *        so we synthesise a score-0 red summary rather than hard-failing the
- *        job. The ledger then records the gap and the picker advances.
- *   2  — usage / config error
- *   3  — Stryker run failed for any other reason (instrumentation crash etc.)
+ *   0  — the gate passed.
+ *   1  — the gate failed. Iterate: read summary.json and strengthen the tests.
+ *   2  — usage or config error.
+ *   3  — Stryker did not resolve or did not run. Never 1: a broken toolchain
+ *        must stay distinct from a score of zero.
  */
 
-import { spawn } from 'node:child_process';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../..');
 
@@ -106,15 +101,32 @@ export function scoreFromCounts(c) {
  * could be covered (ran + no-coverage). Ignored and compile-error mutants
  * never ran for reasons unrelated to coverage, so they sit outside the ratio.
  *
- * Returns a fraction in [0,1] — clamped defensively. The global picker reads it
- * back from the ledger as the `(1 − coverage)` term of its value formula, so a
- * file no test touches (coverage 0) gets the strongest urge to be scored.
+ * Returns a fraction in [0,1]. The result is clamped.
  */
 export function coverageFromCounts(c) {
 	const covered = (c.killed ?? 0) + (c.survived ?? 0) + (c.timeout ?? 0) + (c.runtimeError ?? 0);
 	const total = covered + (c.noCoverage ?? 0);
 	if (total === 0) return 0;
 	return +Math.min(1, Math.max(0, covered / total)).toFixed(4);
+}
+
+/**
+ * What a finished Stryker run produced. `hasReport` must describe THIS run:
+ * the caller deletes the previous reports first, because a file left by an
+ * earlier run makes a crashed run look complete and report the earlier target.
+ *
+ *   complete  — the run finished and wrote a report.
+ *   partial   — the run wrote a report, then exited non-zero. Untested mutants
+ *               can still be survivors, so this never passes the gate.
+ *   no-tests  — no test covers the target. A result, not an error: the score is
+ *               zero and every mutant has no coverage. See DEVP-414.
+ *   failed    — no report. The caller reports a toolchain failure.
+ */
+export function classifyRun({ exitCode, output, hasReport }) {
+	if (!hasReport) {
+		return /no tests were executed/i.test(output) ? 'no-tests' : 'failed';
+	}
+	return exitCode === 0 ? 'complete' : 'partial';
 }
 
 // A run is only "passing" when the score meets the floor AND every unkilled
@@ -127,7 +139,7 @@ export function gatePassed(score, counts, threshold) {
 /**
  * Build the compact summary from a raw Stryker Mutation Testing Elements
  * report. Pure: takes the parsed report plus run metadata, returns the summary
- * object written to summary.json (and consumed by emit-payload.mjs).
+ * object written to summary.json.
  */
 export function buildSummary(raw, { threshold, target, generatedAt }) {
 	// test-id → test-name lookup so survivors can name the tests that covered
@@ -262,135 +274,308 @@ function findPackageRoot(fromAbs) {
 	return null;
 }
 
-async function main() {
-	// --- args: one positional target + --package-dir (required) + --config (optional)
-	const argv = process.argv.slice(2);
-	let packageDirArg;
-	let configArg;
-	let targetArg;
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		if (a === '--package-dir') packageDirArg = argv[++i];
-		else if (a === '--config') configArg = argv[++i];
-		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
+// --- diff-mode planning (pure helpers exported for the unit tests) ---
+
+// Stryker's dry run stops with SIGABRT on the isolated-vm engine. See DEVP-257.
+const BLOCKED_PACKAGES = new Set(['@n8n/expression-runtime']);
+
+const NON_SOURCE = [
+	/\.d\.ts$/,
+	/\.(test|spec)\.[cm]?tsx?$/,
+	/(^|\/)__(tests|mocks)__\//,
+	/\.stories\.[cm]?tsx?$/,
+	/\.config\.[cm]?[jt]s$/,
+	/(^|\/)(dist|node_modules|coverage)\//,
+	/(^|\/)tests?\//,
+	/(^|\/)migrations\//,
+];
+
+// This is an exclusion list, not a `src/`-only allowlist. nodes-base and
+// nodes-langchain keep their code in `nodes/` and `credentials/`. An allowlist
+// drops the largest mutable surface in the repo.
+export function isMutableSource(repoRelPath) {
+	if (!/\.[cm]?tsx?$/.test(repoRelPath)) return false;
+	return !NON_SOURCE.some((re) => re.test(repoRelPath));
+}
+
+// Merge overlapping and adjacent ranges. Stryker then gets one span per region.
+export function mergeRanges(ranges) {
+	const out = [];
+	for (const r of [...ranges].sort((a, b) => a.start - b.start)) {
+		const last = out.at(-1);
+		if (last && r.start <= last.end + 1) last.end = Math.max(last.end, r.end);
+		else out.push({ ...r });
+	}
+	return out;
+}
+
+// Read the new-side line ranges from `git diff -U0` hunk headers.
+// `@@ -12,0 +13,4 @@` gives `{ start: 13, end: 16 }`. A new-side count of zero
+// is a deletion. No code stays there to mutate, so this drops it.
+export function parseHunkRanges(diffText) {
+	const ranges = [];
+	for (const line of diffText.split('\n')) {
+		const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
+		if (!m) continue;
+		const start = Number(m[1]);
+		const count = m[2] === undefined ? 1 : Number(m[2]);
+		if (count === 0) continue;
+		ranges.push({ start, end: start + count - 1 });
+	}
+	return mergeRanges(ranges);
+}
+
+// Join the targets with commas. Stryker keeps only the last `--mutate` flag,
+// thus repeated flags mutate one target and the package pays for a dry run
+// again for each file.
+export function formatMutateArg(targets) {
+	return targets.join(',');
+}
+
+export function splitRange(target) {
+	const m = /^(.*):(\d+)-(\d+)$/.exec(target);
+	return m ? { file: m[1], range: `${m[2]}-${m[3]}` } : { file: target, range: null };
+}
+
+function git(args) {
+	const res = spawnSync('git', args, {
+		cwd: repoRoot,
+		encoding: 'utf8',
+		maxBuffer: 64 * 1024 * 1024,
+	});
+	if (res.error) die(2, `git ${args[0]} failed to start: ${res.error.message}`);
+	return res;
+}
+
+function packageNameOf(pkgRoot) {
+	try {
+		return JSON.parse(readFileSync(path.join(pkgRoot, 'package.json'), 'utf8')).name ?? '';
+	} catch {
+		return '';
+	}
+}
+
+// Stryker runs the package's own vitest. If the `test` script runs something
+// else, the package is skipped, not failed.
+function packageUsesVitest(pkgRoot) {
+	try {
+		const pkg = JSON.parse(readFileSync(path.join(pkgRoot, 'package.json'), 'utf8'));
+		return /\bvitest\b/.test(pkg.scripts?.test ?? '');
+	} catch {
+		return false;
+	}
+}
+
+// Why a package cannot be scored, or null when it can. Both planners call this,
+// so a named target and a --diff target always get the same answer.
+function ineligibleReason(pkgRoot) {
+	const pkgName = packageNameOf(pkgRoot) || path.relative(repoRoot, pkgRoot);
+	if (BLOCKED_PACKAGES.has(packageNameOf(pkgRoot))) {
+		return `${pkgName} is blocked: the isolated-vm engine crashes Stryker's dry run (DEVP-257)`;
+	}
+	if (!packageUsesVitest(pkgRoot)) return `${pkgName} is not a vitest package`;
+	return null;
+}
+
+function planFromDiff(base) {
+	// Diff the merge base against the working tree, not against HEAD. This also
+	// scores uncommitted edits. On a PR checkout the tree is clean, thus the
+	// result is the same as the branch diff.
+	const mergeBase = git(['merge-base', base, 'HEAD']);
+	if (mergeBase.status !== 0) {
+		die(2, `No merge base with '${base}' — is the ref fetched?\n${mergeBase.stderr.trim()}`);
+	}
+	const from = mergeBase.stdout.trim();
+
+	const names = git(['diff', '--name-only', from]);
+	if (names.status !== 0) {
+		die(2, `git diff against '${base}' failed.\n${names.stderr.trim()}`);
 	}
 
-	const usage =
-		'Usage: node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]\n' +
-		'  - repo-relative file → package is inferred: node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts\n' +
-		'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+	const byPackage = new Map();
+	const skipped = [];
+	for (const file of names.stdout
+		.split('\n')
+		.map((s) => s.trim())
+		.filter(Boolean)) {
+		if (!isMutableSource(file)) continue;
+		const abs = path.resolve(repoRoot, file);
+		if (!existsSync(abs)) continue; // the branch deleted the file
 
-	if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
+		const pkgRoot = findPackageRoot(abs);
+		if (!pkgRoot) {
+			skipped.push([file, 'no enclosing package']);
+			continue;
+		}
+		const reason = ineligibleReason(pkgRoot);
+		if (reason) {
+			skipped.push([file, reason]);
+			continue;
+		}
 
-	// Resolve pkgRoot + the src-relative target, supporting two call styles:
-	//   1. --package-dir given → target is package-relative (or absolute). (the nightly's style)
-	//   2. no --package-dir → target is a repo-relative file; infer the package from it.
-	let pkgRoot;
-	let target;
-	if (packageDirArg) {
-		pkgRoot = path.resolve(repoRoot, packageDirArg);
-		if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
-		target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
-	} else {
-		const abs = path.resolve(repoRoot, targetArg);
-		if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
-		const found = findPackageRoot(abs);
-		if (!found)
-			die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
-		pkgRoot = found;
-		target = path.relative(pkgRoot, abs);
+		const ranges = parseHunkRanges(git(['diff', '-U0', from, '--', file]).stdout);
+		if (ranges.length === 0) continue;
+
+		const rel = path.relative(pkgRoot, abs);
+		const packageDir = path.relative(repoRoot, pkgRoot);
+		const job = byPackage.get(pkgRoot) ?? { pkgRoot, packageDir, targets: [] };
+		for (const r of ranges) job.targets.push(`${rel}:${r.start}-${r.end}`);
+		byPackage.set(pkgRoot, job);
 	}
+	return { jobs: [...byPackage.values()], skipped };
+}
 
-	if (!target.startsWith('src/') || target.includes('..')) {
-		die(2, `Target must be under the package's src/. Got: ${target}`);
+// --- running ---
+
+function resolveConfig(pkgRoot, configArg) {
+	if (configArg) return path.resolve(repoRoot, configArg);
+	const local = path.join(pkgRoot, 'stryker.config.mjs');
+	return existsSync(local) ? local : path.join(__dirname, 'stryker.default.mjs');
+}
+
+// Try the package's own copy first, then the root devDep. A package that pins
+// Stryker thus gets the version it pinned. A miss is a broken checkout, not a
+// red gate: exit 3 keeps it distinct from a score of zero.
+function resolveStrykerBin(pkgRoot, packageDir) {
+	for (const from of [path.join(pkgRoot, 'package.json'), import.meta.url]) {
+		try {
+			const resolved = createRequire(from).resolve('@stryker-mutator/core/package.json');
+			return path.join(path.dirname(resolved), 'bin/stryker.js');
+		} catch {
+			continue;
+		}
 	}
-	if (!existsSync(path.join(pkgRoot, target))) {
-		die(2, `Target not found: ${path.join(pkgRoot, target)}`);
-	}
-	const packageDir = path.relative(repoRoot, pkgRoot);
-
-	// --- resolve the Stryker config: override → package-local → shared default
-	const localConfig = path.join(pkgRoot, 'stryker.config.mjs');
-	const defaultConfig = path.join(__dirname, 'stryker.default.mjs');
-	const configPath = configArg
-		? path.resolve(repoRoot, configArg)
-		: existsSync(localConfig)
-			? localConfig
-			: defaultConfig;
-
-	// --- resolve the Stryker binary from the hoisted store (works for any package)
-	const strykerBin = path.join(
-		path.dirname(require.resolve('@stryker-mutator/core/package.json')),
-		'bin/stryker.js',
+	return die(
+		3,
+		`Could not resolve @stryker-mutator/core from ${packageDir} or the repo root. ` +
+			'Run `pnpm install` — it is a root devDep.',
 	);
+}
+
+// Runs use `--inPlace`, because the sandbox copy breaks each package whose
+// vitest config finds a workspace dependency through a path alias. The alias
+// does not stay correct in the copy. See the README for the failure.
+//
+// Stryker restores the files after a usual exit and after SIGINT, but not after
+// a crash. In diff mode the files hold uncommitted work, thus `git checkout --`
+// is not a safe undo. Keep a copy of the bytes and write them back instead.
+function snapshotFiles(absPaths) {
+	const snap = new Map();
+	for (const p of absPaths) {
+		try {
+			snap.set(p, readFileSync(p));
+		} catch {
+			// The file is unreadable. There is nothing to restore.
+		}
+	}
+	return snap;
+}
+
+function restoreFiles(snap) {
+	const restored = [];
+	for (const [p, original] of snap) {
+		try {
+			if (!readFileSync(p).equals(original)) {
+				writeFileSync(p, original);
+				restored.push(path.relative(repoRoot, p));
+			}
+		} catch {
+			// The file is gone. There is nothing to restore.
+		}
+	}
+	return restored;
+}
+
+async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
+	const configPath = resolveConfig(pkgRoot, configArg);
+	const strykerBin = resolveStrykerBin(pkgRoot, packageDir);
+	const mutateArg = formatMutateArg(targets);
 
 	const reportDir = path.join(pkgRoot, 'reports/mutation');
 	const rawJsonPath = path.join(reportDir, 'raw.json');
 	const summaryJsonPath = path.join(reportDir, 'summary.json');
 	await mkdir(reportDir, { recursive: true });
 
+	// Delete the previous reports first. The code below reads "raw.json exists"
+	// as "this run wrote a report". A file from an earlier run makes a crashed
+	// run report the earlier target and its score, and it also hides the
+	// no-covering-tests result. After this, a report on disk is always this run's.
+	await Promise.all([rm(rawJsonPath, { force: true }), rm(summaryJsonPath, { force: true })]);
+
 	process.stderr.write(
-		`Running Stryker on ${packageDir}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
+		`\nRunning Stryker on ${packageDir} — ${targets.length} target(s) ` +
+			`(config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 	);
 
-	// Capture Stryker's combined output while still forwarding it to the parent
-	// stdio (so CI logs look unchanged). We need the buffer to detect the
-	// "No tests were executed" dry-run case below.
+	const snap = snapshotFiles([
+		...new Set(targets.map((t) => path.join(pkgRoot, splitRange(t).file))),
+	]);
+
 	const strykerOutputChunks = [];
-	const strykerExitCode = await new Promise((resolve) => {
-		const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
-			cwd: pkgRoot,
-			stdio: ['inherit', 'pipe', 'pipe'],
+	let child;
+	const onSignal = () => {
+		child?.kill('SIGINT');
+	};
+	process.on('SIGINT', onSignal);
+	process.on('SIGTERM', onSignal);
+	let strykerExitCode;
+	try {
+		strykerExitCode = await new Promise((resolve) => {
+			child = spawn(
+				process.execPath,
+				[strykerBin, 'run', configPath, '--inPlace', '--mutate', mutateArg],
+				{ cwd: pkgRoot, stdio: ['inherit', 'pipe', 'pipe'] },
+			);
+			child.stdout.on('data', (chunk) => {
+				strykerOutputChunks.push(chunk);
+				process.stdout.write(chunk);
+			});
+			child.stderr.on('data', (chunk) => {
+				strykerOutputChunks.push(chunk);
+				process.stderr.write(chunk);
+			});
+			child.on('exit', (code) => resolve(code ?? 1));
+			child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
 		});
-		child.stdout.on('data', (chunk) => {
-			strykerOutputChunks.push(chunk);
-			process.stdout.write(chunk);
-		});
-		child.stderr.on('data', (chunk) => {
-			strykerOutputChunks.push(chunk);
-			process.stderr.write(chunk);
-		});
-		child.on('exit', (code) => resolve(code ?? 1));
-		child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
-	});
+	} finally {
+		process.off('SIGINT', onSignal);
+		process.off('SIGTERM', onSignal);
+		const restored = restoreFiles(snap);
+		if (restored.length > 0) {
+			process.stderr.write(
+				`⚠ Stryker left mutants behind; restored ${restored.length} file(s): ${restored.join(', ')}\n`,
+			);
+		}
+	}
 	const strykerOutput = Buffer.concat(strykerOutputChunks).toString('utf8');
+	const target = mutateArg;
 
-	// "No tests were executed" is Stryker's dry-run verdict when nothing in the
-	// test suite covers the picked source file. That's the most informative
-	// mutation result there is — effectively 0%, every mutant no-coverage — so we
-	// record it as a score-0 red ledger row instead of hard-failing the job. The
-	// picker can then advance to the next file the following night. See DEVP-414.
-	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
+	const outcome = classifyRun({
+		exitCode: strykerExitCode,
+		output: strykerOutput,
+		hasReport: existsSync(rawJsonPath),
+	});
 
-	if (strykerExitCode !== 0 && !noTestsExecuted) {
-		die(3, `Stryker exited with code ${strykerExitCode}`);
+	if (outcome === 'failed') {
+		process.stderr.write(
+			`✗ ${packageDir}: Stryker exited ${strykerExitCode} without producing ` +
+				`${path.relative(repoRoot, rawJsonPath)}\n`,
+		);
+		return { packageDir, summaryJsonPath, failed: true };
 	}
 
-	if (noTestsExecuted) {
-		// Best-effort mutant count from the instrument phase log line, e.g.
-		//   INFO Instrumenter Instrumented 1 source file(s) with 47 mutant(s)
-		// Falls back to 0 if Stryker never got that far.
+	if (outcome === 'no-tests') {
 		const mutantMatch = strykerOutput.match(
 			/Instrumented\s+\d+\s+source file\(s\)\s+with\s+(\d+)\s+mutant/i,
 		);
-		const noCoverage = mutantMatch ? Number(mutantMatch[1]) : 0;
 		const summary = buildNoTestsSummary({
 			threshold: THRESHOLD,
 			target,
-			noCoverage,
+			noCoverage: mutantMatch ? Number(mutantMatch[1]) : 0,
 			generatedAt: new Date().toISOString(),
 		});
 		await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
-		process.stderr.write(
-			`\n=== Mutation summary ===\n` +
-				`✗ ${target}  0.00%  (no covering tests — recorded as score-0 red)\n` +
-				`Summary written: ${summaryJsonPath}\n`,
-		);
-		process.exit(1);
-	}
-
-	if (!existsSync(rawJsonPath)) {
-		die(3, `Stryker did not produce ${rawJsonPath}`);
+		return { packageDir, summaryJsonPath, summary, noTests: true };
 	}
 
 	const raw = JSON.parse(await readFile(rawJsonPath, 'utf8'));
@@ -399,10 +584,27 @@ async function main() {
 		target,
 		generatedAt: new Date().toISOString(),
 	});
+	if (outcome === 'partial') summary.partial = true;
 
 	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
+	return { packageDir, summaryJsonPath, summary };
+}
 
-	process.stderr.write('\n=== Mutation summary ===\n');
+function reportJob({ packageDir, summaryJsonPath, summary, noTests, failed }) {
+	if (failed) return;
+	if (noTests) {
+		process.stderr.write(
+			`✗ ${packageDir} ${summary.target}  0.00%  (no covering tests — recorded as score-0 red)\n`,
+		);
+		process.stderr.write(`  summary: ${path.relative(repoRoot, summaryJsonPath)}\n`);
+		return;
+	}
+	if (summary.partial) {
+		process.stderr.write(
+			`⚠ ${packageDir}: Stryker exited non-zero; summary built from a partial raw.json — ` +
+				'results may be incomplete.\n',
+		);
+	}
 	for (const f of summary.files) {
 		const mark = f.thresholdMet ? '✓' : '✗';
 		process.stderr.write(
@@ -415,21 +617,136 @@ async function main() {
 			);
 		}
 		for (const ig of f.ignored) {
-			const reason = ig.reason ? ` — ${ig.reason}` : ' — (no reason given)';
 			process.stderr.write(
-				`   · ${'ignored'.padEnd(10)} ${ig.mutator.padEnd(22)} ${ig.location}${reason}\n`,
+				`   · ${'ignored'.padEnd(10)} ${ig.mutator.padEnd(22)} ${ig.location}` +
+					`${ig.reason ? ` — ${ig.reason}` : ' — (no reason given)'}\n`,
 			);
 		}
 	}
-	const gateState = summary.overall.thresholdMet ? 'PASS' : 'FAIL';
-	const unjustified = summary.overall.counts.survived + summary.overall.counts.noCoverage;
-	process.stderr.write(
-		`\nGate: ${gateState}  •  threshold: ${THRESHOLD}%  •  score: ${summary.overall.score.toFixed(2)}%  •  ` +
-			`unjustified survivors: ${unjustified}  •  ignored (justified): ${summary.overall.counts.ignored}\n`,
-	);
-	process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
+	process.stderr.write(`  summary: ${path.relative(repoRoot, summaryJsonPath)}\n`);
+}
 
-	process.exit(summary.overall.thresholdMet ? 0 : 1);
+// --- entry point ---
+
+const USAGE = `Usage:
+  node scripts/mutation-health/mutate.mjs <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
+  node scripts/mutation-health/mutate.mjs --diff [--base <ref>] [--config <path>]
+
+  # one file, whole
+  node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts
+  # one file, only lines 40-75
+  node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts:40-75
+  # package-relative target
+  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
+  # every line this branch changed, batched one Stryker run per package
+  node scripts/mutation-health/mutate.mjs --diff --base origin/master`;
+
+function planFromTarget(targetArg, packageDirArg) {
+	const { file, range } = splitRange(targetArg);
+
+	let pkgRoot;
+	let rel;
+	if (packageDirArg) {
+		pkgRoot = path.resolve(repoRoot, packageDirArg);
+		if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
+		rel = path.isAbsolute(file) ? path.relative(pkgRoot, file) : file;
+	} else {
+		const abs = path.resolve(repoRoot, file);
+		if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${USAGE}`);
+		pkgRoot = findPackageRoot(abs);
+		if (!pkgRoot) die(2, `Could not infer the package for ${file} — pass --package-dir.\n${USAGE}`);
+		rel = path.relative(pkgRoot, abs);
+	}
+
+	if (rel.startsWith('..') || path.isAbsolute(rel)) {
+		die(2, `Target must live inside the package. Got: ${rel}`);
+	}
+	if (!existsSync(path.join(pkgRoot, rel))) {
+		die(2, `Target not found: ${path.join(pkgRoot, rel)}`);
+	}
+	if (!isMutableSource(rel)) {
+		die(2, `Not a mutable source file (test/declaration/config/build output): ${rel}`);
+	}
+	// --diff skips an ineligible package. A named target must refuse for the same
+	// reason, or it starts a run that is known to crash.
+	const reason = ineligibleReason(pkgRoot);
+	if (reason) die(2, `Cannot mutate ${rel}: ${reason}`);
+
+	return {
+		pkgRoot,
+		packageDir: path.relative(repoRoot, pkgRoot),
+		targets: [range ? `${rel}:${range}` : rel],
+	};
+}
+
+async function main() {
+	const argv = process.argv.slice(2);
+	let packageDirArg;
+	let configArg;
+	let targetArg;
+	let baseArg = 'origin/master';
+	let diffMode = false;
+	for (let i = 0; i < argv.length; i++) {
+		const a = argv[i];
+		if (a === '--package-dir') packageDirArg = argv[++i];
+		else if (a === '--config') configArg = argv[++i];
+		else if (a === '--base') baseArg = argv[++i];
+		else if (a === '--diff') diffMode = true;
+		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
+	}
+
+	if (diffMode && targetArg) die(2, `--diff takes no positional target.\n${USAGE}`);
+	if (!diffMode && !targetArg) die(2, `Missing mutate target.\n${USAGE}`);
+
+	let jobs;
+	let skipped = [];
+	if (diffMode) {
+		({ jobs, skipped } = planFromDiff(baseArg));
+		for (const [file, why] of skipped) process.stderr.write(`  skipped ${file} — ${why}\n`);
+		if (jobs.length === 0) {
+			process.stderr.write(`\nNothing mutable changed vs ${baseArg}.\n`);
+			process.exit(0);
+		}
+		const files = jobs.reduce((n, j) => n + j.targets.length, 0);
+		process.stderr.write(
+			`\nMutating ${files} changed range(s) across ${jobs.length} package(s) vs ${baseArg}.\n`,
+		);
+	} else {
+		jobs = [planFromTarget(targetArg, packageDirArg)];
+	}
+
+	const results = [];
+	for (const job of jobs) {
+		results.push(await runJob(job, { configArg }));
+	}
+
+	process.stderr.write('\n=== Mutation summary ===\n');
+	for (const r of results) reportJob(r);
+
+	if (results.some((r) => r.failed)) {
+		process.stderr.write('\nGate: ERROR — at least one Stryker run produced no report.\n');
+		process.exit(3);
+	}
+
+	// A partial run never passes. The mutants it did not test can be survivors.
+	const overall = results.reduce(
+		(acc, r) => {
+			const c = r.summary.overall.counts;
+			acc.survived += c.survived + c.noCoverage;
+			acc.ignored += c.ignored;
+			acc.passed &&= r.summary.overall.thresholdMet && !r.summary.partial;
+			acc.partial ||= Boolean(r.summary.partial);
+			return acc;
+		},
+		{ survived: 0, ignored: 0, passed: true, partial: false },
+	);
+
+	const gateState = overall.passed ? 'PASS' : overall.partial ? 'FAIL (partial)' : 'FAIL';
+	process.stderr.write(
+		`\nGate: ${gateState}  •  threshold: ${THRESHOLD}%  •  ` +
+			`unjustified survivors: ${overall.survived}  •  ignored (justified): ${overall.ignored}\n`,
+	);
+	process.exit(overall.passed ? 0 : 1);
 }
 
 const isCli = import.meta.url === `file://${process.argv[1]}`;

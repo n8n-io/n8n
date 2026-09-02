@@ -1,7 +1,7 @@
 export {
 	InstanceAiTracingService,
 	type InstanceAiTracingAiService,
-	type InstanceAiTracingEventBus,
+	type InstanceAiTracingEventReader,
 	type InstanceAiTracingRunState,
 	type InstanceAiTracingServiceOptions,
 	type InstanceAiTracingSnapshotStorage,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { N8nLoading, N8nTableBase, N8nText } from '@n8n/design-system';
 import type { RoleProjectAssignment } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -36,6 +36,13 @@ const selectedProject = ref<RoleProjectAssignment | null>(null);
 type SortColumn = 'projectName' | 'memberCount' | 'lastAssigned';
 const sortColumn = ref<SortColumn>('memberCount');
 const sortDirection = ref<'asc' | 'desc'>('desc');
+
+// The API leaves `totalProjects` unfiltered because it backs the delete-impact warning,
+// while `projects` only lists what the caller can access, so the two can legitimately
+// differ. Without this the tab would claim the role has no assignments at all.
+const hiddenProjectCount = computed(
+	() => assignments.value.totalProjects - assignments.value.projects.length,
+);
 
 const sortedProjects = computed(() => {
 	const projects = [...assignments.value.projects];
@@ -82,53 +89,78 @@ function formatDate(dateStr: string | null): string {
 		<N8nLoading v-if="isLoading" :rows="3" />
 		<div v-else-if="assignments.projects.length === 0" :class="$style.emptyState">
 			<N8nText color="text-light">
-				{{ i18n.baseText('projectRoles.assignments.emptyState') }}
+				{{
+					hiddenProjectCount > 0
+						? i18n.baseText('projectRoles.assignments.restrictedEmptyState', {
+								adjustToNumber: hiddenProjectCount,
+								interpolate: { count: hiddenProjectCount },
+							})
+						: i18n.baseText('projectRoles.assignments.emptyState')
+				}}
 			</N8nText>
 		</div>
-		<N8nTableBase v-else>
-			<thead>
-				<tr>
-					<th :class="$style.sortableHeader" @click="toggleSort('projectName')">
-						{{ i18n.baseText('projectRoles.assignments.projectColumn')
-						}}{{ sortIndicator('projectName') }}
-					</th>
-					<th
-						:class="[$style.alignRight, $style.sortableHeader]"
-						@click="toggleSort('memberCount')"
-					>
-						{{ i18n.baseText('projectRoles.assignments.membersColumn')
-						}}{{ sortIndicator('memberCount') }}
-					</th>
-					<th :class="$style.sortableHeader" @click="toggleSort('lastAssigned')">
-						{{ i18n.baseText('projectRoles.assignments.lastAssignedColumn')
-						}}{{ sortIndicator('lastAssigned') }}
-					</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr v-for="project in sortedProjects" :key="project.projectId">
-					<td>
-						<RouterLink
-							:to="{
-								name: VIEWS.PROJECTS_WORKFLOWS,
-								params: { projectId: project.projectId },
-							}"
-							:class="$style.projectLink"
+		<template v-else>
+			<N8nText
+				v-if="hiddenProjectCount > 0"
+				:class="$style.restrictedNotice"
+				color="text-light"
+				size="small"
+				tag="p"
+			>
+				{{
+					i18n.baseText('projectRoles.assignments.restrictedNotice', {
+						interpolate: {
+							count: assignments.projects.length,
+							total: assignments.totalProjects,
+						},
+					})
+				}}
+			</N8nText>
+			<N8nTableBase>
+				<thead>
+					<tr>
+						<th :class="$style.sortableHeader" @click="toggleSort('projectName')">
+							{{ i18n.baseText('projectRoles.assignments.projectColumn')
+							}}{{ sortIndicator('projectName') }}
+						</th>
+						<th
+							:class="[$style.alignRight, $style.sortableHeader]"
+							@click="toggleSort('memberCount')"
 						>
-							{{ project.projectName }}
-						</RouterLink>
-					</td>
-					<td :class="$style.alignRight">
-						<button :class="$style.memberCountButton" @click="openMembersModal(project)">
-							{{ project.memberCount }}
-						</button>
-					</td>
-					<td>
-						{{ formatDate(project.lastAssigned) }}
-					</td>
-				</tr>
-			</tbody>
-		</N8nTableBase>
+							{{ i18n.baseText('projectRoles.assignments.membersColumn')
+							}}{{ sortIndicator('memberCount') }}
+						</th>
+						<th :class="$style.sortableHeader" @click="toggleSort('lastAssigned')">
+							{{ i18n.baseText('projectRoles.assignments.lastAssignedColumn')
+							}}{{ sortIndicator('lastAssigned') }}
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="project in sortedProjects" :key="project.projectId">
+						<td>
+							<RouterLink
+								:to="{
+									name: VIEWS.PROJECTS_WORKFLOWS,
+									params: { projectId: project.projectId },
+								}"
+								:class="$style.projectLink"
+							>
+								{{ project.projectName }}
+							</RouterLink>
+						</td>
+						<td :class="$style.alignRight">
+							<button :class="$style.memberCountButton" @click="openMembersModal(project)">
+								{{ project.memberCount }}
+							</button>
+						</td>
+						<td>
+							{{ formatDate(project.lastAssigned) }}
+						</td>
+					</tr>
+				</tbody>
+			</N8nTableBase>
+		</template>
 
 		<RoleProjectMembersModal
 			v-if="selectedProject"
@@ -149,6 +181,10 @@ function formatDate(dateStr: string | null): string {
 .emptyState {
 	padding: var(--spacing--xl);
 	text-align: center;
+}
+
+.restrictedNotice {
+	margin-bottom: var(--spacing--xs);
 }
 
 .alignRight {

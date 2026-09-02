@@ -3,6 +3,10 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
+import type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunStopSignal,
+} from './orchestrator-run-control';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
@@ -26,7 +30,12 @@ export interface StreamRunOptions {
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	onActivity?: () => void;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	stopSignal?: () => OrchestratorRunStopSignal | undefined;
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 
@@ -37,6 +46,7 @@ export interface StreamRunResult {
 	error?: unknown;
 	workSummary: WorkSummary;
 	usage?: RunTokenUsage;
+	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -81,6 +91,7 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
+			stopSignal: options.stopSignal,
 			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },
@@ -111,5 +122,6 @@ async function consumeStream(
 		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
 		usage: result.usage,
+		...(result.stopReason ? { stopReason: result.stopReason } : {}),
 	};
 }

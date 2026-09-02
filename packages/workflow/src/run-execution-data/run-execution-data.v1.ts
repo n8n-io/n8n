@@ -11,6 +11,7 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
 } from '..';
@@ -42,12 +43,6 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		/**
-		 * Nodes whose output was simulated (mocked via per-execution pin data)
-		 * instead of executed, keyed by node name. Set for AI-driven workflow
-		 * verification runs so the editor can label simulated outputs.
-		 */
-		simulation?: Record<string, { reason: string }>;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -61,6 +56,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Suspended agent tool call to resume once this execution finishes. */
+	parentAgentRun?: RelatedAgentRun;
 	/**
 	 * Random token used to validate waiting webhook/form requests.
 	 * Generated when execution starts. Presence signals validation is required.
@@ -72,7 +69,12 @@ export interface IRunExecutionDataV1 {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId' | 'evaluationRunId'
+		| 'dirtyNodeNames'
+		| 'triggerToStartFrom'
+		| 'userId'
+		| 'evaluationRunId'
+		| 'source'
+		| 'suppressErrorWorkflow'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

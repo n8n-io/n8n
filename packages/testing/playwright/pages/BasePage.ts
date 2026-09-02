@@ -19,6 +19,14 @@ export abstract class BasePage extends FloatingUiHelper {
 		return this.page.getByTestId('resources-list-search');
 	}
 
+	/**
+	 * Root of the shared empty-state box rendered on the list pages
+	 * (workflows, credentials, variables, data tables, executions).
+	 */
+	protected getResourcesListEmptyState(): Locator {
+		return this.page.getByTestId('empty-resources-list');
+	}
+
 	protected async clickByTestId(testId: string) {
 		await this.page.getByTestId(testId).click();
 	}

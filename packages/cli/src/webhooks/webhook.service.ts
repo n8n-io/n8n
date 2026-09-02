@@ -2,11 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { HookContext, WebhookContext } from 'n8n-core';
 import {
-	ensureError,
 	isNodeClassInstance,
 	NodeHelpers,
+	resolveWebhookDescriptionField,
 	UnexpectedError,
 	WebhookPathTakenError,
 } from 'n8n-workflow';
@@ -15,6 +16,7 @@ import type {
 	INode,
 	IRunExecutionData,
 	IWebhookData,
+	IWebhookDescription,
 	IWebhookResponseData,
 	IWorkflowExecuteAdditionalData,
 	WebhookSetupMethodNames,
@@ -106,6 +108,88 @@ export class WebhookService {
 	}
 
 	/**
+	 * Resolve a path (concrete or templated) to the rows of the one trigger that would
+	 * handle it — one per method it listens on, so callers can derive its method-set.
+	 *
+	 * Selection mirrors {@link findWebhook}, method first: narrowing by method only at
+	 * the end would let a static row for another method shadow the dynamic template that
+	 * actually routes. Without a method, only a path naming exactly one trigger resolves,
+	 * which costs the dynamic probe even on a static hit. `method` is untrusted input,
+	 * hence `string` rather than {@link Method}. Bypasses the cache.
+	 */
+	async findTriggerWebhooksByPath(path: string, method?: string): Promise<WebhookEntity[]> {
+		const staticWebhooks = await this.webhookRepository.findStaticWebhooksByPath(path);
+
+		if (method) {
+			const staticMatch = staticWebhooks.find((webhook) => webhook.method === method);
+			if (staticMatch) return this.rowsOfSameTrigger(staticWebhooks, staticMatch);
+			return await this.findDynamicTriggerWebhooks(path, method);
+		}
+
+		// Without a method the path must name one trigger across *both* kinds: a concrete
+		// path can be served statically on one method and by a dynamic template on
+		// another, so accepting a lone static row here would answer an ambiguous probe.
+		const candidates = [...staticWebhooks, ...(await this.findDynamicTriggerWebhooks(path))];
+		const [first] = candidates;
+		if (!first) return [];
+
+		const oneTrigger = this.rowsOfSameTrigger(candidates, first);
+		return oneTrigger.length === candidates.length ? oneTrigger : [];
+	}
+
+	/** Rows of the dynamic trigger whose template the path resolves to, if any. */
+	private async findDynamicTriggerWebhooks(
+		path: string,
+		method?: string,
+	): Promise<WebhookEntity[]> {
+		const [uuidSegment, ...otherSegments] = path.split('/');
+		const candidates = await this.webhookRepository.findDynamicWebhooksByWebhookId(
+			uuidSegment,
+			otherSegments.length,
+		);
+
+		const eligible = method ? candidates.filter((dw) => dw.method === method) : candidates;
+		const match = this.pickMatchingTemplate(eligible, new Set(otherSegments));
+
+		return match ? this.rowsOfSameTrigger(candidates, match) : [];
+	}
+
+	/** Every row of the trigger `row` belongs to — one per method it listens on. */
+	private rowsOfSameTrigger(webhooks: WebhookEntity[], row: WebhookEntity) {
+		return webhooks.filter(
+			(webhook) =>
+				webhook.workflowId === row.workflowId &&
+				webhook.node === row.node &&
+				webhook.webhookPath === row.webhookPath,
+		);
+	}
+
+	/**
+	 * The candidate whose template best matches the request's segments: most static
+	 * segments wins, falling back to an all-wildcard template. Shared by the router and
+	 * the OAuth resolver so "which resource" cannot drift from "which trigger fires".
+	 */
+	private pickMatchingTemplate(candidates: WebhookEntity[], requestSegments: Set<string>) {
+		const { webhook } = candidates.reduce<{ webhook: WebhookEntity | null; maxMatches: number }>(
+			(acc, dw) => {
+				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
+
+				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
+					acc.maxMatches = dw.staticSegments.length;
+					acc.webhook = dw;
+				} else if (dw.staticSegments.length === 0 && !acc.webhook) {
+					acc.webhook = dw; // edge case: if path is `:var`, match on anything
+				}
+
+				return acc;
+			},
+			{ webhook: null, maxMatches: 0 },
+		);
+
+		return webhook ?? undefined;
+	}
+
+	/**
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
@@ -120,29 +204,7 @@ export class WebhookService {
 
 		if (dynamicWebhooks.length === 0) return null;
 
-		const requestSegments = new Set(otherSegments);
-
-		const { webhook } = dynamicWebhooks.reduce<{
-			webhook: WebhookEntity | null;
-			maxMatches: number;
-		}>(
-			(acc, dw) => {
-				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
-
-				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
-					acc.maxMatches = dw.staticSegments.length;
-					acc.webhook = dw;
-					return acc;
-				} else if (dw.staticSegments.length === 0 && !acc.webhook) {
-					acc.webhook = dw; // edge case: if path is `:var`, match on anything
-				}
-
-				return acc;
-			},
-			{ webhook: null, maxMatches: 0 },
-		);
-
-		return webhook;
+		return this.pickMatchingTemplate(dynamicWebhooks, new Set(otherSegments)) ?? null;
 	}
 
 	async findWebhook(method: Method, path: string) {
@@ -186,8 +248,27 @@ export class WebhookService {
 		}
 	}
 
-	createWebhook(data: Partial<WebhookEntity>) {
-		return this.webhookRepository.create(data);
+	createWebhook(data: Partial<WebhookEntity>, nodeWebhookId?: string) {
+		const webhook = this.webhookRepository.create(data);
+		webhook.webhookPath = this.normalizeWebhookPath(webhook.webhookPath);
+
+		if (this.isDynamicWebhookPath(webhook.webhookPath) && nodeWebhookId) {
+			webhook.webhookId = nodeWebhookId;
+			webhook.pathLength = webhook.webhookPath.split('/').length;
+		}
+
+		return webhook;
+	}
+
+	private normalizeWebhookPath(path: string) {
+		let normalizedPath = path.trim();
+		if (normalizedPath.startsWith('/')) normalizedPath = normalizedPath.slice(1);
+		if (normalizedPath.endsWith('/')) normalizedPath = normalizedPath.slice(0, -1);
+		return normalizedPath;
+	}
+
+	private isDynamicWebhookPath(path: string) {
+		return path.startsWith(':') || path.includes('/:');
 	}
 
 	/** The webhooks currently registered (stored locally) for a workflow. */
@@ -250,6 +331,42 @@ export class WebhookService {
 	}
 
 	/**
+	 * `method path` for each webhook the given nodes would register, to compare two workflows
+	 * before either is published. Only paths registered verbatim count; the rest get prefixed
+	 * per node or per workflow (see {@link NodeHelpers.getNodeWebhookPath}) and cannot collide.
+	 */
+	getStaticWebhookKeys(nodes: INode[]): string[] {
+		return nodes.flatMap((node) => {
+			if (node.disabled === true || node.webhookId === undefined) return [];
+
+			const { description } = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const webhooks = description.webhooks?.filter(({ isFullPath }) => isFullPath === true);
+			if (!webhooks?.length) return [];
+
+			const parameters =
+				NodeHelpers.getNodeParameters(
+					description.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					description,
+				) ?? {};
+
+			const { path, httpMethod } = parameters;
+			if (typeof path !== 'string' || path.startsWith('=')) return [];
+
+			const webhookPath = this.normalizeWebhookPath(path);
+			if (webhookPath === '' || this.isDynamicWebhookPath(webhookPath)) return [];
+
+			return [httpMethod]
+				.flat()
+				.filter((method): method is string => typeof method === 'string')
+				.map((method) => `${method} ${webhookPath}`);
+		});
+	}
+
+	/**
 	 * Returns all the webhooks which should be created for the given node.
 	 */
 	getNodeWebhooks(
@@ -271,7 +388,6 @@ export class WebhookService {
 		}
 
 		const workflowId = workflow.id || '__UNSAVED__';
-		const mode = 'internal';
 
 		const returnData: IWebhookData[] = [];
 		for (const webhookDescription of nodeType.description.webhooks) {
@@ -279,20 +395,20 @@ export class WebhookService {
 				continue;
 			}
 
-			let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
+			let nodeWebhookPath = this.evaluateDescriptionProperty(
+				workflow,
 				node,
-				webhookDescription.path,
-				mode,
-				{},
+				webhookDescription,
+				'path',
 			);
-			if (nodeWebhookPath === undefined) {
+			if (nodeWebhookPath === undefined || nodeWebhookPath === null) {
 				this.logger.error(
 					`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
 				);
 				continue;
 			}
 
-			nodeWebhookPath = nodeWebhookPath.toString();
+			nodeWebhookPath = nodeWebhookPath.toString().trim();
 
 			if (nodeWebhookPath.startsWith('/')) {
 				nodeWebhookPath = nodeWebhookPath.slice(1);
@@ -301,20 +417,18 @@ export class WebhookService {
 				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 			}
 
-			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+			const isFullPath = this.evaluateDescriptionProperty(
+				workflow,
 				node,
-				webhookDescription.isFullPath,
-				'internal',
-				{},
-				undefined,
+				webhookDescription,
+				'isFullPath',
 				false,
 			) as boolean;
-			const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
+			const restartWebhook = this.evaluateDescriptionProperty(
+				workflow,
 				node,
-				webhookDescription.restartWebhook,
-				'internal',
-				{},
-				undefined,
+				webhookDescription,
+				'restartWebhook',
 				false,
 			) as boolean;
 			const path = NodeHelpers.getNodeWebhookPath(
@@ -325,12 +439,11 @@ export class WebhookService {
 				restartWebhook,
 			);
 
-			const webhookMethods = workflow.expression.getSimpleParameterValue(
+			const webhookMethods = this.evaluateDescriptionProperty(
+				workflow,
 				node,
-				webhookDescription.httpMethod,
-				mode,
-				{},
-				undefined,
+				webhookDescription,
+				'httpMethod',
 				'GET',
 			);
 
@@ -364,6 +477,32 @@ export class WebhookService {
 		}
 
 		return returnData;
+	}
+
+	/**
+	 * Evaluates a webhook-description property, preferring the field's native
+	 * resolver (see `webhookDescriptionFields` in n8n-workflow) so static-parameter
+	 * nodes never engage the expression engine. Falls back to the engine, which
+	 * returns plain values as-is and only evaluates `=` templates.
+	 */
+	private evaluateDescriptionProperty(
+		workflow: Workflow,
+		node: INode,
+		webhookDescription: IWebhookDescription,
+		property: string,
+		defaultValue?: string | boolean,
+	) {
+		const native = resolveWebhookDescriptionField(node, webhookDescription, property);
+		if (native.resolved) return native.value;
+
+		return workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription[property],
+			'internal',
+			{},
+			undefined,
+			defaultValue,
+		);
 	}
 
 	private async _findWebhookConflicts(

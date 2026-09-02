@@ -97,6 +97,46 @@ describe('Test IMap V2 utils', () => {
 			});
 		});
 
+		const rawEmailWithDate = 'Date: Wed, 01 Jan 2020 12:00:00 +0000\r\nSubject: Hello\r\n\r\nBody';
+
+		const resolveEmailWithDate = async (typeVersion: number) => {
+			const messageWithDate = {
+				attributes: { uuid: 1, uid: 950, struct: {} },
+				parts: [{ which: '', body: rawEmailWithDate }],
+			};
+			const localConnection = mock<ImapSimple>({
+				search: vi.fn().mockResolvedValue([messageWithDate]),
+			});
+
+			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+			triggerFunctions.getNodeParameter.calledWith('format').mockReturnValue('resolved');
+			triggerFunctions.getNodeParameter
+				.calledWith('dataPropertyAttachmentsPrefixName')
+				.mockReturnValue('resolved');
+			triggerFunctions.getWorkflowStaticData.mockReturnValue({});
+
+			const onEmailBatch = vi.fn();
+			await getNewEmails.call(triggerFunctions, {
+				imapConnection: localConnection,
+				searchCriteria: [],
+				postProcessAction: '',
+				getText,
+				getAttachment,
+				onEmailBatch,
+			});
+			return onEmailBatch.mock.calls[0][0][0] as { json: { date: unknown } };
+		};
+
+		it('should return the mail date as an ISO string in resolved format on version 2.2', async () => {
+			const item = await resolveEmailWithDate(2.2);
+			expect(item.json.date).toBe('2020-01-01T12:00:00.000Z');
+		});
+
+		it('should keep the mail date as a Date object in resolved format before version 2.2', async () => {
+			const item = await resolveEmailWithDate(2.1);
+			expect(item.json.date).toBeInstanceOf(Date);
+		});
+
 		it('should skip emails with missing HEADER part in simple format', async () => {
 			const messageWithoutHeader = {
 				attributes: { uuid: 1, uid: 900, struct: {} },

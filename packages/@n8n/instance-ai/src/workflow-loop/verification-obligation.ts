@@ -27,6 +27,11 @@ export interface DeriveWorkflowVerificationObligationOptions {
 	updatedAt?: string;
 }
 
+/** Blocking-reason text for one-off builds whose verification is optional. */
+const ONE_OFF_VERIFICATION_GUIDANCE =
+	'One-off operation: verification is an optional pre-flight. Completion is a live run ' +
+	'whose actual node output was read back.';
+
 const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStatus>([
 	'pending_build',
 	'ready_to_verify',
@@ -43,8 +48,12 @@ function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
 	);
 }
 
-function hasPartialCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
-	return (outcome.verification?.evidence?.nodesNotReached?.length ?? 0) > 0;
+function hasPartialSuccessfulCoverageEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return (
+		outcome.verification?.attempted === true &&
+		outcome.verification.success &&
+		(outcome.verification.evidence?.nodesNotReached?.length ?? 0) > 0
+	);
 }
 
 function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
@@ -71,10 +80,27 @@ function deriveStatus(
 	if (!outcome.submitted) return 'blocked';
 	if (hasSuccessfulEvidence(outcome)) return 'verified';
 	if (hasSetupBlockingEvidence(state, outcome)) return 'needs_setup';
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) return 'not_verifiable';
+	// A verification that was attempted and failed has already run end-to-end and
+	// produced a concrete error (e.g. a missing credential or a runtime error).
+	// Re-issuing it just replays the same failure, so once setup-blocking and
+	// partial-success cases are ruled out above, settle it as a manual outcome.
+	// Without this the switch below falls through to `ready_to_verify` and the
+	// planned orchestrator re-issues verification forever.
+	if (hasFailedEvidence(outcome)) return 'not_verifiable';
+
+	// One-off builds: verification is optional, so the obligation settles
+	// immediately (after the evidence checks above, which still win). This must
+	// stay an explicit settled return — falling through to `ready_to_verify`
+	// would make the planned scheduler re-issue verification follow-ups forever
+	// for one-off builds. A blocked loop state still surfaces as blocked;
+	// 'blocked' is itself settled, so loop-safety holds either way.
+	if (outcome.executionIntent === 'one-off') {
+		return state.status === 'blocked' ? 'blocked' : 'not_verifiable';
+	}
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
-			if (hasPartialCoverageEvidence(outcome)) return 'ready_to_verify';
 			return 'verified';
 		case 'needs_setup':
 			return 'needs_setup';
@@ -114,6 +140,20 @@ function deriveBlockingReason(
 	if (outcome.verificationReadiness?.status === 'needs_setup') {
 		return outcome.verificationReadiness.guidance;
 	}
+	if (hasPartialSuccessfulCoverageEvidence(outcome)) {
+		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
+		return `Automatic verification only covered part of the workflow. Unreached nodes need manual testing: ${nodesNotReached.join(', ')}.`;
+	}
+	if (hasFailedEvidence(outcome) && !hasSetupBlockingEvidence(state, outcome)) {
+		const failure =
+			outcome.verification?.failureSignature ??
+			outcome.verification?.evidence?.errorMessage ??
+			'an error during execution';
+		const nodesNotReached = outcome.verification?.evidence?.nodesNotReached ?? [];
+		const unreached =
+			nodesNotReached.length > 0 ? ` Nodes not reached: ${nodesNotReached.join(', ')}.` : '';
+		return `Automatic verification failed with: ${failure}. Re-running it will reproduce the same failure — explain this blocker to the user and have them resolve it (e.g. configure credentials or fix the data) before verifying manually.${unreached}`;
+	}
 	const outcomeRemediation = outcome.remediation;
 	if (outcomeRemediation && setupRemediationBlocksVerification(outcomeRemediation, outcome)) {
 		return outcomeRemediation.guidance;
@@ -124,6 +164,12 @@ function deriveBlockingReason(
 	}
 	if (outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome)) {
 		return outcome.setupRequirement.guidance;
+	}
+	// After the evidence checks: a one-off may have run an optional pre-flight
+	// verify, and a concrete failure message outranks the generic guidance. A
+	// verified one-off carries no blockingReason at all — nothing is blocked.
+	if (outcome.executionIntent === 'one-off' && !hasSuccessfulEvidence(outcome)) {
+		return ONE_OFF_VERIFICATION_GUIDANCE;
 	}
 	if (state.status === 'blocked') {
 		return state.lastRemediation?.guidance ?? outcome.blockingReason ?? outcome.failureSignature;
@@ -162,6 +208,7 @@ export function deriveWorkflowVerificationObligation(
 		readiness: outcome?.verificationReadiness,
 		setupRequirement: outcome?.setupRequirement,
 		evidence: outcome?.verification,
+		executionIntent: outcome?.executionIntent,
 		blockingReason: deriveBlockingReason(record.state, outcome),
 		updatedAt,
 	};

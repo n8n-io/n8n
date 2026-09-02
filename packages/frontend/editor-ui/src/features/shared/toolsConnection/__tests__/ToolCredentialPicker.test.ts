@@ -19,6 +19,7 @@ function makeAdapter(credentials: PickableCredential[]): ToolConnectionCredentia
 	return {
 		getCredentialsByType: (authType) => credentials.filter((c) => c.type === authType),
 		openNewCredential: () => {},
+		openExistingCredential: () => {},
 	};
 }
 
@@ -28,14 +29,14 @@ const baseMcpItem: McpServerConnectionItem = {
 	title: 'Notion',
 	description: 'Notion MCP',
 	availableTools: [],
-	isConnected: false,
+	status: 'none',
 };
 
 const baseNodeItem: NodeConnectionItem = {
 	id: 'node:slack',
 	kind: 'node',
 	title: 'Slack',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: 'n8n-nodes-base.slack',
 };
 
@@ -62,11 +63,40 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connected')).toBeNull();
 	});
 
-	it('shows the Connected pill when at least one credential is selected', () => {
-		const { getByTestId, queryByTestId } = render(baseMcpItem, [
+	it('shows the Connected pill for a connected item', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId, queryByTestId } = render(item, [
 			{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' },
 		]);
 		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeTruthy();
+		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+	});
+
+	it('distinguishes a disconnected connection from a tool that was never added', () => {
+		const disconnectedItem = { ...baseMcpItem, status: 'disconnected' as const };
+		const disconnected = render(disconnectedItem, [{ authType: 'mcpOAuth2Api' }]);
+
+		expect(
+			disconnected.getByTestId('tool-credential-picker-trigger-disconnected'),
+		).toHaveTextContent('Reconnect');
+		expect(disconnected.queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+		disconnected.unmount();
+
+		const neverAdded = render(baseMcpItem, [{ authType: 'mcpOAuth2Api' }]);
+		expect(neverAdded.getByTestId('tool-credential-picker-trigger-connect')).toHaveTextContent(
+			'Connect',
+		);
+		expect(neverAdded.queryByTestId('tool-credential-picker-trigger-disconnected')).toBeNull();
+	});
+
+	it('shows only a non-interactive status while connecting', () => {
+		const item = { ...baseMcpItem, status: 'connecting' as const };
+		const { getByTestId, queryByTestId } = render(item, [{ authType: 'mcpOAuth2Api' }]);
+
+		expect(getByTestId('tool-credential-picker-trigger-connecting')).toHaveTextContent(
+			'Connecting',
+		);
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
 		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 	});
 
@@ -87,6 +117,39 @@ describe('ToolCredentialPicker', () => {
 		await fireEvent.click(row);
 		const events = emitted()['select-credential'];
 		expect(events?.[0]).toEqual([baseNodeItem, 'slackApi', 'c-1']);
+	});
+
+	it('emits credential-dropdown-open when the credential dropdown opens', async () => {
+		const { getByTestId, emitted } = render(
+			baseNodeItem,
+			[{ authType: 'slackApi' }],
+			[{ id: 'c-1', name: 'My Slack', type: 'slackApi' }],
+		);
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		expect(emitted()['credential-dropdown-open']?.[0]).toEqual([baseNodeItem]);
+	});
+
+	it('emits new-credential-connect when creating from the dropdown', async () => {
+		const { getByTestId, findByTestId, emitted } = render(
+			baseNodeItem,
+			[{ authType: 'slackApi' }],
+			[{ id: 'c-1', name: 'My Slack', type: 'slackApi' }],
+		);
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		await fireEvent.click(await findByTestId('tool-credential-picker-create'));
+
+		expect(emitted()['new-credential-connect']?.[0]).toEqual([baseNodeItem]);
+	});
+
+	it('emits first-credential-connect when connecting without existing credentials', async () => {
+		const { getByTestId, emitted } = render(baseMcpItem, [{ authType: 'mcpOAuth2Api' }]);
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+
+		expect(emitted()['first-credential-connect']?.[0]).toEqual([baseMcpItem]);
 	});
 
 	it('renders a single trigger even when the item accepts multiple auth types', () => {

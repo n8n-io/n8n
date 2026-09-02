@@ -115,6 +115,95 @@ describe('MessageFormatter', () => {
 		});
 	});
 
+	describe('isErrorResult', () => {
+		it('should detect queue mode error objects with error.message', () => {
+			expect(
+				MessageFormatter.isErrorResult({ error: { message: 'Bad request', name: 'NodeApiError' } }),
+			).toBe(true);
+		});
+
+		it('should detect queue mode error objects with just error.message', () => {
+			expect(MessageFormatter.isErrorResult({ error: { message: 'something failed' } })).toBe(true);
+		});
+
+		it('should detect direct mode error strings from N8nTool toString()', () => {
+			expect(
+				MessageFormatter.isErrorResult('NodeApiError: Bad request - please check your parameters'),
+			).toBe(true);
+		});
+
+		it('should detect HTTP error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('HTTP 401 There was an error: "Unauthorized"')).toBe(
+				true,
+			);
+		});
+
+		it('should detect generic error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('There was an error: "Token not found"')).toBe(true);
+		});
+
+		it('should detect TypeError strings', () => {
+			expect(MessageFormatter.isErrorResult('TypeError: Cannot read property of undefined')).toBe(
+				true,
+			);
+		});
+
+		it('should not flag normal string results as errors', () => {
+			expect(MessageFormatter.isErrorResult('Hello world')).toBe(false);
+		});
+
+		it('should not flag normal object results as errors', () => {
+			expect(MessageFormatter.isErrorResult({ data: 'value', count: 42 })).toBe(false);
+		});
+
+		it('should not flag tool outputs with a non-envelope error field as errors', () => {
+			expect(MessageFormatter.isErrorResult({ error: 'no errors found' })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: false })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: 0 })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: null })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { code: 500 } })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { message: 42 } })).toBe(false);
+		});
+
+		it('should not flag null/undefined as errors', () => {
+			expect(MessageFormatter.isErrorResult(null)).toBe(false);
+			expect(MessageFormatter.isErrorResult(undefined)).toBe(false);
+		});
+
+		it('should not flag numbers as errors', () => {
+			expect(MessageFormatter.isErrorResult(42)).toBe(false);
+		});
+
+		it('should not flag empty string as error', () => {
+			expect(MessageFormatter.isErrorResult('')).toBe(false);
+		});
+	});
+
+	describe('formatToolResult with isError flag', () => {
+		it('should set isError when flag is true', () => {
+			const result = MessageFormatter.formatToolResult('There was an error: "Unauthorized"', true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe('There was an error: "Unauthorized"');
+		});
+
+		it('should not set isError when flag is false', () => {
+			const result = MessageFormatter.formatToolResult('hello world', false);
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should not set isError by default', () => {
+			const result = MessageFormatter.formatToolResult('hello world');
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should set isError for object results', () => {
+			const errorObj = { error: { message: 'Bad request', name: 'NodeApiError' } };
+			const result = MessageFormatter.formatToolResult(errorObj, true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe(JSON.stringify(errorObj));
+		});
+	});
+
 	describe('formatError', () => {
 		it('should format error with isError flag set to true', () => {
 			const error = new Error('Something went wrong');
@@ -254,6 +343,34 @@ describe('MessageFormatter', () => {
 			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
 
 			expect(text).toContain('No URL Cred (httpHeaderAuth): not connected');
+		});
+	});
+
+	describe('formatCredentialGateElicited', () => {
+		it('should ask the caller to retry and not flag an error when all were accepted', () => {
+			const result = MessageFormatter.formatCredentialGateElicited([
+				{ credentialName: 'My Slack', credentialType: 'slackOAuth2Api', action: 'accept' },
+			]);
+
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toContain('retry the request');
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			// The raw URL is never relayed as text on the elicitation path.
+			expect(result.content[0].text).not.toContain('http');
+		});
+
+		it('should flag an error and list credentials that were declined or cancelled', () => {
+			const result = MessageFormatter.formatCredentialGateElicited([
+				{ credentialName: 'My Slack', credentialType: 'slackOAuth2Api', action: 'accept' },
+				{ credentialName: 'My Notion', credentialType: 'notionOAuth2Api', action: 'decline' },
+				{ credentialName: 'My GitHub', credentialType: 'githubOAuth2Api', action: 'cancel' },
+			]);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			expect(result.content[0].text).toContain('still need to be connected');
+			expect(result.content[0].text).toContain('My Notion (notionOAuth2Api)');
+			expect(result.content[0].text).toContain('My GitHub (githubOAuth2Api)');
 		});
 	});
 });

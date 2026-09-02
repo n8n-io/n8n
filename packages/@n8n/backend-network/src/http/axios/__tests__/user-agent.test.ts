@@ -73,7 +73,7 @@ describe('outbound-user-agent', () => {
 
 			const di = await import('@n8n/di');
 			const config = await import('@n8n/config');
-			const mod = await import('../user-agent');
+			const mod = await import('../user-agent.js');
 
 			di.Container.set(config.HttpRequestConfig, {
 				enforceGlobalUserAgent: true,

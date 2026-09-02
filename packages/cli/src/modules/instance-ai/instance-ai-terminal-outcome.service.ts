@@ -1,8 +1,9 @@
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiErrorEvent, InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	InstanceAiTerminalResponseGuard,
+	orchestratorAgentId,
 	TerminalOutcomeStorage,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
@@ -14,9 +15,12 @@ import {
 	type WorkSummary,
 } from '@n8n/instance-ai';
 
+import { OperationalError } from 'n8n-workflow';
+
 import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
+import type { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import type {
@@ -24,7 +28,7 @@ import type {
 	MessageTraceFinalization,
 } from './tracing/instance-ai-tracing.service';
 
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -39,7 +43,7 @@ function createTerminalOutcomeAgentTree(
 	responseId: string,
 ): InstanceAiAgentNode {
 	return {
-		agentId: ORCHESTRATOR_AGENT_ID,
+		agentId: orchestratorAgentId(outcome.runId),
 		role: 'orchestrator',
 		status:
 			outcome.status === 'cancelled'
@@ -86,10 +90,15 @@ function appendTerminalOutcomeToAgentTree(
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
 // sync with the source.
-export type InstanceAiTerminalOutcomeEventBus = Pick<
-	InProcessEventBus,
-	'getEventsForRun' | 'getEventsForRuns' | 'publish'
->;
+// Reads are async: the host injects an adapter that flushes the thread's drain
+// and then queries the durable log.
+export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish'> & {
+	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
+	getEventsForRuns(
+		threadId: string,
+		runIds: string[],
+	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
+};
 
 export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
 	DbSnapshotStorage,
@@ -97,6 +106,8 @@ export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
 >;
 
 export type InstanceAiTerminalOutcomeTelemetry = Pick<Telemetry, 'track'>;
+
+export type InstanceAiTerminalOutcomeErrorReporter = Pick<InstanceAiErrorReporterService, 'report'>;
 
 export type InstanceAiTerminalOutcomeRunState = Pick<
 	RunStateRegistry<User>,
@@ -118,6 +129,7 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 	agentMemory: PatchableThreadMemory;
 	telemetry: InstanceAiTerminalOutcomeTelemetry;
+	errorReporter: InstanceAiTerminalOutcomeErrorReporter;
 	logger: Logger;
 	runState: InstanceAiTerminalOutcomeRunState;
 	suspendedThreads: InstanceAiTerminalOutcomeSuspendedThreads;
@@ -173,6 +185,8 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly telemetry: InstanceAiTerminalOutcomeTelemetry;
 
+	private readonly errorReporter: InstanceAiTerminalOutcomeErrorReporter;
+
 	private readonly logger: Logger;
 
 	private readonly runState: InstanceAiTerminalOutcomeRunState;
@@ -190,6 +204,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
+		this.errorReporter = options.errorReporter;
 		this.logger = options.logger;
 		this.runState = options.runState;
 		this.suspendedThreads = options.suspendedThreads;
@@ -198,7 +213,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.saveAgentTreeSnapshot = options.saveAgentTreeSnapshot;
 	}
 
-	evaluateTerminalResponse(
+	async evaluateTerminalResponse(
 		threadId: string,
 		runId: string,
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
@@ -207,21 +222,23 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId?: string;
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
 			suppressCompletedFallback?: boolean;
 		} = {},
-	): TerminalResponseDecision | undefined {
+	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
-			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			rootAgentId: orchestratorAgentId(runId),
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateTerminal(
-			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			status,
 			{
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
+				errorCode: options.errorCode,
 				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
@@ -229,37 +246,37 @@ export class InstanceAiTerminalOutcomeService {
 		return decision;
 	}
 
-	evaluateWaitingResponse(
+	async evaluateWaitingResponse(
 		threadId: string,
 		runId: string,
 		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
 		options: { messageGroupId?: string; correlationId?: string } = {},
-	): TerminalResponseDecision | undefined {
+	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
-			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			rootAgentId: orchestratorAgentId(runId),
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
 		const decision = guard.evaluateWaiting(
-			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
 			confirmationEvent,
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
 		return decision;
 	}
 
-	private getTerminalGuardEvents(
+	private async getTerminalGuardEvents(
 		threadId: string,
 		runId: string,
 		messageGroupId?: string,
-	): InstanceAiEvent[] {
-		if (!messageGroupId) return this.eventBus.getEventsForRun(threadId, runId);
+	): Promise<InstanceAiEvent[]> {
+		if (!messageGroupId) return await this.eventBus.getEventsForRun(threadId, runId);
 
 		const groupRunIds = this.runState.getRunIdsForMessageGroup(messageGroupId);
 		return groupRunIds.length > 0
-			? this.eventBus.getEventsForRuns(threadId, groupRunIds)
-			: this.eventBus.getEventsForRun(threadId, runId);
+			? await this.eventBus.getEventsForRuns(threadId, groupRunIds)
+			: await this.eventBus.getEventsForRun(threadId, runId);
 	}
 
 	private handleTerminalResponseDecision(
@@ -285,6 +302,22 @@ export class InstanceAiTerminalOutcomeService {
 				runId,
 				messageGroupId,
 			});
+		}
+
+		// The run reported success while answering nothing, so no error path fires
+		// and the fallback line is all the user gets. Alert on it: a stall that only
+		// shows up as a generic placeholder is otherwise invisible to us.
+		if (decision.reason === 'completed-silent') {
+			this.errorReporter.report(
+				new OperationalError('Instance AI run completed without a final response'),
+				{
+					component: 'instance-ai-terminal-guard',
+					severity: 'warning',
+					threadId,
+					runId,
+					messageGroupId,
+				},
+			);
 		}
 
 		if (decision.reason === 'confirmation-invalid') {
@@ -329,7 +362,7 @@ export class InstanceAiTerminalOutcomeService {
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
-			metadata: this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
+			metadata: await this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
 				status: 'error',
 			}),
 		};
@@ -395,7 +428,7 @@ export class InstanceAiTerminalOutcomeService {
 					error: getErrorMessage(error),
 				});
 				if (delivery === 'event') {
-					const published = this.publishTerminalOutcomeLine(outcome, responseId);
+					const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 					this.telemetry.track('instance_ai_terminal_response_decision', {
 						thread_id: threadId,
 						run_id: outcome.runId,
@@ -414,7 +447,7 @@ export class InstanceAiTerminalOutcomeService {
 
 			let action = 'replay_snapshot';
 			if (delivery === 'event') {
-				const published = this.publishTerminalOutcomeLine(outcome, responseId);
+				const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 				action = published ? 'replay_event' : 'already-emitted';
 			}
 
@@ -477,16 +510,19 @@ export class InstanceAiTerminalOutcomeService {
 		return true;
 	}
 
-	private publishTerminalOutcomeLine(outcome: TerminalOutcome, responseId: string): boolean {
-		const alreadyPublished = this.eventBus
-			.getEventsForRun(outcome.threadId, outcome.runId)
-			.some((event) => event.responseId === responseId);
+	private async publishTerminalOutcomeLine(
+		outcome: TerminalOutcome,
+		responseId: string,
+	): Promise<boolean> {
+		const alreadyPublished = (
+			await this.eventBus.getEventsForRun(outcome.threadId, outcome.runId)
+		).some((event) => event.responseId === responseId);
 		if (alreadyPublished) return false;
 
 		this.eventBus.publish(outcome.threadId, {
-			type: 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(outcome.runId),
 			responseId,
 			payload: { text: outcome.userFacingMessage },
 		});
@@ -517,7 +553,7 @@ export class InstanceAiTerminalOutcomeService {
 		}
 
 		const responseId = getBackgroundOutcomeResponseId(outcome);
-		const published = this.publishTerminalOutcomeLine(outcome, responseId);
+		const published = await this.publishTerminalOutcomeLine(outcome, responseId);
 
 		this.telemetry.track('instance_ai_terminal_response_decision', {
 			thread_id: task.threadId,

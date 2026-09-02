@@ -2,8 +2,9 @@
 name: debugging-executions
 description: >-
   Debug failed or wrong-output workflow executions using executions tools. Load
-  when the user reports execution failures, unexpected node output, or empty
-  parameter values after a successful run.
+  when the user reports execution failures, unexpected node output, empty
+  parameter values after a successful run, or a node showing a red or failed
+  expression error.
 recommended_tools:
   - executions
   - workflows
@@ -30,7 +31,8 @@ name what is unconfirmed instead of repeating a success claim.
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
-`inputData` shapes, read `knowledge-base/reference/trigger-input-data-shapes.md`
+`inputData` shapes, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
 when a sandbox workspace is available.
 
 ## Failed execution

@@ -1,10 +1,13 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('@n8n/instance-ai', () =>
-	jest.requireActual('../../../../../@n8n/instance-ai/src/runtime/liveness-policy'),
-);
+vi.mock('@n8n/instance-ai', async () => ({
+	...(await vi.importActual<Record<string, unknown>>(
+		'../../../../../@n8n/instance-ai/src/runtime/liveness-policy',
+	)),
+	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+}));
 
 import {
 	createInstanceAiLivenessPolicyConfig,
@@ -29,27 +32,27 @@ function createLivenessService() {
 	const policyConfig = createInstanceAiLivenessPolicyConfig();
 	const policy = new InstanceAiLivenessPolicy(policyConfig);
 	const runState = {
-		sweepTimedOut: jest.fn(
+		sweepTimedOut: vi.fn(
 			(_policy: InstanceAiLivenessPolicy, _now?: number): InstanceAiLivenessSweepResult => ({
 				activeThreadIds: [] as string[],
 				suspendedThreadIds: [] as string[],
 				confirmationRequestIds: [] as string[],
 			}),
 		),
-		cancelActiveRun: jest.fn(
+		cancelActiveRun: vi.fn(
 			(_threadId: string): { runId: string; abortController: AbortController } | undefined =>
 				undefined,
 		),
-		cancelSuspendedRun: jest.fn((_threadId: string): TestSuspendedRun | undefined => undefined),
-		getActiveRunId: jest.fn((_threadId: string): string | undefined => undefined),
-		getPendingConfirmation: jest.fn(
+		cancelSuspendedRun: vi.fn((_threadId: string): TestSuspendedRun | undefined => undefined),
+		getActiveRunId: vi.fn((_threadId: string): string | undefined => undefined),
+		getPendingConfirmation: vi.fn(
 			(_requestId: string): { threadId: string } | undefined => undefined,
 		),
-		hasPendingConfirmationForThread: jest.fn((_threadId: string) => false),
-		rejectPendingConfirmation: jest.fn((_requestId: string) => true),
+		hasPendingConfirmationForThread: vi.fn((_threadId: string) => false),
+		rejectPendingConfirmation: vi.fn((_requestId: string) => true),
 	};
 	const backgroundTasks = {
-		timeoutTimedOutTasks: jest.fn(
+		timeoutTimedOutTasks: vi.fn(
 			async (
 				_policy: InstanceAiLivenessPolicy,
 				_now?: number,
@@ -71,13 +74,12 @@ function createLivenessService() {
 		),
 	};
 	const eventBus = {
-		getEventsForRun: jest.fn((_threadId: string, _runId: string) => [] as InstanceAiEvent[]),
-		publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}),
+		publish: vi.fn((_threadId: string, _event: InstanceAiEvent) => {}),
 	};
-	const finalizeCancelledSuspendedRun = jest.fn(
+	const finalizeCancelledSuspendedRun = vi.fn(
 		(_suspended: TestSuspendedRun, _reason: string) => {},
 	);
-	const onPendingConfirmationRejected = jest.fn((_requestId: string) => {});
+	const onPendingConfirmationRejected = vi.fn((_requestId: string) => {});
 	const logger = mock<Logger>();
 
 	const service = new InstanceAiLivenessService<TestSuspendedRun>({
@@ -228,19 +230,33 @@ describe('InstanceAiLivenessService', () => {
 
 	it('deduplicates timeout notices per run', () => {
 		const { service, eventBus } = createLivenessService();
-		eventBus.getEventsForRun.mockReturnValue([
-			{
-				type: 'text-delta',
-				runId: 'run-1',
-				agentId: 'agent-001',
-				responseId: 'run-timeout:run-1',
-				payload: { text: 'Already published' },
-			},
-		]);
 
 		service.publishRunTimeoutNotice('thread-1', 'run-1');
+		service.publishRunTimeoutNotice('thread-1', 'run-1');
 
-		expect(eventBus.publish).not.toHaveBeenCalled();
+		expect(eventBus.publish).toHaveBeenCalledTimes(1);
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ responseId: 'run-timeout:run-1' }),
+		);
+	});
+
+	it('publishes a notice per run, and evicts the oldest dedupe entry past the cap', () => {
+		const { service, eventBus } = createLivenessService();
+
+		service.publishRunTimeoutNotice('thread-1', 'run-a');
+		service.publishRunTimeoutNotice('thread-1', 'run-b');
+		expect(eventBus.publish).toHaveBeenCalledTimes(2);
+
+		// Push `run-a` out of the capped FIFO, after which its notice can repeat —
+		// the accepted trade-off for a bounded guard.
+		for (let i = 0; i < InstanceAiLivenessService.NOTICE_DEDUPE_CACHE_SIZE; i++) {
+			service.publishRunTimeoutNotice('thread-1', `filler-${i}`);
+		}
+		eventBus.publish.mockClear();
+		service.publishRunTimeoutNotice('thread-1', 'run-a');
+
+		expect(eventBus.publish).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps sweeping run state when background task timeout handling fails', async () => {

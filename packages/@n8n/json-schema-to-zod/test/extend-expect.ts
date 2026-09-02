@@ -15,3 +15,14 @@ expect.extend({
 		};
 	},
 });
+
+interface CustomMatchers<R = unknown> {
+	toMatchZod(expected: z.ZodTypeAny): R;
+}
+
+declare module 'vitest' {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- must mirror Vitest's `Matchers<T = any>` default type param
+	interface Matchers<T = any> extends CustomMatchers<T> {
+		toMatchZod(expected: z.ZodTypeAny): T;
+	}
+}

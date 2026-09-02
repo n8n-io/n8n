@@ -1,11 +1,16 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { HITL_CALLBACK_PREFIX, InstanceSettings } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions, INode, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-import type { IHookFunctions, INode, Workflow } from 'n8n-workflow';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { apiRequest } from '../GenericFunctions';
-import { TelegramTrigger } from '../TelegramTrigger.node';
 import type * as _importType0 from '../GenericFunctions';
+import { TelegramTrigger } from '../TelegramTrigger.node';
+
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 vi.mock('../GenericFunctions', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../GenericFunctions');
@@ -173,6 +178,378 @@ describe('TelegramTrigger', () => {
 			});
 
 			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
+		test('should pass chatIds filter for callback_query events', async () => {
+			mockResult.callback_query = {
+				from: { id: 777 },
+				message: {
+					chat: { id: 555 },
+					from: { id: 123 },
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '555',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					callback_query: {
+						from: { id: 777 },
+						message: {
+							chat: { id: 555 },
+							from: { id: 123 },
+						},
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
+		test('should pass userIds filter for callback_query events', async () => {
+			mockResult.callback_query = {
+				from: { id: 777 },
+				message: {
+					chat: { id: 555 },
+					from: { id: 123 },
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							userIds: '777',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					callback_query: {
+						from: { id: 777 },
+						message: {
+							chat: { id: 555 },
+							from: { id: 123 },
+						},
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
+		test('should reject callback_query when chatId does not match', async () => {
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '999',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					callback_query: {
+						from: { id: 777 },
+						message: {
+							chat: { id: 555 },
+							from: { id: 123 },
+						},
+					},
+				},
+			});
+
+			expect(responseData).toEqual({});
+		});
+
+		test('should pass chatIds filter for edited_message events', async () => {
+			mockResult.edited_message = {
+				chat: { id: 555 },
+				from: { id: 666 },
+			};
+
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '555',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					edited_message: {
+						chat: { id: 555 },
+						from: { id: 666 },
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
+		test('should pass chatIds filter for channel_post events', async () => {
+			mockResult.channel_post = {
+				chat: { id: 555 },
+				from: { id: 666 },
+			};
+
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '555',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					channel_post: {
+						chat: { id: 555 },
+						from: { id: 666 },
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
+		test('should reject events without a resolvable chat ID when chatIds filter is active', async () => {
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '555',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					inline_query: {
+						from: { id: 777 },
+					},
+				},
+			});
+
+			expect(responseData).toEqual({});
+		});
+
+		test('should reject events without a resolvable user ID when userIds filter is active', async () => {
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							userIds: '777',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					poll: {
+						id: 'poll1',
+					},
+				},
+			});
+
+			expect(responseData).toEqual({});
+		});
+
+		describe('version 1.3 (legacy filter resolution)', () => {
+			test('should drop callback_query when chatIds filter is set, matching only message updates', async () => {
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								chatIds: '555',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						callback_query: {
+							from: { id: 777 },
+							message: {
+								chat: { id: 555 },
+								from: { id: 123 },
+							},
+						},
+					},
+				});
+
+				expect(responseData).toEqual({});
+			});
+
+			test('should drop callback_query when userIds filter is set, matching only message updates', async () => {
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								userIds: '777',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						callback_query: {
+							from: { id: 777 },
+							message: {
+								chat: { id: 555 },
+								from: { id: 123 },
+							},
+						},
+					},
+				});
+
+				expect(responseData).toEqual({});
+			});
+
+			test('should still pass message updates matching the chatIds filter', async () => {
+				mockResult.message = {
+					chat: { id: 555 },
+					from: { id: 666 },
+				};
+
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								chatIds: '555',
+								userIds: '666',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						message: {
+							chat: { id: 555 },
+							from: { id: 666 },
+						},
+					},
+				});
+
+				expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+			});
+		});
+	});
+
+	describe('HITL callback forwarding', () => {
+		test('forwards to the configured waiting-webhook path instead of a hardcoded one', async () => {
+			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({ endpoints: { webhookWaiting: 'custom-waiting' } as never }),
+			);
+			const httpRequest = vi.fn().mockResolvedValue({});
+			const telegramTrigger = new TelegramTrigger();
+			const webhookFunctions = mock<IWebhookFunctions>({
+				helpers: mock<IWebhookFunctions['helpers']>({ httpRequest }),
+				getNode: () => mock<INode>({ id: '2', typeVersion: 1.5 }),
+				getWorkflow: () => mock<Workflow>({ id: '1' }),
+				getNodeWebhookUrl: () => 'https://mybot.example.com/custom-waiting/webhook/abc/webhook',
+				getBodyData: () => ({
+					callback_query: { data: `${HITL_CALLBACK_PREFIX}42|a|deadbeef` },
+				}),
+				getHeaderData: () => ({ 'x-telegram-bot-api-secret-token': '1_2' }),
+				getCredentials: async <T extends object>() => ({ accessToken: '123456:test-token' }) as T,
+				getNodeParameter: () => [],
+			});
+
+			await telegramTrigger.webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'https://mybot.example.com/custom-waiting-telegram' }),
+			);
+		});
+
+		test('preserves a reverse-proxy path prefix instead of forwarding to the origin root', async () => {
+			// e.g. n8n served under https://example.com/n8n-instance/ : the own webhook URL
+			// carries that prefix before the live-webhook segment, and it must survive.
+			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({
+					endpoints: { webhook: 'webhook', webhookWaiting: 'webhook-waiting' } as never,
+				}),
+			);
+			const httpRequest = vi.fn().mockResolvedValue({});
+			const telegramTrigger = new TelegramTrigger();
+			const webhookFunctions = mock<IWebhookFunctions>({
+				helpers: mock<IWebhookFunctions['helpers']>({ httpRequest }),
+				getNode: () => mock<INode>({ id: '2', typeVersion: 1.5 }),
+				getWorkflow: () => mock<Workflow>({ id: '1' }),
+				getNodeWebhookUrl: () => 'https://example.com/n8n-instance/webhook/abc/webhook',
+				getBodyData: () => ({
+					callback_query: { data: `${HITL_CALLBACK_PREFIX}42|a|deadbeef` },
+				}),
+				getHeaderData: () => ({ 'x-telegram-bot-api-secret-token': '1_2' }),
+				getCredentials: async <T extends object>() => ({ accessToken: '123456:test-token' }) as T,
+				getNodeParameter: () => [],
+			});
+
+			await telegramTrigger.webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://example.com/n8n-instance/webhook-waiting-telegram',
+				}),
+			);
 		});
 	});
 

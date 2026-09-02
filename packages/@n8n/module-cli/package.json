@@ -1,0 +1,26 @@
+{
+  "name": "@n8n/module-cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive scaffolder for n8n modules",
+  "type": "module",
+  "bin": {
+    "n8n-module-sdk": "bin/n8n-module-sdk.mjs"
+  },
+  "scripts": {
+    "clean": "rimraf .turbo",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "dependencies": {
+    "citty": "catalog:",
+    "consola": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

@@ -171,12 +171,7 @@ test.describe(
 			await n8n.canvas.openNode('HTTP Request');
 			await expect(n8n.ndv.container).toBeVisible();
 
-			const credSelect = n8n.ndv.getCredentialSelect();
-			await credSelect.click();
-
-			await n8n.ndv.getCredentialOptionByText(anthropicCredName).click();
-
-			await expect(credSelect).toHaveValue(anthropicCredName);
+			await n8n.ndv.credentials.selectByName(anthropicCredName);
 
 			const saveResponse = n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.ndv.close();

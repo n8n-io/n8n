@@ -2,10 +2,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CredentialSharing from './CredentialSharing.ee.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getDropdownItems } from '@/__tests__/utils';
@@ -34,8 +34,6 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.info.sharee.personal': 'Shared by personal project',
 		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
 			"You don't have permission to share personal credentials",
-		'credentialEdit.credentialSharing.info.dynamicCredential':
-			'Sharing of private credentials is not supported.',
 		'credentialEdit.credentialSharing.role.user': 'User',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
@@ -149,6 +147,7 @@ describe('CredentialSharing.ee', () => {
 				personalSpacePolicy: false,
 				dataRedaction: false,
 				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			});
 	});
 
@@ -401,52 +400,22 @@ describe('CredentialSharing.ee', () => {
 	});
 
 	describe('dynamic credentials', () => {
-		it('should explain why sharing is disabled for a dynamic credential', () => {
+		it('should allow sharing a private credential', () => {
 			const credential = createCredential();
-			const { getByText, queryByTestId } = renderComponent({
+			const { queryByText, getByTestId } = renderComponent({
 				props: {
 					credentialId: credential.id,
 					credentialData: {},
 					credentialPermissions: { share: true },
 					credential,
-					isResolvable: true,
 					modalBus: createEventBus(),
 				},
 			});
 
-			// The reason sharing is unavailable is surfaced to the user
-			expect(getByText(/not supported/i)).toBeInTheDocument();
-			// The add-share input is hidden entirely, not just disabled
-			expect(queryByTestId('project-sharing-select')).not.toBeInTheDocument();
-		});
-
-		it('should still allow removing existing shares for a private credential', () => {
-			const credential = createCredential({
-				sharedWithProjects: [
-					{
-						id: 'shared-project-1',
-						name: 'Shared Project',
-						type: 'team',
-						icon: null,
-						createdAt: new Date().toISOString(),
-						updatedAt: new Date().toISOString(),
-					},
-				],
-			});
-
-			const { getByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: true },
-					credential,
-					isResolvable: true,
-					modalBus: createEventBus(),
-				},
-			});
-
-			// Adding new shares is blocked, but cleaning up existing ones stays possible
-			expect(getByTestId('project-sharing-remove')).toBeEnabled();
+			// Sharing is no longer blocked: the add-share input is available...
+			expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+			// ...and no "not supported" notice is shown
+			expect(queryByText(/not supported/i)).not.toBeInTheDocument();
 		});
 	});
 });

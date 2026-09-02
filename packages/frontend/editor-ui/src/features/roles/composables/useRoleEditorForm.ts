@@ -1,12 +1,14 @@
-import { useToast } from '@/app/composables/useToast';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
+const DISPLAY_NAME_MIN_LENGTH = 2;
 
 export type RoleEditorForm = {
 	displayName: string;
@@ -21,6 +23,20 @@ export interface UseRoleEditorFormOptions {
 	viewRoute: string;
 	/** Returns the default scopes for a brand-new (not-yet-saved) role. */
 	defaultScopes?: () => string[];
+	/**
+	 * Filter applied to every scope set entering the form (default seed, fetched role,
+	 * reset) and to the persisted snapshot. Keeps the editor — and anything it saves —
+	 * limited to scopes it exposes, so a role loaded with non-assignable scopes is
+	 * sanitized rather than forwarded. Must only strip; adding scopes here would
+	 * rewrite `initialState` and hide the difference from what is stored.
+	 */
+	filterScopes?: (scopes: string[]) => string[];
+	/**
+	 * Applied to form scopes after `filterScopes`, but not to `initialState`.
+	 * Inject required scopes that should persist on the next save without treating
+	 * a legacy role as already up to date.
+	 */
+	ensureScopes?: (scopes: string[]) => string[];
 	/** Error message shown when the initial role fetch fails. */
 	fetchError: string;
 }
@@ -29,12 +45,14 @@ export function useRoleEditorForm({
 	roleSlug,
 	viewRoute,
 	defaultScopes,
+	filterScopes,
+	ensureScopes,
 	fetchError,
 }: UseRoleEditorFormOptions) {
 	const rolesStore = useRolesStore();
 	const route = useRoute();
 	const router = useRouter();
-	const { showError } = useToast();
+	const { showError, showMessage } = useToast();
 	const i18n = useI18n();
 
 	const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
@@ -48,10 +66,16 @@ export function useRoleEditorForm({
 		{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
 	]);
 
+	const sanitizeScopes = (scopes: string[]): string[] =>
+		filterScopes ? filterScopes(scopes) : scopes;
+
+	const formScopes = (scopes: string[]): string[] =>
+		ensureScopes ? ensureScopes(sanitizeScopes(scopes)) : sanitizeScopes(scopes);
+
 	const defaultForm = (): RoleEditorForm => ({
 		displayName: '',
 		description: '',
-		scopes: defaultScopes?.() ?? [],
+		scopes: formScopes(defaultScopes?.() ?? []),
 	});
 
 	const initialState = ref<Role | undefined>();
@@ -65,11 +89,14 @@ export function useRoleEditorForm({
 
 			try {
 				const role = await rolesStore.fetchRoleBySlug({ slug });
-				initialState.value = structuredClone(role);
+				// Snapshot is stripped only. Required scopes go on the form so a stored
+				// role missing them stays unsaved until the next save.
+				const persistedScopes = sanitizeScopes(role.scopes);
+				initialState.value = structuredClone({ ...role, scopes: persistedScopes });
 				return {
 					displayName: role.displayName,
 					description: role.description,
-					scopes: role.scopes,
+					scopes: formScopes(role.scopes),
 				};
 			} catch (error) {
 				showError(error, fetchError);
@@ -103,15 +130,39 @@ export function useRoleEditorForm({
 
 	const displayNameValidationRules = [
 		{ name: 'REQUIRED' },
-		{ name: 'MIN_LENGTH', config: { minimum: 2 } },
+		{ name: 'MIN_LENGTH', config: { minimum: DISPLAY_NAME_MIN_LENGTH } },
 	];
 
+	const submitted = ref(false);
+
+	const isDisplayNameValid = computed(
+		() => form.value.displayName.trim().length >= DISPLAY_NAME_MIN_LENGTH,
+	);
+
+	function validateOnSubmit(errorTitle: BaseTextKey): boolean {
+		submitted.value = true;
+
+		if (!isDisplayNameValid.value) {
+			showMessage({
+				type: 'error',
+				title: i18n.baseText(errorTitle),
+				message: i18n.baseText('roles.create.validation.nameMinLength', {
+					interpolate: { min: DISPLAY_NAME_MIN_LENGTH },
+				}),
+			});
+			return false;
+		}
+
+		return true;
+	}
+
 	function resetForm(payload: Role | undefined): void {
+		submitted.value = false;
 		form.value = payload
 			? {
 					displayName: payload.displayName,
 					description: payload.description,
-					scopes: payload.scopes,
+					scopes: formScopes(payload.scopes),
 				}
 			: defaultForm();
 	}
@@ -128,6 +179,9 @@ export function useRoleEditorForm({
 		showCreateButton,
 		hasUnsavedChanges,
 		displayNameValidationRules,
+		submitted,
+		isDisplayNameValid,
+		validateOnSubmit,
 		resetForm,
 	};
 }

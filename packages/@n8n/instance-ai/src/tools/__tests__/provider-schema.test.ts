@@ -24,6 +24,8 @@ function createInstanceAiContext(): InstanceAiContext {
 		nodeService: service,
 		dataTableService: service,
 		workspaceService: service,
+		evaluationConfigService: service,
+		mcpService: service,
 		logger: {
 			debug: vi.fn(),
 			info: vi.fn(),
@@ -42,7 +44,6 @@ function createOrchestrationContext(): OrchestrationContext {
 		userId: 'user-1',
 		orchestratorAgentId: 'agent-1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 1,
 		eventBus: {},
 		logger: domainContext.logger,
 		domainTools: createAllTools(domainContext),
@@ -50,6 +51,7 @@ function createOrchestrationContext(): OrchestrationContext {
 		taskStorage: {},
 		workflowTaskService: {
 			getBuildOutcome: vi.fn(),
+			getLatestBuildOutcomeForWorkflow: vi.fn(),
 		},
 		domainContext,
 		plannedTaskService: {},

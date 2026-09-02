@@ -1,5 +1,4 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type {
@@ -14,8 +13,8 @@ import { SalesforceJwtApi, resolveAuthUrl } from '../SalesforceJwtApi.credential
 vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn() },
 }));
-vi.mock('@utils/utilities', () => ({
-	formatPrivateKey: (key: string) => key,
+vi.mock('@n8n/utils/format-pem-block', () => ({
+	formatPemBlock: (key: string) => key,
 }));
 
 describe('SalesforceJwtApi Credential', () => {
@@ -24,8 +23,6 @@ describe('SalesforceJwtApi Credential', () => {
 
 	const requestMock = vi.fn();
 	const requestsMock = vi.fn(() => ({ request: requestMock }));
-	const ssrfService = {} as SsrfProtectionService;
-	let ssrfEnabled = false;
 
 	// `this` for preAuthentication is unused now that the token POST goes through
 	// the shared HTTP client, but the signature still requires the helper context.
@@ -38,7 +35,6 @@ describe('SalesforceJwtApi Credential', () => {
 	};
 
 	beforeEach(() => {
-		ssrfEnabled = false;
 		requestMock.mockReset();
 		requestMock.mockResolvedValue({
 			access_token: 'abc123',
@@ -50,8 +46,6 @@ describe('SalesforceJwtApi Credential', () => {
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === OutboundHttp) return { requests: requestsMock };
-			if (token === SsrfProtectionConfig) return { enabled: ssrfEnabled };
-			if (token === SsrfProtectionService) return ssrfService;
 			throw new Error('unexpected DI token');
 		});
 	});
@@ -242,28 +236,14 @@ describe('SalesforceJwtApi Credential', () => {
 			);
 		});
 
-		it('disables SSRF protection when it is turned off in config', async () => {
-			ssrfEnabled = false;
-
+		it('requests the default safe client for the user-controlled token host', async () => {
 			await callPreAuthentication({
 				...baseCredentials,
 				environment: 'production',
 				myDomainUrl: '',
 			});
 
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
-		});
-
-		it('enables SSRF protection when it is turned on in config', async () => {
-			ssrfEnabled = true;
-
-			await callPreAuthentication({
-				...baseCredentials,
-				environment: 'production',
-				myDomainUrl: '',
-			});
-
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: ssrfService });
+			expect(requestsMock).toHaveBeenCalledWith();
 		});
 
 		it('returns the access token and instance URL to cache', async () => {

@@ -1,9 +1,13 @@
 import { describe, test, expect } from 'vitest';
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import {
+	buildTimelineBlocks,
 	extractArtifacts,
 	isStreamingTimelineEntry,
-	isVisibleTimelineEntry,
 } from '../agentTimeline.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -62,6 +66,22 @@ describe('extractArtifacts', () => {
 				type: 'data-table',
 				resourceId: 'dt-1',
 				name: 'Feedback',
+				completedAt: undefined,
+			},
+		]);
+	});
+
+	test('returns agent artifact from targetResource', () => {
+		const node = makeAgentNode({
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor', projectId: 'proj-1' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'SEO Auditor',
 				completedAt: undefined,
 			},
 		]);
@@ -247,105 +267,444 @@ describe('extractArtifacts', () => {
 	});
 });
 
-describe('isVisibleTimelineEntry', () => {
-	const toolCallEntry = { type: 'tool-call' as const, toolCallId: 'tc-1' };
+describe('buildTimelineBlocks', () => {
+	const reasoning = (responseId?: string): InstanceAiTimelineEntry => ({
+		type: 'reasoning',
+		content: 'thinking...',
+		responseId,
+	});
+	const text = (content: string, responseId?: string): InstanceAiTimelineEntry => ({
+		type: 'text',
+		content,
+		responseId,
+	});
+	const toolEntry = (toolCallId: string, responseId?: string): InstanceAiTimelineEntry => ({
+		type: 'tool-call',
+		toolCallId,
+		responseId,
+	});
 
-	function visibilityOf(tc: InstanceAiToolCallState): boolean {
-		return isVisibleTimelineEntry(toolCallEntry, { [tc.toolCallId]: tc }, {});
+	function blocksOf(
+		entries: InstanceAiTimelineEntry[],
+		toolCalls: InstanceAiToolCallState[] = [],
+		status: InstanceAiAgentNode['status'] = 'completed',
+		children: InstanceAiAgentNode[] = [],
+	) {
+		const toolCallsById = Object.fromEntries(toolCalls.map((tc) => [tc.toolCallId, tc]));
+		const childrenById = Object.fromEntries(children.map((c) => [c.agentId, c]));
+		return buildTimelineBlocks(entries, toolCallsById, childrenById, status);
 	}
 
-	test('text entries are always visible', () => {
-		expect(isVisibleTimelineEntry({ type: 'text', content: 'hi' }, {}, {})).toBe(true);
+	test('merges consecutive reasoning and generic tool calls into one thinking block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), toolEntry('tc-2', 'r1'), reasoning('r2')],
+			[makeToolCall({ toolCallId: 'tc-1' }), makeToolCall({ toolCallId: 'tc-2' })],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(4);
 	});
 
-	test('tool-call entries without a matching tool call are hidden', () => {
-		expect(isVisibleTimelineEntry(toolCallEntry, {}, {})).toBe(false);
-	});
-
-	test('internal bookkeeping tools are hidden', () => {
-		expect(visibilityOf(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBe(false);
-	});
-
-	test('builder/data-table/eval-setup hints are hidden (represented by artifact cards)', () => {
-		expect(visibilityOf(makeToolCall({ renderHint: 'builder' }))).toBe(false);
-		expect(visibilityOf(makeToolCall({ renderHint: 'data-table' }))).toBe(false);
-		expect(visibilityOf(makeToolCall({ renderHint: 'eval-setup' }))).toBe(false);
-	});
-
-	test('builder hint stays hidden even with a plan-review confirmation (template order)', () => {
-		expect(
-			visibilityOf(
+	test('an mcp connect confirmation renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
 				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'To search the web',
+						mcpConnectRequest: {
+							servers: [
+								{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+							],
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
+	});
+
+	test('an in-flight connect call stays a trace row until its payload arrives', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: true,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
+	test('a settled connect call that never suspended stays a trace row', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: false,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
+	test('text followed by same-response trace content joins the thinking block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Let me check the schema.', 'r1'), toolEntry('tc-1', 'r1')],
+			[makeToolCall({ toolCallId: 'tc-1' })],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('trailing text of a response is user-facing and splits blocks', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), text('Here is your answer.', 'r1')],
+			[makeToolCall({ toolCallId: 'tc-1' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+
+	test('short streaming tail text after same-response trace stays inside the block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Now building the workflow.', 'r1')],
+			[],
+			'active',
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('answer-length streaming tail text promotes out of the block', () => {
+		const longText = 'This is the final answer. '.repeat(10); // > 200 chars
+		const blocks = blocksOf([reasoning('r1'), text(longText, 'r1')], [], 'active');
+
+		// The trailing 'activity' block is the run's live-state indicator, not
+		// part of the promotion under test.
+		expect(blocks.filter((b) => b.type !== 'activity').map((b) => b.type)).toEqual([
+			'thinking',
+			'text',
+		]);
+	});
+
+	test('short streaming tail text of a later response stays inside the block', () => {
+		const blocks = blocksOf([reasoning('r1'), text('Quick answer.', 'r2')], [], 'active');
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('streaming text with no trace anywhere in the run renders outside', () => {
+		const blocks = blocksOf([text('Quick answer.', 'r1')], [], 'active');
+
+		expect(blocks.map((b) => b.type)).toEqual(['text']);
+	});
+
+	test('narration leading a reasoning-less step never renders outside the block', () => {
+		const narration = text('No services are connected yet.', 'r2');
+		const toolCalls = [makeToolCall({ toolCallId: 'tc-1' }), makeToolCall({ toolCallId: 'tc-2' })];
+
+		// The step emits its narration a few hundred ms before its tool call and
+		// carries no reasoning, so its response has no trace content of its own.
+		const streaming = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration],
+			toolCalls,
+			'active',
+		);
+		expect(streaming).toHaveLength(1);
+		expect(streaming[0].type === 'thinking' && streaming[0].entries).toHaveLength(3);
+
+		// Once the tool call lands the grouping is unchanged — nothing re-flows.
+		const withToolCall = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration, toolEntry('tc-2', 'r2')],
+			toolCalls,
+			'active',
+		);
+		expect(withToolCall).toHaveLength(1);
+		expect(withToolCall[0].type === 'thinking' && withToolCall[0].entries).toHaveLength(4);
+	});
+
+	test('short trailing text promotes out once the run settles', () => {
+		const entries = [reasoning('r1'), text('Done, workflow created.', 'r1')];
+
+		const streaming = blocksOf(entries, [], 'active');
+		expect(streaming).toHaveLength(1);
+
+		const settled = blocksOf(entries, [], 'completed');
+		expect(settled.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+
+	test('text without responseId is always user-facing (old snapshots)', () => {
+		const blocks = blocksOf(
+			[reasoning(), text('narration'), toolEntry('tc-1')],
+			[makeToolCall({ toolCallId: 'tc-1' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
+	test('hidden tool calls are dropped without splitting a thinking run', () => {
+		const blocks = blocksOf(
+			[
+				toolEntry('tc-1', 'r1'),
+				toolEntry('tc-hidden', 'r1'),
+				toolEntry('tc-builder', 'r1'),
+				toolEntry('tc-2', 'r1'),
+			],
+			[
+				makeToolCall({ toolCallId: 'tc-1' }),
+				makeToolCall({ toolCallId: 'tc-hidden', toolName: 'updateWorkingMemory' }),
+				makeToolCall({
+					toolCallId: 'tc-builder',
+					toolName: 'build-workflow-with-agent',
 					renderHint: 'builder',
-					confirmation: {
-						requestId: 'r1',
-						severity: 'info',
-						message: 'Review plan',
-						inputType: 'plan-review',
-					},
 				}),
-			),
-		).toBe(false);
+				makeToolCall({ toolCallId: 'tc-2' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
 	});
 
-	test('plan-review confirmations render a panel', () => {
-		expect(
-			visibilityOf(
+	test('in-thread build-workflow renders as a trace row; agent-delegated builds stay hidden', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-build', toolName: 'build-workflow', renderHint: 'builder' }),
 				makeToolCall({
-					renderHint: 'planner',
-					confirmation: {
-						requestId: 'r1',
-						severity: 'info',
-						message: 'Review plan',
-						inputType: 'plan-review',
-					},
+					toolCallId: 'tc-delegated',
+					toolName: 'build-workflow-with-agent',
+					renderHint: 'builder',
 				}),
-			),
-		).toBe(true);
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-build' }),
+		]);
 	});
 
-	test('planner hint without a plan review renders nothing', () => {
-		expect(visibilityOf(makeToolCall({ renderHint: 'planner' }))).toBe(false);
-	});
-
-	test('question forms are suppressed while pending, visible once answered', () => {
-		const questions = (isLoading: boolean) =>
-			makeToolCall({
-				isLoading,
-				confirmation: {
-					requestId: 'r1',
-					severity: 'info',
-					message: 'Answer questions',
-					inputType: 'questions',
-				},
-			});
-		expect(visibilityOf(questions(true))).toBe(false);
-		expect(visibilityOf(questions(false))).toBe(true);
-	});
-
-	test('tasks, delegate, and generic tool calls are visible', () => {
-		expect(visibilityOf(makeToolCall({ renderHint: 'tasks' }))).toBe(true);
-		expect(visibilityOf(makeToolCall({ renderHint: 'delegate' }))).toBe(true);
-		expect(visibilityOf(makeToolCall({ renderHint: 'skill' }))).toBe(true);
-		expect(visibilityOf(makeToolCall({}))).toBe(true);
-	});
-
-	test('child entries are visible unless the child is a hoisted active builder', () => {
-		const entry = { type: 'child' as const, agentId: 'sub-1' };
-		const completedBuilder = makeAgentNode({
-			agentId: 'sub-1',
-			role: 'workflow-builder',
-			status: 'completed',
+	test('hides build-agent trace when a builder child exists in the same response', () => {
+		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
+			type: 'child',
+			agentId,
+			responseId,
 		});
+		const builderChild = makeAgentNode({
+			agentId: 'builder-1',
+			role: 'agent-builder',
+			kind: 'agent-builder',
+		});
+
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1'), childEntry('builder-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+			'completed',
+			[builderChild],
+		);
+
+		expect(blocks).toEqual([{ type: 'child', key: 'child-1', child: builderChild }]);
+	});
+
+	test('keeps build-agent trace when no builder child exists', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-build-agent' }),
+		]);
+	});
+
+	test('does not hide unrelated trace tools when child is not a builder', () => {
+		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
+			type: 'child',
+			agentId,
+			responseId,
+		});
+		const nonBuilderChild = makeAgentNode({ agentId: 'sub-1', role: 'researcher' });
+
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1'), childEntry('sub-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+			'completed',
+			[nonBuilderChild],
+		);
+
+		expect(blocks).toHaveLength(2);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-build-agent' }),
+		]);
+		expect(blocks[1]).toEqual({ type: 'child', key: 'child-1', child: nonBuilderChild });
+	});
+
+	test('user-facing tool calls split thinking runs', () => {
+		const answeredQuestions = makeToolCall({
+			toolCallId: 'tc-q',
+			isLoading: false,
+			confirmation: { requestId: 'r1', severity: 'info', message: 'q', inputType: 'questions' },
+		});
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1'), toolEntry('tc-q', 'r1'), toolEntry('tc-2', 'r2')],
+			[
+				makeToolCall({ toolCallId: 'tc-1' }),
+				answeredQuestions,
+				makeToolCall({ toolCallId: 'tc-2' }),
+			],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'questions', 'thinking']);
+	});
+
+	test('pending question forms are dropped without splitting', () => {
+		const pendingQuestions = makeToolCall({
+			toolCallId: 'tc-q',
+			isLoading: true,
+			confirmation: { requestId: 'r1', severity: 'info', message: 'q', inputType: 'questions' },
+		});
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1'), toolEntry('tc-q', 'r1'), toolEntry('tc-2', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-1' }),
+				pendingQuestions,
+				makeToolCall({ toolCallId: 'tc-2' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('child agents split thinking runs; hoisted active builders are dropped', () => {
+		const completedChild = makeAgentNode({ agentId: 'sub-1' });
 		const activeBuilder = makeAgentNode({
-			agentId: 'sub-1',
+			agentId: 'sub-2',
 			role: 'workflow-builder',
 			status: 'active',
 		});
+		const childEntry = (agentId: string): InstanceAiTimelineEntry => ({ type: 'child', agentId });
 
-		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': completedBuilder })).toBe(true);
-		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': activeBuilder })).toBe(false);
-		expect(isVisibleTimelineEntry(entry, {}, {})).toBe(false);
+		const split = blocksOf(
+			[reasoning('r1'), childEntry('sub-1'), reasoning('r2')],
+			[],
+			'completed',
+			[completedChild],
+		);
+		expect(split.map((b) => b.type)).toEqual(['thinking', 'child', 'thinking']);
+
+		const merged = blocksOf(
+			[reasoning('r1'), childEntry('sub-2'), reasoning('r2')],
+			[],
+			'completed',
+			[activeBuilder],
+		);
+		expect(merged).toHaveLength(1);
+	});
+
+	test('flags only the trailing thinking block as active while the agent streams', () => {
+		const streaming = blocksOf(
+			[reasoning('r1'), text('Answer.', 'r1'), reasoning('r2')],
+			[],
+			'active',
+		);
+		expect(streaming.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+		expect(streaming[0].type === 'thinking' && streaming[0].active).toBe(false);
+		expect(streaming[2].type === 'thinking' && streaming[2].active).toBe(true);
+	});
+
+	test('the trailing thinking block stays active while tentative tail text streams', () => {
+		// Tail text kept inside the block is still tentative, so the block must
+		// not settle to "Thought for Xs" yet.
+		const tailText = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
+		expect(tailText.map((b) => b.type)).toEqual(['thinking']);
+		expect(tailText[0].type === 'thinking' && tailText[0].active).toBe(true);
+	});
+
+	test('trailing text past the narration cap settles the thinking block', () => {
+		// Answer-length text is a committed answer — a block still "thinking"
+		// behind a streaming answer reads as lag. A standalone indicator carries
+		// the run's live state instead (see the next test).
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'activity']);
+		expect(blocks[0].type === 'thinking' && blocks[0].active).toBe(false);
+	});
+
+	test('a settled block behind a committed answer still surfaces an activity indicator', () => {
+		// INS-1224: the model wrote a long plan and then went quiet for ~53s while
+		// generating a tool call. Nothing in the transcript moved, yet the composer
+		// stayed in stop-mode — the UI claimed done and busy at the same time.
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
+		expect(blocks.at(-1)?.type).toBe('activity');
+	});
+
+	test('no activity indicator once the run settles', () => {
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'completed');
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+
+	test('no activity indicator while a thinking block is already active', () => {
+		const blocks = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
+		expect(blocks.some((b) => b.type === 'activity')).toBe(false);
+	});
+
+	test('real user-facing interruptions settle the thinking block immediately', () => {
+		const answeredQuestions = makeToolCall({
+			toolCallId: 'tc-q',
+			isLoading: false,
+			confirmation: { requestId: 'r1', severity: 'info', message: 'q', inputType: 'questions' },
+		});
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-q', 'r1')],
+			[answeredQuestions],
+			'active',
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'questions']);
+		expect(blocks[0].type === 'thinking' && blocks[0].active).toBe(false);
+	});
+
+	test('no block is active once the agent has settled', () => {
+		const completed = blocksOf([reasoning('r1')], [], 'completed');
+		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
 });
 

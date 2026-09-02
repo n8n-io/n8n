@@ -20,4 +20,11 @@ export default defineConfig(
 	rules: {
 		'@typescript-eslint/no-unsafe-assignment': 'warn',
 	},
+}, {
+	// The eval harness is dev-only tooling (excluded from the build output),
+	// so devDependencies (e.g. n8n-core for __schema__ resolution) are fine.
+	files: ['./evaluations/**/*.ts'],
+	rules: {
+		'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
+	},
 });

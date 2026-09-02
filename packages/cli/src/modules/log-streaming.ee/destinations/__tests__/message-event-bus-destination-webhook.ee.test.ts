@@ -1,13 +1,16 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestinationWebhook } from '../message-event-bus-destination-webhook.ee';
+import {
+	MessageEventBusDestinationWebhook,
+	isMessageEventBusDestinationWebhookOptions,
+} from '../message-event-bus-destination-webhook.ee';
 
 const mockEventBus = {} as MessageEventBus;
 
@@ -27,8 +30,8 @@ const createMessage = () =>
 const mockOutboundHttp = (
 	response: { statusCode: number; body: unknown } = { statusCode: 200, body: {} },
 ) => {
-	const request = jest.fn().mockResolvedValue(response);
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn().mockResolvedValue(response);
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	const outboundHttp = mock<OutboundHttp>({ requests });
 	return { outboundHttp, requests, request };
 };
@@ -43,7 +46,7 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 	const destination = new MessageEventBusDestinationWebhook(mockEventBus, options, outboundHttp);
 	await destination.receiveFromEventBus({
 		msg: createMessage(),
-		confirmCallback: jest.fn(),
+		confirmCallback: vi.fn(),
 	} as any);
 
 	return {
@@ -54,17 +57,13 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 };
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockInstance(CredentialsHelper);
 });
 
 describe('MessageEventBusDestinationWebhook', () => {
 	describe('isMessageEventBusDestinationWebhookOptions', () => {
 		it('should identify valid webhook options', () => {
-			const {
-				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
-
 			const validOptions: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
@@ -80,10 +79,6 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should reject invalid options', () => {
-			const {
-				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
-
 			expect(isMessageEventBusDestinationWebhookOptions({})).toBe(false);
 			expect(isMessageEventBusDestinationWebhookOptions(null)).toBe(false);
 			expect(isMessageEventBusDestinationWebhookOptions({ label: 'test' })).toBe(false);
@@ -114,13 +109,105 @@ describe('MessageEventBusDestinationWebhook', () => {
 				url: 'https://example.com/webhook',
 			});
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(sentOptions).toMatchObject({
 				url: 'https://example.com/webhook',
 				method: 'POST',
 				returnFullResponse: true,
 				json: true,
 			});
+		});
+
+		it('should apply Simplified Custom Auth credentials', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'credential-id', name: 'API credential' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: { httpTemplatedCustomAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			const decrypted = {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			};
+			credentialsHelper.getDecrypted.mockResolvedValue(decrypted);
+			credentialsHelper.authenticate.mockResolvedValue({
+				url: 'https://example.com/webhook',
+				headers: { Authorization: 'Bearer secret' },
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpTemplatedCustomAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(credentialsHelper.authenticate).toHaveBeenCalledWith(
+				decrypted,
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://example.com/webhook' }),
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer secret' }),
+				}),
+			);
+		});
+
+		it('should not send when Simplified Custom Auth credentials cannot be resolved', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: {
+						httpTemplatedCustomAuth: { id: 'credential-id', name: 'API credential' },
+					},
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockRejectedValue(new Error('Invalid credential template'));
+			destination.credentialsHelper = credentialsHelper;
+
+			await expect(
+				destination.receiveFromEventBus({
+					msg: createMessage(),
+					confirmCallback: vi.fn(),
+				} as Parameters<MessageEventBusDestinationWebhook['receiveFromEventBus']>[0]),
+			).rejects.toThrow('Invalid credential template');
+			expect(request).not.toHaveBeenCalled();
+		});
+
+		it('should send without authentication when Simplified Custom Auth credentials are absent', async () => {
+			const { sentOptions } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpTemplatedCustomAuth',
+				credentials: {},
+			});
+
+			expect(sentOptions).not.toHaveProperty('auth');
+			expect(sentOptions.headers).not.toHaveProperty('Authorization');
 		});
 
 		it('should map the message payload to the JSON body', async () => {
@@ -137,7 +224,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should confirm only when the response status matches the expected code', async () => {
-			const confirmCallback = jest.fn();
+			const confirmCallback = vi.fn();
 			const { outboundHttp } = mockOutboundHttp({ statusCode: 418, body: {} });
 
 			const destination = new MessageEventBusDestinationWebhook(

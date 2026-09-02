@@ -1,11 +1,10 @@
-import type crypto from 'node:crypto';
-import { createPublicKey } from 'node:crypto';
-
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { Algorithm } from 'jsonwebtoken';
 import { OperationalError } from 'n8n-workflow';
+import { createPublicKey } from 'node:crypto';
+import type crypto from 'node:crypto';
 import { z } from 'zod';
 
 import type { JwksKeySource } from '../token-exchange.schemas';
@@ -142,7 +141,7 @@ export class JwksResolverService {
 			options?.fetcher ??
 			this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // JWKS sources are admin-configured trusted-key endpoints
+					useDefaultSsrfPolicy: 'unsafe', // JWKS sources are admin-configured trusted-key endpoints
 				})
 				.asCustomFetch();
 		const defaultTtl = options?.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;

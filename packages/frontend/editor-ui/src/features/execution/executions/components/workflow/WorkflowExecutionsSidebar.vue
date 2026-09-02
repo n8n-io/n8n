@@ -14,7 +14,7 @@ import type { ExecutionFilterType } from '../../executions.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -181,6 +181,8 @@ const goToUpgrade = () => {
 				:running-executions-count="executionsStore.concurrentExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:is-initial-load="!executionsStore.initialLoadComplete"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<ExecutionStopAllText :executions="props.executions" />

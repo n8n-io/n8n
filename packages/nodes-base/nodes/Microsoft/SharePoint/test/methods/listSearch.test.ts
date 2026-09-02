@@ -2,7 +2,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { MicrosoftSharePoint } from '../../MicrosoftSharePoint.node';
+import { MicrosoftSharePointV1, versionDescription } from '../../v1/MicrosoftSharePointV1.node';
 import { credentials } from '../credentials';
 import type { Mock } from 'vitest';
 
@@ -10,7 +10,7 @@ describe('Microsoft SharePoint Node', () => {
 	describe('List search', () => {
 		let loadOptionsFunctions: MockProxy<ILoadOptionsFunctions>;
 		let mockRequestWithAuthentication: Mock;
-		let node: MicrosoftSharePoint;
+		let node: MicrosoftSharePointV1;
 
 		beforeEach(() => {
 			loadOptionsFunctions = mock<ILoadOptionsFunctions>();
@@ -19,7 +19,7 @@ describe('Microsoft SharePoint Node', () => {
 			loadOptionsFunctions.getCredentials.mockResolvedValue(
 				credentials.microsoftSharePointOAuth2Api,
 			);
-			node = new MicrosoftSharePoint();
+			node = new MicrosoftSharePointV1(versionDescription);
 		});
 
 		afterEach(() => {

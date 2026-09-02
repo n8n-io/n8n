@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -11,18 +11,18 @@ import { notionMockServer, linearMockServer } from '../registry/mock-servers';
 
 describe('McpRegistryTestController', () => {
 	const deleteQueryBuilder = {
-		delete: jest.fn().mockReturnThis(),
-		from: jest.fn().mockReturnThis(),
-		execute: jest.fn().mockResolvedValue({}),
+		delete: vi.fn().mockReturnThis(),
+		from: vi.fn().mockReturnThis(),
+		execute: vi.fn().mockResolvedValue({}),
 	};
 
 	const transactionManager = {
-		createQueryBuilder: jest.fn().mockReturnValue(deleteQueryBuilder),
-		insert: jest.fn().mockResolvedValue({}),
+		createQueryBuilder: vi.fn().mockReturnValue(deleteQueryBuilder),
+		insert: vi.fn().mockResolvedValue({}),
 	};
 
 	const manager = {
-		transaction: jest.fn(
+		transaction: vi.fn(
 			async (runInTransaction: (m: typeof transactionManager) => Promise<unknown>) =>
 				await runInTransaction(transactionManager),
 		),
@@ -37,7 +37,7 @@ describe('McpRegistryTestController', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv, E2E_TESTS: 'true' };
 	});
 
@@ -68,10 +68,13 @@ describe('McpRegistryTestController', () => {
 			await expect(controller.seed()).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError in production even when E2E_TESTS is set', async () => {
+		it('should seed when NODE_ENV is production and E2E_TESTS is set', async () => {
 			process.env.NODE_ENV = 'production';
+			service.handleReloadMcpRegistry.mockResolvedValue();
 
-			await expect(controller.seed()).rejects.toThrow(ForbiddenError);
+			const result = await controller.seed();
+
+			expect(result).toEqual({ ok: true, count: 2 });
 		});
 	});
 });

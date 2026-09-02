@@ -2,14 +2,19 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { sleep, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
+import { InstanceActivationService } from '@/services/instance-activation.service';
 import { Telemetry } from '@/telemetry';
 
+import { maskCreditsForDisplay } from './instance-ai-credit-display';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
@@ -45,6 +50,16 @@ export class InstanceAiCreditService {
 	/** Max attempts for the idempotent token-usage claim before giving up. */
 	private static readonly CLAIM_MAX_ATTEMPTS = 3;
 
+	/**
+	 * Set once the service has confirmed the pool is locked, to skip re-asserting on every read.
+	 * Purely an optimisation: the durable state is the activation settings row plus the
+	 * service-side flag, so a fresh process or a lost value just re-fires an idempotent call.
+	 */
+	private quotaLockConfirmed = false;
+
+	/** Memoised once the message threshold is met. Monotonic — messages are never un-sent. */
+	private messageThresholdReached = false;
+
 	constructor(
 		logger: Logger,
 		private readonly aiService: AiService,
@@ -52,8 +67,92 @@ export class InstanceAiCreditService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly settingsService: InstanceAiSettingsService,
+		private readonly activationService: InstanceActivationService,
+		private readonly messageRepo: InstanceAiMessageRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
+	}
+
+	/**
+	 * Apply the activation lock if this instance is in the capped trial cohort and has met the
+	 * trigger: it has activated (first successful production execution) **and** has sent the
+	 * assistant at least `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` messages.
+	 *
+	 * Both halves matter. Activation alone would wall a user who activated before ever opening the
+	 * assistant — they would get no use of it at all, which is worse than the control variant and
+	 * makes their conversion signal meaningless. Requiring messages guarantees the cohort actually
+	 * experiences the product before being asked to pay.
+	 *
+	 * Best-effort and idempotent: there is no event-driven trigger, so this runs whenever credits are
+	 * read or a proxy token is minted. A failed call, an evicted Redis record or a restarted process
+	 * all repair themselves on the next interaction. Never throws — a locking failure must not break
+	 * the caller's own work.
+	 */
+	async ensureQuotaLockApplied(user: User): Promise<void> {
+		// Everything is inside the try, including the prerequisite reads: a run awaits this before
+		// starting, so a blip reading the activation row or the message count must not take the run
+		// down with it. Whatever fails, the next interaction re-attempts.
+		try {
+			if (await this.shouldSkipQuotaLock()) return;
+
+			const activatedAt = await this.activationService.getActivatedAt();
+			const result = await this.aiService.lockInstanceAiQuota(user, activatedAt);
+			this.quotaLockConfirmed = result.quotaLocked;
+
+			this.logger.info('Applied Instance AI activation lock', {
+				userId: user.id,
+				activatedAt,
+				quotaLocked: result.quotaLocked,
+				creditsQuota: result.creditsQuota,
+				creditsClaimed: result.creditsClaimed,
+			});
+
+			// Tell the editor straight away so it can warn before the user types. The claim path
+			// can't do this: a locked run is refused at token mint, so it never reaches a claim.
+			if (result.quotaLocked) {
+				this.push.sendToUsers(
+					{
+						type: 'updateInstanceAiCredits',
+						data: maskCreditsForDisplay(
+							{ ...result, quotaLocked: true },
+							this.settingsService.isActivationCapped(),
+						),
+					},
+					[user.id],
+				);
+			}
+		} catch (error) {
+			// Left unconfirmed on purpose so the next read retries.
+			this.logger.warn('Failed to apply Instance AI activation lock', {
+				error: getErrorMessage(error),
+				userId: user.id,
+			});
+		}
+	}
+
+	/**
+	 * Whether the lock can't be applied yet. Ordered cheapest first, so the common cases — already
+	 * locked, not in the cohort, no proxy — settle in memory without touching the database.
+	 */
+	private async shouldSkipQuotaLock(): Promise<boolean> {
+		if (this.quotaLockConfirmed) return true;
+		if (!this.settingsService.isActivationCapped()) return true;
+		// The lock is a credit-pool operation, so it is meaningless without the proxy. Note this
+		// needs the AI-assistant licence *and* a base URL, not just the base URL.
+		if (!this.aiService.isProxyEnabled()) return true;
+
+		// Activation alone isn't enough: see the two halves of the trigger above.
+		if ((await this.activationService.getActivatedAt()) === undefined) return true;
+
+		// Raising the threshold above one needs a look at what these rows are: they come from the
+		// agent memory layer, so "N rows" is only "N times the user pressed send" if nothing else
+		// writes a `user` row. At one that assumption costs nothing; above one, over-counting would
+		// lock earlier than intended.
+		this.messageThresholdReached ||= await this.messageRepo.hasAtLeastUserMessages(
+			this.settingsService.getActivationLockMessageThreshold(),
+		);
+		return !this.messageThresholdReached;
 	}
 
 	/**
@@ -102,7 +201,7 @@ export class InstanceAiCreditService {
 		// later run can re-attempt, and reports the failure.
 		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			result = await this.claimTokensWithRetry(user, dedupeId, usage);
+			result = await this.claimTokensWithRetry(user, threadId, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -161,14 +260,12 @@ export class InstanceAiCreditService {
 		this.push.sendToUsers(
 			{
 				type: 'updateInstanceAiCredits',
-				data: {
-					creditsQuota,
-					creditsClaimed,
+				data: maskCreditsForDisplay(
+					{ creditsQuota, creditsClaimed },
+					this.settingsService.isActivationCapped(),
 					// Only attach the per-thread total when we actually computed one.
-					...(totalCreditsUsed !== undefined
-						? { creditsPerThread: { threadId, totalCreditsUsed } }
-						: {}),
-				},
+					totalCreditsUsed !== undefined ? { threadId, totalCreditsUsed } : undefined,
+				),
 			},
 			[user.id],
 		);
@@ -202,12 +299,13 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
+	 * Fetch a fresh Instance AI proxy auth token and return the client +
+	 * Authorization headers. Each caller gets a unique token (separate nanoid)
+	 * for audit tracking.
 	 */
 	private async getProxyAuth(user: User) {
 		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
+		const token = await client.getInstanceAiApiProxyToken(
 			{ id: user.id },
 			{ userMessageId: nanoid() },
 		);
@@ -217,10 +315,22 @@ export class InstanceAiCreditService {
 		};
 	}
 
-	/** Single authoritative claim call against the proxy. */
-	private async claimTokens(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	/**
+	 * Single authoritative claim call against the Instance AI pool. Forwards
+	 * `threadId` so the service can attach it to the claim telemetry.
+	 */
+	private async claimTokens(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		const { client, headers } = await this.getProxyAuth(user);
-		return await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
+		return await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
+			dedupeId,
+			usage,
+			threadId,
+		});
 	}
 
 	/**
@@ -228,11 +338,16 @@ export class InstanceAiCreditService {
 	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
 	 * attempt fails.
 	 */
-	private async claimTokensWithRetry(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	private async claimTokensWithRetry(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= InstanceAiCreditService.CLAIM_MAX_ATTEMPTS; attempt++) {
 			try {
-				return await this.claimTokens(user, dedupeId, usage);
+				return await this.claimTokens(user, threadId, dedupeId, usage);
 			} catch (error) {
 				lastError = error;
 				this.logger.debug('Instance AI credit claim attempt failed', {

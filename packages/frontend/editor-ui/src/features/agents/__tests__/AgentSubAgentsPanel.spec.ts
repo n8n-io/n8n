@@ -1,21 +1,17 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from '@n8n/api-types';
 
-import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type { AgentJsonConfig } from '../types';
 import type { AgentModelSelection } from '../model-providers';
 
-const ensureLoadedMock = vi.fn();
-const projectAgentsListRef = ref<AgentResource[] | null>([]);
-const openModalWithDataMock = vi.fn();
 const showErrorMock = vi.fn();
 const ensureModelCatalogLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
@@ -40,11 +36,10 @@ vi.mock('@n8n/i18n', () => ({
 			({
 				'agents.builder.subAgents.title': 'Sub-agents',
 				'agents.builder.subAgents.description': 'Sub-agents description',
-				'agents.builder.subAgents.add': 'Add agent',
-				'agents.builder.subAgents.loadError': 'Could not load project agents',
-				'agents.builder.subAgents.remove': 'Remove {name}',
 				'agents.builder.subAgents.maxChildren.label': 'Max parallel sub-agents',
 				'agents.builder.subAgents.maxChildren.hint': 'Max children hint',
+				'agents.builder.subAgents.customModelRouting.label': 'Custom model routing',
+				'agents.builder.subAgents.customModelRouting.hint': 'Custom model routing hint',
 				'agents.builder.subAgents.modelsByDifficulty.title': 'Inline sub-agent models',
 				'agents.builder.subAgents.modelsByDifficulty.hint': 'Inline models hint',
 				'agents.builder.subAgents.modelsByDifficulty.low.label': 'Low difficulty',
@@ -62,45 +57,48 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('../composables/useProjectAgentsList', () => ({
-	useProjectAgentsList: () => ({
-		list: projectAgentsListRef,
-		ensureLoaded: ensureLoadedMock,
-	}),
-}));
+vi.mock('../composables/useModelCatalog', async () => {
+	const { AI_GATEWAY_MANAGED_TAG: managedTag } = await import('@n8n/api-types');
+	const anthropicModel = (model: string, name: string) => ({
+		provider: 'anthropic',
+		model,
+		name,
+		description: null,
+		createdAt: null,
+		metadata: { functionCalling: true, available: true },
+	});
 
-vi.mock('../composables/useModelCatalog', () => ({
-	useModelCatalog: () => ({
-		ensureLoaded: ensureModelCatalogLoadedMock,
-		getModelsForPicker: () => ({
-			anthropic: {
-				models: [
-					{
-						provider: 'anthropic',
-						model: 'claude-sonnet-4-5',
-						name: 'Claude Sonnet 4.5',
-						description: null,
-						createdAt: null,
-						metadata: { functionCalling: true, available: true },
-					},
-				],
-			},
-			openai: {
-				models: [
-					{
-						provider: 'openai',
-						model: 'gpt-4o-mini',
-						name: 'GPT-4o mini',
-						description: null,
-						createdAt: null,
-						metadata: { functionCalling: true, available: true },
-					},
-				],
-			},
+	return {
+		useModelCatalog: () => ({
+			ensureLoaded: ensureModelCatalogLoadedMock,
+			getModelsForPicker: (credentials?: Record<string, string | null> | null) => ({
+				anthropic: {
+					models: [
+						anthropicModel('claude-sonnet-4-5', 'Claude Sonnet 4.5'),
+						// n8n Connect serves an allowlist; a user's own credential sees the
+						// provider's full catalog.
+						...(credentials?.anthropic === managedTag
+							? []
+							: [anthropicModel('claude-opus-5', 'Claude Opus 5')]),
+					],
+				},
+				openai: {
+					models: [
+						{
+							provider: 'openai',
+							model: 'gpt-4o-mini',
+							name: 'GPT-4o mini',
+							description: null,
+							createdAt: null,
+							metadata: { functionCalling: true, available: true },
+						},
+					],
+				},
+			}),
+			isLoading: ref(false),
 		}),
-		isLoading: ref(false),
-	}),
-}));
+	};
+});
 
 vi.mock('../composables/useAgentModelCredentials', () => ({
 	useAgentModelCredentials: () => ({
@@ -109,16 +107,12 @@ vi.mock('../composables/useAgentModelCredentials', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
-}));
-
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openModalWithData: openModalWithDataMock }),
 }));
 
 vi.mock('../components/AgentModelSelector.vue', () => ({
@@ -131,7 +125,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'isLoading',
 			'projectId',
 			'warnMissingCredentials',
-			'horizontal',
 			'disabled',
 		],
 		emits: ['change', 'selectCredential'],
@@ -147,31 +140,25 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nCard: {
-		template: '<div><slot name="prepend" /><slot /><slot name="append" /></div>',
-		props: ['variant'],
-	},
-	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nIconButton: {
 		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
 		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
 	},
-	N8nInputNumber2: {
+	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
 		emits: ['update:modelValue'],
 		template:
 			'<input :value="modelValue" :disabled="disabled" :min="min" :max="max" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
-	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nSwitch2: {
+		props: ['modelValue', 'disabled'],
+		emits: ['update:modelValue'],
+		template:
+			'<button type="button" data-testid="agent-sub-agents-custom-model-routing-toggle" :disabled="disabled" :data-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
-
-const publishedSubAgent: AgentResource = {
-	id: 'agent-2',
-	name: 'Helper Agent',
-	activeVersionId: 'version-2',
-} as AgentResource;
 
 const defaultConfig: AgentJsonConfig = {
 	name: 'Agent',
@@ -213,24 +200,203 @@ function emitDifficultyCredentialChange(
 	handler(provider, credentialId);
 }
 
+async function enableCustomModelRouting(wrapper: Awaited<ReturnType<typeof mountPanel>>) {
+	await wrapper
+		.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+		.trigger('click');
+	await flushPromises();
+}
+
 describe('AgentSubAgentsPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentModelSelectorChangeHandlers.clear();
 		agentModelSelectorCredentialHandlers.clear();
-		projectAgentsListRef.value = [];
 		credentialsByProviderRef.value = {
 			anthropic: 'anthropic-cred',
 			openai: 'openai-cred',
 		};
-		ensureLoadedMock.mockResolvedValue([]);
 		ensureModelCatalogLoadedMock.mockResolvedValue(undefined);
 	});
 
-	it('renders the max-children input and inline difficulty model selectors', async () => {
+	it('renders the max-children input and custom model routing toggle', async () => {
 		const wrapper = await mountPanel();
+
 		expect(wrapper.find('[data-testid="agent-sub-agents-max-children-input"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]').exists(),
+		).toBe(true);
+		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-sub-agents-difficulty-low-model"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('does not render a standalone settings section heading', async () => {
+		const wrapper = await mountPanel();
+
+		expect(wrapper.text()).not.toContain('Sub-agents');
+		expect(wrapper.text()).not.toContain('Sub-agents description');
+	});
+
+	it('passes the managed tag as the difficulty selector credential', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+		} as AgentJsonConfig);
+		await flushPromises();
+
+		const lowSelector = wrapper
+			.find('[data-testid="agent-sub-agents-difficulty-row-low"]')
+			.findComponent({ name: 'AgentModelSelector' });
+
+		// The selector derives its managed state from this, so passing the tag through
+		// is the whole contract.
+		expect((lowSelector.props('credentials') as Record<string, string>).anthropic).toBe(
+			AI_GATEWAY_MANAGED_TAG,
+		);
+	});
+
+	it('offers each difficulty the models of the credential it uses', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		} as AgentJsonConfig);
+		await flushPromises();
+
+		const anthropicModelIds = (difficulty: string) => {
+			const models = wrapper
+				.find(`[data-testid="agent-sub-agents-difficulty-row-${difficulty}"]`)
+				.findComponent({ name: 'AgentModelSelector' })
+				.props('modelsByProvider') as Record<string, { models: Array<{ model: string }> }>;
+			return models.anthropic.models.map((model) => model.model);
+		};
+
+		expect(anthropicModelIds('low')).not.toContain('claude-opus-5');
+		expect(anthropicModelIds('high')).toContain('claude-opus-5');
+	});
+
+	it('keeps a difficulty managed-tag selection out of the shared selection', async () => {
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		// Writing the shared (localStorage) selection would leak the choice into the
+		// other difficulties and the main model selector, and outlive the session.
+		expect(selectCredentialMock).not.toHaveBeenCalled();
+
+		// A model picked for a different difficulty still gets the global credential.
+		emitDifficultyModelChange('agent-sub-agents-difficulty-medium-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.medium?.credential).toBe('anthropic-cred');
+	});
+
+	it('persists the managed tag when a difficulty model is chosen against it', async () => {
+		credentialsByProviderRef.value = { anthropic: AI_GATEWAY_MANAGED_TAG };
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('persists a real credential chosen before the model, not the global fallback', async () => {
+		// Global fallback for anthropic is `anthropic-cred`; the user picks a different
+		// real credential row first, then a model.
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			'anthropic-cred-2',
+		);
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe('anthropic-cred-2');
+	});
+
+	it('persists the managed tag when n8n Connect is chosen after an own credential, before the model', async () => {
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		// 1. Own credential first — held as this difficulty's pending credential.
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			'anthropic-cred-2',
+		);
+		// 2. Switch to n8n Connect before picking a model — replaces the pending choice
+		// for this difficulty without touching the shared selection.
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+		// 3. Pick a model — the stale own credential must not shadow the managed tag.
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('shows inline difficulty model selectors when custom routing is enabled', async () => {
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
 		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Inline sub-agent models');
+		expect(wrapper.text()).not.toContain('Inline models hint');
 		expect(wrapper.find('[data-testid="agent-sub-agents-difficulty-low-model"]').exists()).toBe(
 			true,
 		);
@@ -240,6 +406,60 @@ describe('AgentSubAgentsPanel', () => {
 		expect(wrapper.find('[data-testid="agent-sub-agents-difficulty-high-model"]').exists()).toBe(
 			true,
 		);
+	});
+
+	it('shows inline difficulty model selectors when config has difficulty mappings', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		});
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+				.attributes('data-checked'),
+		).toBe('true');
+		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-sub-agents-difficulty-high-model"]').exists()).toBe(
+			true,
+		);
+	});
+
+	it('resets custom model routing when switching to an agent without difficulty mappings', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		});
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+				.attributes('data-checked'),
+		).toBe('true');
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		await wrapper.setProps({
+			config: {
+				...defaultConfig,
+				subAgents: {},
+			},
+		});
+		await flushPromises();
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+				.attributes('data-checked'),
+		).toBe('false');
+		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(false);
 	});
 
 	it('initialises max-children input to the default when unset in config', async () => {
@@ -312,6 +532,7 @@ describe('AgentSubAgentsPanel', () => {
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			},
 		});
+		await enableCustomModelRouting(wrapper);
 		await flushPromises();
 
 		emitDifficultyModelChange('agent-sub-agents-difficulty-high-model', {
@@ -334,6 +555,32 @@ describe('AgentSubAgentsPanel', () => {
 				},
 			},
 		]);
+	});
+
+	it('turns custom model routing off and clears difficulty mappings', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				maxChildren: 4,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		});
+
+		await wrapper
+			.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+			.trigger('click');
+
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.subAgents).toEqual({
+			maxChildren: 4,
+			agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+		});
+		expect(last.subAgents).not.toHaveProperty('modelsByDifficulty');
+		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(false);
 	});
 
 	it('updates only the matching difficulty credential when a credential is selected', async () => {
@@ -440,81 +687,7 @@ describe('AgentSubAgentsPanel', () => {
 		expect(selectCredentialMock).not.toHaveBeenCalled();
 	});
 
-	it('opens the sub-agents modal after project agents load successfully', async () => {
-		projectAgentsListRef.value = [publishedSubAgent];
-		const wrapper = await mountPanel();
-		await flushPromises();
-		const callsAfterMount = ensureLoadedMock.mock.calls.length;
-
-		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
-		await flushPromises();
-
-		expect(ensureLoadedMock.mock.calls.length).toBe(callsAfterMount + 1);
-		expect(openModalWithDataMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: AGENT_SUB_AGENTS_MODAL_KEY,
-				data: expect.objectContaining({
-					agents: [{ id: 'agent-2', name: 'Helper Agent' }],
-				}),
-			}),
-		);
-		expect(showErrorMock).not.toHaveBeenCalled();
-	});
-
-	it('shows an error toast and does not open the modal when project agents fail to load', async () => {
-		const wrapper = await mountPanel();
-		await flushPromises();
-		const callsAfterMount = ensureLoadedMock.mock.calls.length;
-
-		const loadError = new Error('network');
-		ensureLoadedMock.mockRejectedValueOnce(loadError);
-
-		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
-		await flushPromises();
-
-		expect(ensureLoadedMock.mock.calls.length).toBe(callsAfterMount + 1);
-		expect(showErrorMock).toHaveBeenCalledWith(loadError, 'Could not load project agents');
-		expect(openModalWithDataMock).not.toHaveBeenCalled();
-	});
-
-	it('emits update:config when the modal confirms an added agent with useWhen guidance', async () => {
-		projectAgentsListRef.value = [publishedSubAgent];
-		const wrapper = await mountPanel({
-			...defaultConfig,
-			subAgents: { maxChildren: 7 },
-		});
-		await flushPromises();
-
-		await wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').trigger('click');
-		await flushPromises();
-
-		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
-			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
-		};
-		modalCall.data.onConfirm({
-			agentId: 'agent-2',
-			useWhen: 'Use for billing escalations.',
-		});
-
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([
-			{
-				subAgents: {
-					maxChildren: 7,
-					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
-				},
-			},
-		]);
-	});
-
-	it('removes a selected sub-agent and preserves the remaining refs and maxChildren', async () => {
-		projectAgentsListRef.value = [
-			publishedSubAgent,
-			{
-				id: 'agent-3',
-				name: 'Other Agent',
-				activeVersionId: 'version-3',
-			} as AgentResource,
-		];
+	it('does not render selected sub-agent rows in the settings panel', async () => {
 		const wrapper = await mountPanel({
 			...defaultConfig,
 			subAgents: {
@@ -525,67 +698,8 @@ describe('AgentSubAgentsPanel', () => {
 				],
 			},
 		});
-		await flushPromises();
 
-		const rows = wrapper.findAll('[data-testid="agent-sub-agent-row"]');
-		expect(rows).toHaveLength(2);
-
-		const removeButtons = wrapper.findAll('[data-testid="agent-sub-agent-remove"]');
-		expect(removeButtons).toHaveLength(2);
-		await removeButtons[0].trigger('click');
-
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([
-			{
-				subAgents: {
-					maxChildren: 6,
-					agents: [{ agentId: 'agent-3', useWhen: 'Use for research tasks.' }],
-				},
-			},
-		]);
-	});
-
-	it('opens the configure modal for an existing sub-agent and updates useWhen', async () => {
-		projectAgentsListRef.value = [publishedSubAgent];
-		const wrapper = await mountPanel({
-			...defaultConfig,
-			subAgents: {
-				maxChildren: 6,
-				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
-			},
-		});
-		await flushPromises();
-
-		await wrapper.find('[data-testid="agent-sub-agent-row"]').trigger('click');
-
-		const modalCall = openModalWithDataMock.mock.calls[0]?.[0] as {
-			data: {
-				selectedAgent: { id: string; name: string };
-				useWhen?: string;
-				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
-			};
-		};
-		expect(modalCall).toEqual(
-			expect.objectContaining({
-				name: AGENT_SUB_AGENTS_MODAL_KEY,
-				data: expect.objectContaining({
-					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
-					useWhen: 'Use for billing escalations.',
-				}),
-			}),
-		);
-
-		modalCall.data.onConfirm({
-			agentId: 'agent-2',
-			useWhen: 'Use for invoices and payment status.',
-		});
-
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([
-			{
-				subAgents: {
-					maxChildren: 6,
-					agents: [{ agentId: 'agent-2', useWhen: 'Use for invoices and payment status.' }],
-				},
-			},
-		]);
+		expect(wrapper.find('[data-testid="agent-sub-agent-row"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-sub-agents-open-add-modal"]').exists()).toBe(false);
 	});
 });

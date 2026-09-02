@@ -11,24 +11,36 @@ import {
 	createEpisodicMemoryReflectFn,
 } from '../memory/episodic-memory-defaults';
 
-type GenerateObjectCall = {
+type GenerateTextCall = {
+	output: {
+		schema: {
+			parse(value: unknown): unknown;
+		};
+	};
+};
+
+type OutputObjectOptions = {
 	schema: {
 		parse(value: unknown): unknown;
 	};
 };
 
-type GenerateObjectResult = { object: unknown; usage?: { totalTokens?: number } };
+type GenerateTextResult = { output: unknown; usage?: { totalTokens?: number } };
 
-const { mockGenerateObject } = vi.hoisted(() => ({
-	mockGenerateObject: vi.fn<(...args: [GenerateObjectCall]) => Promise<GenerateObjectResult>>(),
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
 }));
 
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateObject: async (call: GenerateObjectCall): Promise<GenerateObjectResult> =>
-			await mockGenerateObject(call),
+		Output: {
+			...actual.Output,
+			object: ({ schema }: OutputObjectOptions) => ({ schema }),
+		},
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
+			await mockGenerateText(call),
 	};
 });
 
@@ -36,7 +48,7 @@ const fakeModel = { doGenerate: vi.fn() } as unknown as ModelConfig;
 
 describe('episodic memory defaults', () => {
 	beforeEach(() => {
-		mockGenerateObject.mockReset();
+		mockGenerateText.mockReset();
 	});
 
 	it('defines the default extraction and reflection policy', () => {
@@ -124,8 +136,8 @@ describe('episodic memory defaults', () => {
 	});
 
 	it('rejects extracted entries without source evidence', async () => {
-		mockGenerateObject.mockImplementation(async ({ schema }) => {
-			const object = schema.parse({
+		mockGenerateText.mockImplementation(async ({ output }) => {
+			const parsedOutput = output.schema.parse({
 				entries: [
 					{
 						content: 'User chose Postgres for the memory store.',
@@ -133,7 +145,7 @@ describe('episodic memory defaults', () => {
 					},
 				],
 			});
-			return await Promise.resolve({ object });
+			return await Promise.resolve({ output: parsedOutput });
 		});
 
 		await expect(
@@ -151,8 +163,8 @@ describe('episodic memory defaults', () => {
 	});
 
 	it('rejects reflection merges without superseded entry IDs', async () => {
-		mockGenerateObject.mockImplementation(async ({ schema }) => {
-			const object = schema.parse({
+		mockGenerateText.mockImplementation(async ({ output }) => {
+			const parsedOutput = output.schema.parse({
 				drop: [],
 				merge: [
 					{
@@ -161,7 +173,7 @@ describe('episodic memory defaults', () => {
 					},
 				],
 			});
-			return await Promise.resolve({ object });
+			return await Promise.resolve({ output: parsedOutput });
 		});
 
 		await expect(
@@ -182,9 +194,9 @@ describe('episodic memory defaults', () => {
 			incrementTokenCount: vi.fn(),
 		};
 
-		mockGenerateObject.mockImplementationOnce(async ({ schema }) => {
-			const object = schema.parse({ entries: [] });
-			return await Promise.resolve({ object, usage: { totalTokens: 11 } });
+		mockGenerateText.mockImplementationOnce(async ({ output }) => {
+			const parsedOutput = output.schema.parse({ entries: [] });
+			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 11 } });
 		});
 
 		await createEpisodicMemoryExtractFn(fakeModel)({
@@ -197,9 +209,9 @@ describe('episodic memory defaults', () => {
 			executionCounter: counter,
 		});
 
-		mockGenerateObject.mockImplementationOnce(async ({ schema }) => {
-			const object = schema.parse({ drop: [], merge: [] });
-			return await Promise.resolve({ object, usage: { totalTokens: 13 } });
+		mockGenerateText.mockImplementationOnce(async ({ output }) => {
+			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
+			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 13 } });
 		});
 
 		await createEpisodicMemoryReflectFn(fakeModel)({

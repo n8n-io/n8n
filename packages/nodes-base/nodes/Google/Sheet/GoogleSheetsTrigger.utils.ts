@@ -1,7 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import zip from 'lodash/zip';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 
 import type { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 import { apiRequest } from './v2/transport';

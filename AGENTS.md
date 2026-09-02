@@ -11,17 +11,36 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- Write all technical text (code comments, PR descriptions, issue and ticket
+  descriptions, docs) in ASD-STE100 Simplified Technical English: use short
+  sentences, the active voice, and one instruction for each sentence
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
+  of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
+  subcommand or baked into a flag — are dropped, and the home dir is stripped from
+  paths, but other args are sent as-is — so never put secrets in a command. Pass
+  sensitive values via environment variables, which are never captured.
 - When adding comments, keep them concise and to the point - explain the "why"
   in a line or two; don't be overly verbose. Comments should be scoped and
   relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
+- To find registered telemetry events (names, descriptions, properties), run
+  `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
+  registry is being adopted incrementally, so search call sites if the catalog
+  has no match. The `n8n:telemetry` skill covers adding or changing events
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 
 ## Agent Skills and Claude Code Plugin
 
@@ -110,8 +129,8 @@ The monorepo is organized into these key packages:
 - **`packages/workflow`**: Core workflow interfaces and types
 - **`packages/core`**: Workflow execution engine
 - **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
+- **`packages/frontend/editor-ui`**: Vue 3 frontend application
+- **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
 - **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
@@ -122,7 +141,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -173,17 +192,58 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
+- Don't use the deprecated `ApplicationError` class anywhere — it's a
+  compatibility shim kept only so community nodes keep resolving. Use one of
+  these instead, picking by cause:
+  - `UserError` — the user caused it (invalid input, unauthorized action,
+    business-rule violation).
+  - `OperationalError` — a transient, expected issue (network request failing,
+    DB query timing out) that should be handled gracefully.
+  - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
+    failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
+
+### Persistence layer & the TypeORM boundary
+
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
+package or a backend module's own `database/` folder (entity/repository files).
+Business logic — services, controllers, handlers, commands, factories — must not
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
+`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
+a new import (or an inline `eslint-disable` of the rule) fails CI.
+
+- **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
+  `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
+  that takes plain parameters and returns domain-shaped values — not a generic
+  `find(options)` passthrough.
+- **Transactions:** transaction orchestration belongs in the persistence layer.
+  Don't reach for `.manager` / `.manager.transaction(...)` or
+  `createQueryBuilder(...)` in business logic. Use the sanctioned primitive in
+  `@n8n/db`: inject the abstract `TransactionRunner` and wrap the unit of work in
+  `txRunner.run(ctx, async (ctx) => …)`. The callback receives an
+  `OperationContext` carrying the active transaction; thread that `ctx` into the
+  repository methods you call. `run` **requires** a context — pass an empty `{}`
+  at the operation entry point, and reuse the one you were handed everywhere
+  below it (a context that already carries a transaction is joined, not nested).
+  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
+  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
+  driver type to business logic. See `oauth-token.service.ts` +
+  `oauth-*-token.repository.ts` for a worked example.
+- **Anti-patterns reviewers reject** — they hide the dependency instead of
+  removing it:
+  - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
+  - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
+    (`@n8n/db` re-exports several operators/types, but this relabels the
+    dependency rather than removing it).
+  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
+    operator import — trades a visible leak for an invisible one.
 
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
@@ -195,24 +255,32 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
+- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
 - **To iterate on a feature without docker rebuilds**, boot service containers
-  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
+  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
+  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
+  server runs. See
+  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
+  dependencies, starts the backend, waits for health, shares the port with the
+  org, and prints the URL. See
+  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
+- **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
 
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module-guide.md`
+   `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 
@@ -255,6 +323,18 @@ titles, test descriptions, and Linear URLs.
 - **Code comments:** Do not describe the attack scenario in comments.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
+
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

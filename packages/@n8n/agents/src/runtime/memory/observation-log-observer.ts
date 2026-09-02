@@ -1,4 +1,7 @@
+import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
+
 import { renderObservationLog } from './observation-log-renderer';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
@@ -9,9 +12,9 @@ import type {
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -28,12 +31,15 @@ const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
-const REDACTED_VALUE = '[redacted]';
-const SENSITIVE_KEY_PATTERN =
-	/(?:^|[_-])(?:api[-_]?key|authorization|credential|password|secret|token|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|session[-_]?cookie)(?:$|[_-])/i;
-const INLINE_AUTHORIZATION_PATTERN = /\b(authorization\s*[:=]\s*)(?:[a-z][\w.-]*\s+)?[^\s"',&;]+/gi;
-const INLINE_SECRET_ASSIGNMENT_PATTERN =
-	/\b((?:api[-_]?key|password|secret|token|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*)[^\s"',&;]+/gi;
+const REDACTED_VALUE = '[REDACTED]';
+// Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
+// a few key names that vocabulary doesn't cover (bare `token`, private keys,
+// client secrets, session cookies) — catches secrets sitting under a
+// sensitive object key regardless of value shape.
+const SENSITIVE_KEY_PATTERN = new RegExp(
+	`(?:^|[_-])(?:${SECRET_KEYS}|token|private[_-]?key|client[_-]?secret|session[_-]?cookie)(?:$|[_-])`,
+	'i',
+);
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -72,10 +78,11 @@ export interface RunObservationLogObserverOpts {
 	now?: Date;
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type RunObservationLogObserverResult =
-	| { status: 'skipped'; reason: 'no-delta' }
+	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
 	| { status: 'skipped'; reason: 'below-threshold'; tokenCount: number }
 	| {
 			status: 'ran';
@@ -125,14 +132,26 @@ export function renderObserverTranscript(
 	const lines: string[] = [];
 	for (const message of messages) {
 		if (!isLlmMessage(message)) continue;
-		const timestamp = message.createdAt.toISOString();
+		// Store adapters are an open interface: a JSON-backed one hands back
+		// createdAt as an ISO string, so coerce before rendering.
+		const createdAt =
+			message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
+		const timestamp = createdAt.toISOString();
 		const text = message.content
 			.filter((content): content is { type: 'text'; text: string } => content.type === 'text')
 			.map((content) => content.text)
 			.join('\n');
 		if (text) {
-			lines.push(`[${timestamp}] ${message.role}:`);
-			lines.push(text);
+			// Messages synthesized from tool output (toMessage, e.g. MCP rich
+			// results) carry tool provenance and must stay inside the
+			// untrusted-data boundary like inline tool results.
+			if (message.origin?.kind === 'tool') {
+				lines.push(`[${timestamp}] tool_message ${message.origin.toolName}:`);
+				lines.push(wrapUntrustedObserverData(redactText(text).text, message.origin.toolName));
+			} else {
+				lines.push(`[${timestamp}] ${message.role}:`);
+				lines.push(redactText(text).text);
+			}
 		}
 
 		for (const toolCall of message.content.filter(isToolCallContent)) {
@@ -141,11 +160,11 @@ export function renderObserverTranscript(
 			);
 			if (toolCall.state === 'resolved') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} output=${serializeForObserver(toolCall.output, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options), toolCall.toolName)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} error=${serializeErrorForObserver(toolCall.error, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} error=${wrapUntrustedObserverData(serializeErrorForObserver(toolCall.error, options), toolCall.toolName)}`,
 				);
 			}
 		}
@@ -172,9 +191,19 @@ export async function runObservationLogObserver(
 	);
 	if (deltaMessages.length === 0) return { status: 'skipped', reason: 'no-delta' };
 
+	// A pending tool call (e.g. suspended for a HITL approval) has no outcome
+	// yet. Observing past its host would advance the cursor over it, and the
+	// later in-place resolution would land behind the cursor — masked from the
+	// LLM window and never part of a future observer delta. Observe only the
+	// messages before the host; the rest is picked up once the call settles.
+	const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
+	const observable =
+		firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
+	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
-	const transcript = renderObserverTranscript(deltaMessages);
-	const tokenCount = tokenCounter(transcript);
+	const transcript = renderObserverTranscript(observable);
+	const tokenCount = await tokenCounter(transcript);
 	if (tokenCount < opts.observerThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -191,12 +220,13 @@ export async function runObservationLogObserver(
 	const markdown = await opts.observe({
 		observationScopeId,
 		now,
-		deltaMessages,
+		deltaMessages: observable,
 		transcript,
 		transcriptTokenCount: tokenCount,
 		observationLogTail,
 		renderedObservationLogTail,
 		executionCounter: opts.executionCounter,
+		telemetry: opts.telemetry,
 	});
 
 	const parsed = parseObservationLogMarkdown(markdown);
@@ -204,8 +234,20 @@ export async function runObservationLogObserver(
 		opts.onMalformedLine?.(line);
 	}
 
+	const prepared = await Promise.all(
+		parsed.entries.map(async (entry) => {
+			const text = redactText(entry.text).text;
+			return {
+				marker: entry.marker,
+				parentIndex: entry.parentIndex,
+				text,
+				tokenCount: await tokenCounter(text),
+			};
+		}),
+	);
+
 	const inserted: ObservationLogEntry[] = [];
-	for (const entry of parsed.entries) {
+	for (const entry of prepared) {
 		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
 		const [row] = await memory.appendObservationLogEntries([
 			{
@@ -213,6 +255,7 @@ export async function runObservationLogObserver(
 				marker: entry.marker,
 				text: entry.text,
 				parentId,
+				tokenCount: entry.tokenCount,
 				createdAt: new Date(now.getTime() + inserted.length),
 			},
 		]);
@@ -225,12 +268,7 @@ export async function runObservationLogObserver(
 	// for them, which permanently orphans them from loaded history.
 	const cursorAdvanced = inserted.length > 0;
 	if (cursorAdvanced) {
-		await advanceObserverCursor(
-			memory,
-			observationScopeId,
-			deltaMessages[deltaMessages.length - 1],
-			now,
-		);
+		await advanceObserverCursor(memory, observationScopeId, observable[observable.length - 1], now);
 	}
 
 	return {
@@ -240,6 +278,11 @@ export async function runObservationLogObserver(
 		tokenCount,
 		skippedLines: parsed.skippedLines,
 	};
+}
+
+function hasPendingToolCall(message: AgentDbMessage): boolean {
+	if (!isLlmMessage(message)) return false;
+	return message.content.some((c) => c.type === 'tool-call' && c.state === 'pending');
 }
 
 function isLlmMessage(message: AgentDbMessage): message is AgentDbMessage & Message {
@@ -265,7 +308,7 @@ function serializeErrorForObserver(
 	options: RenderObserverTranscriptOptions,
 ): string {
 	return truncateString(
-		redactSensitiveString(error),
+		redactText(error).text,
 		options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS,
 		'string',
 	);
@@ -277,7 +320,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
 
 	if (typeof value === 'string') {
-		return truncateString(redactSensitiveString(value), maxStringChars, 'string');
+		return truncateString(redactText(value).text, maxStringChars, 'string');
 	}
 	if (value === null || typeof value !== 'object') return value;
 
@@ -312,18 +355,6 @@ function isSensitiveKey(key: string): boolean {
 	return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-function redactSensitiveString(value: string): string {
-	return value
-		.replace(
-			INLINE_AUTHORIZATION_PATTERN,
-			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
-		)
-		.replace(
-			INLINE_SECRET_ASSIGNMENT_PATTERN,
-			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
-		);
-}
-
 function shouldStripBlob(key: string, value: unknown): boolean {
 	if (typeof value !== 'string') return false;
 	if (value.length <= DEFAULT_MAX_STRING_CHARS) return false;
@@ -341,6 +372,20 @@ function safeJsonStringify(value: unknown): string {
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}
+}
+
+function escapeXmlAttribute(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+export function wrapUntrustedObserverData(content: string, source: string): string {
+	const safeSource = escapeXmlAttribute(source);
+	const safeContent = content.replace(/<\/untrusted_tool_data/gi, '&lt;/untrusted_tool_data');
+	return `<untrusted_tool_data source="${safeSource}">${safeContent}</untrusted_tool_data>`;
 }
 
 async function advanceObserverCursor(

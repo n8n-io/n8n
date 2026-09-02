@@ -1,6 +1,20 @@
 import type { CheckpointStore, SerializableAgentState } from '../../types';
 
 /**
+ * A resume raced another consumer: the run was already claimed by a concurrent
+ * resume (e.g. from another main), finished, or re-suspended on a different
+ * tool call. Benign — `level: 'warning'` keeps it out of error-level reporting.
+ */
+export class StaleResumeError extends Error {
+	readonly level = 'warning';
+
+	constructor(message: string) {
+		super(message);
+		this.name = 'StaleResumeError';
+	}
+}
+
+/**
  * Default in-memory CheckpointStore implementation.
  * Used when no external store is configured (storage: 'memory' or omitted).
  *
@@ -17,6 +31,13 @@ class MemoryCheckpointStore implements CheckpointStore {
 
 	async load(key: string): Promise<SerializableAgentState | undefined> {
 		return await Promise.resolve(this.store.get(key));
+	}
+
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		const current = this.store.get(key);
+		if (!current || current !== state || current.status !== 'suspended') return false;
+		await Promise.resolve(this.store.set(key, { ...state, status: 'running' }));
+		return true;
 	}
 
 	async delete(key: string): Promise<void> {
@@ -41,25 +62,60 @@ export class RunStateManager {
 		await this.store.save(runId, { ...state, status: 'suspended' });
 	}
 
-	// FIXME: This method is not atomic, two agents can resume the same run at the same time and one will overwrite the other.
-	/** Load a suspended run state for resumption and mark it running. Status is not updated in the store. */
+	/**
+	 * Durable-log RFC (resilience phase): per-step checkpoint. Same
+	 * serialization and store as suspend(), but status stays 'running' — one
+	 * upserted row per run, overwritten at every step boundary, so a crash
+	 * loses only the in-flight step. Deleted by complete() like any checkpoint.
+	 */
+	async checkpointStep(runId: string, state: SerializableAgentState): Promise<void> {
+		await this.store.save(runId, { ...state, status: 'running' });
+	}
+
+	/**
+	 * Durable-log RFC (resilience phase): load a checkpoint after a crash,
+	 * where status is 'running' (mid-step death) rather than 'suspended'.
+	 * Callers pair this with the interrupted-run sweeper: in-flight tool calls
+	 * are resolved as `tool-interrupted` facts, never re-executed.
+	 */
+	async loadForCrashResume(runId: string): Promise<SerializableAgentState | undefined> {
+		return await this.store.load(runId);
+	}
+
+	/**
+	 * Load a suspended run state for resumption. This is read-only so callers can
+	 * validate the resume request before claiming the checkpoint.
+	 */
 	async resume(runId: string): Promise<SerializableAgentState | undefined> {
 		const state = await this.store.load(runId);
 		if (!state) return undefined;
 		if (state.status !== 'suspended') {
-			throw new Error(`Run ${runId} is not suspended. Cannot resume.`);
+			throw new StaleResumeError(`Run ${runId} is not suspended. Cannot resume.`);
 		}
-		const newState: SerializableAgentState = { ...state, status: 'running' };
-		return newState;
+		return state;
+	}
+
+	async claimResume(runId: string, state: SerializableAgentState): Promise<boolean> {
+		if (state.status !== 'suspended') {
+			throw new StaleResumeError(`Run ${runId} is not suspended. Cannot resume.`);
+		}
+
+		if (this.store.claimForResume) {
+			return await this.store.claimForResume(runId, state);
+		}
+
+		await this.store.save(runId, { ...state, status: 'running' });
+		return true;
 	}
 
 	/** Delete a finished run from storage. Called when a resumed run completes without re-suspending. */
 	async complete(runId: string): Promise<void> {
-		try {
-			await this.store.delete(runId);
-		} catch (deleteError: unknown) {
-			console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, deleteError);
-		}
+		await this.store.delete(runId);
+	}
+
+	/** Delete a cancelled run and surface failures so its parent can remain retryable. */
+	async cancel(runId: string): Promise<void> {
+		await this.store.delete(runId);
 	}
 }
 

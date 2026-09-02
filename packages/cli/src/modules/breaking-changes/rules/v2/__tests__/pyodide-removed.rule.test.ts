@@ -6,7 +6,7 @@ describe('PyodideRemovedRule', () => {
 	let rule: PyodideRemovedRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new PyodideRemovedRule();
 	});
 

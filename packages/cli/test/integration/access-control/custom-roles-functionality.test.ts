@@ -63,8 +63,8 @@ let member3Agent: SuperAgentTest;
 describe('Custom Role Functionality Tests', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		await utils.initCredentialsTypes();

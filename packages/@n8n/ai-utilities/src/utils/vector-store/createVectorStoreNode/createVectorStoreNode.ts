@@ -22,7 +22,11 @@ import {
 } from './operations';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
-import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
+import {
+	transformDescriptionForOperationMode,
+	getOperationModeOptions,
+	normalizeVectorStoreError,
+} from './utils';
 import { getConnectionHintNoticeField } from '../../shared-fields';
 
 const ragStarterCallout: INodeProperties = {
@@ -411,57 +415,61 @@ const store = vectorStore({
 		 * Supports 'load', 'insert', and 'update' operation modes
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
-			// Get the embeddings model connected to this node
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiEmbedding,
-				0,
-			)) as Embeddings;
+			try {
+				const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+				// Get the embeddings model connected to this node
+				const embeddings = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiEmbedding,
+					0,
+				)) as Embeddings;
 
-			// Handle each operation mode with dedicated modules
-			if (mode === 'load') {
-				const items = this.getInputData(0);
-				const resultData = [];
+				// Handle each operation mode with dedicated modules
+				if (mode === 'load') {
+					const items = this.getInputData(0);
+					const resultData = [];
 
-				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
-					resultData.push(...docs);
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
+						resultData.push(...docs);
+					}
+
+					return [resultData];
 				}
 
-				return [resultData];
-			}
-
-			if (mode === 'insert') {
-				const resultData = await handleInsertOperation(this, args, embeddings);
-				return [resultData];
-			}
-
-			if (mode === 'update') {
-				const resultData = await handleUpdateOperation(this, args, embeddings);
-				return [resultData];
-			}
-
-			if (mode === 'retrieve-as-tool') {
-				const items = this.getInputData(0);
-				const resultData = [];
-
-				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					const docs = await handleRetrieveAsToolExecuteOperation(
-						this,
-						args,
-						embeddings,
-						itemIndex,
-					);
-					resultData.push(...docs);
+				if (mode === 'insert') {
+					const resultData = await handleInsertOperation(this, args, embeddings);
+					return [resultData];
 				}
 
-				return [resultData];
-			}
+				if (mode === 'update') {
+					const resultData = await handleUpdateOperation(this, args, embeddings);
+					return [resultData];
+				}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
-			);
+				if (mode === 'retrieve-as-tool') {
+					const items = this.getInputData(0);
+					const resultData = [];
+
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const docs = await handleRetrieveAsToolExecuteOperation(
+							this,
+							args,
+							embeddings,
+							itemIndex,
+						);
+						resultData.push(...docs);
+					}
+
+					return [resultData];
+				}
+
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
+				);
+			} catch (error) {
+				normalizeVectorStoreError(this.getNode(), error);
+			}
 		}
 
 		/**
@@ -469,26 +477,30 @@ const store = vectorStore({
 		 * Supports 'retrieve' and 'retrieve-as-tool' operation modes
 		 */
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+			try {
+				const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
-			// Get the embeddings model connected to this node
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiEmbedding,
-				0,
-			)) as Embeddings;
+				// Get the embeddings model connected to this node
+				const embeddings = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiEmbedding,
+					0,
+				)) as Embeddings;
 
-			// Handle each supply data operation mode with dedicated modules
-			if (mode === 'retrieve') {
-				return await handleRetrieveOperation(this, args, embeddings, itemIndex);
+				// Handle each supply data operation mode with dedicated modules
+				if (mode === 'retrieve') {
+					return await handleRetrieveOperation(this, args, embeddings, itemIndex);
+				}
+
+				if (mode === 'retrieve-as-tool') {
+					return await handleRetrieveAsToolOperation(this, args, embeddings, itemIndex);
+				}
+
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
+				);
+			} catch (error) {
+				normalizeVectorStoreError(this.getNode(), error, itemIndex);
 			}
-
-			if (mode === 'retrieve-as-tool') {
-				return await handleRetrieveAsToolOperation(this, args, embeddings, itemIndex);
-			}
-
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
-			);
 		}
 	};

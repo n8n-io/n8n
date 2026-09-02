@@ -1,15 +1,26 @@
+import type { Mock, Mocked } from 'vitest';
 import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpTransport, SsrfProtectionService } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import * as client from 'openid-client';
+
+vi.mock('openid-client', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('openid-client')>();
+	return {
+		...actual,
+		discovery: vi.fn(),
+		authorizationCodeGrant: vi.fn(),
+		fetchUserInfo: vi.fn(),
+	};
+});
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -33,8 +44,8 @@ describe('OidcService', () => {
 	let provisioningService: ProvisioningService;
 	let userRepository: UserRepository;
 	let authIdentityRepository: AuthIdentityRepository;
-	let outboundHttp: jest.Mocked<OutboundHttp>;
-	let customFetch: jest.Mock;
+	let outboundHttp: Mocked<OutboundHttp>;
+	let customFetch: Mock;
 
 	const mockOidcConfig = {
 		clientId: 'test-client-id',
@@ -52,8 +63,14 @@ describe('OidcService', () => {
 		loadOnStartup: true,
 	};
 
+	const setOidcState = (loginEnabled: boolean, isActive: boolean) => {
+		vi.spyOn(ssoHelpers, 'isOidcCurrentAuthenticationMethod').mockReturnValue(isActive);
+		const svc = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+		svc.oidcConfig = { ...svc.oidcConfig, loginEnabled };
+	};
+
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		settingsRepository = mock<SettingsRepository>();
@@ -67,16 +84,21 @@ describe('OidcService', () => {
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
 		provisioningService = mock<ProvisioningService>();
+		// loginUser reads the provisioning config to extract the instance role claim
+		provisioningService.getConfig = vi.fn().mockResolvedValue({
+			scopesInstanceRoleClaimName: 'n8n_instance_role',
+			scopesProjectsRolesClaimName: 'n8n_projects',
+		});
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
-		customFetch = jest.fn();
+		customFetch = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(
 			mock<HttpTransport>({ asCustomFetch: () => customFetch }),
 		);
-		jest
-			.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod')
-			.mockImplementation(async () => await Promise.resolve());
+		vi.spyOn(ssoHelpers, 'setCurrentAuthenticationMethod').mockImplementation(
+			async () => await Promise.resolve(),
+		);
 
 		oidcService = new OidcService(
 			settingsRepository,
@@ -93,14 +115,15 @@ describe('OidcService', () => {
 		);
 
 		await oidcService.init();
+		setOidcState(true, true);
 	});
 
 	describe('reload', () => {
 		it('should reload OIDC configuration from database', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
 
 			// Mock the discovery endpoint response
-			global.fetch = jest.fn().mockResolvedValue({
+			global.fetch = vi.fn().mockResolvedValue({
 				ok: true,
 				json: async () => {
 					return await Promise.resolve({
@@ -122,7 +145,7 @@ describe('OidcService', () => {
 		});
 
 		it('should handle reload when no config exists in database', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(null);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(null);
 
 			await oidcService.reload();
 
@@ -133,7 +156,7 @@ describe('OidcService', () => {
 
 		it('should handle errors during reload', async () => {
 			const error = new Error('Database error');
-			settingsRepository.findByKey = jest.fn().mockRejectedValue(error);
+			settingsRepository.findByKey = vi.fn().mockRejectedValue(error);
 
 			await oidcService.reload();
 
@@ -151,7 +174,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: '',
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(configWithEmptyEndpoint),
 				loadOnStartup: true,
@@ -163,7 +186,7 @@ describe('OidcService', () => {
 		});
 
 		it('should handle invalid JSON in database', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: 'invalid json',
 				loadOnStartup: true,
@@ -179,7 +202,7 @@ describe('OidcService', () => {
 		});
 
 		it('should fill out optional prompt parameter with default value', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(mockOidcConfig),
 				loadOnStartup: true,
@@ -195,11 +218,12 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
 		it('should fill out optional authenticationContextClassReference parameter with default value', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(mockOidcConfig),
 				loadOnStartup: true,
@@ -215,6 +239,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -222,20 +247,20 @@ describe('OidcService', () => {
 			const encryptedSecret = 'encrypted-secret';
 			const decryptedSecret = 'decrypted-secret';
 
-			cipher.decryptV2 = jest.fn().mockResolvedValue(decryptedSecret);
+			cipher.decryptV2 = vi.fn().mockResolvedValue(decryptedSecret);
 
 			const configWithEncryptedSecret = {
 				...mockOidcConfig,
 				clientSecret: encryptedSecret,
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(configWithEncryptedSecret),
 				loadOnStartup: true,
 			});
 
-			global.fetch = jest.fn().mockResolvedValue({
+			global.fetch = vi.fn().mockResolvedValue({
 				ok: true,
 				json: async () => {
 					return await Promise.resolve({
@@ -260,7 +285,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: '',
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(defaultConfig),
 				loadOnStartup: true,
@@ -278,7 +303,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: 'not-a-valid-url',
 			};
 
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(invalidConfig),
 				loadOnStartup: true,
@@ -294,7 +319,7 @@ describe('OidcService', () => {
 		});
 
 		it('should not issue warnings for valid complete configuration', async () => {
-			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+			settingsRepository.findByKey = vi.fn().mockResolvedValue({
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify(mockOidcConfig),
 				loadOnStartup: true,
@@ -310,13 +335,14 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('broadcastReloadOIDCConfigurationCommand', () => {
-		const mockPublisher = { publishCommand: jest.fn() };
+		const mockPublisher = { publishCommand: vi.fn() };
 		beforeEach(() => {
 			mockInstance(Publisher, mockPublisher);
 		});
@@ -324,9 +350,9 @@ describe('OidcService', () => {
 		it('should publish reload command in multi-main setup', async () => {
 			(instanceSettings as any).isMultiMain = true;
 			// Trigger broadcast by updating config
-			settingsRepository.save = jest.fn().mockResolvedValue(mockConfigFromDB);
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
 
 			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
 
@@ -336,12 +362,30 @@ describe('OidcService', () => {
 			});
 		});
 
+		it('should persist emailVerifiedRequired through updateConfig', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+
+			await oidcService.updateConfig({
+				...mockOidcConfig,
+				emailVerifiedRequired: true,
+			} as any as OidcConfigDto);
+
+			expect(settingsRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					key: OIDC_PREFERENCES_DB_KEY,
+					value: expect.stringContaining('"emailVerifiedRequired":true'),
+				}),
+			);
+		});
+
 		it('should not publish in single main setup', async () => {
 			(instanceSettings as any).isMultiMain = false;
 
-			settingsRepository.update = jest.fn().mockResolvedValue(mockConfigFromDB);
-			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
+			settingsRepository.update = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
 
 			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
 
@@ -352,13 +396,13 @@ describe('OidcService', () => {
 
 	describe('loginUser', () => {
 		it('throws an error if authorizationCodeGrant throws an error', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest
-				.spyOn(client, 'authorizationCodeGrant')
-				.mockRejectedValue(new Error('Authorization code grant failed'));
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(
+				new Error('Authorization code grant failed'),
+			);
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -370,10 +414,10 @@ describe('OidcService', () => {
 		});
 
 		it('logs token-exchange errors with structured oauth fields', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 
 			const tokenError = Object.assign(
 				new Error('expected expires_in to be a non-negative number'),
@@ -383,7 +427,7 @@ describe('OidcService', () => {
 					code: 'OAUTH_INVALID_RESPONSE_BODY',
 				},
 			);
-			jest.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
+			vi.mocked(client.authorizationCodeGrant).mockRejectedValue(tokenError);
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -405,11 +449,11 @@ describe('OidcService', () => {
 		});
 
 		it('throws an error if claims() throws an error', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
@@ -426,11 +470,11 @@ describe('OidcService', () => {
 		});
 
 		it('should throw an error if there are no claims', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
@@ -447,18 +491,18 @@ describe('OidcService', () => {
 		});
 
 		it('throws an error if fetchUserInfo throws an error', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest.spyOn(client, 'fetchUserInfo').mockRejectedValue(new Error('Fetch user info failed'));
+			vi.mocked(client.fetchUserInfo).mockRejectedValue(new Error('Fetch user info failed'));
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -469,18 +513,18 @@ describe('OidcService', () => {
 		});
 
 		it('throws an error if there is no email', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest.spyOn(client, 'fetchUserInfo').mockResolvedValue({ email_verified: true } as any);
+			vi.mocked(client.fetchUserInfo).mockResolvedValue({ email_verified: true } as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -491,20 +535,21 @@ describe('OidcService', () => {
 		});
 
 		it('throws an error if the email is invalid', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'invalid-email' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'invalid-email',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
@@ -515,31 +560,32 @@ describe('OidcService', () => {
 		});
 
 		it('should return the user if the auth identity already exists', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
-			authIdentityRepository.findOne = jest
+			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
+			authIdentityRepository.findOne = vi
 				.fn()
 				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
 
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -554,29 +600,30 @@ describe('OidcService', () => {
 		});
 
 		it('should return a user if the user exists but the auth identity does not', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
-			userRepository.findOne = jest.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
+			userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -591,33 +638,143 @@ describe('OidcService', () => {
 		});
 
 		it('should create a new user if the user does not exist', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
-			userRepository.manager.transaction = jest
+			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
+			userRepository.manager.transaction = vi
 				.fn()
 				.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => {
 					return { sub: 'valid-subject' };
 				},
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest
-				.spyOn(client, 'fetchUserInfo')
-				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
+		});
+
+		it('should deny the login without creating an account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.manager.transaction = vi.fn();
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject', n8n_instance_role: 'global:unknown' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
+				expect.objectContaining({ $provider: 'oidc' }),
+				'global:unknown',
+			);
+			// No account creation, no provisioning
+			expect(userRepository.manager.transaction).not.toHaveBeenCalled();
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+		});
+
+		it('should deny an existing user without touching their account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi
+				.fn()
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			// The account is left untouched — no role changes, no deactivation
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('login flow requires OIDC to be the active, enabled method', () => {
+		const login = async () =>
+			await oidcService.loginUser(
+				new URL('https://example.com/callback'),
+				oidcService.generateState().signed,
+				oidcService.generateNonce().signed,
+			);
+
+		it('generateLoginUrl is rejected when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('generateLoginUrl is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('loginUser is rejected and issues no session when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
+			expect(authIdentityRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('loginUser is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
 		});
 	});
 
@@ -627,24 +784,24 @@ describe('OidcService', () => {
 		const user = mock<User>({ id: 'user-id' });
 
 		beforeEach(() => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
-			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
 				claims: () => claims,
 			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
-			jest.spyOn(client, 'fetchUserInfo').mockResolvedValue(userInfo as any);
+			vi.mocked(client.fetchUserInfo).mockResolvedValue(userInfo as any);
 		});
 
 		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
-			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
-			provisioningService.provisionExpressionMappedRolesForUser = jest
+			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = vi
 				.fn()
 				.mockResolvedValue(undefined);
-			authIdentityRepository.findOne = jest.fn().mockResolvedValue({ user });
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -660,13 +817,13 @@ describe('OidcService', () => {
 		});
 
 		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
-			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
-			provisioningService.getConfig = jest.fn().mockResolvedValue({
+			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(false);
+			provisioningService.getConfig = vi.fn().mockResolvedValue({
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
 			});
-			provisioningService.provisionInstanceRoleForUser = jest.fn().mockResolvedValue(undefined);
-			authIdentityRepository.findOne = jest.fn().mockResolvedValue({ user });
+			provisioningService.provisionInstanceRoleForUser = vi.fn().mockResolvedValue(undefined);
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -695,17 +852,17 @@ describe('OidcService', () => {
 			)) as client.Configuration;
 
 		it("obtains the custom fetch from the factory transport with SSRF 'disabled'", async () => {
-			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
 
 			await createConfiguration();
 
 			// The discovery / token / userinfo endpoints are admin-configured and may
 			// legitimately point at an internal IdP, so SSRF protection is disabled.
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('always calls discovery with the factory customFetch (no proxy/no-proxy branch)', async () => {
-			const discoverySpy = jest
+			const discoverySpy = vi
 				.spyOn(client, 'discovery')
 				.mockResolvedValue({} as client.Configuration);
 
@@ -723,7 +880,7 @@ describe('OidcService', () => {
 		});
 
 		it('sets the factory customFetch on the returned configuration', async () => {
-			jest.spyOn(client, 'discovery').mockResolvedValue({} as client.Configuration);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
 
 			const result = await createConfiguration();
 
@@ -750,7 +907,11 @@ describe('OidcService', () => {
 
 		beforeEach(() => {
 			idpServer.clear();
-			const realOutboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), logger);
+			const realOutboundHttp = new OutboundHttp(
+				mock<SsrfProtectionService>(),
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				logger,
+			);
 			realOidcService = new OidcService(
 				settingsRepository,
 				authIdentityRepository,
@@ -768,12 +929,12 @@ describe('OidcService', () => {
 
 		it('routes openid-client fetches through a real HTTP socket', async () => {
 			let factoryFetch: client.CustomFetch | undefined;
-			jest
-				.spyOn(client, 'discovery')
-				.mockImplementation(async (_server, _clientId, _metadata, _auth, options) => {
+			vi.spyOn(client, 'discovery').mockImplementation(
+				async (_server, _clientId, _metadata, _auth, options) => {
 					factoryFetch = options?.[client.customFetch];
 					return {} as client.Configuration;
-				});
+				},
+			);
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			await (realOidcService as any).createProxyAwareConfiguration(
@@ -795,5 +956,157 @@ describe('OidcService', () => {
 			expect(idpServer.captured).toEqual(['/userinfo']);
 			expect(body).toEqual({ ok: true, path: '/userinfo' });
 		});
+	});
+
+	describe('generateEndSessionUrl', () => {
+		const idToken = 'stored-id-token';
+
+		const setRpInitiatedLogoutEnabled = (enabled: boolean) => {
+			// Replace (not mutate) the runtime config so the shared default object
+			// isn't polluted across tests. updateConfig would require live discovery.
+			const service = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+			service.oidcConfig = { ...service.oidcConfig, rpInitiatedLogoutEnabled: enabled };
+		};
+
+		it('returns undefined and does not contact the provider when RP-initiated logout is disabled', async () => {
+			setRpInitiatedLogoutEnabled(false);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn();
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+			// @ts-expect-error - getOidcConfiguration is private
+			expect(oidcService.getOidcConfiguration).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the provider does not advertise an end_session_endpoint', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({}),
+			} as unknown as client.Configuration);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+		});
+
+		it('builds the RP-initiated logout URL with the id_token_hint when enabled', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({ end_session_endpoint: 'https://example.com/logout' }),
+			} as unknown as client.Configuration);
+			const expectedUrl = new URL('https://example.com/logout?id_token_hint=stored-id-token');
+			const buildEndSessionUrl = vi
+				.spyOn(client, 'buildEndSessionUrl')
+				.mockReturnValue(expectedUrl);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toEqual(expectedUrl);
+			expect(buildEndSessionUrl).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id_token_hint: idToken,
+					post_logout_redirect_uri: expect.stringMatching(/\/signin$/),
+				}),
+			);
+		});
+	});
+
+	const mockAuthCallbackWith = (userInfo: Record<string, unknown>) => {
+		oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+		oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+		// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+		oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+		// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+		oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+			access_token: 'valid-access-token',
+			token_type: 'bearer',
+			claims: () => ({ sub: 'valid-subject' }),
+		} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+		vi.spyOn(client, 'fetchUserInfo').mockResolvedValue(userInfo as any);
+	};
+
+	const setEmailVerifiedRequired = () => {
+		// Replace (not mutate) the config so the shared default constant is untouched.
+		// @ts-expect-error - oidcConfig is private and only accessible within class 'OidcService'
+		oidcService.oidcConfig = { ...oidcService.oidcConfig, emailVerifiedRequired: true };
+	};
+
+	const login = async () => {
+		const callbackUrl = new URL('https://example.com/callback');
+		return await oidcService.loginUser(
+			callbackUrl,
+			oidcService.generateState().signed,
+			oidcService.generateNonce().signed,
+		);
+	};
+
+	it('should reject linking to an existing user when email is not verified', async () => {
+		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		await expect(login()).rejects.toThrow('Email address is not verified by the identity provider');
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should reject when email_verified is the string "false" (no boolean coercion bypass)', async () => {
+		mockAuthCallbackWith({ email_verified: 'false', email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should link to an existing user when email_verified is absent (default, permissive)', async () => {
+		mockAuthCallbackWith({ email: 'john.doe@test.com' });
+		userRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
+		expect(authIdentityRepository.save).toHaveBeenCalled();
+	});
+
+	it('should reject when email_verified is absent and enforcement is enabled', async () => {
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should link when email_verified is true and enforcement is enabled', async () => {
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email_verified: true, email: 'john.doe@test.com' });
+		userRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
+		expect(authIdentityRepository.save).toHaveBeenCalled();
+	});
+
+	it('should not re-check email_verified for an already-linked identity', async () => {
+		// Enforcement on + unverified email, but the identity is already bound by `sub`.
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
+		authIdentityRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ user: { email: 'john.doe@test.com' } } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
 	});
 });

@@ -4,7 +4,7 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
@@ -37,7 +37,7 @@ export class LicenseService {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed, n8n-controlled host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}

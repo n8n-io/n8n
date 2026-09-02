@@ -1,4 +1,5 @@
 node_modules
+.pnpm-store
 .DS_Store
 .tmp
 .tmp-schema-docs
@@ -13,6 +14,7 @@ google-generated-credentials.json
 _START_PACKAGE
 .env
 .env.local
+.env.eval
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -33,7 +35,10 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+tcr-dry.log
 .agent-setup/
+.agent-recordings/
+.pi-subagents/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
@@ -41,6 +46,7 @@ test-results.json
 *.0x
 packages/testing/playwright/playwright-report
 packages/testing/playwright/eval-report
+packages/testing/playwright/a11y-report
 packages/testing/playwright/test-results
 packages/testing/playwright/results.xml
 packages/testing/playwright/eval-results.json
@@ -85,3 +91,7 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+
+# Generated migration indexes (scripts/generate-migration-index.mjs)
+packages/@n8n/db/src/migrations/sqlite/index.ts
+packages/@n8n/db/src/migrations/postgresdb/index.ts

@@ -14,8 +14,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
@@ -29,14 +29,14 @@ vi.mock('@/app/composables/useMessage', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
 	})),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),

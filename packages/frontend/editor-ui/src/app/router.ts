@@ -6,27 +6,33 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
-import { MfaRequiredError } from '@n8n/rest-api-client';
+import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
+import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import {
+	canManageInstanceAi,
+	canMessageInstanceAi,
+} from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -53,6 +59,8 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
+const GitConnectionsView = async () =>
+	await import('@/features/integrations/gitConnections.ee/views/GitConnectionsView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -98,10 +106,12 @@ const WorkerView = async () =>
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () =>
-	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
+const EvaluationsListSwitcher = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
+const CompareCollectionView = async () =>
+	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
@@ -173,9 +183,11 @@ export const routes: RouteRecordRaw[] = [
 		component: { render: () => null },
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
+			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (
 				settingsStore.isModuleActive('instance-ai') &&
-				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				instanceAiSettings?.enabled !== false &&
+				(instanceAiSettings?.setupCompleted === true || canManageInstanceAi()) &&
 				canMessageInstanceAi()
 			) {
 				return next({ name: INSTANCE_AI_VIEW });
@@ -389,13 +401,19 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.EVALUATION_EDIT,
-				component: EvaluationsView,
+				component: EvaluationsListSwitcher,
 				props: true,
 			},
 			{
 				path: 'test-runs/:runId',
 				name: VIEWS.EVALUATION_RUNS_DETAIL,
 				component: TestRunDetailView,
+				props: true,
+			},
+			{
+				path: 'collections/:collectionId/compare',
+				name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+				component: CompareCollectionView,
 				props: true,
 			},
 		],
@@ -545,6 +563,8 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.OAUTH_CONSENT,
 		component: OAuthConsentView,
 		meta: {
+			// Standalone authorization screen, rendered without the app sidebar.
+			layout: 'auth',
 			middleware: ['authenticated'],
 		},
 	},
@@ -745,7 +765,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -753,7 +779,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiGatewayEnabled;
+							return settingsStore.isAiGatewayEnabled && !settingsStore.isAiGatewayCloudUbbEnabled;
 						},
 					},
 					telemetry: {
@@ -824,18 +850,11 @@ export const routes: RouteRecordRaw[] = [
 				path: 'roles',
 				name: VIEWS.ROLES_SETTINGS,
 				component: async () => await import('@/features/roles/RolesView.vue'),
-				beforeEnter: () => {
-					const { check } = useEnvFeatureFlag();
-					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
-						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
-					}
-					return true;
-				},
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -851,16 +870,13 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'instance-roles',
 				component: RouterView,
-				// Instance role create/edit/view are gated behind the env flag; when off,
-				// fall back to the canonical project-roles page.
-				beforeEnter: () => {
-					const { check } = useEnvFeatureFlag();
-					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
-						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
-					}
-					return true;
-				},
 				children: [
+					{
+						path: '',
+						// Instance roles are listed inside the tabbed Roles shell; the bare
+						// path has no standalone page, so redirect it to the instance tab.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } }),
+					},
 					{
 						path: 'new',
 						name: VIEWS.INSTANCE_NEW_ROLE,
@@ -906,16 +922,9 @@ export const routes: RouteRecordRaw[] = [
 					{
 						path: '',
 						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						component: async () => await import('@/features/roles/project/ProjectRolesView.vue'),
-						// When custom instance roles are enabled, the standalone project-roles page
-						// is superseded by the tabbed Roles shell; redirect old deep links there.
-						beforeEnter: () => {
-							const { check } = useEnvFeatureFlag();
-							if (check.value('CUSTOM_INSTANCE_ROLES')) {
-								return { name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } };
-							}
-							return true;
-						},
+						// The standalone project-roles page is superseded by the tabbed Roles shell;
+						// redirect old deep links to the project tab there.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } }),
 					},
 					{
 						path: 'new',
@@ -933,7 +942,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -951,12 +960,7 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.API_SETTINGS,
 				component: SettingsApiView,
 				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['apiKey:list'],
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {
@@ -983,6 +987,38 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'environments',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'git-connections',
+				name: VIEWS.GIT_CONNECTIONS_SETTINGS,
+				component: GitConnectionsView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: [
+								'gitConnection:list',
+								'gitConnection:read',
+								'gitConnection:create',
+								'gitConnection:update',
+								'gitConnection:delete',
+							],
+							options: { mode: 'allOf' },
+						},
+						custom: () => {
+							const { isEnabled } = usePromotionsEnabled();
+							return isEnabled.value;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'git-connections',
 							};
 						},
 					},
@@ -1195,16 +1231,28 @@ const router = createRouter({
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
+setUnauthorizedHandler((baseURL) => {
+	void handleSessionExpired(router, baseURL);
+});
+
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		/**
-		 * Initialize application core
-		 * This step executes before first route is loaded and is required for permission checks
-		 */
+		try {
+			/**
+			 * Initialize application core
+			 * This step executes before first route is loaded and is required for permission checks
+			 */
 
-		await initializeCore();
-		// Pass undefined for first param to use default
-		await initializeAuthenticatedFeatures(undefined, to.name as string);
+			await initializeCore();
+			// Pass undefined for first param to use default
+			await initializeAuthenticatedFeatures(undefined, to.name as string);
+		} catch (error) {
+			if (error instanceof MfaRequiredError) {
+				throw error; // let the outer catch's MFA redirect handle it
+			}
+			// Swallowed so the permission checks below still run on whatever state did initialize.
+			console.error(error);
+		}
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -1253,9 +1301,16 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
-		} else {
-			console.error(failure);
+			return;
 		}
+
+		// Resolve the guard instead of leaving it hanging, but don't authorize `to`
+		// without its permission check having completed: redirect to sign-in.
+		console.error(failure);
+		return next({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent(getSanitizedCurrentPath(to)) },
+		});
 	}
 });
 

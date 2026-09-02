@@ -211,11 +211,11 @@ ci-filter (in install-and-build)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
-              └─→ janitor test-scoped --runner=jest|vitest  (per-package)
+              └─→ janitor test-scoped  (per-package)
                     │
                     ├─→ SKIP        → exit 0 (no in-package changes)
                     ├─→ RUN_FULL    → spawn runner with no scope flags
-                    └─→ scoped      → jest --findRelatedTests / vitest related
+                    └─→ scoped      → vitest related
 ```
 
 **Usage:**
@@ -225,17 +225,26 @@ ci-filter (in install-and-build)
 CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
 
 # Compute scope for the cwd package. Output: SKIP | RUN_FULL | <files>
-janitor scope --runner=vitest
+janitor scope
 
 # Compute scope AND spawn the runner. Unrecognised flags forward to runner.
-janitor test-scoped --runner=vitest --shard=1/2 --coverage
+janitor test-scoped --shard=1/2 --coverage
 ```
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
 
-**Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
+**Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
+changed".** A `null`/empty value resolves to all packages (`affected-packages`)
+and `RUN_FULL` (`scope`) — never `SKIP`, which would be a false green. ci-filter
+relies on this: on a PR that touches more than `CI_FILTER_MAX_CHANGED_FILES`
+(default 1000) files it emits an empty list instead of the full one, because the
+joined paths would otherwise overflow the kernel's argv/env size limit and the
+test job's shell couldn't even start. Such a change set affects nearly every
+package anyway, so the full-suite fallback is both safe and correct.
+
+**Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
+plus setup files at `<pkg>/vitest.setup.*` and
 `<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 

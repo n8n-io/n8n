@@ -83,24 +83,28 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
+  datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
 }
 "agent_execution" {
-  TEXT assistantResponse
+  TEXT attachments
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -109,9 +113,9 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
-  TEXT toolCalls
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage
