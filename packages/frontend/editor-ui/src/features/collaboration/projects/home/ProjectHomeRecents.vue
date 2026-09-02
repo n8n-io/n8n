@@ -34,7 +34,7 @@ onMounted(async () => {
 			{ isArchived: false },
 		);
 		recents.value = resources
-			.filter((resource) => resource.resource === 'workflow')
+			.filter((resource) => resource.resource !== 'folder')
 			.map((workflow) => ({
 				id: workflow.id,
 				name: workflow.name,
