@@ -125,6 +125,7 @@ function makeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock(),
 		overrides.agentSandboxRuntimeService ?? mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,

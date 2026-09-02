@@ -18,6 +18,7 @@ import {
 	WorkflowPublishPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
+	WorkflowVersionPublicDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -55,6 +56,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -156,6 +158,21 @@ function toPublicActiveVersionWithoutHistory(activeVersion: WorkflowHistory) {
 		autosaved: activeVersion.autosaved,
 		createdAt: activeVersion.createdAt.toISOString(),
 		updatedAt: activeVersion.updatedAt.toISOString(),
+	};
+}
+
+function toPublicWorkflowVersion(version: WorkflowHistory) {
+	return {
+		versionId: version.versionId,
+		workflowId: version.workflowId,
+		nodes: version.nodes,
+		connections: version.connections,
+		nodeGroups: version.nodeGroups,
+		authors: version.authors,
+		name: version.name,
+		description: version.description,
+		createdAt: version.createdAt.toISOString(),
+		updatedAt: version.updatedAt.toISOString(),
 	};
 }
 
@@ -710,6 +727,43 @@ export class WorkflowsPublicController {
 			}
 			throw error;
 		}
+	}
+
+	@Get('/:workflowId/versions/:versionId')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve a workflow version')
+	@ApiDescription('Retrieve a single version of a workflow from its version history.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflowVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('versionId') versionId: string,
+	): Promise<WorkflowVersionPublicDto> {
+		let version: WorkflowHistory;
+		try {
+			version = await this.workflowHistoryService.getVersion(req.user, workflowId, versionId, {
+				includePublishHistory: false,
+			});
+		} catch (error) {
+			if (error instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Workflow not found');
+			}
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Version not found');
+			}
+			throw error;
+		}
+
+		this.eventService.emit('user-retrieved-workflow-version', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return toPublicWorkflowVersion(version);
 	}
 
 	@Get('/:workflowId/tags')
