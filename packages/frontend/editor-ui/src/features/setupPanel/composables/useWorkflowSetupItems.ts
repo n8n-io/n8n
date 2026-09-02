@@ -79,6 +79,7 @@ export function useWorkflowSetupItems(
 			] as const,
 		([id, paused, hydrated]) => {
 			if (!id || paused) return;
+			void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => {});
 			void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
 			if (!hydrated) {
 				void workflowsListStore
@@ -116,8 +117,15 @@ export function useWorkflowSetupItems(
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
 
-	/** Node state is available from a hydrated canvas store or the fetched workflow. */
-	const isWorkflowAvailable = computed(() => workflowNodes.value !== undefined);
+	/**
+	 * Node state is available from a hydrated canvas store or the fetched
+	 * workflow. Node types must be in too: deriving without them drops
+	 * type-defined credentials and reads parameters as issue-free, so items
+	 * would falsely show as done.
+	 */
+	const isWorkflowAvailable = computed(
+		() => nodeTypesStore.allNodeTypes.length > 0 && workflowNodes.value !== undefined,
+	);
 
 	const nodesByName = computed(() => {
 		const byName = new Map<string, INodeUi>();
