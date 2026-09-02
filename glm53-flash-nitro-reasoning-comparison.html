@@ -97,9 +97,11 @@
     <header>
       <h1>Opus 4.8 vs GLM 5.3 Flash Nitro (low)</h1>
       <p class="meta">
-        <strong>Suite:</strong> model-comparison · 31 cases × 3 iterations ·
-        <strong>Opus:</strong> anthropic/claude-opus-4-8 (master, 17 Aug) ·
-        <strong>GLM:</strong> openrouter/z-ai/glm-5.3-flash:nitro, reasoning=low (27 Aug)
+        <strong>Suite:</strong> model-comparison ·
+        <strong>Opus:</strong> 31 cases × 3 iterations (93 builds) ·
+        <strong>GLM:</strong> 29 of 31 cases × 3 iterations (84 builds after failures) ·
+        <strong>Opus model:</strong> anthropic/claude-opus-4-8 (master, 17 Aug) ·
+        <strong>GLM model:</strong> openrouter/z-ai/glm-5.3-flash:nitro, reasoning=low (27 Aug)
       </p>
       <p class="caveat">
         <strong>Caveat — GLM effort setting likely not applied.</strong>
@@ -175,24 +177,24 @@
         <text x="170" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 1</text>
         <text x="370" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 2</text>
         <text x="570" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 3</text>
-        <!-- Opus line: $32.27, $30.95, $30.54 -->
+        <!-- Opus line: $32.27, $30.95, $30.54 — y = 220 - 52*log10(cost/0.01) -->
         <polyline fill="none" stroke="#70ad47" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
-          points="170,88 370,89 570,89"/>
-        <circle cx="170" cy="88" r="5" fill="#70ad47"/>
-        <circle cx="370" cy="89" r="5" fill="#70ad47"/>
-        <circle cx="570" cy="89" r="5" fill="#70ad47"/>
-        <text x="170" y="76" fill="#70ad47" font-size="12" text-anchor="middle">$32.27</text>
-        <text x="370" y="77" fill="#70ad47" font-size="12" text-anchor="middle">$30.95</text>
-        <text x="570" y="77" fill="#70ad47" font-size="12" text-anchor="middle">$30.54</text>
+          points="170,38 370,38 570,39"/>
+        <circle cx="170" cy="38" r="5" fill="#70ad47"/>
+        <circle cx="370" cy="38" r="5" fill="#70ad47"/>
+        <circle cx="570" cy="39" r="5" fill="#70ad47"/>
+        <text x="170" y="26" fill="#70ad47" font-size="12" text-anchor="middle">$32.27</text>
+        <text x="370" y="26" fill="#70ad47" font-size="12" text-anchor="middle">$30.95</text>
+        <text x="570" y="27" fill="#70ad47" font-size="12" text-anchor="middle">$30.54</text>
         <!-- GLM low line: $0.13, $0.15, $0.15 -->
         <polyline fill="none" stroke="#5b9bd5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
-          points="170,178 370,176 570,176"/>
-        <circle cx="170" cy="178" r="5" fill="#5b9bd5"/>
-        <circle cx="370" cy="176" r="5" fill="#5b9bd5"/>
-        <circle cx="570" cy="176" r="5" fill="#5b9bd5"/>
-        <text x="170" y="192" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.13</text>
-        <text x="370" y="190" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
-        <text x="570" y="190" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
+          points="170,162 370,159 570,159"/>
+        <circle cx="170" cy="162" r="5" fill="#5b9bd5"/>
+        <circle cx="370" cy="159" r="5" fill="#5b9bd5"/>
+        <circle cx="570" cy="159" r="5" fill="#5b9bd5"/>
+        <text x="170" y="176" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.13</text>
+        <text x="370" y="173" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
+        <text x="570" y="173" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
       </svg>
       <div class="cost-summary">
         <div class="cost-card">
@@ -203,7 +205,7 @@
         <div class="cost-card">
           <h3 class="glm">GLM low</h3>
           <div class="value">$0.43</div>
-          <div class="sub">84 builds (29 cases × 3 iters, minus failures) · 42.7 min wall time</div>
+          <div class="sub">29 of 31 cases · 84 builds (87 planned, 3 failed) · 42.7 min wall time</div>
         </div>
       </div>
       <p class="note">

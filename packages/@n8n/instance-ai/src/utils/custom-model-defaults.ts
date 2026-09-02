@@ -39,6 +39,8 @@ const CUSTOM_MODEL_DEFAULTS = [
 		supportsStructuredOutputs: true,
 	},
 	{
+		// Align GLM experiment defaults with the low-effort cohort used for Kimi.
+		// Explicit N8N_INSTANCE_AI_REASONING_EFFORT still wins when set.
 		match: 'glm-5.2',
 		reasoningEffort: 'low',
 		supportsStructuredOutputs: true,
