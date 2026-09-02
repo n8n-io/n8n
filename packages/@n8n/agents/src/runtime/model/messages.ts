@@ -121,6 +121,15 @@ function hasReplayableReasoningProviderOptions(
 	});
 }
 
+function isAnthropicReasoningPart(part: AiContentPart): boolean {
+	if (part.type !== 'reasoning') return false;
+	const anthropicOptions = part.providerOptions?.anthropic;
+	return (
+		typeof anthropicOptions?.signature === 'string' ||
+		typeof anthropicOptions?.redactedData === 'string'
+	);
+}
+
 export type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 export function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
@@ -458,7 +467,26 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 /** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
 export function toAiMessages(messages: Message[]): ModelMessage[] {
-	return messages.flatMap(toAiMessageList);
+	const modelMessages = messages.flatMap(toAiMessageList);
+	const result: ModelMessage[] = [];
+
+	for (const [index, message] of modelMessages.entries()) {
+		if (
+			message.role !== 'assistant' ||
+			typeof message.content === 'string' ||
+			modelMessages[index + 1]?.role !== 'assistant'
+		) {
+			result.push(message);
+			continue;
+		}
+
+		// Anthropic merges adjacent assistant messages. Keep signed reasoning
+		// only on the last response so signatures from separate turns never mix.
+		const content = message.content.filter((part) => !isAnthropicReasoningPart(part));
+		if (content.length > 0) result.push({ ...message, content });
+	}
+
+	return result;
 }
 
 /**

@@ -124,6 +124,58 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		});
 	});
 
+	it('keeps only the last Anthropic signature when assistant responses are adjacent', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'First response reasoning',
+						providerMetadata: { anthropic: { signature: 'first-signature' } },
+					},
+					{ type: 'text', text: 'First response' },
+				],
+			},
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Second response reasoning',
+						providerMetadata: { anthropic: { signature: 'second-signature' } },
+					},
+					{ type: 'text', text: 'Second response' },
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const content = aiMessages.map(
+			(message) =>
+				(
+					message as {
+						content: Array<{
+							type: string;
+							text?: string;
+							providerOptions?: { anthropic?: { signature?: string } };
+						}>;
+					}
+				).content,
+		);
+
+		expect(content.flatMap((parts) => parts).filter((part) => part.type === 'text')).toEqual([
+			{ type: 'text', text: 'First response' },
+			{ type: 'text', text: 'Second response' },
+		]);
+		expect(
+			content
+				.flatMap((parts) => parts)
+				.map((part) => part.providerOptions?.anthropic?.signature)
+				.filter((signature) => signature !== undefined),
+		).toEqual(['second-signature']);
+	});
+
 	it('copies OpenAI reasoning replay metadata into providerOptions on replay', () => {
 		const providerMetadata = {
 			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
