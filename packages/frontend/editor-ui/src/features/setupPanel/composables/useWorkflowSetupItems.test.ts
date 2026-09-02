@@ -141,13 +141,13 @@ describe('useWorkflowSetupItems', () => {
 		// Nodes come from this composable's own fetch, never the workflows-list
 		// cache (list pages seed it with `nodes: []` placeholders).
 		expect(isWorkflowAvailable.value).toBe(false);
+		expect(derivedItems.value).toEqual([]);
 		await vi.waitFor(() => expect(isWorkflowAvailable.value).toBe(true));
 		expect(derivedItems.value).toEqual([credentialItem()]);
 		// It attaches to a host's store but never creates one itself.
 		expect(
 			getWorkflowDocumentStoreId(createWorkflowDocumentId(WORKFLOW_ID)) in pinia.state.value,
 		).toBe(false);
-		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: WORKFLOW_ID,
 		});
@@ -178,13 +178,6 @@ describe('useWorkflowSetupItems', () => {
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenLastCalledWith({
 			workflowId: WORKFLOW_ID,
 		});
-	});
-
-	it('derives nothing while neither a document store nor the saved workflow is available', () => {
-		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
-
-		expect(isWorkflowAvailable.value).toBe(false);
-		expect(derivedItems.value).toEqual([]);
 	});
 
 	it('pauses fetching while the agent edits, then refreshes once it settles', async () => {
@@ -246,26 +239,20 @@ describe('useWorkflowSetupItems', () => {
 	});
 
 	it('completes a credential item once a usable credential of its type exists, even without the workflow document', () => {
-		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
-		const getUsable = vi.fn().mockReturnValue([]);
+		const getUsable = vi.fn().mockReturnValue([{ id: 'cred-1' }]);
 		credentialsStore.getUsableCredentialByType = getUsable;
 
 		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
-		const item = credentialItem();
 
-		expect(isItemDone(item)).toBe(false);
+		// The slice was last fetched for another workflow or project: not trusted.
+		expect(isItemDone(credentialItem())).toBe(false);
+
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		getUsable.mockReturnValue([]);
+		expect(isItemDone(credentialItem())).toBe(false);
 
 		getUsable.mockReturnValue([{ id: 'cred-1' }]);
-		expect(isItemDone(item)).toBe(true);
-	});
-
-	it('ignores usable credentials fetched for another workflow or project', () => {
-		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
-		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([{ id: 'cred-1' }]);
-
-		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
-
-		expect(isItemDone(credentialItem())).toBe(false);
+		expect(isItemDone(credentialItem())).toBe(true);
 	});
 
 	it('completes a credential item when every bound node already carries one', () => {

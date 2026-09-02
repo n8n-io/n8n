@@ -70,18 +70,12 @@ describe('useSetupPanelState', () => {
 		vi.mocked(isAgentEditingWorkflow).mockReset();
 	});
 
-	it('uses agent events as the row source while the agent edits the workflow', () => {
-		const { state } = createHarness({ agentEditing: true, workflowAvailable: true });
+	it('uses agent events while the agent edits, then switches to the derivation', () => {
+		const { state, editing } = createHarness({ agentEditing: true, workflowAvailable: true });
 
 		expect(state.isAgentBuilding.value).toBe(true);
 		expect(state.rowSource.value).toBe('events');
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
-	});
-
-	it('switches to the workflow derivation once the agent stops editing', () => {
-		const { state, editing } = createHarness({ agentEditing: true, workflowAvailable: true });
-
-		expect(state.rowSource.value).toBe('events');
 
 		editing.value = false;
 
