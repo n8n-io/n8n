@@ -16,17 +16,24 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 
 	nock('https://graph.microsoft.com')
 		.post('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages', (body) => {
-			const { content } = (body as { body: { content: string } }).body;
-			const [mention] = (body as { mentions?: Array<Record<string, unknown>> }).mentions ?? [];
+			// A predicate, not a deep-equal object: the footer href carries an instance-derived id
+			// that is not deterministic here. Everything except that href is still pinned exactly.
+			const { content, contentType } = (
+				body as { body: { content: string; contentType: string } }
+			).body;
+			const mentions = (body as { mentions?: Array<Record<string, unknown>> }).mentions ?? [];
 			return (
+				contentType === 'html' &&
 				content.startsWith('Hello! <at id="0">Ada Byron</at><br><br><em> Powered by <a href="') &&
 				content.includes(
 					'utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams',
 				) &&
 				content.endsWith('">this n8n workflow</a> </em>') &&
-				mention?.id === 0 &&
-				mention?.mentionText === 'Ada Byron' &&
-				(mention?.mentioned as { user: { id: string } })?.user?.id === ADA
+				mentions.length === 1 &&
+				mentions[0].id === 0 &&
+				mentions[0].mentionText === 'Ada Byron' &&
+				JSON.stringify((mentions[0].mentioned as { user: unknown }).user) ===
+					JSON.stringify({ id: ADA, displayName: 'Ada Byron', userIdentityType: 'aadUser' })
 			);
 		})
 		.reply(200, {

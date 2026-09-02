@@ -364,14 +364,22 @@ export async function getUsers(
 		return { results: [], paginationToken: undefined };
 	}
 
-	// Display names are not unique, so the UPN is the disambiguator shown in the picker.
-	// Same fallback chain as `resolveMentions`, so a nameless directory object still shows a
-	// label rather than a blank row.
-	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
-		name: (user.displayName as string) || (user.userPrincipalName as string) || (user.id as string),
-		value: user.id as string,
-		description: user.userPrincipalName as string,
-	}));
+	// Display names are not unique (a real tenant showed 135 unique names across 136 users), so the
+	// UPN has to disambiguate. It goes in `name`, not `description` alone, because the
+	// resource-locator dropdown renders only `name` (see ResourceLocatorDropdown.vue), so a
+	// `description`-only UPN would be invisible and two identical names indistinguishable. Same
+	// pattern as `Gong.node.ts`. `description` stays populated for consumers that do read it.
+	// Falls back like `resolveMentions`, so a nameless directory object still shows a label.
+	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => {
+		const displayName = user.displayName as string;
+		const upn = user.userPrincipalName as string;
+		const label = displayName && upn ? `${displayName} (${upn})` : displayName || upn;
+		return {
+			name: label || (user.id as string),
+			value: user.id as string,
+			description: upn,
+		};
+	});
 
 	return { results, paginationToken: response['@odata.nextLink'] as string | undefined };
 }
