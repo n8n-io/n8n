@@ -7,7 +7,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
+import {
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiCredentialDestination,
+	type InstanceAiTargetApproval,
+} from '@n8n/api-types';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -1737,6 +1741,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			severity?: 'info' | 'warning' | 'destructive';
 			channelConfig?: { integrationType: string; agentId: string };
 			targetApproval?: InstanceAiTargetApproval;
+			credentialDestination?: InstanceAiCredentialDestination;
 			workflowId?: string;
 		},
 	): void {
@@ -1768,6 +1773,9 @@ describe('createThreadRuntime - session always-allow', () => {
 							message: 'Approve?',
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
+							...(opts.credentialDestination
+								? { credentialDestination: opts.credentialDestination }
+								: {}),
 							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
 					},
@@ -1846,6 +1854,26 @@ describe('createThreadRuntime - session always-allow', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-target-approval')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('does not auto-approve credential destinations with a generic setup grant', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destination',
+			requestId: 'req-destination',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'workflow-1' },
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destination')).toBe(false);
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 

@@ -185,6 +185,22 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe(150);
 	});
 
+	it('should render the timezone independent of the global JSON.stringify', async () => {
+		const data = { $json: { x: 'ok' } };
+		const original = JSON.stringify;
+		let result: unknown;
+		try {
+			JSON.stringify = (() => 'REPLACED_STRINGIFY_OUTPUT') as unknown as typeof JSON.stringify;
+			result = evaluator.evaluate('{{ $json.x }}', data, caller, {
+				timezone: 'America/New_York',
+			});
+		} finally {
+			JSON.stringify = original;
+		}
+
+		expect(result).toBe('ok');
+	});
+
 	it('should use provided timezone for DateTime operations', async () => {
 		const data = {
 			$json: { ts: 1704067200000 }, // 2024-01-01T00:00:00Z

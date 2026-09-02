@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
+import dns from 'node:dns';
 import type { LookupAddress } from 'node:dns';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -218,10 +219,13 @@ describe('SSRF end-to-end integration', () => {
 			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
 		});
 
-		test('returns undefined when egress filtering is not configured', () => {
+		test('returns a passthrough filter using the plain system lookup when egress filtering is not configured', () => {
 			const helpers = createRequestHelpers(undefined);
 
-			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+			const filter = helpers.getSecureEgressFilter();
+
+			expect(filter).toBeDefined();
+			expect(filter.createSecureLookup()).toBe(dns.lookup);
 		});
 	});
 

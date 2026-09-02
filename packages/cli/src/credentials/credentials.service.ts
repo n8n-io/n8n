@@ -87,6 +87,16 @@ import {
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
 
+function parseHttpUrl(value: unknown): URL | undefined {
+	if (typeof value !== 'string') return undefined;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
@@ -1298,10 +1308,20 @@ export class CredentialsService {
 
 		const data = await this.decrypt(storedCredential, true);
 
-		// Expressions (leading '=') and non-http values are refused, not resolved.
-		const testUrl = data.testUrl;
-		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+		// Expressions and non-HTTP values are refused, not resolved.
+		const testTarget = parseHttpUrl(data.testUrl);
+		if (!testTarget) {
 			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		const storedOrigin = typeof data.serviceOrigin === 'string' ? data.serviceOrigin.trim() : '';
+		const serviceOrigin = parseHttpUrl(storedOrigin);
+		if (
+			!serviceOrigin ||
+			serviceOrigin.origin !== storedOrigin ||
+			serviceOrigin.origin !== testTarget.origin
+		) {
+			throw new BadRequestError('The credential test URL is not bound to its service origin');
 		}
 
 		return await this.credentialsTester.probeCredentialAuth(
@@ -1313,8 +1333,11 @@ export class CredentialsService {
 				type: storedCredential.type,
 				data,
 			},
-			testUrl,
-			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+			testTarget.href,
+			{
+				acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes),
+				allowedDomains: testTarget.hostname,
+			},
 		);
 	}
 

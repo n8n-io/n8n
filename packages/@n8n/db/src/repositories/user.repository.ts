@@ -193,6 +193,35 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
+	 * IDs of enabled users who either hold one of `globalRoleSlugs` globally,
+	 * or hold one of `projectRoleSlugs` in one of `projectIds`.
+	 */
+	async findIdsWithGlobalOrProjectRoles({
+		projectIds,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectIds: string[];
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<string[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectIds.length > 0 && projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId: In(projectIds), role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) return [];
+
+		const users = await this.find({ where, select: ['id'] });
+		return [...new Set(users.map(({ id }) => id))];
+	}
+
+	/**
 	 * Find the user that owns the personal project that owns the workflow.
 	 *
 	 * Returns null if the workflow does not exist or is owned by a team project.

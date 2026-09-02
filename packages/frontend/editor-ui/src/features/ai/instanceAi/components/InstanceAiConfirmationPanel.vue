@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { InstanceAiConfirmation } from '@n8n/api-types';
+import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
@@ -43,6 +43,7 @@ const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
+	if (conf.credentialDestination) return 'credential-destination';
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
@@ -137,6 +138,12 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * English strings over the wire.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	const credentialDestination = item.toolCall.confirmation.credentialDestination;
+	if (credentialDestination) {
+		return i18n.baseText('instanceAi.confirmation.credentialDestination.title', {
+			interpolate: { origin: credentialDestination.origin },
+		});
+	}
 	if (item.toolCall.confirmation.targetApproval) {
 		return i18n.baseText('agents.chat.approval.title');
 	}
@@ -162,6 +169,18 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
  * message includes a trailing explanation doesn't bloat the card.
  */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const credentialDestination = item.toolCall.confirmation.credentialDestination;
+	if (credentialDestination) {
+		const [nodeName] = credentialDestination.nodeNames;
+		if (credentialDestination.nodeNames.length === 1 && nodeName) {
+			return i18n.baseText('instanceAi.confirmation.credentialDestination.description', {
+				interpolate: { nodeName },
+			});
+		}
+		return i18n.baseText('instanceAi.confirmation.credentialDestination.descriptionMultiple', {
+			interpolate: { nodeNames: credentialDestination.nodeNames.join(', ') },
+		});
+	}
 	const targetApproval = item.toolCall.confirmation.targetApproval;
 	if (targetApproval) {
 		return i18n.baseText('agents.chat.approval.description', {
@@ -181,6 +200,22 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
 	const conf = item.toolCall.confirmation;
+	if (conf.credentialDestination) {
+		return [
+			{
+				key: 'allow-once',
+				icon: 'check',
+				label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
+				testId: 'instance-ai-panel-confirm-approve',
+			},
+			{
+				key: 'deny',
+				icon: 'ban',
+				label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
+				testId: 'instance-ai-panel-confirm-deny',
+			},
+		];
+	}
 	// Workflow edits must be scoped to a workflow ID — never offer a session grant
 	// that would collapse to a blanket tool key.
 	const alwaysAllowAvailable =
@@ -254,12 +289,21 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// Await the POST first so a network failure leaves the card visible and
 		// the backend's wait state intact — matches the auto-approve watcher
 		// behaviour. `confirmAction` already surfaces a toast on failure.
-		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
+		const credentialDestination = conf.credentialDestination;
+		const payload: InstanceAiConfirmRequest = credentialDestination
+			? {
+					kind: 'credentialDestination',
+					approved,
+					origin: credentialDestination.origin,
+				}
+			: { kind: 'approval', approved };
+		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
 		// Match the options actually shown in `buildApprovalOptions`.
 		const alwaysAllowAvailable =
 			!isDestructive(item) &&
 			!conf.targetApproval &&
+			!conf.credentialDestination &&
 			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,

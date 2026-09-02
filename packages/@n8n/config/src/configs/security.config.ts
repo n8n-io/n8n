@@ -54,7 +54,7 @@ export class SecurityConfig {
 	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
-	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
+	blockFilePatterns: string = '^(?:[^/]*/)*\\.git(?:/.*)?$';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.

@@ -2149,6 +2149,7 @@ describe('applyCredentialHints', () => {
 		applyCredentialHints(requests, [hint()]);
 
 		expect(requests[0].setupHint?.serviceHost).toBe('queue.fal.run');
+		expect(requests[0].setupHint?.serviceOrigin).toBe('https://queue.fal.run');
 	});
 
 	it('stamps each request with its own node host from a shared type-wide hint', () => {
@@ -2165,16 +2166,20 @@ describe('applyCredentialHints', () => {
 		expect(requests[0].setupHint?.serviceHost).toBe('api.pexels.com');
 		expect(requests[1].setupHint?.serviceHost).toBe('api.apify.com');
 		expect(shared).not.toHaveProperty('serviceHost');
+		expect(requests[0].setupHint?.serviceOrigin).toBe('https://api.pexels.com');
+		expect(requests[1].setupHint?.serviceOrigin).toBe('https://api.apify.com');
+		expect(shared).not.toHaveProperty('serviceOrigin');
 	});
 
-	it('omits serviceHost when the node URL is not derivable', () => {
+	it('omits service identity when the node URL is not derivable', () => {
 		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
 		requests[0].node.parameters = { url: '={{ $json.url }}' };
 
-		applyCredentialHints(requests, [hint()]);
+		applyCredentialHints(requests, [hint({ testUrl: 'https://fal.run/v1/models' })]);
 
 		expect(requests[0].setupHint).toBeDefined();
 		expect(requests[0].setupHint).not.toHaveProperty('serviceHost');
+		expect(requests[0].setupHint).not.toHaveProperty('serviceOrigin');
 	});
 });
 

@@ -1,5 +1,6 @@
 import { Ollama, type OllamaInput } from '@langchain/ollama';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -11,6 +12,7 @@ import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	proxyFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 
@@ -55,6 +57,14 @@ export class LmOllama implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('ollamaApi');
+		const baseUrl = credentials.baseUrl as string;
+
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData: credentials,
+			url: baseUrl,
+			surface: 'Ollama',
+		});
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as OllamaInput;
@@ -64,13 +74,17 @@ export class LmOllama implements INodeType {
 				}
 			: undefined;
 
+		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+
 		const model = new Ollama({
-			baseUrl: credentials.baseUrl as string,
+			baseUrl,
 			model: modelName,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			headers,
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, lookup }),
 		});
 
 		return {

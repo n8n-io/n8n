@@ -1,4 +1,4 @@
-import { httpRequest } from '@n8n/backend-network';
+import { httpRequest, passthroughEgressFilter } from '@n8n/backend-network';
 import type {
 	IAllExecuteFunctions,
 	IExecuteData,
@@ -86,7 +86,7 @@ export const getRequestHelperFunctions = (
 			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
-		getSecureEgressFilter: () => additionalData.ssrfBridge,
+		getSecureEgressFilter: () => additionalData.ssrfBridge ?? passthroughEgressFilter,
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,

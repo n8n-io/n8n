@@ -33,6 +33,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -85,6 +86,7 @@ export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 
 export interface WorkflowToolContext {
 	workflowLoader: WorkflowToolWorkflowLoader;
 	workflowRunner: WorkflowRunner;
+	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	activeExecutions: ActiveExecutions;
 	projectId: string;
 	executionMode: WorkflowToolExecutionMode;
@@ -406,7 +408,9 @@ export async function executeWorkflow(
 	data?: Record<string, unknown>;
 	error?: string;
 }> {
-	const { workflowRunner, activeExecutions } = context;
+	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
+
+	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
 
 	// Build pin data for the trigger
 	const triggerPinData = normalizeTriggerInput(
