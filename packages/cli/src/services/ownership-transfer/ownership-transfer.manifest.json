@@ -36,7 +36,7 @@
 		},
 		{
 			"name": "TypeAvailabilityPolicyScope",
-			"path": "packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-scope.entity.ts",
+			"path": "packages/cli/src/modules/type-availability-policies.ee/database/entities/type-availability-policy-scope.entity.ts",
 			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
 		},
 		{
