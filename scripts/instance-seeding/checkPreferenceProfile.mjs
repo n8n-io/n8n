@@ -1,20 +1,14 @@
 #!/usr/bin/env node
 // Check the top-level parameter names the preference workflows emit against the names
-// the target node actually declares.
+// their node declares. Catches a silent failure: n8n accepts a misspelled parameter,
+// stores it, and renders an empty field without erroring.
 //
-// Scope worth being precise about: this walks `node.parameters` one level deep. Nested
-// structures — `filters.conditions[]`, `columns.value`, `additionalFields` — are not
-// checked, and neither are values. A green run means no parameter is misspelled at the
-// top level. It does not mean the parameters are correct.
+// Walks `node.parameters` one level deep. Nested shapes (`filters.conditions[]`,
+// `columns.value`, `additionalFields`) and values are not checked, so a green run
+// means nothing is misspelled at the top level, not that the parameters are correct.
 //
-// Worth having because the failure it catches is silent: n8n accepts a workflow with
-// a misspelled parameter, stores it, and the node then renders with an empty field.
-// Nothing errors. The seeded estate just quietly stops being realistic, which is the
-// one property the profile exists to provide.
-//
-// Some nodes declare parameters outside their own directory, through a spread of a
-// shared descriptor or an exported string constant. Those sources have to be listed
-// explicitly or the check reports false failures.
+// Some nodes declare parameters outside their own directory, via a spread or an
+// exported constant. Those sources need listing in SOURCES or the check false-fails.
 
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

@@ -26,21 +26,13 @@ const PERSONAL_WORKFLOWS = Number(process.env.WF_MULTIPLIER) || 50;
 const SEED_PREFIX = '[seed] ';
 const SEED_DT_PREFIX = 'seed_';
 
-// Fixed seed for the PRNG. Set it and the run is reproducible; leave it and every
-// run differs. `preference` defaults it, because a profile whose whole purpose is a
-// stable estate to evaluate against is useless if it moves between runs.
+// Set it and the run is reproducible. `preference` defaults it: a profile meant for
+// A/B evaluation is useless if the estate moves between runs.
 const SEED_ENV = process.env.SEED;
 
-/**
- * `estate` (default) — the original ~500-workflow spread. Built to stress the
- * dependency graph, so it is deliberately diverse and deliberately random.
- *
- * `preference` — ten hand-written workflows that all follow one house style: the
- * same chat model, the same tracker, one node per job. Small enough to fit an
- * agent's context, and consistent enough that "this org always does X" is a fact
- * about the estate rather than an accident of sampling. Diversity is the bug here,
- * not the feature.
- */
+// `estate` (default): ~500 varied workflows, built to stress the dependency graph.
+// `preference`: ten hand-written workflows in one house style, small enough to fit an
+// agent's context. Diversity is the bug in that profile, not the feature.
 const PROFILE = (process.env.PROFILE ?? 'estate').toLowerCase();
 if (!['estate', 'preference'].includes(PROFILE)) {
 	console.error(`PROFILE must be 'estate' or 'preference', got '${PROFILE}'`);
@@ -373,10 +365,8 @@ const CRED_RECIPES = [
 	},
 ];
 
-// Every random choice in this file goes through `random()`. With SEED set it is a
-// seeded PRNG, so two runs produce byte-identical estates — which is what lets an
-// A/B eval compare two arms against the same instance. Without SEED it falls back
-// to Math.random and the run is one-off, as before.
+// Every random choice goes through `random()`. With SEED set it is a seeded PRNG and
+// two runs are byte-identical; without, it falls back to Math.random.
 function makeRandom(seed) {
 	if (seed === undefined) return Math.random;
 	// mulberry32: small, fast, good enough for fixtures. Not for anything security-facing.
@@ -391,8 +381,8 @@ function makeRandom(seed) {
 }
 const random = makeRandom(SEED);
 
-// Seeded runs pin the clock too, otherwise every generated timestamp drifts between
-// runs and the estate is only half-reproducible. The date is arbitrary but fixed.
+// Seeded runs pin the clock too, or timestamps drift and the estate is only half
+// reproducible. The date is arbitrary.
 const NOW = SEED !== undefined ? Date.parse('2026-01-15T09:00:00.000Z') : Date.now();
 
 function rand(len = 16) {
@@ -800,17 +790,9 @@ async function clearSeeded() {
 	log('Clear done.');
 }
 
-/**
- * Build the credential set the preference workflows reference.
- *
- * A missing token is not an error. It produces a placeholder whose name says so, so
- * the estate is still wired and openable — every node keeps a credential to point at
- * — and visibly not runnable. Supplying the token later and re-running upgrades the
- * credential by id, so the workflows do not need rewiring.
- *
- * Token values are never logged. Length is, because "did it pick up my key" is the
- * question a developer actually has, and length answers it without printing a secret.
- */
+// A missing token gives a placeholder that says so, keeping every node wired to
+// something openable but not runnable. Supplying it later upgrades in place by id.
+// Token lengths are logged, never values.
 async function seedPreferenceCredentials(projectId, existingByName) {
 	const out = {};
 	for (const spec of PREFERENCE_CREDENTIALS) {
@@ -821,15 +803,14 @@ async function seedPreferenceCredentials(projectId, existingByName) {
 		const name = real ? realName : placeholderName;
 		const data = { [spec.field]: real ? token : `seed-placeholder-${spec.key}` };
 
-		// Upgrade in place when the credential already exists, so its id survives and
-		// the workflows pointing at it keep resolving. Both names have to be tried:
-		// supplying a token drops the "(seed, fake key)" suffix, so looking up only the
-		// new name misses the placeholder this run is meant to replace.
+		// Upgrade in place so the id survives and the nodes keep resolving. Both names
+		// are tried: supplying a token drops the "(seed, fake key)" suffix, so the new
+		// name alone would miss the placeholder being replaced.
 		const prior = existingByName.get(name) ?? existingByName.get(real ? placeholderName : realName);
 		try {
 			if (prior) {
-				// PATCH, not PUT — the public API exposes no PUT for credentials and
-				// answers 405, which fails quietly enough to look like a working upgrade.
+				// PATCH, not PUT: there is no PUT route, and its 405 fails quietly enough
+				// to look like a working upgrade.
 				await api('PATCH', `/credentials/${prior.id}`, { name, type: spec.type, data });
 				out[spec.key] = { id: prior.id, name };
 			} else {
@@ -849,19 +830,14 @@ async function seedPreferenceCredentials(projectId, existingByName) {
 	return out;
 }
 
-/**
- * Ten workflows in one project, all following the same house style. See
- * `preference-profile.mjs` for what that style is and why each rule is in it.
- */
+// Ten workflows in one project, one house style. See `preference-profile.mjs`.
 async function seedPreferenceProfile() {
 	log('Seeding preference profile at', BASE);
 	log(`Seed: ${SEED} (fixed — re-running produces the same estate)`);
 
-	// Deliberately NOT `clearSeeded()`. That deletes credentials, which defeats the
-	// point of upgrading them in place: the ids would change on every run and every
-	// node pointing at them would be rewired. Only the workflows are removed, because
-	// they are the one thing this function recreates unconditionally. Credentials, data
-	// tables and the project are looked up and reused below.
+	// Not `clearSeeded()`: that deletes credentials, so their ids would change every
+	// run and every node pointing at them would need rewiring. Only the workflows are
+	// removed, since they are the one thing recreated unconditionally below.
 	const priorWorkflows = (await listAll('/workflows')).filter((w) =>
 		w.name.startsWith(SEED_PREFIX),
 	);
@@ -916,8 +892,7 @@ async function seedPreferenceProfile() {
 	log('Workflows...');
 	let created = 0;
 	for (const wf of preferenceWorkflows(tables)) {
-		// The recipes mark which credential each node wants by key; resolve those to
-		// the ids just created, and give every node the id the API expects.
+		// Recipes name the credential by key; resolve to the ids just created.
 		const nodes = wf.nodes.map((n) => {
 			const node = { ...n, id: rand(36) };
 			if (node.credentials) {

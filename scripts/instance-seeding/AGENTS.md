@@ -1,60 +1,60 @@
 # Seed n8n instance
 
-Four scripts, all dev tooling, none of them product code:
+Four dev-tooling scripts, none of them product code:
 
 | Script | Command | What it does |
 | --- | --- | --- |
-| `seedInstance.mjs` | `pnpm seed:account` | Builds the estate via the **public API**. Two profiles, below. |
-| `seedHistory.mjs` | `pnpm seed:history` | Execution history, AI threads, activity entries via **SQLite**. |
-| `inspectActivity.mjs` | `pnpm inspect:activity` | Read-only one-page viewer of `activity_event`. |
-| `checkPreferenceProfile.mjs` | `pnpm seed:account:check` | Checks top-level parameter names against real node definitions. |
+| `seedInstance.mjs` | `pnpm seed:account` | Builds the estate via the public API. Two profiles. |
+| `seedHistory.mjs` | `pnpm seed:history` | Executions, assistant threads, activity entries via SQLite. |
+| `inspectActivity.mjs` | `pnpm inspect:activity` | Read-only viewer of `activity_event`. |
+| `checkPreferenceProfile.mjs` | `pnpm seed:account:check` | Checks top-level parameter names against node definitions. |
+
+`pnpm seed:preference` chains the first two. That is the single command that leaves
+a usable instance.
 
 ## Two profiles
 
-`PROFILE` selects what shape of estate you get. They exist for opposite reasons,
-so neither one replaces the other.
+`PROFILE` picks the shape of the estate. They exist for opposite reasons.
 
-**`estate`** (default) — ~500 workflows across 30 projects, deliberately diverse
-and deliberately random. Built to stress the workflow dependency graph. The rest
-of this document describes it.
+**`estate`** (default) is ~500 workflows across 30 projects, varied and random, built
+to stress the workflow dependency graph. The rest of this document describes it.
 
-**`preference`** — 10 hand-written workflows that all follow one house style.
-Built so an agent can be asked "what does this org normally do?" and be gradeable
-on the answer. Diversity is the bug here, not the feature.
+**`preference`** is 10 hand-written workflows in one house style, so an agent can be
+asked "what does this org normally do?" and be graded on the answer. Diversity is the
+bug here, not the feature.
 
 ```sh
 N8N_API_KEY=… PROFILE=preference pnpm seed:account
 ```
 
-The ten are written out in `preference-profile.mjs` rather than generated. At
-n=10 there is no reason to generate them, and a generated workflow whose name
-does not describe its nodes teaches anything reading the estate something false.
+The ten live in `preference-profile.mjs` and are written out, not generated. At n=10
+generation buys nothing, and a generated workflow whose name does not match its nodes
+teaches the reader something false.
 
 ### The house style
 
-Five rules, no exceptions. Each is a place n8n offers a real choice and this org
-always makes the same one — a rule with no alternative is a constraint, not a
-preference, and an agent gets no credit for following it.
+Five rules, no exceptions. Each is a place n8n offers a real choice and this estate
+always makes the same one, because a rule with no alternative is a constraint rather
+than a preference.
 
 | Rule | What it rejects |
 | --- | --- |
 | OpenAI `gpt-4o-mini` chat model (5/5 AI workflows) | Anthropic, Gemini, Mistral, Ollama |
-| Linear for issue tracking (6/6 tracker workflows) | Jira, GitHub Issues, Asana, Trello |
+| Linear for tracking (6/6 tracker workflows) | Jira, GitHub Issues, Asana, Trello |
 | Slack for notifications (10/10 workflows) | Discord, Teams, Telegram, email |
 | Cron expressions on every schedule | the `interval` rule form |
 | Every workflow ends writing to `automation_runs` | no audit trail |
 
 ### Determinism
 
-Every random choice goes through one seeded PRNG, and seeded runs pin the clock
-too. `PROFILE=preference` sets `SEED=1` by default, so two runs produce
-byte-identical estates — which is what lets an A/B eval compare two arms against
-the same instance. Set `SEED` explicitly for the estate profile.
+Every random choice goes through one seeded PRNG, and seeded runs pin the clock too.
+`PROFILE=preference` sets `SEED=1`, so two runs give byte-identical estates. That is
+what lets an A/B eval compare two arms against one instance. Set `SEED` explicitly for
+the estate profile.
 
 ### Credentials
 
-`preference` builds credentials from the developer's own tokens, read from the
-environment:
+`preference` builds credentials from the developer's own tokens:
 
 | Env var | Credential |
 | --- | --- |
@@ -63,61 +63,59 @@ environment:
 | `SEED_SLACK_TOKEN` | `slackApi` |
 | `SEED_GMAIL_OAUTH` | `gmailOAuth2` |
 | `SEED_ENRICHMENT_TOKEN` | `httpHeaderAuth` |
+| `SEED_LINEAR_TEAM_ID` | Linear team the issue nodes target |
 
-A missing token is not an error. It produces a placeholder named
-`(seed, fake key)`, so the workflows are wired and openable but visibly not
-runnable. Supplying the token later and re-running upgrades the credential in
-place, keeping its id, so nodes keep pointing at it.
+A missing token is not an error. It gives a placeholder named `(seed, fake key)`, so
+the workflows stay wired and openable but visibly not runnable. Supply the token later
+and re-run: the credential is upgraded in place and keeps its id, so nodes keep
+pointing at it.
 
-Secrets go through the public API, which means **n8n does the encryption** — this
-tooling never touches the instance encryption key. Token lengths are logged,
-never values.
+Two things make that work. The upgrade is a `PATCH`, because the public API has no
+`PUT` for credentials and its 405 fails quietly enough to look like success. And the
+`preference` profile skips `clearSeeded()`, which deletes credentials and would change
+every id on every run; it removes only the workflows.
 
-The upgrade is a `PATCH`. The public API exposes no `PUT` for credentials and
-answers 405, which fails quietly enough to look like a working upgrade. The
-preference profile also deliberately avoids `clearSeeded()` for the same reason:
-that helper deletes credentials, which would change every id on every run and
-rewire every node pointing at them. Only the workflows are removed and rebuilt.
+Secrets go through the public API, so n8n does the encryption and this tooling never
+touches the instance key. Token lengths are logged, never values.
 
 ## `seedHistory.mjs`
 
-Writes what the public API cannot: executions have no create route, and threads
-and activity entries have no route at all. Run it **after** `seed:account`.
+Writes what the public API cannot: executions have no create route, threads and
+activity entries have none at all. Run it after `seed:account`.
 
-A running instance is fine. SQLite serialises writers, so n8n's own inserts queue
-behind this script rather than interleaving with it. Prefer an idle instance
-anyway: one that is actively executing workflows can hold the write lock long
-enough to time this out.
+A live instance is fine. SQLite serialises writers, so n8n's inserts queue behind the
+script. Prefer an idle one: an instance actively executing workflows can hold the write
+lock long enough to fail.
 
-`pnpm seed:preference` chains the estate and the history, which is the single
-command that leaves a usable instance.
+A default run gives 175 executions over 14 days, 10 threads with 22 messages, and 35
+activity entries. `[seed] Invoice Dunning` fails its three most recent runs, so a "what
+broke?" probe has a definite answer.
 
-A default run produces 175 executions over 14 days, 10 AI threads with 22
-messages, and 35 activity entries. `[seed] Invoice Dunning` is made to fail its
-three most recent runs at `Send Dunning Email`, so a "what broke?" probe has a
-definite answer.
+### The window ends at the current time
 
-### The history window ends at real now, and must
+n8n prunes on age: threads after 30 days, executions past `EXECUTIONS_DATA_MAX_AGE`
+(336 hours). A fixed past date puts the fortnight beyond both cutoffs and the next
+startup deletes it. This was observed, not predicted: a hardcoded clock lost all 10
+threads on the first restart.
 
-n8n prunes on age. `cleanupExpiredThreads` drops conversation threads after 30
-days, and execution pruning drops runs past `EXECUTIONS_DATA_MAX_AGE` (336 hours
-by default). A hardcoded past date puts the whole fortnight beyond both cutoffs,
-so n8n deletes the history at the next startup — this was observed, not
-theorised: a fixed clock lost all 10 threads to the TTL sweep on the first
-restart.
+Determinism survives. The seeded PRNG still decides which workflow fails, on which
+run, at which node, and every message body. Only absolute timestamps move. `HISTORY_NOW`
+pins the window if you accept the pruning.
 
-Determinism survives this. Which workflow fails, on which run, at which node,
-and every message body all still come from the seeded PRNG; only the absolute
-timestamps move. Set `HISTORY_NOW` to pin the window when byte-identical
-timestamps are genuinely needed — and expect the history to be pruned.
+### Errors match their workflow
 
-### Errors have to match their workflow
+An error names a node, and that node must exist in the workflow the error is attached
+to and say something a node of that type could say. One shared error message produced
+self-contradicting records, such as a Gmail auth failure on a workflow with no Gmail
+node. `NODE_FAILURES` maps node type to a plausible message.
 
-An error names a node, and that node must exist in the workflow the error is
-attached to, saying something a node of that type could say. A single shared
-error message produces self-contradicting records — a Gmail auth failure
-reported against a workflow with no Gmail node — which is worse than no history
-at all. `NODE_FAILURES` maps node type to a plausible message for this reason.
+### Clearing
+
+Clear and rewrite are one transaction, so a failed insert cannot leave the previous
+history deleted and nothing in its place. Threads and activity are cleared by project
+id, not workflow id: re-seeding replaces the workflows with fresh ids, which orphans
+rows keyed on the old ones and then collides on the seeded primary keys. Executions
+cascade when their workflow is deleted.
 
 ## `inspectActivity.mjs`
 
@@ -127,35 +125,31 @@ DB_SQLITE_DATABASE=/path/to/database.sqlite pnpm inspect:activity
 PORT=5700 pnpm inspect:activity
 ```
 
-Every column of `activity_event`, paginated, sortable on any column, with a
-free-text filter that spans all columns including the JSON `data` blob.
+Every column of `activity_event`, paginated, sortable on any column, with a free-text
+filter spanning all columns including the JSON `data` blob.
 
-Read-only three times over, because any one layer can be undone by a later edit
-without the others noticing:
+Read-only three times over, since a later edit can undo any one layer alone:
 
-1. The connection is opened `readOnly`, so SQLite rejects a write itself.
+1. The connection is opened `readOnly`, so SQLite refuses writes.
 2. Every statement is a SELECT.
-3. The sort column comes from an allowlist derived from the table — a column name
-   cannot be a bound parameter, so it is the one part of the query built by
-   concatenation.
+3. The sort column comes from an allowlist derived from the table, because a column
+   name cannot be a bound parameter.
 
-Non-GET methods return 405, and a request whose `Host` is not loopback returns
-403, which closes DNS rebinding. That matters because there is no authentication
-behind it.
+Non-GET methods return 405. A request whose `Host` is not loopback returns 403, which
+closes DNS rebinding. Nothing else authenticates.
 
-**It is a debug surface.** Unauthenticated, serving the whole table including who
-did what in which project. Loopback-only. Do not tunnel or port-forward it.
+**A debug surface.** Unauthenticated, serving the whole table including who did what in
+which project. Loopback only. Do not tunnel or port-forward it.
 
-Zero dependencies — `node:sqlite` and `node:http`, both built into Node 24.
+No dependencies: `node:sqlite` and `node:http` are built into Node 24.
 
 ## Note on `activity_event`
 
-`activityEventCategories` is `['workflow', 'credential']`. **Executions are
-deliberately absent**: `execution_entity` already indexes `(workflowId, status,
-id)` for exactly the read a feed wants, so a row per run would duplicate an
-existing row and pay for it with an insert on the execution hot path. A reader
-queries that table instead. So the execution and activity phases of the seed are
-independent, and there is no id-citing order between them.
+`activityEventCategories` is `['workflow', 'credential']`. Executions are deliberately
+absent, because `execution_entity` already indexes `(workflowId, status, id)` for the
+read a feed wants, so a row per run would duplicate it and pay an insert on the
+execution hot path. A reader queries that table instead. The execution and activity
+phases of the seed are therefore independent, with no ordering between them.
 
 ---
 

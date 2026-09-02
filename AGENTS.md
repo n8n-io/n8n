@@ -108,60 +108,23 @@ your current directory.
 
 ### Seeding a local instance
 
-An empty instance is a bad place to test anything that reasons about a user's
-work. These commands fill one. They are dev tooling only: the root package is
-private, so they never reach a user.
+An empty instance is a bad place to test anything that reads a user's work.
+These commands fill one. They are dev tooling on the private root package, so
+they never reach a user.
 
 ```bash
-# Estate profile (default): ~500 diverse workflows across 30 projects.
-# Built to stress the workflow dependency graph.
-N8N_API_KEY="<public-api JWT>" pnpm seed:account
-
-# Preference profile: 10 hand-written workflows that all follow one house style.
-# Small enough to fit an agent's context, consistent enough to be gradeable.
-N8N_API_KEY="<public-api JWT>" PROFILE=preference pnpm seed:account
-
-# Preference profile plus its history, in one command.
-N8N_API_KEY="<public-api JWT>" pnpm seed:preference
-
-# Or the history on its own, after a seed:account run. Talks to SQLite,
-# because none of these have a public-API create route.
-pnpm seed:history
-
-# Check the top-level parameter names against the node definitions.
-# One level deep only: nested shapes and values are not checked.
-pnpm seed:account:check
+N8N_API_KEY=<jwt> pnpm seed:preference   # 10 workflows in one house style, plus history
+N8N_API_KEY=<jwt> pnpm seed:account      # ~500 varied workflows across 30 projects
+pnpm inspect:activity                    # read-only activity_event viewer on 127.0.0.1
 ```
 
-Both profiles tag everything `[seed] ` (or `seed_` for data tables) and clear
-their own prior output first, so re-running replaces rather than accumulates.
-They clear different amounts: `estate` removes every seeded entity, while
-`preference` removes only the workflows and reuses the project, data tables and
-credentials, so credential ids survive and the nodes pointing at them stay wired.
-Set `SEED` for a reproducible estate; `PROFILE=preference` fixes it by default.
+Both seed profiles delete their own prior output, so a re-run replaces it.
+That clear step deletes anything named `[seed]` and any empty team project,
+whoever made them, so do not point either at a shared instance. The viewer is
+unauthenticated and serves the whole table: keep it on loopback.
 
-**Do not point either at a shared instance.** The clear step deletes anything
-prefixed `[seed]` plus empty team projects, whoever created them.
-
-### Inspecting the activity feed
-
-```bash
-pnpm inspect:activity          # http://127.0.0.1:5699
-```
-
-One page showing every column of `activity_event`, paginated, sortable on any
-column, with a free-text filter that also searches the JSON `data` column — so
-a run id or a failing node name finds its entry without knowing which field
-holds it.
-
-Read-only three ways: the connection is opened `readOnly` so SQLite rejects
-writes itself, every query is a SELECT, and the sort column comes from an
-allowlist because a column name cannot be a bound parameter.
-
-Loopback-only and unauthenticated by design. It serves the whole table,
-including who did what in which project. **Do not tunnel or port-forward it.**
-
-See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md).
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
+profiles, tokens, determinism, and the other commands.
 
 ### Code Quality
 - `pnpm lint` - Lint code

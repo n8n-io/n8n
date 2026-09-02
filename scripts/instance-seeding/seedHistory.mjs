@@ -1,16 +1,10 @@
 #!/usr/bin/env node
-// Write a fortnight of history for an already-seeded instance: execution records,
-// AI assistant threads, and activity entries.
+// Write a fortnight of history for a seeded instance: executions, assistant threads,
+// and activity entries. Writes SQLite directly, because the public API has no create
+// route for any of them, and because backdating needs `startedAt` set by hand.
 //
-// This is the half of the seed the public API cannot do. Executions have no create
-// route, and a real run would stamp everything at now — the point here is *past*
-// history, so `startedAt` has to be set directly. Threads and activity entries have
-// no API route at all.
-//
-// So this script talks to SQLite. Run it after `seed:account`. A running instance is
-// fine — SQLite serialises writers, so n8n's own inserts queue behind this one rather
-// than interleaving. Prefer an idle instance anyway: one that is actively executing
-// workflows can hold the write lock long enough to time this out.
+// Run after `seed:account`. A live instance is fine, but prefer an idle one: SQLite
+// serialises writers, so a busy instance can hold the write lock long enough to fail.
 
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
@@ -20,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-// `flatted` is how n8n serialises run data — the format has cycles, so plain JSON
+// `flatted` is how n8n serialises run data. The format has cycles, so plain JSON
 // would not round-trip. Resolved from the cli package rather than vendored.
 const { stringify } = require(
 	require.resolve('flatted', { paths: [path.join(REPO, 'packages/cli')] }),
@@ -47,37 +41,24 @@ function makeRandom(seed) {
 }
 const random = makeRandom(Number(process.env.SEED) || 1);
 
-/**
- * The history window ends at real now, not at a fixed date, and this is load-bearing.
- *
- * n8n prunes on age. `cleanupExpiredThreads` drops conversation threads after 30 days,
- * and execution pruning drops runs past `EXECUTIONS_DATA_MAX_AGE` (336 hours by
- * default). A fixed past date puts the whole fortnight beyond both cutoffs, so the
- * history is deleted at the next startup — verified: a hardcoded clock lost all 10
- * threads to the TTL sweep on the first restart.
- *
- * Determinism is not lost. Which workflow fails, on which run, at which node, and
- * every message body still come from the seeded PRNG. Only the absolute timestamps
- * move, and both arms of an A/B comparison read the same instance anyway. Set
- * HISTORY_NOW to pin the window when byte-identical timestamps are actually needed.
- */
+// The window has to end at the current time. n8n prunes threads after 30 days and
+// executions past EXECUTIONS_DATA_MAX_AGE, so a fixed past date gets the whole
+// fortnight deleted on the next start. Only timestamps move; the PRNG still decides
+// what happens. HISTORY_NOW pins the window if you accept the pruning.
 const NOW = process.env.HISTORY_NOW ? Date.parse(process.env.HISTORY_NOW) : Date.now();
 
 const iso = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '');
 const pick = (arr) => arr[Math.floor(random() * arr.length)];
 const uuid = () => {
-	// Deterministic v4-shaped id. Not cryptographic — these are fixture ids.
+	// Deterministic v4-shaped id. Not cryptographic; these are fixture ids.
 	const hex = '0123456789abcdef';
 	let s = '';
 	for (let i = 0; i < 32; i++) s += hex[Math.floor(random() * 16)];
 	return `${s.slice(0, 8)}-${s.slice(8, 12)}-4${s.slice(13, 16)}-a${s.slice(17, 20)}-${s.slice(20, 32)}`;
 };
 
-/**
- * One workflow is made to fail on its most recent run, and to have failed twice
- * before that. A "what went wrong with X?" probe needs a definite answer, and a
- * uniformly green history cannot provide one.
- */
+// One workflow fails its last run and two earlier ones, so "what broke?" has an
+// answer. A uniformly green history has none.
 const FAILING_WORKFLOW = 'Invoice Dunning';
 const FAILURE = {
 	node: 'Send Dunning Email',
@@ -85,13 +66,8 @@ const FAILURE = {
 	description: 'The Gmail credential has no valid token. Reconnect the account.',
 };
 
-/**
- * An error has to name a node that exists in the workflow it is attached to, and
- * say something a node of that type could actually say. A single shared error
- * message produces records that contradict themselves — a Gmail auth failure
- * reported against a workflow with no Gmail node — which is worse than no history,
- * because anything reading the estate learns something false.
- */
+// An error must name a node that exists in its own workflow and say something that
+// node could say. One shared message produces records that contradict themselves.
 const NODE_FAILURES = {
 	'n8n-nodes-base.gmail': {
 		message: 'Forbidden - perhaps check your credentials?',
@@ -194,14 +170,9 @@ function main() {
 	console.log(`Database: ${DB_PATH}`);
 	console.log(`Workflows: ${workflows.length}, project ${project.id}`);
 
-	// Clearing first is what makes a re-run replace its own history rather than stack
-	// a second fortnight on top of the first.
-	//
-	// Clear and rewrite are one transaction on purpose. Split apart, a failure part way
-	// through the inserts rolls back the new history while the deletes stay committed,
-	// and the developer is left with nothing and no way back.
-	// Declared outside the transaction block so the summary below the catch can read
-	// them.
+	// Clear and rewrite in one transaction. Split apart, a failed insert rolls back the
+	// new history while the deletes stay committed, leaving nothing behind.
+	// Outside the transaction block so the summary after the catch can read them.
 	let execCount = 0;
 	let failCount = 0;
 	let threadCount = 0;
@@ -221,14 +192,9 @@ function main() {
 			db.prepare(`DELETE FROM execution_data WHERE executionId IN (${p})`).run(...priorExec);
 			db.prepare(`DELETE FROM execution_entity WHERE id IN (${p})`).run(...priorExec);
 		}
-		// Threads and activity are cleared by project, not by workflow id.
-		//
-		// Re-seeding the estate replaces the workflows, and the replacements get fresh
-		// ids. Anything keyed on the *current* ids then matches nothing, leaving the
-		// previous run's rows orphaned rather than deleted — and because the ids here are
-		// generated from the fixed seed, the next insert collides on the primary key. The
-		// project id is reused across runs, so it is the stable handle. Executions need no
-		// equivalent: deleting a workflow cascades them.
+		// Cleared by project, not workflow id. Re-seeding replaces the workflows with
+		// fresh ids, so anything keyed on those orphans the old rows, and the seeded ids
+		// then collide. Executions cascade when their workflow is deleted.
 		const priorThreads = db
 			.prepare('SELECT id FROM instance_ai_threads WHERE projectId = ?')
 			.all(project.id)
@@ -366,7 +332,7 @@ function main() {
 				msgCount++;
 			}
 
-			// Activity entries. Only `workflow` and `credential` categories exist —
+			// Activity entries. Only `workflow` and `credential` categories exist:
 			// executions are deliberately not in the vocabulary, because
 			// `execution_entity` already indexes the read a feed wants.
 			const createdAt = NOW - DAYS * 86400e3 - Math.floor(random() * 7 * 86400e3);

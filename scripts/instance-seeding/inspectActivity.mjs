@@ -1,19 +1,12 @@
 #!/usr/bin/env node
 // A one-page read-only viewer for the `activity_event` table.
 //
-// This is a debug surface, not a product one. It is unauthenticated by design, and
-// it serves the whole table — including who did what in which project — to anything
-// that can reach the port. That is why it binds loopback only, and why it must not be
-// tunnelled or port-forwarded.
+// A debug surface: unauthenticated, and it serves the whole table including who did
+// what in which project. Binds loopback only. Do not tunnel or port-forward it.
 //
-// Read-only is enforced three times over, because any one of them can be undone by a
-// later edit without the others noticing:
-//
-//   1. The connection is opened `readOnly`, so SQLite itself rejects a write.
-//   2. Every statement here is a SELECT.
-//   3. The sort column comes from an allowlist. A column name cannot be a bound
-//      parameter, so it is the one piece of the query built by concatenation, and an
-//      allowlist is what keeps that safe.
+// Read-only three times over, since a later edit can undo any one layer alone:
+// the connection is opened `readOnly`, every statement is a SELECT, and the sort
+// column comes from an allowlist because a column name cannot be bound.
 
 import { DatabaseSync } from 'node:sqlite';
 import http from 'node:http';
@@ -44,8 +37,7 @@ if (!tableExists) {
 	process.exit(1);
 }
 
-// The allowlist is derived from the table itself rather than hardcoded, so a new
-// column becomes sortable without a code change and a dropped one stops being valid.
+// Derived from the table, so a new column becomes sortable without a code change.
 const COLUMNS = db
 	.prepare("SELECT name FROM pragma_table_info('activity_event')")
 	.all()
@@ -61,11 +53,9 @@ const esc = (v) =>
 			);
 
 function query({ q, sort, dir, limit, offset }) {
-	// The free-text filter spans every column including `data`, so a run id or a
-	// failing node name finds its entry without the reader knowing which field holds
-	// it. That is the whole reason to search the JSON blob rather than parse it.
-	// `%` and `_` are LIKE wildcards, so an unescaped filter for either matches every
-	// row instead of the rows containing that character.
+	// Spans every column including the JSON `data` blob, so a run id or a node name
+	// finds its entry without the reader knowing which field holds it.
+	// `%` and `_` are LIKE wildcards; unescaped, either matches every row.
 	const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
 	const where = q
 		? `WHERE ${COLUMNS.map((c) => `IFNULL("${c}", '') LIKE ? ESCAPE '\\'`).join(' OR ')}`
@@ -100,8 +90,8 @@ function page({ q, sort, dir, limit, offset, total, rows }) {
 		return `<th><a href="${esc(link({ sort: c, dir: nextDir, offset: '0' }))}"${active ? ' class="on"' : ''}>${esc(c)}${arrow}</a></th>`;
 	}).join('');
 
-	// One line per row, truncated, with the full value on hover. A log viewer is read
-	// by scanning down it, and a wrapped cell turns 25 rows into six screens.
+	// One line per row, full value on hover. A wrapped cell turns 25 rows into six
+	// screens, and this is read by scanning down it.
 	const body =
 		rows.length === 0
 			? `<tr><td colspan="${COLUMNS.length}" class="empty">No rows${q ? ` matching “${esc(q)}”` : ''}.</td></tr>`
@@ -126,7 +116,7 @@ function page({ q, sort, dir, limit, offset, total, rows }) {
 
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>activity_event — ${total} rows</title>
+<title>activity_event · ${total} rows</title>
 <style>
  :root { color-scheme: light dark; --line: #8883; }
  body { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; padding: 16px 20px; }
@@ -138,8 +128,7 @@ function page({ q, sort, dir, limit, offset, total, rows }) {
  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
  th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
  th { position: sticky; top: 0; background: Canvas; font-weight: 600; }
- /* Fixed layout, so the wide opaque id columns cannot starve the columns a reader
-    is actually scanning. Percentages so it still fills a narrow window. */
+ /* Fixed layout so the wide id columns cannot starve the ones being scanned. */
  .c-id, th:nth-child(1) { width: 3.5rem; }
  .c-category, th:nth-child(2) { width: 6rem; }
  .c-action, th:nth-child(3) { width: 6rem; }
@@ -178,17 +167,14 @@ function page({ q, sort, dir, limit, offset, total, rows }) {
  <span>${from}–${to} of ${total}</span>
  <a class="${next >= total ? 'off' : ''}" href="${esc(link({ offset: String(next) }))}">next ›</a>
 </div>
-<div class="warn">Debug surface: unauthenticated, serves the whole table. Loopback only — do not tunnel or port-forward.</div>
+<div class="warn">Debug surface: unauthenticated, serves the whole table. Loopback only: do not tunnel or port-forward.</div>
 </body></html>`;
 }
 
 const server = http.createServer((req, res) => {
-	// Only loopback can reach the socket, but a browser pointed at a hostname that
-	// resolves to 127.0.0.1 would still be served. Requiring a loopback Host closes
-	// that, which matters because there is no authentication behind it.
-	// Strip the port without breaking IPv6. Splitting on ':' turns `[::1]:5699` into
-	// `[`, which silently rejects IPv6 loopback and makes the allowlist entries for it
-	// dead code.
+	// The socket is loopback, but a hostname resolving to 127.0.0.1 would still be
+	// served. Requiring a loopback Host closes that. Nothing else authenticates.
+	// Strip the port without breaking IPv6: splitting on ':' turns `[::1]:5699` into `[`.
 	const rawHost = req.headers.host ?? '';
 	const host = rawHost.startsWith('[')
 		? rawHost.slice(0, rawHost.indexOf(']') + 1)

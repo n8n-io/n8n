@@ -1,25 +1,13 @@
 // Ten hand-written workflows that share one house style.
 //
-// The estate profile generates workflows from random parts, which is right when the
-// goal is a large dependency graph. It is wrong here. This profile exists so an agent
-// can be asked "what does this org normally do?" and be gradeable on the answer, and
-// that only works if the answer is a fact about the estate rather than an artifact of
-// sampling. So these are written out, not generated.
-//
-// Each one is a workflow a real team would plausibly run. Names describe what the
-// nodes actually do — in the estate profile they do not, and an agent reading a
-// workflow called "Stripe Invoice Fanout" that contains no Stripe node learns
-// something false.
+// Written out rather than generated. The point is that "what does this org normally
+// do?" has a checkable answer, which needs the answer to be a fact about the estate
+// and not an artifact of sampling. Names describe what the nodes do, so a reader
+// does not learn something false from the title.
 
-/**
- * The house style. Every workflow below obeys all five rules, with no exceptions —
- * an exception is indistinguishable from noise at n=10, and the point is a signal
- * strong enough to detect.
- *
- * Each rule is a place where n8n offers a real choice and this org always makes the
- * same one. A rule with no alternative is not a preference, it is a constraint, and
- * an agent gets no credit for following it.
- */
+// Five rules, no exceptions: at n=10 an exception is indistinguishable from noise.
+// Each rule is a place n8n offers a real choice. A rule with no alternative is a
+// constraint, not a preference, and detecting it proves nothing.
 export const HOUSE_STYLE = {
 	// Alternatives: Anthropic, Gemini, Mistral, Ollama, Azure OpenAI.
 	chatModel: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -36,12 +24,8 @@ export const HOUSE_STYLE = {
 
 export const PREFERENCE_PROJECT = 'Automation Platform';
 
-/**
- * Two tables the workflows genuinely read and write, not decoration.
- * `customer_accounts` is read by three workflows; `automation_runs` is written by
- * all ten, which is what makes the audit convention visible in the data as well as
- * in the graph.
- */
+// Read and written by the workflows, not decoration. Three read `customer_accounts`;
+// all ten write `automation_runs`, which puts the audit convention in the data too.
 export const PREFERENCE_DATA_TABLES = [
 	{
 		name: 'customer_accounts',
@@ -53,56 +37,23 @@ export const PREFERENCE_DATA_TABLES = [
 			{ name: 'renewal_date', type: 'string' },
 			{ name: 'invoice_overdue_days', type: 'number' },
 		],
+		// Tabular, in column order, because six objects with six keys each is 48 lines
+		// of the same shape and harder to scan for the values that matter.
 		rows: [
-			{
-				account_id: 'acc_1001',
-				company: 'Northwind Trading',
-				plan: 'enterprise',
-				health_score: 82,
-				renewal_date: '2026-03-01',
-				invoice_overdue_days: 0,
-			},
-			{
-				account_id: 'acc_1002',
-				company: 'Contoso Logistics',
-				plan: 'growth',
-				health_score: 41,
-				renewal_date: '2026-02-14',
-				invoice_overdue_days: 12,
-			},
-			{
-				account_id: 'acc_1003',
-				company: 'Fabrikam Health',
-				plan: 'enterprise',
-				health_score: 67,
-				renewal_date: '2026-05-20',
-				invoice_overdue_days: 0,
-			},
-			{
-				account_id: 'acc_1004',
-				company: 'Tailspin Media',
-				plan: 'starter',
-				health_score: 29,
-				renewal_date: '2026-01-30',
-				invoice_overdue_days: 34,
-			},
-			{
-				account_id: 'acc_1005',
-				company: 'Proseware Analytics',
-				plan: 'growth',
-				health_score: 74,
-				renewal_date: '2026-04-11',
-				invoice_overdue_days: 0,
-			},
-			{
-				account_id: 'acc_1006',
-				company: 'Litware Robotics',
-				plan: 'enterprise',
-				health_score: 55,
-				renewal_date: '2026-02-28',
-				invoice_overdue_days: 7,
-			},
-		],
+			['acc_1001', 'Northwind Trading', 'enterprise', 82, '2026-03-01', 0],
+			['acc_1002', 'Contoso Logistics', 'growth', 41, '2026-02-14', 12],
+			['acc_1003', 'Fabrikam Health', 'enterprise', 67, '2026-05-20', 0],
+			['acc_1004', 'Tailspin Media', 'starter', 29, '2026-01-30', 34],
+			['acc_1005', 'Proseware Analytics', 'growth', 74, '2026-04-11', 0],
+			['acc_1006', 'Litware Robotics', 'enterprise', 55, '2026-02-28', 7],
+		].map(([account_id, company, plan, health_score, renewal_date, invoice_overdue_days]) => ({
+			account_id,
+			company,
+			plan,
+			health_score,
+			renewal_date,
+			invoice_overdue_days,
+		})),
 	},
 	{
 		name: 'automation_runs',
@@ -116,58 +67,26 @@ export const PREFERENCE_DATA_TABLES = [
 	},
 ];
 
-/**
- * Credentials the workflows reference. `env` names the variable a developer can set
- * to supply a real token; when it is missing the seeder writes a labelled placeholder
- * instead, so the workflow is still wired and openable but visibly not runnable.
- */
+// `env` names the variable that supplies a real token. Without it the seeder writes a
+// labelled placeholder, so the workflow stays wired and openable but is not runnable.
 export const PREFERENCE_CREDENTIALS = [
-	{
-		key: 'openai',
-		type: 'openAiApi',
-		name: 'OpenAI (Automation Platform)',
-		env: 'SEED_OPENAI_API_KEY',
-		field: 'apiKey',
-	},
-	{
-		key: 'linear',
-		type: 'linearApi',
-		name: 'Linear (Automation Platform)',
-		env: 'SEED_LINEAR_API_KEY',
-		field: 'apiKey',
-	},
-	{
-		key: 'slack',
-		type: 'slackApi',
-		name: 'Slack (Automation Platform)',
-		env: 'SEED_SLACK_TOKEN',
-		field: 'accessToken',
-	},
-	{
-		key: 'gmail',
-		type: 'gmailOAuth2',
-		name: 'Gmail (Automation Platform)',
-		env: 'SEED_GMAIL_OAUTH',
-		field: 'oauthTokenData',
-	},
-	{
-		key: 'http',
-		type: 'httpHeaderAuth',
-		name: 'Enrichment API (Automation Platform)',
-		env: 'SEED_ENRICHMENT_TOKEN',
-		field: 'value',
-	},
-];
+	['openai', 'openAiApi', 'OpenAI', 'SEED_OPENAI_API_KEY', 'apiKey'],
+	['linear', 'linearApi', 'Linear', 'SEED_LINEAR_API_KEY', 'apiKey'],
+	['slack', 'slackApi', 'Slack', 'SEED_SLACK_TOKEN', 'accessToken'],
+	['gmail', 'gmailOAuth2', 'Gmail', 'SEED_GMAIL_OAUTH', 'oauthTokenData'],
+	['http', 'httpHeaderAuth', 'Enrichment API', 'SEED_ENRICHMENT_TOKEN', 'value'],
+].map(([key, type, label, env, field]) => ({
+	key,
+	type,
+	name: `${label} (${PREFERENCE_PROJECT})`,
+	env,
+	field,
+}));
 
-// A real Linear team id if the developer supplies one, otherwise a value that says
-// what it is. The workflows are openable either way; only a real id makes the Linear
-// nodes runnable, which matches how the credentials behave.
 const LINEAR_TEAM_ID = process.env.SEED_LINEAR_TEAM_ID || 'seed-placeholder-team-id';
 
-// --- node builders -----------------------------------------------------------
-// Small helpers only. Each workflow spells out its own graph below, because a
-// reader checking "is this a real workflow?" should be able to answer from the
-// recipe alone without resolving a chain of factories.
+// Small helpers only. Each workflow spells out its own graph, so "is this a real
+// workflow?" is answerable from the recipe without chasing factories.
 
 let x = 0;
 const at = (row = 0) => [240 + x++ * 220, 300 + row * 160];
@@ -568,7 +487,7 @@ export function preferenceWorkflows(tables) {
 			slackPost(
 				'Announce Release',
 				'#releases',
-				'=Deployed {{ $json.release }} by {{ $json.author }} — services: {{ $json.services }}',
+				'=Deployed {{ $json.release }} by {{ $json.author }}. Services: {{ $json.services }}',
 			),
 			auditRow(runs, 'Deploy Announcer', '=Announced {{ $json.release }}'),
 		]),
