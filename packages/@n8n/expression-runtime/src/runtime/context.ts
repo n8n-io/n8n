@@ -12,6 +12,7 @@ import {
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
 import { isKeyOf } from './utils';
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './removed-globals';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
@@ -46,6 +47,15 @@ const INPUT_RPC_TYPES = {
 	all: 'getInputAll',
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
+
+const REMOVED_GLOBAL_THROWERS: ReadonlyArray<[string, () => never]> = (
+	Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<keyof typeof REMOVED_EXPRESSION_GLOBALS>
+).map((name) => [
+	name,
+	() => {
+		throw new ExpressionError(removedGlobalMessage(name));
+	},
+]);
 
 // ============================================================================
 // Build Context Function
@@ -316,25 +326,14 @@ export function buildContext(
 		return result;
 	};
 
-	// $getPairedItem — walks the paired-item ancestry chain back to the
-	// named upstream node. The host validates the structural shape of
-	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
-	// schema; bad input surfaces as a schema-parse error sentinel rather
-	// than a host throw, keeping the protocol surface tight.
-	target.$getPairedItem = (
-		destinationNodeName: string,
-		incomingSourceData: unknown,
-		initialPairedItem: unknown,
-	) => {
-		const result = callbacks.callHost({
-			type: 'getPairedItem',
-			destinationNodeName,
-			incomingSourceData,
-			initialPairedItem,
-		});
-		throwIfErrorSentinel(result);
-		return result;
-	};
+	// Globals removed in a major version. Bound to a thrower so a call fails
+	// with a message naming the replacement, instead of resolving to undefined
+	// and feeding that into the workflow's data. Thrown in-isolate: the message
+	// is static, so no host round-trip is needed. The throwers are created once
+	// at module scope; buildContext runs per evaluation and only assigns them.
+	for (const [name, thrower] of REMOVED_GLOBAL_THROWERS) {
+		target[name] = thrower;
+	}
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
