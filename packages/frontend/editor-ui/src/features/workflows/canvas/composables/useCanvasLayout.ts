@@ -1,14 +1,14 @@
 import dagre from '@dagrejs/dagre';
 
-import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import { useVueFlow, type GraphEdge, type XYPosition } from '@vue-flow/core';
 import {
 	CanvasNodeRenderType,
-	type CanvasGroupNodeData,
 	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
 	type CanvasGroupNode,
+	type CanvasLayoutNode,
+	type CanvasLayoutNodeData,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -26,6 +26,12 @@ import {
 import type { ComputedRef, Ref } from 'vue';
 import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
 import { computeGroupFrameRects } from './useCanvasMapping.groups';
+import {
+	hasMeasuredDimensions,
+	isAiConfigNode,
+	isAiParentNode,
+	isStickyCanvasNode,
+} from './useCanvasLayout.guards';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -50,8 +56,6 @@ export type CanvasLayoutEvent = {
 	target: CanvasLayoutTarget;
 };
 
-type CanvasLayoutNode = GraphNode<CanvasNodeData> | CanvasGroupNode;
-type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
 type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
 type LayoutConnection = CanvasConnection & Partial<Pick<GraphEdge, 'targetX' | 'targetY'>>;
 
@@ -220,24 +224,12 @@ export function useCanvasLayout(
 		return findNode<CanvasLayoutNodeData>(edge.target)?.position ?? { x: 0, y: 0 };
 	}
 
-	function hasValidDimensions(value: unknown): value is { width: number; height: number } {
-		if (typeof value !== 'object' || value === null) return false;
-		if (!('width' in value) || !('height' in value)) return false;
-
-		return (
-			typeof value.width === 'number' &&
-			typeof value.height === 'number' &&
-			value.width > 0 &&
-			value.height > 0
-		);
-	}
-
 	/** Returns measured node dimensions when VueFlow has a usable value. */
 	function getMeasuredDimensions(
 		node: CanvasLayoutNode,
 	): { width: number; height: number } | undefined {
 		if (!('dimensions' in node)) return undefined;
-		return hasValidDimensions(node.dimensions) ? node.dimensions : undefined;
+		return hasMeasuredDimensions(node.dimensions) ? node.dimensions : undefined;
 	}
 
 	/** Returns the size that dagre must reserve for a layout node. */
@@ -501,31 +493,6 @@ export function useCanvasLayout(
 			targetWithPadding.y > container.y + container.height;
 
 		return !noIntersection;
-	}
-
-	function isStickyCanvasNode(node: CanvasLayoutNode): node is GraphNode<CanvasNodeData> {
-		return !isCanvasGroupNode(node) && node.data?.type === STICKY_NODE_TYPE;
-	}
-
-	function isCanvasNodeData(data: CanvasLayoutNodeData | undefined): data is CanvasNodeData {
-		return data !== undefined && 'render' in data;
-	}
-
-	function isAiParentNode(node: CanvasLayoutNodeData | undefined): node is CanvasNodeData {
-		return Boolean(
-			isCanvasNodeData(node) &&
-				node.render?.type === CanvasNodeRenderType.Default &&
-				node.render.options.configurable &&
-				!node.render.options.configuration,
-		);
-	}
-
-	function isAiConfigNode(node: CanvasLayoutNodeData | undefined): node is CanvasNodeData {
-		return Boolean(
-			isCanvasNodeData(node) &&
-				node.render?.type === CanvasNodeRenderType.Default &&
-				node.render.options.configuration,
-		);
 	}
 
 	function getAllConnectedAiConfigNodes({
