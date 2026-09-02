@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
+import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -302,7 +303,7 @@ export class JobProcessor {
 			);
 		};
 
-		let workflowExecute: WorkflowExecute;
+		let workflowExecute: WorkflowExecute | undefined;
 		let workflowRun: PCancelable<IRun>;
 
 		const { startData, resultData, manualData } = execution.data;
@@ -364,6 +365,11 @@ export class JobProcessor {
 			retryOf: execution.retryOf ?? undefined,
 			status: execution.status,
 		};
+
+		if (workflowExecute && this.isJobSuspendable(job, execution)) {
+			const suspendable = workflowExecute;
+			runningJob.suspend = () => suspendable.suspend();
+		}
 
 		this.runningJobs[job.id] = runningJob;
 
@@ -575,6 +581,30 @@ export class JobProcessor {
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
 		this.cancellationReasons[jobId] = reason;
+	}
+
+	/**
+	 * Whether a job may be suspended at worker shutdown. Only production
+	 * executions qualify: manual and evaluation runs are tied to a session,
+	 * streaming responses cannot migrate mid-stream, and MCP executions are
+	 * pinned to their session.
+	 */
+	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
+		const isProductionMode = ['webhook', 'trigger', 'retry'].includes(execution.mode);
+
+		return (
+			isProductionMode &&
+			!job.data.streamingEnabled &&
+			!job.data.isMcpExecution &&
+			execution.data.executionData !== undefined
+		);
+	}
+
+	/** Ask every suspendable running job to stop at its next node boundary. */
+	suspendRunningJobs() {
+		for (const runningJob of Object.values(this.runningJobs)) {
+			runningJob.suspend?.();
+		}
 	}
 
 	getRunningJobIds(): JobId[] {
