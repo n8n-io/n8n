@@ -164,17 +164,19 @@ describe('useWorkflowSetupItems', () => {
 		expect(isWorkflowAvailable.value).toBe(false);
 	});
 
-	it('refreshes the usable-credentials slice when a credential changes elsewhere', async () => {
-		credentialsStore.refreshUsableCredentials = vi.fn().mockResolvedValue(undefined);
-
+	it("refetches this workflow's usable slice when a credential changes elsewhere", async () => {
 		useWorkflowSetupItems(() => WORKFLOW_ID);
-		expect(credentialsStore.refreshUsableCredentials).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
 
 		// A deletion from e.g. the credentials page, not through this composable.
+		// The refetch targets this workflow's scope, not the store's last one.
 		await credentialsStore.deleteCredential({ id: 'cred-1' });
 
 		await vi.waitFor(() => {
-			expect(credentialsStore.refreshUsableCredentials).toHaveBeenCalled();
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(2);
+		});
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenLastCalledWith({
+			workflowId: WORKFLOW_ID,
 		});
 	});
 

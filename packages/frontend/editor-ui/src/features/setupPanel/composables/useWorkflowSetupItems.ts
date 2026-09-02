@@ -103,7 +103,12 @@ export function useWorkflowSetupItems(
 	// The usable slice is only written by its fetch, so a credential created,
 	// edited, or deleted elsewhere in the app (credential modal, credentials
 	// page) would otherwise leave done-ness stale while this stays mounted.
-	const refreshUsableSlice = () => void credentialsStore.refreshUsableCredentials().catch(() => {});
+	// Refetch this workflow's scope, not the store's last one: the slice is
+	// last-writer-wins and another view may have re-anchored it elsewhere.
+	const refreshUsableSlice = () => {
+		const id = toValue(workflowId);
+		if (id) void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
+	};
 	listenForCredentialChanges({
 		store: credentialsStore,
 		onCredentialCreated: refreshUsableSlice,
