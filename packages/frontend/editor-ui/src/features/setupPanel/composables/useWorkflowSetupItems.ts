@@ -3,7 +3,7 @@ import { getActivePinia } from 'pinia';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -33,9 +33,8 @@ function isBoundCredential(assigned: INodeCredentialsDetails | string | undefine
  * Derives service-keyed setup items (`InstanceAiSetupItem`) for a workflow.
  * Unlike `useWorkflowSetupState` (the canvas setup wizard), it takes an
  * explicit workflowId instead of the editor's injected document store, holds
- * no UI state (no auto-apply, no background credential tests), and derives
- * done-ness on demand so out-of-band changes — e.g. a credential created from
- * the credentials page — reflect immediately.
+ * no UI state, and derives done-ness on demand so out-of-band changes — e.g.
+ * a credential created from the credentials page — reflect immediately.
  *
  * Node state comes from the live document store while a canvas host has one
  * hydrated, and from the saved workflow (fetched here) otherwise, so the
@@ -54,12 +53,10 @@ export function useWorkflowSetupItems(
 
 	/**
 	 * The canvas host's live document store, resolved through pinia's state
-	 * registry so a host dispose+recreate cycle (`disposeWorkflowDocumentStore`
-	 * deletes the state entry, re-creation re-adds it) reactively swaps this to
-	 * the live instance instead of pinning a disposed one. Never instantiates
-	 * the (heavyweight) store itself — without a host, the fetched workflow
-	 * below is the node source. The `in` check is what makes the swap reactive;
-	 * the id prefix rules out prototype keys.
+	 * registry so a host dispose+recreate cycle reactively swaps this to the
+	 * live instance instead of pinning a disposed one. Never instantiates the
+	 * (heavyweight) store itself. The `in` check is what makes the swap
+	 * reactive; the id prefix rules out prototype keys.
 	 */
 	const documentStore = computed(() => {
 		const id = toValue(workflowId);
@@ -71,19 +68,16 @@ export function useWorkflowSetupItems(
 	});
 
 	/**
-	 * The id whose saved workflow this composable fetched to completion. The
-	 * workflows-list cache alone can't prove availability: list pages seed
-	 * `workflowsById` entries with a `nodes: []` placeholder, which would read
-	 * as an empty (but "available") workflow and suppress the event feed.
+	 * The saved workflow as fetched by this composable. Deliberately not read
+	 * back from `workflowsById`: list pages seed that cache with `nodes: []`
+	 * placeholders, which would read as an empty (but "available") workflow.
 	 */
-	const fetchedWorkflowId = ref<string>();
+	const fetchedWorkflow = ref<IWorkflowDb>();
 
 	// (Re)load the derivation's inputs while not paused, and again when an
-	// agent edit settles or a canvas host's document store goes away: the
-	// saved workflow for node state (skipped while a hydrated canvas store is
-	// the source) and the usable-credentials slice scoped to this workflow
-	// (see `isItemDone`). Failures stay silent by design — rows fall back to
-	// the thread's event feed until a later pass succeeds.
+	// agent edit settles or a canvas host's document store goes away. Failures
+	// stay silent by design — rows fall back to the thread's event feed until
+	// a later pass succeeds.
 	watch(
 		() =>
 			[
@@ -97,8 +91,8 @@ export function useWorkflowSetupItems(
 			if (!hydrated) {
 				void workflowsListStore
 					.fetchWorkflow(id)
-					.then(() => {
-						if (toValue(workflowId) === id) fetchedWorkflowId.value = id;
+					.then((workflow) => {
+						if (toValue(workflowId) === id) fetchedWorkflow.value = workflow;
 					})
 					.catch(() => {});
 			}
@@ -108,7 +102,8 @@ export function useWorkflowSetupItems(
 
 	// The usable slice is only written by its fetch, so a credential created,
 	// edited, or deleted elsewhere in the app (credential modal, credentials
-	// page) would leave done-ness stale while this derivation stays mounted.
+	// page) would otherwise leave done-ness stale while this stays mounted.
+	const refreshUsableSlice = () => void credentialsStore.refreshUsableCredentials().catch(() => {});
 	listenForCredentialChanges({
 		store: credentialsStore,
 		onCredentialCreated: refreshUsableSlice,
@@ -116,17 +111,12 @@ export function useWorkflowSetupItems(
 		onCredentialDeleted: refreshUsableSlice,
 	});
 
-	function refreshUsableSlice() {
-		void credentialsStore.refreshUsableCredentials().catch(() => {});
-	}
-
-	/** Live canvas nodes when a host hydrated a document store, else the saved workflow's. */
+	/** Live canvas nodes when a host hydrated a document store, else the fetched save's. */
 	const workflowNodes = computed<INodeUi[] | undefined>(() => {
 		const docStore = documentStore.value;
 		if (docStore?.hydrated) return docStore.allNodes;
 		const id = toValue(workflowId);
-		if (!id || fetchedWorkflowId.value !== id) return undefined;
-		return workflowsListStore.workflowsById[id]?.nodes;
+		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
 
 	/** Node state is available from a hydrated canvas store or the fetched workflow. */
@@ -164,10 +154,7 @@ export function useWorkflowSetupItems(
 	>();
 	watch(
 		() => toValue(workflowId),
-		() => {
-			settledParameterItems.clear();
-			fetchedWorkflowId.value = undefined;
-		},
+		() => settledParameterItems.clear(),
 	);
 
 	/**
@@ -243,23 +230,6 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
-	/** Whether every node bound to the item already carries a credential of its type. */
-	function isCredentialBoundOnAllNodes(
-		item: Extract<InstanceAiSetupItem, { kind: 'credential' }>,
-	): boolean {
-		const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
-		if (nodeNames.length === 0) return false;
-		return nodeNames.every((nodeName) =>
-			isBoundCredential(nodesByName.value.get(nodeName)?.credentials?.[item.credentialType]),
-		);
-	}
-
-	/** The usable-credentials slice only answers for this workflow once fetched for it. */
-	const isUsableSliceCurrent = computed(() => {
-		const id = toValue(workflowId);
-		return id !== undefined && credentialsStore.hasUsableCredentialsForScope({ workflowId: id });
-	});
-
 	/**
 	 * Done-ness is always derived, never stored (see `setupItemSchema`): a
 	 * credential item is done once a usable credential of its type exists —
@@ -275,14 +245,22 @@ export function useWorkflowSetupItems(
 	 */
 	function isItemDone(item: InstanceAiSetupItem): boolean {
 		if (item.kind === 'credential') {
+			const id = toValue(workflowId);
 			if (
 				!GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType) &&
-				isUsableSliceCurrent.value &&
+				id !== undefined &&
+				credentialsStore.hasUsableCredentialsForScope({ workflowId: id }) &&
 				credentialsStore.getUsableCredentialByType(item.credentialType).length > 0
 			) {
 				return true;
 			}
-			return isCredentialBoundOnAllNodes(item);
+			const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
+			return (
+				nodeNames.length > 0 &&
+				nodeNames.every((nodeName) =>
+					isBoundCredential(nodesByName.value.get(nodeName)?.credentials?.[item.credentialType]),
+				)
+			);
 		}
 
 		const node = nodesByName.value.get(item.nodeName);

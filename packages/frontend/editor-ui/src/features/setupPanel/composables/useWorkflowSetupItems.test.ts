@@ -129,17 +129,17 @@ describe('useWorkflowSetupItems', () => {
 
 	it('derives from the saved workflow when no canvas host has a document store', async () => {
 		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
-		workflowsListStore.workflowsById = {
-			[WORKFLOW_ID]: createTestWorkflow({
+		workflowsListStore.fetchWorkflow = vi.fn().mockResolvedValue(
+			createTestWorkflow({
 				id: WORKFLOW_ID,
 				nodes: [createTestNode({ name: 'Slack' })],
 			}),
-		};
+		);
 
 		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
 
-		// A cached entry alone is not enough — availability waits for this
-		// composable's own fetch (the cache may hold a list-page placeholder).
+		// Nodes come from this composable's own fetch, never the workflows-list
+		// cache (list pages seed it with `nodes: []` placeholders).
 		expect(isWorkflowAvailable.value).toBe(false);
 		await vi.waitFor(() => expect(isWorkflowAvailable.value).toBe(true));
 		expect(derivedItems.value).toEqual([credentialItem()]);
@@ -153,43 +153,7 @@ describe('useWorkflowSetupItems', () => {
 		});
 	});
 
-	it('does not read a list-page placeholder entry as an empty workflow', async () => {
-		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
-		// What a workflows-list page seeds into the cache: real metadata, `nodes: []`.
-		workflowsListStore.workflowsById = {
-			[WORKFLOW_ID]: createTestWorkflow({ id: WORKFLOW_ID, nodes: [] }),
-		};
-		let resolveFetch!: (workflow: ReturnType<typeof createTestWorkflow>) => void;
-		workflowsListStore.fetchWorkflow = vi.fn().mockImplementation(
-			async () =>
-				await new Promise<ReturnType<typeof createTestWorkflow>>((resolve) => {
-					resolveFetch = resolve;
-				}),
-		);
-
-		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
-
-		expect(isWorkflowAvailable.value).toBe(false);
-		expect(derivedItems.value).toEqual([]);
-
-		workflowsListStore.workflowsById = {
-			[WORKFLOW_ID]: createTestWorkflow({
-				id: WORKFLOW_ID,
-				nodes: [createTestNode({ name: 'Slack' })],
-			}),
-		};
-		resolveFetch(workflowsListStore.workflowsById[WORKFLOW_ID]);
-		await vi.waitFor(() => expect(isWorkflowAvailable.value).toBe(true));
-		expect(derivedItems.value).toEqual([credentialItem()]);
-	});
-
 	it('stays unavailable when the saved-workflow fetch fails', async () => {
-		workflowsListStore.workflowsById = {
-			[WORKFLOW_ID]: createTestWorkflow({
-				id: WORKFLOW_ID,
-				nodes: [createTestNode({ name: 'Slack' })],
-			}),
-		};
 		workflowsListStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('offline'));
 
 		const { isWorkflowAvailable } = useWorkflowSetupItems(() => WORKFLOW_ID);
