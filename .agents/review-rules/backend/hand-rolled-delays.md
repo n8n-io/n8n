@@ -18,5 +18,7 @@ Do NOT flag:
   timeout error, retry backoff, debounce/throttle
 - Bare `setTimeout` used for scheduling rather than awaited as a delay
 - Fake timer helpers such as `vi.advanceTimersByTime`
+- Helpers literally named `sleep`/`sleepWithAbort`, and `sleep` imported from
+  `n8n-workflow` — ESLint already fails the build for both
 - `packages/@n8n/node-cli/**` and `packages/@n8n/typeorm/**`, which cannot depend
   on `@n8n/utils`

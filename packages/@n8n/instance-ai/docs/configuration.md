@@ -46,6 +46,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED` | boolean | `false` | Force-enable the MCP-connections experiment. `false` falls back to the PostHog flag. The MCP registry module and admin MCP access must also be enabled before the MCP registry discovery tool is wired. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
+| `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED` | boolean | `false` | Non-blocking setup panel (setup panel v2) instead of the suspending setup wizard. |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
@@ -147,23 +148,13 @@ These environment variables are read directly by `BuilderTemplatesService`.
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 | `N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION` | number | `604800000` | Retention period in ms for expired checkpoint tombstones before hard deletion. `0` keeps tombstones. |
 
-### Output Filtering
+### Output filtering
 
-The stream output redactor runs only when the durable event log is disabled.
-The durable event log is enabled by default, so these settings do not redact
-the default durable stream path. On the legacy path, the scan covers assistant
-text, reasoning, tool-call arguments, tool results, tool errors, and confirmation
-text. It records category counts when it redacts content.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED` | boolean | `true` | Master switch. When `false`, output passes through untouched. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS` | boolean | `true` | Redact credential/secret patterns (API keys, tokens, auth headers, `key=value` pairs). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PII` | string | `credit-card` | Comma-separated PII categories. Available values are `email`, `phone`, `credit-card`, `ssn-us`, `iban`, `crypto-wallet`, `ip`, `mac`, and `url`. Empty disables PII scanning. Unrecognized values are ignored. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER` | string | `[REDACTED]` | Replacement text substituted for each redacted match. |
-
-Secret detection matches known token shapes and explicit secret fields. PII
-detection applies the pattern registered for each selected category.
+Instance AI does not scan or redact agent output on the streaming path.
+Agent output is stored raw, consistent with workflow execution data, and
+redaction applies at egress boundaries instead — the LangSmith telemetry
+redactor is a separate layer and is unaffected. There are no
+`N8N_INSTANCE_AI_OUTPUT_REDACTION_*` settings.
 
 ## Provider connections
 
@@ -229,19 +220,13 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`true` since Gate A of the durable-log rollout; pre-existing runs are
-backfilled by migration). On, coalesced step-level facts (completed
-text/reasoning blocks, tool calls and results, run lifecycle) are appended to
-the `instance_ai_events` table and replay reads the database; token deltas
-are never persisted. Rows cascade-delete with their thread
-(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
-switch until the legacy paths sunset at Gate B: events then live only in a
-bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
-reset on restart, so replay does not survive a restart). That bound is
-per-thread only: a buffer is released when its thread is deleted or expires,
-so a main's memory scales with the number of threads it has served until the
-process restarts. The main logs a warning at boot when the switch is set.
+Events are persisted to the durable event log, which is the only storage
+path — there is no setting to turn it off. Coalesced step-level facts
+(completed text/reasoning blocks, tool calls and results, run lifecycle) are
+appended to the `instance_ai_events` table and replay reads the database;
+token deltas are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Nothing is retained in the process, so
+cursors stay valid across restarts and across mains sharing one database.
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -294,11 +279,6 @@ N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
 N8N_INSTANCE_AI_VERTEX_LOCATION=global
 N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
-
-# Legacy non-durable stream filtering — email with a custom placeholder
-N8N_INSTANCE_AI_DURABLE_LOG=false
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
 
 # Observational memory tuning
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000

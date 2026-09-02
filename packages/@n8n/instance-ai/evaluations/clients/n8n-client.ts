@@ -270,7 +270,15 @@ export class N8nClient {
 	 * Ensure a conversation thread exists before sending chat messages.
 	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
-	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+	/** `sourceContext` is persisted on the thread and surfaced on the run's
+	 *  LangSmith trace (prefixed `source_context.`), so pass what a later reader
+	 *  needs to tell one build apart from another — the eval harness sends the
+	 *  case slug and iteration. Capped at 2 KB by the API. */
+	async ensureThread(
+		threadId: string,
+		projectId?: string,
+		sourceContext?: Record<string, string | number | boolean>,
+	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
@@ -279,6 +287,7 @@ export class N8nClient {
 				projectId: resolvedProjectId,
 				source: 'evals',
 				origin: 'internal',
+				...(sourceContext ? { sourceContext } : {}),
 			},
 		});
 	}

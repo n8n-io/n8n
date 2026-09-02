@@ -1,8 +1,8 @@
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
-import { createComponentRenderer } from './__tests__/render';
 import type { OtelSettingsResponse } from './otel.api';
 import { useOtelStore } from './otel.store';
 import SettingsOpenTelemetryView from './SettingsOpenTelemetryView.vue';
@@ -68,7 +68,7 @@ const render = (options = {}) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	return {
 		pinia,
-		store: useOtelStore(pinia),
+		store: mockedStore(useOtelStore, pinia),
 		...createComponentRenderer(SettingsOpenTelemetryView, { pinia })(options),
 	};
 };

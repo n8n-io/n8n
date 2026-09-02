@@ -1355,7 +1355,12 @@ describe('executeWebhook establishTriggerIdentity', () => {
 	 * run with the caller it just authenticated — what `n8nOAuth2Auth` plus
 	 * `context.establishTriggerIdentity` do in the node.
 	 */
-	const runWithTriggerIdentity = async (resource: ProtectedResource | undefined) => {
+	const runWithTriggerIdentity = async (
+		resource: ProtectedResource | undefined,
+		options: { registrationIdentity?: string; establishesIdentity?: boolean } = {},
+	) => {
+		const { registrationIdentity, establishesIdentity = true } = options;
+
 		resourceRegistry.getByResourceUrl.mockResolvedValue(resource);
 
 		const additionalData = {
@@ -1365,7 +1370,9 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 		webhookService.runWebhook.mockImplementation(async (_workflow, _webhookData, _node, data) => {
-			await data.establishTriggerIdentity!('caller-token', RESOURCE_URL);
+			if (establishesIdentity) {
+				await data.establishTriggerIdentity!('caller-token', RESOURCE_URL);
+			}
 			return { workflowData: [[{ json: {} }]] };
 		});
 
@@ -1405,6 +1412,8 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			mock<WebhookRequest>({ method: 'POST', contentType: undefined }),
 			mock<express.Response>({ headersSent: false }),
 			vi.fn(),
+			undefined,
+			{ encryptedRunnerIdentity: registrationIdentity },
 		);
 
 		return additionalData;
@@ -1454,6 +1463,31 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			undefined,
 			undefined,
 		);
+	});
+
+	it('lets a node override the identity carried on the test-webhook registration', async () => {
+		await runWithTriggerIdentity(resourceWithGrant, {
+			registrationIdentity: 'registration-context',
+		});
+
+		const [runData] = workflowRunner.run.mock.calls[0];
+
+		// The registration carrier is only a fallback: a node that authenticates the caller
+		// itself establishes the stronger sealed carrier, and that is what the run uses.
+		expect(runData.encryptedRunnerIdentity).toBe('sealed-context');
+	});
+
+	it('carries the test-webhook registration identity when no node establishes one', async () => {
+		const additionalData = await runWithTriggerIdentity(resourceWithGrant, {
+			registrationIdentity: 'registration-context',
+			establishesIdentity: false,
+		});
+
+		const [runData] = workflowRunner.run.mock.calls[0];
+
+		expect(executionContextService.buildTriggerIdentityCredentials).not.toHaveBeenCalled();
+		expect(additionalData.encryptedRunnerIdentity).toBe('registration-context');
+		expect(runData.encryptedRunnerIdentity).toBe('registration-context');
 	});
 });
 

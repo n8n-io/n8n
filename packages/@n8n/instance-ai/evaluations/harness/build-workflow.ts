@@ -463,6 +463,11 @@ export interface BuildWorkflowConfig {
 	/** Credential type for a `local` run, where there is no fixture manifest to
 	 *  read it from. */
 	credentialSetupType?: string;
+	/** Which case this build is, and which repeat of it. Recorded on the thread
+	 *  as sourceContext, which n8n surfaces on the LangSmith trace — the only
+	 *  thing that distinguishes one build from the hundreds of near-identical
+	 *  ones a suite produces. */
+	caseIdentity?: { fileSlug: string; iteration: number };
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -645,7 +650,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		const projectId = await client.getPersonalProjectId();
-		await client.ensureThread(threadId, projectId);
+		await client.ensureThread(
+			threadId,
+			projectId,
+			config.caseIdentity
+				? {
+						evalCase: config.caseIdentity.fileSlug,
+						evalIteration: config.caseIdentity.iteration,
+					}
+				: undefined,
+		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
 		// default) before the first message, so every build-workflow call inside

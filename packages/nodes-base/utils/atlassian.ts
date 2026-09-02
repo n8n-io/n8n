@@ -2,6 +2,7 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodeParameterResourceLocator,
 	IPollFunctions,
 	IWebhookFunctions,
 	JsonObject,
@@ -28,12 +29,15 @@ export interface AccessibleResource {
 	name?: string;
 }
 
-// credentialId:hostname → cloudId, kept for the life of the process. Keyed per
-// credential so cache timing can't reveal which sites other credentials reach.
-const cloudIdCache = new Map<string, string>();
+// credentialId → accessible-resources, kept for the life of the process. Keyed
+// per credential so cache timing can't reveal which sites other credentials reach.
+const accessibleResourcesCache = new Map<string, AccessibleResource[]>();
 
-export function clearAtlassianCloudIdCache() {
-	cloudIdCache.clear();
+const hasSiteId = (resource: AccessibleResource) =>
+	typeof resource?.id === 'string' && resource.id !== '';
+
+export function clearAtlassianAccessibleResourcesCache() {
+	accessibleResourcesCache.clear();
 }
 
 /**
@@ -49,6 +53,71 @@ export function extractAtlassianSiteHostname(siteUrl: string): string {
 
 export function getAtlassianApiBaseUrl(product: AtlassianProduct, cloudId: string): string {
 	return `https://api.atlassian.com/ex/${product}/${encodeURIComponent(cloudId)}`;
+}
+
+async function loadAccessibleResources(
+	this: AtlassianContext,
+	credentialType: string,
+	bypassCache: boolean,
+): Promise<{ resources: AccessibleResource[]; fromCache: boolean }> {
+	const rawCredentialId = this.getNode().credentials?.[credentialType]?.id;
+	const credentialId =
+		typeof rawCredentialId === 'string' && rawCredentialId !== '' ? rawCredentialId : undefined;
+
+	if (!bypassCache && credentialId !== undefined) {
+		const cached = accessibleResourcesCache.get(credentialId);
+		if (cached) return { resources: cached, fromCache: true };
+	}
+
+	let resources: AccessibleResource[];
+	try {
+		resources = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+			method: 'GET',
+			url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			json: true,
+		});
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+
+	if (!Array.isArray(resources)) resources = [];
+	if (credentialId !== undefined) accessibleResourcesCache.set(credentialId, resources);
+	return { resources, fromCache: false };
+}
+
+/**
+ * Fetches the sites this OAuth2 connection can access, cached per credential
+ * per process. `bypassCache` forces a refresh (used by site dropdowns so a
+ * site granted after a reconnect shows up without a restart).
+ */
+export async function fetchAtlassianAccessibleResources(
+	this: AtlassianContext,
+	credentialType: string,
+	{ bypassCache = false }: { bypassCache?: boolean } = {},
+): Promise<AccessibleResource[]> {
+	return (await loadAccessibleResources.call(this, credentialType, bypassCache)).resources;
+}
+
+/** The cache lives for the life of the process, so a cached list that can't answer
+ * the caller is refetched once — otherwise a newly granted site stays invisible. */
+async function getAccessibleResourcesOrRefetch(
+	this: AtlassianContext,
+	credentialType: string,
+	isSufficient: (resources: AccessibleResource[]) => boolean,
+): Promise<AccessibleResource[]> {
+	const first = await loadAccessibleResources.call(this, credentialType, false);
+	if (!first.fromCache || isSufficient(first.resources)) return first.resources;
+
+	return (await loadAccessibleResources.call(this, credentialType, true)).resources;
+}
+
+// Capped at 5 so a bogus site selection can't dump the full site list into persisted execution data
+function formatReachableSites(resources: AccessibleResource[]): string {
+	const urls = resources
+		.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
+		.map((resource) => resource.url);
+	if (urls.length === 0) return 'no sites';
+	return urls.slice(0, 5).join(', ') + (urls.length > 5 ? `, and ${urls.length - 5} more` : '');
 }
 
 /**
@@ -71,48 +140,73 @@ export async function getAtlassianCloudId(
 		);
 	}
 
-	const rawCredentialId = this.getNode().credentials?.[credentialType]?.id;
-	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
-	const cacheKey = `${credentialId}:${hostname}`;
-	const cached = cloudIdCache.get(cacheKey);
-	if (cached) return cached;
-
-	let resources: AccessibleResource[];
-	try {
-		resources = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-			method: 'GET',
-			url: 'https://api.atlassian.com/oauth/token/accessible-resources',
-			json: true,
+	const matchHostname = (resources: AccessibleResource[]) =>
+		resources.find((resource) => {
+			try {
+				return new URL(resource.url).hostname.toLowerCase() === hostname;
+			} catch {
+				return false;
+			}
 		});
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
 
-	if (!Array.isArray(resources)) resources = [];
-
-	const site = resources.find((resource) => {
-		try {
-			return new URL(resource.url).hostname.toLowerCase() === hostname;
-		} catch {
-			return false;
-		}
-	});
+	const resources = await getAccessibleResourcesOrRefetch.call(
+		this,
+		credentialType,
+		(candidates) => matchHostname(candidates) !== undefined,
+	);
+	const site = matchHostname(resources);
 
 	if (!site) {
-		// Capped at 5 so a bogus siteUrl can't dump the full site list into persisted execution data
-		const urls = resources
-			.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
-			.map((resource) => resource.url);
-		const reachable =
-			urls.slice(0, 5).join(', ') + (urls.length > 5 ? `, and ${urls.length - 5} more` : '');
 		throw new NodeOperationError(
 			this.getNode(),
-			`No ${PRODUCT_NAMES[product]} site matched "${siteUrl}". This connection can access: ${
-				reachable || 'no sites'
-			}.`,
+			`No ${PRODUCT_NAMES[product]} site matched "${siteUrl}". This connection can access: ${formatReachableSites(
+				resources,
+			)}.`,
 		);
 	}
 
-	cloudIdCache.set(cacheKey, site.id);
 	return site.id;
+}
+
+/**
+ * Resolves a node's top-level Site parameter to a cloudId. From List stores the
+ * cloudId directly (accessible-resources returns it); By URL is hostname-matched
+ * against the connection's sites; an empty value auto-resolves when the
+ * connection reaches exactly one site and errors listing the candidates otherwise.
+ */
+export async function resolveAtlassianCloudId(
+	this: AtlassianContext,
+	credentialType: string,
+	site: INodeParameterResourceLocator | undefined,
+	product: AtlassianProduct,
+): Promise<string> {
+	const value =
+		typeof site?.value === 'string' || typeof site?.value === 'number'
+			? String(site.value).trim()
+			: '';
+
+	if (value !== '') {
+		if (site?.mode === 'url') {
+			return await getAtlassianCloudId.call(this, credentialType, value, product);
+		}
+		return value;
+	}
+
+	const resources = await getAccessibleResourcesOrRefetch.call(this, credentialType, (candidates) =>
+		candidates.some(hasSiteId),
+	);
+	const sites = resources.filter(hasSiteId);
+
+	if (sites.length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`This connection cannot access any ${PRODUCT_NAMES[product]} sites. Reconnect the credential and grant it access to a site.`,
+		);
+	}
+	if (sites.length === 1) return sites[0].id;
+
+	throw new NodeOperationError(
+		this.getNode(),
+		`This connection can access: ${formatReachableSites(sites)} — pick a site in the 'Site' parameter.`,
+	);
 }

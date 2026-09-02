@@ -83,13 +83,10 @@ function installLogDouble(rows: LogRow[] = []): void {
 }
 const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
 
-function createService(
-	options: { threadTtlDays?: number; durableLog?: boolean } = {},
-): InstanceAiMemoryService {
+function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
 			threadTtlDays: options.threadTtlDays ?? 0,
-			durableLog: options.durableLog ?? false,
 		},
 		database: {
 			type: 'postgresdb',
@@ -413,8 +410,8 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 	it('derives the tree from the log even when the stored snapshot is degenerate', async () => {
 		// The stored snapshot was built over an evicted buffer: an empty
 		// cancelled tree with none of the run's work (the INS-595 bug family).
-		// Snapshot rows keep being written flag-on (the rollback path until Gate
-		// B), but they are never read once the thread has log rows.
+		// Snapshot rows keep being written, but they are never read once the
+		// thread has log rows.
 		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{
 				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),
@@ -445,7 +442,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		const assistant = result.messages[1];
@@ -485,7 +482,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		const assistant = result.messages[1];
@@ -558,7 +555,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1', {
 			excludeRunIds: ['run_b'],
 		});
@@ -609,7 +606,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1', {
 			excludeRunIds: ['run_b'],
 		});
@@ -647,7 +644,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1', {
 			excludeRunIds: ['run_b'],
 			excludeMessageGroupIds: ['mg-1'],
@@ -703,7 +700,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		// Only run_done's entry is derived, exactly as the driving main would.
@@ -735,7 +732,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
@@ -804,7 +801,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toHaveLength(2);
@@ -919,7 +916,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		// Four messages, no trailing orphan card.
@@ -984,7 +981,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		const timeline = result.messages[1].agentTree?.timeline ?? [];
@@ -998,7 +995,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages[1].agentTree).toStrictEqual(tree);
@@ -1012,7 +1009,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		]);
 		mockEventLogRepository.getRunStarts.mockRejectedValue(new Error('db down'));
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages[1].agentTree).toStrictEqual(tree);
@@ -1046,18 +1043,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			),
 		]);
 
-		const service = createService({ durableLog: true });
+		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages[1].agentTree).toStrictEqual(tree);
 		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
-	});
-
-	it('never reads the log when the flag is off', async () => {
-		const service = createService();
-		await service.getRichMessages('user-1', 'thread-1');
-
-		expect(mockEventLogRepository.getRunStarts).not.toHaveBeenCalled();
 	});
 
 	describe('hydration is scoped to the requested page', () => {
@@ -1112,7 +1102,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// parser surfaced it as a message of its own.
 			setLogRows([...runRows('run_old', oldAt), ...runRows('run_recent', at)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
 			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
@@ -1132,7 +1122,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const laterAt = new Date('2026-01-01T00:00:09.000Z');
 			setLogRows([...runRows('run_recent', at), ...runRows('run_live', laterAt)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
@@ -1157,7 +1147,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 			setLogRows([...runRows('run_recent', at)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
 
 			expect(mockListMessages).toHaveBeenCalledWith(
@@ -1200,7 +1190,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			mockListMessages.mockResolvedValue({ messages: [] });
 			setLogRows([...runRows('run_recent', at)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
 
 			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
@@ -1219,7 +1209,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
 
 			// `run_bg` is outside the page bounds; it rides in on its group.
@@ -1238,7 +1228,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			mockListMessages.mockResolvedValue({ messages: [] });
 			setLogRows([...runRows('run_live', at)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {});
@@ -1251,7 +1241,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 			setLogRows([...runRows('run_recent', at)]);
 
-			const service = createService({ durableLog: true });
+			const service = createService();
 			await service.getRichMessages('user-1', 'thread-1');
 
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {

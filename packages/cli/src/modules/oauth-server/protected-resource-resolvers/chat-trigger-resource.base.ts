@@ -12,6 +12,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	CHAT_TRIGGER_CONSENT_HINTS,
 	CHAT_TRIGGER_SCOPES,
 	isOAuthProtectedChatTrigger,
 	resourceUrlToWebhookPath,
@@ -113,7 +114,7 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 			getAllowedRedirectUris: async () => [resourceUrl],
 			scopes: CHAT_TRIGGER_SCOPES,
 			displayName: workflowName,
-			// `uiHints` is IAM-1266's.
+			uiHints: CHAT_TRIGGER_CONSENT_HINTS,
 			...triggerResourceGate(this.workflowFinderService, {
 				audiences,
 				executeAccessWorkflowId: requireExecute ? workflowId : undefined,

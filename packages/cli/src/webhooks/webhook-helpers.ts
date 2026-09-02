@@ -512,6 +512,15 @@ export async function executeWebhook(
 		data: IWebhookResponseCallbackData | WebhookResponse,
 	) => void,
 	destinationNode?: IDestinationNode,
+	options?: {
+		/**
+		 * Identity of the builder who registered this test webhook, for a manual run that
+		 * had to wait for a webhook and so never reached the point where a manual
+		 * execution normally picks its identity up from the auth cookie. Only a fallback:
+		 * a node that establishes its own carrier below still wins.
+		 */
+		encryptedRunnerIdentity?: string;
+	},
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -542,6 +551,11 @@ export async function executeWebhook(
 	const additionalData = await WorkflowExecuteAdditionalData.getBase({
 		projectId: project?.id,
 	});
+
+	// Guarded: an absent carrier must not clobber one set elsewhere.
+	if (options?.encryptedRunnerIdentity) {
+		additionalData.encryptedRunnerIdentity = options.encryptedRunnerIdentity;
+	}
 
 	if (executionId) {
 		additionalData.executionId = executionId;

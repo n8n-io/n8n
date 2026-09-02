@@ -197,7 +197,7 @@ describe('ToolsConnectionModal', () => {
 		});
 
 		const tab = getByTestId('tab-n8n-connect');
-		expect(tab.textContent).toContain('n8n credits');
+		expect(tab.textContent).toContain('Gateway credits');
 		expect(tab.textContent).toContain('(1)');
 		// First tab is active, so the gateway item is visible immediately.
 		expect(queryByText('Slack')).toBeTruthy();

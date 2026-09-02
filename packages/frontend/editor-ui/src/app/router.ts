@@ -765,7 +765,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {

@@ -1536,6 +1536,33 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('returns published and draft agents for kind=subagents', async () => {
+			agentsService.findSummariesInProjects.mockResolvedValue([
+				agentEntity({ id: 'agent-published', name: 'Published helper', activeVersionId: 'v1' }),
+				agentEntity({ id: 'agent-draft', name: 'Draft helper', activeVersionId: null }),
+			]);
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'subagents',
+				query: ' helper ',
+				excludeAgentId: 'agent-1',
+			});
+
+			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(['project-1'], {
+				query: 'helper',
+				excludeAgentId: 'agent-1',
+			});
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				kind: 'subagents',
+				data: [
+					{ agentId: 'agent-published', name: 'Published helper' },
+					{ agentId: 'agent-draft', name: 'Draft helper' },
+				],
+			});
+		});
+
 		it('lists MCP registry servers for kind=mcpServers without a query', async () => {
 			mcpRegistryService.list.mockResolvedValue([{ name: 'github' }] as never);
 

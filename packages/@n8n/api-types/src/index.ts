@@ -169,6 +169,18 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
+export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+
+export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
+
 export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
@@ -238,6 +250,8 @@ export {
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,
+	WorkflowListPublicationStatusSchema,
+	type WorkflowListPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
@@ -292,6 +306,7 @@ export {
 export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -332,6 +347,8 @@ export {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	shouldAutoResolveCredential,
 	workflowSetupNodeSchema,
+	setupItemSchema,
+	setupItemsPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -353,6 +370,8 @@ export {
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	credentialDestinationSchema,
+	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
@@ -461,6 +480,8 @@ export type {
 	InstanceAiToolResultEvent,
 	InstanceAiToolErrorEvent,
 	InstanceAiConfirmationRequestEvent,
+	InstanceAiSetupItem,
+	InstanceAiSetupItemsEvent,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
@@ -520,6 +541,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialDestination,
+	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,

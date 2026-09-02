@@ -1674,6 +1674,43 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual(dynamicData);
 		});
 
+		test('should resolve against the identity carried on a test-webhook registration', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			const dynamicData = { apiKey: 'builders-own-key' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
+
+			// A chat trigger test run: the builder's identity was minted at registration and
+			// travelled on the registration, so the manual-mode static fallback is bypassed and
+			// that carrier is what the resolver resolves against.
+			const registrationContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+				credentials: 'registration-minted-context',
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				{ ...mockAdditionalData, executionContext: registrationContext },
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				registrationContext,
+				expect.anything(),
+				undefined,
+			);
+			expect(result).toEqual(dynamicData);
+		});
+
 		test('should skip resolution when credentials context is missing (manual mode)', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({

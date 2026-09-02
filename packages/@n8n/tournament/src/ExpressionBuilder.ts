@@ -8,7 +8,7 @@ import type { TournamentHooks } from './ast';
 import { splitExpression } from './ExpressionSplitter';
 import type { ExpressionCode, ExpressionText } from './ExpressionSplitter';
 import { parseWithEsprimaNext } from './Parser';
-import { globalIdentifier, jsVariablePolyfill } from './VariablePolyfill';
+import { globalIdentifier, jsVariablePolyfill, rawStringLiteral } from './VariablePolyfill';
 import type { DataNode } from './VariablePolyfill';
 
 export interface ExpressionAnalysis {
@@ -123,7 +123,7 @@ const buildFunctionBody = (expr: ExpressionKind) => {
 					b.binaryExpression('===', v, b.literal(false)),
 				),
 				v,
-				b.literal(''),
+				rawStringLiteral(''),
 			),
 		),
 	]);
@@ -179,20 +179,16 @@ export const getExpressionCode = (
 		b.variableDeclaration('var', [b.variableDeclarator(globalIdentifier, b.objectExpression([]))]),
 	]);
 
-	// This is what's used to access that's passed in. For compatibility we us
-	// `this` unless the expression contains a function. If it contains an
-	// expression we instead assign a different variable to hold onto the contents
-	// of `this` (default: `___n8n_data`) since functions aren't compatibility
-	// anyway.
-	let dataNode: DataNode = b.thisExpression();
+	// Hold the passed-in `this` in a lexically-bound variable (default:
+	// `___n8n_data`) and route all data access and the sanitizer through it.
+	// A lexical binding cannot be reached by member shadowing the way `this`
+	// can, and the reserved-name guards already block rebinding it.
+	const dataNode: DataNode = b.identifier(dataNodeName);
+	newProg.body.push(
+		b.variableDeclaration('var', [b.variableDeclarator(dataNode, b.thisExpression())]),
+	);
+	// Reported back to callers, no longer used to shape the emitted code.
 	const hasFn = chunks.filter((c) => c.type === 'code').some((c) => hasFunction(c.parsed));
-	if (hasFn) {
-		dataNode = b.identifier(dataNodeName);
-		newProg.body.push(
-			b.variableDeclaration('var', [b.variableDeclarator(dataNode, b.thisExpression())]),
-		);
-	}
-
 	const hasTempString = chunks
 		.filter((c) => c.type === 'code')
 		.some((c) => hasTemplateString(c.parsed));
@@ -211,7 +207,7 @@ export const getExpressionCode = (
 		for (const chunk of chunks) {
 			// This is just a text chunks, push it up as a literal.
 			if (chunk.type === 'text') {
-				parts.push(b.literal(chunk.text));
+				parts.push(rawStringLiteral(chunk.text));
 				// This is a code chunk so do some magic
 			} else {
 				const fixed = fixStringNewLines(chunk.parsed);
@@ -264,7 +260,7 @@ export const getExpressionCode = (
 			newProg.body.push(
 				b.returnStatement(
 					b.callExpression(b.memberExpression(b.arrayExpression(parts), b.identifier('join')), [
-						b.literal(''),
+						rawStringLiteral(''),
 					]),
 				),
 			);
