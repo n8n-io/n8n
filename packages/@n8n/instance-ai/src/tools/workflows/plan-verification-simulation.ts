@@ -22,6 +22,7 @@ import { classifyNodesForSimulation } from './classify-node-destructiveness.serv
 import {
 	buildPlaceholderFixtures,
 	generateSimulationFixtures,
+	withPassThroughFloor,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
 import { deriveWaitGateScripts } from './wait-gate-script';
@@ -300,8 +301,15 @@ function withDeclaredOutputVerdicts(
 
 /**
  * Fill in a placeholder for every non-halted simulated node the fixture map
- * missed. Halted wait gates are skipped on purpose: a pinned gate cannot
- * pause, and a canned decision would re-run its loop forever.
+ * missed, then rebuild the pass-through nodes from their input. Halted wait
+ * gates are skipped on purpose: a pinned gate cannot pause, and a canned
+ * decision would re-run its loop forever.
+ *
+ * Both passes run HERE rather than inside the generator because this is the
+ * first point where the map is complete. Declared-output fixtures never reach
+ * the generator (they are merged in below), so a Wait sitting under a
+ * declared node would otherwise borrow that node's schema placeholder while
+ * its real declared items sat one layer up.
  */
 function withFixtureFloor(
 	fixtures: SimulationFixtures,
@@ -317,8 +325,11 @@ function withFixtureFloor(
 				!fixtures[verdict.nodeName]?.length,
 		)
 		.map((verdict) => verdict.nodeName);
-	if (missing.length === 0) return fixtures;
-	return { ...buildPlaceholderFixtures(workflow, missing, outputSchemaLookup), ...fixtures };
+	const floored =
+		missing.length > 0
+			? { ...buildPlaceholderFixtures(workflow, missing, outputSchemaLookup), ...fixtures }
+			: fixtures;
+	return withPassThroughFloor(floored, workflow, outputSchemaLookup);
 }
 
 export async function planVerificationSimulation({

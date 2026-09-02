@@ -217,32 +217,42 @@ function createSchemaContextResolver(
 }
 
 /**
- * Layer the nearest upstream ancestor's shape UNDER every pass-through
- * fixture: that ancestor's own fixture when it has one, otherwise the
- * ancestor's schema placeholder. The node's own fields stay on top, so a
- * partial pass-through such as sentimentAnalysis keeps its marker object and
- * still carries the input.
+ * Rebuild every pass-through fixture from the nearest upstream ancestor.
+ * Only the keys the node genuinely ADDS survive from its own fixture, so
+ * sentimentAnalysis keeps its marker object and a pure pass-through keeps
+ * nothing. Cardinality comes from upstream too: one output per input.
  *
- * Model output is layered too, not just synthesized placeholders. The model
- * routinely returns a thin item for these nodes — it is answering "what does
- * this node emit" without knowing the run's data — and every field it leaves
- * out is a downstream expression that resolves to undefined. Its own fields
- * win on conflict, so a good answer is never overwritten.
+ * Precedence, and the reason for it:
+ *  1. The ancestor's own FIXTURE is authoritative. These nodes cannot emit
+ *     anything but their input, so anything else is wrong by construction —
+ *     and in practice the model invents a whole second, inconsistent copy of
+ *     the upstream response (a different channel id and message text than the
+ *     Slack node one hop up).
+ *  2. Otherwise the node keeps its own items, when it has any. A fixture the
+ *     model wrote is realistic and self-consistent; the ancestor's schema
+ *     PLACEHOLDER is neither, so swapping one for the other would be a
+ *     downgrade.
+ *  3. Only a node with nothing falls back to the ancestor's placeholder,
+ *     which at least carries the real field names.
  *
- * Cardinality follows the upstream items, since a pass-through node emits one
- * output per input, unless the model asked for more.
+ * MUST run on the complete fixture map — declared-output fixtures are merged
+ * in by the caller, and borrowing an ancestor's placeholder while its real
+ * declared items sat one layer up was exactly bug (2) above.
  */
-function withPassThroughFloor(
+export function withPassThroughFloor(
 	fixtures: SimulationFixtures,
 	workflow: WorkflowJSON,
-	connectionsByDestination: IConnections,
-	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
-	now: Date,
+	outputSchemaLookup?: OutputSchemaLookup,
+	now: Date = new Date(),
 ): SimulationFixtures {
 	const typeByName = new Map(
 		(workflow.nodes ?? [])
 			.filter((node): node is NamedNode => typeof node.name === 'string')
 			.map((node) => [node.name, node.type] as const),
+	);
+	const resolveContext = createSchemaContextResolver(workflow, outputSchemaLookup);
+	const connectionsByDestination = mapConnectionsByDestination(
+		toEngineConnections(workflow.connections),
 	);
 	const result = { ...fixtures };
 
@@ -250,17 +260,19 @@ function withPassThroughFloor(
 		const nodeType = typeByName.get(nodeName);
 		const addedKeys = nodeType ? PASS_THROUGH_NODE_TYPES.get(nodeType) : undefined;
 		if (!addedKeys) continue;
-		const borrowed = findUpstreamShape(
+		const upstream = findUpstreamShape(
 			nodeName,
 			result,
 			connectionsByDestination,
 			resolveContext,
 			now,
 		);
-		if (!borrowed) continue;
 		const own = result[nodeName] ?? [];
+		if (!upstream) continue;
+		if (upstream.source === 'placeholder' && hasFields(own)) continue;
+
 		const ownShape = buildSchemaPlaceholderItem(resolveContext(nodeName), { now });
-		result[nodeName] = borrowed.map((item, index) => ({
+		result[nodeName] = upstream.items.map((item, index) => ({
 			...item,
 			// The node's own added keys, from its schema shape first so the key
 			// exists at all, then from its fixture where the model filled it in.
@@ -272,13 +284,19 @@ function withPassThroughFloor(
 	return result;
 }
 
+interface UpstreamShape {
+	items: Array<Record<string, unknown>>;
+	/** `fixture` = the ancestor's real pinned items; `placeholder` = synthesized from its schema. */
+	source: 'fixture' | 'placeholder';
+}
+
 function findUpstreamShape(
 	nodeName: string,
 	fixtures: SimulationFixtures,
 	connectionsByDestination: IConnections,
 	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
 	now: Date,
-): Array<Record<string, unknown>> | undefined {
+): UpstreamShape | undefined {
 	const visited = new Set([nodeName]);
 	let frontier = getParentNodes(connectionsByDestination, nodeName, 'main', 1);
 
@@ -289,9 +307,12 @@ function findUpstreamShape(
 			visited.add(parent);
 			// A parent that is itself simulated already carries the shape the
 			// pass-through node would have seen.
-			if (hasFields(fixtures[parent])) return fixtures[parent];
+			const parentFixture = fixtures[parent];
+			if (hasFields(parentFixture)) return { items: parentFixture, source: 'fixture' };
 			const placeholder = buildSchemaPlaceholderItem(resolveContext(parent), { now });
-			if (Object.keys(placeholder).length > 0) return [placeholder];
+			if (Object.keys(placeholder).length > 0) {
+				return { items: [placeholder], source: 'placeholder' };
+			}
 			next.push(...getParentNodes(connectionsByDestination, parent, 'main', 1));
 		}
 		frontier = next;
@@ -331,13 +352,7 @@ export function buildPlaceholderFixtures(
 			return context ? [[name, context] as const] : [];
 		}),
 	);
-	return withPassThroughFloor(
-		placeholderFixtures(nodeNames, schemaContextByName, now),
-		workflow,
-		mapConnectionsByDestination(toEngineConnections(workflow.connections)),
-		resolveContext,
-		now,
-	);
+	return placeholderFixtures(nodeNames, schemaContextByName, now);
 }
 
 /**
@@ -365,13 +380,6 @@ export async function generateSimulationFixtures(
 	const outputParserTargets = findOutputParserTargets(input.workflow);
 	const schemaContexts = buildSchemaContexts(nodes, input.outputSchemaLookup, outputParserTargets);
 	const schemaContextByName = new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const));
-	// Same map, extended on demand: the pass-through floor needs contexts for
-	// upstream nodes that are not simulated themselves.
-	const resolveContext = createSchemaContextResolver(
-		input.workflow,
-		input.outputSchemaLookup,
-		schemaContextByName,
-	);
 
 	const connectionsByDestination = mapConnectionsByDestination(
 		toEngineConnections(input.workflow.connections),
@@ -413,13 +421,7 @@ export async function generateSimulationFixtures(
 			'Simulation fixture generation failed; simulated nodes get schema-shaped placeholders',
 			{ reason: result.reason, nodeCount: nodeNames.length },
 		);
-		return withPassThroughFloor(
-			placeholderFixtures(nodeNames, schemaContextByName, now),
-			input.workflow,
-			connectionsByDestination,
-			resolveContext,
-			now,
-		);
+		return placeholderFixtures(nodeNames, schemaContextByName, now);
 	}
 
 	// Shared normalization + envelope repair, matching the eval pin-data paths:
@@ -442,11 +444,5 @@ export async function generateSimulationFixtures(
 			? items
 			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
 	}
-	return withPassThroughFloor(
-		fixtures,
-		input.workflow,
-		connectionsByDestination,
-		resolveContext,
-		now,
-	);
+	return fixtures;
 }

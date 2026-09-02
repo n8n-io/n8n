@@ -504,6 +504,36 @@ describe('planVerificationSimulation — fixture floor', () => {
 		expect(simulationFixtures).toBeUndefined();
 	});
 
+	it('rebuilds a pass-through node from a DECLARED upstream fixture', async () => {
+		// Regression: declared fixtures never reach the generator, so the floor
+		// has to run after they are merged. It used to give the Wait the Slack
+		// node's schema placeholder — a blob of 'sample' — while the real
+		// declared items sat one layer up.
+		mockClassify.mockResolvedValue([simulateVerdict('Wait 2 Days')]);
+		mockGenerateFixtures.mockResolvedValue({ 'Wait 2 Days': [{ channel: 'invented' }] });
+
+		const workflow = wf(
+			[
+				{ name: 'Post to #alerts', type: 'n8n-nodes-base.slack' },
+				{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+			],
+			{ 'Post to #alerts': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] } },
+		);
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow,
+			declaredOutputFixtures: {
+				'Post to #alerts': [{ ok: true, channel: 'C01234567', ts: '1756828800.000100' }],
+			},
+			workflowId: 'wf-1',
+			outputSchemaLookup: () => ({ type: 'object', properties: { channel: { type: 'string' } } }),
+		});
+
+		expect(simulationFixtures?.['Wait 2 Days']).toEqual([
+			{ ok: true, channel: 'C01234567', ts: '1756828800.000100' },
+		]);
+	});
+
 	it('leaves a generated fixture alone', async () => {
 		mockClassify.mockResolvedValue([simulateVerdict('Send Slack')]);
 		mockGenerateFixtures.mockResolvedValue({ 'Send Slack': [{ ts: 'real' }] });
