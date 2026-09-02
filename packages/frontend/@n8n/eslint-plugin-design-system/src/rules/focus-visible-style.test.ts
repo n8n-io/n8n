@@ -26,7 +26,7 @@ ruleTester.run('focus-visible-style', FocusVisibleStyleRule, {
 		},
 		{
 			filename: 'Component.vue',
-			code: vue('<Widget tabindex="0" />', '[tabindex]:focus-visible { outline: solid; }'),
+			code: vue('<Widget tabindex="0" />'),
 		},
 		{
 			filename: 'Component.vue',
@@ -39,6 +39,21 @@ ruleTester.run('focus-visible-style', FocusVisibleStyleRule, {
 				'.save { &:focus-visible { outline: solid; } }',
 			),
 		},
+		{
+			filename: 'Component.vue',
+			code: vue(
+				'<button :class="$style.save">Save</button>',
+				'.save { &:focus { outline: solid; } }',
+			),
+		},
+		{
+			filename: 'Component.vue',
+			code: vue(
+				'<button :class="$style[\'save-button\']">Save</button>',
+				'.save-button:focus-visible { outline: solid; }',
+			),
+		},
+		{ filename: 'Component.vue', code: vue('<button tabindex="-1">Toggle</button>') },
 		{ filename: 'Component.vue', code: vue('<div>Static</div>') },
 	],
 	invalid: [
@@ -50,11 +65,6 @@ ruleTester.run('focus-visible-style', FocusVisibleStyleRule, {
 		{
 			filename: 'Component.vue',
 			code: vue('<button class="save">Save</button>', '.other:focus { outline: solid; }'),
-			errors: [{ messageId: 'missingFocusStyle' }],
-		},
-		{
-			filename: 'Component.vue',
-			code: vue('<Widget tabindex="0" />'),
 			errors: [{ messageId: 'missingFocusStyle' }],
 		},
 		{
