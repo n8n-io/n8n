@@ -5610,6 +5610,7 @@
 	"settings.security.executionQuota.fetchError": "Couldn't load execution quotas",
 	"settings.security.executionQuota.edit.title": "Edit execution quota — {projectName}",
 	"settings.security.executionQuota.edit.limit.label": "Limit",
+	"settings.security.executionQuota.edit.limit.hint": "Enter -1 for unlimited executions",
 	"settings.security.executionQuota.edit.period.label": "Period",
 	"workflowReviews.menu.title": "Reviews",
 	"workflowReviews.openReviews": "Open reviews",

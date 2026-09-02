@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -47,6 +47,18 @@ watch(
 		if (wasOpen && !isOpen) void refetch();
 	},
 );
+
+// This endpoint returns every project in a single response — it was never
+// genuinely server-paginated. `N8nDataTableServer` is still the right
+// component (matching the other admin tables in this section), but the
+// paging itself is done here, client-side, against the full `rows` array.
+const page = ref(1);
+const itemsPerPage = ref(10);
+
+const pagedRows = computed(() => {
+	const start = (page.value - 1) * itemsPerPage.value;
+	return rows.value.slice(start, start + itemsPerPage.value);
+});
 
 function periodLabel(unit: ProjectExecutionQuotaPeriodUnit): string {
 	return i18n.baseText(`projects.settings.executionQuota.period.${unit}`);
@@ -131,13 +143,18 @@ const headers = computed<Array<TableHeader<ProjectExecutionQuotaRow>>>(() => [
 <template>
 	<div data-test-id="execution-quota-table">
 		<N8nDataTableServer
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
 			:headers="headers"
-			:items="rows"
+			:items="pagedRows"
 			:items-length="rows.length"
 			:loading="isLoading"
 			:row-props="{ class: $style.clickableRow }"
 			@click:row="onRowClick"
 		>
+			<template #[`item.limit`]="{ item }">
+				{{ item.limit === -1 ? '∞' : item.limit }}
+			</template>
 			<template #[`item.periodUnit`]="{ item }">
 				{{ periodLabel(item.periodUnit) }}
 			</template>

@@ -77,7 +77,7 @@ export class ProjectExecutionQuotaService {
 	 * query is a later optimization, not required here.
 	 */
 	async getAllProjectsConsumption() {
-		const projects = await this.projectRepository.find();
+		const projects = await this.projectRepository.find({ order: { name: 'ASC' } });
 
 		return await Promise.all(
 			projects.map(async (project) => ({

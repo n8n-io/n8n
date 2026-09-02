@@ -8,6 +8,7 @@ import { ProjectController } from '@/controllers/project.controller';
 import type { ProjectExecutionQuotaService } from '@/execution-quota/project-execution-quota.service';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
+import { getRoutesByHandlerName } from '@test/controller-route-metadata';
 
 describe('ProjectController', () => {
 	const projectsService = mock<ProjectService>();
@@ -344,6 +345,21 @@ describe('ProjectController', () => {
 
 			expect(projectExecutionQuotaService.getAllProjectsConsumption).toHaveBeenCalled();
 			expect(result).toEqual(allConsumption);
+		});
+
+		// The entire value of the instance-admin cross-project view is this gate:
+		// it must be `@GlobalScope`, not `@ProjectScope` — a project-scoped
+		// decorator can't resolve a project from this route (it lists every
+		// project, keyed by no single projectId), and would either throw or
+		// silently scope to the wrong thing.
+		it('getAllProjectsExecutionQuota is gated by a global-only scope, not a project scope', () => {
+			const routes = getRoutesByHandlerName(ProjectController);
+			const route = routes.get('getAllProjectsExecutionQuota');
+
+			expect(route?.accessScope).toEqual({
+				scope: 'project:manageExecutionQuota',
+				globalOnly: true,
+			});
 		});
 	});
 });

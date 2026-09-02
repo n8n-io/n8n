@@ -3,7 +3,14 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { N8nButton, N8nInputLabel, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInputLabel,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -53,7 +60,12 @@ const modalTitle = computed(() =>
 	}),
 );
 
-const isValid = computed(() => typeof limit.value === 'number' && limit.value > 0);
+// `-1` is the documented "unlimited" sentinel (see `UNLIMITED_LICENSE_QUOTA` /
+// `UpdateProjectExecutionQuotaDto`), so it's the one negative value allowed
+// alongside positive integers — `0` is still rejected, matching the backend DTO.
+const isValid = computed(
+	() => typeof limit.value === 'number' && (limit.value === -1 || limit.value >= 1),
+);
 
 function closeModal() {
 	uiStore.closeModal(EXECUTION_QUOTA_EDIT_MODAL_KEY);
@@ -101,10 +113,13 @@ async function onSave() {
 				>
 					<N8nInputNumber
 						v-model="limit"
-						:min="1"
+						:min="-1"
 						:precision="0"
 						data-test-id="execution-quota-edit-limit"
 					/>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.executionQuota.edit.limit.hint') }}
+					</N8nText>
 				</N8nInputLabel>
 				<N8nInputLabel
 					:label="i18n.baseText('settings.security.executionQuota.edit.period.label')"
