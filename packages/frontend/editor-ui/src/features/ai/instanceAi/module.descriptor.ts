@@ -169,6 +169,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			const { useInstanceAiStore } = await import('./instanceAi.store');
 			useInstanceAiStore().handleCreditsPush(event.data);
 		},
+		instanceAiMcpToolCallFailed: async (event) => {
+			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
+			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);
+		},
 	},
 	settingsPages: [
 		{

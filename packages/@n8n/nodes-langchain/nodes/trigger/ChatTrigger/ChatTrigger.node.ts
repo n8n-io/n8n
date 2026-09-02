@@ -31,13 +31,16 @@ import { Container } from '@n8n/di';
 import { cssVariables } from './constants';
 import {
 	establishChatSessionIdentity,
+	handleChatTokenRefresh,
 	resolveInnerFrameIdentity,
 	validateAuth,
 } from './GenericFunctions';
 import {
+	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
 	isChatOAuth2Enabled,
+	isChatRefreshRequest,
 	isShellInnerRequest,
 } from './shell';
 import { createPage, createShellPage } from './templates';
@@ -943,20 +946,37 @@ export class ChatTrigger extends Node {
 						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
+					// The shell's token-refresh leg, ahead of any render: it answers with JSON,
+					// not a page, and authenticates itself from its own httpOnly cookie rather
+					// than from the handshake below. A GET because a POST to this path reaches
+					// the `default` webhook — the chat message endpoint — instead.
+					if (isChatRefreshRequest(req)) {
+						await handleChatTokenRefresh(ctx, resourceUrl);
+						return { noWebhookResponse: true };
+					}
+
 					if (!isShellInnerRequest(req)) {
 						// Outer shell: the AS handshake runs here — a normal top-level document with
 						// real cookies, unlike the sandboxed, opaque-origin frame this shell is about
 						// to create. It is the only gate: a visitor without an editor session is
 						// authenticated by the flow rather than bounced to sign-in ahead of it.
-						const ready = await establishChatSessionIdentity(ctx, resourceUrl);
-						if (!ready) {
+						const session = await establishChatSessionIdentity(ctx, resourceUrl);
+						if (!session) {
 							return { noWebhookResponse: true };
 						}
 
 						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
 						res
 							.status(200)
-							.send(createShellPage({ iframeSrc: buildInnerFrameSrc(req) }))
+							.send(
+								createShellPage({
+									iframeSrc: buildInnerFrameSrc(req),
+									refresh: {
+										url: buildChatRefreshUrl(req),
+										expiresIn: session.expiresIn,
+									},
+								}),
+							)
 							.end();
 						return { noWebhookResponse: true };
 					}

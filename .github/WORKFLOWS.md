@@ -10,7 +10,7 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Team ownership for PR reviews
+├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -21,6 +21,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── config.yml                        # Routes to community/security
 │   └── 01-bug.yml                        # Structured bug report form
 ├── scripts/                              # Automation scripts
+│   ├── owners/                           # Owners scripts (the OWNERS file lives at the repo root)
 │   ├── bump-versions.mjs                 # Calculate next version
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
@@ -603,13 +604,63 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ---
 
-## CODEOWNERS
+## OWNERS
 
-Team ownership mappings in `CODEOWNERS`:
+Team ownership lives in the top-level `OWNERS` file (this replaces the
+GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
+that consume it live in `.github/scripts/owners/`. Line format:
 
-| Path Pattern                                                 | Team                       |
-|--------------------------------------------------------------|----------------------------|
-| `packages/@n8n/db/src/migrations/`                           | @n8n-io/migrations-review  |
+```
+<pattern> <@org/team> [required]
+```
+
+Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
+exact file path. Matching is last-match-wins, so specific rules must come
+after general rules.
+
+The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
+
+- Tokens on a line come in a fixed order: pattern, one team, then options
+  such as `required`.
+- Directory patterns end with `/` and must be existing directories; all other
+  patterns must be existing files. Duplicate patterns are rejected.
+
+Team existence is not checked by `--check` (it needs an org read token, which
+fork PRs do not have); a separate workflow covers it (DEVP-891).
+
+The file drives four workflows:
+
+| Workflow                          | Purpose                                                                  |
+|-----------------------------------|--------------------------------------------------------------------------|
+| `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
+| `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
+| `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
+| `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+
+### Required reviews
+
+An entry with the `required` option makes team approval mandatory: when a PR
+changes a file whose winning entry carries `required`, a member of each listed
+team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+PR changes and review events, and reports a commit status
+named **Required Reviews** on the head SHA. The ruleset for `master` must list
+that status as a required check for the block to take effect. Merge-queue runs
+report success on the queue head without re-evaluating: a PR cannot enter the
+queue unless the status is green on its head, and the queue does not change
+approvals.
+
+The workflow reads OWNERS and its scripts from the base branch only, so a PR
+cannot lift its own review requirement.
+
+### Transition from CODEOWNERS
+
+During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
+GitHub's native code-owner enforcement keeps gating merges while the
+"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
+holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
+and must not gain new entries; new ownership goes into OWNERS. After the
+trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
+from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 

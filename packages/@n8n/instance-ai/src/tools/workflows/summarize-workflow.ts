@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { IConnection, IConnections } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WorkflowNode } from '../../types';
 
@@ -31,8 +31,12 @@ function toConnections(connections: Record<string, unknown>): IConnections {
 	const result: IConnections = {};
 	for (const [from, byType] of Object.entries(connections)) {
 		if (!isRecord(byType)) continue;
+		if (!isSafeObjectProperty(from)) continue;
+
 		for (const [connectionType, outputs] of Object.entries(byType)) {
 			if (!Array.isArray(outputs)) continue;
+			if (!isSafeObjectProperty(connectionType)) continue;
+
 			(result[from] ??= {})[connectionType] = outputs.map((targets) =>
 				Array.isArray(targets) ? targets.filter(isConnection) : null,
 			);
@@ -46,8 +50,12 @@ function summarizeConnections(connections: Record<string, unknown>): string[] {
 	const edges: string[] = [];
 	for (const [from, byType] of Object.entries(connections)) {
 		if (!isRecord(byType)) continue;
+		if (!isSafeObjectProperty(from)) continue;
+
 		for (const [connectionType, outputs] of Object.entries(byType)) {
 			if (!Array.isArray(outputs)) continue;
+			if (!isSafeObjectProperty(connectionType)) continue;
+
 			outputs.forEach((targets, outputIndex) => {
 				if (!Array.isArray(targets)) return;
 				for (const target of targets) {
