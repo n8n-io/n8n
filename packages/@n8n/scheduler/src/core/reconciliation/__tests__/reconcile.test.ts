@@ -26,6 +26,7 @@ const options: ReconciliationOptions = {
 const quarantinedJob = (over: Partial<QuarantinedJob> = {}): QuarantinedJob => ({
 	id: 1,
 	ownerId: 'wf-1',
+	enabled: true,
 	kind: 'interval',
 	intervalSeconds: 3600,
 	cronExpression: null,
@@ -168,7 +169,7 @@ describe('reconcile', () => {
 	});
 
 	describe('revival', () => {
-		it('re-enables a quarantined job whose owner is alive again, restarting its clock', async () => {
+		it('revives a quarantined job whose owner is alive again, restarting its clock', async () => {
 			registry.register('workflow', {
 				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
 			});
@@ -180,6 +181,22 @@ describe('reconcile', () => {
 
 			// An hourly interval, restarted from the shared clock.
 			expect(store.liftQuarantine).toHaveBeenCalledWith(42, new Date(NOW.getTime() + 3600 * 1000));
+			expect(summary.revived).toBe(1);
+		});
+
+		it('revives a disabled job with no clock', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 42, enabled: false }),
+			]);
+
+			const summary = await run();
+
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, null);
 			expect(summary.revived).toBe(1);
 		});
 

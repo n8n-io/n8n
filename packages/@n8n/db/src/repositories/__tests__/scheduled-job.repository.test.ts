@@ -399,7 +399,7 @@ describe('ScheduledJobRepository', () => {
 	});
 
 	describe('liftQuarantine', () => {
-		it('re-enables the job, clears the stamp and restarts its clock, only while still quarantined', async () => {
+		it('clears the stamp and restarts the clock, only while still quarantined', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
 
 			const lifted = await repository.liftQuarantine(42, CLOCK);
@@ -407,7 +407,7 @@ describe('ScheduledJobRepository', () => {
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ScheduledJob,
 				{ id: 42, orphanedAt: Not(IsNull()) },
-				{ enabled: true, orphanedAt: null, nextRunAt: CLOCK },
+				{ orphanedAt: null, nextRunAt: CLOCK },
 			);
 			expect(lifted).toBe(1);
 		});

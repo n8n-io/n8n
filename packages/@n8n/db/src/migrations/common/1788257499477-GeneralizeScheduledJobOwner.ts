@@ -22,7 +22,7 @@ const OWNER_ID_COMMENT =
 const OWNER_MEMBER_COMMENT =
 	'Optional sub-identity within the owner, e.g. the trigger node id for a workflow; NULL when the owner has no parts.';
 const ORPHANED_AT_COMMENT =
-	"When the reconciliation sweep last confirmed this job's owner was gone; NULL while it is alive. Quarantine marker: the job is disabled first and deleted only once this is older than the quarantine grace.";
+	"When the reconciliation sweep last confirmed this job's owner was gone; NULL while it is alive. Quarantine marker: the job's clock is cleared first and it is deleted only once this is older than the quarantine grace.";
 const WORKFLOW_COMMENT =
 	"References the workflow's published version, since only published trigger nodes get scheduled; NULL for system jobs not tied to a workflow. Unpublishing the workflow deletes its jobs.";
 const NODE_COMMENT =

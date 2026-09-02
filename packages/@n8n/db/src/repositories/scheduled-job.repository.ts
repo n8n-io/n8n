@@ -307,10 +307,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Quarantine every not-yet-quarantined job of these owners: disabled, clock
-	 * cleared, `orphanedAt` stamped, and its queued occurrences withdrawn. Both
-	 * writes commit together, or the job would either still fire or requeue what
-	 * was withdrawn.
+	 * Quarantine every not-yet-quarantined job of these owners: clock cleared,
+	 * `orphanedAt` stamped, and its queued occurrences withdrawn. Both writes
+	 * commit together, or the job would either still fire or requeue what was
+	 * withdrawn. `enabled` is left as it was, so a lift restores the job's own
+	 * state rather than turning on one that was disabled before.
 	 *
 	 * `settledBefore` applies the same bound as {@link findOwnerIds}, sparing a
 	 * job written since the caller's liveness check.
@@ -331,7 +332,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			const quarantined = await manager
 				.createQueryBuilder()
 				.update(ScheduledJob)
-				.set({ enabled: false, nextRunAt: null, orphanedAt })
+				.set({ nextRunAt: null, orphanedAt })
 				.where('"ownerType" = :ownerType', { ownerType })
 				.andWhere('"ownerId" IN (:...ownerIds)', { ownerIds })
 				.andWhere('"orphanedAt" IS NULL')
@@ -419,16 +420,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Lift the quarantine on one job: re-enabled, `orphanedAt` cleared, clock
-	 * restarted from `nextRunAt` (`null` when nothing is left to fire). A no-op
-	 * unless the job is still quarantined, so a concurrent lift or delete wins.
+	 * Lift the quarantine on one job: `orphanedAt` cleared, clock restarted from
+	 * `nextRunAt` (`null` when nothing is left to fire). A no-op unless the job is
+	 * still quarantined, so a concurrent lift or delete wins.
 	 *
 	 * @returns how many quarantines were lifted (0 when nothing was left to lift).
 	 */
 	async liftQuarantine(id: number, nextRunAt: Date | null): Promise<number> {
 		const result = await this.update(
 			{ id, orphanedAt: Not(IsNull()) },
-			{ enabled: true, orphanedAt: null, nextRunAt },
+			{ orphanedAt: null, nextRunAt },
 		);
 		return result.affected ?? 0;
 	}
@@ -446,7 +447,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		const result = await manager.update(
 			ScheduledJob,
 			{ ...ownerCriteria(owner), orphanedAt: Not(IsNull()) },
-			{ enabled: true, orphanedAt: null },
+			{ orphanedAt: null },
 		);
 		return result.affected ?? 0;
 	}
