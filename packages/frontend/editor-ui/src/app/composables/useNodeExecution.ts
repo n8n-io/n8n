@@ -1,4 +1,4 @@
-import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
+import { computed, toValue, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
@@ -224,6 +224,15 @@ export function useNodeExecution(
 		} catch (error) {
 			toast.showError(error, 'Error stopping webhook');
 		}
+	}
+
+	function chatTriggerHasInputData(): boolean {
+		if (!nodeRef.value) return false;
+		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
+		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
+		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
+		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
+		return hasRunData || hasPinData;
 	}
 
 	async function execute(): Promise<ExecuteAction> {
