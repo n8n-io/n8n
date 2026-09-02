@@ -196,4 +196,42 @@ describe('PromotionSelectModal', () => {
 			expect(getByTestId('promotion-no-results')).toBeInTheDocument();
 		});
 	});
+
+	it('should show distinct labels for archived and deleted workflows', async () => {
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue([
+			{
+				id: 'wf-archived',
+				name: 'Archived workflow',
+				type: 'workflow',
+				status: 'archived',
+				version: 3,
+				updatedAt: new Date().toISOString(),
+				updatedBy: null,
+				dependencyCount: 0,
+			},
+			{
+				id: 'wf-deleted',
+				name: 'Deleted workflow',
+				type: 'workflow',
+				status: 'deleted',
+				version: null,
+				updatedAt: new Date().toISOString(),
+				updatedBy: null,
+				dependencyCount: 0,
+			},
+		]);
+
+		const { getAllByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1' },
+			},
+		});
+
+		await waitFor(() => {
+			const statuses = getAllByTestId('promotion-change-status').map((el) => el.textContent);
+			expect(statuses).toEqual(['Will be archived', 'Will be deleted']);
+		});
+	});
 });

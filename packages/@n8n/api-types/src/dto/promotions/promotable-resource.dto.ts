@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived']);
+export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived', 'deleted']);
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
 

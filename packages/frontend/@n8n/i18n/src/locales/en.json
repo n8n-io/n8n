@@ -8368,6 +8368,7 @@
 	"promotions.modal.status.new": "New",
 	"promotions.modal.status.modified": "Modified",
 	"promotions.modal.status.archived": "Will be archived",
+	"promotions.modal.status.deleted": "Will be deleted",
 	"promotions.modal.dependencies": "{count} dependencies",
 	"promotions.modal.dependency": "1 dependency",
 	"promotions.modal.noDependencies": "No dependencies",

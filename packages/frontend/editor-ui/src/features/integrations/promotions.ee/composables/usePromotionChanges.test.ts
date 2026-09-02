@@ -39,6 +39,16 @@ const mockChanges = [
 		updatedBy: 'user-2',
 		dependencyCount: 1,
 	},
+	{
+		id: 'wf-004',
+		name: 'Workflow D',
+		type: 'workflow' as const,
+		status: 'deleted' as const,
+		version: null,
+		updatedAt: new Date().toISOString(),
+		updatedBy: null,
+		dependencyCount: 0,
+	},
 ];
 
 describe('usePromotionChanges', () => {
@@ -114,6 +124,7 @@ describe('usePromotionChanges', () => {
 		expect(selectedIds.value.has('wf-001')).toBe(true);
 		expect(selectedIds.value.has('wf-002')).toBe(false);
 		expect(selectedIds.value.has('wf-003')).toBe(false);
+		expect(selectedIds.value.has('wf-004')).toBe(false);
 		expect(allSelected.value).toBe(true);
 	});
 });

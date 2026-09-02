@@ -230,6 +230,7 @@ onMounted(async () => {
 											:class="[
 												$style.statusLabel,
 												change.status === 'archived' && $style.statusArchived,
+												change.status === 'deleted' && $style.statusDeleted,
 											]"
 											data-test-id="promotion-change-status"
 										>
@@ -423,6 +424,10 @@ onMounted(async () => {
 }
 
 .statusArchived {
+	color: var(--text-color--warning);
+}
+
+.statusDeleted {
 	color: var(--text-color--danger);
 }
 
