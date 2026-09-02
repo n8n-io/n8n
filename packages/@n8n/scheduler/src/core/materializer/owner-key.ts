@@ -21,11 +21,11 @@ type OwnedJob<T extends ScheduledJobOwner> = T & { ownerKey: string };
  * @returns an opaque key, only ever compared for equality.
  */
 export function ownerKeyFor(job: ScheduledJobOwner): string {
-	// NUL separated: owner types come from the registry and owner ids are
-	// server-generated, so no owner part carries one. Separators are then pinned
-	// by position, and a NUL also stands for a missing member, which keeps a
-	// member-less owner distinct from one whose member id is empty.
-	return `${job.ownerType}\0${job.ownerId}\0${job.ownerMemberId ?? '\0'}`;
+	return [job.ownerType, job.ownerId, job.ownerMemberId].map(lengthPrefixed).join('');
+}
+
+function lengthPrefixed(part: string | null): string {
+	return part === null ? '-:' : `${part.length}:${part}`;
 }
 
 export function withOwnerKeys<T extends ScheduledJobOwner>(claimed: {

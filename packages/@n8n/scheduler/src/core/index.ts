@@ -71,8 +71,20 @@ export type {
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
 export type { ReaperOptions, ReapResult } from './reaper';
-export { ScheduledJobOwnerRegistry } from './reconciliation';
-export type { ScheduledJobOwnerResolver } from './reconciliation';
+export {
+	reconcile,
+	DEFAULT_RECONCILIATION_OPTIONS,
+	ScheduledJobOwnerRegistry,
+} from './reconciliation';
+export type {
+	QuarantinedJob,
+	ReconciliationCursor,
+	ReconciliationHooks,
+	ReconciliationJobStore,
+	ReconciliationOptions,
+	ReconciliationSummary,
+	ScheduledJobOwnerResolver,
+} from './reconciliation';
 export { DuplicateOwnerResolverError, InvalidOwnerTypeError } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 

@@ -280,4 +280,7 @@ export class PrometheusSchedulerMetricsService
 			this.tasksPruned.inc(deleted);
 		}
 	}
+
+	// No counters yet: the pass is not composed on this instance.
+	recordReconciled() {}
 }
