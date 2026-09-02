@@ -296,6 +296,14 @@ function onRetryMenuItemSelect(action: string): void {
 		.tags {
 			display: flex;
 			gap: var(--spacing--4xs);
+			min-width: 0;
+			overflow: hidden;
+
+			/* Allow badges to shrink so the label's ellipsis triggers on long tag names */
+			:global(.n8n-badge) {
+				min-width: 0;
+				max-width: 100%;
+			}
 		}
 
 		.ratingIcon {

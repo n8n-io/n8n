@@ -8,11 +8,11 @@ exports[`components > N8nBadge > props > should render a button when clickable 1
 `;
 
 exports[`components > N8nBadge > props > should render the selected variant and size 1`] = `
-"<span disabled="false" class="badge secondary medium"><!--v-if--><span class="n8n-text step-xs bold label label">Secondary badge</span>
+"<span class="badge secondary medium"><!--v-if--><span class="n8n-text step-xs bold label label">Secondary badge</span>
 <!--v-if--></span>"
 `;
 
 exports[`components > N8nBadge > props > should render with default values correctly 1`] = `
-"<span disabled="false" class="badge outline xsmall"><!--v-if--><span class="n8n-text step-2xs bold label label">Default badge</span>
+"<span class="badge outline xsmall"><!--v-if--><span class="n8n-text step-2xs bold label label">Default badge</span>
 <!--v-if--></span>"
 `;

@@ -92,38 +92,40 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
-		<N8nDropdownMenu
-			:items="menuItems"
-			placement="bottom-end"
-			:loading="isLoadingDetails"
-			:loading-item-count="1"
-			:searchable="showSearch"
-			extra-popper-class="dependency-pill-dropdown"
-			:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
-			:max-height="280"
-			:data-test-id="dataTestId"
-			@select="onSelect"
-			@search="onSearch"
-			@update:model-value="onDropdownToggle"
-		>
-			<template #trigger>
-				<N8nBadge variant="outline" :clickable="true" leading-icon="link">
-					{{ effectiveCount }}
-				</N8nBadge>
-			</template>
-			<template v-if="hasHiddenDeps" #footer>
-				<div :class="$style.hiddenNotice">
-					{{
-						i18n.baseText('workflows.dependencies.hiddenNotice', {
-							adjustToNumber: depsResult!.inaccessibleCount,
-							interpolate: { count: String(depsResult!.inaccessibleCount) },
-						})
-					}}
-				</div>
-			</template>
-		</N8nDropdownMenu>
-	</N8nTooltip>
+	<N8nDropdownMenu
+		:items="menuItems"
+		placement="bottom-end"
+		:loading="isLoadingDetails"
+		:loading-item-count="1"
+		:searchable="showSearch"
+		extra-popper-class="dependency-pill-dropdown"
+		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
+		:max-height="280"
+		:data-test-id="dataTestId"
+		@select="onSelect"
+		@search="onSearch"
+		@update:model-value="onDropdownToggle"
+	>
+		<template #trigger>
+			<div>
+				<N8nTooltip :content="tooltipText" placement="top">
+					<N8nBadge variant="outline" leading-icon="link">
+						{{ effectiveCount }}
+					</N8nBadge>
+				</N8nTooltip>
+			</div>
+		</template>
+		<template v-if="hasHiddenDeps" #footer>
+			<div :class="$style.hiddenNotice">
+				{{
+					i18n.baseText('workflows.dependencies.hiddenNotice', {
+						adjustToNumber: depsResult!.inaccessibleCount,
+						interpolate: { count: String(depsResult!.inaccessibleCount) },
+					})
+				}}
+			</div>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>

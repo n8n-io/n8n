@@ -151,7 +151,7 @@ describe('N8nMenuItem', () => {
 				},
 				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
-			expect(html()).not.toContain('preview-tag');
+			expect(html()).not.toContain('preview-badge');
 		});
 	});
 
@@ -213,7 +213,7 @@ describe('N8nMenuItem', () => {
 				},
 				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
-			expect(html()).toContain('preview-tag-stub');
+			expect(html()).toContain('preview-badge-stub');
 		});
 
 		it('should not render PreviewBadge when preview is false', () => {
@@ -223,7 +223,7 @@ describe('N8nMenuItem', () => {
 				},
 				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
-			expect(html()).not.toContain('preview-tag-stub');
+			expect(html()).not.toContain('preview-badge-stub');
 		});
 	});
 

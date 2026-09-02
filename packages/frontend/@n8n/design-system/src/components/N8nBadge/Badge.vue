@@ -38,9 +38,10 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 </script>
 
 <template>
-	<span
-		:role="props.clickable ? 'button' : undefined"
-		:disabled="props.disabled"
+	<Primitive
+		:as="props.clickable ? 'button' : 'span'"
+		:type="props.clickable ? 'button' : undefined"
+		:disabled="props.clickable ? props.disabled : undefined"
 		:class="[$style.badge, $style[variant], $style[size], { [$style.clickable]: props.clickable }]"
 	>
 		<N8nIcon
@@ -60,7 +61,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:icon="props.trailingIcon"
 			:size="effectiveIconSize"
 		/>
-	</span>
+	</Primitive>
 </template>
 
 <style lang="scss" module>
