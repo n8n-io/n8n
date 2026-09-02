@@ -54,7 +54,8 @@ function calleeName(callee: TSESTree.Expression): string | undefined {
 	return undefined;
 }
 
-type OpenLiteral = "'" | '"' | null;
+type OpenQuote = "'" | '"';
+type OpenLiteral = OpenQuote | null;
 
 /**
  * Counting each quote character independently would be wrong: query languages
@@ -83,6 +84,7 @@ function scanLiteral(text: string, open: OpenLiteral): OpenLiteral {
 
 function isNeutralised(
 	node: TSESTree.Node,
+	open: OpenQuote,
 	getScope: (
 		node: TSESTree.Node,
 	) => ReturnType<RuleContext<MessageIds, Options>['sourceCode']['getScope']>,
@@ -93,9 +95,10 @@ function isNeutralised(
 	if (depth >= MAX_BINDING_DEPTH) return false;
 
 	switch (node.type) {
-		// A literal written in source contributes no runtime value.
+		// A literal contributes no runtime value, but it can still carry the quote
+		// that would end the literal it sits in.
 		case 'Literal':
-			return true;
+			return !String(node.value).includes(open);
 
 		case 'CallExpression': {
 			const name = calleeName(node.callee as TSESTree.Expression);
@@ -114,7 +117,7 @@ function isNeutralised(
 		// an import initialised from a runtime call is accepted here — same
 		// assumption as no-dynamic-regexp.
 		case 'MemberExpression':
-			return !node.computed && isNeutralised(node.object, getScope, depth + 1);
+			return !node.computed && isNeutralised(node.object, open, getScope, depth + 1);
 
 		case 'Identifier': {
 			const variable = ASTUtils.findVariable(getScope(node), node.name);
@@ -125,26 +128,26 @@ function isNeutralised(
 			if (definition.type !== 'Variable' || definition.parent.kind !== 'const') return false;
 
 			const init = definition.node.type === 'VariableDeclarator' ? definition.node.init : null;
-			return init !== null && isNeutralised(init, getScope, depth + 1);
+			return init !== null && isNeutralised(init, open, getScope, depth + 1);
 		}
 
 		case 'ConditionalExpression':
 			return (
-				isNeutralised(node.consequent, getScope, depth + 1) &&
-				isNeutralised(node.alternate, getScope, depth + 1)
+				isNeutralised(node.consequent, open, getScope, depth + 1) &&
+				isNeutralised(node.alternate, open, getScope, depth + 1)
 			);
 
 		case 'LogicalExpression':
 			return (
-				isNeutralised(node.left, getScope, depth + 1) &&
-				isNeutralised(node.right, getScope, depth + 1)
+				isNeutralised(node.left, open, getScope, depth + 1) &&
+				isNeutralised(node.right, open, getScope, depth + 1)
 			);
 
 		// TypeScript-only wrappers that do not change the runtime value.
 		case 'TSAsExpression':
 		case 'TSNonNullExpression':
 		case 'TSSatisfiesExpression':
-			return isNeutralised(node.expression, getScope, depth + 1);
+			return isNeutralised(node.expression, open, getScope, depth + 1);
 
 		default:
 			return false;
@@ -240,6 +243,13 @@ export const RequireEscapedQueryValuesRule = ESLintUtils.RuleCreator.withoutDocs
 			// as `.map()` fragments joined later, or assigned to a `let`. Nor does it
 			// know about a guard on an earlier statement, such as
 			// `assertNoQueryDelimiters`. Those need a test, not this rule.
+			//
+			// It also checks only that a value went through an approved escaper, not
+			// that the escaper matches the sink's dialect. A sink name does not carry
+			// one: `filterString` is used by an OData `$filter` builder, which doubles
+			// a quote, and by the Cognito `ListUsers` filter, which backslash-escapes
+			// it; `q` by both the Google Drive query language and SOQL. Picking the
+			// dialect stays a review judgement.
 			description:
 				"Require values interpolated into a quoted literal of a third-party query language to go through that language's escape helper.",
 		},
@@ -266,7 +276,7 @@ export const RequireEscapedQueryValuesRule = ESLintUtils.RuleCreator.withoutDocs
 					// Only an interpolation inside a quoted literal can close it.
 					if (!expression || open === null) return;
 
-					if (isNeutralised(expression, (n) => sourceCode.getScope(n))) return;
+					if (isNeutralised(expression, open, (n) => sourceCode.getScope(n))) return;
 
 					context.report({ node: expression, messageId: 'escapeQueryValue' });
 				});

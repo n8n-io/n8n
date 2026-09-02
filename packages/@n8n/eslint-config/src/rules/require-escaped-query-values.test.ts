@@ -46,6 +46,9 @@ query.push(\`mimeType = '\${FOLDER_MIME}'\`);`,
 		{ code: withImport("qs.$filter = `eq '${escapeODataValue(x) as string}'`;") },
 		{ code: withImport("qs.$filter = `eq '${escapeODataValue(x)!}'`;") },
 
+		// A literal with no quote of its own cannot end the literal it sits in.
+		{ code: 'qs.$filter = `eq \'${"ab"}\'`;' },
+
 		// A quote of the other kind inside a literal is data, not a delimiter.
 		{ code: withImport("qs.q = `name = \"it's\" and owner = '${escapeODataValue(ownerId)}'`;") },
 		// `satisfies` is transparent, like `as` and `!`.
@@ -158,6 +161,17 @@ qs.$filter = \`displayName eq '\${filterValue}'\`;`),
 		// The sink is still found through a `satisfies` wrapper.
 		{
 			code: "qs.$filter = `eq '${filter}'` satisfies string;",
+			errors: [{ messageId: 'escapeQueryValue' }],
+		},
+		// A literal carrying the active quote would end the literal it sits in.
+		{
+			code: "qs.$filter = `eq '${\"a'b\"}'`;",
+			errors: [{ messageId: 'escapeQueryValue' }],
+		},
+		// Same through a const, which is the shape that actually occurs.
+		{
+			code: `const DEFAULT_NAME = "it's";
+qs.$filter = \`eq '\${DEFAULT_NAME}'\`;`,
 			errors: [{ messageId: 'escapeQueryValue' }],
 		},
 		// An approved name reached through a member access proves nothing.
