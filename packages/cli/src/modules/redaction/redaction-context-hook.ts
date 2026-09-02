@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import {
 	ContextEstablishmentHook,
 	ContextEstablishmentOptions,
@@ -18,6 +19,7 @@ import { InstanceRedactionEnforcementService } from './instance-redaction-enforc
 export class RedactionContextHook implements IContextEstablishmentHook {
 	constructor(
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	hookDescription: HookDescription = {
@@ -43,6 +45,17 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 	 * a no-op there.
 	 */
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+		// Unlicensed instances never redact. Write an explicit no-redaction
+		// snapshot rather than omitting it: consumers fall back to the raw
+		// workflow setting when the snapshot is absent, which would resurrect
+		// a policy the license gate disables (read-time resolution in
+		// ExecutionRedactionService.resolvePolicy applies the same license check).
+		if (!this.licenseState.isDataRedactionLicensed()) {
+			return {
+				contextUpdate: { redaction: { version: 2, production: false, manual: false } },
+			};
+		}
+
 		const floor = await this.instanceRedactionEnforcementService.get();
 		const workflow = policyToChannels(options.workflow.settings?.redactionPolicy ?? 'none');
 		const inherited = redactionSettingToChannels(options.context?.redaction);

@@ -21,6 +21,12 @@ describe('SlackOAuth2Api Credential', () => {
 		expect(scopeProperty).toBeUndefined();
 	});
 
+	it('should request the private channel scopes the channel operations need', () => {
+		expect(userScopes).toContain('groups:read');
+		expect(userScopes).toContain('groups:write');
+		expect(userScopes).toContain('groups:history');
+	});
+
 	it('should have custom scopes toggle defaulting to false', () => {
 		const customScopesProperty = credential.properties.find((p) => p.name === 'customScopes');
 		expect(customScopesProperty?.default).toBe(false);

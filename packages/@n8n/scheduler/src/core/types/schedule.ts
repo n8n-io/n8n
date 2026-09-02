@@ -1,4 +1,8 @@
-import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
+import type {
+	ScheduledJobKind,
+	RecurringCronUnit,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
 
 /**
@@ -12,7 +16,8 @@ import type { CronExpression } from 'n8n-workflow';
  */
 
 /**
- * A 6-field cron expression (seconds included) evaluated in an IANA timezone.
+ * A 5- or 6-field cron expression (seconds optional) evaluated in an IANA timezone.
+ * A 5-field expression is treated as seconds = 0.
  * Wall-clock: fires at the given local time, so DST shifts the absolute instant.
  * `timezone === null` means the instance default, resolved by the caller before
  * the math runs.
@@ -62,6 +67,22 @@ export interface RecurringCronSchedule {
 
 export type Schedule = CronSchedule | IntervalSchedule | OneOffSchedule | RecurringCronSchedule;
 
+/**
+ * The stored form of a {@link Schedule}: the flat fields it is assembled from,
+ * plus the id a corruption error names. Any shape carrying them qualifies.
+ */
+export type StoredSchedule = Pick<
+	ScheduledJob,
+	| 'id'
+	| 'kind'
+	| 'cronExpression'
+	| 'timezone'
+	| 'intervalSeconds'
+	| 'fireAt'
+	| 'recurrenceUnit'
+	| 'recurrenceSize'
+>;
+
 export interface ScheduledJob {
 	id: number;
 	taskType: string;
@@ -82,4 +103,14 @@ export interface ScheduledJob {
 	nextRunAt: Date | null; // the next instant the materializer materializes from.
 	lastFiredAt: Date | null;
 	maxAttempts: number;
+	/** What to do with occurrences that came due while nothing ran them. */
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	/** How late an occurrence may be before {@link misfirePolicy} applies to it. */
+	misfireGraceSeconds: number;
+	/**
+	 * Groups jobs for `coalesce_owner`: same value, same group. The scheduler
+	 * only compares values, it never reads them. `null` means the job stands
+	 * alone. Required so an adapter that forgets to map it fails to compile.
+	 */
+	ownerKey: string | null;
 }

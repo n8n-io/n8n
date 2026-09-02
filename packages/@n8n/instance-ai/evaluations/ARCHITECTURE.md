@@ -41,6 +41,24 @@ LangSmith driver wraps lane functions with `traceable()` (span names
 `workflow_build` / `scenario_execution` / `agent_scenario_execution` — the
 analytics pipeline reads them), the direct driver passes identity.
 
+## Harness primitives
+
+The `run/` phases sit on domain modules in `evaluations/harness/` (TRUST-342
+split them out of the old `runner.ts` monolith):
+
+- `harness/build-workflow.ts` — `buildWorkflow` end to end (thread +
+  credential-view setup, conversation seeding, chat loop, outcome discovery)
+  and its `BuildResult` / `BuildWorkflowConfig` types.
+- `harness/scenario-execution.ts` — `executeScenario` against a built
+  workflow, multi-workflow entry-point routing, and verification-artifact
+  assembly (`VerificationArtifact`).
+- `harness/agent-execution.ts` — `executeAgentScenario` and the agent
+  artifact helpers (the agent-anchored counterpart of scenario execution).
+- `harness/seed-tables.ts` — the scenario seed-data-table family (TRUST-311):
+  dedupe, pre-seed note, per-scenario row reseeding.
+- `harness/cleanup.ts` — `cleanupBuild`, per-case timeout policy, bounded
+  concurrency, binary workflow checks and shared failure summaries.
+
 ## Where to add things
 
 | You want to… | Touch exactly |

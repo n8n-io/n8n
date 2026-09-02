@@ -1,4 +1,21 @@
-export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
+export type EventKind =
+	| 'user'
+	| 'agent'
+	| 'tool'
+	| 'node'
+	| 'workflow'
+	| 'execution-error'
+	| 'suspension'
+	| 'hitl-response';
+
+export type ToolCallOutcome = 'success' | 'error';
+/**
+ * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
+ * node: nobody is being asked anything, the resume arrives from the workflow.
+ */
+export type HitlRequestType = 'approval' | 'interaction' | 'wait';
+export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
+export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -6,10 +23,16 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	/** Files attached to the user turn (only set for `kind: 'user'`). */
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;
+	executionStatus?: 'error' | 'interrupted';
+	/** Terminal outcome of a tool execution. Human decisions are represented on HITL response items. */
+	toolOutcome?: ToolCallOutcome;
+	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */
 	toolSuccess?: boolean;
 	workflowId?: string;
 	workflowName?: string;
@@ -18,6 +41,12 @@ export interface TimelineItem {
 	nodeType?: string;
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
+	/** Request and response data correlated across a suspended tool call. */
+	hitlRequestType?: HitlRequestType;
+	hitlRequest?: unknown;
+	hitlResponse?: unknown;
+	hitlResponseStatus?: HitlResponseStatus;
+	hitlToolDisplayName?: string;
 	/**
 	 * Configured node parameters from the agent's JSON config (only set for
 	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
@@ -32,12 +61,6 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
-	/**
-	 * True for the tool-call entry a resumed execution records when the user
-	 * answers an interactive suspension: it carries the user's feedback as its
-	 * output and is labelled "User feedback received" instead of a tool call.
-	 */
-	isUserFeedback?: boolean;
 }
 
 export interface IdleRange {
@@ -45,9 +68,15 @@ export interface IdleRange {
 	end: number;
 }
 
-export interface FilterOption {
+interface BaseFilterOption {
 	key: string;
 	label: string;
-	color: string;
 	count: number;
 }
+
+export type FilterOption =
+	| (BaseFilterOption & { presentation: 'swatch'; color: string })
+	| (BaseFilterOption & {
+			presentation: 'badge';
+			badgeTheme: 'default' | 'success' | 'danger';
+	  });

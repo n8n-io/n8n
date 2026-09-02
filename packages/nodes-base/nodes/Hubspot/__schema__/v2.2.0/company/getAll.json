@@ -33,6 +33,9 @@
                                     "name": {
                                         "type": "string"
                                     },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
                                     "requestId": {
                                         "type": "string"
                                     },
@@ -44,6 +47,12 @@
                                     },
                                     "sourceUpstreamDeployable": {
                                         "type": "string"
+                                    },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
                                     },
                                     "timestamp": {
                                         "type": "integer"
@@ -79,5 +88,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

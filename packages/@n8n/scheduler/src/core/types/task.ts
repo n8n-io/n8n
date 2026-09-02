@@ -10,8 +10,9 @@
  * reclaims the row and another instance claims it, and a redelivery runs the
  * handler again. Duplicate *effects* are suppressed best-effort by the partial
  * unique index on `execution_entity.deduplicationKey` (see `ExecutionEntity` in
- * `@n8n/db`). Handlers must therefore be idempotent per occurrence. Tightening the
- * duplicate-suppression semantics is deferred to the misfire-policy work.
+ * `@n8n/db`). Handlers must therefore be idempotent per occurrence: the suppression
+ * cannot tell an execution inserted but never enqueued from one enqueued and not yet
+ * picked up, so a redelivery racing that window still runs the occurrence twice.
  *
  * Both types carry only the fields the core reads, named and typed as the
  * `scheduled_task` columns, so the storage row satisfies them structurally and
@@ -25,8 +26,8 @@ import type { ScheduledTaskStatus } from '@n8n/constants';
  * A materialised occurrence of a job (`scheduled_task`): one queued run.
  *
  * `scheduledFor` is the canonical UTC occurrence instant and the identity (unique
- * on `(jobId, scheduledFor)`); `runAt` is the visibility time (equal to
- * `scheduledFor` initially, pushed forward by retry backoff).
+ * on `(jobId, scheduledFor)`); `runAt` is the visibility time, which can differ
+ * from it, e.g. pushed forward by retry backoff.
  */
 export interface ScheduledTask {
 	id: string;

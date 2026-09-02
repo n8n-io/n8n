@@ -10,7 +10,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository } from './credentials.repository';
+export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -54,11 +54,18 @@ export type {
 	DeleteFinishedTasksOptions,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
+export {
+	PollerStateRepository,
+	type PollerCursor,
+	type PollLeaseFence,
+	type PollerFailureState,
+	type PollerFullState,
+} from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
-export { TestRunRepository } from './test-run.repository.ee';
+export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
@@ -78,15 +85,26 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
-	type InboxCursor,
-	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
+export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
+export {
+	WorkflowReviewInboxRepository,
+	type InboxCursor,
+	type InboxVisibility,
+} from './workflow-review-inbox.repository';
 export {
 	WorkflowReviewRequestWorkflowRepository,
 	type WorkflowReviewRequestLinkedWorkflow,
+	type WorkflowReviewRequestWorkflowDetailRow,
 } from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
+export {
+	WorkflowReviewActivityRepository,
+	type WorkflowReviewActivityFeedEntry,
+} from './workflow-review-activity.repository';
+export { WorkflowReviewActivityCommentRepository } from './workflow-review-activity-comment.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

@@ -3,6 +3,7 @@ import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import type { McpRegistryConnection } from 'n8n-workflow';
 
 import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -13,7 +14,11 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
-import { searchMcpRegistryServers, type McpRegistrySearchResult } from './mcp-registry-search';
+import {
+	listMcpRegistryServers,
+	searchMcpRegistryServers,
+	type McpRegistrySearchResult,
+} from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
@@ -112,6 +117,21 @@ export class McpRegistryService {
 	 */
 	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
 		return searchMcpRegistryServers(await this.getAll(), queries);
+	}
+
+	async list(limit: number): Promise<McpRegistrySearchResult[]> {
+		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+	}
+
+	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
+		const servers = await this.getBySlugs(slugs);
+		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+	}
+
+	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
+		return loader.getConnection(nodeTypeName);
 	}
 
 	private startPeriodicRefresh(): void {

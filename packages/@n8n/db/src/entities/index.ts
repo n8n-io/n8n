@@ -26,6 +26,7 @@ import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
@@ -33,7 +34,15 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
-import { ScheduledJob, ScheduledJobKind, ScheduledJobKindList } from './scheduled-job';
+import {
+	ScheduledJob,
+	ScheduledJobKind,
+	ScheduledJobKindList,
+	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
+} from './scheduled-job';
 import {
 	ScheduledTask,
 	ScheduledTaskStatus,
@@ -59,6 +68,7 @@ import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 } from './workflow-publication-outbox';
 import {
 	WorkflowPublicationTriggerStatus,
@@ -67,6 +77,8 @@ import {
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
+import { WorkflowReviewActivityComment } from './workflow-review-activity-comment.ee';
+import { WorkflowReviewActivity } from './workflow-review-activity.ee';
 import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
@@ -92,6 +104,7 @@ export {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -117,6 +130,10 @@ export {
 	ScheduledJob,
 	ScheduledJobKind,
 	ScheduledJobKindList,
+	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
@@ -136,6 +153,7 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
@@ -150,6 +168,8 @@ export {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -171,6 +191,7 @@ export const entities = {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -207,6 +228,8 @@ export const entities = {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

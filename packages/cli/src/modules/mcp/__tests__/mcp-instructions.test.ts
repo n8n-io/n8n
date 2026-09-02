@@ -4,7 +4,7 @@ describe('getMcpInstructions', () => {
 	test('returns intro-only string when builder is disabled', () => {
 		const instructions = getMcpInstructions({ isBuilderEnabled: false });
 		expect(instructions).toContain('official MCP server for n8n');
-		expect(instructions).not.toContain('n8nConnect');
+		expect(instructions).not.toContain('gatewayCredits');
 	});
 
 	test('includes n8n credits hint when builder is enabled and n8n Connect is available', () => {
@@ -12,10 +12,10 @@ describe('getMcpInstructions', () => {
 			isBuilderEnabled: true,
 			isN8nConnectAvailable: true,
 		});
-		expect(instructions).toContain('nodes covered by n8n credits');
-		expect(instructions).toContain('n8nConnect.nodes');
-		expect(instructions).toContain('n8n credits');
-		expect(instructions).toContain('list_n8n_connect_services');
+		expect(instructions).toContain('nodes covered by Gateway credits');
+		expect(instructions).toContain('gatewayCredits.nodes');
+		expect(instructions).toContain('Gateway credits');
+		expect(instructions).toContain('list_n8n_gateway_services');
 	});
 
 	test('omits n8n credits hint when n8n Connect is not available', () => {
@@ -24,14 +24,14 @@ describe('getMcpInstructions', () => {
 			isN8nConnectAvailable: false,
 		});
 		expect(instructions).toContain('official MCP server for n8n');
-		expect(instructions).not.toContain('n8n credits');
-		expect(instructions).not.toContain('n8nConnect');
-		expect(instructions).not.toContain('list_n8n_connect_services');
+		expect(instructions).not.toContain('Gateway credits');
+		expect(instructions).not.toContain('gatewayCredits');
+		expect(instructions).not.toContain('list_n8n_gateway_services');
 	});
 
 	test('omits n8n credits hint by default', () => {
 		const instructions = getMcpInstructions({ isBuilderEnabled: true });
-		expect(instructions).not.toContain('n8n credits');
+		expect(instructions).not.toContain('Gateway credits');
 	});
 
 	describe('node groups pointer', () => {
@@ -69,6 +69,8 @@ describe('getMcpInstructions', () => {
 				});
 
 				expect(instructions).not.toContain('"groups"');
+				expect(instructions).not.toContain('does not fail the whole update');
+				expect(instructions).not.toContain('skippedOperations');
 			});
 
 			test('omits the groups pointer by default', () => {

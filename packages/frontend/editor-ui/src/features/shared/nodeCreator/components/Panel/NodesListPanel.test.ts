@@ -44,6 +44,13 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	// Every panel mount schedules a keyboard-navigation refresh via setTimeout.
+	// Drain it while the document still exists — a timer surviving the last test
+	// fires after jsdom teardown and fails the run with an unhandled error.
+	afterEach(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+
 	describe('should render nodes', () => {
 		it('should render trigger items', async () => {
 			const mockedTriggerNodes = [...Array(2).keys()].map((n) =>
@@ -389,6 +396,47 @@ describe('NodesListPanel', () => {
 				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
 				await nextTick();
 				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should select the active item with Enter after typing a trailing space', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				const { emitted } = renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr ' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				await fireEvent.keyDown(screen.getByTestId('node-creator-search-bar'), {
+					key: 'Enter',
+				});
+				// Keyboard navigation refreshes its selectable items via setTimeout
+				await vi.advanceTimersByTimeAsync(1);
+				await nextTick();
+
+				expect(emitted().nodeTypeSelected).toHaveLength(1);
 			} finally {
 				vi.useRealTimers();
 			}

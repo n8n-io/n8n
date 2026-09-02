@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.25.0",
+  "version": "0.30.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -9,8 +9,8 @@
     },
     "./package.json": "./package.json",
     "./scripts/generate-types": {
-      "types": "./src/generate-types/generate-types.ts",
-      "default": "./src/generate-types/generate-types.ts"
+      "types": "./dist/generate-types/generate-types.d.ts",
+      "default": "./dist/generate-types/generate-types.js"
     },
     "./dist/generate-types/generate-types": {
       "default": "./dist/generate-types/generate-types.js"
@@ -58,7 +58,8 @@
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
-    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json",
+    "validate": "npx tsx src/cli/index.ts validate"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -85,6 +86,9 @@
   "files": [
     "dist/**/*"
   ],
+  "bin": {
+    "workflow-sdk": "./dist/cli/index.js"
+  },
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
@@ -99,6 +103,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
+    "@n8n/constants": "workspace:*",
     "@n8n/utils": "workspace:*",
     "acorn": "8.14.0",
     "lodash": "catalog:",

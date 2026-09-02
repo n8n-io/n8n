@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.22.0",
+  "version": "1.27.0",
   "files": [
     "dist"
   ],
@@ -32,7 +32,6 @@
     "@n8n/frontend-constants": "workspace:*",
     "@n8n/frontend-utils": "workspace:*",
     "@n8n/i18n": "workspace:*",
-    "@n8n/stores": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

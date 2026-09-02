@@ -1,4 +1,5 @@
-import type { RedactionOptions, StreamResult } from '@n8n/agents';
+import { isFinishReason } from '@n8n/agents';
+import type { FinishReason, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { randomUUID } from 'node:crypto';
@@ -10,7 +11,6 @@ import type {
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
-import { OutputRedactor } from '../stream/output-redaction';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
@@ -40,8 +40,6 @@ export interface ResumableStreamContext {
 	onActivity?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 }
 
 export interface ManualSuspensionControl {
@@ -87,6 +85,8 @@ export interface ExecuteResumableStreamResult {
 	usage?: RunTokenUsage;
 	/** Reason this stream stopped early after publishing the current chunk. */
 	stopReason?: OrchestratorRunHandoffReason;
+	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
+	finishReason?: FinishReason;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -247,10 +247,10 @@ function recordSuspension(
 }
 
 /**
- * Publish redacted events, holding back the primary confirmation-request event in
+ * Publish events, holding back the primary confirmation-request event in
  * manual mode and de-duplicating it. Returns the updated confirmation-tracking state.
  */
-function publishRedactedEvents(
+function publishEvents(
 	events: InstanceAiEvent[],
 	args: {
 		suspension: SuspensionInfo | undefined;
@@ -298,6 +298,7 @@ function publishRedactedEvents(
 
 interface StreamPassResult {
 	cancelled: boolean;
+	finishReason?: FinishReason;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -310,7 +311,7 @@ interface StreamPassResult {
 }
 
 /**
- * Consume one stream until it ends (or is cancelled), publishing redacted events,
+ * Consume one stream until it ends (or is cancelled), publishing events,
  * accumulating usage/work, and capturing the first suspension. Returns the pass
  * outcome plus the updated response-id / step counters for the next pass.
  */
@@ -320,18 +321,11 @@ async function consumeStreamPass(args: {
 	options: ExecuteResumableStreamOptions;
 	workSummaryAccumulator: WorkSummaryAccumulator;
 	usageAccumulator: UsageAccumulator;
-	outputRedactor: OutputRedactor;
 	currentResponseId: string | undefined;
 	nativeStepIndex: number;
 }): Promise<StreamPassResult> {
-	const {
-		activeStream,
-		activeAgentRunId,
-		options,
-		workSummaryAccumulator,
-		usageAccumulator,
-		outputRedactor,
-	} = args;
+	const { activeStream, activeAgentRunId, options, workSummaryAccumulator, usageAccumulator } =
+		args;
 	let currentResponseId = args.currentResponseId;
 	let nativeStepIndex = args.nativeStepIndex;
 	/**
@@ -352,6 +346,7 @@ async function consumeStreamPass(args: {
 	let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
+	let finishReason: FinishReason | undefined;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -383,6 +378,9 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
+		if (isRecord(chunk) && chunk.type === 'finish' && isFinishReason(chunk.finishReason)) {
+			finishReason = chunk.finishReason;
+		}
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;
@@ -436,12 +434,9 @@ async function consumeStreamPass(args: {
 		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
-		// Scan/redact secrets & PII before events reach the user. Buffered
-		// delta text is released here at structural boundaries, so this may
-		// expand into several events (or none, while text is held back).
-		const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
+		const events = mappedEvent ? [mappedEvent] : [];
 
-		const published = publishRedactedEvents(events, {
+		const published = publishEvents(events, {
 			suspension,
 			confirmationEvent,
 			confirmationEventPublished,
@@ -463,6 +458,7 @@ async function consumeStreamPass(args: {
 			return {
 				cancelled: false,
 				stopReason: stopSignal.reason,
+				finishReason,
 				suspension,
 				hasError,
 				error,
@@ -477,6 +473,7 @@ async function consumeStreamPass(args: {
 
 	return {
 		cancelled: false,
+		finishReason,
 		suspension,
 		hasError,
 		error,
@@ -496,13 +493,6 @@ export async function executeResumableStream(
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 	const usageAccumulator = new UsageAccumulator();
-	const outputRedactor = new OutputRedactor({
-		logger: options.context.logger,
-		threadId: options.context.threadId,
-		runId: options.context.runId,
-		agentId: options.context.agentId,
-		options: options.context.outputRedaction,
-	});
 
 	let currentResponseId: string | undefined;
 	let nativeStepIndex = 0;
@@ -514,7 +504,6 @@ export async function executeResumableStream(
 			options,
 			workSummaryAccumulator,
 			usageAccumulator,
-			outputRedactor,
 			currentResponseId,
 			nativeStepIndex,
 		});
@@ -528,11 +517,6 @@ export async function executeResumableStream(
 		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
 		const { drainedCorrectionsForResume } = pass;
 
-		for (const flushed of outputRedactor.flush()) {
-			workSummaryAccumulator.observe(flushed);
-			options.context.eventBus.publish(options.context.threadId, flushed);
-		}
-
 		if (options.context.signal.aborted) {
 			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
 		}
@@ -543,6 +527,7 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				stopReason: pass.stopReason,
@@ -555,6 +540,7 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};

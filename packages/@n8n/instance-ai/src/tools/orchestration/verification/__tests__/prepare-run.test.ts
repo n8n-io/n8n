@@ -86,3 +86,41 @@ describe('prepareVerificationRun — halted wait gates', () => {
 		expect(result.prepared.verificationPinData?.['Email Approval']).toEqual([]);
 	});
 });
+
+describe('prepareVerificationRun — gate scripts', () => {
+	it('exposes the script that matches a halted gate', () => {
+		const script = {
+			nodeName: 'Email Approval',
+			cutEdge: { source: 'Revise', target: 'Format' },
+			decisions: [{ label: 'approve', items: [{ data: { approved: true } }] }],
+		};
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [gateVerdict], waitGateScripts: [script] }),
+			undefined,
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.gateScript).toEqual(script);
+	});
+
+	it('ignores scripts that do not match a halted gate', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({
+				nodeSimulationPlan: [plainVerdict],
+				waitGateScripts: [
+					{
+						nodeName: 'Some Other Node',
+						cutEdge: { source: 'A', target: 'B' },
+						decisions: [{ label: 'x', items: [{}] }],
+					},
+				],
+			}),
+			undefined,
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.gateScript).toBeUndefined();
+	});
+});

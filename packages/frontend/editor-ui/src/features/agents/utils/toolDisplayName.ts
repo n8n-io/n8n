@@ -1,4 +1,4 @@
-import type { BaseTextKey } from '@n8n/i18n';
+import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 
 export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webSearch';
 export const FIND_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.findFile';
@@ -16,7 +16,12 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	patch_config: 'instanceAi.tools.patch_config',
 	build_custom_tool: 'instanceAi.tools.build_custom_tool',
 	create_skills: 'instanceAi.tools.create_skills',
+	list_skills: 'instanceAi.tools.list_skills',
+	read_skill: 'instanceAi.tools.read_skill',
+	update_skill: 'instanceAi.tools.update_skill',
 	create_tasks: 'instanceAi.tools.create_tasks',
+	list_tasks: 'instanceAi.tools.list_tasks',
+	update_task: 'instanceAi.tools.update_task',
 	get_resource_locator_options: 'instanceAi.tools.get_resource_locator_options',
 	list_workflows: 'instanceAi.tools.list_workflows',
 	list_integration_types: 'instanceAi.tools.list_integration_types',
@@ -52,12 +57,12 @@ export function getToolNameTranslationKey(toolName: string | undefined): BaseTex
 
 export function resolveToolNameForDisplay(
 	toolName: string | undefined,
-	baseText: (key: BaseTextKey) => string,
+	i18n: Pick<I18nClass, 'baseText'>,
 ): string {
 	const translationKey = getToolNameTranslationKey(toolName);
 	if (!translationKey) return formatToolNameForDisplay(toolName);
 
-	const translated = baseText(translationKey);
+	const translated = i18n.baseText(translationKey);
 	return translated === translationKey ? formatToolNameForDisplay(toolName) : translated;
 }
 

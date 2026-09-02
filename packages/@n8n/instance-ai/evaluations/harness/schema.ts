@@ -1,6 +1,12 @@
 import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import {
+	ConversationSeedSchema,
+	SeedMessageSchema,
+	expandSeedMessageShorthand,
+	normalizeSeedTimestamps,
+} from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
 /** Default `datasets` grouping for a case that omits the field — the single
@@ -14,11 +20,30 @@ export const DEFAULT_DATASETS = ['full'];
  *  (e.g. the mcp-manifest builder) normalize identically. */
 export const conversationTurnTextSchema = z
 	.union([z.string(), z.array(z.string())])
-	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
+	.transform((t) => (Array.isArray(t) ? t.join('\n') : t))
+	// An unclosed `[` fails silently and expensively: the proxy stops seeing a
+	// stage direction, so it sends the text as dialogue and the case grades a
+	// conversation it was never meant to have. Easy to do in the array form,
+	// where the closing bracket lands on a different line from the opening one.
+	.refine((t) => !t.includes('[') || t.includes(']'), {
+		message:
+			'unbalanced stage direction — text opens `[` but never closes it, so the proxy would send it as dialogue instead of treating it as a direction',
+	});
 
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
+	/** Hand the agent a seeded workflow with this turn, the way the editor does when
+	 *  a user opens the assistant with a workflow in front of them — without it the
+	 *  eval agent has to guess which workflow prose like "why is this failing?"
+	 *  means, and we score a clarification failure the real user never hit.
+	 *
+	 *  `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id. Opening turn only (refined below). */
+	attach: z
+		.object({ workflow: z.string().min(1) })
+		.strict()
+		.optional(),
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -35,11 +60,80 @@ const ExecutionScenarioSchema = z.object({
 	seedDataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 });
 
+/** Prior messages for an inline seed. Accepts a full envelope or the `{role, text}`
+ *  shorthand, expanded BEFORE validation so the envelope rules apply to the
+ *  expansion and error paths stay per-message (`seed.messages.2.createdAt`).
+ *  Timestamps are normalized after expansion, so seeded history always presents
+ *  in array order and never sorts after the live turn.
+ *
+ *  No `min(1)`: a fixture-only seed (a seeded project, no history) is legitimate, and
+ *  the case-level refine is the single arbiter of a seed that carries nothing. A
+ *  min here would also defeat the `.default([])` below — zod validates a substituted
+ *  default like any other value. */
+const inlineSeedMessagesSchema = z.preprocess(
+	(raw) => (Array.isArray(raw) ? normalizeSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
+	z.array(SeedMessageSchema),
+);
+
+/**
+ * Where a case's seeded history comes from — ONE slot, so the modes are mutually
+ * exclusive by construction instead of by a refine, and `mode` carries a real
+ * either/or: is the seed in the case, or fetched at run time?
+ *
+ * The literals match lang-tracer's `metadata.seed` verbatim (TRUST-358);
+ * diverging rebuilds the old→new translation layer this union exists to delete.
+ * `replay` names an action next to `inline`'s location — an asymmetry we take
+ * knowingly, because renaming it would break an LT HTTP body contract.
+ *
+ * Both arms are `.strict()`, matching the case schema: exclusivity has to fail
+ * loudly, not by stripping. `{ mode: replay, threadId, messages }` would
+ * otherwise parse as a valid replay seed with `messages` silently dropped —
+ * the case runs unseeded and grades as if it were a build from scratch, which
+ * is the misgrading the one-slot union exists to prevent.
+ */
+export const CaseSeedSchema = z.discriminatedUnion('mode', [
+	/** Prior messages plus the workflows/tables they reference, carried in the case
+	 *  body. Synthetic fixtures only — a real conversation belongs in `replay`,
+	 *  which keeps its content out of the repo. Pairs with `conversation`, which
+	 *  supplies the live turn. */
+	/** `messages` defaults to empty so a seed can carry ONLY instance fixtures (the
+	 *  project-scope shape: a seeded project exists, but the conversation under test
+	 *  starts from scratch). Defaulted rather than optional so the inferred type
+	 *  stays `SeedMessage[]` and every consumer keeps reading `.length`. The arm
+	 *  stays a plain object — `discriminatedUnion` rejects a refined one — so the
+	 *  "carries something" rule lives in the case-level refine below. */
+	ConversationSeedSchema.extend({
+		mode: z.literal('inline'),
+		messages: inlineSeedMessagesSchema.default([]),
+	}).strict(),
+	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
+	 *  before the live turn, live = that turn). Commits only the thread id;
+	 *  workspace auto-discovered. Supplies the live turn itself, so `conversation`
+	 *  is optional and continues after it. Transient (~14d trace retention). */
+	z
+		.object({
+			mode: z.literal('replay'),
+			threadId: z.string().min(1),
+			project: z.string().min(1).optional(),
+			/** LangSmith host the source trace lives on (dual-tenant reads during the
+			 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
+			 *  are unchanged. A US-sourced case carries the US host; the harness maps
+			 *  host→key via env (LANGSMITH_API_KEY_US). */
+			endpoint: z.string().url().optional(),
+			/** Pin which user turn is sent live (its LangSmith run id); everything before
+			 *  it is seeded. Omit ⇒ the thread's last user turn (default). */
+			liveTurnRunId: z.string().min(1).optional(),
+		})
+		.strict(),
+]);
+
+export type CaseSeed = z.infer<typeof CaseSeedSchema>;
+
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 		description: z.string().optional(),
-		// Optional only because `seedThread` derives the live turn from the trace;
+		// Optional only because a `replay` seed derives the live turn from the trace;
 		// a refine() below requires it for every other case.
 		conversation: z.array(ConversationTurnSchema).min(1).optional(),
 		complexity: z.enum(['simple', 'medium', 'complex']),
@@ -83,32 +177,29 @@ const evalTestCaseObjectSchema = z
 							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
 						}),
 					name: z.string().min(1).optional(),
+					valid: z.boolean().optional(),
+					blank: z.boolean().optional(),
 				}),
 			)
 			.optional(),
-		/** Synthetic seed file (relative path), resolved + validated at case load.
-		 *  Synthetic fixtures only; real conversations use `seedThread`. */
-		seedFile: z.string().min(1).optional(),
-		/** Prose turns seeded as plain-text history (no tool calls / workflows). */
-		priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
-		/** Reproduce a real conversation from its LangSmith trace at run time (seed =
-		 *  before the last user message, live = that message). Commits only the thread
-		 *  id; workspace auto-discovered. Supplies the live turn, so `conversation` is
-		 *  optional (continues after it). */
-		seedThread: z
-			.object({
-				threadId: z.string().min(1),
-				project: z.string().min(1).optional(),
-				/** LangSmith host the source trace lives on (dual-tenant reads during the
-				 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
-				 *  are unchanged. A US-sourced case carries the US host; the harness maps
-				 *  host→key via env (LANGSMITH_API_KEY_US). */
-				endpoint: z.string().url().optional(),
-				/** Pin which user turn is sent live (its LangSmith run id); everything before it
-				 *  is seeded. Omit ⇒ the thread's last user turn (default). */
-				liveTurnRunId: z.string().min(1).optional(),
-			})
-			.optional(),
+		/**
+		 * Opts this case into the credential-setup BROWSER lane, and picks what the
+		 * browser talks to. Replaces the old tag-pair convention, which you had to
+		 * know the magic strings for and which failed silently when half-specified.
+		 *
+		 *   "anthropic" (any shipped fixture id) → hermetic run against a lookalike
+		 *                                          page served AS the real hostname
+		 *   "local"                              → REAL provider site in the
+		 *                                          developer's own Chrome
+		 *
+		 * Omitted → no browser lane. Absence never means "real internet"; that
+		 * requires choosing `local` explicitly. An unknown id fails the run with
+		 * the available ids rather than silently booting nothing.
+		 */
+		credentialFixture: z.string().min(1).optional(),
+		/** History restored before the live turn — one slot, `mode` says where it
+		 *  comes from. See `CaseSeedSchema`. */
+		seed: CaseSeedSchema.optional(),
 		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 		 * the eval CLI's `--tier` flag and propagated to LangSmith as example
@@ -128,15 +219,75 @@ const evalTestCaseObjectSchema = z
  *  set is robust where blacklisting the few keys we happen to know today is not. */
 export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shape);
 
-// At most one seeding mode, and a source for the live turn.
+// A source for the live turn. (Seeding modes are exclusive by construction — the
+// `seed` union — so the old two-refine pair is down to this one rule, keyed off
+// the discriminant: only `replay` brings its own live turn.)
 export const EvalTestCaseSchema = evalTestCaseObjectSchema
-	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
+	.refine((c) => c.seed?.mode === 'replay' || c.conversation !== undefined, {
 		message:
-			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
+			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
 	})
-	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
+	// An inline seed that carries nothing restores nothing, and the case then grades
+	// as an unseeded build — green for the wrong reason. `messages` is optional (a
+	// fixture-only seed is legitimate), so emptiness is only wrong when EVERY slot
+	// is empty.
+	.refine(
+		(c) =>
+			c.seed?.mode !== 'inline' ||
+			c.seed.messages.length > 0 ||
+			c.seed.workflows.length > 0 ||
+			c.seed.dataTables.length > 0 ||
+			c.seed.agents.length > 0 ||
+			c.seed.projects.length > 0,
+		{
+			message:
+				'an inline seed must carry something — messages, workflows, dataTables, agents, or projects',
+		},
+	)
+	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
+	// do nothing.
+	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {
+		message: 'only the first conversation turn may carry `attach` — an attachment is a hand-off',
+	})
+	// Grading an assistant turn that carries one would score a transcript that could
+	// not have happened.
+	.refine((c) => c.conversation?.[0]?.attach === undefined || c.conversation[0].role === 'user', {
 		message:
-			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
+			'only a `user` turn may carry `attach` — the attachment is the hand-off that opens the conversation',
+	})
+	// A dangling attachment would hand the agent a reference to nothing, which reads
+	// as a builder failure. Only an inline seed declares workflows to point at.
+	.refine(
+		(c) => {
+			const attached = c.conversation?.[0]?.attach?.workflow;
+			if (attached === undefined) return true;
+			const declared = c.seed?.mode === 'inline' ? c.seed.workflows : [];
+			return declared.some((workflow) => workflow.id === attached);
+		},
+		{
+			message:
+				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
+	// The chat API refuses a message that is empty with nothing attached, so catch it
+	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
+	// Every user turn, not just the opening; assistant turns are proxy script data
+	// and never posted. Only a non-replay opening may substitute `attach` for text —
+	// a replay case has no inline seed for it to point at.
+	.superRefine((c, ctx) => {
+		const isReplay = c.seed?.mode === 'replay';
+		(c.conversation ?? []).forEach((turn, index) => {
+			if (turn.role === 'assistant' || turn.text.trim().length > 0) return;
+			const openingMayAttach = index === 0 && !isReplay;
+			if (openingMayAttach && turn.attach !== undefined) return;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['conversation', index, 'text'],
+				message: openingMayAttach
+					? 'an opening turn with empty text must carry `attach` — the chat API rejects a message that is empty with nothing attached'
+					: 'a conversation turn needs text — the chat API rejects an empty message, and only a non-replay opening turn may substitute `attach`',
+			});
+		});
 	})
 	.superRefine((c, ctx) => {
 		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of

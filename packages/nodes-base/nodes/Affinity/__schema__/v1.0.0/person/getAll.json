@@ -16,9 +16,12 @@
         "last_name": {
             "type": "string"
         },
+        "primary_email": {
+            "type": "string"
+        },
         "type": {
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

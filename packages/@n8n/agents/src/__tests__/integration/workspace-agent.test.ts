@@ -291,7 +291,7 @@ describe('workspace agent integration', () => {
 		expect(await memFs.exists('/project/remove-me')).toBe(false);
 	});
 
-	it('agent applies single and batch string replacements', async () => {
+	it('agent applies multiple string replacements', async () => {
 		await memFs.mkdir('/project', { recursive: true });
 		await memFs.writeFile(
 			'/project/config.ts',
@@ -307,8 +307,7 @@ describe('workspace agent integration', () => {
 			.instructions(
 				[
 					'You are a file editor.',
-					'Use workspace_str_replace_file for single exact replacements.',
-					'Use workspace_batch_str_replace_file for batch exact replacements.',
+					'Use workspace_str_replace_file for exact replacements.',
 					'Do not rewrite the whole file.',
 				].join(' '),
 			)
@@ -317,10 +316,10 @@ describe('workspace agent integration', () => {
 		const result = await agent.generate(
 			[
 				'Perform these exact workspace edits:',
-				'1. Call workspace_str_replace_file on /project/config.ts replacing old_str="OLD_REGION" with new_str="EU_CENTRAL".',
-				'2. Call workspace_batch_str_replace_file on /project/config.ts with replacements:',
-				'   - old_str="OLD_OWNER", new_str="API_TEAM"',
-				'   - old_str="OLD_STATUS", new_str="READY"',
+				'Call workspace_str_replace_file on /project/config.ts with replacements:',
+				'- old_str="OLD_REGION", new_str="EU_CENTRAL"',
+				'- old_str="OLD_OWNER", new_str="API_TEAM"',
+				'- old_str="OLD_STATUS", new_str="READY"',
 				'Then answer only: done.',
 			].join('\n'),
 		);
@@ -329,24 +328,13 @@ describe('workspace agent integration', () => {
 		expect(result.error).toBeUndefined();
 
 		const toolCalls = findAllToolCalls(result.messages);
-		expect(toolCalls.map((toolCall) => toolCall.toolName)).toEqual(
-			expect.arrayContaining(['workspace_str_replace_file', 'workspace_batch_str_replace_file']),
-		);
 		expect(
 			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_str_replace_file')?.input,
 		).toEqual(
 			expect.objectContaining({
 				path: '/project/config.ts',
-				old_str: 'OLD_REGION',
-				new_str: 'EU_CENTRAL',
-			}),
-		);
-		expect(
-			toolCalls.find((toolCall) => toolCall.toolName === 'workspace_batch_str_replace_file')?.input,
-		).toEqual(
-			expect.objectContaining({
-				path: '/project/config.ts',
 				replacements: expect.arrayContaining([
+					expect.objectContaining({ old_str: 'OLD_REGION', new_str: 'EU_CENTRAL' }),
 					expect.objectContaining({ old_str: 'OLD_OWNER', new_str: 'API_TEAM' }),
 					expect.objectContaining({ old_str: 'OLD_STATUS', new_str: 'READY' }),
 				]),
@@ -354,12 +342,12 @@ describe('workspace agent integration', () => {
 		);
 
 		const toolResults = findAllToolResults(result.messages);
-		for (const toolName of ['workspace_str_replace_file', 'workspace_batch_str_replace_file']) {
-			const toolResult = toolResults.find((result) => result.toolName === toolName);
-			expect(toolResult).toBeDefined();
-			expect(toolResult!.state).toBe('resolved');
-			expect((toolResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
-		}
+		const toolResult = toolResults.find(
+			(result) => result.toolName === 'workspace_str_replace_file',
+		);
+		expect(toolResult).toBeDefined();
+		expect(toolResult!.state).toBe('resolved');
+		expect((toolResult as unknown as { output: { success: boolean } }).output.success).toBe(true);
 
 		const edited = memFs.getFileContent('/project/config.ts');
 		expect(edited).toContain('EU_CENTRAL');

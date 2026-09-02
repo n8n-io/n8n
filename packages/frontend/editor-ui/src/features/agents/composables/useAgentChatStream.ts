@@ -1,19 +1,29 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
-import { getChatMessages, getTestChatMessages, clearTestChatMessages } from './useAgentApi';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import {
+	cancelAgentChatRun,
+	clearTestChatMessages,
+	getChatMessages,
+	getTestChatMessages,
+} from './useAgentApi';
 
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	findOpenInteractive,
+	findTailOpenInteractive,
+	findTailSteerableInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -21,14 +31,22 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
-import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
+import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
 	message: string;
 	missing: string[];
+}
+
+interface AgentChatWarning {
+	message: string;
+	server?: string;
+	code?: string;
 }
 
 export interface UseAgentChatStreamParams {
@@ -56,6 +74,15 @@ type ResumePayload =
 			text: string;
 	  };
 
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
+
+function warningKey(warning: AgentChatWarning): string {
+	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -63,7 +90,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreaming = ref(false);
+	const isCancelling = ref(false);
 	const abortController = ref<AbortController | null>(null);
+	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
+	const preserveTerminalStateOnAbort = new WeakSet<AbortController>();
 	const historyLoaded = ref(false);
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
@@ -71,6 +101,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * next send so users can fix the config and retry without a manual dismiss.
 	 */
 	const fatalError = ref<FatalAgentError | null>(null);
+	/**
+	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
+	 * connect, so its tools were skipped). The run continues; these are shown to
+	 * the user as a warning callout. Visible warnings clear on the next send;
+	 * explicitly dismissed warnings stay hidden for this composable instance.
+	 */
+	const warnings = ref<AgentChatWarning[]>([]);
+	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -79,8 +117,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return 'receiving';
 	});
 
-	async function loadHistory(): Promise<void> {
-		if (historyLoaded.value) return;
+	async function refreshHistory({
+		clearOnNotFound = false,
+		silent = false,
+		abortIfStale,
+	}: {
+		clearOnNotFound?: boolean;
+		silent?: boolean;
+		/** Checked after the fetch — drop the result rather than overwrite newer state. */
+		abortIfStale?: () => boolean;
+	} = {}): Promise<boolean> {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -103,24 +149,46 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			}
-			if (dbMessages.length > 0) {
-				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
-			}
-			params.onHistoryLoaded?.(messages.value.length);
+			if (abortIfStale?.()) return false;
+			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+			return true;
 		} catch (error) {
-			// Treat 404 as "no thread yet" rather than surfacing an error —
-			// covers stale continue URLs and any lingering race where the
-			// thread hasn't been persisted on the backend.
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				params.onHistoryLoaded?.(0);
-			} else {
+				if (clearOnNotFound) messages.value = [];
+				return clearOnNotFound;
+			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
-		} finally {
-			historyLoaded.value = true;
+			return false;
 		}
 	}
+
+	async function loadHistory(): Promise<void> {
+		if (historyLoaded.value) return;
+		await refreshHistory({ clearOnNotFound: true });
+		historyLoaded.value = true;
+		params.onHistoryLoaded?.(messages.value.length);
+	}
+
+	// A turn can complete with no stream attached — a Wait node finishing wakes the
+	// run server-side, long after this chat's SSE stream closed.
+	useAgentExecutionUpdates(
+		{
+			projectId: params.projectId,
+			agentId: params.agentId,
+			// A continued session is pinned to one thread; the default test chat has
+			// only one, so any update for this agent is the chat being shown.
+			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
+		},
+		async () => {
+			// A live stream is already writing the transcript — let it finish. Checked
+			// again after the fetch, since a send can start while it is in flight.
+			if (isStreaming.value) return;
+			// Nobody asked for this refetch, so a transient failure must stay quiet.
+			await refreshHistory({ silent: true, abortIfStale: () => isStreaming.value });
+		},
+	);
 
 	async function clearHistory(): Promise<void> {
 		try {
@@ -146,6 +214,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		 * that was applied before the round-trip.
 		 */
 		errorEmitted: boolean;
+		/** Set when the stream reaches a valid terminal event. */
+		terminalEventReceived: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -155,6 +225,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		current?: ChatMessage;
 		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
 		minted: Set<ChatMessage>;
+		reasoningStartedAt: Map<string, number>;
+		openReasoning: Map<string, ThinkingSegment>;
 	}
 
 	/**
@@ -168,7 +240,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			id: crypto.randomUUID(),
 			role: 'assistant',
 			content: '',
-			thinking: '',
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 		});
@@ -176,6 +247,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
+	}
+
+	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
+		const existing = session.openReasoning.get(id);
+		if (existing) return existing;
+
+		const msg = ensureCurrent(session);
+		const segment = reactive<ThinkingSegment>({
+			id,
+			content: '',
+			startTime: session.reasoningStartedAt.get(id) ?? Date.now(),
+		});
+		msg.thinkingSegments = [...(msg.thinkingSegments ?? []), segment];
+		session.openReasoning.set(id, segment);
+		return segment;
+	}
+
+	function settleReasoning(session: StreamSession, id: string, endTime = Date.now()): void {
+		const segment = session.openReasoning.get(id);
+		if (segment) segment.endTime = endTime;
+		session.openReasoning.delete(id);
+		session.reasoningStartedAt.delete(id);
+	}
+
+	function settleOpenReasoning(session: StreamSession): void {
+		const endTime = Date.now();
+		for (const id of session.openReasoning.keys()) settleReasoning(session, id, endTime);
+		session.reasoningStartedAt.clear();
 	}
 
 	/**
@@ -193,6 +292,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
+		// Prefer the current turn's card over one abandoned by an earlier turn.
+		const interactive =
+			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
+		if (interactive?.runId) {
+			return { runId: interactive.runId, toolCallId: interactive.toolCallId };
+		}
+
+		for (const message of messages.value) {
+			const toolCall = message.toolCalls?.find(
+				(tc) => tc.state === TOOL_CALL_STATE.SUSPENDED && tc.runId,
+			);
+			if (toolCall?.runId) return { runId: toolCall.runId, toolCallId: toolCall.toolCallId };
+		}
+		return undefined;
+	}
+
 	function markMessageSuccessIfSettled(msg: ChatMessage): void {
 		if (msg.status !== CHAT_MESSAGE_STATUS.AWAITING_USER) return;
 		const hasOpenInteractive = getMessageInteractives(msg).some(
@@ -201,12 +317,108 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!hasOpenInteractive) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 	}
 
+	function isToolCallInFlight(toolCall: ToolCall): boolean {
+		return (
+			toolCall.state === TOOL_CALL_STATE.PENDING ||
+			toolCall.state === TOOL_CALL_STATE.RUNNING ||
+			toolCall.state === TOOL_CALL_STATE.SUSPENDED
+		);
+	}
+
+	function markRunCancelled(runId: string): void {
+		for (const message of messages.value) {
+			const belongsToRun = message.toolCalls?.some((toolCall) => toolCall.runId === runId);
+			if (!belongsToRun) continue;
+
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (toolCall.runId !== runId && !isToolCallInFlight(toolCall)) continue;
+				toolCall.state = TOOL_CALL_STATE.CANCELLED;
+				toolCall.canceled = true;
+				changed = true;
+
+				const interactive = getMessageInteractive(message, toolCall.toolCallId);
+				if (interactive) {
+					upsertMessageInteractive(message, {
+						...interactive,
+						resolvedAt: Date.now(),
+						cancelled: true,
+					});
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
-			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+			if (
+				!msg.content &&
+				(msg.toolCalls?.length ?? 0) === 0 &&
+				getMessageThinkingSegments(msg).length === 0
+			) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
 			}
+		}
+	}
+
+	function markInFlightStateFailed(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (
+				msg.status === CHAT_MESSAGE_STATUS.STREAMING ||
+				msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER
+			) {
+				msg.status = CHAT_MESSAGE_STATUS.ERROR;
+			}
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall)) {
+					toolCall.state = TOOL_CALL_STATE.ERROR;
+				}
+			}
+			setMessageInteractives(
+				msg,
+				getMessageInteractives(msg).filter((interactive) => interactive.resolvedAt !== undefined),
+			);
+		}
+	}
+
+	function markStreamInterrupted(session: StreamSession): void {
+		settleOpenReasoning(session);
+		dropOrphanMintedBubbles(session);
+		markInFlightStateFailed(session);
+		messages.value.push(
+			reactive<ChatMessage>({
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: locale.baseText('agents.chat.streamInterrupted'),
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+			}),
+		);
+	}
+
+	/**
+	 * Settle tool calls left `pending`/`running` after the stream ended (their
+	 * terminal events never arrived). Used by `stopGenerating` to recover the
+	 * desync where the chat is idle and responsive but tool steps keep pulsing.
+	 * Suspended tools are left untouched — they have a `runId` and are still
+	 * resolvable through the normal resume/cancel flow.
+	 */
+	function settleStaleInFlightToolCalls(): void {
+		for (const message of messages.value) {
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.CANCELLED;
+					toolCall.canceled = true;
+					changed = true;
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
 		}
 	}
 
@@ -224,8 +436,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'text-start':
 			case 'text-end':
+				break;
 			case 'reasoning-start':
-			case 'reasoning-end':
+				session.reasoningStartedAt.set(event.id, Date.now());
 				break;
 			case 'text-delta': {
 				const msg = ensureCurrent(session);
@@ -234,9 +447,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'reasoning-delta': {
 				const msg = ensureCurrent(session);
+				const segment = ensureReasoningSegment(session, event.id);
+				segment.content += event.delta;
 				msg.thinking = (msg.thinking ?? '') + event.delta;
 				break;
 			}
+			case 'reasoning-end':
+				settleReasoning(session, event.id);
+				break;
 			case 'tool-input-start': {
 				const msg = ensureCurrent(session);
 				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
@@ -334,13 +552,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the matching card so it flips to its
-					// resolved (disabled) state immediately. Display-only n8n chat
-					// cards never suspend, so they are also born here when the tool
-					// settles.
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					if (updated) upsertMessageInteractive(found.msg, updated);
+					if (updated && currentInteractive?.resolvedAt === undefined) {
+						upsertMessageInteractive(found.msg, updated);
+					}
 					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
@@ -348,9 +564,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// The approval tool suspends with its renderable input; integration
-				// actions suspend with a sidecar — keep the card-bearing tool input
-				// and store the sidecar separately.
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
 				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
@@ -358,17 +573,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					if (suspendIsRenderableInput) {
-						tc.input = payload.input;
-					} else {
-						tc.suspendPayload = payload.input;
-					}
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
+					tc.runId = payload.runId;
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
 						state: TOOL_CALL_STATE.SUSPENDED,
+						runId: payload.runId,
 						...(suspendIsRenderableInput
 							? { input: payload.input }
 							: { suspendPayload: payload.input }),
@@ -384,15 +601,38 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
+				session.terminalEventReceived = true;
+				break;
+			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'warning': {
+				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
+				// tools were skipped). The run continues; surfaced as a callout.
+				const warning: AgentChatWarning = {
+					message: event.message,
+					...(event.server !== undefined && { server: event.server }),
+					...(event.code !== undefined && { code: event.code }),
+				};
+				if (!dismissedWarningKeys.has(warningKey(warning))) {
+					warnings.value.push(warning);
+				}
+				break;
+			}
 			case 'error': {
 				session.errorEmitted = true;
+				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
+				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else {
@@ -401,20 +641,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							id: crypto.randomUUID(),
 							role: 'assistant',
 							content: event.message,
-							thinking: '',
 							toolCalls: [],
 							status: CHAT_MESSAGE_STATUS.ERROR,
 						}),
 					);
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'done':
+				settleOpenReasoning(session);
 				if (event.executionId) {
 					for (const msg of session.minted) {
 						msg.executionId = event.executionId;
 					}
 				}
+				session.terminalEventReceived = true;
 				return { done: true };
 			default:
 				break;
@@ -457,23 +699,42 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function finalizeStream(session: StreamSession): void {
+		settleOpenReasoning(session);
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			// Defensive: if the stream completed (`done`) while tool calls are
+			// still `pending`/`running`, their terminal events never arrived
+			// (e.g. backend emitted `done` before per-tool `tool-execution-end`,
+			// or the events were dropped). Settle them so the UI stops pulsing
+			// and Stop hides — the run is over and the agent is responsive.
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall) && toolCall.state !== TOOL_CALL_STATE.SUSPENDED) {
+					toolCall.state = TOOL_CALL_STATE.DONE;
+				}
+			}
 		}
 	}
 
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
-	): Promise<{ ok: boolean }> {
+	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' }> {
 		const session: StreamSession = {
 			errorEmitted: false,
+			terminalEventReceived: false,
 			minted: new Set(),
+			reasoningStartedAt: new Map(),
+			openReasoning: new Map(),
 		};
 
 		isStreaming.value = true;
 		const controller = new AbortController();
 		abortController.value = controller;
+		let settleStream: (() => void) | undefined;
+		const streamSettlement = new Promise<void>((resolve) => {
+			settleStream = resolve;
+		});
+		streamSettlements.set(controller, streamSettlement);
 		let transportFailed = false;
 
 		try {
@@ -495,41 +756,67 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					status: 'error',
 				};
 				messages.value.push(errorMsg);
-				return { ok: false };
+				return { outcome: 'failed' };
 			}
 
 			await consumeStream(response, session);
-			finalizeStream(session);
-		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') {
-				finalizeStream(session);
-				// User-initiated abort — surface as a failure so optimistic
-				// callers (resume) restore their pre-flight state instead of
-				// leaving the UI half-committed.
-				return { ok: false };
+			if (!session.terminalEventReceived) {
+				transportFailed = true;
+				markStreamInterrupted(session);
+				return { outcome: 'failed' };
 			}
-			transportFailed = true;
-			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-			messages.value.push({
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: text,
-				status: 'error',
-			});
+			finalizeStream(session);
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				dropOrphanMintedBubbles(session);
+				if (preserveTerminalStateOnAbort.has(controller) && session.terminalEventReceived) {
+					finalizeStream(session);
+				} else {
+					markInFlightStateFailed(session);
+				}
+				return { outcome: 'aborted' };
+			}
+			if (session.terminalEventReceived) {
+				finalizeStream(session);
+			} else {
+				transportFailed = true;
+				markStreamInterrupted(session);
+			}
 		} finally {
-			abortController.value = null;
-			isStreaming.value = false;
+			if (abortController.value === controller) {
+				abortController.value = null;
+				isStreaming.value = false;
+			}
+			preserveTerminalStateOnAbort.delete(controller);
+			streamSettlements.delete(controller);
+			settleStream?.();
 		}
 
-		return { ok: !transportFailed && !session.errorEmitted };
+		return {
+			outcome: !transportFailed && !session.errorEmitted ? 'completed' : 'failed',
+		};
 	}
 
-	async function streamChat(message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
 		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
+		}
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: file.type || 'application/octet-stream',
+						data: encoded.data,
+					};
+				}),
+			);
 		}
 		await postAndConsume(url, body);
 	}
@@ -540,10 +827,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
 	 * applied during history reload.
 	 *
-	 * The UI updates optimistically, then restores the previous card state if
-	 * the resume POST or SSE stream fails.
+	 * The UI updates optimistically, then reconciles with persisted history if
+	 * the resume fails, falling back to the previous card state if history is unavailable.
 	 */
 	async function resume(payload: ResumePayload): Promise<void> {
+		if (isCancelling.value) return;
+
 		const isCancellation = 'cancelled' in payload;
 		const text = isCancellation ? payload.text.trim() : '';
 		if (isCancellation && !text) return;
@@ -586,6 +875,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
 				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
 			markMessageSuccessIfSettled(found.msg);
@@ -611,12 +904,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { ok } = await postAndConsume(url, {
+		const { outcome } = await postAndConsume(url, {
 			runId: payload.runId,
 			toolCallId: payload.toolCallId,
 			resumeData,
 		});
-		if (!ok && snapshot) {
+		let reconciled = false;
+		if (outcome === 'failed') {
+			reconciled = await refreshHistory();
+		}
+		if (outcome === 'failed' && !reconciled && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
@@ -630,13 +927,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				setMessageInteractives(snapshot.msg, []);
 			}
 		}
-		if (!ok && optimisticUserMessageId) {
+		if (outcome === 'failed' && !reconciled && optimisticUserMessageId) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
 		}
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openInteractive = findOpenInteractive(messages.value);
+		// Steering answers the card the user is looking at — the one on the current
+		// turn, and never a waiting card, which only the workflow or a deliberate
+		// click may end. The chat input gates this too, but the rule belongs with
+		// the resume it would send.
+		const openInteractive = findTailSteerableInteractive(messages.value);
 		if (!openInteractive?.runId) return;
 
 		await resume({
@@ -647,33 +948,100 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
+		warnings.value = [];
 		messages.value.push({
 			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: file.type || 'application/octet-stream',
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamChat(trimmed);
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {
 		fatalError.value = null;
 	}
 
-	function stopGenerating(): void {
-		abortController.value?.abort();
+	function dismissWarning(index: number): void {
+		const warning = warnings.value[index];
+		if (!warning) return;
+		const dismissedKey = warningKey(warning);
+		dismissedWarningKeys.add(dismissedKey);
+		warnings.value = warnings.value.filter((item) => warningKey(item) !== dismissedKey);
+	}
+
+	async function stopGenerating(): Promise<void> {
+		if (isCancelling.value) return;
+
+		const openSuspension = findOpenSuspension();
+		const activeController = abortController.value;
+		const activeStreamSettlement = activeController
+			? streamSettlements.get(activeController)
+			: undefined;
+		if (!openSuspension) {
+			activeController?.abort();
+			await activeStreamSettlement;
+			// Desync recovery: the stream already ended but tool calls are still
+			// pulsing because their terminal events never arrived. There is no
+			// backend run left to cancel — settle the stale state locally so
+			// the UI stops showing Stop and the shimmer clears.
+			if (!isStreaming.value) {
+				settleStaleInFlightToolCalls();
+			}
+			return;
+		}
+
+		isCancelling.value = true;
+		let preserveTerminalState = false;
+		try {
+			const { cancelled } = await cancelAgentChatRun(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				openSuspension.runId,
+			);
+			if (cancelled) {
+				markRunCancelled(openSuspension.runId);
+				preserveTerminalState = true;
+				return;
+			}
+
+			const reconciled = await refreshHistory();
+			preserveTerminalState = !reconciled;
+		} catch (error) {
+			const reconciled = await refreshHistory();
+			preserveTerminalState = !reconciled;
+			showError(error, locale.baseText('agents.chat.stop.error'));
+		} finally {
+			if (activeController && preserveTerminalState) {
+				preserveTerminalStateOnAbort.add(activeController);
+			}
+			activeController?.abort();
+			await activeStreamSettlement;
+			isCancelling.value = false;
+		}
 	}
 
 	return {
 		messages,
 		isStreaming,
+		isCancelling,
 		messagingState,
 		fatalError,
+		warnings,
 		loadHistory,
 		clearHistory,
 		sendMessage,
@@ -681,5 +1049,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		resume,
 		cancelAndSteer,
 		dismissFatalError,
+		dismissWarning,
 	};
 }

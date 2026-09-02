@@ -50,7 +50,6 @@ defineSlots<{ actions?: {} }>();
 				:model-value="selectedTab"
 				:node-type="nodeType"
 				:push-ref="pushRef"
-				tabs-variant="modern"
 				compact
 				:include-action="includeAction"
 				:include-credential="includeCredential"

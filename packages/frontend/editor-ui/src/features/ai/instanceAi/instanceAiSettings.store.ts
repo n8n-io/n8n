@@ -1,17 +1,20 @@
 import { defineStore } from 'pinia';
 import { ref, computed, reactive, toRaw, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	fetchSettings,
 	updateSettings,
 	fetchPreferences,
 	updatePreferences,
-	fetchModelCredentials,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
+	fetchModelCatalog,
+	verifyModel as verifyModelRequest,
+	verifySandbox as verifySandboxRequest,
+	verifySearch as verifySearchRequest,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
@@ -27,19 +30,19 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	InstanceAiModelCatalogResponse,
 	ToolCategory,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
+	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
-import {
-	BROWSER_USE_CONNECTION_TYPE,
-	COMPUTER_USE_CONNECTION_TYPE,
-	type BrowserUseConnectionType,
-	type ComputerUseConnectionType,
-} from './constants';
+import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
+import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -50,43 +53,24 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSaving = ref(false);
 	const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
-	const credentials = ref<InstanceAiModelCredential[]>([]);
-	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
-	const instanceModelCredentials = ref<InstanceAiModelCredential[]>([]);
+	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const modelCatalog = ref<InstanceAiModelCatalogResponse['models'] | null>(null);
+	const isModelCatalogLoading = ref(false);
+	let modelCatalogFetchPromise: Promise<void> | null = null;
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
-	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
-	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
 	const setupCommandExpiresAt = ref<string | null>(null);
 	const setupCommandTtlSeconds = ref<number | null>(null);
 	const setupCommandFetchedAt = ref<number | null>(null);
 	let setupCommandRequestId = 0;
-
-	const hasEverConnectedGateway = ref(
-		typeof localStorage !== 'undefined' &&
-			localStorage.getItem(HAS_CONNECTED_STORAGE_KEY) === 'true',
-	);
-
-	function markGatewayEverConnected(): void {
-		if (hasEverConnectedGateway.value) return;
-		hasEverConnectedGateway.value = true;
-		try {
-			localStorage.setItem(HAS_CONNECTED_STORAGE_KEY, 'true');
-		} catch {}
-	}
-
-	function clearGatewayEverConnected(): void {
-		hasEverConnectedGateway.value = false;
-		try {
-			localStorage.removeItem(HAS_CONNECTED_STORAGE_KEY);
-		} catch {}
-	}
+	const hasObservedGatewayConnection = ref(false);
+	const hasObservedBrowserConnection = ref(false);
 
 	const gatewayConnected = ref(false);
-	const gatewayStatusLoaded = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
@@ -99,7 +83,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const browserConnectUrl = ref<string | null>(null);
 	const browserConnectUrlExpiresAt = ref<string | null>(null);
 	let browserConnectUrlRequestId = 0;
-	const activeDirectory = computed(() => gatewayDirectory.value);
 	const isInstanceAiDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
 	);
@@ -125,26 +108,32 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
-	const sandboxUnavailableReason = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxUnavailableReason ?? null,
+	/**
+	 * Setup panel v2 gate — the single FE accessor; the backing mechanism (env var
+	 * today) stays swappable. Named with the instanceAi prefix because the canvas
+	 * Focus sidebar has its own unrelated `isSetupPanelEnabled` (setupPanel store).
+	 */
+	const isInstanceAiSetupPanelEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.instanceAiSetupPanelEnabled === true,
 	);
-
-	const isDirty = computed(() => {
-		if (!settings.value && !preferences.value) return false;
-		return Object.keys(draft).length > 0 || Object.keys(preferencesDraft).length > 0;
-	});
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
 	): void {
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
+		const configuration = deriveInstanceAiConfiguration(
+			adminRes,
+			instanceModelCredentials.value,
+			serviceCredentials.value,
+		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
+			setupCompleted: configuration.setupCompleted,
 			sandboxEnabled: adminRes.sandboxEnabled,
 			workflowBuilderAvailable: adminRes.sandboxEnabled
 				? (prev?.workflowBuilderAvailable ?? true)
@@ -153,6 +142,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
+			instanceAiSetupPanelEnabled: prev?.instanceAiSetupPanelEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -161,6 +151,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
+	);
+	const canManageAiUsage = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } }),
+	);
+	const canManageInstanceCredentials = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
 
 	async function fetch(): Promise<void> {
@@ -176,87 +172,80 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value && !isCloudManaged.value) {
-				const credPromises: [
-					Promise<InstanceAiModelCredential[]>,
-					Promise<InstanceAiModelCredential[]>,
-					Promise<InstanceAiModelCredential[]>,
-				] = [
-					fetchModelCredentials(rootStore.restApiContext),
-					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
-					canManage.value
-						? fetchInstanceModelCredentials(rootStore.restApiContext)
-						: Promise.resolve([]),
-				];
-				const [c, sc, imc] = await Promise.all(credPromises);
-				credentials.value = c;
+			if (!isCloudManaged.value && canManage.value) {
+				const [sc, imc] = await Promise.all([
+					fetchServiceCredentials(rootStore.restApiContext),
+					isProxyEnabled.value
+						? Promise.resolve([])
+						: fetchInstanceModelCredentials(rootStore.restApiContext),
+				]);
 				serviceCredentials.value = sc;
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
 		} catch {
-			toast.showError(new Error('Failed to load settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		} finally {
 			isLoading.value = false;
 		}
 	}
 
-	async function save(): Promise<void> {
+	/**
+	 * Persists the staged admin draft. Returns whether the save succeeded; on
+	 * failure the draft is discarded so a later unrelated save can't flush it.
+	 */
+	async function save(showToast = true): Promise<boolean> {
+		if (Object.keys(draft).length === 0) return true;
 		isSaving.value = true;
 		try {
-			const hasAdminChanges = Object.keys(draft).length > 0;
-			const hasPreferenceChanges = Object.keys(preferencesDraft).length > 0;
-
-			const [adminResult, prefsResult] = await Promise.allSettled([
-				hasAdminChanges
-					? updateSettings(rootStore.restApiContext, {
-							...toRaw(draft),
-						} as InstanceAiAdminSettingsUpdateRequest)
-					: Promise.resolve(settings.value),
-				hasPreferenceChanges
-					? updatePreferences(rootStore.restApiContext, preferencesDraft)
-					: Promise.resolve(preferences.value),
-			]);
-
-			if (adminResult.status === 'fulfilled' && adminResult.value)
-				settings.value = adminResult.value;
-			if (prefsResult.status === 'fulfilled' && prefsResult.value)
-				preferences.value = prefsResult.value;
-
-			const failed = [adminResult, prefsResult].filter((r) => r.status === 'rejected');
-			if (failed.length > 0) {
-				throw (failed[0] as PromiseRejectedResult).reason;
-			}
-
+			const result = await updateSettings(rootStore.restApiContext, {
+				...toRaw(draft),
+			} as InstanceAiAdminSettingsUpdateRequest);
+			settings.value = result;
 			clearDraft();
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
-			if (hasAdminChanges) {
-				await settingsStore.getModuleSettings();
-				const adminSaved =
-					adminResult.status === 'fulfilled' && adminResult.value ? adminResult.value : null;
-				if (adminSaved) {
-					syncInstanceAiFlagIntoGlobalModuleSettings(adminSaved);
-				}
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
 			}
-		} catch {
-			toast.showError(new Error('Failed to save settings'), 'Settings error');
+			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+			await settingsStore.getModuleSettings().catch(() => {});
+			return true;
+		} catch (error) {
+			clearDraft();
+			toast.showError(error, i18n.baseText('settings.n8nAgent.toast.errorTitle'));
+			return false;
 		} finally {
 			isSaving.value = false;
 		}
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
-	async function persistEnabled(value: boolean): Promise<void> {
+	async function persistEnabled(value: boolean, showToast = true): Promise<boolean> {
 		isSaving.value = true;
 		try {
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
 			settings.value = result;
 			delete draft.enabled;
-			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
+			await settingsStore.getModuleSettings().catch(() => {});
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
+			}
+			return true;
 		} catch {
-			toast.showError(new Error('Failed to save settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.saveError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
+			return false;
 		} finally {
 			isSaving.value = false;
 		}
@@ -269,7 +258,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			});
 			preferences.value = result;
 		} catch {
-			toast.showError(new Error('Failed to save preference'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.preferenceError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		}
 	}
 
@@ -278,16 +270,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		try {
 			preferences.value = await fetchPreferences(rootStore.restApiContext);
 		} catch {}
-	}
-
-	// ── Sidebar connections ──────────────────────────────────────────────
-	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-
-	interface SidebarConnection {
-		type: ComputerUseConnectionType | BrowserUseConnectionType;
-		name: string;
-		subtitle: string;
-		status: ConnectionStatus;
 	}
 
 	const isGatewayBrowserCategoryEnabled = computed(
@@ -299,37 +281,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
-
-	const connections = computed<SidebarConnection[]>(() => {
-		const result: SidebarConnection[] = [];
-
-		if (!isLocalGatewayDisabled.value) {
-			result.push({
-				type: COMPUTER_USE_CONNECTION_TYPE,
-				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
-				subtitle: gatewayConnected.value
-					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: gatewayConnected.value ? 'connected' : 'disconnected',
-			});
-		}
-
-		if (isBrowserUseEnabledByAdmin.value) {
-			result.push({
-				type: BROWSER_USE_CONNECTION_TYPE,
-				name: isBrowserUseConnected.value
-					? 'Google Chrome'
-					: i18n.baseText('instanceAi.connections.add.browserUse'),
-				subtitle: isBrowserUseConnected.value
-					? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
-			});
-		}
-
-		return result;
+	const computerUseConnectionStatus = computed<ToolConnectionStatus>(() => {
+		if (gatewayConnected.value) return 'connected';
+		if (isDaemonConnecting.value) return 'connecting';
+		if (hasObservedGatewayConnection.value && !isLocalGatewayDisabled.value) return 'disconnected';
+		return 'none';
 	});
-
+	const browserUseConnectionStatus = computed<ToolConnectionStatus>(() => {
+		if (browserConnected.value) return 'connected';
+		return hasObservedBrowserConnection.value ? 'disconnected' : 'none';
+	});
 	/**
 	 * Tears down the paired gateway session on the server (so its tools are no
 	 * longer exposed to the agent). User preference stays enabled — the user
@@ -346,39 +307,24 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearSetupCommand();
-		clearGatewayEverConnected();
+		hasObservedGatewayConnection.value = false;
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
 		gatewayDirectory.value = null;
 		gatewayHostIdentifier.value = null;
 	}
 
-	/** Destructive: disables the user preference and removes the row from the list. */
-	async function removeComputerUse(): Promise<void> {
-		await disconnectComputerUse();
-		await persistLocalGatewayPreference(true);
-	}
-
 	function setField<K extends keyof InstanceAiAdminSettingsUpdateRequest>(
 		key: K,
 		value: InstanceAiAdminSettingsUpdateRequest[K],
 	): void {
-		draft[key] = value;
-	}
-
-	function setPreferenceField<K extends keyof InstanceAiUserPreferencesUpdateRequest>(
-		key: K,
-		value: InstanceAiUserPreferencesUpdateRequest[K],
-	): void {
-		preferencesDraft[key] = value;
+		if (value === undefined) delete draft[key];
+		else draft[key] = value;
 	}
 
 	function clearDraft(): void {
 		for (const key of Object.keys(draft)) {
 			delete (draft as Record<string, unknown>)[key];
-		}
-		for (const key of Object.keys(preferencesDraft)) {
-			delete (preferencesDraft as Record<string, unknown>)[key];
 		}
 	}
 
@@ -393,24 +339,19 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return settings.value?.permissions?.[key] ?? 'require_approval';
 	}
 
-	function reset(): void {
-		clearDraft();
-	}
-
 	// ── Gateway status fetch ──────────────────────────────────────────────
 
 	async function fetchGatewayStatus(): Promise<void> {
 		try {
 			const status = await getGatewayStatus(rootStore.restApiContext);
 			gatewayConnected.value = status.connected;
-			gatewayDirectory.value = status.directory;
-			gatewayHostIdentifier.value = status.hostIdentifier ?? null;
 			gatewayToolCategories.value = status.toolCategories ?? [];
-			if (status.connected) markGatewayEverConnected();
-		} catch {
-		} finally {
-			gatewayStatusLoaded.value = true;
-		}
+			if (status.connected) {
+				hasObservedGatewayConnection.value = true;
+				gatewayDirectory.value = status.directory;
+				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+			}
+		} catch {}
 	}
 
 	// ── Browser Use (direct channel) ──────────────────────────────────────
@@ -421,6 +362,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnected.value = status.connected;
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
+			if (status.connected) hasObservedBrowserConnection.value = true;
 		} catch {
 		} finally {
 			browserStatusLoaded.value = true;
@@ -466,6 +408,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearBrowserConnectUrl();
+		hasObservedBrowserConnection.value = false;
 		browserConnected.value = false;
 		browserConnectedAt.value = null;
 		browserToolCategories.value = [];
@@ -531,11 +474,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		removeGatewayPushListener = pushStore.addEventListener((message) => {
 			if (message.type === 'instanceAiGatewayStateChanged') {
 				gatewayConnected.value = message.data.connected;
-				gatewayDirectory.value = message.data.directory;
-				gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 				gatewayToolCategories.value = message.data.toolCategories ?? [];
 				if (message.data.connected) {
-					markGatewayEverConnected();
+					hasObservedGatewayConnection.value = true;
+					gatewayDirectory.value = message.data.directory;
+					gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 				}
 				return;
 			}
@@ -543,6 +486,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				browserConnected.value = message.data.connected;
 				browserConnectedAt.value = message.data.connectedAt;
 				browserToolCategories.value = message.data.toolCategories ?? [];
+				if (message.data.connected) hasObservedBrowserConnection.value = true;
 			}
 		});
 
@@ -597,14 +541,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshCredentials(): Promise<void> {
-		if (isProxyEnabled.value) return;
+		if (isCloudManaged.value) return;
 		try {
-			const [c, sc] = await Promise.all([
-				fetchModelCredentials(rootStore.restApiContext),
-				fetchServiceCredentials(rootStore.restApiContext),
-			]);
-			credentials.value = c;
-			serviceCredentials.value = sc;
+			serviceCredentials.value = await fetchServiceCredentials(rootStore.restApiContext);
 		} catch {
 			// Silently fail — credentials list will refresh on next full fetch
 		}
@@ -619,6 +558,27 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
+	async function loadModelCatalog(): Promise<void> {
+		if (modelCatalog.value) return;
+		if (modelCatalogFetchPromise) return await modelCatalogFetchPromise;
+
+		isModelCatalogLoading.value = true;
+		const request = fetchModelCatalog(rootStore.restApiContext)
+			.then((response) => {
+				if (Object.values(response.models).some((models) => models.length > 0)) {
+					modelCatalog.value = response.models;
+				}
+			})
+			.catch(() => {})
+			.finally(() => {
+				isModelCatalogLoading.value = false;
+				modelCatalogFetchPromise = null;
+			});
+		modelCatalogFetchPromise = request;
+
+		await request;
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -631,41 +591,56 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		await Promise.all(promises);
 	}
 
+	async function verifyModel(
+		payload: InstanceAiVerifyModelRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifyModelRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySandbox(
+		payload: InstanceAiVerifySandboxRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySandboxRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySearch(
+		payload: InstanceAiVerifySearchRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySearchRequest(rootStore.restApiContext, payload);
+	}
+
 	return {
 		canManage,
+		canManageAiUsage,
+		canManageInstanceCredentials,
 		settings,
 		preferences,
-		credentials,
 		serviceCredentials,
 		instanceModelCredentials,
+		modelCatalog,
 		draft,
-		preferencesDraft,
 		isLoading,
 		isSaving,
-		isDirty,
+		isModelCatalogLoading,
 		fetch,
 		save,
 		persistEnabled,
 		persistLocalGatewayPreference,
 		ensurePreferencesLoaded,
 		setField,
-		setPreferenceField,
 		setPermission,
 		getPermission,
-		reset,
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
 		setupCommandExpiresAt,
 		setupCommandTtlSeconds,
 		setupCommandFetchedAt,
-		hasEverConnectedGateway,
+		computerUseConnectionStatus,
 		isGatewayConnected,
-		gatewayStatusLoaded,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
-		activeDirectory,
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
@@ -673,7 +648,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
-		sandboxUnavailableReason,
+		isInstanceAiSetupPanelEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,
@@ -683,9 +658,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearSetupCommand,
 		refreshCredentials,
 		refreshInstanceModelCredentials,
+		loadModelCatalog,
 		refreshModuleSettings,
+		verifyModel,
+		verifySandbox,
+		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
+		browserUseConnectionStatus,
 		browserConnectedAt,
 		browserToolCategories,
 		browserStatusLoaded,
@@ -695,10 +675,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetchBrowserConnectUrl,
 		clearBrowserConnectUrl,
 		disconnectBrowserUse,
-		// Sidebar connections
-		connections,
 		isBrowserUseConnected,
 		disconnectComputerUse,
-		removeComputerUse,
 	};
 });

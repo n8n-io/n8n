@@ -33,12 +33,15 @@ import {
 	useCanvasNodeGroupView,
 	type CanvasNodeGroupView,
 } from '../composables/useCanvasNodeGroupView';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -61,7 +64,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ prompt: messagePrompt }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
 
@@ -78,7 +81,7 @@ vi.mock('@/app/composables/useSelectionValidation', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
@@ -802,6 +805,14 @@ describe('Canvas', () => {
 
 			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
 		});
+
+		it('hides the convert button when executeWorkflow is excluded', async () => {
+			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
 	});
 
 	describe('expanded group selection', () => {
@@ -1006,6 +1017,46 @@ describe('Canvas', () => {
 
 		// The group title bar isn't a real node, so copy must carry its members.
 		expect(emitted()['copy:nodes']).toEqual([[['node-1', 'node-2']]]);
+	});
+
+	describe('shortcuts disabled in canvas-only mode', () => {
+		const shortcuts = [
+			{ name: 'save:workflow', event: { key: 's', ctrlKey: true, metaKey: true } },
+			{
+				name: 'create:workflow',
+				event: { key: 'n', ctrlKey: true, metaKey: true, altKey: true },
+			},
+		];
+
+		const setCanvasOnly = (canvasOnly: boolean) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = { ...defaultSettings, canvasOnly };
+		};
+
+		it.each(shortcuts)('emits `$name` when canvas-only mode is off', async ({ name, event }) => {
+			setCanvasOnly(false);
+
+			const { container, emitted } = renderComponent();
+			await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+			await fireEvent.keyDown(document, event);
+
+			expect(emitted()[name]).toEqual([[]]);
+		});
+
+		it.each(shortcuts)(
+			'does not emit `$name` when canvas-only mode is on',
+			async ({ name, event }) => {
+				setCanvasOnly(true);
+
+				const { container, emitted } = renderComponent();
+				await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+				await fireEvent.keyDown(document, event);
+
+				expect(emitted()[name]).toBeUndefined();
+			},
+		);
 	});
 
 	it('should emit `update:nodes:position` event', async () => {

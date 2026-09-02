@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- Write all technical text (code comments, PR descriptions, issue and ticket
+  descriptions, docs) in ASD-STE100 Simplified Technical English: use short
+  sentences, the active voice, and one instruction for each sentence
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
@@ -35,6 +38,9 @@ frontend, and extensible node-based workflow engine.
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 
 ## Agent Skills and Claude Code Plugin
 
@@ -123,8 +129,8 @@ The monorepo is organized into these key packages:
 - **`packages/workflow`**: Core workflow interfaces and types
 - **`packages/core`**: Workflow execution engine
 - **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
+- **`packages/frontend/editor-ui`**: Vue 3 frontend application
+- **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
 - **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
@@ -237,7 +243,7 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
@@ -255,8 +261,16 @@ What we use for testing and writing tests:
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
 - **To iterate on a feature without docker rebuilds**, boot service containers
-  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
+  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
+  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
+  server runs. See
+  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
+  dependencies, starts the backend, waits for health, shares the port with the
+  org, and prints the URL. See
+  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
 - **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
@@ -264,9 +278,9 @@ What we use for testing and writing tests:
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module-guide.md`
+   `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

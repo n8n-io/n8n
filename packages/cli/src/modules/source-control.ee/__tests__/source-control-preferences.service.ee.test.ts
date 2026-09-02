@@ -8,6 +8,7 @@ import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
@@ -26,6 +27,7 @@ describe('SourceControlPreferencesService', () => {
 		mockLogger,
 		mockCipher,
 		mockSettingsRepository,
+		mock(),
 		mock(),
 	);
 
@@ -84,6 +86,7 @@ describe('SourceControlPreferencesService', () => {
 				mockCipher,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			// Mock the getKeyPairFromDatabase method to return a key pair
@@ -114,6 +117,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -148,6 +152,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -190,6 +195,7 @@ describe('SourceControlPreferencesService', () => {
 				mockCipher,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			// Mock the getKeyPairFromDatabase method
@@ -219,6 +225,7 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const testKey =
@@ -244,6 +251,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -323,10 +331,12 @@ describe('SourceControlPreferencesService', () => {
 					mock(),
 					mock(),
 					mock(),
+					mock(),
 				);
 
 				singleMainService = new SourceControlPreferencesService(
 					singleMainInstanceSettings,
+					mock(),
 					mock(),
 					mock(),
 					mock(),
@@ -431,6 +441,7 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const knownHostsPath = path.join(sshFolder, 'known_hosts');
@@ -451,9 +462,33 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('instance write access mirroring', () => {
+		it('mirrors branchReadOnly into InstanceWriteAccessService on preference updates', async () => {
+			const instanceWriteAccess = new InstanceWriteAccessService();
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceWriteAccess,
+			);
+
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
+
+			// connectionType 'https' avoids SSH key generation in setPreferences
+			await service.setPreferences({ branchReadOnly: true, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(true);
+
+			await service.setPreferences({ branchReadOnly: false, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
 		});
 	});
 });

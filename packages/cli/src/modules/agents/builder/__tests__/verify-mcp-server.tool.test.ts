@@ -184,7 +184,7 @@ describe('buildVerifyMcpServerTool', () => {
 		).resolves.toEqual({ ok: true, tools: [] });
 	});
 
-	it('forwards name, url, transport, authentication, credential, and connectionTimeoutMs to the factory', async () => {
+	it('forwards connection fields and registry metadata to the factory', async () => {
 		const mcpClient = makeMcpClient();
 		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
 
@@ -197,6 +197,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.example' },
 				connectionTimeoutMs: 42_000,
 			},
 			{} as never,
@@ -209,6 +210,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.example' },
 				connectionTimeoutMs: 42_000,
 			}),
 			expect.objectContaining({

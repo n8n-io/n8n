@@ -15,7 +15,8 @@ import { Telemetry } from '@/telemetry';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import { getClientInfo } from './mcp.utils';
+import type { McpAuthenticatedRequest } from './mcp.types';
+import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 /**
  * MCP Server Middleware Service
@@ -98,11 +99,8 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
-			const mcpReq = req as AuthenticatedRequest & {
-				mcpAuthType?: UserWithContext['authType'];
-				mcpScopes?: string[];
-			};
-			mcpReq.mcpAuthType = result.authType;
+			const mcpReq = req as McpAuthenticatedRequest;
+			mcpReq.mcpCaller = result.caller;
 			// undefined for API keys = not scope-bearing → full tool access
 			mcpReq.mcpScopes = result.scopes;
 
@@ -140,8 +138,11 @@ export class McpServerMiddlewareService {
 		const payload = {
 			mcp_connection_status: 'error',
 			error: UNAUTHORIZED_ERROR_MESSAGE,
+			// Literal, not res.statusCode: tracked before the 401 is written.
+			http_status: 401,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
+			protocol_version: getProtocolVersion(req),
 			...context,
 		};
 		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);

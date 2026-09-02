@@ -156,6 +156,38 @@ export class CredentialsController {
 		}
 	}
 
+	/**
+	 * Auth-probe a stored credential against the test URL saved in the
+	 * credential itself. Complements `/test`, which needs the credential type
+	 * to declare a test; generic types (e.g. Templated Custom Auth) have none,
+	 * so they are probed against their own persisted test URL instead.
+	 */
+	@Post('/:credentialId/probe')
+	@ProjectScope('credential:read')
+	async probeCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		try {
+			const result = await this.credentialsService.probeById(req.user, credentialId);
+
+			this.eventService.emit('credentials-probed', {
+				user: req.user,
+				credentialId,
+				outcome: result.outcome,
+			});
+
+			return result;
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
+
+			throw error;
+		}
+	}
+
 	@Post('/')
 	async createCredentials(
 		req: AuthenticatedRequest,
@@ -229,11 +261,9 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		if (
-			credential.usageScope === 'instance' &&
-			body.type !== undefined &&
-			body.type !== credential.type
-		) {
+		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
+
+		if (credential.usageScope === 'instance' && isChangingAuthType) {
 			throw new BadRequestError(
 				'Provider connection type cannot be changed. Create a new connection instead.',
 			);
@@ -259,6 +289,9 @@ export class CredentialsController {
 		if (isTogglingToPrivate || isTogglingToStatic) {
 			const owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			if (isTogglingToPrivate) {
+				this.credentialsService.ensureEndUserCredentialAllowedInProject(owningProject);
+			}
 			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
 		}
 
@@ -266,7 +299,9 @@ export class CredentialsController {
 			req.user,
 			req.body,
 			credential,
-			{ clearOauthTokenData: isTogglingToPrivate },
+			// Switching auth method (e.g. Google Service Account -> OAuth) changes the
+			// credential's type; the previous type's OAuth token no longer applies to it.
+			{ clearOauthTokenData: isTogglingToPrivate || isChangingAuthType },
 		);
 
 		const newCredentialData = await this.credentialsService.createEncryptedData({
@@ -315,6 +350,7 @@ export class CredentialsController {
 			{
 				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
 				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+				user: req.user,
 			},
 		);
 
@@ -425,20 +461,6 @@ export class CredentialsController {
 		await this.credentialsService.delete(req.user, credential.id, {
 			includeInstanceCredentials: true,
 		});
-
-		this.eventService.emit('credentials-deleted', {
-			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
-		});
-
-		if (credential.isResolvable) {
-			this.eventService.emit('private-credential-deleted', {
-				user: req.user,
-				credentialType: credential.type,
-				credentialId: credential.id,
-			});
-		}
 
 		return true;
 	}

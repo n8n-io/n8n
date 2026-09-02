@@ -24,6 +24,7 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export type { AiGatewayWalletResponse } from './ai/ai-gateway-wallet-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,
@@ -79,6 +80,10 @@ export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
+export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
+export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export { LdapSyncDto } from './ldap/ldap-sync.dto';
+
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
@@ -93,6 +98,23 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	CloneGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
+	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
+	GitConnectionPushResultDto,
+	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -100,6 +122,7 @@ export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
+export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
@@ -122,11 +145,47 @@ export {
 } from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
+export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
+export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
+export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
+export {
+	WorkflowPublicDto,
+	CreatedWorkflowPublicDto,
+	WorkflowListPublicDto,
+	WorkflowPublishPublicDto,
+	workflowPublicSchema,
+	createdWorkflowPublicSchema,
+	workflowPublishPublicSchema,
+	workflowListItemPublicSchema,
+	sharedWorkflowPublicSchema,
+	activeWorkflowVersionPublicSchema,
+	workflowParentFolderPublicSchema,
+	DeletedWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
+} from './workflows/workflow-public.dto';
+export {
+	ActivateWorkflowPublicDto,
+	activateWorkflowPublicSchema,
+	PublishWorkflowPublicDto,
+	publishWorkflowPublicSchema,
+} from './workflows/publish-workflow-public.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
+export {
+	WorkflowPublishForbiddenErrorPublicDto,
+	workflowPublishForbiddenErrorPublicSchema,
+} from './workflows/workflow-publish-forbidden-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -174,12 +233,25 @@ export {
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
+export { UpdateRolePublicDto } from './roles/update-role-public.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export {
+	RolePublicDto,
+	RoleListPublicDto,
+	RoleListQueryPublicDto,
+	RoleGetPublicDto,
+} from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export {
+	RoleMappingRulePublicDto,
+	RoleMappingRuleListPublicDto,
+	RoleMappingRuleListQueryPublicDto,
+} from './roles/role-mapping-rule-public.dto';
 export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export { UpdateRoleMappingRulePublicDto } from './roles/update-role-mapping-rule-public.dto';
 export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
 export {
 	ListRoleMappingRuleQueryDto,
@@ -204,7 +276,7 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
@@ -267,6 +339,19 @@ export {
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
+export {
+	WorkflowHistoryListItemDto,
+	workflowHistoryListItemSchema,
+} from './workflow-history/workflow-history-list-item.dto';
+export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowVersionHistoryListPublicDto,
+	workflowVersionListItemPublicSchema,
+} from './workflow-history/workflow-version-history-public.dto';
+export {
+	WorkflowVersionPublicDto,
+	workflowVersionPublicSchema,
+} from './workflow-history/workflow-version-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -280,6 +365,15 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+export { DeleteExecutionsDto } from './executions/delete-executions.dto';
+export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export {
+	ExecutionPublicDto,
+	DeletedExecutionPublicDto,
+	executionPublicSchema,
+	deletedExecutionPublicSchema,
+} from './executions/execution-public.dto';
+export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
@@ -293,10 +387,22 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
+export {
+	ListWorkflowReviewRequestsQueryDto,
+	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestList,
+} from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
+export {
+	ListWorkflowReviewActivityQueryDto,
+	CreateWorkflowReviewCommentDto,
+	WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
+	type ListWorkflowReviewActivityResponse,
+} from './workflow-reviews/workflow-review-activity.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

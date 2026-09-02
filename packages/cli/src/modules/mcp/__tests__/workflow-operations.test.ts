@@ -303,15 +303,84 @@ describe('applyOperations', () => {
 			}
 		});
 
-		test('fails clearly when descending through an array (indices not supported)', () => {
+		test('descends into an array by numeric index and sets a nested field', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { values: [{ name: 'Content-Type', value: 'application/json' }] };
 			const result = applyOperations(wf, [
 				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/0/value', value: 'text/plain' },
 			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[1].parameters).toEqual({
+				values: [{ name: 'Content-Type', value: 'text/plain' }],
+			});
+		});
+
+		test('replaces an array element outright when the path ends at the index', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }, { name: 'b' }] };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/1', value: { name: 'c' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[1].parameters).toEqual({
+				values: [{ name: 'a' }, { name: 'c' }],
+			});
+		});
+
+		test('rejects an out-of-bounds array index', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/1/name', value: 'b' },
+			]);
+
 			expect(result.success).toBe(false);
 			if (result.success) return;
-			expect(result.error).toContain('cannot descend');
+
+			expect(result.error).toContain('array index 1 out of bounds');
+			expect(result.error).toContain("at '/values'");
+		});
+
+		test('rejects a non-numeric segment used against an array', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/foo/name', value: 'b' },
+			]);
+
+			expect(result.success).toBe(false);
+			if (result.success) return;
+
+			expect(result.error).toContain("cannot use 'foo' as an array index");
+			expect(result.error).toContain("at '/values'");
+		});
+
+		test('rejects creating an array via a numeric segment when the container does not exist', () => {
+			const wf = baseWorkflow();
+
+			// Empty node with no parameters, so updating an array value will error
+			wf.nodes[1].parameters = {};
+
+			const result = applyOperations(wf, [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: '/assignments/assignments/0/value',
+					value: 99,
+				},
+			]);
+
+			expect(result.success).toBe(false);
+			if (result.success) return;
+
+			expect(result.error).toContain("cannot create array at '/assignments/assignments'");
+			expect(result.error).toContain("for numeric segment '0'");
+			expect(result.error).toContain('updateNodeParameters');
+			expect(wf.nodes[1].parameters).toEqual({});
 		});
 	});
 
@@ -1395,6 +1464,32 @@ describe('applyOperations', () => {
 			applyOperations(wf, [{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Renamed' }]);
 			expect(wf.nodeGroups[0].name).toBe('Group');
 		});
+
+		test('leaves the group untouched when a later field fails validation', () => {
+			// Valid nodeNames combined with a colliding newName: since a failing group
+			// op is skipped rather than fatal, applying the membership before checking
+			// the name would persist a change the skip report says never happened.
+			const result = applyOperations(
+				groupedWorkflow(),
+				[{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A', 'B'], newName: 'Other' }],
+				{ canvasGroupsEnabled: true },
+			);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.skippedOperations).toEqual([
+				{
+					opIndex: 0,
+					type: 'updateNodeGroup',
+					reason: "a node group named 'Other' already exists",
+				},
+			]);
+			expect(result.workflow.nodeGroups![0]).toEqual({
+				id: 'g1',
+				name: 'Group',
+				nodeIds: ['a'],
+				description: 'Old description',
+			});
+		});
 	});
 
 	describe('nodeGroupsChanged', () => {
@@ -1412,6 +1507,230 @@ describe('applyOperations', () => {
 			expect(result.success).toBe(true);
 			if (!result.success) return;
 			expect(result.nodeGroupsChanged).toBe(true);
+		});
+	});
+
+	describe('groupOperations', () => {
+		// Only groups the batch explicitly asked for belong here: it's what lets a
+		// caller tell "your group operation failed" from "an unrelated edit
+		// invalidated a group that was already there".
+		const withGroup = () => ({
+			...baseWorkflow(),
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+		});
+
+		test('is empty when the workflow arrives with groups and no group operation runs', () => {
+			const result = applyOperations(withGroup(), [
+				{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({});
+		});
+
+		test('is empty after a removeNode prunes an existing group', () => {
+			const result = applyOperations(withGroup(), [{ type: 'removeNode', nodeName: 'B' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+			expect(result.groupOperations).toEqual({});
+		});
+
+		test('records the operation index and type for addNodeGroup', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 1, type: 'addNodeGroup' } });
+		});
+
+		test('records every group a setNodeGroups produced against that operation', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeGroups',
+					nodeGroups: [
+						{ id: 'g1', name: 'One', nodeNames: ['A'] },
+						{ id: 'g2', name: 'Two', nodeNames: ['B'] },
+					],
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({
+				g1: { opIndex: 0, type: 'setNodeGroups' },
+				g2: { opIndex: 0, type: 'setNodeGroups' },
+			});
+		});
+
+		test('records updateNodeGroup on a pre-existing group', () => {
+			const result = applyOperations(withGroup(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 0, type: 'updateNodeGroup' } });
+		});
+
+		test('the last operation to touch a group wins', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+				{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['A'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({ g1: { opIndex: 1, type: 'updateNodeGroup' } });
+		});
+
+		test('drops a group that removeNodeGroup deleted', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] },
+				{ type: 'removeNodeGroup', groupName: 'Group' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.groupOperations).toEqual({});
+		});
+	});
+
+	describe('non-fatal operation types', () => {
+		describe('canvasGroupsEnabled off', () => {
+			test('a normal batch with no failures succeeds with no skipped operations', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				]);
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.skippedOperations ?? []).toEqual([]);
+			});
+
+			test('a failing group operation still aborts the whole batch', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.error).toContain("node 'Missing' in group 'Group' not found");
+				expect(result.opIndex).toBe(0);
+			});
+
+			test('a failing non-group operation still aborts the whole batch', () => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					{ type: 'removeNode', nodeName: 'Missing' },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.opIndex).toBe(1);
+			});
+		});
+
+		describe('canvasGroupsEnabled on', () => {
+			test('a failing addNodeGroup is skipped while surrounding operations still apply', () => {
+				const wf = baseWorkflow();
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'addConnection', source: 'A', target: 'C' },
+				];
+				const result = applyOperations(wf, ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.some((n) => n.name === 'C')).toBe(true);
+				expect(result.workflow.connections.A?.main?.[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'C' })]),
+				);
+				expect(result.workflow.nodeGroups ?? []).toEqual([]);
+				expect(result.skippedOperations).toEqual([
+					{
+						opIndex: 1,
+						type: 'addNodeGroup',
+						reason: "node 'Missing' in group 'Group' not found",
+					},
+				]);
+			});
+
+			test('a failing non-group operation still aborts the whole batch even with the flag on', () => {
+				const result = applyOperations(
+					baseWorkflow(),
+					[{ type: 'removeNode', nodeName: 'Missing' }],
+					{ canvasGroupsEnabled: true },
+				);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.opIndex).toBe(0);
+			});
+
+			test('two non-fatal failures in the same batch are both skipped, in order', () => {
+				const wf = {
+					...baseWorkflow(),
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+				};
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['B'] },
+					{ type: 'updateNodeGroup', groupName: 'Missing', newName: 'X' },
+				];
+				const result = applyOperations(wf, ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+				expect(result.skippedOperations).toEqual([
+					{
+						opIndex: 0,
+						type: 'addNodeGroup',
+						reason: "a node group named 'Group' already exists",
+					},
+					{
+						opIndex: 1,
+						type: 'updateNodeGroup',
+						reason: "node group 'Missing' not found",
+					},
+				]);
+			});
+
+			test('a batch where every operation is a failing group op still succeeds with no groups persisted', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'removeNodeGroup', groupName: 'Missing' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodeGroups ?? []).toEqual([]);
+				expect(result.nodeGroupsChanged).toBe(false);
+				expect(result.skippedOperations).toHaveLength(2);
+			});
+
+			test('skipping a non-fatal operation does not corrupt state for later operations', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'setNodeParameter', nodeName: 'C', path: '/foo', value: 'bar' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.find((n) => n.name === 'C')!.parameters).toEqual({
+					foo: 'bar',
+				});
+				expect(result.skippedOperations).toHaveLength(1);
+			});
+
+			test('opIndex in skippedOperations reflects the original position in the input array', () => {
+				const ops: PartialUpdateOperation[] = [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 } },
+					{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+					{ type: 'setNodeParameter', nodeName: 'C', path: '/foo', value: 'bar' },
+				];
+				const result = applyOperations(baseWorkflow(), ops, { canvasGroupsEnabled: true });
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.skippedOperations).toEqual([
+					{ opIndex: 2, type: 'addNodeGroup', reason: expect.any(String) as string },
+				]);
+			});
 		});
 	});
 

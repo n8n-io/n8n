@@ -13,18 +13,23 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
+
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
 
 const props = withDefaults(
 	defineProps<{
 		tabs: ArtifactTab[];
 		activeTabId?: string;
 		isExpanded?: boolean;
+		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
 	}>(),
 	{
 		isExpanded: false,
+		isExpandDisabled: false,
 		previewToggleLabel: undefined,
 	},
 );
@@ -43,6 +48,11 @@ const sizeToggleLabel = computed(() =>
 		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
 	),
 );
+
+function handleToggleExpanded() {
+	if (props.isExpandDisabled) return;
+	emit('toggleExpanded');
+}
 
 function getTabListElement() {
 	const tabList = tabListRef.value;
@@ -96,6 +106,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
 	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
+	}
 	return undefined;
 }
 
@@ -138,7 +151,14 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
 					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
-						<N8nIcon :icon="tab.icon" size="large" />
+						<N8nIcon
+							v-if="tab.building"
+							icon="spinner"
+							size="large"
+							spin
+							data-test-id="instance-ai-tab-building-spinner"
+						/>
+						<N8nIcon v-else :icon="tab.icon" size="large" />
 						<span :class="$style.label">{{ tab.name }}</span>
 					</TabsTrigger>
 				</ContextMenuTrigger>
@@ -156,14 +176,17 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"
 			size="medium"
+			:disabled="isExpandDisabled"
 			:aria-label="sizeToggleLabel"
-			:title="sizeToggleLabel"
+			:title="isExpandDisabled ? undefined : sizeToggleLabel"
 			data-test-id="instance-ai-preview-expand-toggle"
-			@click="emit('toggleExpanded')"
+			@click="handleToggleExpanded"
 		/>
 	</div>
 </template>

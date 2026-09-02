@@ -16,7 +16,7 @@ const mockBatchProcessorInstances: Array<{
 }> = [];
 const mockProviderConfigs: unknown[] = [];
 const mockAwaitPendingTraceBatches = vi.fn(async () => await Promise.resolve());
-const mockTracer = { startSpan: vi.fn() };
+const mockTracer = { startSpan: vi.fn(), startActiveSpan: vi.fn() };
 const mockProvider = {
 	getTracer: vi.fn(() => mockTracer),
 	register: vi.fn(),

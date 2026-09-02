@@ -13,6 +13,7 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type INodeTypes,
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
@@ -191,6 +192,8 @@ export type WorkflowGroupViolation = {
 	message: string;
 };
 
+type WorkflowGroupViolationWithGroup = WorkflowGroupViolation & { group: IWorkflowGroup };
+
 export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode?: IConnections;
@@ -206,6 +209,23 @@ export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 export type WorkflowGroupsValidationResult =
 	| { valid: true }
 	| { valid: false; violations: [WorkflowGroupViolation, ...WorkflowGroupViolation[]] };
+
+export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description. Returns `null` for unknown node types so
+ * validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
 
 /**
  * Validates a workflow's `nodeGroups` without throwing, collecting all violations.
@@ -237,9 +257,39 @@ export function validateWorkflowGroups<TNode extends INode>({
 	nodeGroups,
 	getNodeType,
 }: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes,
+		connectionsBySourceNode,
+		nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) return { valid: true };
+
+	const [firstViolation, ...restViolations] = result.violations;
+	return {
+		valid: false,
+		violations: [
+			stripWorkflowGroupIdentity(firstViolation),
+			...restViolations.map(stripWorkflowGroupIdentity),
+		],
+	};
+}
+
+function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
+	nodes,
+	connectionsBySourceNode,
+	nodeGroups,
+	getNodeType,
+}: WorkflowGroupsValidationInput<TNode>):
+	| { valid: true }
+	| {
+			valid: false;
+			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
+	  } {
 	if (!nodeGroups || nodeGroups.length === 0) return { valid: true };
 
-	const violations: WorkflowGroupViolation[] = [];
+	const violations: WorkflowGroupViolationWithGroup[] = [];
 	// Tracked by object identity: duplicate IDs/names make `group.id` ambiguous.
 	const groupsWithBasicViolations = new Set<IWorkflowGroup>();
 	const addViolation = (
@@ -247,7 +297,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 		code: WorkflowGroupViolationCode,
 		message: string,
 	) => {
-		violations.push({ groupId: group.id, groupName: group.name, code, message });
+		violations.push({ group, groupId: group.id, groupName: group.name, code, message });
 	};
 
 	const nodeById = new Map(nodes.filter((node) => Boolean(node.id)).map((node) => [node.id, node]));
@@ -328,6 +378,54 @@ export function validateWorkflowGroups<TNode extends INode>({
 	return { valid: false, violations: [firstViolation, ...restViolations] };
 }
 
+function stripWorkflowGroupIdentity({
+	groupId,
+	groupName,
+	code,
+	message,
+}: WorkflowGroupViolationWithGroup): WorkflowGroupViolation {
+	return { groupId, groupName, code, message };
+}
+
+/**
+ * Non-fatal twin of `validateWorkflowGroups`: drops every offending group instead
+ * of throwing, returning every violation for the groups it dropped.
+ * Mutates `nodeGroups`.
+ *
+ * `shouldDrop` filters which violating groups are removed, letting a caller
+ * drop the groups it can blame first and re-check the rest afterwards.
+ */
+export function dropInvalidWorkflowGroups<TNode extends INode>(
+	workflow: { nodes: TNode[]; nodeGroups?: IWorkflowGroup[]; connections?: IConnections },
+	getNodeType: GetNodeTypeForGrouping | null,
+	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
+): WorkflowGroupViolation[] {
+	if (!workflow.nodeGroups?.length) {
+		return [];
+	}
+
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) {
+		return [];
+	}
+
+	const dropped = result.violations.filter(shouldDrop);
+	if (dropped.length === 0) {
+		return [];
+	}
+
+	const droppedGroups = new Set(dropped.map((violation) => violation.group));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroups.has(group));
+
+	return dropped.map(stripWorkflowGroupIdentity);
+}
+
 /**
  * Maps a failed `validateNodeSelectionForGrouping` result to an actionable message
  * that names the offending group and the rule it broke. These strings are the
@@ -338,7 +436,7 @@ function groupRuleViolationMessage(
 	result: Extract<NodeGroupValidationResult, { valid: false }>,
 	nodeLabel: (nodeId: string) => string,
 ): string {
-	const label = `Node group "${group.name}" (${group.id})`;
+	const label = `Node group "${group.name}"`;
 	switch (result.reason) {
 		case 'trigger-selected':
 			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;

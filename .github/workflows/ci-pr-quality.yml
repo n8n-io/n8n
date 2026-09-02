@@ -48,9 +48,10 @@ jobs:
     name: PR Size Limit
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
     # Allows for override via '/size-limit-override' comment.
-    # Skipped for bot-authored PRs — dep bumps from Dependabot/Renovate/Aikido
+    # Skipped for bot-authored PRs — dep bumps from Dependabot/Aikido
     # routinely exceed the size limit and shouldn't be gated on it.
     if: |
+      github.repository == 'n8n-io/n8n' &&
       github.event_name == 'pull_request' &&
       github.event.action != 'labeled' &&
       github.event.action != 'unlabeled' &&

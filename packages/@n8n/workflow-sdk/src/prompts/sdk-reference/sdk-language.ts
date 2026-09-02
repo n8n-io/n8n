@@ -2,7 +2,7 @@
  * Builder-facing SDK language reference, rendered from the interpreter's own
  * tables so guidance cannot drift from what the parser accepts.
  */
-import { NODE_GROUPING_RULES } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, NODE_GROUPING_RULES } from 'n8n-workflow';
 
 import {
 	SDK_METHODS,
@@ -86,7 +86,7 @@ export const NODE_GROUPS_REFERENCE = `## Node groups
 
 A node group is a named, visual grouping of nodes (a frame on the canvas). It is
 purely organisational — nothing about execution depends on it. Declare one with
-\`.group(name, members)\` on the workflow. Members are the node handles (the
+\`.group(name, members, options?)\` on the workflow. Members are the node handles (the
 \`const\` from \`node(...)\`) — the same way connections reference nodes:
 
 \`\`\`typescript
@@ -95,21 +95,51 @@ const transform = node({ /* ... name: 'Transform' */ });
 export default workflow('id', 'My workflow')
   .add(fetch)
   .to(transform)
-  .group('Ingestion', [fetch, transform]);
+  .group('Ingestion', [fetch, transform], {
+    description: 'Pulls the CRM contacts and normalizes them',
+  });
 \`\`\`
 
-When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
-the change is specifically about grouping.
+\`description\` is optional and shown when the group is collapsed. Keep it to one
+sentence — anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off.
 
-an invalid group is rejected on save, so these following rules MUST be followed when
-creating or editing groups.
+When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
+intact** unless the change is specifically about grouping.
+
+Agent save tools drop an invalid group from the saved workflow and report a warning.
+Fix the source so the invalid group is not re-emitted. These rules MUST be followed
+when creating or editing groups.
 
 Rules:
 ${renderRulesLines()}
 `;
 
-/** Full reference, materialized into the knowledge base for on-demand reading. */
-export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference
+/**
+ * Grouping judgement guidance: *when* to group — the rules that make a group
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
+ * only when the canvas-groups flag is on; Instance AI always materializes it
+ * into the knowledge base.
+ */
+export const GROUPING_GUIDANCE = `## Grouping
+
+Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
+
+- **When to group:** larger workflows that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group. Small workflows don't need groups — a group there is just noise.
+- **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
+- **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
+- Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
+
+Read the node groups reference for the exact rules before creating groups.`;
+
+/**
+ * Render the full language reference. The node-groups section is included by
+ * default (Instance AI's knowledge base); the MCP SDK reference passes its
+ * `canvasGroupsEnabled` flag state as `includeGroups`.
+ */
+export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
+	const { includeGroups = true } = options;
+
+	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
 not arbitrary JavaScript. It is parsed by an AST interpreter that builds a static
@@ -122,9 +152,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${NODE_GROUPS_REFERENCE}
-
-## Forbidden constructs
+${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -148,3 +176,11 @@ regex), do it in one of these:
 - Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
 - Use a **Code node** for multi-step aggregation or transformation.
 `;
+}
+
+/**
+ * Full reference including groups docs. Materialized into Instance AI's
+ * knowledge base for on-demand reading; the MCP SDK reference embeds the
+ * groups-gated variant via `buildSdkLanguageReference` instead.
+ */
+export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();

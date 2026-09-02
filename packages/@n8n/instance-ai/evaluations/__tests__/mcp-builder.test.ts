@@ -129,28 +129,55 @@ describe('unsupportedMcpBuildSetupFields', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase({ credentials: [] }))).toEqual([]);
 	});
 
+	it('does not flag declared credentials (the fused path seeds them per-case)', () => {
+		expect(
+			unsupportedMcpBuildSetupFields(testCase({ credentials: [{ type: 'slackApi' }] })),
+		).toEqual([]);
+	});
+
 	it('does not flag messageBudget (inapplicable to a single-shot claude build)', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase({ messageBudget: 6 }))).toEqual([]);
 	});
 
-	it.each<[string, Partial<WorkflowTestCase>]>([
-		['credentials', { credentials: [{ type: 'slackApi' }] }],
-		['seedFile', { seedFile: 'seeds/some-thread.seed.json' }],
-		['priorConversation', { priorConversation: [user('We already agreed on #alerts')] }],
-		['seedThread', { seedThread: { threadId: 't1' } }],
-	])('flags %s', (field, overrides) => {
+	// One `seed` entry covers every mode: the classification keys off the slot, not
+	// the mode, so a new arm needs no edit here.
+	it.each<[string, string, Partial<WorkflowTestCase>]>([
+		[
+			'an inline seed',
+			'seed',
+			{
+				seed: {
+					mode: 'inline',
+					messages: [
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
+					],
+					workflows: [],
+					dataTables: [],
+					agents: [],
+					projects: [],
+				},
+			},
+		],
+		['a replay seed', 'seed', { seed: { mode: 'replay', threadId: 't1' } }],
+	])('flags %s', (_label, field, overrides) => {
 		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([field]);
 	});
 
-	it('flags multiple declared fields together', () => {
+	it('flags only the seed when credentials and a seed are declared together', () => {
 		expect(
 			unsupportedMcpBuildSetupFields(
 				testCase({
 					credentials: [{ type: 'slackApi' }],
-					priorConversation: [user('prelude')],
+					seed: { mode: 'replay', threadId: 't1' },
 				}),
 			),
-		).toEqual(['credentials', 'priorConversation']);
+		).toEqual(['seed']);
 	});
 });
 
@@ -235,8 +262,43 @@ describe('buildWorkflowViaMcp', () => {
 		const result = await buildWorkflowViaMcp(buildOpts());
 
 		expect(result.workflowId).toBeNull();
-		expect(result.failureReason).toBe('no-stdout');
+		// The session's result text is appended so an upstream provider error can
+		// be classified downstream; the subtype still leads.
+		expect(result.failureReason).toContain('no-stdout');
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(3);
+	});
+
+	// TRUST-374: a provider outage inside `claude` reached the orchestrator as a
+	// bare subtype, so `findProviderOutage` had nothing to match and the run was
+	// filed as a BUILDER failure. The session's own error text has to ride along.
+	it('carries the provider error text out, not just the session subtype', async () => {
+		spawnReturning(() => {
+			const child = new FakeChild(1234);
+			setImmediate(() => {
+				child.stdout.emit(
+					'data',
+					Buffer.from(
+						JSON.stringify({
+							subtype: 'error_during_execution',
+							result: 'AI_APICallError: Overloaded (HTTP 529)',
+						}),
+					),
+				);
+				child.emit('close', 0, null);
+			});
+			return child;
+		});
+
+		// One attempt: the provider backoff between retries is exercised separately;
+		// this pins that the evidence survives into `failureReason`.
+		const result = await buildWorkflowViaMcp({
+			...buildOpts(),
+			settings: { ...settings, maxAttempts: 1 },
+		});
+
+		expect(result.workflowId).toBeNull();
+		expect(result.failureReason).toContain('error_during_execution');
+		expect(result.failureReason).toContain('AI_APICallError');
 	});
 
 	it('returns the workflow id from a successful first attempt', async () => {

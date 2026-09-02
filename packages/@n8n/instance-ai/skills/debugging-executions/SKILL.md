@@ -31,7 +31,8 @@ name what is unconfirmed instead of repeating a success claim.
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
-`inputData` shapes, read `knowledge-base/reference/trigger-input-data-shapes.md`
+`inputData` shapes, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
 when a sandbox workspace is available.
 
 ## Failed execution

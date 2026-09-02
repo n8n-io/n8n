@@ -8,8 +8,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
+import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
-export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -25,6 +26,7 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
+@Index(['status'], { where: '"status" = \'running\'' })
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
@@ -53,6 +55,15 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	userMessage: string | null;
 
+	/** Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService. */
+	@JsonColumn({ nullable: true })
+	attachments: Array<{
+		id: string;
+		fileName: string;
+		mimeType: string;
+		sizeBytes: number;
+	}> | null;
+
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
 
@@ -73,6 +84,9 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'text', nullable: true })
 	error: string | null;
+
+	@JsonColumn({ nullable: true })
+	failureSummary: AgentExecutionFailureSummary | null;
 
 	@Column({ type: 'varchar', length: 16, nullable: true })
 	hitlStatus: AgentExecutionHitlStatus | null;

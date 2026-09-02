@@ -14,6 +14,7 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
+import { TagRequirementsExtractor } from '../../tag/tag-requirements.extractor';
 import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
@@ -51,6 +52,7 @@ function makeExporter(
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 		variableExtractor ?? new VariableRequirementsExtractor(),
+		new TagRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -61,13 +63,19 @@ describe('WorkflowExporter', () => {
 		const { exporter, finder } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, workflowIds: [workflow.id], writer });
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
 			[workflow.id],
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags: true, includeActiveVersion: false },
 		);
 	});
 
@@ -81,6 +89,8 @@ describe('WorkflowExporter', () => {
 				user,
 				workflowIds: ['present-1', 'missing-or-denied'],
 				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 	});
@@ -92,7 +102,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
@@ -103,7 +119,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'denied-1'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'denied-1'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
@@ -113,7 +135,13 @@ describe('WorkflowExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toThrow();
 
 		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
@@ -128,6 +156,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [workflow.id, workflow.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
@@ -148,6 +178,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
@@ -176,7 +208,13 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, workflowIds: [workflow.id], writer });
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
 		expect(workflowFile).toBeDefined();
@@ -191,6 +229,48 @@ describe('WorkflowExporter', () => {
 		});
 	});
 
+	it('writes node groups into workflow.json', async () => {
+		const workflow = makeWorkflow({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+	});
+
+	it('omits nodeGroups from workflow.json when the workflow has none', async () => {
+		const workflow = makeWorkflow({ nodeGroups: [] });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(jsonParse<object>(workflowFile!.content)).not.toHaveProperty('nodeGroups');
+	});
+
 	it('nests output under `<basePrefix>/workflows` when a basePrefix is given', async () => {
 		// This is the seam the folder exporter uses to place contained workflows
 		// under their folder's directory.
@@ -202,6 +282,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [workflow.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 			basePrefix: 'folders/in_progress',
 		});
 
@@ -217,7 +299,13 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([a, b]);
 		const writer = new CapturingWriter();
 
-		const { entries } = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		const targets = entries.map((e) => e.target);
 		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
@@ -248,6 +336,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -281,6 +371,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -304,6 +396,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -331,6 +425,8 @@ describe('WorkflowExporter', () => {
 			user,
 			workflowIds: [a.id, b.id],
 			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(requirements.nodeTypes).toEqual([

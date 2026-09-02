@@ -31,6 +31,29 @@ export interface OutputParserContext {
 	schemaIsExample: boolean;
 }
 
+/** A real Data Table column, passed in by consumers with instance access. */
+export interface DataTableColumnInfo {
+	name: string;
+	type: string;
+}
+
+/**
+ * The authoritative field-name contract for a pinned node's items, when one
+ * exists: an information extractor's declared attributes, a structured output
+ * parser's schema keys, or a Data Table's real columns. Generated pin data is
+ * validated against it — drifted names (`invoice_amount` where the schema says
+ * `total_amount`) are the top residual mock-quality defect in eval runs.
+ */
+export interface DeclaredFieldContract {
+	/** The declared field names. */
+	keys: string[];
+	/** Envelope key the fields live under (e.g. `output` for extractor roots); absent = top-level `json`. */
+	envelopeKey?: string;
+	/** True when items must carry exactly `keys` (Data Table rows); false allows a subset (optional schema fields). */
+	exact: boolean;
+	source: 'declared-schema' | 'data-table-columns';
+}
+
 /** Per-node context assembled for the generation prompt. */
 export interface NodeSchemaContext {
 	nodeName: string;
@@ -40,6 +63,9 @@ export interface NodeSchemaContext {
 	operation?: string;
 	schema?: Record<string, unknown>;
 	outputParser?: OutputParserContext;
+	/** Real Data Table columns for dataTable reads — rendered in the prompt as the authoritative row shape. */
+	dataTableColumns?: DataTableColumnInfo[];
+	declaredFields?: DeclaredFieldContract;
 }
 
 export interface PinDataGenerationInstructions {

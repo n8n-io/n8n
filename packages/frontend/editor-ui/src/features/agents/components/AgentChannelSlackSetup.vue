@@ -6,15 +6,15 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
+	N8nStepper,
 	N8nText,
 } from '@n8n/design-system';
-import N8nStepper from '@n8n/design-system/components/N8nStepper/Stepper.vue';
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentSlackIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { getSlackAgentAppManifest } from '../composables/useAgentApi';
+import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 
@@ -24,16 +24,12 @@ const props = withDefaults(
 	defineProps<{
 		connected?: boolean;
 		disabled?: boolean;
-		mode?: 'setup' | 'edit';
-		isPublished?: boolean;
 		setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
-		disconnectSlackApp?: () => Promise<void>;
 		projectId?: string;
 		agentId?: string;
 		integration?: ChatIntegrationDescriptor;
 		credentials?: AgentCredentialOption[];
 		credentialPermissions?: PermissionsRecord['credential'];
-		connectedCredentialId?: string;
 		credentialsLoading?: boolean;
 		loading?: boolean;
 		errorMessage?: string;
@@ -44,17 +40,13 @@ const props = withDefaults(
 	{
 		connected: false,
 		disabled: false,
-		mode: 'setup',
 		setupMode: 'advanced',
-		isPublished: true,
 		setupSlackApp: undefined,
-		disconnectSlackApp: undefined,
 		projectId: undefined,
 		agentId: undefined,
 		integration: undefined,
 		credentials: () => [],
 		credentialPermissions: undefined,
-		connectedCredentialId: '',
 		credentialsLoading: false,
 		loading: false,
 		errorMessage: '',
@@ -75,13 +67,15 @@ const rootStore = useRootStore();
 const appConfigurationToken = shallowRef('');
 const showAppConfigurationToken = shallowRef(false);
 const setupLoading = shallowRef(false);
-const disconnectLoading = shallowRef(false);
 const setupError = shallowRef<'invalidToken' | 'generic' | null>(null);
 const manualConfigurationOpen = shallowRef(false);
 const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
+const currentSettings = computed<AgentSlackIntegrationSettings>(() => ({
+	messagingExperience: 'agent',
+}));
 
 const steps = computed(() => [
 	{
@@ -120,10 +114,6 @@ const appConfigurationTokenVisibilityLabel = computed(() =>
 			? 'agents.channels.slack.setup.copyAccessToken.hideToken'
 			: 'agents.channels.slack.setup.copyAccessToken.showToken',
 	),
-);
-
-const showEditConnectButton = computed(
-	() => credentialId.value.length > 0 && credentialId.value !== props.connectedCredentialId,
 );
 
 function isInvalidSlackTokenError(error: unknown) {
@@ -178,77 +168,37 @@ async function installSlackApp() {
 	}
 }
 
-async function onDisconnectSlackApp() {
-	if (!props.disconnectSlackApp || props.disabled || disconnectLoading.value) return;
-
-	disconnectLoading.value = true;
-	try {
-		await props.disconnectSlackApp();
-	} finally {
-		disconnectLoading.value = false;
-	}
-}
-
 watch(
-	() => [props.projectId, props.agentId, props.connected, props.mode] as const,
+	() => [props.projectId, props.agentId, props.connected] as const,
 	() => {
-		if (!props.connected && props.mode === 'setup' && props.setupMode === 'advanced') {
+		if (!props.connected && props.setupMode === 'advanced') {
 			void loadSlackAppManifest();
 		}
 	},
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null });
+defineExpose({ credentialId, currentSettings, validationError: null, loading: setupLoading });
 </script>
 
 <template>
 	<div :class="$style.slackSetup">
-		<div v-if="mode === 'edit'" :class="$style.editTokenContainer">
-			<AgentIntegrationCredentialConnection
-				v-if="integration && credentialPermissions"
-				v-model="credentialId"
-				:integration-type="integration.type"
-				:integration-label="integration.label"
-				:credentials="credentials"
-				:credential-permissions="credentialPermissions"
-				:credentials-loading="credentialsLoading"
-				:disabled="disabled || loading"
-				:connected="false"
-				:show-connect-button="showEditConnectButton"
-				:show-disconnect-button="false"
-				:loading="loading"
-				:error-message="errorMessage"
-				:error-is-conflict="errorIsConflict"
-				@create="emit('create')"
-				@edit="emit('edit')"
-				@connect="emit('connect')"
-			/>
-			<N8nButton
-				variant="destructive"
-				size="medium"
-				:loading="disconnectLoading"
-				:disabled="disabled || disconnectLoading"
-				data-testid="slack-disconnect-app"
-				@click="onDisconnectSlackApp"
-			>
-				{{ i18n.baseText('generic.disconnect') }}
-			</N8nButton>
-		</div>
-		<N8nStepper v-else :steps="steps">
+		<N8nStepper :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
-						<N8nButton
-							href="https://api.slack.com/apps"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="slack"
-							data-testid="slack-app-configuration-token-link"
-						>
-							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-						</N8nButton>
+						<div :class="$style.dashboardRow">
+							<N8nButton
+								href="https://api.slack.com/apps"
+								target="_blank"
+								variant="subtle"
+								size="medium"
+								icon="slack"
+								data-testid="slack-app-configuration-token-link"
+							>
+								{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+							</N8nButton>
+						</div>
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
@@ -305,14 +255,6 @@ defineExpose({ credentialId, validationError: null });
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.button') }}
 						</N8nButton>
 						<N8nText
-							v-if="!isPublished"
-							:class="$style.publishNotice"
-							size="small"
-							data-testid="slack-app-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-						</N8nText>
-						<N8nText
 							v-if="setupError === 'generic'"
 							:class="$style.setupError"
 							size="small"
@@ -326,7 +268,7 @@ defineExpose({ credentialId, validationError: null });
 		</N8nStepper>
 
 		<N8nCollapsiblePanel
-			v-if="mode === 'setup' && setupMode === 'advanced' && !connected"
+			v-if="setupMode === 'advanced' && !connected"
 			v-model="manualConfigurationOpen"
 			:class="$style.manualPanel"
 			:title="i18n.baseText('agents.channels.slack.manualSetup.title')"
@@ -439,8 +381,7 @@ defineExpose({ credentialId, validationError: null });
 	height: var(--height--xs);
 }
 
-.setupDescription,
-.publishNotice {
+.setupDescription {
 	color: var(--text-color--subtler);
 }
 
@@ -448,17 +389,10 @@ defineExpose({ credentialId, validationError: null });
 	color: var(--color--danger);
 }
 
-.tokenInputContainer,
-.editTokenContainer {
+.tokenInputContainer {
 	display: flex;
 	width: 100%;
 	flex-direction: column;
-	width: 100%;
-}
-
-.editTokenContainer {
-	gap: var(--spacing--sm);
-	align-items: flex-start;
 }
 
 .tokenVisibilityButton {
@@ -471,6 +405,12 @@ defineExpose({ credentialId, validationError: null });
 	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
+}
+
+.dashboardRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manualPanel {

@@ -97,14 +97,14 @@ vi.mock('@/app/stores/history.store', () => ({
 	useHistoryStore: vi.fn().mockReturnValue(mockHistoryStore),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue(mockTelemetry),
 }));
 
@@ -126,6 +126,7 @@ vi.mock('vue-router', () => ({
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -201,6 +202,17 @@ describe('useWorkflowExtraction', () => {
 			extractWorkflow([]);
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('does not start extraction when executeWorkflow is excluded', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+			const { extractWorkflow } = useWorkflowExtraction();
+			extractWorkflow(['id-A']);
+
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+			expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
 		it('includes attached sub-nodes when starting extraction', () => {

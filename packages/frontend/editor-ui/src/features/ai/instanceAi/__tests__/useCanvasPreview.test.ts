@@ -169,16 +169,81 @@ describe('useCanvasPreview', () => {
 					name: 'My Workflow',
 					icon: 'workflow',
 					projectId: undefined,
+					building: false,
 				},
-				{ id: 'dt-1', type: 'data-table', name: 'My Table', icon: 'table', projectId: 'proj-1' },
+				{
+					id: 'dt-1',
+					type: 'data-table',
+					name: 'My Table',
+					icon: 'table',
+					projectId: 'proj-1',
+					building: false,
+				},
 				{
 					id: 'agent-1',
 					type: 'agent',
 					name: 'SEO Auditor',
 					icon: 'robot',
 					projectId: 'project-1',
+					building: false,
 				},
 			]);
+		});
+
+		test('marks tabs as building while an active builder sub-agent targets them', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'active',
+						children: [
+							makeAgentNode({
+								agentId: 'builder-1',
+								kind: 'agent-builder',
+								role: 'agent-builder',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1' },
+							}),
+						],
+					}),
+				}),
+			];
+
+			const byId = new Map(ctx.allArtifactTabs.value.map((t) => [t.id, t]));
+			expect(byId.get('agent-1')?.building).toBe(true);
+			expect(byId.get('wf-1')?.building).toBe(false);
+		});
+
+		test('marks a workflow tab as building while a workflow-builder targets it, and clears when it completes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			const builder = makeAgentNode({
+				agentId: 'builder-1',
+				kind: 'builder',
+				role: 'workflow-builder',
+				status: 'active',
+				targetResource: { type: 'workflow', id: 'wf-1' },
+			});
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentNode({ status: 'active', children: [builder] }) }),
+			];
+
+			expect(ctx.allArtifactTabs.value[0].building).toBe(true);
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'completed',
+						children: [{ ...builder, status: 'completed' }],
+					}),
+				}),
+			];
+
+			expect(ctx.allArtifactTabs.value[0].building).toBe(false);
 		});
 
 		test('excludes credential entries', () => {
@@ -1081,6 +1146,24 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('opens an unsaved new-agent artifact on arrival', async () => {
+			const ctx = setup();
+			const next = new Map<string, ResourceEntry>();
+			next.set('aBcDeFgHiJkLmNoP', {
+				type: 'agent',
+				id: 'aBcDeFgHiJkLmNoP',
+				name: 'New agent',
+				projectId: 'project-1',
+				pending: true,
+			});
+			ctx.thread.producedArtifacts = next;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('aBcDeFgHiJkLmNoP');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.activeAgentPending.value).toBe(true);
 		});
 
 		test('does not clear activeTabId when registry is empty (race condition)', async () => {

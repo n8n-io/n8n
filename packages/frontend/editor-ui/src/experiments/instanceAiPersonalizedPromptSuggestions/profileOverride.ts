@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 
 import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS } from './prompts';
 import type { PersonalizedPromptRole, PersonalizedPromptUseCase } from './types';

@@ -10,6 +10,7 @@ import {
 	foldLegacyErrorConnections,
 	normalizeConnections,
 	generateUniqueName,
+	type AuthoredNodeGroup,
 	type WorkflowJSON,
 	type NodeInstance,
 	type GraphNode,
@@ -31,12 +32,7 @@ export interface ParsedWorkflow {
 	readonly pinData?: Record<string, IDataObject[]>;
 	readonly meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
 	/** Node groups reconstructed by mapping the JSON's member IDs back to node handles. */
-	readonly nodeGroups?: Array<{
-		/** Source group ID from the JSON. */
-		id?: string;
-		name: string;
-		members: Array<NodeInstance<string, string, unknown>>;
-	}>;
+	readonly nodeGroups?: AuthoredNodeGroup[];
 }
 
 /**
@@ -141,10 +137,14 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		for (const [sourceName, nodeConns] of Object.entries(connections)) {
 			const mapKey = nameToKey.get(sourceName);
 			const graphNode = mapKey ? nodes.get(mapKey) : undefined;
-			if (!graphNode) continue;
+			if (!graphNode) {
+				continue;
+			}
 
 			for (const [connType, outputs] of Object.entries(nodeConns)) {
-				if (!outputs || !Array.isArray(outputs)) continue;
+				if (!outputs || !Array.isArray(outputs)) {
+					continue;
+				}
 
 				const typeMap =
 					graphNode.connections.get(connType) ?? new Map<number, ConnectionTarget[]>();
@@ -175,12 +175,11 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		lastNode = name;
 	}
 
-	// Rebuild groups by mapping each member ID back to its node handle (unresolvable IDs
-	// are dropped). The group's `id` is carried through so a round-trip preserves it.
 	const nodeGroups = json.nodeGroups?.length
 		? json.nodeGroups.map((group) => ({
 				id: group.id,
 				name: group.name,
+				description: group.description,
 				members: group.nodeIds.flatMap((id) => {
 					const instance = idToInstance.get(id);
 					return instance !== undefined ? [instance] : [];

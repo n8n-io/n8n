@@ -16,10 +16,10 @@ import { computed, ref } from 'vue';
 import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
@@ -69,6 +69,9 @@ const detailsOpen = ref(false);
 
 const canManageAllClients = computed(() => rbacStore.hasScope('mcp:manage'));
 const ownership = computed(() => mcpStore.oauthClientsOwnership);
+const offeredScopes = computed(() =>
+	props.scopeTools ? Object.keys(props.scopeTools) : undefined,
+);
 
 // Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
 // as "no connected clients" when there are clients that just don't match.
@@ -204,7 +207,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 
 function accessSummary(client: OAuthClientResponseDto): string {
 	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
-	if (isFullAccessGrant(client.scopes)) {
+	if (isFullAccessGrant(client.scopes, offeredScopes.value)) {
 		return i18n.baseText('settings.mcp.oAuthClients.access.full');
 	}
 	const visible = client.scopes

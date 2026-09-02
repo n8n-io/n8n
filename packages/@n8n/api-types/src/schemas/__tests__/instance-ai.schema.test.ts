@@ -1,14 +1,39 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	instanceAiFileAttachmentSchema,
+	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildCredentialDestinationGrantKey,
+	buildDataTablesSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
+	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
+	findUnbackedSeedWorkflowTools,
+	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
+	instanceAiEvalSeedAgentSchema,
+	instanceAiAttachmentSchema,
+	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
@@ -52,6 +77,45 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('rejects a credential setup item without a credentialType', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [{ id: 'wf-1:credential:slackApi', kind: 'credential' }],
+			},
+		};
+
+		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
 	});
 });
 
@@ -152,6 +216,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 
@@ -175,6 +240,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
 			readFilesystem: 'always_allow',
 		};
@@ -182,6 +248,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
 		expect(result.readFilesystem).toBe('always_allow');
 	});
@@ -207,6 +274,38 @@ function makeConfirmation(
 		...overrides,
 	};
 }
+
+describe('confirmationRequestPayloadSchema', () => {
+	it('preserves an explicit credential selection requirement', () => {
+		const payload = makeConfirmation({ requireUserSelection: true });
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
+	});
+});
 
 describe('isDisplayableConfirmationRequest', () => {
 	it('treats approval and text messages as displayable', () => {
@@ -428,6 +527,46 @@ describe('instance-ai launch schema', () => {
 	});
 });
 
+describe('data-tables session grant keys', () => {
+	it('builds action-scoped keys matching the frontend always-allow format', () => {
+		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
+		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('workflow update session grant keys', () => {
+	it('builds per-workflow keys matching the frontend always-allow format', () => {
+		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
+	});
+});
+
+describe('workflow-setup skip keys', () => {
+	it('round-trips credential types and ignores unrelated keys', () => {
+		const keys = new Set([
+			buildSetupSkipGrantKey('slackApi'),
+			buildSetupSkipGrantKey('Wait for Form'),
+			'executions:run:wf-1',
+		]);
+
+		expect(buildSetupSkipGrantKey('slackApi')).toBe('workflows:setup-skip:slackApi');
+		expect(parseSetupSkipGrants(keys)).toEqual(new Set(['slackApi', 'Wait for Form']));
+	});
+
+	it('does not collide with the workflow-update namespace', () => {
+		expect(parseSetupSkipGrants(new Set([buildUpdateWorkflowSessionGrantKey('wf-1')])).size).toBe(
+			0,
+		);
+	});
+});
+
 describe('domain-access grant keys', () => {
 	it('builds and parses per-host grant keys round-trip', () => {
 		const key = buildFetchUrlGrantKey('example.com');
@@ -461,5 +600,442 @@ describe('domain-access grant keys', () => {
 		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
 		expect(parsed.approvedDomains.size).toBe(0);
 		expect(parsed.allDomainsApproved).toBe(true);
+	});
+});
+
+describe('instanceAiEvalSeedAgentSchema resource references', () => {
+	const config = {
+		name: 'Support Triage',
+		model: 'anthropic/claude-sonnet-4-5',
+		instructions: 'Triage inbound tickets.',
+	};
+	const agent = (over: Record<string, unknown> = {}) => ({
+		id: 'AgEnT12345678901',
+		config,
+		...over,
+	});
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+
+	it('accepts an agent whose references are all backed', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] },
+				skills: {
+					skill_1: { name: 'Triage rules', description: 'How to sort', instructions: 'Label it.' },
+				},
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a skill reference with no body', () => {
+		// A restored agent missing the skill reads as a build failure, not a broken fixture.
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('custom tool');
+	});
+
+	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tasks: [{ type: 'task', id: 'nightly' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('tasks');
+	});
+
+	it('still accepts node and workflow tools', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'workflow', workflow: 'Daily digest' }] } }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects duplicate seed agent ids', () => {
+		// The harness remaps ids through a Set, so both entries take ONE fresh id and
+		// the second `create` on the pinned id aborts the restore.
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [agent(), agent()],
+		});
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('Duplicate seed agent id');
+	});
+
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({ config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT99999999999' }] } } }),
+				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain(expectedError);
+	});
+
+	it('rejects an inherited property name as a backed skill body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'constructor' }] }, skills: {} }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('flags a workflow tool no seeded workflow name backs', () => {
+		// Cross-field, so it lives beside the schema rather than in it.
+		const unbacked = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'wf12345678' }] },
+				},
+			],
+		});
+		expect(unbacked).toEqual([{ agentId: 'AgEnT12345678901', target: 'wf12345678' }]);
+
+		const backed = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'Batch loop' }] },
+				},
+			],
+		});
+		expect(backed).toEqual([]);
+	});
+});
+
+describe('instanceAiFileAttachmentSchema size bound', () => {
+	function attachmentWithEncodedSize(bytes: number) {
+		return {
+			type: 'file' as const,
+			data: 'A'.repeat(bytes),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		};
+	}
+
+	it('accepts a payload exactly at the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a payload one byte over the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('bounds the base64-encoded size, not the decoded size', () => {
+		// The provider limit applies to the encoded payload. A bound expressed in
+		// decoded bytes would be ~4/3 larger and admit payloads it rejects.
+		const decodedUnitBound = Math.ceil((MAX_ATTACHMENT_BASE64_BYTES * 4) / 3);
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(decodedUnitBound),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('states the limit as the raw file size the user sees, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toContain(formatAttachmentSizeLimit());
+		}
+	});
+});
+
+describe('base64EncodedSize', () => {
+	it.each([
+		[0, 0],
+		[1, 4],
+		[2, 4],
+		[3, 4],
+		[4, 8],
+	])('encodes %i raw bytes as %i base64 bytes', (raw, encoded) => {
+		expect(base64EncodedSize(raw)).toBe(encoded);
+	});
+
+	it('inflates by roughly 4/3', () => {
+		expect(base64EncodedSize(3 * 1024 * 1024)).toBe(4 * 1024 * 1024);
+	});
+});
+
+describe('exceedsAttachmentSizeLimit', () => {
+	// A file is measured by its *encoded* size, so the largest file that fits is
+	// three quarters of the limit — not the limit itself.
+	const largestAllowedRawBytes = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+	it('accepts a file whose encoded form lands exactly on the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes)).toBe(false);
+	});
+
+	it('rejects a file whose encoded form crosses the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes + 1)).toBe(true);
+	});
+
+	it('rejects a raw size that only fits when the 4/3 inflation is ignored', () => {
+		// This is the case a naive `file.size > limit` check lets through.
+		expect(largestAllowedRawBytes + 1).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_BASE64_BYTES)).toBe(true);
+	});
+});
+
+describe('MAX_ATTACHMENT_DECODED_BYTES', () => {
+	it('is the largest raw file whose encoded form still fits', () => {
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES)).toBe(false);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES + 1)).toBe(true);
+	});
+
+	it('is smaller than the encoded limit, because base64 inflates', () => {
+		expect(MAX_ATTACHMENT_DECODED_BYTES).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+	});
+});
+
+describe('formatAttachmentSizeLimit', () => {
+	// Users compare against the file on their disk, which is the decoded size. Quoting
+	// the encoded limit would tell someone with an 8 MB file that it "exceeds 10 MB".
+	it('describes the limit as the raw file size a user would see', () => {
+		expect(formatAttachmentSizeLimit()).toBe('7.5 MB');
+	});
+});
+
+describe('instanceAiFileAttachmentSchema rejection message', () => {
+	it('quotes the raw-file limit, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const { message } = result.error.issues[0];
+			expect(message).toContain('7.5 MB');
+			expect(message).not.toContain('10 MB');
+		}
+	});
+
+	it('tells the user what to do about it', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message.toLowerCase()).toContain('smaller');
+		}
+	});
+});
+
+describe('total attachment budget', () => {
+	it('exposes the combined ceiling as a raw file size', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBe((MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 4) * 3);
+	});
+
+	it('describes the combined limit for user-facing copy', () => {
+		expect(formatTotalAttachmentSizeLimit()).toBe('12.0 MB');
+	});
+
+	it('leaves room for more than one max-size file', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBeGreaterThan(MAX_ATTACHMENT_DECODED_BYTES);
+	});
+});
+
+describe('instanceAiAttachmentSchema — nodes attachment', () => {
+	const nodesAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'nodes',
+		workflowId: 'wf-1',
+		sets: [{ nodes: [{ id: 'n1', name: 'HTTP Request' }] }],
+		...overrides,
+	});
+
+	it('accepts a single set with one loose node and no optional fields', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [
+							{ id: 'n1', name: 'HTTP Request' },
+							{ id: 'n2', name: 'Set' },
+							{ id: 'n3', name: 'IF' },
+						],
+						inputNode: { id: 'n0', name: 'Webhook' },
+						outputNode: { id: 'n4', name: 'Slack' },
+						canvasGroupId: 'g1',
+						canvasGroupName: 'My Group 1',
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts two sets at once', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{ nodes: [{ id: 'n1' }] },
+					{ nodes: [{ id: 'n2' }, { id: 'n3' }], inputNode: { id: 'n1' } },
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing workflowId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ workflowId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an empty sets array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a set with an empty nodes array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes: [] }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 sets', () => {
+		const sets = Array.from({ length: 51 }, (_, i) => ({ nodes: [{ id: `n${i}` }] }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 nodes in a single set', () => {
+		const nodes = Array.from({ length: 51 }, (_, i) => ({ id: `n${i}` }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts node refs without a name', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [{ id: 'n1' }],
+						inputNode: { id: 'n0' },
+						outputNode: { id: 'n2' },
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('still accepts file, workflow, and agent attachments unchanged', () => {
+		expect(
+			instanceAiAttachmentSchema.safeParse({
+				type: 'file',
+				data: 'YQ==',
+				mimeType: 'text/plain',
+				fileName: 'a.txt',
+			}).success,
+		).toBe(true);
+		expect(instanceAiAttachmentSchema.safeParse({ type: 'workflow', id: 'wf-1' }).success).toBe(
+			true,
+		);
+		expect(
+			instanceAiAttachmentSchema.safeParse({ type: 'agent', id: 'agent-1', projectId: 'proj-1' })
+				.success,
+		).toBe(true);
+	});
+
+	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
+		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('InstanceAiThreadMessagesQuery', () => {
+	it('defaults to the first page at the default limit', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({})).toEqual({
+			limit: INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+			page: 0,
+		});
+	});
+
+	it('coerces the string query params a URL carries', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({ limit: '25', page: '2', raw: 'true' })).toEqual({
+			limit: 25,
+			page: 2,
+			raw: 'true',
+		});
+	});
+
+	it('accepts the ceilings', () => {
+		const result = InstanceAiThreadMessagesQuery.safeParse({
+			limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+			page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT + 1 },
+		{ limit: 0 },
+		{ limit: -1 },
+		{ limit: 1.5 },
+		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
+		{ page: -1 },
+	])('rejects out-of-range paging (%o)', (query) => {
+		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
 	});
 });

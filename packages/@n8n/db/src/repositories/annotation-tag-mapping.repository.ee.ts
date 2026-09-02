@@ -16,6 +16,10 @@ export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapp
 		return await this.manager.transaction(async (tx) => {
 			await tx.delete(AnnotationTagMapping, { annotationId });
 
+			if (tagIds.length === 0) {
+				return;
+			}
+
 			const tagMappings = tagIds.map((tagId) => ({
 				annotationId,
 				tagId,

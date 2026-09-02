@@ -4,7 +4,9 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
+import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { PackageWriter } from '../../io/package-writer';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
@@ -14,6 +16,8 @@ import type { WorkflowDataTableRequirement } from '../data-table/data-table.type
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -21,6 +25,8 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
@@ -39,6 +45,7 @@ export class WorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -46,7 +53,11 @@ export class WorkflowExporter {
 			request.workflowIds,
 			request.user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{
+				includeParentFolder: true,
+				includeTags: request.includeTags,
+				includeActiveVersion: needsActiveVersion(request.workflowVersionPolicy),
+			},
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -56,11 +67,15 @@ export class WorkflowExporter {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const workflowsForExport = this.orderWorkflowsByRequest(request.workflowIds, workflows);
+		const workflowsForExport = this.orderWorkflowsByRequest(
+			request.workflowIds,
+			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
+		);
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
@@ -69,10 +84,15 @@ export class WorkflowExporter {
 
 		for (const workflow of workflowsForExport) {
 			const target = fileNames.allocate(workflow.name);
-			const serialized = this.workflowSerializer.serialize(workflow);
+			const serialized = this.workflowSerializer.serialize(workflow, {
+				includeTags: request.includeTags,
+			});
 
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
+			await request.writer.writeDirectory(target);
+			await request.writer.writeFile(
+				`${target}/workflow.json`,
+				JSON.stringify(serialized, null, '\t'),
+			);
 
 			entries.push({
 				id: workflow.id,
@@ -83,10 +103,11 @@ export class WorkflowExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
+			tags.push(...this.tagRequirementsExtractor.extract(workflow));
 			nodeTypes.push({ workflowId: workflow.id, nodes: workflow.nodes ?? [] });
 		}
 
-		return { entries, requirements: { credentials, dataTables, variables, nodeTypes } };
+		return { entries, requirements: { credentials, dataTables, variables, tags, nodeTypes } };
 	}
 
 	private orderWorkflowsByRequest(

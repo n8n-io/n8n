@@ -21,6 +21,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_review_request_authors_user | CREATE INDEX "IDX_workflow_review_request_authors_user" ON public.workflow_review_request_authors USING btree ("userId", "workflowReviewRequestId") |
 | PK_ae197bb5135d422f6392a879e0c | CREATE UNIQUE INDEX "PK_ae197bb5135d422f6392a879e0c" ON public.workflow_review_request_authors USING btree ("workflowReviewRequestId", "userId") |
 
 ## Relations

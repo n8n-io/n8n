@@ -1,17 +1,27 @@
-import { IconBodyLoaderKey, N8nPlugin } from '@n8n/design-system';
-import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+// Import from the subpath entries, not the '@n8n/design-system' barrel: preview.ts
+// is a TurboSnap global, and the barrel's `export * from './components'` would make
+// every component a global dep, forcing a full snapshot on any component change.
+// Both specifiers are published `exports` keys, so they resolve outside this
+// monorepo alias too.
+import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
-import { withThemeByDataAttribute } from '@storybook/addon-themes';
 import { setup } from '@storybook/vue3';
+import { DARK_MODE_EVENT_NAME } from '@vueless/storybook-dark-mode';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
+import { addons } from 'storybook/preview-api';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
+import { applyN8nTheme, isDarkModeStored } from './applyN8nTheme';
+import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
-import { allModes } from './modes';
-// import '../src/css/tailwind/index.css';
+
+const channel = addons.getChannel();
+applyN8nTheme(isDarkModeStored());
+channel.on(DARK_MODE_EVENT_NAME, applyN8nTheme);
 
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
@@ -42,75 +52,27 @@ export const parameters = {
 		},
 	},
 	backgrounds: {
-		default: '--color--background--light-3',
-		values: [
-			{
-				name: '--color--background--shade-2',
-				value: 'var(--color--background--shade-2)',
-			},
-			{
-				name: '--color--background',
-				value: 'var(--color--background)',
-			},
-			{
-				name: '--color--background--light-2',
-				value: 'var(--color--background--light-2)',
-			},
-			{
-				name: '--color--background--light-3',
-				value: 'var(--color--background--light-3)',
-			},
-		],
+		disable: true,
 	},
 	themes: {
-		default: 'light',
-		list: [
-			{
-				name: 'light',
-				class: 'theme-light',
-				color: '#fff',
-			},
-			{
-				name: 'dark',
-				class: 'theme-dark-beta',
-				color: '#000',
-			},
-		],
+		disable: true,
+	},
+	darkMode: {
+		stylePreview: true,
 	},
 	options: {
 		storySort: {
-			order: [
-				'Docs',
-				'Styleguide',
-				'Core',
-				'Instance Settings',
-				'Assistant',
-				'Chat',
-				'Tables',
-				'Utilities',
-				'Experimental',
-			],
+			method: 'alphabetical',
+			order: ['Style Guide', 'Core', 'Areas', 'Experimental'],
+			includeNames: false,
 		},
 	},
+	docs: {
+		container: ThemedDocsContainer,
+	},
 	chromatic: {
-		modes: {
-			light: allModes['light'],
-			dark: allModes['dark'],
-		},
 		disableSnapshot: false,
 	},
 };
-
-export const decorators = [
-	withThemeByDataAttribute({
-		themes: {
-			light: 'light',
-			dark: 'dark',
-		},
-		defaultTheme: 'light',
-		attributeName: 'data-theme',
-		parentSelector: 'body',
-	}),
-];
 
 export const tags = ['autodocs'];

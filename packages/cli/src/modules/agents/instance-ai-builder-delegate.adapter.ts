@@ -1,32 +1,42 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { instanceAiBuilderThreadPrefix } from '@n8n/instance-ai';
-import type {
-	BuilderDelegateSession,
-	BuilderTurnStream,
-	InstanceAiBuilderDelegate,
+import {
+	instanceAiBuilderThreadPrefix,
+	type BuilderDelegateSession,
+	type BuilderRequiredArtifact,
+	type BuilderTurnStream,
+	type InstanceAiBuilderDelegate,
+	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentConfigService } from './agent-config.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.
+Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
-You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.`;
+You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
+
+The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
+
+Some requested chat platforms do not have a native Agent integration. In that case, finish the Agent without adding same-platform messaging nodes as Agent tools, then report an \`agent-entrypoint\` workflow. It must use the platform trigger, pass the incoming message and a stable conversation identifier into Message an Agent with a custom session key, then send the Agent's text response back through the platform. This workflow invokes the Agent and must never be attached to the Agent as a workflow tool.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,
@@ -37,10 +47,17 @@ function isTextDeltaChunk(
 /** Wrap a builder stream generator as a `BuilderTurnStream`: forwards every chunk
  *  as-is, while resolving `text` to the concatenated text-delta content once the
  *  stream ends (mirrors the SDK's own `fullStream` + `text` shape). */
-function toBuilderTurnStream(chunks: AsyncGenerator<StreamChunk>): BuilderTurnStream {
+function toBuilderTurnStream(
+	chunks: AsyncGenerator<StreamChunk>,
+	requiredArtifacts: BuilderRequiredArtifact[],
+): BuilderTurnStream {
 	let resolveText: (text: string) => void;
 	const text = new Promise<string>((resolve) => {
 		resolveText = resolve;
+	});
+	let resolveRequiredArtifacts: (artifacts: BuilderRequiredArtifact[]) => void;
+	const requiredArtifactsPromise = new Promise<BuilderRequiredArtifact[]>((resolve) => {
+		resolveRequiredArtifacts = resolve;
 	});
 	let acc = '';
 
@@ -52,10 +69,11 @@ function toBuilderTurnStream(chunks: AsyncGenerator<StreamChunk>): BuilderTurnSt
 			}
 		} finally {
 			resolveText(acc);
+			resolveRequiredArtifacts([...requiredArtifacts]);
 		}
 	}
 
-	return { fullStream: pump(), text };
+	return { fullStream: pump(), text, requiredArtifacts: requiredArtifactsPromise };
 }
 
 /**
@@ -76,10 +94,15 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentThreadRepository: AgentThreadRepository,
+		private readonly agentConfig: AgentConfigService,
+		private readonly agentSkills: AgentSkillsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
-	private buildSubAgentSession(session: BuilderDelegateSession): InstanceAiBuilderSessionOptions {
+	private buildSubAgentSession(
+		session: BuilderDelegateSession,
+		onRequiredArtifact: (artifact: BuilderRequiredArtifact) => void,
+	): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
 			hostThreadId: session.hostThreadId,
@@ -88,6 +111,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
+			abortSignal: session.abortSignal,
+			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
+			onRequiredArtifact,
 		};
 	}
 
@@ -95,6 +121,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		user: User,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
@@ -107,28 +134,35 @@ export class InstanceAiBuilderDelegateAdapterService {
 		};
 
 		return {
-			createAgent: async (name) => {
+			createAgent: async (name, id) => {
 				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name);
+				const agent = await this.agentsService.create(projectId, name, {
+					id,
+					adoptUnconfiguredOnCollision: true,
+				});
 				return { agentId: agent.id, projectId };
 			},
 
 			streamBuild: async (agentId, message, session) => {
 				await assertProjectScope('agent:update');
+				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.buildAgent(
 						agentId,
 						projectId,
 						message,
 						credentialProvider,
+						credentialService,
 						user,
-						this.buildSubAgentSession(session),
+						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
+					requiredArtifacts,
 				);
 			},
 
 			resumeBuild: async (agentId, resume, session) => {
 				await assertProjectScope('agent:update');
+				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.resumeBuild(
 						agentId,
@@ -137,9 +171,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.toolCallId,
 						resume.resumeData,
 						credentialProvider,
+						credentialService,
 						user,
-						this.buildSubAgentSession(session),
+						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
+					requiredArtifacts,
 				);
 			},
 
@@ -174,6 +210,23 @@ export class InstanceAiBuilderDelegateAdapterService {
 			resolveAgentName: async (agentId) => {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
+			},
+			readAgentArtifact: async (agentId) => {
+				await assertProjectScope('agent:read');
+				// No JSON config yet (freshly created) is an empty snapshot, not an error.
+				// Anything else propagates: the callers already treat a throw as "no
+				// snapshot", and it gets logged there instead of vanishing here.
+				const config = await this.agentConfig.getConfig(agentId, projectId).catch((error) => {
+					if (error instanceof UserError) return null;
+					throw error;
+				});
+				if (!config) return null;
+				return {
+					config,
+					skills: await this.agentSkills.listSkills(agentId, projectId),
+					// The same hash `read_config` hands the model, so consumers can dedupe.
+					configHash: getAgentConfigHash(config),
+				};
 			},
 		};
 	}

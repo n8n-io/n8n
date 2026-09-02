@@ -14,6 +14,7 @@ import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
+import { getPostgresVersionWarning } from './postgres-version-policy';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 import { DbLock, DbLockService } from '../services/db-lock.service';
@@ -59,6 +60,37 @@ export class DbConnection {
 		return readPoolStats(this.dataSource);
 	}
 
+	/**
+	 * Version of the database backing this connection, as a dotted version
+	 * string: the Postgres server version (e.g. `17.6`, not the full
+	 * `version()` banner) or the SQLite library version (e.g. `3.44.2`).
+	 * `null` when it cannot be determined, e.g. the connection is not up.
+	 */
+	async getDbVersion(): Promise<string | null> {
+		if (!this.dataSource.isInitialized) return null;
+
+		try {
+			switch (this.options.type) {
+				case 'postgres':
+					return this.dataSource.driver.version ?? null;
+				case 'sqlite':
+				case 'sqlite-pooled': {
+					const rows = await this.dataSource.query<Array<{ version: string }>>(
+						'SELECT sqlite_version() AS version',
+					);
+
+					return rows[0]?.version ?? null;
+				}
+				default:
+					return null;
+			}
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn(`Could not determine database version: ${error.message}`);
+			return null;
+		}
+	}
+
 	async init(): Promise<void> {
 		const { connectionState } = this;
 		if (connectionState.connected) return;
@@ -73,6 +105,7 @@ export class DbConnection {
 		await this.connectWithRetry();
 
 		connectionState.connected = true;
+		await this.warnOnUnsupportedPostgresVersion();
 		this.monitor = new DbConnectionMonitor(
 			this.dataSource,
 			(connected) => (this.connectionState.connected = connected),
@@ -83,6 +116,25 @@ export class DbConnection {
 			connectionState.connected,
 		);
 		this.monitor.start();
+	}
+
+	/**
+	 * Warns when the Postgres server is below the version policy range. Only
+	 * Postgres has a version policy: SQLite ships bundled with n8n, so users
+	 * never pick its version.
+	 */
+	private async warnOnUnsupportedPostgresVersion() {
+		if (this.options.type !== 'postgres') return;
+
+		try {
+			const version = await this.getDbVersion();
+			if (typeof version !== 'string') return;
+
+			const warning = getPostgresVersionWarning(version);
+			if (warning) this.logger.warn(warning);
+		} catch (e) {
+			this.logger.warn(`Could not check database version: ${ensureError(e).message}`);
+		}
 	}
 
 	async migrate() {

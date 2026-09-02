@@ -544,8 +544,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (e.context) e.context.parameter = parameterName;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				e.cause = value;
+				Object.defineProperty(e, 'cause', {
+					value,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
 				throw e;
 			}
 		}

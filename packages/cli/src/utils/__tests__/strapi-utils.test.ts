@@ -99,7 +99,7 @@ describe('Strapi utils', () => {
 
 			await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 6000 });
+			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe', timeout: 6000 });
 			expect(request).toHaveBeenCalledWith({
 				url: baseUrl,
 				method: 'GET',

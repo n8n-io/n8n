@@ -1,4 +1,4 @@
-import type { SsrfBridge } from '@n8n/backend-network';
+import { passthroughEgressFilter, type SsrfBridge } from '@n8n/backend-network';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as express from 'express';
 import { type IncomingHttpHeaders } from 'http';
@@ -102,6 +102,7 @@ export async function testTriggerNode(
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
+		getSecureEgressFilter: () => passthroughEgressFilter,
 		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
 				expression: cron.expression,
@@ -204,6 +205,7 @@ export async function testWebhookTriggerNode(
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
+		getSecureEgressFilter: () => passthroughEgressFilter,
 		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
 				expression: cron.expression,
@@ -244,6 +246,7 @@ export async function testWebhookTriggerNode(
 		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
+		getWebhookResourceUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,

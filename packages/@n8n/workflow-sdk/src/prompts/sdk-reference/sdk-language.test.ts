@@ -1,4 +1,10 @@
-import { NODE_GROUPS_REFERENCE, SDK_LANGUAGE_REFERENCE } from './sdk-language';
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+
+import {
+	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
+	buildSdkLanguageReference,
+} from './sdk-language';
 import {
 	SDK_METHODS,
 	FORBIDDEN_NODE_TYPES,
@@ -71,6 +77,23 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 	});
 });
 
+describe('buildSdkLanguageReference', () => {
+	it('includes the groups docs by default', () => {
+		expect(buildSdkLanguageReference()).toBe(buildSdkLanguageReference({ includeGroups: true }));
+		expect(buildSdkLanguageReference()).toContain(NODE_GROUPS_REFERENCE);
+	});
+
+	it('omits only the groups docs when includeGroups is false', () => {
+		const withoutGroups = buildSdkLanguageReference({ includeGroups: false });
+
+		expect(withoutGroups).not.toContain('## Node groups');
+		// The rest of the reference is intact.
+		expect(withoutGroups).toContain('restricted subset of TypeScript');
+		expect(withoutGroups).toContain('## Forbidden constructs');
+		expect(withoutGroups).toContain('## Where to put runtime logic');
+	});
+});
+
 describe('NODE_GROUPS_REFERENCE', () => {
 	it('explains what a group is (visual-only) and how to declare one', () => {
 		expect(NODE_GROUPS_REFERENCE).toContain('## Node groups');
@@ -78,8 +101,23 @@ describe('NODE_GROUPS_REFERENCE', () => {
 	});
 
 	it('explains how to declare a group', () => {
-		// The worked example: .group(name, [members]) declared on the workflow.
+		// The worked example: .group(name, [members], options?) declared on the workflow.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/\.group\('[^']+', \[/);
+	});
+
+	it('documents the optional description and its length limit', () => {
+		expect(NODE_GROUPS_REFERENCE).toContain('description:');
+		expect(NODE_GROUPS_REFERENCE).toContain(`${GROUP_DESCRIPTION_MAX_LENGTH} characters`);
+	});
+
+	it('tells an editing agent to keep existing descriptions', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
+	});
+
+	it('tells agents invalid groups are dropped with warnings and source should be fixed', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/drop an invalid group.+report a warning/is);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/fix the source.+not re-emitted/is);
+		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
 	});
 
 	it('states the single entry/exit boundary rule that grouping enforces', () => {

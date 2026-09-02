@@ -7,9 +7,10 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import { resolveMcpRegistryConnection, toAgentMcpTransport } from '../mcp-registry-connection';
 
 export interface McpRegistrySearchResult {
+	slug: string;
 	name: string;
 	title: string;
 	description: string;
@@ -21,39 +22,32 @@ export interface McpRegistrySearchResult {
 	metadata: { nodeTypeName: string };
 }
 
-/** Prefer a streamable-http remote, else SSE; null when the server has neither. */
-function pickPreferredRemote(
-	server: McpRegistryServer,
-): { type: 'streamableHttp' | 'sse'; url: string } | null {
-	const streamable = server.remotes.find((remote) => remote.type === 'streamable-http');
-	if (streamable) return { type: 'streamableHttp', url: streamable.url };
-	const sse = server.remotes.find((remote) => remote.type === 'sse');
-	if (sse) return { type: 'sse', url: sse.url };
-	return null;
-}
-
-function credentialTypeName(server: McpRegistryServer): string {
-	return `${camelCase(server.slug)}McpOAuth2Api`;
-}
-
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
-	const remote = pickPreferredRemote(server);
-	if (!remote) return null;
-	const credentialType = credentialTypeName(server);
+	const connection = resolveMcpRegistryConnection(server);
+	if (!connection) return null;
 	return {
+		slug: server.slug,
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,
-		url: remote.url,
-		transport: remote.type,
-		authentication: credentialType,
-		credentialType,
+		url: connection.endpointUrl,
+		transport: toAgentMcpTransport(connection.transport),
+		authentication: connection.credentialType,
+		credentialType: connection.credentialType,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),
 		})),
-		metadata: { nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}` },
+		metadata: { nodeTypeName: connection.nodeTypeName },
 	};
+}
+
+/** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
+export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
+	return servers.flatMap((server) => {
+		const result = toSearchResult(server);
+		return result ? [result] : [];
+	});
 }
 
 function normalizeQueries(queries: string[]): string[] {
@@ -73,16 +67,28 @@ function matchesQuery(server: McpRegistryServer, normalizedQueries: string[]): b
 	return normalizedQueries.some((query) => fields.some((field) => field.includes(query)));
 }
 
-/** Filter `servers` to those matching any query, mapped to the config-ready shape. */
+function relevance(server: McpRegistryServer, normalizedQueries: string[]): number {
+	const names = [server.slug, camelCase(server.slug), server.title]
+		.filter((name): name is string => typeof name === 'string')
+		.map((name) => name.toLowerCase());
+	if (normalizedQueries.some((query) => names.includes(query))) return 2;
+	if (normalizedQueries.some((query) => names.some((name) => name.includes(query)))) return 1;
+	return 0;
+}
+
+/** Filter `servers` to those matching any query, most relevant first, mapped to
+ *  the config-ready shape. */
 export function searchMcpRegistryServers(
 	servers: McpRegistryServer[],
 	queries: string[],
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
-	return servers.flatMap((server) => {
-		if (!matchesQuery(server, normalized)) return [];
-		const result = toSearchResult(server);
-		return result ? [result] : [];
-	});
+	return listMcpRegistryServers(
+		servers
+			.filter((server) => matchesQuery(server, normalized))
+			.map((server) => ({ server, score: relevance(server, normalized) }))
+			.sort((left, right) => right.score - left.score)
+			.map(({ server }) => server),
+	);
 }

@@ -6,8 +6,9 @@ We structure this package after the **Durable Scheduler modularity blueprint**
 ([Notion](https://app.notion.com/p/n8n/The-Durable-Scheduler-a-modularity-blueprint-39f5b6e0c94f8193a5fecca8306c4424),
 worked example: `packages/@n8n/scheduler`, enforced by its
 `src/__tests__/dependency-purity.test.ts`). The core idea: a **pure core that
-decides, with every effect handed in as a port**. Dependency arrows point one
-way — consumers depend on the engine; the engine core reaches for nothing.
+decides, with every effect handed in as an injected interface**. Dependency
+arrows point one way — consumers depend on the engine; the engine core reaches
+for nothing.
 
 ## Reality now: loose, but seam-aware
 
@@ -24,27 +25,37 @@ a deployable engine worker) without touching core logic.
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
-- **Ports** — interfaces the core depends on, each defined in its own core
-  module beside a default/reference use: `AdmittanceService` (`admittance/`),
-  `WorkQueue` (`queue/`), `ExecutionStore` (`execution/`). Adapters implement
-  them; the core never imports the port from an adapter. Handed in at
-  construction.
+- **Core interfaces** — interfaces the core depends on, each defined in its own
+  core module beside a default/reference use: `AdmittanceService` (`admittance/`),
+  `WorkQueue` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
+  (`execution/`), `LifecycleEventPublisher` (`lifecycle-events/`). Adapters
+  implement them; the core never imports the interface from an adapter. Handed
+  in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (in-memory default). The Postgres/ORM coupling lives *here only*.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
+- **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
+  internal topology: the queues, the stores, the handlers, the workers, the HTTP
+  app and the start/stop order. It takes the adapters a host chooses and returns
+  a running engine, so no host repeats the wiring. A data plane database is not
+  optional — the factory's type requires one, and each composition root refuses
+  to start without it rather than serving `/healthz` while unable to run a
+  workflow.
 - **Composition roots** — `serve.ts` (standalone) and, in integrated mode,
-  `packages/cli`. These construct the concrete adapters (the `DataSource`, etc.)
-  and hand them in. **Construction lives here, not in the core.**
+  `packages/cli`. These construct the concrete adapters (the `DataSource`, the
+  admittance policy, the v1 step executor) and hand them to
+  `createEngineRuntime`. **Construction lives here, not in the core** — but the
+  topology does not: that belongs to the factory.
 
 ## Rules that keep the seams extractable
 
 - Core modules (`graph`, `execution`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
-  is one-way: `database/` imports the port + domain types from the core, not the
-  reverse.
+  is one-way: `database/` imports the interface + domain types from the core, not
+  the reverse.
 - `@n8n/typeorm` / `pg` stay confined to `database/`.
 - `@n8n/config` + `@n8n/di` are used only at the serving/composition layer (for
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as
@@ -58,6 +69,34 @@ a deployable engine worker) without touching core logic.
 - When serving infra is extracted, add a `dependency-purity.test.ts` (as
   `@n8n/scheduler` does) to enforce the allowlist. Until then, this doc is the
   intent.
+
+## Crash recovery: reconciliation, not transactions
+
+Handlers advance an execution through several separate writes — claim the
+execution, insert step rows, publish the next message — and we deliberately do
+**not** make that sequence atomic. Crashing partway through can leave partial
+state, such as an execution stuck `running` with no queued step.
+
+The intended answer is a reconciliation layer that detects crashed or stalled
+executions and drives recovery (CAT-2938), not transactions spanning stores and
+queues. So when you find a partial-write window: make the resulting state
+legible to reconciliation, and don't reach for a cross-store transaction. It's a
+recurring review question — this is the standing answer.
+
+## Read path and execution path have their own types
+
+A row is not a type. `ExecutionRecord`/`StepRecord`/`StepSummary` are what
+running an execution needs; `ExecutionView`/`StepView`
+(`execution/execution-view-store.ts`) are what reporting one needs;
+`ExecutionSnapshot`/`StepDetail` (`server/api.types.ts`) are the wire. Put a
+field on the path that reads it. Keep value types (`StepStatus`, `StepError`,
+`StepSlots`, `WorkflowGraph`) shared.
+
+Reads go through `ExecutionViewStore`, so a reader's type cannot reach
+`claimStep` or `finishExecution`, and read-side logic has one seam
+(`ExecutionQueryService`). Name the columns in the query: these types are
+structural, so an adapter returning whole entities still type-checks and still
+ships every column.
 
 ## Known deviations — the seams to clean up on decomposition
 

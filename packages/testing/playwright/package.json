@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=e2e",
     "test:dev-server-smoke": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=dev-server-smoke",
+    "test:dev-server-smoke:alt-port": "N8N_BASE_URL=http://localhost:5699 N8N_EDITOR_URL=http://localhost:8082 N8N_TEST_ENV='{\"N8N_RUNNERS_BROKER_PORT\":\"5701\"}' RESET_E2E_DB=true playwright test --project=dev-server-smoke",
     "test:all": "playwright test",
     "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=e2e",
     "test:local:isolated": "node scripts/run-local-isolated.mjs",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "0.91.1",
+    "@axe-core/playwright": "^4.13.0",
     "@currents/playwright": "catalog:e2e",
     "@types/debug": "^4.1.12",
     "@memlab/api": "2.0.0",
@@ -61,6 +63,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/test-impact": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@playwright/cli": "catalog:e2e",
     "@playwright/test": "catalog:e2e",
@@ -68,6 +71,8 @@
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "autocannon": "^8.0.0",
+    "axe-core": "^4.13.0",
+    "axe-html-reporter": "^2.2.11",
     "eslint-plugin-playwright": "catalog:e2e",
     "flatted": "catalog:",
     "generate-schema": "2.6.0",

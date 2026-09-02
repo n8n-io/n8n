@@ -1,10 +1,14 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
+import type {
+	AffectedResourceKind,
+	CreateCredentialPayload,
+	SecretsBuffer,
+} from '@n8n/mcp-browser';
 import type { z } from 'zod';
 
 import type { GatewayConfig, ToolGroup } from '../config';
 
-export type { CallToolResult, CreateCredentialPayload, SecretsBuffer };
+export type { AffectedResourceKind, CallToolResult, CreateCredentialPayload, SecretsBuffer };
 
 export interface McpTool {
 	name: string;
@@ -39,6 +43,11 @@ export interface ToolAnnotations {
 
 export interface AffectedResource {
 	toolGroup: ToolGroup;
+	/**
+	 * How to interpret `resource`. Browser tools always set it; the filesystem, shell
+	 * and computer tools have no equivalent distinction and leave it unset.
+	 */
+	kind?: AffectedResourceKind;
 	resource: string;
 	description: string;
 }

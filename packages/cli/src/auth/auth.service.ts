@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -58,8 +59,13 @@ interface CreateAuthMiddlewareOptions {
 
 @Service()
 export class AuthService {
-	// The browser-id check needs to be skipped on these endpoints
-	private skipBrowserIdCheckEndpoints: string[];
+	/**
+	 * Endpoints exempt from the browser-id check on GET requests. Strings are
+	 * matched exactly against `baseUrl + route path`; RegExps cover routes
+	 * whose controller prefix carries resolved params (e.g. a `:projectId`
+	 * that express substitutes into `req.baseUrl`).
+	 */
+	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -100,6 +106,13 @@ export class AuthService {
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
+
+			// Agent chat attachments render via <img> tags, which can't send the
+			// browser-id header. The controller prefix carries a resolved
+			// :projectId in req.baseUrl, so this one needs a pattern.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+			),
 		];
 	}
 
@@ -193,6 +206,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -316,13 +334,19 @@ export class AuthService {
 		throw new AuthError('Unauthorized');
 	}
 
+	private endpointSkipsBrowserIdCheck(endpoint: string): boolean {
+		return this.skipBrowserIdCheckEndpoints.some((entry) =>
+			typeof entry === 'string' ? entry === endpoint : entry.test(endpoint),
+		);
+	}
+
 	private validateBrowserId(
 		jwtPayload: IssuedJWT,
 		browserId: string | undefined,
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

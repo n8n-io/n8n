@@ -8,8 +8,9 @@ import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-type
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
@@ -17,8 +18,8 @@ import {
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
 import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -27,7 +28,6 @@ import {
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
-import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	InstanceAiProactiveStarterMessage,
@@ -55,7 +55,6 @@ import {
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
 	getPreviewWorkflow,
-	useInstanceAiWorkflowPreviewSuggestionsExperiment,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions';
 import {
 	InstanceAiSplitEmptyState,
@@ -75,8 +74,8 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
-const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
@@ -120,19 +119,20 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+// Opening a new conversation drops the tab title of the thread we came from —
+// this view mounts on every entry to the empty route, the parent layout doesn't.
+useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
-const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
-	useInstanceAiWorkflowPreviewSuggestionsExperiment();
 const {
 	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
 	currentVariant: templateExamplesVariant,
@@ -350,17 +350,11 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		};
 	}
 
-	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
-		return {
-			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
-			suggestionsComponent: WorkflowPreviewSuggestions,
-			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
-			placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
-	}
-
 	return {
-		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
+		suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+		suggestionsComponent: WorkflowPreviewSuggestions,
+		suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+		placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
 	};
 });
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
@@ -379,10 +373,7 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
-	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
-		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
-	}
-	return INSTANCE_AI_DEFAULT_TITLE_KEY;
+	return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -431,8 +422,9 @@ const CANVAS_NATURAL_HEIGHT_PX = 420;
 const PREVIEW_MIN_SCALE = 0.3;
 
 const previewScale = ref(1);
+const previewRemainingSpace = ref(CANVAS_NATURAL_HEIGHT_PX);
 
-useResizeObserver(emptyLayoutRef, () => {
+function updatePreviewScale() {
 	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
 	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
 	const inputRect = centeredInputRef.value.getBoundingClientRect();
@@ -440,15 +432,20 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	previewRemainingSpace.value = Math.max(0, remainingSpace);
 	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
-});
+}
+
+useResizeObserver(emptyLayoutRef, updatePreviewScale);
+useResizeObserver(centeredInputRef, updatePreviewScale);
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
 
 const workflowPreviewWrapperStyle = computed(() => ({
 	transform: `scale(${previewScale.value})`,
 	transformOrigin: 'top center',
-	height: `${CANVAS_NATURAL_HEIGHT_PX * previewScale.value}px`,
+	height: `${previewRemainingSpace.value}px`,
+	'--workflow-preview-canvas-height': `${Math.max(CANVAS_NATURAL_HEIGHT_PX, previewRemainingSpace.value)}px`,
 }));
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
@@ -536,9 +533,9 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -575,6 +572,7 @@ function handleShelfSuggestionInsert(payload: {
 							v-if="creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
+							:amounts-hidden="quotaLocked"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -603,18 +601,26 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"
@@ -643,11 +649,7 @@ function handleShelfSuggestionInsert(payload: {
 				/>
 				<Transition name="workflow-preview-fade">
 					<div
-						v-if="
-							isWorkflowPreviewSuggestionsExperimentEnabled &&
-							activeWorkflowPreview &&
-							hasSpaceForPreview
-						"
+						v-if="activeWorkflowPreview && hasSpaceForPreview"
 						:class="$style.workflowPreviewWrapper"
 						:style="workflowPreviewWrapperStyle"
 					>

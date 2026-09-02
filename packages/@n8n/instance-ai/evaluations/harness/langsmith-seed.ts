@@ -8,12 +8,12 @@ import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
-import type { ConversationSeed } from './conversation-seed';
+import type { ConversationSeed, SeedMessage } from './conversation-seed';
 import { parseSeedWorkflowCode } from './parse-seed-workflow';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
 /** Default project that instance-ai conversations are traced to (same name in
- *  every workspace). Override per case with `seedThread.project` if it differs. */
+ *  every workspace). Override per case with `seed.project` if it differs. */
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
@@ -32,7 +32,6 @@ const WORKSPACE_TOOL = {
 	WRITE: 'workspace_write_file',
 	APPEND: 'workspace_append_file',
 	STR_REPLACE: 'workspace_str_replace_file',
-	BATCH_STR_REPLACE: 'workspace_batch_str_replace_file',
 	MOVE: 'workspace_move_file',
 	COPY: 'workspace_copy_file',
 	DELETE: 'workspace_delete_file',
@@ -42,8 +41,7 @@ const WORKSPACE_TOOL = {
 export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
 	[WORKSPACE_TOOL.WRITE]: ['path', 'content'],
 	[WORKSPACE_TOOL.APPEND]: ['path', 'content'],
-	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'old_str', 'new_str'],
-	[WORKSPACE_TOOL.BATCH_STR_REPLACE]: ['path', 'replacements'],
+	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'replacements'],
 	[WORKSPACE_TOOL.MOVE]: ['src', 'dest'],
 	[WORKSPACE_TOOL.COPY]: ['src', 'dest'],
 	[WORKSPACE_TOOL.DELETE]: ['path'],
@@ -53,6 +51,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
  *  the contract test can prove every live filesystem tool is classified. */
 export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 	'workspace_read_file',
+	'workspace_read_tool_result',
 	'workspace_list_files',
 	'workspace_file_stat',
 	'workspace_mkdir',
@@ -64,7 +63,7 @@ export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 // enumerate them and find the one holding the thread; reads are read-only.
 //
 // Reads are also dual-tenant: during the US→EU migration a US-sourced case
-// carries `seedThread.endpoint` = the US host, while results always write to the
+// carries `seed.endpoint` = the US host, while results always write to the
 // home (EU) tenant elsewhere. `configFor` maps an endpoint → host + key via env.
 
 /** The langsmith SDK's default endpoint is the US tenant, so an unset
@@ -100,13 +99,13 @@ export function configFor(endpoint?: string): { apiUrl: string; apiKey: string }
 		const usKey = process.env.LANGSMITH_API_KEY_US ?? '';
 		if (!usKey) {
 			throw new Error(
-				`seedThread.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
+				`seed.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
 			);
 		}
 		return { apiUrl: usHost, apiKey: usKey };
 	}
 	throw new Error(
-		`seedThread.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
+		`seed.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
 	);
 }
 
@@ -255,18 +254,21 @@ function redactDataTableRowPayload(value: unknown): Record<string, unknown> {
 	return out;
 }
 
-interface TextBlock {
+// Type aliases, not interfaces: seed content blocks are open by design
+// (`.passthrough()`), and an interface has no index signature so it isn't
+// assignable to that. Converting these back to interfaces breaks the build.
+type TextBlock = {
 	type: 'text';
 	text: string;
-}
-interface ToolCallBlock {
+};
+type ToolCallBlock = {
 	type: 'tool-call';
 	toolCallId: string;
 	toolName: string;
 	state: 'resolved';
 	input: unknown;
 	output: unknown;
-}
+};
 
 /**
  * Reconstruct a thread's seed + live turn. The workspace holding the thread is
@@ -318,7 +320,7 @@ async function discoverAndReconstruct(
 		}
 	}
 	throw new Error(
-		`Thread ${ref.threadId} not found in project "${project}" across ${String(workspaces.length)} workspace(s): ${tried.join(', ')}. The trace may have aged out (~14-day base retention), or the project name differs (set seedThread.project).`,
+		`Thread ${ref.threadId} not found in project "${project}" across ${String(workspaces.length)} workspace(s): ${tried.join(', ')}. The trace may have aged out (~14-day base retention), or the project name differs (set seed.project).`,
 	);
 }
 
@@ -409,6 +411,11 @@ async function reconstructWithClient(
 			messages,
 			workflows,
 			dataTables,
+			// A trace carries no agent artifacts yet; only authored seeds can seed one.
+			agents: [],
+			// Likewise no projects: a replayed thread ran in whatever project it ran in,
+			// and a seeded project is a fixture an author declares, not something a trace records.
+			projects: [],
 		},
 		liveTurn,
 		runCount: runs.length,
@@ -417,11 +424,7 @@ async function reconstructWithClient(
 }
 
 /** Rebuild the native message log for every run before the seed boundary. */
-function buildSeedMessages(
-	rootRuns: Run[],
-	toolRuns: Run[],
-	boundaryMs: number,
-): Array<Record<string, unknown>> {
+function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number): SeedMessage[] {
 	const toolsByRoot = new Map<string, Run[]>();
 	for (const tool of toolRuns) {
 		const rootId = asString(metadata(tool).langsmith_root_run_id) ?? tool.trace_id ?? '';
@@ -431,7 +434,9 @@ function buildSeedMessages(
 	}
 
 	const emittedToolCallIds = new Set<string>();
-	const messages: Array<Record<string, unknown>> = [];
+	// Typed, so the compiler enforces the envelope on the machine-producer side
+	// while ConversationSeedSchema enforces it on hand-authored seeds.
+	const messages: SeedMessage[] = [];
 
 	for (const root of rootRuns) {
 		if (new Date(root.start_time ?? NaN).getTime() >= boundaryMs) break;
@@ -508,20 +513,8 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 		return true;
 	}
 	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) {
-		// The tool requires one exact, unique match; mirror it (first occurrence).
-		const path = asString(input.path);
-		const current = path !== undefined ? files.get(path) : undefined;
-		const oldStr = asString(input.old_str);
-		const newStr = asString(input.new_str);
-		if (path === undefined || current === undefined || !oldStr || newStr === undefined) return true;
-		if (!current.includes(oldStr)) return false;
-		files.set(path, current.replace(oldStr, newStr));
-		return true;
-	}
-	if (tool.name === WORKSPACE_TOOL.BATCH_STR_REPLACE) {
 		// The real tool is atomic — it validates every anchor up front and applies
-		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch). Mirror
-		// that, like single str-replace: any missing anchor → file untouched, diverged.
+		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch).
 		const path = asString(input.path);
 		const current = path !== undefined ? files.get(path) : undefined;
 		if (path === undefined || current === undefined) return true;

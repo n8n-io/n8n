@@ -1,11 +1,12 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
-const { loginCurrentUser, inviteUsers, login, logout, getUsers } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers, login, logout, getUsers, oidcLogout } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
@@ -13,6 +14,7 @@ const { loginCurrentUser, inviteUsers, login, logout, getUsers } = vi.hoisted(()
 		login: vi.fn(),
 		logout: vi.fn(),
 		getUsers: vi.fn(),
+		oidcLogout: vi.fn(),
 	};
 });
 
@@ -21,6 +23,10 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	login,
 	logout,
 	getUsers,
+}));
+
+vi.mock('@n8n/rest-api-client/api/sso', () => ({
+	oidcLogout,
 }));
 
 vi.mock('./invitation.api', () => ({
@@ -43,6 +49,10 @@ const mockUser: CurrentUserResponse = {
 describe('users.store', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		// `restoreMocks`/`vi.restoreAllMocks()` only restore spies created via
+		// `vi.spyOn()`; the plain `vi.fn()` mocks created via `vi.hoisted` keep
+		// their call history. Clear it explicitly so counts don't leak between tests.
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
 
@@ -263,6 +273,122 @@ describe('users.store', () => {
 		});
 	});
 
+	describe('logout', () => {
+		it('should call the standard logout API by default and return no redirect URL', async () => {
+			const usersStore = useUsersStore();
+
+			const result = await usersStore.logout();
+
+			expect(logout).toHaveBeenCalledTimes(1);
+			expect(oidcLogout).not.toHaveBeenCalled();
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should call the OIDC logout API and return its redirect URL when signing out via OIDC', async () => {
+			const usersStore = useUsersStore();
+			const redirectUrl = 'https://idp.example.com/logout?id_token_hint=abc';
+			oidcLogout.mockResolvedValueOnce({ redirectUrl });
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(oidcLogout).toHaveBeenCalledTimes(1);
+			expect(logout).not.toHaveBeenCalled();
+			expect(result).toEqual({ redirectUrl });
+		});
+
+		it('should return a null redirect URL when the session was not established through OIDC', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockResolvedValueOnce({ redirectUrl: null });
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should fall back to the standard logout API when the OIDC logout API fails', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+
+			const result = await usersStore.logout({ viaOidc: true });
+
+			expect(oidcLogout).toHaveBeenCalledTimes(1);
+			expect(logout).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ redirectUrl: null });
+		});
+
+		it('should clear the current user and still run logout hooks when signing out via OIDC', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			oidcLogout.mockResolvedValueOnce({ redirectUrl: null });
+
+			const hook = vi.fn();
+			usersStore.registerLogoutHook(hook);
+
+			await usersStore.logout({ viaOidc: true });
+
+			expect(usersStore.currentUser).toBeNull();
+			expect(hook).toHaveBeenCalled();
+		});
+
+		it('should clear the current user and still run logout hooks when the session was already invalid server-side', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			logout.mockRejectedValueOnce(new ResponseError('Unauthorized', { httpStatusCode: 401 }));
+
+			const hook = vi.fn();
+			usersStore.registerLogoutHook(hook);
+
+			await usersStore.logout();
+
+			expect(usersStore.currentUser).toBeNull();
+			expect(hook).toHaveBeenCalled();
+		});
+
+		it('should propagate a genuine logout failure instead of silently completing', async () => {
+			const usersStore = useUsersStore();
+			logout.mockRejectedValueOnce(new Error('Network Error'));
+
+			await expect(usersStore.logout()).rejects.toThrow('Network Error');
+		});
+
+		it('should propagate a genuine failure from the OIDC fallback logout call', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+			logout.mockRejectedValueOnce(new Error('Network Error'));
+
+			await expect(usersStore.logout({ viaOidc: true })).rejects.toThrow('Network Error');
+		});
+
+		it('should clear the current user when the OIDC fallback logout call fails because the session was already invalid', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+			logout.mockRejectedValueOnce(new ResponseError('Unauthorized', { httpStatusCode: 401 }));
+
+			await usersStore.logout({ viaOidc: true });
+
+			expect(usersStore.currentUser).toBeNull();
+		});
+	});
+
 	describe('logoutHooks', () => {
 		it('should run all registered logoutHooks', async () => {
 			const usersStore = useUsersStore();
@@ -304,51 +430,6 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
-		});
-	});
-
-	describe('personalizedNodeTypes', () => {
-		const setCurrentUserWithAnswers = (
-			usersStore: ReturnType<typeof useUsersStore>,
-			personalizationAnswers?: object,
-		) => {
-			usersStore.usersById['1'] = {
-				...mockUser,
-				isDefaultUser: false,
-				isPendingUser: false,
-				mfaEnabled: false,
-				...(personalizationAnswers ? { personalizationAnswers } : {}),
-			} as never;
-			usersStore.currentUserId = '1';
-		};
-
-		it('returns an empty list when no resolver is registered', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
-
-			expect(usersStore.personalizedNodeTypes).toEqual([]);
-		});
-
-		it('delegates to the injected resolver when one is registered', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore, { version: 'v4' });
-
-			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
-			usersStore.setNodeTypesResolver(resolver);
-
-			expect(usersStore.personalizedNodeTypes).toEqual(['n8n-nodes-base.webhook']);
-			expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ version: 'v4' }));
-		});
-
-		it('returns an empty list when the current user has no answers', () => {
-			const usersStore = useUsersStore();
-			setCurrentUserWithAnswers(usersStore);
-
-			const resolver = vi.fn(() => ['n8n-nodes-base.webhook']);
-			usersStore.setNodeTypesResolver(resolver);
-
-			expect(usersStore.personalizedNodeTypes).toEqual([]);
-			expect(resolver).not.toHaveBeenCalled();
 		});
 	});
 

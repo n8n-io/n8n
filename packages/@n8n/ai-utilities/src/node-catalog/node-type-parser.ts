@@ -17,7 +17,7 @@ import {
 	type LeanNodeTypeDescription,
 	type VersionDiscriminators,
 } from './lean-node-type';
-import { CodeBuilderNodeSearchEngine } from './search-engine';
+import { NodeSearchEngine } from './search-engine';
 
 export interface ParsedNodeType {
 	id: string;
@@ -34,11 +34,11 @@ export interface ParsedNodeType {
 export class NodeTypeParser {
 	private nodeTypes: LeanNodeTypeDescription[];
 	private nodeTypeIndex: Map<string, LeanNodeTypeDescription[]>;
-	private searchEngine: CodeBuilderNodeSearchEngine;
+	private searchEngine: NodeSearchEngine;
 
 	constructor(nodeTypes: INodeTypeDescription[]) {
 		this.nodeTypes = nodeTypes.map(toLeanNodeType);
-		this.searchEngine = new CodeBuilderNodeSearchEngine(this.nodeTypes);
+		this.searchEngine = new NodeSearchEngine(this.nodeTypes);
 		this.nodeTypeIndex = this.buildIndex();
 	}
 

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -14,10 +14,10 @@ import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
 import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
-import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -215,7 +215,7 @@ watch(
 				<div v-if="!isProductionOnly" class="url-selection">
 					<ElRow>
 						<ElCol :span="24">
-							<N8nRadioButtons v-model="showUrlFor" :options="urlOptions" />
+							<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
 						</ElCol>
 					</ElRow>
 				</div>

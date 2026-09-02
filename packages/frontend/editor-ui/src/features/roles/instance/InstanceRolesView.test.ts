@@ -2,10 +2,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRolesView from './InstanceRolesView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -15,7 +17,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn(), showError: vi.fn() }),
 }));
 
@@ -85,6 +87,8 @@ const mockCustomRoles = [
 
 let rolesStore: MockedStore<typeof useRolesStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let rbacStore: MockedStore<typeof useRBACStore>;
+let usersStore: MockedStore<typeof useUsersStore>;
 
 describe('InstanceRolesView', () => {
 	beforeEach(() => {
@@ -93,6 +97,12 @@ describe('InstanceRolesView', () => {
 		rolesStore = mockedStore(useRolesStore);
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isCustomRolesFeatureEnabled = true;
+		rbacStore = mockedStore(useRBACStore);
+		usersStore = mockedStore(useUsersStore);
+		// Default to an entitled caller who doesn't hold the role being deleted;
+		// individual tests override.
+		rbacStore.hasScope = vi.fn().mockReturnValue(true);
+		usersStore.currentUser = { id: 'me', role: 'global:owner' } as never;
 	});
 
 	it('should render the members-assigned column and table headers', () => {
@@ -157,6 +167,36 @@ describe('InstanceRolesView', () => {
 		expect(rolesStore.fetchRoleBySlug).toHaveBeenCalledWith({ slug: customRole.slug });
 		expect(getByTestId('delete-instance-role-modal')).toBeInTheDocument();
 		// No deletion happens just from opening the modal.
+		expect(rolesStore.deleteRole).not.toHaveBeenCalled();
+	});
+
+	it('should disable delete for a role with assigned users when the caller lacks user:changeRole', async () => {
+		rbacStore.hasScope = vi.fn().mockReturnValue(false);
+		const customRole = { ...mockCustomRoles[0], usedByUsers: 3 };
+		rolesStore.processedInstanceRoles = [...mockSystemRoles, customRole];
+		rolesStore.roles.global = [...mockSystemRoles, customRole];
+
+		const { getByTestId, getAllByTestId } = renderComponent();
+		await userEvent.click(within(getAllByTestId('action-toggle')[0]).getByRole('button'));
+		await userEvent.click(getByTestId('action-delete'));
+
+		// The action is disabled, so nothing is triggered.
+		expect(rolesStore.fetchRoleBySlug).not.toHaveBeenCalled();
+		expect(rolesStore.deleteRole).not.toHaveBeenCalled();
+	});
+
+	it('should disable delete for the current user’s own role', async () => {
+		const customRole = { ...mockCustomRoles[0], usedByUsers: 3 };
+		usersStore.currentUser = { id: 'me', role: customRole.slug } as never;
+		rolesStore.processedInstanceRoles = [...mockSystemRoles, customRole];
+		rolesStore.roles.global = [...mockSystemRoles, customRole];
+
+		const { getByTestId, getAllByTestId } = renderComponent();
+		await userEvent.click(within(getAllByTestId('action-toggle')[0]).getByRole('button'));
+		await userEvent.click(getByTestId('action-delete'));
+
+		// Own role can't be deleted, so the action is disabled and nothing triggers.
+		expect(rolesStore.fetchRoleBySlug).not.toHaveBeenCalled();
 		expect(rolesStore.deleteRole).not.toHaveBeenCalled();
 	});
 

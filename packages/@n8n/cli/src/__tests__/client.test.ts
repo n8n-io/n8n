@@ -42,14 +42,105 @@ describe('N8nClient packages', () => {
 		vi.unstubAllGlobals();
 	});
 
+	describe('pushGitConnectionProjects', () => {
+		it('POSTs the commit message and returns the connection id, counts, and commit SHA', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				commitSha: 'abc123',
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(
+				client.pushGitConnectionProjects('connection-id', {
+					commitMessage: 'sync projects',
+					force: true,
+				}),
+			).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
+			expect(init.method).toBe('POST');
+			expect(JSON.parse(init.body as string)).toEqual({
+				commitMessage: 'sync projects',
+				force: true,
+			});
+		});
+	});
+
+	describe('pullGitConnectionProjects', () => {
+		it('posts to the pull endpoint and returns the import counts', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: {
+					projects: { created: 1, updated: 0, skipped: 0, deleted: 0 },
+					folders: { created: 0, skipped: 0, removed: 0 },
+					workflows: {
+						created: 2,
+						updated: 0,
+						skipped: 0,
+						archived: 0,
+						deleted: 0,
+						publishing: { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+					},
+					credentials: { matched: 0, stubbed: 1 },
+					dataTables: { matched: 0, created: 0 },
+					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
+					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
+				},
+				commitSha: 'def456',
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(client.pullGitConnectionProjects('connection-id')).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/pull');
+			expect(init.method).toBe('POST');
+		});
+	});
+
+	describe('pullGitConnectionProjects', () => {
+		it('posts to the pull endpoint and returns the import counts', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: {
+					projects: { created: 1, updated: 0, skipped: 0 },
+					folders: { created: 0, skipped: 0, removed: 0 },
+					workflows: {
+						created: 2,
+						updated: 0,
+						skipped: 0,
+						archived: 0,
+						deleted: 0,
+						publishing: { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+					},
+					credentials: { matched: 0, stubbed: 1 },
+					dataTables: { matched: 0, created: 0 },
+					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
+					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
+				},
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(client.pullGitConnectionProjects('connection-id')).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/pull');
+			expect(init.method).toBe('POST');
+		});
+	});
+
 	describe('exportPackage', () => {
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
 
 			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			// Older servers omit the counts header.
+			expect(result.counts).toBeUndefined();
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
@@ -61,12 +152,24 @@ describe('N8nClient packages', () => {
 
 			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([4, 5, 6]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([4, 5, 6]))).toBe(true);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
+		});
+
+		it('parses the X-N8n-Export-Counts header into counts when the server sends it', async () => {
+			const counts = { workflows: 2, folders: 1, credentials: 0, dataTables: 0, variables: 0 };
+			const response = binaryResponse(200, new Uint8Array([1, 2, 3]));
+			response.headers.set('X-N8n-Export-Counts', JSON.stringify(counts));
+			fetchMock.mockResolvedValue(response);
+
+			const result = await client.exportPackage({ workflowIds: ['a'] });
+
+			expect(result.counts).toEqual(counts);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
 		});
 
 		it('includes folderIds in the body when provided', async () => {
@@ -91,6 +194,23 @@ describe('N8nClient packages', () => {
 				JSON.stringify({
 					projectIds: ['proj-1'],
 					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
+		});
+
+		it('includes the credential export policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				credentialExportPolicy: 'no-values',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					workflowIds: ['a'],
+					credentialExportPolicy: 'no-values',
 				}),
 			);
 		});
@@ -129,6 +249,29 @@ describe('N8nClient packages', () => {
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
+		});
+
+		it('includes includeTags=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeTags: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
+
+		it('includes the workflow version policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				workflowVersionPolicy: 'published-strict',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+			);
 		});
 	});
 
@@ -239,13 +382,40 @@ describe('N8nClient packages', () => {
 		});
 
 		describe('variableMissingMode', () => {
-			it.each(['do-nothing', 'must-preexist'])('sends %s when provided', async (policy) => {
+			it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'])(
+				'sends %s when provided',
+				async (policy) => {
+					fetchMock.mockResolvedValue(
+						jsonResponse(200, {
+							workflows: [],
+							bindings: {},
+							credentials: { matched: [], stubbed: [] },
+							variables: { matched: [], missing: [], created: [], stubbed: [] },
+						}),
+					);
+
+					await client.importPackage(
+						{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+						{
+							workflowConflictPolicy: 'fail',
+							variableMissingMode: policy,
+						},
+					);
+
+					const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+					expect(form.get('variableMissingMode')).toBe(policy);
+				},
+			);
+		});
+
+		describe('variableConflictPolicy', () => {
+			it.each(['keep-existing', 'overwrite', 'fail'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
 					jsonResponse(200, {
 						workflows: [],
 						bindings: {},
 						credentials: { matched: [], stubbed: [] },
-						variables: { matched: [], missing: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 					}),
 				);
 
@@ -253,12 +423,36 @@ describe('N8nClient packages', () => {
 					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 					{
 						workflowConflictPolicy: 'fail',
-						variableMissingMode: policy,
+						variableConflictPolicy: policy,
 					},
 				);
 
 				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
-				expect(form.get('variableMissingMode')).toBe(policy);
+				expect(form.get('variableConflictPolicy')).toBe(policy);
+			});
+		});
+
+		describe('variableParentPolicy', () => {
+			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableParentPolicy: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableParentPolicy')).toBe(policy);
 			});
 		});
 

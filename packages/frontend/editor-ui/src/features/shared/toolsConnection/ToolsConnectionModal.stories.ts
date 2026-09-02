@@ -11,10 +11,11 @@ import {
 	sampleCredentials,
 } from './fixtures';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type ToolConnectionCredentialAdapter,
 	type NodeConnectionItem,
-	type SectionKey,
+	type ToolCategoryKey,
 	type ToolConnectionItem,
 	type WorkflowConnectionItem,
 } from './types';
@@ -38,8 +39,14 @@ const PlaceholderSettingsBody = {
 	`,
 };
 
-const INSTANCE_AI_SECTIONS: SectionKey[] = ['connected', 'nodes'];
-const AGENT_BUILDER_SECTIONS: SectionKey[] = ['connected', 'nodes', 'agents', 'data', 'workflows'];
+const INSTANCE_AI_CATEGORIES: ToolCategoryKey[] = ['all', 'built-in', 'mcp'];
+const AGENT_BUILDER_CATEGORIES: ToolCategoryKey[] = [
+	'all',
+	'mcp',
+	'n8n',
+	'app-action',
+	'workflows',
+];
 
 const meta = {
 	title: 'Modules/ToolsConnectionModal',
@@ -48,14 +55,25 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Shared modal for connecting MCP servers, nodes, and workflows. Same component serves Instance AI and Agent Builder — driven by the `sections` prop. When the user types in the search input, a Services / Workflows tab strip appears as scroll-to-section navigation.',
+					'Shared modal for connecting MCP servers, nodes, and workflows. Same component serves Instance AI and Agent Builder — driven by the `categories` prop, which declares the tabs to render. Each declared category gets a tab with a match count and stays visible while empty; clicking a tab filters the list to that category.',
 			},
 		},
 	},
 	argTypes: {
-		sections: {
+		categories: {
 			control: { type: 'check' },
-			options: ['connected', 'nodes', 'agents', 'data', 'workflows'],
+			options: [
+				'connected',
+				'built-in',
+				'mcp',
+				'ai',
+				'n8n',
+				'app-action',
+				'community',
+				'workflows',
+				'agents',
+				'data',
+			],
 		},
 	},
 } satisfies Meta<typeof ToolsConnectionModal>;
@@ -103,7 +121,7 @@ function renderWithTrigger(
 
 			function onOpenDetail(item: ToolConnectionItem) {
 				console.log('[story] open-detail', item);
-				detailMode.value = item.isConnected ? 'settings' : 'detail';
+				detailMode.value = hasToolConnection(item.status) ? 'settings' : 'detail';
 			}
 
 			function onConnect(item: ToolConnectionItem) {
@@ -162,7 +180,7 @@ export const Default: Story = {
 	render: renderWithTrigger(),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -170,19 +188,7 @@ export const InstanceAi: Story = {
 	render: renderWithTrigger(),
 	args: {
 		items: realisticItems,
-		sections: INSTANCE_AI_SECTIONS,
-	},
-};
-
-/**
- * Demonstrates all five section keys side by side — connected items at the top,
- * then services, agents, data stores, and workflows.
- */
-export const AllSections: Story = {
-	render: renderWithTrigger(),
-	args: {
-		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: INSTANCE_AI_CATEGORIES,
 	},
 };
 
@@ -190,7 +196,7 @@ export const Empty: Story = {
 	render: renderWithTrigger(),
 	args: {
 		items: [],
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -201,12 +207,12 @@ export const Empty: Story = {
 export const McpDetail: Story = {
 	render: renderWithTrigger({
 		...connectedMcpFixture,
-		isConnected: false,
+		status: 'none',
 		settings: undefined,
 	}),
 	args: {
 		items: realisticItems,
-		sections: INSTANCE_AI_SECTIONS,
+		categories: INSTANCE_AI_CATEGORIES,
 	},
 };
 
@@ -218,7 +224,7 @@ export const McpSettings: Story = {
 	render: renderWithTrigger(connectedMcpFixture, 'settings'),
 	args: {
 		items: realisticItems,
-		sections: INSTANCE_AI_SECTIONS,
+		categories: INSTANCE_AI_CATEGORIES,
 	},
 };
 
@@ -226,7 +232,7 @@ export const LargeList: Story = {
 	render: renderWithTrigger(),
 	args: {
 		items: makeLargeMcpList(300),
-		sections: ['nodes'],
+		categories: ['mcp'],
 	},
 };
 
@@ -242,7 +248,7 @@ export const NodeToolInlineSettings: Story = {
 			id: 'node-openai',
 			kind: 'node',
 			title: 'OpenAI',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 			iconSource: {
 				type: 'file',
@@ -260,7 +266,7 @@ export const NodeToolInlineSettings: Story = {
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -277,7 +283,7 @@ export const MultiCredentialHeader: Story = {
 			kind: 'node',
 			title: 'HTTP Request',
 			description: 'Make HTTP requests with OAuth2 or a bearer token.',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: 'n8n-nodes-base.httpRequestTool',
 			credentials: [
 				{ authType: 'oAuth2Api', required: false },
@@ -288,7 +294,7 @@ export const MultiCredentialHeader: Story = {
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -303,14 +309,14 @@ export const NoCredentialsHeader: Story = {
 			kind: 'workflow',
 			title: 'Summariser',
 			description: 'Summarises long-form content into bullet points.',
-			isConnected: true,
+			status: 'connected',
 			workflowId: 'wf-summariser-1',
 		} satisfies WorkflowConnectionItem,
 		'settings',
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -326,7 +332,7 @@ export const NodeDetail: Story = {
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -342,7 +348,7 @@ export const WorkflowDetail: Story = {
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };
 
@@ -358,6 +364,6 @@ export const EmptyDetail: Story = {
 	),
 	args: {
 		items: realisticItems,
-		sections: AGENT_BUILDER_SECTIONS,
+		categories: AGENT_BUILDER_CATEGORIES,
 	},
 };

@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import { VIEWS } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import type { CompareVersion } from '../../composables/useCompareData';
 import { useEvalCollectionsStore } from '../../evalCollections.store';

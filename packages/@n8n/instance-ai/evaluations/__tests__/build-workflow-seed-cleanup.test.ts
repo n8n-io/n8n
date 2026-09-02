@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { buildWorkflow } from '../harness/build-workflow';
 import type { EvalLogger } from '../harness/logger';
-import { buildWorkflow } from '../harness/runner';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 import type { ExecutionScenario } from '../types';
 
@@ -127,5 +127,76 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 		);
 		// The name→real-id map lets each scenario reseed rows into the bound table.
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'scenario-dt-1' });
+	});
+});
+
+describe('buildWorkflow declared credentials', () => {
+	it('registers the seeded credentials as passing their connection test', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const client = makeClient({
+			setThreadCredentialAllowlist,
+			createCredential: vi.fn().mockResolvedValue({ id: 'cred-seeded' }),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }],
+		});
+
+		expect(build.success).toBe(true);
+		// A declared credential stands for one the user already connected, so its
+		// placeholder token must not make the build see a failing connection test.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-seeded'],
+			['cred-seeded'],
+		);
+	});
+
+	it('creates a blank credential with no field values and keeps it off the bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi.fn().mockResolvedValue({ id: 'cred-blank' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'httpHeaderAuth', blank: true }],
+		});
+
+		expect(build.success).toBe(true);
+		// A blank credential models one the user saved without filling anything in,
+		// so it is seeded with no data and must never resolve a test as passing.
+		expect(createCredential).toHaveBeenCalledWith(expect.any(String), 'httpHeaderAuth', {});
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-blank'],
+			[],
+		);
+	});
+
+	it('filters an already-broken credential out of the connection-test bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi
+			.fn()
+			.mockResolvedValueOnce({ id: 'cred-working' })
+			.mockResolvedValueOnce({ id: 'cred-broken' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', valid: false }],
+		});
+
+		expect(build.success).toBe(true);
+		// Both credentials are created for real and visible to the build (2nd arg) —
+		// only the one NOT marked already-broken bypasses its connection test (3rd arg).
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-working', 'cred-broken'],
+			['cred-working'],
+		);
 	});
 });
