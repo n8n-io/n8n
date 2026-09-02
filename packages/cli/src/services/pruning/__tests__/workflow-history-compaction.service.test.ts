@@ -1,12 +1,16 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
-import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
+import {
+	getCompactionWindowDeltas,
+	WorkflowHistoryCompactionService,
+} from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionService', () => {
 	const dbConnection = mock<DbConnection>({
@@ -36,6 +40,22 @@ describe('WorkflowHistoryCompactionService', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	describe('getCompactionWindowDeltas', () => {
+		it('should offset the start delta by the time window and leave the end delta at the minimum age', () => {
+			expect(getCompactionWindowDeltas(24, 2, Time.hours.toMilliseconds)).toEqual({
+				startDelta: 26 * Time.hours.toMilliseconds,
+				endDelta: 24 * Time.hours.toMilliseconds,
+			});
+		});
+
+		it('should return equal deltas for an empty time window', () => {
+			expect(getCompactionWindowDeltas(7, 0, Time.days.toMilliseconds)).toEqual({
+				startDelta: 7 * Time.days.toMilliseconds,
+				endDelta: 7 * Time.days.toMilliseconds,
+			});
+		});
 	});
 
 	describe('init', () => {
@@ -279,6 +299,34 @@ describe('WorkflowHistoryCompactionService', () => {
 			);
 			return { compactingService, eventService };
 		};
+
+		it('should optimize over the window between optimizingMinimumAge and the time window', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			await compactingService['optimizeHistories']();
+
+			const now = Date.now();
+			expect(workflowHistoryRepository.getWorkflowIdsInRange).toHaveBeenCalledWith(
+				new Date(now - 26 * Time.hours.toMilliseconds),
+				new Date(now - 24 * Time.hours.toMilliseconds),
+			);
+		});
+
+		it('should trim over the window between trimmingMinimumAge and the time window', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			await compactingService['trimLongRunningHistories']();
+
+			const now = Date.now();
+			expect(workflowHistoryRepository.getWorkflowIdsInRange).toHaveBeenCalledWith(
+				new Date(now - 9 * Time.days.toMilliseconds),
+				new Date(now - 7 * Time.days.toMilliseconds),
+			);
+		});
 
 		it('should not emit telemetry when no workflows are in range', async () => {
 			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
