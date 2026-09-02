@@ -26,7 +26,6 @@ function makeController() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const agentTestChatService = mock<AgentTestChatService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
@@ -45,7 +44,7 @@ function makeController() {
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
 		agentTestRunService,
-		agentTestChatService,
+		mock<AgentTestChatService>(),
 		agentsBuilderService,
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
@@ -56,7 +55,6 @@ function makeController() {
 		controller,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
-		agentTestChatService,
 		agentChatAttachmentService,
 		agentsService: {
 			findById: agentsService.findById,
@@ -111,41 +109,6 @@ describe('AgentChatController route access scopes', () => {
 });
 
 describe('AgentChatController chat message history', () => {
-	it('returns recorded execution errors in test-chat history', async () => {
-		const { controller, agentsService, agentExecutionOrchestratorService, agentTestChatService } =
-			makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentExecutionOrchestratorService.getConversationHistory.mockResolvedValue([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-				executionId: 'execution-1',
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Model request failed' }],
-				executionId: 'execution-1',
-				executionStatus: 'error',
-			},
-		]);
-
-		const result = await controller.getTestChatMessages({
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			user: { id: 'user-1' },
-		} as never);
-
-		expect(result.messages.at(-1)).toEqual({
-			id: 'execution-1:assistant',
-			role: 'assistant',
-			content: [{ type: 'text', text: 'Model request failed' }],
-			executionId: 'execution-1',
-			executionStatus: 'error',
-		});
-		expect(agentTestChatService.getTestChatMessages).not.toHaveBeenCalled();
-	});
-
 	it('returns conversation history envelope from the execution orchestrator', async () => {
 		const { controller, agentsService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);

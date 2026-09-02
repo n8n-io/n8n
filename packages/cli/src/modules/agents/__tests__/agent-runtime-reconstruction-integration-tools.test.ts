@@ -308,11 +308,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(
-			n8nMemory,
-			mock<AgentChatAttachmentService>(),
-			mock<AgentExecutionService>(),
-		);
+		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
