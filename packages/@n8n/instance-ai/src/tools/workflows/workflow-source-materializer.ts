@@ -84,24 +84,30 @@ function escapeSingleQuotes(value: string): string {
 }
 
 const CONFIG_OPEN = 'config: {';
+/** A sticky note carries its name in the options object after its node list: `sticky(content, [...], { ... })`. */
+const STICKY_OPTIONS_OPEN = '], {';
 const ID_LINE = /^\s*id: '(?:[^'\\]|\\.)*',?$/;
 
 /**
  * A node's own `name:` is a direct key of its `config: {` object: on the same
  * line when the config is single-line, or on the first line after it (past an
- * optional `id:` line) when it spans lines. A `name:` inside `parameters` sits
- * deeper, so it never qualifies — even on a one-line config that also holds the
- * parameters — and cannot shadow a node declared further down.
+ * optional `id:` line) when it spans lines. A sticky note's `name:` is a direct
+ * key of its trailing options object instead. A `name:` inside `parameters`
+ * sits deeper, so it never qualifies — even on a one-line config that also holds
+ * the parameters — and cannot shadow a node declared further down.
  */
 function findNodeHeadLine(lines: string[], needle: string): number {
 	for (let i = 0; i < lines.length; i++) {
-		const at = lines[i].indexOf(needle);
-		if (at < 0) continue;
-		const configAt = lines[i].lastIndexOf(CONFIG_OPEN, at);
-		if (configAt >= 0) {
-			if (braceDepthBetween(lines[i], configAt + CONFIG_OPEN.length, at) === 0) return i + 1;
-			continue;
+		const line = lines[i];
+		// The name text can also appear inside a value on the same line (a template
+		// literal's last content line ends with the sticky options), so every
+		// occurrence is checked, not only the first.
+		for (let at = line.indexOf(needle); at >= 0; at = line.indexOf(needle, at + 1)) {
+			if (isDirectKeyOf(line, CONFIG_OPEN, at) || isDirectKeyOf(line, STICKY_OPTIONS_OPEN, at)) {
+				return i + 1;
+			}
 		}
+		if (!line.includes(needle) || line.includes(CONFIG_OPEN)) continue;
 		const previous = lines[i - 1]?.trim() ?? '';
 		if (previous.endsWith(CONFIG_OPEN)) return i + 1;
 		if (ID_LINE.test(lines[i - 1] ?? '') && (lines[i - 2]?.trim() ?? '').endsWith(CONFIG_OPEN)) {
@@ -109,6 +115,12 @@ function findNodeHeadLine(lines: string[], needle: string): number {
 		}
 	}
 	return 0;
+}
+
+/** True when the text at `at` is a direct key of the nearest `opener` object before it on the line. */
+function isDirectKeyOf(line: string, opener: string, at: number): boolean {
+	const openerAt = line.lastIndexOf(opener, at);
+	return openerAt >= 0 && braceDepthBetween(line, openerAt + opener.length, at) === 0;
 }
 
 /** Net `{`/`[` nesting between two offsets of one line, ignoring string contents. */

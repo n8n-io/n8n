@@ -129,6 +129,32 @@ describe('indexSourceNodes', () => {
 		]);
 	});
 
+	it('finds a sticky note by the name in its options object when its id is not emitted', () => {
+		const json: WorkflowJSON = {
+			name: 'W',
+			nodes: [
+				{
+					id: 'dup',
+					name: 'Notes',
+					type: 'n8n-nodes-base.stickyNote',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { content: '## Notes\nname: Notes' },
+				},
+			],
+			connections: {},
+		};
+		const code = [
+			"const send = node({ config: { id: 'x', name: 'Send', parameters: { note: 'name: Notes' } } });",
+			'const sticky1 = sticky(`## Notes',
+			"name: 'Notes'`, [send], { name: 'Notes', color: 4 });",
+		].join('\n');
+
+		expect(indexSourceNodes(json, code)).toEqual([
+			{ name: 'Notes', type: 'n8n-nodes-base.stickyNote', line: 3 },
+		]);
+	});
+
 	it('finds a multi-line config head with the name after the id line', () => {
 		const json: WorkflowJSON = {
 			name: 'W',
