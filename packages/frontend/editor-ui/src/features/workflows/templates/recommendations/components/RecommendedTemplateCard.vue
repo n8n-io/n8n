@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
 .categoryTag {
 	--n8n-badge--height: var(--height--xs);
 	--n8n-badge--border-color: transparent;
-	--n8n-badge--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-badge--padding: var(--spacing--2xs);
 }
 
 .statItem {

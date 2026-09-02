@@ -4,9 +4,10 @@ exports[`PreviewBadge > renders medium preview badge correctly 1`] = `
 <div>
   <span
     class="badge secondary xsmall preview medium"
-    disabled="false"
   >
     <!--v-if-->
+    
+    
     <span
       class="n8n-text step-2xs bold label label"
     >
@@ -16,6 +17,8 @@ exports[`PreviewBadge > renders medium preview badge correctly 1`] = `
       
       
     </span>
+    
+    
     <!--v-if-->
   </span>
 </div>
@@ -25,9 +28,10 @@ exports[`PreviewBadge > renders small preview badge correctly 1`] = `
 <div>
   <span
     class="badge secondary xsmall preview small"
-    disabled="false"
   >
     <!--v-if-->
+    
+    
     <span
       class="n8n-text step-2xs bold label label"
     >
@@ -37,6 +41,8 @@ exports[`PreviewBadge > renders small preview badge correctly 1`] = `
       
       
     </span>
+    
+    
     <!--v-if-->
   </span>
 </div>
