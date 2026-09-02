@@ -28,10 +28,6 @@ export type InstanceAiEventMap = {
 		latencyMs: number;
 		trees: number;
 	};
-	/** History rendered from the message-derived fallback ladder instead of a renderable snapshot tree. */
-	'instance-ai-parser-fallback': {
-		count: number;
-	};
 	/**
 	 * A new user turn was refused by a concurrency cap. The reason split is the signal for
 	 * whether queuing is worth building: `instance_run_limit` refusals mean real users are

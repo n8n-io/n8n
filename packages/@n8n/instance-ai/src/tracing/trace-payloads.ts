@@ -62,8 +62,8 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 }
 
 /**
- * Telemetry/tracing redaction policy. Deliberately stricter than the
- * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * Telemetry/tracing redaction policy: secrets plus every supported PII
+ * category, since traces egress to third-party tooling.
  * `preserveUrlStructure`: whole-URL redaction destroyed traced workflow
  * definitions without adding protection (secrets in URLs are caught first).
  */
