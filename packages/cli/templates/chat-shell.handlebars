@@ -158,7 +158,149 @@
 			title='Chat'
 			sandbox='{{sandbox}}'
 			data-src='{{iframeSrc}}'
+			{{#if refreshUrl}} data-refresh-url='{{refreshUrl}}' data-refresh-expires-in='{{refreshExpiresIn}}'{{/if}}
 		></iframe>
+
+		{{#if refreshUrl}}
+			{{!-- Keeps the frame's access token alive. The token is interpolated into the
+			      frame's HTML once and frozen for the life of that document, so without
+			      this a conversation older than the token fails every message with a 401.
+
+			      Lives on this page, not in the frame: the refresh token is in an httpOnly
+			      cookie scoped to this path, and only a same-origin request carries it.
+			      This page never reads that cookie either - it only asks the server to
+			      trade it. Runs before the script that assigns `frame.src`, so the frame's
+			      announcement can't arrive before the listener exists. --}}
+			<script>
+				(function () {
+					var frame = document.getElementById('n8n-chat-frame');
+					var endpoint = frame.getAttribute('data-refresh-url') || '';
+					if (!endpoint) return;
+					var lifetime = parseFloat(frame.getAttribute('data-refresh-expires-in')) || 0;
+
+					var timer = null;
+					var reloaded = false;
+
+					// Every token goes down a port the frame handed us, never at its contentWindow:
+					// that names the browsing context, which survives a navigation, so author script
+					// that navigates the frame away would be handed the next token. A port is an
+					// object in the frame document's realm - it dies with that document, and no
+					// replacement can obtain it.
+					var port = null;
+					var latched = false;
+					var pendingToken = '';
+					var portTimer = null;
+
+					window.addEventListener('message', function (event) {
+						// First announcement wins, and the latch never re-arms: the inner document is
+						// already unreloadable (its one-hop cookie is consumed on the first GET), so a
+						// second announcement can only come from a document we must not hand a token.
+						if (latched) return;
+						// allow-popups means a popup the frame opened can reach us as opener.parent,
+						// so the sender has to be the frame itself.
+						if (!frame || event.source !== frame.contentWindow) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat-frame-ready') return;
+						latched = true;
+						if (event.ports && event.ports.length) port = event.ports[0];
+						if (portTimer) { clearTimeout(portTimer); portTimer = null; }
+						if (!port) {
+							// This browser can't carry a token to the frame. Stop: the frame keeps the
+							// token baked into its HTML for its full hour, as it did before refresh existed.
+							if (timer) { clearTimeout(timer); timer = null; }
+							return;
+						}
+						if (pendingToken) {
+							port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken });
+							pendingToken = '';
+						}
+					});
+
+					function deliver(token) {
+						if (port) { port.postMessage({ type: 'n8n-chat-auth-token', token: token }); return; }
+						// Hold the newest token rather than lose a one-shot post: a refresh can beat
+						// the frame's own bootstrap.
+						pendingToken = token;
+						if (!portTimer) portTimer = setTimeout(portMissing, 10000);
+					}
+
+					function portMissing() {
+						portTimer = null;
+						if (port) return;
+						// No fallback that posts at the frame's own window: a document that navigated
+						// the frame simply never announces itself, so the fallback would be the exact
+						// path that hands it the token. Reload instead - guarded, same-origin.
+						giveUp();
+					}
+
+					// How long BEFORE expiry to refresh, not when to refresh: a fifth of the
+					// lifetime, clamped to [60s, 600s]. A one-hour token is therefore replaced at
+					// t+50min, leaving ten minutes of margin - enough for a throttled background
+					// tab, a slept laptop, and the one retry before the reload fallback.
+					function leadSeconds(lifetimeSeconds) {
+						return Math.min(600, Math.max(60, lifetimeSeconds * 0.2));
+					}
+
+					// Takes a duration, never an absolute expiry the server computed: a clock that
+					// disagrees with the server's would otherwise skew every schedule. This timer is
+					// the only thing that starts a refresh, so two can never be in flight at once.
+					function planFor(lifetimeSeconds) {
+						var remaining = Math.max(0, lifetimeSeconds);
+						var delay = Math.max(0, (remaining - leadSeconds(remaining)) * 1000);
+						if (timer) clearTimeout(timer);
+						timer = setTimeout(function () { refresh(false); }, delay);
+					}
+
+					function giveUp() {
+						// One reload, guarded: it re-runs the handshake, which auto-approves against
+						// the visitor's existing consent. Without the guard a broken AS would put the
+						// page in a reload loop.
+						if (reloaded) return;
+						reloaded = true;
+						window.location.reload();
+					}
+
+					function refresh(isRetry) {
+						// The frame announced itself with no port, so there is nowhere to put a fresh
+						// token. Reachable through the 5s retry: a request already in flight when that
+						// announcement arrives still schedules one.
+						if (latched && !port) return;
+						// Taken before the request leaves, so the elapsed time subtracted below covers
+						// the whole window - both network legs, our handler, and the AS round trip.
+						// Without it the page anchors the lifetime to when the response *arrived* and
+						// so always believes it has more left than it does, which is the direction
+						// that ends in 401s.
+						var startedAt = Date.now();
+						fetch(endpoint, {
+							method: 'GET',
+							credentials: 'same-origin',
+							cache: 'no-store',
+							// Custom header, so the request needs a preflight no other origin gets
+							// past. This is the CSRF guard on the leg.
+							headers: { 'x-n8n-chat-refresh': '1' },
+						})
+							.then(function (response) {
+								if (!response.ok) throw new Error('refresh failed: ' + response.status);
+								return response.json();
+							})
+							.then(function (data) {
+								if (!data || typeof data.token !== 'string' || !data.token) {
+									throw new Error('refresh returned no token');
+								}
+								deliver(data.token);
+								var next = typeof data.expiresIn === 'number' ? data.expiresIn : 3600;
+								planFor(next - (Date.now() - startedAt) / 1000);
+							})
+							.catch(function () {
+								if (isRetry) giveUp();
+								else setTimeout(function () { refresh(true); }, 5000);
+							});
+					}
+
+					planFor(lifetime);
+				})();
+			</script>
+		{{/if}}
 
 		{{#if hasCredentials}}
 			<div

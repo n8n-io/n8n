@@ -74,10 +74,12 @@ export function getSanitizedCustomCss(customCss: string): string {
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
 
 /**
- * Runs before the widget's module script (classic inline scripts aren't deferred). Both
- * jobs follow from the frame having no origin: stand in for `localStorage`, which the
- * widget touches at startup and which throws here, and read the session id the shell
- * passes in the fragment.
+ * Runs before the widget's module script (classic inline scripts aren't deferred). The
+ * first two jobs follow from the frame having no origin: stand in for `localStorage`,
+ * which the widget touches at startup and which throws here, and read the session id the
+ * shell passes in the fragment. The third is the auth channel — this document opens the
+ * `MessagePort` the shell delivers rotated tokens down, so the channel belongs to this
+ * document and no later one can inherit it.
  */
 const innerBootstrapScript = `
 			<script>
@@ -102,6 +104,32 @@ const innerBootstrapScript = `
 					window.__n8nChatSessionId = match ? decodeURIComponent(match[1]) : '';
 					if (window.__n8nChatSessionId) {
 						shim.setItem(${escapeForScriptContext(WIDGET_SESSION_ID_KEY)}, window.__n8nChatSessionId);
+					}
+
+					// The widget reads this same object on every send, so writing the rotated
+					// token into it in place is all a refresh has to do. Created here, before
+					// the module script, so a token that lands early is never dropped.
+					window.__n8nChatAuthHeaders = {};
+
+					// A private channel rather than a window listener: the port is an object in
+					// this document's realm, so it dies with this document. If author script
+					// navigates the frame away, the replacement can't obtain the port and the
+					// shell's next token reaches nothing.
+					try {
+						var channel = new MessageChannel();
+						// Assigning onmessage implicitly starts the port. No sender check is needed
+						// or possible: a port has one peer, and only the shell holds it.
+						channel.port1.onmessage = function (event) {
+							var data = event.data;
+							if (!data || data.type !== 'n8n-chat-auth-token') return;
+							if (typeof data.token !== 'string' || !data.token) return;
+							window.__n8nChatAuthHeaders['x-auth-token'] = data.token;
+						};
+						window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);
+					} catch (error) {
+						// Announce anyway, with no port: that closes the shell's latch, so a document
+						// loaded here later cannot claim the channel we failed to open.
+						try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}
 					}
 				})();
 			</script>`;
@@ -216,6 +244,26 @@ export function createPage({
 				email: frameIdentity.visitor.email,
 			})} };`;
 
+	// In the frame, the header object is hoisted out of the `createChat` literal so a
+	// reference to it survives the call: `createChat` keeps this object's identity and
+	// the widget reads it on every send, so the shell's refresh writes the rotated token
+	// into it in place and nothing re-enters this code. The `if` covers the narrow race
+	// where a refresh lands before this module script runs. The unsplit render keeps the
+	// literal inline so its page stays byte-for-byte what it was.
+	const headersBootstrap = frameIdentity
+		? `const headers = window.__n8nChatAuthHeaders || {};
+					headers['X-Instance-Id'] = '${instanceId}';
+					if (!headers['x-auth-token']) headers['x-auth-token'] = ${escapeForScriptContext(frameIdentity.authToken)};
+
+					`
+		: '';
+	const webhookConfigHeaders = frameIdentity
+		? 'headers: headers'
+		: `headers: {
+								'X-Instance-Id': '${instanceId}',
+								
+							}`;
+
 	return `<!doctype html>
 	<html lang="en">
 		<head>
@@ -241,7 +289,7 @@ export function createPage({
 				(async function () {
 					${identityBootstrap}
 
-					createChat({
+					${headersBootstrap}createChat({
 						mode: 'fullscreen',
 						webhookUrl: ${escapeForScriptContext(webhookUrl ?? '')},
 						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
@@ -249,10 +297,7 @@ export function createPage({
 						metadata: metadata,
 						${shellInner ? 'sessionId: window.__n8nChatSessionId || undefined,' : ''}
 						webhookConfig: {
-							headers: {
-								'X-Instance-Id': '${instanceId}',
-								${frameIdentity ? `'x-auth-token': ${escapeForScriptContext(frameIdentity.authToken)},` : ''}
-							}
+							${webhookConfigHeaders}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
 						allowedFilesMimeTypes: ${escapeForScriptContext(sanitizedAllowedFilesMimeTypes)},

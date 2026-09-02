@@ -32,6 +32,12 @@ const withOneMissingAccount = {
 	],
 };
 
+const withRefresh = {
+	...baseView,
+	refreshUrl: '/webhook/abc/chat?n8nChatRefresh=1',
+	refreshExpiresIn: 3600,
+};
+
 const renderView = async (view: Record<string, unknown>) => {
 	const app = express();
 	app.engine('handlebars', createHandlebarsEngine());
@@ -107,6 +113,11 @@ describe('chat-shell.handlebars', () => {
 			],
 			['the visitor email', { visitorEmail: '"><script>alert(3)</script>' }, '<script>alert(3)'],
 			['the bar text', { barText: '"><script>alert(4)</script>' }, '<script>alert(4)'],
+			[
+				'the refresh URL',
+				{ refreshUrl: '/chat?x="><script>alert(5)</script>' },
+				'<script>alert(5)',
+			],
 		])('escapes %s', async (_label, override, breakout) => {
 			const html = await renderView({ ...withOneMissingAccount, ...override });
 
@@ -196,6 +207,85 @@ describe('chat-shell.handlebars', () => {
 
 			expect(html).toContain('Ask the workflow owner');
 			expect(html).not.toContain('data-url=');
+		});
+	});
+
+	describe('the token refresh leg', () => {
+		// The script is static and reads the endpoint and schedule off the frame's data
+		// attributes, so nothing server-supplied enters script context.
+		const refreshScript = async (view: Record<string, unknown> = withRefresh) => {
+			const html = await renderView(view);
+			return html.slice(html.indexOf('<script>'), html.indexOf('</script>'));
+		};
+
+		it('passes the endpoint and the schedule as data attributes', async () => {
+			const html = await renderView(withRefresh);
+
+			expect(html).toContain("data-refresh-url='/webhook/abc/chat?n8nChatRefresh&#x3D;1'");
+			expect(html).toContain("data-refresh-expires-in='3600'");
+			expect(await refreshScript()).toContain("getAttribute('data-refresh-url')");
+		});
+
+		it('omits the leg entirely when the shell is rendered without one', async () => {
+			const html = await renderView(withOneMissingAccount);
+
+			expect(html).not.toContain('data-refresh-url');
+			expect(html).not.toContain('x-n8n-chat-refresh');
+		});
+
+		// The CSRF guard on the leg: a custom header needs a preflight no other origin
+		// gets past.
+		it('asks for a token with the custom header and no cache', async () => {
+			const src = await refreshScript();
+
+			expect(src).toContain("'x-n8n-chat-refresh': '1'");
+			expect(src).toContain("credentials: 'same-origin'");
+			expect(src).toContain("cache: 'no-store'");
+		});
+
+		// A port is an object in the frame document's realm, so it dies with that
+		// document. Posting at `contentWindow` would hand the next token to whatever
+		// author script navigated the frame to.
+		it("delivers every token down the frame's port, never at its window", async () => {
+			const src = await refreshScript();
+
+			expect(src).toContain("port.postMessage({ type: 'n8n-chat-auth-token'");
+			expect(src).not.toContain('frame.contentWindow.postMessage');
+		});
+
+		it('accepts the port only from the frame, and only once', async () => {
+			const src = await refreshScript();
+
+			expect(src).toContain('event.source !== frame.contentWindow');
+			expect(src).toContain('if (latched) return;');
+		});
+
+		// A refresh can beat the frame's bootstrap, and the post is one-shot.
+		it('holds the newest token until the port arrives', async () => {
+			const src = await refreshScript();
+
+			expect(src).toContain('pendingToken = token;');
+			expect(src).toContain(
+				"port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken })",
+			);
+			// If no port ever arrives, reload rather than fall back to the frame's window.
+			expect(src).toContain('portTimer = setTimeout(portMissing, 10000);');
+		});
+
+		it('retries once and then reloads exactly once', async () => {
+			const src = await refreshScript();
+
+			expect(src).toContain('refresh(true)');
+			expect(src).toContain('window.location.reload()');
+			expect(src).toContain('if (reloaded) return;');
+		});
+
+		// The whole point of the httpOnly cookie: the refresh token exists in no document.
+		it('carries no refresh token', async () => {
+			const html = await renderView(withRefresh);
+
+			expect(html).not.toContain('refreshToken');
+			expect(html).not.toContain('n8n-chat-oauth-refresh');
 		});
 	});
 
