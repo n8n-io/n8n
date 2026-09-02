@@ -4,9 +4,9 @@ import type { PendingConfirmationItem } from './instanceAi.store';
  * Decides whether a pending confirmation belongs in the floating slot (takes
  * over the chat input) or the inline list (renders in the chat flow).
  *
- * Floating: single-click approvals + domain/web-search access.
- * Inline: questions, plan-review, text, setup, credential, gateway
- *   resource-decision, continue, channel setup.
+ * Floating: structured questions, single-click approvals, and domain/web-search access.
+ * Inline: plan-review, text, setup, credential, gateway resource-decision,
+ *   continue, channel setup.
  *
  * Items are inline-by-presence: if `setupRequests` / `credentialRequests` /
  * `credentialFlow` / `channelConfig` is set, the panel renders a setup or
@@ -22,12 +22,12 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.channelConfig) return false;
 
 	switch (conf.inputType) {
-		case 'questions':
 		case 'plan-review':
 		case 'text':
 		case 'resource-decision':
 		case 'continue':
 			return false;
+		case 'questions':
 		case 'approval':
 		case undefined:
 			return true;

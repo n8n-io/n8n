@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.35.0",
+  "version": "2.37.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -124,6 +124,7 @@
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
       "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
+      "dist/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
@@ -219,6 +220,7 @@
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "catalog:",
     "@types/jsdom": "catalog:",
+    "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "@types/mime-types": "catalog:",
     "@types/oracledb": "catalog:",
@@ -307,6 +309,7 @@
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",
     "jsdom": "23.0.1",
+    "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
     "mammoth": "1.12.1",

@@ -526,7 +526,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPaginationPages() {
-		return this.getOutputPagination().locator('.el-pager li.number');
+		return this.getOutputPagination().getByTestId('pagination-item');
 	}
 
 	async navigateToOutputPage(pageNumber: number): Promise<void> {

@@ -1,6 +1,5 @@
 import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, INodeCredentialDescription } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
 
 import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation';
 
@@ -71,12 +70,6 @@ function createMocks({
 }
 
 describe('validateWorkflowCredentialReferences', () => {
-	beforeEach(() => {
-		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
-	});
-
-	afterEach(() => vi.restoreAllMocks());
-
 	test('passes when no node has a credential reference', async () => {
 		const { credentialsService, nodeTypes } = createMocks({
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', makeNodeTypeDescription()]]),
@@ -203,22 +196,40 @@ describe('validateWorkflowCredentialReferences', () => {
 	});
 
 	test('skips credential types the node does not actively use', async () => {
-		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
 		const { credentialsService, nodeTypes } = createMocks({
 			usableCredentials: [],
-			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', makeNodeTypeDescription()]]),
+			nodeTypeDescriptions: new Map([
+				[
+					'n8n-nodes-base.slack',
+					makeNodeTypeDescription({
+						credentials: [
+							{
+								name: 'slackApi',
+								required: true,
+								displayOptions: { show: { authentication: ['accessToken'] } },
+							},
+						],
+					}),
+				],
+			]),
 		});
 
 		const result = await validateWorkflowCredentialReferences(
-			[makeNode({ credentials: { slackApi: { id: 'cred-foreign', name: 'Foreign' } } })],
+			[
+				makeNode({
+					parameters: { authentication: 'oAuth2' },
+					credentials: { slackApi: { id: 'cred-foreign', name: 'Foreign' } },
+				}),
+			],
 			user,
 			credentialsService,
 			nodeTypes,
 			projectId,
 		);
 
-		// slackApi is not displayed, so it isn't an active type → not checked.
+		// slackApi's displayOptions don't match, so it isn't an active type → not checked.
 		expect(result.ok).toBe(true);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 	});
 
 	test('checks HTTP Request credentials declared via nodeCredentialType', async () => {
@@ -258,10 +269,8 @@ describe('validateWorkflowCredentialReferences', () => {
 	});
 
 	test('validates every credential when nodeCredentialType is an expression', async () => {
-		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
 		const { credentialsService, nodeTypes } = createMocks({
 			usableCredentials: [],
-			getOneImpl: async (id) => ({ id, name: 'GitHub account', type: 'githubApi' }),
 			nodeTypeDescriptions: new Map([
 				[
 					'n8n-nodes-base.httpRequest',
@@ -273,13 +282,15 @@ describe('validateWorkflowCredentialReferences', () => {
 		const result = await validateWorkflowCredentialReferences(
 			[
 				makeNode({
-					name: 'Fetch',
+					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					parameters: {
 						authentication: 'predefinedCredentialType',
-						nodeCredentialType: '={{ "githubApi" }}',
+						// Resolves only at execution time, so the active types can't be
+						// determined statically — every credential reference must be checked.
+						nodeCredentialType: '={{ $json.credType }}',
 					},
-					credentials: { githubApi: { id: 'cred-foreign', name: 'GitHub account' } },
+					credentials: { githubApi: { id: 'ghost', name: 'GitHub account' } },
 				}),
 			],
 			user,
@@ -290,14 +301,13 @@ describe('validateWorkflowCredentialReferences', () => {
 
 		expect(result.ok).toBe(false);
 		if (result.ok) throw new Error('unreachable');
-		expect(result.error).toContain("credential 'cred-foreign' is not usable");
+		expect(result.error).toContain('HTTP Request');
+		expect(result.error).toContain("credential 'ghost' not found or not accessible");
 	});
 
 	test('validates every credential when genericAuthType is an expression', async () => {
-		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
 		const { credentialsService, nodeTypes } = createMocks({
 			usableCredentials: [],
-			getOneImpl: async (id) => ({ id, name: 'Header auth', type: 'httpHeaderAuth' }),
 			nodeTypeDescriptions: new Map([
 				[
 					'n8n-nodes-base.httpRequest',
@@ -309,13 +319,13 @@ describe('validateWorkflowCredentialReferences', () => {
 		const result = await validateWorkflowCredentialReferences(
 			[
 				makeNode({
-					name: 'Fetch',
+					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					parameters: {
 						authentication: 'genericCredentialType',
-						genericAuthType: '={{ "httpHeaderAuth" }}',
+						genericAuthType: '={{ $json.authType }}',
 					},
-					credentials: { httpHeaderAuth: { id: 'cred-foreign', name: 'Header auth' } },
+					credentials: { httpHeaderAuth: { id: 'ghost', name: 'Header Auth' } },
 				}),
 			],
 			user,
@@ -326,7 +336,43 @@ describe('validateWorkflowCredentialReferences', () => {
 
 		expect(result.ok).toBe(false);
 		if (result.ok) throw new Error('unreachable');
-		expect(result.error).toContain("credential 'cred-foreign' is not usable");
+		expect(result.error).toContain("credential 'ghost' not found or not accessible");
+	});
+
+	test('passes when nodeCredentialType is an expression but the credential is usable', async () => {
+		const { credentialsService, nodeTypes } = createMocks({
+			usableCredentials: [{ id: 'cred-1', name: 'GitHub account', type: 'githubApi' }],
+			nodeTypeDescriptions: new Map([
+				[
+					'n8n-nodes-base.httpRequest',
+					makeNodeTypeDescription({ name: 'n8n-nodes-base.httpRequest', credentials: [] }),
+				],
+			]),
+		});
+
+		const result = await validateWorkflowCredentialReferences(
+			[
+				makeNode({
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: '={{ $json.credType }}',
+					},
+					credentials: { githubApi: { id: 'cred-1', name: 'GitHub account' } },
+				}),
+			],
+			user,
+			credentialsService,
+			nodeTypes,
+			projectId,
+		);
+
+		// The fallback checks every reference instead of rejecting outright.
+		expect(result.ok).toBe(true);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId,
+		});
 	});
 
 	test('validates every credential when the node type cannot be resolved', async () => {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	credentialDestinationDecisionSchema,
 	domainAccessActionSchema,
 	instanceAiApprovalResumeSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -49,6 +50,11 @@ const credentialAutoSetupConfirmSchema = z.object({
 	attemptId: z.string().trim().min(1).max(64).optional(),
 });
 
+const credentialDestinationConfirmSchema = credentialDestinationDecisionSchema.extend({
+	kind: z.literal('credentialDestination'),
+	approved: z.boolean(),
+});
+
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
 const domainAccessApproveSchema = z.object({
 	kind: z.literal('domainAccessApprove'),
@@ -83,6 +89,9 @@ const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
 	nodeParameters: nodeParametersRecord,
+	/** Nodes whose cards the user actively skipped in this panel. Without this the backend
+	 *  can only see that they're still unconfigured, which reads as "ask again". */
+	skippedNodes: z.array(z.string()).optional(),
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;
@@ -103,6 +112,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
 	credentialAutoSetupConfirmSchema,
+	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,

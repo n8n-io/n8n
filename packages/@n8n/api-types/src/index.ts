@@ -169,6 +169,18 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
+export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+
+export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
+
 export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
@@ -238,6 +250,8 @@ export {
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,
+	WorkflowListPublicationStatusSchema,
+	type WorkflowListPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
@@ -292,7 +306,10 @@ export {
 export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
@@ -328,7 +345,10 @@ export {
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
+	shouldAutoResolveCredential,
 	workflowSetupNodeSchema,
+	setupItemSchema,
+	setupItemsPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -350,6 +370,8 @@ export {
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	credentialDestinationSchema,
+	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
@@ -379,6 +401,7 @@ export {
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -390,6 +413,9 @@ export {
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -402,6 +428,7 @@ export {
 	instanceAiEvalSeedAgentSchema,
 	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 } from './schemas/instance-ai.schema';
@@ -414,6 +441,10 @@ export type {
 	InstanceAiCatalogModel,
 	InstanceAiModelCatalogResponse,
 	InstanceAiCredits,
+	InstanceAiComponentSource,
+	InstanceAiWebSearchSource,
+	InstanceAiSetupState,
+	InstanceAiSetupStateInput,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -450,6 +481,8 @@ export type {
 	InstanceAiToolResultEvent,
 	InstanceAiToolErrorEvent,
 	InstanceAiConfirmationRequestEvent,
+	InstanceAiSetupItem,
+	InstanceAiSetupItemsEvent,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
@@ -493,12 +526,15 @@ export type {
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
+	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -506,6 +542,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialDestination,
+	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
@@ -585,6 +623,7 @@ export {
 	MCP_CLIENT_TYPE_FILTER_BUCKETS,
 	MCP_CLIENT_CONNECTED_PERIODS,
 	getMcpClientType,
+	getMcpClientBrand,
 	type McpScope,
 	type McpClientType,
 	type McpClientBrandName,
@@ -702,4 +741,8 @@ export {
 	MOONSHOTAI_KIMI_K3_PROVIDER,
 	isMoonshotaiKimiK3ModelId,
 } from './constants/instance-ai-models';
-export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';
+export {
+	BLOCK_ACCESS_ASSIGNMENT,
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_QUERY_PARAM,
+} from './constants/role-mapping';

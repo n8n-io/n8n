@@ -4,6 +4,7 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
 
@@ -167,13 +168,22 @@ describe('OAuthConsentView', () => {
 		expect(allowButton).not.toBeDisabled();
 	});
 
-	it('should show the redirect URL inside the warning callout', async () => {
+	it('should show the redirect URL inside the redirect callout', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
 		expect(getByTestId('consent-redirect-warning')).toBeVisible();
 		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
 			'https://legitimate-client.com/callback',
+		);
+	});
+
+	it('should render the trust checkbox outside the redirect callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
+			getByTestId('consent-redirect-confirm'),
 		);
 	});
 
@@ -204,7 +214,7 @@ describe('OAuthConsentView', () => {
 			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
 		});
 
-		it('should not show the redirect URL or the warning callout', async () => {
+		it('should not show the redirect URL or the redirect callout', async () => {
 			const { queryByTestId } = renderComponent();
 			await waitAllPromises();
 
@@ -290,6 +300,20 @@ describe('OAuthConsentView', () => {
 			]);
 		});
 
+		it('should keep a custom scope selection when the trust checkbox is toggled', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+			expect(getByTestId('scopes-mode-custom')).toBeChecked();
+		});
+
 		it('should show a tool count pill per scope group when scope tools are provided', async () => {
 			const detailsWithTools = {
 				...scopedDetails,
@@ -323,6 +347,90 @@ describe('OAuthConsentView', () => {
 			await userEvent.click(getByTestId('scopes-tree-toggle'));
 
 			expect(queryByTestId('scope-group-tools-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should open the tools popover on keyboard focus and link it to the pill', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			const pill = getByTestId('scope-group-tools-workflows');
+			expect(pill).toHaveAttribute('tabindex', '0');
+
+			pill.focus();
+			await waitAllPromises();
+
+			const popover = getByTestId('scope-group-tools-popover-workflows');
+			expect(popover).toBeInTheDocument();
+
+			// The trigger is described by a hidden role="tooltip" node holding the
+			// flattened popover text — this is what a screen reader announces.
+			const describedBy = pill.getAttribute('aria-describedby');
+			expect(describedBy).toBeTruthy();
+			const description = document.getElementById(describedBy as string);
+			expect(description).toHaveAttribute('role', 'tooltip');
+			expect(description).toHaveTextContent('3 of 3 tools enabled');
+
+			pill.blur();
+			await waitAllPromises();
+
+			expect(queryByTestId('scope-group-tools-popover-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should expose per-tool enabled state as text in the tools popover', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+
+			const workflowsPill = getByTestId('scope-group-tools-workflows');
+			workflowsPill.focus();
+			await waitAllPromises();
+
+			const workflowsPopover = getByTestId('scope-group-tools-popover-workflows');
+			expect(workflowsPopover).toHaveTextContent('0 of 3 tools enabled');
+			expect(within(workflowsPopover).getAllByText('not enabled')).toHaveLength(3);
+
+			workflowsPill.blur();
+			await waitAllPromises();
+
+			const executionsPill = getByTestId('scope-group-tools-executions');
+			executionsPill.focus();
+			await waitAllPromises();
+
+			const executionsPopover = getByTestId('scope-group-tools-popover-executions');
+			expect(executionsPopover).toHaveTextContent('1 of 1 tools enabled');
+			expect(within(executionsPopover).getAllByText('enabled')).toHaveLength(1);
 		});
 
 		it('should disable Allow when no scopes are selected', async () => {

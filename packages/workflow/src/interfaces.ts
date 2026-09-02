@@ -155,7 +155,26 @@ export type N8nOAuth2ValidationResult =
 	| { valid: false; reason: OAuth2FailureReason };
 
 export type N8nOAuth2FlowResult =
-	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| {
+			valid: true;
+			token: string;
+			/** Rotated on every use. Never hand this to a browser document or to page script. */
+			refreshToken: string;
+			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
+			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
+			expiresIn: number;
+			user: IUser;
+			metadata?: Record<string, string>;
+	  }
+	| { valid: false; reason: string };
+
+/**
+ * Result of trading a refresh token for a fresh pair. Carries no user: the grant
+ * the token belongs to already fixes the subject, and the caller re-validates the
+ * access token when it needs the identity.
+ */
+export type N8nOAuth2RefreshResult =
+	| { valid: true; token: string; refreshToken: string; expiresIn: number }
 	| { valid: false; reason: string };
 
 export type ProjectSharingData = {
@@ -393,6 +412,7 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
+	__showManagedOAuthScopes?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -412,6 +432,16 @@ export interface ICredentialType {
 	 * Opt-in. Existing credentials without this flag are unaffected.
 	 */
 	restrictToSupportedNodes?: true;
+
+	/**
+	 * If `true`, the domain restriction fields will not be shown in the credential type properties.
+	 */
+	hideDomainRestrictionFields?: boolean;
+
+	/**
+	 * If `true`, the credential type will not be shown in the credentials add modal
+	 */
+	hidden?: boolean;
 }
 
 export interface ICredentialTypes {
@@ -923,14 +953,16 @@ interface NodeHelperFunctions {
 
 /**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
- * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
- * validation and a connect-time secure DNS lookup.
+ * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
+ * validation, a connect-time secure DNS lookup, and per-redirect validation.
  */
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
+	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
+	validateRedirectSync(url: string): void;
 }
 
 export interface RequestHelperFunctions {
@@ -993,10 +1025,10 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport, or `undefined` when egress filtering is not configured (callers
-	 * then use the default transport).
+	 * transport. When egress filtering is not configured, this is a passthrough
+	 * implementation, so callers can always use the returned filter unguarded.
 	 */
-	getSecureEgressFilter(): NodeEgressFilter | undefined;
+	getSecureEgressFilter(): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -1160,6 +1192,12 @@ export type CredentialCheckStatus = {
 	status: 'missing' | 'configured' | 'resolver_missing';
 	authorizationUrl?: string;
 	revokeUrl?: string;
+	/**
+	 * Absolute URL of the credential type's provider icon. Resolved server-side
+	 * because consumers (e.g. the form hosting shell, rendered from nodes-base)
+	 * have no access to the credential registry.
+	 */
+	iconUrl?: string;
 };
 
 export type CredentialCheckResult = {
@@ -1400,6 +1438,12 @@ export interface IPollFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
+	/**
+	 * Milliseconds this poll may spend before the engine abandons the tick.
+	 * A node draining a large backlog should stop fetching before the budget
+	 * runs out, return what it has, and leave the rest to the next poll.
+	 */
+	getPollBudgetMs(): number;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1512,6 +1556,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
+	 * Trades the refresh token from a completed flow for a fresh access/refresh pair on
+	 * the same grant, keeping a long-lived page working past the access token's one-hour
+	 * life without a new redirect. The AS rotates the refresh token, so the caller must
+	 * store the returned one and drop the old one. `resourceUrl` must name the resource
+	 * the grant was approved for.
+	 */
+	refreshN8nOAuth2Flow(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/**
 	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
 	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
 	 * bearer token directly, and by browser triggers on the POST leg to re-check the
@@ -1526,14 +1578,15 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Call only after the token is validated. The identity persists for the whole
 	 * execution (including across a Wait), within the token's validity window.
 	 */
-	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -1561,6 +1614,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
+	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
@@ -2272,6 +2327,11 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	 */
 	outputSchema?: JSONSchema7;
 	/**
+	 * Whether to forward generated text to a streaming workflow response. Defaults
+	 * to true when omitted. This does not affect execution progress events.
+	 */
+	enableStreaming?: boolean;
+	/**
 	 * Which slice of the calling node's input the agent's `fetch_input_data`
 	 * tool should expose: the single current item (`'item'`, default) or all
 	 * input items (`'all'`, used when the node invokes the agent once for the
@@ -2315,6 +2375,14 @@ export interface ExecuteAgentWorkflowContext {
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
 	runExecutionData: IRunExecutionData;
+}
+
+export interface ExecuteAgentInvocationContext {
+	nodeId: string;
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	sendResponseChunk?: (type: ChunkType, content?: string) => Promise<void>;
 }
 
 export interface ExecuteAgentOptions {
@@ -2992,12 +3060,29 @@ export type TriggerPanelDefinition = {
 	activationHint?: string | { active: string; inactive: string };
 };
 
+/**
+ * Collapses hints that report the same kind of problem, so a node reporting it
+ * for 20 fields shows one summary line instead of 20 near-identical callouts.
+ */
+export type NodeHintGroup = {
+	/** Hints sharing this key are collapsed together */
+	key: string;
+	/** Text shown while collapsed. `{count}` is replaced with the number of hints in the group. */
+	summary: string;
+	/**
+	 * Short form listed when the group is expanded, e.g. just the field name.
+	 * Falls back to `message` when not set.
+	 */
+	label?: string;
+};
+
 export type NodeHint = {
 	message: string;
 	type?: 'info' | 'warning' | 'danger';
 	location?: 'outputPane' | 'inputPane' | 'ndv';
 	displayCondition?: string;
 	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+	group?: NodeHintGroup;
 };
 
 export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
@@ -3015,6 +3100,13 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	/**
+	 * Set when this test webhook was registered for the editor's canvas chat session
+	 * (path rewritten to `{workflowId}/{chatSessionId}`). Lets the Chat Trigger skip
+	 * webhook auth for that trusted, session-scoped route only — every other test
+	 * request still enforces the configured authentication.
+	 */
+	isChatSessionTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }
@@ -3271,6 +3363,27 @@ export interface RelatedExecution {
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
 	executionContext?: IExecutionContext;
+}
+
+/**
+ * The suspended agent tool call an execution should wake when it finishes — the
+ * agent-run counterpart to `RelatedExecution`, which wakes a parent workflow.
+ * Stamped by the agent workflow tool onto the sub-executions it starts.
+ */
+export interface RelatedAgentRun {
+	agentId: string;
+	projectId: string;
+	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
+	threadId: string;
+	runId: string;
+	toolCallId: string;
+	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
+	integrationType?: string;
+	/**
+	 * The interactive n8n user, when there is one. The preview chat resumes the draft
+	 * agent version, which gates node and workflow tools by this user's access.
+	 */
+	userId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3658,6 +3771,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		invocationContext?: ExecuteAgentInvocationContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3675,11 +3789,15 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
 	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
+	refreshN8nOAuth2Flow?: (
+		refreshToken: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2RefreshResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
-	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity?(token: string, resource: string, subject?: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
@@ -3791,6 +3909,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	engineType?: 'v1' | 'v2';
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';

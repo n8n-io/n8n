@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -34,6 +34,13 @@ const emit = defineEmits<{
 }>();
 
 const inputDraft = ref('');
+const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function focusInput(options?: FocusOptions) {
+	chatPanel.value?.focusInput(options);
+}
+
+defineExpose({ focusInput });
 </script>
 
 <template>
@@ -42,10 +49,11 @@ const inputDraft = ref('');
 		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
 		data-testid="agent-preview-chat-page"
 	>
-		<div :class="[$style.chatFrame, { [$style.dockChatFrame]: layout === 'dock' }]">
+		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
+				ref="chatPanel"
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -76,16 +84,11 @@ const inputDraft = ref('');
 
 .chatFrame {
 	width: 100%;
-	max-width: 45rem;
 	min-height: 0;
 	display: flex;
 }
 
 .dockLayout {
 	background-color: transparent;
-}
-
-.dockChatFrame {
-	max-width: none;
 }
 </style>

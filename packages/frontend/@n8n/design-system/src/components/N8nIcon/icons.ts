@@ -160,8 +160,10 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
+import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLayers from '~icons/lucide/layers';
 import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
+import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
@@ -200,6 +202,7 @@ import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
 import IconLucidePencilOff from '~icons/lucide/pencil-off';
+import IconLucidePictureInPicture2 from '~icons/lucide/picture-in-picture-2';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -664,8 +667,10 @@ export const updatedIconSet = {
 	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
+	laptop: IconLucideLaptop,
 	layers: IconLucideLayers,
 	'layout-template': IconLucideLayoutTemplate,
+	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,
@@ -702,6 +707,7 @@ export const updatedIconSet = {
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
 	'pencil-off': IconLucidePencilOff,
+	'picture-in-picture-2': IconLucidePictureInPicture2,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,

@@ -59,8 +59,19 @@ export interface PageInfo {
 	url: string;
 }
 
+export interface DisconnectDetails {
+	/** Other extensions owning a frame in the tab. Empty when none could be named. */
+	blockingExtensionIds: string[];
+}
+
 export interface Adapter {
-	onDisconnect?: (reason: ConnectionLostReason) => void;
+	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+	/**
+	 * Another extension blocked automation; the session may still be alive.
+	 * Playwright adapter only. `agent-browser` never fires this and drops the
+	 * disconnect details, so there a block is reported without naming the extension.
+	 */
+	onBlocked?: (details: DisconnectDetails) => void;
 	launch(config: ConnectConfig): Promise<void>;
 	close(): Promise<void>;
 	// Tabs
@@ -233,6 +244,8 @@ export interface ClickOptions {
 }
 
 export interface TypeOptions {
+	/** 'paste' inserts the value in one operation, replacing existing content. */
+	mode?: 'type' | 'paste';
 	clear?: boolean;
 	submit?: boolean;
 	delay?: number;
@@ -294,8 +307,16 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	): AffectedResource[] | Promise<AffectedResource[]>;
 }
 
+/**
+ * What the `resource` string identifies. Callers gate on this rather than on the
+ * string itself: `resource` is a hostname for `host`, and a hostname can legitimately
+ * be the literal `credentials`.
+ */
+export type AffectedResourceKind = 'host' | 'credential-write';
+
 export interface AffectedResource {
 	toolGroup: 'browser';
+	kind: AffectedResourceKind;
 	resource: string;
 	description: string;
 }

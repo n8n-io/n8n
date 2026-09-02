@@ -3,12 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiMcpConnectionResponse } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { InstanceAiMcpConnection, useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useMcpServerConnect } from './useMcpServerConnect';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -53,14 +52,14 @@ function emitCredentialCreated(id: string, type = 'linearMcpOAuth2Api'): void {
 	}
 }
 
-const makeConnection = (overrides: Partial<InstanceAiMcpConnectionResponse> = {}) =>
+const makeConnection = (overrides: Partial<InstanceAiMcpConnection> = {}) =>
 	({
 		id: 'conn-1',
 		serverSlug: 'linear',
 		credentialId: 'cred-1',
 		credentialType: 'linearMcpOAuth2Api',
 		...overrides,
-	}) as InstanceAiMcpConnectionResponse;
+	}) as InstanceAiMcpConnection;
 
 const linear = { slug: 'linear', credentialType: 'linearMcpOAuth2Api' };
 
@@ -214,6 +213,31 @@ describe('useMcpServerConnect', () => {
 	});
 
 	describe('credential edit modal reconciliation', () => {
+		it('refreshes connections using an edited credential when the modal closes', async () => {
+			mcpStore.connections = [
+				makeConnection({ id: 'conn-1', credentialId: 'cred-1' }),
+				makeConnection({ id: 'conn-2', credentialId: 'cred-2' }),
+			];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledOnce();
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledWith('conn-1');
+		});
+
+		it('does not refresh connections removed while the modal is open', async () => {
+			mcpStore.connections = [makeConnection()];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			mcpStore.connections = [];
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).not.toHaveBeenCalled();
+		});
+
 		it('connects the credential the user created', async () => {
 			const { connecting } = await startConnect();
 

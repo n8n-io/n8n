@@ -15,11 +15,16 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
+	reportRequiredArtifactInputSchema,
 	resolveAIAPromptCaching,
 	resolveAIAReasoning,
 	tokenUsageToBuilderUsageItems,
+	type BuilderRequiredArtifact,
+	type InstanceAiCredentialService,
+	type InstanceAiToolRegistry,
+	type ReportRequiredArtifactInput,
 } from '@n8n/instance-ai';
-import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
@@ -38,7 +43,6 @@ import {
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
 
 /**
@@ -74,6 +78,10 @@ export interface InstanceAiBuilderSessionOptions {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
 	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
+	/** Reports host-owned artifacts requested by the embedded builder. Omitted in the standalone builder. */
+	onRequiredArtifact?: (artifact: BuilderRequiredArtifact) => void;
 }
 
 @Service()
@@ -86,7 +94,6 @@ export class AgentsBuilderService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
-		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -98,6 +105,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -105,6 +113,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -140,6 +149,7 @@ export class AgentsBuilderService {
 		toolCallId: string,
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -163,6 +173,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -202,6 +213,7 @@ export class AgentsBuilderService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
@@ -237,11 +249,12 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			{ threadId: session.hostThreadId, runId: session.runId },
 		);
 
-		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');
+		const { Agent, Memory, Tool, createPlannerTodosTool } = await import('@n8n/agents');
 
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
@@ -287,16 +300,46 @@ export class AgentsBuilderService {
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
-		for (const tool of [...tools.json, ...tools.shared]) {
+		const plannerTodosTool = createPlannerTodosTool({
+			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+		});
+		const reportRequiredArtifactTool = session.onRequiredArtifact
+			? new Tool(REPORT_REQUIRED_ARTIFACT_TOOL_NAME)
+					.description(
+						'Report a workflow or data table that Instance AI must create outside the target Agent. ' +
+							'Use relationship "agent-entrypoint" for a channel bridge that invokes the Agent; it will not be attached as an Agent tool.',
+					)
+					.input(reportRequiredArtifactInputSchema)
+					.handler(async (input: ReportRequiredArtifactInput) => {
+						session.onRequiredArtifact?.(input.artifact);
+						return { ok: true };
+					})
+					.build()
+			: undefined;
+		const builderTools = [
+			...tools.json,
+			...tools.shared,
+			plannerTodosTool,
+			...(reportRequiredArtifactTool ? [reportRequiredArtifactTool] : []),
+		];
+		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
+
+		for (const tool of builderTools) {
 			builder.tool(tool);
 		}
 
-		builder.tool(
-			createPlannerTodosTool({
-				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
-				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-			}),
-		);
+		for (const [toolName, tool] of session.mcpTools ?? []) {
+			if (claimedToolNames.has(toolName)) {
+				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
+					toolName,
+					agentId,
+				});
+				continue;
+			}
+			claimedToolNames.add(toolName);
+			builder.tool(tool);
+		}
 
 		builder.reasoning(resolveAIAReasoning(modelConfig));
 
@@ -326,27 +369,6 @@ export class AgentsBuilderService {
 		agentId: string,
 		threadId: string,
 	): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
-		for (const row of rows) {
-			const checkpoint = this.parseSuspendedCheckpoint(row.state, threadId);
-			if (checkpoint) return checkpoint;
-		}
-		return null;
-	}
-
-	private parseSuspendedCheckpoint(
-		state: string | null,
-		threadId: string,
-	): SerializableAgentState | null {
-		if (!state) return null;
-		let parsed: SerializableAgentState;
-		try {
-			parsed = jsonParse<SerializableAgentState>(state);
-		} catch {
-			return null;
-		}
-		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
-		if (parsed.persistence?.threadId !== threadId) return null;
-		return parsed;
+		return await this.n8nCheckpointStorage.findSuspendedForThread(agentId, threadId);
 	}
 }

@@ -40,3 +40,42 @@ export function isSettledStatus(status: StepStatus): boolean {
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+/**
+ * The trigger step's outputs, supplied by whoever starts the execution: one
+ * entry per output slot, `null` for a slot the trigger didn't fire. Same shape
+ * and same opacity as any other step's `StepSlots` — a v1 host puts JSON-shaped
+ * `INodeExecutionData[]` in each slot.
+ */
+export type TriggerOutputs = StepSlots;
+
+/** Slots recorded for a trigger that fired without a payload: no slots at all. */
+export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+/**
+ * The error that failed a step, as persisted on its row. Shared: the execution
+ * path writes it, the read path reports it.
+ */
+export interface StepError {
+	name: string;
+	message: string;
+	stack?: string;
+	/**
+	 * Step-type-specific error detail, persisted without inspection — the engine
+	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
+	 * to hand structured detail across the seam; they only throw today.
+	 */
+	details?: JsonValue;
+}
+
+export interface StepKey {
+	nodeId: string;
+	iteration: number;
+}
+
+/** A step key in the string form that keys instance-keyed lookups. */
+export type StepKeyId = string;
+
+export function stepKeyId({ nodeId, iteration }: StepKey): StepKeyId {
+	return `${nodeId}@${iteration}`;
+}

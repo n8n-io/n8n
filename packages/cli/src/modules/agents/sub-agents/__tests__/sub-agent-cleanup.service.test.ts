@@ -27,7 +27,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
 	const service = new SubAgentCleanupService(mockLogger(), agentRepository, runtimeCacheService);
 
@@ -69,7 +69,7 @@ describe('SubAgentCleanupService', () => {
 		expect(parent.schema?.subAgents?.maxChildren).toBe(5);
 		// markAgentDraftDirty bumps versionId away from the published version.
 		expect(parent.versionId).not.toBe('v1');
-		expect(agentRepository.save).toHaveBeenCalledWith(parent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(parent);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-1');
 	});
 
@@ -88,7 +88,7 @@ describe('SubAgentCleanupService', () => {
 
 		await service.removeSubAgentFromParents(childAgentId, projectId);
 
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
@@ -108,7 +108,57 @@ describe('SubAgentCleanupService', () => {
 
 		await service.removeSubAgentFromParents(childAgentId, projectId);
 
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('re-applies the removal to a fresh load when the revision fence is lost', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const makeParent = () =>
+			makeAgent({
+				id: 'parent-1',
+				schema: {
+					name: 'Parent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'x',
+					subAgents: { agents: [{ agentId: childAgentId }] },
+				} as AgentJsonConfig,
+			});
+		agentRepository.find.mockResolvedValue([makeParent()]);
+		// First attempt loses to a concurrent edit; the reloaded parent still
+		// references the child, so the second attempt applies the removal.
+		const reloaded = makeParent();
+		agentRepository.findById.mockResolvedValue(reloaded);
+		agentRepository.saveDraftFenced.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+		await service.removeSubAgentFromParents(childAgentId, projectId);
+
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(2);
+		expect(reloaded.schema?.subAgents?.agents).toEqual([]);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-1');
+	});
+
+	it('gives up after repeated fence losses without failing the caller', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const makeParent = () =>
+			makeAgent({
+				id: 'parent-1',
+				schema: {
+					name: 'Parent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'x',
+					subAgents: { agents: [{ agentId: childAgentId }] },
+				} as AgentJsonConfig,
+			});
+		agentRepository.find.mockResolvedValue([makeParent()]);
+		agentRepository.findById.mockImplementation(async () => makeParent());
+		agentRepository.saveDraftFenced.mockResolvedValue(false);
+
+		await expect(
+			service.removeSubAgentFromParents(childAgentId, projectId),
+		).resolves.toBeUndefined();
+
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(3);
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
@@ -136,7 +186,7 @@ describe('SubAgentCleanupService', () => {
 
 		await service.removeSubAgentFromParents(childAgentId, projectId);
 
-		expect(agentRepository.save).toHaveBeenCalledTimes(2);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(2);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-a');
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-b');
 	});

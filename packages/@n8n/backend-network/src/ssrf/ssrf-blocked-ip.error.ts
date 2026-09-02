@@ -1,5 +1,7 @@
 import { UserError } from 'n8n-workflow';
 
+import { markNonRetryable } from '../http/retryability';
+
 /**
  * Error thrown when a resolved address is denied by SSRF IP policy.
  */
@@ -21,5 +23,6 @@ export class SsrfBlockedIpError extends UserError {
 		this.name = 'SsrfBlockedIpError';
 		this.ip = ip;
 		this.hostname = hostname;
+		markNonRetryable(this);
 	}
 }

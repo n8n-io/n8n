@@ -1,3 +1,4 @@
+import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -63,7 +64,9 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
+import { isExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -136,6 +139,7 @@ export class ExecutionService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly executionStopService: ExecutionStopService,
 		private readonly ownershipService: OwnershipService,
+		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 	) {}
 
 	/**
@@ -166,19 +170,24 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		try {
-			execution = await this.executionPersistence.findOneInWorkflows(
-				executionId,
-				sharedWorkflowIds,
-				{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
-			);
-		} catch (error) {
-			if (error instanceof MissingExecutionDataError) {
-				throw new NotFoundError(
-					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+		// A v2 execution has no control-plane row.
+		if (isExecutionIdV2(executionId)) {
+			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
+		} else {
+			try {
+				execution = await this.executionPersistence.findOneInWorkflows(
+					executionId,
+					sharedWorkflowIds,
+					{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
 				);
+			} catch (error) {
+				if (error instanceof MissingExecutionDataError) {
+					throw new NotFoundError(
+						'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+					);
+				}
+				throw error;
 			}
-			throw error;
 		}
 
 		if (!execution) {
@@ -414,8 +423,9 @@ export class ExecutionService {
 		return response;
 	}
 
-	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
+		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
@@ -442,11 +452,11 @@ export class ExecutionService {
 
 		this.eventService.emit('execution-deleted', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			executionIds: ids ?? [],
 			deleteBefore,
@@ -805,6 +815,8 @@ export class ExecutionService {
 			status?: ExecutionStatus;
 			excludeRunning?: boolean;
 			maxDataSizeBytes?: number;
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 	): Promise<{ executions: IExecutionBase[]; count: number }> {
 		const excludedExecutionsIds = options.excludeRunning
@@ -820,6 +832,8 @@ export class ExecutionService {
 			lastId: options.lastId,
 			status: options.status,
 			excludedExecutionsIds,
+			startedAfter: options.startedAfter,
+			startedBefore: options.startedBefore,
 		};
 
 		const executions = await this.executionPersistence.findManyInWorkflows(

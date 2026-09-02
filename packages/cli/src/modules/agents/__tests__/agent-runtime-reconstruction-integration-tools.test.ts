@@ -1,14 +1,9 @@
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -71,7 +66,7 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
@@ -130,13 +125,12 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock(),
 		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
 		mock<AgentKnowledgeMirrorService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -235,6 +229,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		const projectRelationRepository = mock<ProjectRelationRepository>();
 		const agentRuntimeReconstructionService = mock<AgentRuntimeReconstructionService>();
 		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => false,
+		});
 
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
@@ -243,6 +240,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			globalConfig,
 			agentRuntimeReconstructionService,
 			credentialsService,
+			agentSandboxRuntimeService,
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
@@ -275,6 +273,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<IntegrationMessageContextService>(),
 			mock<AgentRunTracingService>(),
 			mock<ExternalHooks>(),
+			agentSandboxRuntimeService,
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -302,7 +301,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
-			mock<SubAgentCleanupService>(),
 			agentValidationService,
 			credentialsService,
 			telemetry,
@@ -310,11 +308,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(
-			n8nMemory,
-			mock<AgentChatAttachmentService>(),
-			mock<AgentWorkspaceService>(),
-		);
+		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
@@ -351,7 +345,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 	describe('integration runtime tools', () => {
 		beforeEach(() => {
-			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+			Container.set(SubAgentRunner, mock<SubAgentRunner>());
 		});
 
 		it('injects each credential integration context/action tool only once', async () => {

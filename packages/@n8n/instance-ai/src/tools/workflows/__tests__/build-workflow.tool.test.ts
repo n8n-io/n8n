@@ -28,9 +28,15 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
-vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
-}));
+vi.mock('../workflow-validation-warnings', async () => {
+	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
+		'../workflow-validation-warnings',
+	);
+	return {
+		...actual,
+		partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
+	};
+});
 
 const generatedWorkflow = {
 	name: 'Generated workflow',
@@ -54,12 +60,14 @@ vi.mock('../workflow-source-compiler', () => ({
 vi.mock('../resolve-credentials', () => ({
 	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
 	buildCredentialResolutionNote: vi.fn(() => undefined),
+	isN8nCreditsWalletDepleted: vi.fn(async () => await Promise.resolve(false)),
 	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
+				heldForNewCredentialTypes: [],
 				resolvedCredentialsByNode: {},
 			}),
 	),
@@ -210,6 +218,23 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	// The field that caused the misreport: `projectId` was advertised here as "Project
+	// ID to create the workflow in", while the adapter resolved the bound project and
+	// ignored it. So the agent picked a project, the workflow went somewhere else, and
+	// the build reported the project it had asked for. Writes are bound-project only —
+	// there must be no knob suggesting otherwise.
+	it("offers no projectId — a build writes to the conversation's own project", () => {
+		expect(buildWorkflowInputSchema.shape).not.toHaveProperty('projectId');
+
+		// The schema is `.strict()`, so a stale caller that still sends one fails LOUDLY
+		// rather than having it quietly dropped — which is the right end of the trade:
+		// the old silent drop is exactly what let a build report a project it never
+		// wrote to.
+		expect(() =>
+			buildWorkflowInputSchema.parse({ filePath: 'wf.workflow.ts', projectId: 'other-project-id' }),
+		).toThrow(/projectId/);
+	});
+
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
@@ -217,6 +242,14 @@ describe('createBuildWorkflowTool', () => {
 		expect(tool.description).toContain('workflow-builder');
 		expect(tool.description).toContain('data-table-manager');
 		expect(tool.description).toContain('load_skill');
+		expect(tool.description).toContain(
+			'Use TypeScript SDK .workflow.ts source for new and existing workflows.',
+		);
+		expect(tool.description).not.toContain('WorkflowJSON .json source for existing workflow edits');
+		expect(buildWorkflowInputSchema.shape.filePath.description).toContain(
+			'Workspace-relative path to the TypeScript SDK workflow source file',
+		);
+		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -257,6 +290,12 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'never offer publishing as an alternative to the live test',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'A user-run execution counts only after `executions(action="list")`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -303,6 +342,59 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// The verify-biased post-build-flow body must NOT ride along on a one-off build.
 		expect(result.postBuildFlow?.instructions).not.toContain('# Post-Build Flow');
+	});
+
+	it('drops invalid node groups before saving and reports the drop', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath, trackTelemetry } = makeContext({ source });
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Broken group',
+						nodeIds: ['missing-node', 'another-missing-node'],
+					},
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toHaveLength(1);
+		expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+		expect(result.warnings?.join('\n')).toContain('Broken group');
+		expect(result.warnings?.join('\n')).toContain('missing-node');
+		expect(result.warnings?.join('\n')).toContain('another-missing-node');
+
+		const savedWorkflow = vi.mocked(context.workflowService.createFromWorkflowJSON).mock
+			.calls[0]?.[0];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				dropped_group_count: 1,
+				warning_count: 1,
+			}),
+		);
 	});
 
 	it('falls back to the post-build-flow handoff for a triggerless one-off build', async () => {
@@ -567,6 +659,109 @@ describe('createBuildWorkflowTool', () => {
 				status: 'required',
 				reason: 'workflow-needs-setup',
 			},
+		});
+	});
+
+	it('does not fail the build on blocking findings for nodes unchanged from the saved workflow', async () => {
+		// Severity-aware partition (the default test mock ignores severity).
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow contains the identical node — this build did not touch it.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+	});
+
+	it('still fails the build on blocking findings for nodes the build changed', async () => {
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow has different parameters on the node — the build changed it.
+		const saved = structuredClone(generatedWorkflow);
+		saved.nodes[0].parameters = { path: 'old-path' };
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...saved,
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
+	});
+
+	it('does not require setup for pending nodes the build did not change', async () => {
+		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
+			{
+				node: {
+					id: 'webhook-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+				parameterIssues: { path: ['Missing webhook path'] },
+				isTrigger: true,
+				needsAction: true,
+			} as SetupRequest,
+		]);
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow is identical to the compiled one — nothing changed.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			setupRequirement: { status: 'not_required' },
 		});
 	});
 
@@ -1730,9 +1925,10 @@ describe('createBuildWorkflowTool', () => {
 			mockedNodeNames: ['OpenAI Chat Model'],
 			mockedCredentialTypes: [],
 			mockedCredentialsByNode: {},
+			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
-					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					{ type: 'openAiApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			},
 		});

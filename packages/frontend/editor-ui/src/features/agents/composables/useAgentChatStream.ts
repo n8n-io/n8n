@@ -22,6 +22,8 @@ import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	findOpenInteractive,
+	findTailOpenInteractive,
+	findTailSteerableInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -34,10 +36,17 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
 	message: string;
 	missing: string[];
+}
+
+interface AgentChatWarning {
+	message: string;
+	server?: string;
+	code?: string;
 }
 
 export interface UseAgentChatStreamParams {
@@ -70,6 +79,10 @@ function getApprovalDecision(value: unknown): boolean | undefined {
 	return value.approved;
 }
 
+function warningKey(warning: AgentChatWarning): string {
+	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -91,9 +104,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	/**
 	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
 	 * connect, so its tools were skipped). The run continues; these are shown to
-	 * the user as a warning callout. Cleared on the next send.
+	 * the user as a warning callout. Visible warnings clear on the next send;
+	 * explicitly dismissed warnings stay hidden for this composable instance.
 	 */
-	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
+	const warnings = ref<AgentChatWarning[]>([]);
+	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -104,7 +119,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function refreshHistory({
 		clearOnNotFound = false,
-	}: { clearOnNotFound?: boolean } = {}): Promise<boolean> {
+		silent = false,
+		abortIfStale,
+	}: {
+		clearOnNotFound?: boolean;
+		silent?: boolean;
+		/** Checked after the fetch — drop the result rather than overwrite newer state. */
+		abortIfStale?: () => boolean;
+	} = {}): Promise<boolean> {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -127,6 +149,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			}
+			if (abortIfStale?.()) return false;
 			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
 			return true;
 		} catch (error) {
@@ -134,7 +157,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (status === 404) {
 				if (clearOnNotFound) messages.value = [];
 				return clearOnNotFound;
-			} else {
+			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
 			return false;
@@ -147,6 +170,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		historyLoaded.value = true;
 		params.onHistoryLoaded?.(messages.value.length);
 	}
+
+	// A turn can complete with no stream attached — a Wait node finishing wakes the
+	// run server-side, long after this chat's SSE stream closed.
+	useAgentExecutionUpdates(
+		{
+			projectId: params.projectId,
+			agentId: params.agentId,
+			// A continued session is pinned to one thread; the default test chat has
+			// only one, so any update for this agent is the chat being shown.
+			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
+		},
+		async () => {
+			// A live stream is already writing the transcript — let it finish. Checked
+			// again after the fetch, since a send can start while it is in flight.
+			if (isStreaming.value) return;
+			// Nobody asked for this refetch, so a transient failure must stay quiet.
+			await refreshHistory({ silent: true, abortIfStale: () => isStreaming.value });
+		},
+	);
 
 	async function clearHistory(): Promise<void> {
 		try {
@@ -251,7 +293,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
-		const interactive = findOpenInteractive(messages.value);
+		// Prefer the current turn's card over one abandoned by an earlier turn.
+		const interactive =
+			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
 		if (interactive?.runId) {
 			return { runId: interactive.runId, toolCallId: interactive.toolCallId };
 		}
@@ -574,11 +618,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
 				// tools were skipped). The run continues; surfaced as a callout.
-				warnings.value.push({
+				const warning: AgentChatWarning = {
 					message: event.message,
 					...(event.server !== undefined && { server: event.server }),
 					...(event.code !== undefined && { code: event.code }),
-				});
+				};
+				if (!dismissedWarningKeys.has(warningKey(warning))) {
+					warnings.value.push(warning);
+				}
 				break;
 			}
 			case 'error': {
@@ -886,7 +933,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openInteractive = findOpenInteractive(messages.value);
+		// Steering answers the card the user is looking at — the one on the current
+		// turn, and never a waiting card, which only the workflow or a deliberate
+		// click may end. The chat input gates this too, but the rule belongs with
+		// the resume it would send.
+		const openInteractive = findTailSteerableInteractive(messages.value);
 		if (!openInteractive?.runId) return;
 
 		await resume({
@@ -925,7 +976,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function dismissWarning(index: number): void {
-		warnings.value = warnings.value.filter((_, i) => i !== index);
+		const warning = warnings.value[index];
+		if (!warning) return;
+		const dismissedKey = warningKey(warning);
+		dismissedWarningKeys.add(dismissedKey);
+		warnings.value = warnings.value.filter((item) => warningKey(item) !== dismissedKey);
 	}
 
 	async function stopGenerating(): Promise<void> {

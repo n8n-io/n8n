@@ -6,6 +6,7 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	INode,
 	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
@@ -13,8 +14,171 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
+import {
+	isResourceLocatorValue,
+	NodeApiError,
+	NodeOperationError,
+	sanitizeXmlName,
+} from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
+
+import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctions';
+
+const ID_FORMAT_HINT = 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315';
+
+const ENTRA_USER_MESSAGES: UserTargetMessages = {
+	required: {
+		message: 'The user is empty',
+		description: `Select a user from the list, or set the ID. ${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
+	},
+	dotsOnly: {
+		message: 'The user ID is invalid',
+		description: `${ID_FORMAT_HINT}.`,
+	},
+	invalid: {
+		message: 'The user ID is invalid',
+		description: `${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com. Enter it as it appears in Entra, not URL-encoded.`,
+	},
+};
+
+const ENTRA_GROUP_MESSAGES: Pick<UserTargetMessages, 'required' | 'invalid'> = {
+	required: {
+		message: 'The group is empty',
+		description: `Select a group from the list, or set the ID. ${ID_FORMAT_HINT}.`,
+	},
+	invalid: {
+		message: 'The group ID is invalid',
+		description: `${ID_FORMAT_HINT}. Groups are addressed by object ID, not by name or email address.`,
+	},
+};
+
+/**
+ * Validates a user ID before it is encoded into a Graph URL path. Graph accepts either an object
+ * ID or a user principal name, guests included. The value is validated untrimmed, because the URL
+ * interpolates it untrimmed. Both accepted alphabets are closed under substring, so no substring
+ * of an accepted ID can contain `/ \ ? % #`.
+ *
+ * Exported for tests. Production callers must go through the `preSend` wrappers below, which also
+ * refuse a stored extraction rule.
+ */
+export function validateEntraUserId(id: string, node: INode): void {
+	if (id.trim() === '') {
+		throw new NodeOperationError(node, ENTRA_USER_MESSAGES.required.message, {
+			description: ENTRA_USER_MESSAGES.required.description,
+		});
+	}
+	validateUserTargetId(id, node, ENTRA_USER_MESSAGES);
+}
+
+const GROUP_OBJECT_ID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
+/**
+ * Graph resolves `/groups/{id}` and `/directoryObjects/{id}` by object ID only. Exported for
+ * tests, same caveat as {@link validateEntraUserId}.
+ */
+export function validateEntraGroupId(id: string, node: INode): void {
+	if (id.trim() === '') {
+		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.required.message, {
+			description: ENTRA_GROUP_MESSAGES.required.description,
+		});
+	}
+	if (!GROUP_OBJECT_ID.test(id)) {
+		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.invalid.message, {
+			description: ENTRA_GROUP_MESSAGES.invalid.description,
+		});
+	}
+}
+
+/**
+ * Reads an ID the way the routing layer does, so the guard sees what the URL will interpolate.
+ * A stored `__regex` is refused because the two readers apply it differently: `$parameter[...]`
+ * honours it, `extractValue` does not. No Entra mode declares `extractValue`, so nothing
+ * legitimate ever carries one.
+ */
+function readEntraId(this: IExecuteSingleFunctions, name: 'user' | 'group'): string {
+	const stored = this.getNodeParameter(name);
+	if (isResourceLocatorValue(stored) && stored.__regex) {
+		throw new NodeOperationError(this.getNode(), `The ${name} ID is invalid`, {
+			description: 'Remove the ID extraction rule from this field and set the ID directly.',
+		});
+	}
+	return String(this.getNodeParameter(name, undefined, { extractValue: true }) ?? '');
+}
+
+/**
+ * Last-mile check on the path that is about to be sent. Encoding keeps every other character
+ * inside its segment, but a bare `.` or `..` segment still re-points the request, and the URL is
+ * composed from its own read of the parameter. No Graph path has a `.` or `..` segment, so this
+ * refuses nothing legitimate.
+ */
+function assertNoDotSegment(
+	this: IExecuteSingleFunctions,
+	url: string | undefined,
+	copy: { message: string; description: string },
+): void {
+	const segments = (url ?? '').split('?')[0].split('/');
+	if (segments.some((segment) => segment === '.' || segment === '..')) {
+		throw new NodeOperationError(this.getNode(), copy.message, {
+			description: copy.description,
+		});
+	}
+}
+
+export async function validateUserPreSend(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	validateEntraUserId(readEntraId.call(this, 'user'), this.getNode());
+	assertNoDotSegment.call(this, requestOptions.url, ENTRA_USER_MESSAGES.invalid);
+	return requestOptions;
+}
+
+export async function validateGroupPreSend(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	validateEntraGroupId(readEntraId.call(this, 'group'), this.getNode());
+	assertNoDotSegment.call(this, requestOptions.url, ENTRA_GROUP_MESSAGES.invalid);
+	return requestOptions;
+}
+
+/**
+ * Resolves the URL a request is sent to. An explicit `url` (e.g. a next-page link from Graph) is
+ * used verbatim, but only after it is confirmed to be on the credential's Graph host: the bearer
+ * token must never travel to an unexpected origin. Graph's own @odata.nextLink is always
+ * same-origin, so nothing legitimate is refused.
+ */
+async function resolveGraphTarget(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	url?: string,
+): Promise<string> {
+	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
+	// `URL.origin` is the string "null" for a scheme without a defined origin, which would make
+	// the comparison below pass for any host.
+	if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+		throw new NodeOperationError(this.getNode(), 'The Graph API base URL is not a valid URL', {
+			description:
+				'Set a full URL on the credential, e.g. https://graph.microsoft.com, and try again.',
+		});
+	}
+	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
+	if (!URL.canParse(target)) {
+		throw new NodeOperationError(this.getNode(), 'The request URL is not a valid URL');
+	}
+	if (new URL(target).origin !== new URL(baseUrl).origin) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
+	return target;
+}
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -25,15 +189,10 @@ export async function microsoftApiRequest(
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: 'https://graph.microsoft.com'
-	).replace(/\/+$/, '');
+	const target = await resolveGraphTarget.call(this, endpoint, url);
 	const options: IHttpRequestOptions = {
 		method,
-		url: url ?? `${baseUrl}/v1.0${endpoint}`,
+		url: target,
 		json: true,
 		headers,
 		body,
@@ -57,16 +216,11 @@ export async function microsoftApiPaginateRequest(
 	url?: string,
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
-	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: 'https://graph.microsoft.com'
-	).replace(/\/+$/, '');
+	const target = await resolveGraphTarget.call(this, endpoint, url);
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
 	const options: IRequestOptions = {
 		method,
-		uri: url ?? `${baseUrl}/v1.0${endpoint}`,
+		uri: target,
 		json: true,
 		headers,
 		body,

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import BrowserUseSetupContent from '../BrowserUseSetupContent.vue';
 import BrowserUseSetupModal from '../BrowserUseSetupModal.vue';
@@ -18,6 +19,7 @@ const { telemetryMock } = vi.hoisted(() => ({
 		trackModalOpened: vi.fn(),
 		trackInstallExtensionClicked: vi.fn(),
 		trackOpenExtensionClicked: vi.fn(),
+		trackDirectConnectRequested: vi.fn(),
 	},
 }));
 
@@ -30,20 +32,43 @@ vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStoreMock(),
 }));
 
+const { showMessageMock } = vi.hoisted(() => ({ showMessageMock: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock }),
+}));
+
 const { detectExtensionMock } = vi.hoisted(() => ({ detectExtensionMock: vi.fn() }));
 vi.mock('../../../utils/browserUseExtension', () => ({
 	detectBrowserUseExtension: detectExtensionMock,
 }));
+
+const CONNECT_URL =
+	'chrome-extension://testextensionid/connect.html?mcpRelayUrl=wss%3A%2F%2Facme.app.n8n.cloud%2Frelay';
 
 function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	return {
 		browserConnected: false,
 		browserConnectUrlExpiresAt: null,
 		fetchBrowserStatus: vi.fn(),
-		fetchBrowserConnectUrl: vi.fn().mockResolvedValue('https://connect.example/extension'),
+		fetchBrowserConnectUrl: vi.fn().mockResolvedValue(CONNECT_URL),
 		clearBrowserConnectUrl: vi.fn(),
 		...overrides,
 	};
+}
+
+function installExtensionMock(responses: Record<string, unknown>): void {
+	const runtime = {
+		lastError: undefined as { message?: string } | undefined,
+		sendMessage: (
+			_extensionId: string,
+			message: unknown,
+			callback: (response: unknown) => void,
+		) => {
+			const type = (message as { type: string }).type;
+			if (type in responses) callback(responses[type]);
+		},
+	};
+	(globalThis as { chrome?: unknown }).chrome = { runtime };
 }
 
 const renderComponent = createComponentRenderer(BrowserUseSetupModal, {
@@ -81,10 +106,8 @@ describe('BrowserUseSetupModal', () => {
 		detectExtensionMock.mockResolvedValue('unknown');
 	});
 
-	it('tracks the modal opening on mount', () => {
-		renderComponent();
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledTimes(1);
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(true);
+	afterEach(() => {
+		delete (globalThis as { chrome?: unknown }).chrome;
 	});
 
 	it('tracks the install extension button click', async () => {
@@ -97,12 +120,15 @@ describe('BrowserUseSetupModal', () => {
 	});
 
 	it('tracks the open extension button click', async () => {
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
 		await fireEvent.click(getByTestId('browser-use-open-connect-page'));
 
 		expect(telemetryMock.trackOpenExtensionClicked).toHaveBeenCalledTimes(1);
+
+		openSpy.mockRestore();
 	});
 
 	it('replaces the connect step with an explanation when the extension is not installed', async () => {
@@ -167,12 +193,88 @@ describe('BrowserUseSetupModal', () => {
 		expect(detectExtensionMock).toHaveBeenCalledTimes(1);
 	});
 
+	it('starts a fresh direct connect attempt once the extension gets installed', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const { getByTestId, queryByTestId } = await renderWithExtensionState('not-installed');
+		expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
+		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
+
+		detectExtensionMock.mockResolvedValue('installed');
+		window.dispatchEvent(new Event('focus'));
+		await flushPromises();
+
+		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(1);
+		expect(getByTestId('browser-use-direct-connect-waiting')).toBeVisible();
+	});
+
 	it('does not render the connect steps when already connected', () => {
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ browserConnected: true }));
 		const { queryByTestId } = renderComponent();
 
 		expect(queryByTestId('browser-use-install-extension')).toBeNull();
 		expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
+	});
+
+	describe('once the browser connects', () => {
+		async function renderContentAndConnect(props: Record<string, unknown>) {
+			const store = reactive(makeSettingsStore());
+			settingsStoreMock.mockReturnValue(store);
+			const rendered = createComponentRenderer(BrowserUseSetupContent)({
+				props,
+			});
+			await flushPromises();
+
+			store.browserConnected = true;
+			await flushPromises();
+
+			return rendered;
+		}
+
+		// Closing the modal and reporting success now belong to useBrowserUseConnection, which
+		// drives every connect — including the remembered one that never opens this view.
+		it('keeps the connected status in place when not auto-connecting', async () => {
+			const { emitted, getByText } = await renderContentAndConnect({ embedded: true });
+
+			expect(emitted('close')).toBeUndefined();
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(getByText('instanceAi.browserUse.connected')).toBeVisible();
+		});
+	});
+
+	it('keeps the install step visible while the connect step waits for confirmation', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const { getByTestId } = renderComponent();
+		await flushPromises();
+
+		// The direct connect flow is scoped to the connect step — the rest of the view stays put.
+		expect(getByTestId('browser-use-install-extension')).toBeVisible();
+		expect(getByTestId('browser-use-direct-connect-waiting')).toBeVisible();
+	});
+
+	it('does not request a direct connection when already connected', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		settingsStoreMock.mockReturnValue(makeSettingsStore({ browserConnected: true }));
+		renderComponent();
+		await flushPromises();
+
+		expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
+	});
+
+	it('does not request a direct connection when the status fetch reveals a live session', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		// Store starts stale (disconnected); the status fetch corrects it. Requesting a
+		// connection here would make the extension drop the live session.
+		const store = reactive(makeSettingsStore());
+		store.fetchBrowserStatus = vi.fn().mockImplementation(async () => {
+			store.browserConnected = true;
+		});
+		settingsStoreMock.mockReturnValue(store);
+
+		renderComponent();
+		await flushPromises();
+
+		expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
+		expect(store.fetchBrowserConnectUrl).not.toHaveBeenCalled();
 	});
 
 	it('does not render the unsupported browser message on a Chromium browser', () => {
@@ -192,11 +294,6 @@ describe('BrowserUseSetupModal', () => {
 			expect(getByTestId('browser-use-unsupported-browser')).toBeInTheDocument();
 			expect(queryByTestId('browser-use-install-extension')).toBeNull();
 			expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
-		});
-
-		it('tracks the modal opening as unsupported', () => {
-			renderComponent();
-			expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(false);
 		});
 
 		it('closes the modal via the close button', async () => {
@@ -223,6 +320,14 @@ describe('BrowserUseSetupModal', () => {
 
 			expect(store.fetchBrowserStatus).not.toHaveBeenCalled();
 			expect(store.fetchBrowserConnectUrl).not.toHaveBeenCalled();
+		});
+
+		it('does not request a direct connection even when the extension is present', async () => {
+			installExtensionMock({ connect: { accepted: true } });
+			renderComponent();
+			await flushPromises();
+
+			expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
 		});
 
 		it('does not probe for the extension', async () => {

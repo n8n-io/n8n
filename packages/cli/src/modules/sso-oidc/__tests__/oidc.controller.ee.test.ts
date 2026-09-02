@@ -7,7 +7,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -179,6 +181,30 @@ describe('OidcController', () => {
 			expect(res.redirect).not.toHaveBeenCalled();
 		});
 
+		test('Should not issue a session when OIDC is disabled during the login flow', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			// loginUser resolves, but OIDC is disabled while it was awaiting: the
+			// pre-issue re-check must reject before a cookie is minted.
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.assertOidcLoginEnabled.mockImplementationOnce(() => {
+				throw new ForbiddenError('OIDC login is not enabled');
+			});
+
+			await expect(controller.callbackHandler(req, res)).rejects.toThrow(ForbiddenError);
+
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
 		test('Should store the encrypted ID token in a cookie for RP-initiated logout', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
@@ -263,6 +289,31 @@ describe('OidcController', () => {
 				authenticationMethod: 'oidc',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/');
+		});
+
+		test('Should redirect a login denied by role mapping to the sign-in page', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockRejectedValueOnce(new SsoAccessDeniedError());
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				'http://localhost:5678/signin?ssoError=access-denied',
+			);
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
+				userEmail: 'unknown',
+				authenticationMethod: 'oidc',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('user-logged-in', expect.anything());
 		});
 
 		test('Should render success page in test mode without creating session', async () => {

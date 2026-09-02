@@ -1,4 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
+
+import type { NodeTypes } from '@/node-types';
 
 import type { WorkflowSerializer } from '../../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../../io/package-reader';
@@ -28,7 +31,11 @@ function baseManifest(): PackageManifest {
 }
 
 describe('N8nPackageParser.getProjects — custom span attributes', () => {
-	const parser = new N8nPackageParser(mock<WorkflowSerializer>());
+	const parser = new N8nPackageParser(
+		mock<Logger>(),
+		mock<NodeTypes>(),
+		mock<WorkflowSerializer>(),
+	);
 
 	it('reads customTelemetryTags into the prepared project', async () => {
 		const reader = makeReader(baseManifest(), {

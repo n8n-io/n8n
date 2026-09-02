@@ -47,6 +47,7 @@ function mergeTerminalToolCallPart(
 		...previous,
 		...terminal,
 		input: previous.input ?? terminal.input,
+		suspendPayload: previous.suspendPayload ?? terminal.suspendPayload,
 		startTime: previous.startTime ?? terminal.startTime,
 		endTime: terminal.endTime ?? previous.endTime,
 		canceled: terminal.canceled ?? previous.canceled,
@@ -122,6 +123,16 @@ function assistantContentFromExecution(
 			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
+		} else if (event.type === 'suspension') {
+			const suspendedToolCall = [...content]
+				.reverse()
+				.find(
+					(part): part is ToolCallContentPart =>
+						isToolCallWithId(part) && part.toolCallId === event.toolCallId,
+				);
+			if (suspendedToolCall) {
+				suspendedToolCall.suspendPayload = event.suspendPayload ?? event.input;
+			}
 		}
 	}
 

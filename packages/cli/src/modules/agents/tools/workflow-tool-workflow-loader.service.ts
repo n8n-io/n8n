@@ -1,6 +1,7 @@
 import { WorkflowsConfig } from '@n8n/config';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
@@ -9,43 +10,54 @@ export interface WorkflowToolWorkflowReference {
 	workflowName: string;
 }
 
+export interface LoadWorkflowOptions {
+	/**
+	 * Load the published workflow version instead of the draft. Set for
+	 * production agent runs, mirroring how sub-workflows resolve referenced
+	 * workflows. Throws when the workflow has never been published.
+	 */
+	usePublishedVersion?: boolean;
+}
+
 @Service()
 export class WorkflowToolWorkflowLoader {
 	constructor(
-		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {}
 
-	async loadPublishedWorkflow(
+	async loadWorkflow(
 		projectId: string,
 		reference: WorkflowToolWorkflowReference,
+		options: LoadWorkflowOptions = {},
 	): Promise<WorkflowEntity | null> {
-		const accessibleWorkflow = await this.workflowRepository.findOneByAgentToolReference(
+		const workflow = await this.workflowRepository.findOneByAgentToolReference(
 			projectId,
 			reference,
+			{ withActiveVersion: options.usePublishedVersion === true },
 		);
-		if (!accessibleWorkflow || accessibleWorkflow.isArchived) return null;
+		if (!workflow || workflow.isArchived) return null;
 
-		if (this.workflowsConfig.useWorkflowPublicationService) {
-			const publishedWorkflow =
-				await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(
-					accessibleWorkflow.id,
+		if (options.usePublishedVersion) {
+			const published = await this.resolvePublishedContent(workflow);
+			if (!published) {
+				throw new UserError(
+					`Workflow "${workflow.name}" is not published. Publish it before using it in a production agent run.`,
 				);
-			if (!publishedWorkflow || publishedWorkflow.isArchived) return null;
-
-			return Object.assign(accessibleWorkflow, publishedWorkflow, { pinData: undefined });
+			}
+			Object.assign(workflow, { nodes: published.nodes, connections: published.connections });
 		}
 
-		const workflow = await this.workflowRepository.findById(accessibleWorkflow.id);
-		if (!workflow || workflow.isArchived || !workflow.activeVersion) return null;
+		return Object.assign(workflow, { pinData: undefined });
+	}
 
-		return Object.assign(workflow, {
-			versionId: workflow.activeVersion.versionId,
-			nodes: workflow.activeVersion.nodes,
-			connections: workflow.activeVersion.connections,
-			nodeGroups: workflow.activeVersion.nodeGroups,
-			pinData: undefined,
-		});
+	/** Mirrors the engine's published resolution in `workflow-execute-additional-data.ts`. */
+	private async resolvePublishedContent(workflow: WorkflowEntity) {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const data = await this.workflowPublishedDataService.getPublishedWorkflowData(workflow.id);
+			return data?.publishedVersion ?? null;
+		}
+		return workflow.activeVersion ?? null;
 	}
 }

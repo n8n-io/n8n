@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { N8nIconButton } from '@n8n/design-system';
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNodeExecution } from '@/app/composables/useNodeExecution';
 
 type Props = {
 	nodeName: string;
@@ -17,7 +22,12 @@ type Props = {
 	pushRef: string;
 };
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const i18n = useI18n();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const node = computed(() => workflowDocumentStore.value.getNodeByName(props.nodeName) ?? null);
+const { isExecuting, stopExecution } = useNodeExecution(node);
 
 const emit = defineEmits<{
 	execute: [];
@@ -37,6 +47,16 @@ const emit = defineEmits<{
 			:push-ref="pushRef"
 			:class="$style.tabs"
 			@update:model-value="emit('tab-changed', $event)"
+		/>
+		<N8nIconButton
+			v-if="!hideExecute && isExecuting"
+			data-test-id="ndv-stop-execution-button"
+			variant="subtle"
+			icon="square"
+			size="small"
+			:class="$style.stop"
+			:title="i18n.baseText('nodeView.stopCurrentExecution')"
+			@click="stopExecution"
 		/>
 		<NodeExecuteButton
 			v-if="!hideExecute"
@@ -72,5 +92,9 @@ const emit = defineEmits<{
 
 .tabs :global(#communityNode) {
 	padding-right: var(--spacing--2xs);
+}
+
+.stop {
+	margin-right: var(--spacing--2xs);
 }
 </style>

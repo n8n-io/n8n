@@ -20,6 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -99,7 +100,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		// No real task run backs a webhook call, so this only exists to surface `node`
+		// to the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
+		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
+
+		return await this._getCredentials<T>(type, executeData);
 	}
 
 	getBodyData() {
@@ -166,6 +171,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	isChatSessionTest() {
+		return this.webhookData.isChatSessionTest === true;
+	}
+
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,
@@ -199,6 +208,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.completeN8nOAuth2Flow(code, state);
 	}
 
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
+	}
+
 	async validateN8nOAuth2Token(
 		token: string,
 		resourceUrl: string,
@@ -209,11 +228,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
 	}
 
-	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+	async establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void> {
 		if (!this.additionalData.establishTriggerIdentity) {
 			throw new UnexpectedError('Trigger identity establishment is not available');
 		}
-		await this.additionalData.establishTriggerIdentity(token, resource);
+		await this.additionalData.establishTriggerIdentity(token, resource, subject);
 	}
 
 	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {

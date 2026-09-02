@@ -1,12 +1,18 @@
 import { insightsSummarySchema } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { type User } from '@n8n/db';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import { type Project, type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { addApiKey, createOwnerWithApiKey, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
@@ -215,5 +221,70 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+	});
+
+	describe('project access', () => {
+		let viewer: User;
+		let viewerAgent: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+		let accessibleWorkflow: Awaited<ReturnType<typeof createWorkflow>>;
+		let inaccessibleWorkflow: Awaited<ReturnType<typeof createWorkflow>>;
+
+		beforeAll(async () => {
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			viewer = await createUser({ role: insightsRole });
+			viewer.apiKeys = [await addApiKey(viewer, { scopes: ['insights:read'] })];
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+			accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+		});
+
+		beforeEach(() => {
+			viewerAgent = testServer.publicApiAgentFor(viewer);
+		});
+
+		test('returns 403 for a project the API key holder cannot read', async () => {
+			await viewerAgent
+				.get('/insights/summary')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+		});
+
+		test('returns the summary for a project the API key holder can read', async () => {
+			await viewerAgent
+				.get('/insights/summary')
+				.query({ projectId: accessibleProject.id })
+				.expect(200);
+		});
+
+		test('aggregates only accessible projects when no project is requested', async () => {
+			const accessibleSuccessfulExecutions = 3;
+			const inaccessibleSuccessfulExecutions = 5;
+
+			await createSummaryMetrics(accessibleWorkflow, { success: accessibleSuccessfulExecutions });
+			await createSummaryMetrics(inaccessibleWorkflow, {
+				success: inaccessibleSuccessfulExecutions,
+			});
+
+			const response = await viewerAgent
+				.get('/insights/summary')
+				.query({
+					startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+					endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+				})
+				.expect(200);
+
+			expect(response.body.total.value).toBe(accessibleSuccessfulExecutions);
+		});
 	});
 });

@@ -2,6 +2,31 @@ import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
 
+/**
+ * Extraction ratchet: a feature that has become a module package must not reappear
+ * under `src/features/`. Append one entry per extraction — this list only grows.
+ *
+ * The old path no longer resolves, so this is about the message, not the failure: it
+ * names the package and it says that the shell reaches a module through
+ * `src/app/modules.manifest.ts`, not through a deep path.
+ *
+ * Spread into every block that sets `no-restricted-imports`. Flat-config replaces
+ * rule options rather than merging them, so a scoped block that omits these patterns
+ * would switch the ratchet off for its own files.
+ */
+const extractedFeatures = [
+	{
+		group: ['@/features/instanceRegistry', '@/features/instanceRegistry/*'],
+		message:
+			'instanceRegistry is the @n8n/frontend-module-instance-registry package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/settings/otel', '@/features/settings/otel/*'],
+		message:
+			'otel is the @n8n/frontend-module-otel package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+];
+
 export default defineConfig(
 	frontendConfig,
 	{
@@ -238,6 +263,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
 		},
 	},
 	{
@@ -250,12 +276,56 @@ export default defineConfig(
 		},
 	},
 	{
+		// This is half 1 of 2 of the modal-key ratchet (CAT-3688).
+		// Change the level to 'error' when CAT-3973 is complete.
+		// This file does not use workflowsStore. So this rule replaces the
+		// package-wide list safely.
+		files: ['src/app/constants/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						'ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name!=/^MODAL_(CANCEL|CONFIRM|CLOSE)$/]',
+					message:
+						'Do not declare a modal key here. Declare the key in the constants file of the feature that owns it. Then register the modal from the modals.ts fragment of that feature. To see an example, open src/features/core/auth/modals.ts. If the shell owns the modal, declare its key next to its fragment in src/app/modals.manifest.ts. Only MODAL_CANCEL, MODAL_CONFIRM and MODAL_CLOSE stay here. These three are dialog result sentinels, not modal keys.',
+				},
+				{
+					// This selector matches `export { X } from '...'` and also a bare
+					// `export { X }` list.
+					selector: 'ExportNamedDeclaration[specifiers.length>0]',
+					message:
+						'Do not re-export a modal key from the shell. A re-export makes @/app/constants an import path for a key that the shell does not own. The shell must not get such a key again. Import the key directly from its feature or from its package.',
+				},
+			],
+		},
+	},
+	{
+		// This is half 2 of 2 of the modal-key ratchet (CAT-3688).
+		// The selector matches only the direct members, so you can still change the
+		// nested state of each entry. `sneakyModal:` opens the same as `[KEY]:`.
+		// So the selector `[computed=true]` was too narrow.
+		files: ['src/app/stores/defaults/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] > CallExpression > ObjectExpression > :matches(Property, SpreadElement)",
+					message:
+						'Do not add an entry to SHELL_MODAL_INITIAL_STATE. This catalogue can only become smaller. Write a ModalDefinition for the modal in the modals.ts fragment of its feature. Give the definition a component and an initialState. Then modalRegistry registers the modal, and DynamicModalLoader shows it. In the same change, delete the <ModalRoot> of the modal from Modals.vue. To see an example, open src/features/core/auth/modals.ts.',
+				},
+			],
+		},
+	},
+	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
 				{
 					patterns: [
+						...extractedFeatures,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:
@@ -294,6 +364,20 @@ export default defineConfig(
 		],
 		rules: {
 			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	{
+		// The CodeMirror TypeScript language service runs in a browser web worker, so
+		// Vite bundles `typescript` and `@typescript/vfs` into it and nothing resolves
+		// them from node_modules at runtime. They stay devDependencies to keep the
+		// ~24MB compiler out of the server image, which installs editor-ui's
+		// production closure via packages/cli.
+		files: ['src/features/shared/editors/plugins/codemirror/typescript/**'],
+		rules: {
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{ devDependencies: true, optionalDependencies: false },
+			],
 		},
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),

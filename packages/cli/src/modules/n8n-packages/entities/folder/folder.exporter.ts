@@ -137,7 +137,7 @@ export class FolderExporter {
 	): Promise<FolderExportResult> {
 		const { childrenByParent, workflowIdsByFolder, request } = context;
 
-		this.exportFolderShell(folder, target, effectiveParentId, request.writer);
+		await this.exportFolderShell(folder, target, effectiveParentId, request.writer);
 
 		const workflowIds = workflowIdsByFolder.get(folder.id) ?? [];
 		const contained = await this.exportContainedWorkflows(workflowIds, target, request);
@@ -160,15 +160,15 @@ export class FolderExporter {
 		return this.mergeFolderExportResults([own, descendants]);
 	}
 
-	private exportFolderShell(
+	private async exportFolderShell(
 		folder: Folder,
 		target: string,
 		effectiveParentId: string | null,
 		writer: PackageWriter,
-	): void {
+	): Promise<void> {
 		const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+		await writer.writeDirectory(target);
+		await writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportContainedWorkflows(

@@ -3,6 +3,7 @@ import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
 
+import { installConnectionGuard, installProxyConnectionGuard } from './connection-guards';
 import { EnvProxyHttpAgent } from './env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
 import { createProxiedHttpAgent, createProxiedHttpsAgent } from '../proxy/proxied-agents';
@@ -54,9 +55,25 @@ export type NodeAgentOptions = https.AgentOptions;
  * undici factory (`undici/factory.ts`), the axios transport layer
  * (`axios/utils.ts`) and the global proxy agents (`http-proxy.ts`).
  *
- * SSRF lookup is injected only for **direct** connections. Behind a proxy the
- * lookup resolves the proxy host, not the final target, so it is omitted there
- * and the proxy validates the final target.
+ * The SSRF policy covers every host this builder opens a socket to, with one
+ * exception: a proxy named by the environment.
+ * `HTTP_PROXY` / `HTTPS_PROXY` describe the deployment rather than a request, and
+ * such a proxy commonly sits on a private address the policy blocks for targets.
+ * Setting them already requires control of the process.
+ * An explicit {@link ProxyUrl} can come from a request, so the policy decides its
+ * host like any other.
+ *
+ * The lookup resolves the target on a direct connection, and the proxy's own host
+ * behind an explicit proxy.
+ * Behind any proxy the final target never reaches these agents, so validating it
+ * belongs to the caller:
+ * - the axios entry points (`httpRequest`, `executeLegacyRequest`) check it before
+ *   the request, and on each hop with the manual redirect follower
+ * - callers taking the agents on their own (`HttpTransport.getNodeAgent`) get
+ *   neither check, and validate the targets they send through them
+ *
+ * A pre-request check does not pin an address to the socket, so a target the proxy
+ * resolves stays open to a rebind between the check and the connection.
  *
  * The `lookup` is owned by this builder: it is derived from the SSRF policy and
  * always overrides anything in `agentOptions`. Passing `agentOptions.lookup`
@@ -101,23 +118,17 @@ export function buildNodeAgents(
 		);
 	}
 
-	// Explicit proxy URL. No direct path, so no SSRF lookup is injected.
-	return {
-		httpAgent: createProxiedHttpAgent(proxy, agentOptions),
-		httpsAgent: createProxiedHttpsAgent(proxy, agentOptions),
+	// Explicit proxy URL. No direct path, so the lookup only guards the proxy host.
+	const agents = {
+		httpAgent: createProxiedHttpAgent(proxy, { ...agentOptions, lookup }),
+		httpsAgent: createProxiedHttpsAgent(proxy, { ...agentOptions, lookup }),
 	};
+	if (ssrf !== 'disabled') {
+		installProxyConnectionGuard(agents.httpAgent, ssrf);
+		installProxyConnectionGuard(agents.httpsAgent, ssrf);
+	}
+	return agents;
 }
-
-/** Subset of an agent's connection options we read to find the target host. */
-type ConnectionOptions = { host?: string | null; hostname?: string | null };
-
-/**
- * Runtime-only `createConnection` method of Node's http(s) agents.
- */
-type CreateConnection = (
-	options: ConnectionOptions,
-	onConnect?: (error: Error | null, stream?: unknown) => void,
-) => unknown;
 
 /**
  * Installs {@link installConnectionGuard} on a direct-path agent pair when SSRF protection is active.
@@ -131,29 +142,4 @@ function applyConnectionGuard(
 		installConnectionGuard(agents.httpsAgent, ssrf);
 	}
 	return agents;
-}
-
-/**
- * Wraps an agent's `createConnection` to validate the connection target before the socket opens.
- * Node invokes the custom `lookup` only to resolve hostnames, so it also requires a check at connection time.
- */
-export function installConnectionGuard(
-	target: { createConnection: CreateConnection },
-	ssrf: SsrfBridge,
-): void {
-	const createConnection = target.createConnection.bind(target);
-	target.createConnection = (options, onConnect) => {
-		const host = options.host ?? options.hostname ?? undefined;
-		if (typeof host === 'string') {
-			const result = ssrf.validateConnectionHost(host);
-			if (!result.ok) {
-				if (onConnect) {
-					onConnect(result.error);
-					return undefined;
-				}
-				throw result.error;
-			}
-		}
-		return createConnection(options, onConnect);
-	};
 }

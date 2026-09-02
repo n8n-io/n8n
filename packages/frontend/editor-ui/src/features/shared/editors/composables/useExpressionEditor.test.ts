@@ -364,6 +364,25 @@ describe('useExpressionEditor', () => {
 			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
 		});
 
+		test('should keep the cursor position set by a click', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			const view = toValue(editor);
+			if (!view) throw new Error('editor not created');
+			await fireEvent.mouseDown(view.contentDOM);
+			view.dispatch({ selection: EditorSelection.cursor(2) });
+			view.focus();
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+
+			expect(view.state.selection).toEqual(EditorSelection.single(2));
+		});
+
 		test('should default to position 0 when no option is provided', async () => {
 			const editorValue = 'Hello {{  }}';
 			const {

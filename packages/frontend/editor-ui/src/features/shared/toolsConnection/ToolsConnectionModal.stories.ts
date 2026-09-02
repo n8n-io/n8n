@@ -11,6 +11,7 @@ import {
 	sampleCredentials,
 } from './fixtures';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type ToolConnectionCredentialAdapter,
 	type NodeConnectionItem,
@@ -120,7 +121,7 @@ function renderWithTrigger(
 
 			function onOpenDetail(item: ToolConnectionItem) {
 				console.log('[story] open-detail', item);
-				detailMode.value = item.isConnected ? 'settings' : 'detail';
+				detailMode.value = hasToolConnection(item.status) ? 'settings' : 'detail';
 			}
 
 			function onConnect(item: ToolConnectionItem) {
@@ -206,7 +207,7 @@ export const Empty: Story = {
 export const McpDetail: Story = {
 	render: renderWithTrigger({
 		...connectedMcpFixture,
-		isConnected: false,
+		status: 'none',
 		settings: undefined,
 	}),
 	args: {
@@ -247,7 +248,7 @@ export const NodeToolInlineSettings: Story = {
 			id: 'node-openai',
 			kind: 'node',
 			title: 'OpenAI',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 			iconSource: {
 				type: 'file',
@@ -282,7 +283,7 @@ export const MultiCredentialHeader: Story = {
 			kind: 'node',
 			title: 'HTTP Request',
 			description: 'Make HTTP requests with OAuth2 or a bearer token.',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: 'n8n-nodes-base.httpRequestTool',
 			credentials: [
 				{ authType: 'oAuth2Api', required: false },
@@ -308,7 +309,7 @@ export const NoCredentialsHeader: Story = {
 			kind: 'workflow',
 			title: 'Summariser',
 			description: 'Summarises long-form content into bullet points.',
-			isConnected: true,
+			status: 'connected',
 			workflowId: 'wf-summariser-1',
 		} satisfies WorkflowConnectionItem,
 		'settings',

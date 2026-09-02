@@ -9,18 +9,17 @@ import { PollJobManager } from 'n8n-core';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
+
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
 
 /**
  * Concrete {@link PollJobManager}: registers a Poll Trigger node's poll times as
- * `scheduled_job` rows. Each poll time becomes a `cron` job that reconciles in
- * place by a definition-derived name, so an unchanged poll time keeps its row and
- * clock across re-activation. The payload is just `{ workflowId, nodeId }`; the
- * handler re-runs `poll()` each fire, so there is no per-occurrence dedup key.
- * Whether this is the active implementation of {@link PollJobManager} is
- * decided by config elsewhere, not by this class.
+ * `scheduled_job` rows, each reconciled in place by a definition-derived name so an
+ * unchanged poll time keeps its row and clock across re-activation.
  */
 @Service()
 export class PollTriggerJobRegistrar extends PollJobManager {
@@ -31,6 +30,8 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
+		private readonly pollBackoffService: PollBackoffService,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
@@ -55,14 +56,13 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
 		// Skip, not coalesce: a poll fetches everything new since it last ran, so
 		// replaying missed polls would just repeat the same fetch.
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			node.id,
-			POLL_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, node.id),
+			taskType: POLL_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Skip,
-		);
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		});
 
 		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {
 			workflowId,
@@ -73,7 +73,12 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			removed: summary.removed.length,
 		});
 
-		return { inserted: summary.inserted.length > 0 };
+		const inserted = summary.inserted.length > 0;
+		if (inserted) {
+			await this.pollBackoffService.reset(workflowId, node.id);
+		}
+
+		return { inserted };
 	}
 
 	/**
@@ -110,7 +115,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 
 	/** Delete the node's poll jobs on deactivation. No-op when none exist. */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -119,19 +124,20 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 * when none exist, so it is safe on the legacy deactivation paths too.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, POLL_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			POLL_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
-	 * Delete the workflow's poll jobs within a caller-owned transaction, so their
-	 * removal commits atomically with the `active = false` write; deferring it
-	 * could leave jobs firing an inactive workflow. Keyed and idempotent like
-	 * {@link removeWorkflow}.
+	 * Delete the workflow's poll jobs within a caller-owned transaction, so removal
+	 * commits atomically with the `active = false` write. Keyed and idempotent like {@link removeWorkflow}.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			POLL_TRIGGER_TASK_TYPE,
 		);
 	}
@@ -147,11 +153,9 @@ function resolveTimezone(timezone: string, defaultTimezone: string): string {
 }
 
 /**
- * Deterministic integer in `[min, max)` from `seed`+`label`, used to fill the
- * unspecified fields of a generated poll time's cron. Seeding on the node
- * identity keeps the value stable across re-activation, so the cron string (and
- * thus the job's reconcile-in-place identity) does not move; different nodes
- * still spread apart.
+ * Deterministic integer in `[min, max)` from `seed`+`label`, filling a generated poll
+ * time's unspecified cron fields. Seeded on node identity so the cron string (and thus the
+ * job's reconcile-in-place identity) stays stable across re-activation.
  */
 function stableInt(seed: string, label: string, min: number, max: number): number {
 	const hash = createHash('sha256').update(`${seed}:${label}`).digest();
@@ -159,11 +163,9 @@ function stableInt(seed: string, label: string, min: number, max: number): numbe
 }
 
 /**
- * Build a 6-field cron for a poll time. Generated cadences get a node-seeded
- * (not random) seconds field so the job identity is stable; a custom cron is
- * used as-is, widened from 5 to 6 fields when it omits seconds. The scheduler
- * accepts 5-field crons directly, but normalizing to 6 keeps every stored
- * expression one shape, so the job's fingerprint identity stays stable.
+ * Build a 6-field cron for a poll time. Generated cadences get a node-seeded (not random)
+ * seconds field for a stable job identity; a custom cron is used as-is, widened from 5 to
+ * 6 fields when it omits seconds, so every stored expression is one shape.
  */
 function seededCron(item: TriggerTime, seed: string): CronExpression {
 	if (item.mode === 'custom') {

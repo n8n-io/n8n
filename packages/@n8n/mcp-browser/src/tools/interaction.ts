@@ -81,6 +81,12 @@ const browserTypeSchema = z
 	.object({
 		element: elementTargetSchema.describe('Element to type into'),
 		text: z.string().describe('Text to type'),
+		mode: z
+			.enum(['type', 'paste'])
+			.optional()
+			.describe(
+				'"type" (default) sends one keystroke per character. "paste" inserts the whole value in one operation and replaces any existing content, so `clear` is redundant with it. Use "paste" for multi-line values, code or JSON editors, and whenever typed text comes back garbled, duplicated or wrongly indented.',
+			),
 		clear: z.boolean().optional().describe('Clear existing text first'),
 		submit: z.boolean().optional().describe('Press Enter after typing'),
 		delay: z.number().optional().describe('Delay between keystrokes in ms'),
@@ -103,6 +109,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 		browserTypeSchema,
 		async (state, input, pageId) => {
 			await state.adapter.type(pageId, input.element, input.text, {
+				mode: input.mode,
 				clear: input.clear,
 				submit: input.submit,
 				delay: input.delay,

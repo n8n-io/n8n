@@ -3,6 +3,8 @@ import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db'
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * Real-DB coverage for the claim/lease/terminal behaviour the executor relies on,
  * across cli's sqlite + postgres matrix (the dialect-split locking is the point).
@@ -61,11 +63,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
+		const jobName = `job-${Math.random().toString(36).slice(2)}`;
 		job = await jobRepository.save(
 			jobRepository.create({
-				name: `job-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -1014,11 +1016,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('applies each job its own cutoff in a single call, without crossing jobs', async () => {
+			const jobName = `job-${Math.random().toString(36).slice(2)}`;
 			const otherJob = await jobRepository.save(
 				jobRepository.create({
-					name: `job-${Math.random().toString(36).slice(2)}`,
-					workflowId: null,
-					nodeId: null,
+					name: jobName,
+					...selfOwned(jobName),
 					taskType: TASK_TYPE,
 					payload: {},
 					kind: 'interval',

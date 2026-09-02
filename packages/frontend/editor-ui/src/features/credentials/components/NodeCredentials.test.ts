@@ -1,6 +1,6 @@
-import { shallowRef, ref, computed, nextTick } from 'vue';
-import { describe, it, vi, beforeEach } from 'vitest';
-import { screen, within } from '@testing-library/vue';
+import { shallowRef, ref, computed, nextTick, watchSyncEffect } from 'vue';
+import { describe, it, vi, beforeEach, afterEach } from 'vitest';
+import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -25,6 +25,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
@@ -56,6 +57,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		canServeCredentialType: vi.fn(() => false),
 		balance: computed(() => undefined),
 		budget: computed(() => undefined),
+		creditsLabelKey: computed(() => 'generic.freeCredits'),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -175,6 +177,7 @@ describe('NodeCredentials', () => {
 		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
 	>;
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
+	let stopCredentialsMirror: () => void;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -207,7 +210,18 @@ describe('NodeCredentials', () => {
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi
+			.fn()
+			.mockImplementation(async () => Object.values(credentialsStore.usableCredentials));
+
+		// The picker reads `usableCredentials`, the slice only the scoped fetch writes.
+		// Tests seed the flat map, and by the time an NDV mounts in production the
+		// scoped fetch has already run (useWorkflowInitialization), so mirror the seed
+		// into the slice. Tests that need the two to diverge stop the mirror first.
+		stopCredentialsMirror = watchSyncEffect(() => {
+			credentialsStore.usableCredentials = { ...credentialsStore.state.credentials };
+		});
+		credentialsStore.hasFetchedUsableCredentials = true;
 
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
@@ -231,6 +245,10 @@ describe('NodeCredentials', () => {
 		};
 	});
 
+	afterEach(() => {
+		stopCredentialsMirror?.();
+	});
+
 	it('should display available credentials in the dropdown', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
@@ -244,6 +262,27 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('should not offer a credential the scoped fetch left out of the usable slice', async () => {
+		// An unscoped fetchAllCredentials from anywhere in the app can fill the flat
+		// map with credentials from other projects while the NDV is open (IAM-1241).
+		stopCredentialsMirror();
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+			'personal-cred': createCredential({ id: 'personal-cred', name: 'Personal OpenAi account' }),
+		};
+		credentialsStore.usableCredentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent();
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+		expect(screen.queryByText('Personal OpenAi account')).not.toBeInTheDocument();
 	});
 
 	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
@@ -279,13 +318,50 @@ describe('NodeCredentials', () => {
 		expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 	});
 
+	it('passes the workflowId prop through to the new credential modal when standalone', async () => {
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{
+				props: {
+					node: httpNode,
+					overrideCredType: 'openAiApi',
+					standalone: true,
+					workflowId: 'wf-artifact',
+				},
+			},
+			{ merge: true },
+		);
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			httpNode.name,
+			httpNode,
+			expect.objectContaining({ workflowId: 'wf-artifact' }),
+		);
+		expect(trackMock).toHaveBeenCalledWith(
+			'User opened Credential modal',
+			expect.objectContaining({ workflow_id: 'wf-artifact' }),
+		);
+	});
+
 	it('should refresh credentials from the server when mounted on an existing node', () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {};
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: '1',
 		});
 	});
@@ -299,7 +375,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent({ props: { skipCredentialsFetch: true } });
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
 	});
 
 	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
@@ -310,7 +386,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'project-1',
 		});
 	});
@@ -324,7 +400,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'personal-project',
 		});
 	});
@@ -371,7 +447,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: false, closeOnSave: true },
+			{ hideAskAssistant: false, closeOnSave: true, workflowId: '1' },
 		);
 	});
 
@@ -402,7 +478,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true },
+			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true, workflowId: '1' },
 		);
 	});
 
@@ -605,8 +681,185 @@ describe('NodeCredentials', () => {
 				credential_type: 'openAiApi',
 				node_type: openAiNodeWithCred.type,
 				workflow_id: expect.any(String),
+				credential_id: 'secondCred',
 				credential_kind: 'own',
 				source: 'user',
+			});
+		});
+
+		it('should drop credentials the node no longer uses when selecting a credential', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// Node switched from generic to predefined auth: the httpHeaderAuth entry is stale.
+			// Built from scratch (not from the shared httpNode fixture) because store actions
+			// in earlier tests mutate the fixture object in place.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					provideSslCertificates: false,
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'e4b917b5-e994-42c7-8576-6ef28a7619b2',
+				name: 'HTTP Request Stale',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toEqual({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+			});
+		});
+
+		it('should keep existing credentials when the node type is unknown', async () => {
+			// No node types registered: the active credential types cannot be determined,
+			// so selecting a credential must not remove any existing entries.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'f5c917b5-e994-42c7-8576-6ef28a7619b3',
+				name: 'HTTP Request Unknown Type',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			// Presence matters (nothing was deleted); the renderer's merge:true option
+			// deep-merges nodes into the shared httpNode fixture, so avoid exact equality.
+			expect(payload.properties.credentials).toMatchObject({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+				httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+			});
+		});
+
+		it('should never drop the just-selected credential even when it is not in the active set', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// The node's configuration points at anthropicApi, so the openAiApi credential
+			// the user is about to pick (rendered via overrideCredType) is not in the
+			// active set — only the just-selected guard keeps it from being deleted.
+			const httpNodeOtherAuth: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'anthropicApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'a1b917b5-e994-42c7-8576-6ef28a7619b4',
+				name: 'HTTP Request Other Auth',
+				credentials: {
+					anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeOtherAuth;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent({ props: { node: httpNodeOtherAuth } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toMatchObject({
+				anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
 			});
 		});
 	});
@@ -960,7 +1213,7 @@ describe('NodeCredentials', () => {
 					name: slackNode.name,
 					type: slackNode.type,
 				}),
-				{ hideAskAssistant: false, closeOnSave: true },
+				{ hideAskAssistant: false, closeOnSave: true, workflowId: '1' },
 			);
 		});
 
@@ -1317,6 +1570,7 @@ describe('NodeCredentials', () => {
 			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('c8vqdPpPClh4TgIO', {
 				hideAskAssistant: true,
 				appendToBody: true,
+				workflowId: '1',
 			});
 		});
 	});
@@ -1473,6 +1727,7 @@ describe('NodeCredentials', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -1527,7 +1782,7 @@ describe('NodeCredentials', () => {
 
 				// The select stays visible with n8n credits as the selection.
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
-				expect(await screen.findByDisplayValue('n8n credits')).toBeInTheDocument();
+				expect(await screen.findByDisplayValue('Gateway credits')).toBeInTheDocument();
 			});
 
 			it('keeps the managed selection when gateway config has not loaded yet', () => {
@@ -1544,6 +1799,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
@@ -1574,6 +1830,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
@@ -1606,7 +1863,7 @@ describe('NodeCredentials', () => {
 
 				// The readonly disabled input shows the managed selection.
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
-				expect(screen.getByDisplayValue('n8n credits')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('Gateway credits')).toBeInTheDocument();
 			});
 
 			it('should show the readonly disabled input when readonly and not managed', () => {
@@ -1668,6 +1925,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -1713,6 +1971,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => 2.75),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -1763,9 +2022,12 @@ describe('NodeCredentials', () => {
 
 				await userEvent.click(screen.getByTestId('credential-topup-button'));
 
-				expect(uiStore.openModalWithData).toHaveBeenCalledWith(
-					expect.objectContaining({ data: { credentialType: 'googlePalmApi' } }),
-				);
+				await waitFor(() => {
+					expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+						name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+						data: { variant: 'member' },
+					});
+				});
 			});
 
 			it('switches to an own credential from the managed state via the dropdown', async () => {
@@ -1864,6 +2126,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2028,6 +2291,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2068,6 +2332,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2107,6 +2372,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2147,6 +2413,7 @@ describe('NodeCredentials', () => {
 					isNodePropertyHidden: vi.fn(() => false),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
 					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2220,6 +2487,46 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		it('should not auto-enable the gateway before the scoped fetch has resolved', async () => {
+			// An unfetched slice reads as "no credentials" — acting on it would switch a
+			// node that has a perfectly good credential onto n8n credits (IAM-1241).
+			stopCredentialsMirror();
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.hasFetchedUsableCredentials = false;
+			credentialsStore.usableCredentials = {};
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+
+			// Once the scope lands the user's own credential is selected instead.
+			credentialsStore.usableCredentials = { 'cred-1': ownCred };
+			credentialsStore.hasFetchedUsableCredentials = true;
+			await nextTick();
+
+			const payload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual(
+				expect.objectContaining({ id: 'cred-1' }),
+			);
+		});
+
 		it('should auto-enable gateway credential on mount for a directly-supported single-cred node in the NDV (show-all, no override)', () => {
 			// Real NDV config: show-all is true and no overrideCredType. Regression guard
 			// for the sibling-fallback change not clobbering directly-supported types.
@@ -2289,6 +2596,7 @@ describe('NodeCredentials', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2416,6 +2724,7 @@ describe('NodeCredentials', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
@@ -2463,6 +2772,7 @@ describe('NodeCredentials', () => {
 					credential_type: 'googlePalmApi',
 					node_type: googleAiNode.type,
 					workflow_id: expect.any(String),
+					credential_id: null,
 					credential_kind: 'n8n_connect',
 					source: 'user',
 				});
@@ -2521,6 +2831,7 @@ describe('NodeCredentials', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),

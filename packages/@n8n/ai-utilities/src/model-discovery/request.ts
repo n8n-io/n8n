@@ -35,6 +35,32 @@ export function baseUrl(options: ListModelsOptions, fallback: string): string {
 	return (options.baseURL ?? fallback).replace(/\/+$/, '');
 }
 
+/**
+ * Ensure a base URL's path ends with `suffix`, appending it if missing.
+ *
+ * `stripSuffix`, when given and present at the end of the path, is removed
+ * before `suffix` is appended (e.g. a path ending in `/v1` becomes one
+ * ending in `/anthropic/v1`, not `/v1/anthropic/v1`).
+ */
+export function ensureUrlPathSuffix(
+	baseURL: string,
+	suffix: string,
+	options?: { stripSuffix?: string },
+): string {
+	const url = new URL(baseURL);
+
+	const path = url.pathname.replace(/\/$/, '');
+	if (path.endsWith(suffix)) return baseURL;
+
+	const trimmedPath =
+		options?.stripSuffix && path.endsWith(options.stripSuffix)
+			? path.slice(0, -options.stripSuffix.length)
+			: path;
+	url.pathname = `${trimmedPath}${suffix}`;
+
+	return url.toString();
+}
+
 export function bearerHeaders(options: ListModelsOptions): Record<string, string> {
 	return { Authorization: `Bearer ${options.apiKey}` };
 }

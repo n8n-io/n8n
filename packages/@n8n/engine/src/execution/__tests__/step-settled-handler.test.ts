@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
+import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import type { StepStatus } from '../execution.types';
+import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
 
 /**
- * trigger → a → {b (out 0), c (out 1)} → m. So `a` fans out across two output
+ * trigger -> a -> {b (out 0), c (out 1)} -> m. So `a` fans out across two output
  * slots, `m` fans in behind both `b` and `c`, and `m` is terminal. Five
  * reachable nodes in total, which the finish tests count against.
  */
@@ -34,7 +35,7 @@ function summary(
 	status: StepStatus,
 	filledOutputSlots: boolean[] = [],
 ): StepSummary {
-	return { id: `step-${nodeId}`, nodeId, status, filledOutputSlots };
+	return { id: `step-${nodeId}`, nodeId, iteration: 0, status, filledOutputSlots };
 }
 
 /** Both of a's output slots fired, so both branches are live by default. */
@@ -53,7 +54,7 @@ function makeExecutionStore(
 		status: 'running',
 		mode: 'production',
 		graph,
-		triggerPayload: null,
+		triggerOutputs: null,
 		...overrides,
 	};
 	return {
@@ -74,31 +75,36 @@ function makeStepStore(
 		id: 'step-a',
 		executionId: 'exec-1',
 		nodeId: 'a',
+		iteration: 0,
 		status: 'completed',
 		outputs: null,
-		error: null,
 		...step,
 	};
-	const summariesByNodeId = Object.fromEntries(summaries.map((s) => [s.nodeId, s]));
+	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
 	return {
 		// ids derived from the node, so assertions can name the step they expect
 		createSteps: vi.fn().mockImplementation(async (_: string, records: NewStepRecord[]) => {
 			await Promise.resolve();
-			return records.map(({ nodeId }) => ({ id: `step-${nodeId}`, nodeId }));
+			return records.map(({ nodeId, iteration }) => ({ id: `step-${nodeId}`, nodeId, iteration }));
 		}),
 		loadStep: vi.fn().mockResolvedValue(record),
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
-		// like the store: only requested nodes that have rows appear
-		loadStepSummaries: vi.fn().mockImplementation(async (_: string, nodeIds: string[]) => {
+		// like the store: only requested keys that have rows appear
+		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
 			await Promise.resolve();
 			return Object.fromEntries(
-				nodeIds.filter((id) => summariesByNodeId[id]).map((id) => [id, summariesByNodeId[id]]),
+				keys
+					.map(stepKeyId)
+					.filter((key) => summariesByKey[key])
+					.map((key) => [key, summariesByKey[key]]),
 			);
 		}),
-		loadStepsByNodeIds: vi.fn().mockResolvedValue({}),
+		loadStepsByKeys: vi.fn().mockResolvedValue({}),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadAllSteps: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -114,19 +120,32 @@ function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
 	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
+/** A publisher fake; tests that care assert on `publish`. */
+function makeLifecycleEventPublisher(): LifecycleEventPublisher {
+	return { publish: vi.fn(), stop: vi.fn() };
+}
+
 function makeHandler(
 	stepStore: StepStore,
 	{
 		executionStore = makeExecutionStore(),
 		stepQueue = makeStepQueue(),
 		orchestrationQueue = makeOrchestrationQueue(),
+		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 	} = {},
 ) {
 	return {
-		handler: new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+		handler: new StepSettledHandler(
+			executionStore,
+			stepStore,
+			stepQueue,
+			orchestrationQueue,
+			lifecycleEventPublisher,
+		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
+		lifecycleEventPublisher,
 	};
 }
 
@@ -140,8 +159,8 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', status: 'queued' },
-			{ nodeId: 'c', status: 'queued' },
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+			{ nodeId: 'c', iteration: 0, status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 		expect(stepQueue.publish).toHaveBeenCalledWith({
@@ -168,7 +187,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-trigger' });
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'a', status: 'queued' },
+			{ nodeId: 'a', iteration: 0, status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -190,13 +209,13 @@ describe('StepSettledHandler', () => {
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-		expect(stepStore.loadStepSummaries).not.toHaveBeenCalled();
+		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
 	});
 
-	it('loads the decision rows in one query: the successors and their predecessors', async () => {
+	it('loads the decision rows in one query: the settled row, the successors, and what they read', async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' }, {}, [
 			...defaultSummaries,
 			summary('b', 'completed', [true]),
@@ -206,7 +225,11 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-b' });
 
 		// b's only successor is m; m reads from both b and c
-		expect(stepStore.loadStepSummaries).toHaveBeenCalledExactlyOnceWith('exec-1', ['m', 'b', 'c']);
+		expect(stepStore.loadStepSummariesByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'b', iteration: 0 },
+			{ nodeId: 'm', iteration: 0 },
+			{ nodeId: 'c', iteration: 0 },
+		]);
 	});
 
 	it('skips a dead branch and announces its settlement', async () => {
@@ -222,8 +245,8 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', status: 'queued' },
-			{ nodeId: 'c', status: 'skipped' },
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+			{ nodeId: 'c', iteration: 0, status: 'skipped' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -251,7 +274,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-c' });
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'm', status: 'queued' },
+			{ nodeId: 'm', iteration: 0, status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -274,7 +297,7 @@ describe('StepSettledHandler', () => {
 
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
-		// nothing queued by us and the count says work remains → no finish
+		// nothing queued by us and the count says work remains -> no finish
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 
@@ -443,5 +466,71 @@ describe('StepSettledHandler', () => {
 		// 'a' fanned out to b and c, so the execution is provably unfinished
 		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+});
+
+describe('StepSettledHandler lifecycle events', () => {
+	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: expect.any(String) as string };
+
+	it('announces execution:completed when it records the completion', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+		);
+		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'execution:completed',
+			...finished,
+		});
+	});
+
+	it('announces execution:failed when a step failed', async () => {
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }));
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'execution:failed',
+			...finished,
+		});
+	});
+
+	it('announces nothing when finishExecution loses the compare-and-set', async () => {
+		// Another worker already wrote the outcome, so it announces it.
+		const executionStore = makeExecutionStore(
+			{},
+			{ finishExecution: vi.fn().mockResolvedValue(false) },
+		);
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }), {
+			executionStore,
+		});
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	it('announces nothing while any reachable node is unsettled', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{ countSettledSteps: vi.fn().mockResolvedValue(4) },
+		);
+		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	it('announces nothing for the steps it cancels or skips', async () => {
+		// TODO(CAT-3990): cancelled and skipped steps announce nothing.
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });

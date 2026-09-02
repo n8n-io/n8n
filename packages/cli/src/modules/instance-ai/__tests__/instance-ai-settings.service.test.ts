@@ -2141,6 +2141,54 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('isModelConfigured', () => {
+		it('has a model on managed deployments', async () => {
+			globalConfig.deployment.type = 'cloud';
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+
+			globalConfig.deployment.type = 'default';
+			aiService.isProxyEnabled.mockReturnValue(true);
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+		});
+
+		it('accepts a model from environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, { modelApiKey: 'model-key' });
+			service = createService();
+
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+		});
+
+		it('accepts a model selected through the admin UI, without sandbox or search', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({ modelName: 'gpt-5.4' });
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+				policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id ? 'model-credential' : null,
+			);
+			await service.reloadFromDb();
+
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+			// The rest of setup is still outstanding — a conversation only needs the model.
+			await expect(service.isSetupCompleted()).resolves.toBe(false);
+		});
+
+		it('rejects a model name with no credential behind it', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({ modelName: 'gpt-5.4' });
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
+			await service.reloadFromDb();
+
+			await expect(service.isModelConfigured()).resolves.toBe(false);
+		});
+
+		it('rejects an instance with nothing configured', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
+
+			await expect(service.isModelConfigured()).resolves.toBe(false);
+		});
+	});
+
 	describe('service credential assignments', () => {
 		it('reads service credential selections from broker assignments', async () => {
 			const assignments: Record<string, string> = {
@@ -2246,25 +2294,28 @@ describe('InstanceAiSettingsService', () => {
 		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
 			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
 		});
 
 		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: false });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: true,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
 		});
 
 		it('does not flag mcpSettingsChanged when mcpAccessEnabled is set to the same value', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: true });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
 		});
 
 		it('does not fail a committed update when a local event listener throws', async () => {
@@ -2423,6 +2474,27 @@ describe('InstanceAiSettingsService', () => {
 					instanceAi: { localGatewayDisabled: true },
 				});
 			});
+		});
+	});
+
+	describe('setup telemetry event payload', () => {
+		it('carries the previous and next credential selections on the settings-updated event', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await service.updateAdminSettings({ modelCredentialId: 'model-cred', modelName: 'gpt-4' });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({
+					credentialSelections: {
+						previous: expect.objectContaining({ modelCredentialId: null, modelName: null }),
+						next: expect.objectContaining({ modelCredentialId: 'model-cred', modelName: 'gpt-4' }),
+						// No connection payload in this save — a raw credential-id assignment
+						connectionsUpdated: { model: false, sandbox: false, search: false },
+					},
+				}),
+			);
 		});
 	});
 });

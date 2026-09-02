@@ -10,6 +10,7 @@ type NewRefreshToken = {
 	userId: string;
 	expiresAt: number;
 	scope: string[];
+	resource: string;
 };
 
 @Service()

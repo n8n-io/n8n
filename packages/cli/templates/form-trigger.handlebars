@@ -261,6 +261,12 @@
 				cursor: not-allowed;
 			}
 
+			#submit-hint {
+				margin-top: 8px;
+				font-size: var(--font-size-link);
+				color: var(--color-link);
+			}
+
 			#submit-btn:disabled:hover {
 				opacity: 1;
 			}
@@ -650,7 +656,7 @@
 
 					{{#if hasAuthenticatedSubmitter}}<p id='submit-error'></p>{{/if}}
 
-					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required credentials first'{{/if}}>
+					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required accounts first'{{/if}}>
 						<span><svg
 								xmlns='http://www.w3.org/2000/svg'
 								height='18px'
@@ -662,6 +668,11 @@
 							</svg></span>
 						{{ buttonLabel }}
 					</button>
+
+					{{#if shellInner}}
+						{{!-- Only inside the hosting shell, where the connect panel above supplies the accounts. --}}
+						<p id='submit-hint'>This form will run using your connected accounts.</p>
+					{{/if}}
 				</form>
 
 				<div class='card' id='submitted-form' style='display: none;'>
@@ -682,7 +693,7 @@
 				{{#if appendAttribution}}
 					<hr>
 					<div class='n8n-link'>
-						<a href={{n8nWebsiteLink}} target='_blank'>
+						<a href='{{n8nWebsiteLink}}' target='_blank'>
 							Form automated with
 							<svg
 								width='73'
@@ -725,6 +736,8 @@
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
 
+			{{> formHostNavigation path=hostNavigationPath withRedirect=true}}
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -740,13 +753,13 @@
 				const isShellInner = {{#if shellInner}}true{{else}}false{{/if}};
 
 				// The submit-time credential gate refused this submission. Explain it and hand the
-				// form back with the answers intact. The panel names the credentials, so the banner
+				// form back with the answers intact. The panel names the accounts, so the banner
 				// only has to say what to do next.
 				function handleCredentialGate(credentials) {
 					updateError(
 						document.querySelector('#submit-error'),
 						'add',
-						'Not all required credentials are connected. ' +
+						'Not all required accounts are connected. ' +
 							(isShellInner
 								? 'Connect them above, then submit again.'
 								: 'Open this form in a new tab to connect them, then come back here and submit again.'),
@@ -988,7 +1001,7 @@
 						if (formSignature) {
 							redirectUrl.searchParams.set('signature', formSignature);
 						}
-						window.location.replace(redirectUrl.toString());
+						navigateTo(redirectUrl.toString());
 						return;
 					}
 
@@ -1132,7 +1145,9 @@
 								}
 
 								if (json?.redirectURL) {
-									window.location.replace(json.redirectURL);
+									// The author's end-of-form redirect leaves the form, so inside the
+									// hosting shell it must take the whole tab, not the sandboxed frame.
+									redirectTo(json.redirectURL);
 									return;
 								}
 
@@ -1158,12 +1173,15 @@
 
 							if (response.status === 200) {
 								if(response.redirected) {
-									window.location.replace(response.url);
+									// Another page of this form moves the frame; anything else is a
+									// redirect out of the form and takes the tab.
+									if (isHostNavigable(response.url)) navigateTo(response.url);
+									else redirectTo(response.url);
 									return;
 								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
-									window.location.replace(redirectUrl.href);
+									redirectTo(redirectUrl.href);
 								} else {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
@@ -1218,7 +1236,7 @@
 					{{/if}}
 				} else if (event.data.type === 'n8n-shell-credentials-not-ready') {
 					btn.disabled = true;
-					btn.setAttribute('title', 'Connect the required credentials first');
+					btn.setAttribute('title', 'Connect the required accounts first');
 				}
 			});
 		</script>

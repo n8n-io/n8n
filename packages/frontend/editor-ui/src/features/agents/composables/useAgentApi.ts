@@ -2,7 +2,9 @@ import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigValidationResponse,
+	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -186,8 +188,8 @@ export const connectIntegration = async (
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
 	options?: ConnectIntegrationOptions,
-): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
-	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
+): Promise<AgentIntegrationConnectResponse> => {
+	return await makeRestApiRequest<AgentIntegrationConnectResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
@@ -206,12 +208,13 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-): Promise<{ status: string }> => {
-	return await makeRestApiRequest<{ status: string }>(
+	deleteExternalResource?: boolean,
+): Promise<AgentDisconnectIntegrationResponse> => {
+	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId },
+		{ type, credentialId, deleteExternalResource },
 	);
 };
 

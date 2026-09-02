@@ -2,6 +2,7 @@ import {
 	AiGatewayConfigDto,
 	getAgentModelProviderCredentialTypes,
 	type AiGatewayUsageResponse,
+	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -23,11 +24,6 @@ import { UrlService } from '@/services/url.service';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
-}
-
-interface GatewayWalletResponse {
-	budget: number;
-	balance: number;
 }
 
 export type AiGatewayAvailability =
@@ -81,7 +77,7 @@ export class AiGatewayService {
 
 	assertEnabled(): void {
 		if (!this.isEnabled()) {
-			throw new BadRequestError('n8n Connect is not enabled on this instance');
+			throw new BadRequestError('Gateway credits are not enabled on this instance');
 		}
 	}
 
@@ -99,7 +95,7 @@ export class AiGatewayService {
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
-				ssrf: 'disabled', // the gateway base URL is n8n-owned configuration
+				useDefaultSsrfPolicy: 'unsafe', // the gateway base URL is n8n-owned configuration
 			})
 			.request({
 				method: options.method,
@@ -187,7 +183,7 @@ export class AiGatewayService {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 		if (!this.isEnabled()) {
-			throw new UserError('n8n Connect is not enabled on this instance.');
+			throw new UserError('Gateway credits are not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -195,7 +191,9 @@ export class AiGatewayService {
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
-			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
+			throw new UserError(
+				`Credential type "${credentialType}" is not supported by Gateway credits.`,
+			);
 		}
 
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
@@ -205,11 +203,11 @@ export class AiGatewayService {
 			workflowId,
 		});
 		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for n8n credits attribution.');
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
 		}
 		const jwt = await this.getOrFetchToken(resolvedUserId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
@@ -258,7 +256,7 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 
 		const url = new URL(`${baseUrl}/v1/gateway/usage`);
@@ -274,7 +272,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway usage',
 		);
 		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
-			throw new UserError('n8n credits returned an invalid usage response.');
+			throw new UserError('Gateway credits returned an invalid usage response.');
 		}
 		return data;
 	}
@@ -282,12 +280,12 @@ export class AiGatewayService {
 	/**
 	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getWallet(userId: string): Promise<GatewayWalletResponse> {
+	async getWallet(userId: string): Promise<AiGatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 		const data = await this.gatewayRequest<unknown>(
 			{
@@ -301,12 +299,16 @@ export class AiGatewayService {
 		return this.parseWalletResponse(data);
 	}
 
-	private parseWalletResponse(data: unknown): GatewayWalletResponse {
-		const d = data as GatewayWalletResponse;
+	private parseWalletResponse(data: unknown): AiGatewayWalletResponse {
+		const d = data as { budget?: unknown; balance?: unknown; hasEverToppedUp?: unknown };
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
-			throw new UserError('n8n credits returned an invalid wallet response.');
+			throw new UserError('Gateway credits returned an invalid wallet response.');
 		}
-		return d;
+		return {
+			budget: d.budget,
+			balance: d.balance,
+			hasEverToppedUp: d.hasEverToppedUp === true,
+		};
 	}
 
 	/**
@@ -346,7 +348,8 @@ export class AiGatewayService {
 
 	private requireBaseUrl(): string {
 		const url = this.globalConfig.aiAssistant.baseUrl;
-		if (!url) throw new UserError('n8n credits is not configured. Set the AI assistant base URL.');
+		if (!url)
+			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
 	}
 
@@ -380,7 +383,9 @@ export class AiGatewayService {
 			this.configFetchFailedAt > 0 &&
 			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			throw new OperationalError('n8n credits config fetch recently failed; retry is throttled.');
+			throw new OperationalError(
+				'Gateway credits config fetch recently failed; retry is throttled.',
+			);
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -395,7 +400,7 @@ export class AiGatewayService {
 			);
 			const parsed = AiGatewayConfigDto.safeParse(data);
 			if (!parsed.success) {
-				throw new UserError('n8n credits returned an invalid config response.');
+				throw new UserError('Gateway credits returned an invalid config response.');
 			}
 
 			this.gatewayConfig = parsed.data;
@@ -521,7 +526,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway token',
 		);
 		if (!token || typeof expiresIn !== 'number') {
-			throw new UserError('n8n credits returned an invalid token response.');
+			throw new UserError('Gateway credits returned an invalid token response.');
 		}
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);

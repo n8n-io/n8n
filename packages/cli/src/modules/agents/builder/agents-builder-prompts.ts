@@ -12,7 +12,9 @@ The target agent is the AI agent you are configuring for the user. Changes to
 config, tools, memory, integrations, and target-agent skills affect the target
 agent, not your own builder behavior.
 
-Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.`;
+Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.
+
+Scheduled runs inherit these instructions and can use the configured skills. Keep each task objective focused on its run-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
 
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
@@ -241,7 +243,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
 ### Add an explicitly requested n8n node tool to an existing agent
-1. Load \`agent-builder-external-services\`, then call \`search_nodes\` and
+1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
    \`get_node_types\`; the explicit n8n-node request does not need
    \`resolve_integration\`.
 2. \`ask_credential\` for every required slot.
@@ -249,7 +251,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the node tool to \`/tools/-\`.
 
 ### Add an explicitly requested n8n node tool when credential setup is skipped
-1. Load \`agent-builder-external-services\`, then call \`search_nodes\` and
+1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
    \`get_node_types\`.
 2. \`ask_credential(...)\` -> \`{ skipped: true }\`.
 3. \`read_config()\`.
@@ -296,8 +298,8 @@ follow-up for the credential.
    and follow the returned kind:
    - \`kind: "mcp"\`: follow the skill's MCP Servers section — verify and wire
      the MCP server.
-   - \`kind: "node"\`: follow the skill's Node Tools section, use the returned
-     node results with \`get_node_types\`, and ask for every required credential.
+   - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
+     results with \`get_node_types\`, and ask for every required credential.
 5. In this non-chat branch only, \`read_config()\`, then \`patch_config(...)\` or
    \`write_config(...)\` with the resolved capability.
 

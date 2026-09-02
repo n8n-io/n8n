@@ -41,7 +41,7 @@ import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -801,6 +801,14 @@ describe('Canvas', () => {
 
 		it('hides the convert button when the group is not extractable', async () => {
 			isSelectionExtractableMock.mockImplementation(() => ({ valid: false }));
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
+
+		it('hides the convert button when executeWorkflow is excluded', async () => {
+			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
 			const rendered = await setupExpandedGroupWithLooseNodes();
 
 			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();

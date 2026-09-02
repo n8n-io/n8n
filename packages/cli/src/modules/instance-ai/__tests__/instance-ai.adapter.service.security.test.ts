@@ -57,6 +57,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -65,7 +66,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
@@ -162,10 +163,10 @@ const service = new InstanceAiAdapterService(
 	roleService,
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
-	mock<SsrfProtectionService>(),
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
+	mock<CollaborationService>(),
 );
 
 const user = mock<User>({
@@ -249,6 +250,43 @@ describe('exploreResources — credential ownership check', () => {
 			undefined,
 			undefined,
 		);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Cross-project workflow reads: narrowing only, never widening
+// ---------------------------------------------------------------------------
+
+describe('workflow list — caller-supplied projectId', () => {
+	it('passes the project as a filter on the user-scoped query rather than resolving access itself', async () => {
+		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.list({ projectId: 'project-other' });
+
+		// Unlike credentials (a write capability, hard-locked to the bound project),
+		// workflow *reads* may be widened — `scope: 'instance'` already returns
+		// everything the user can read. So the project id is only ever a filter on a
+		// query that still resolves readability from this user's own roles: it can
+		// narrow that set, never extend it to a project they cannot read.
+		expect(workflowService.getMany).toHaveBeenCalledWith(user, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'project-other' },
+		});
+	});
+
+	it('does not let a cross-project read move where the thread writes', async () => {
+		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.list({ projectId: 'project-other' });
+		await ctx.credentialService.list({});
+
+		// The bound project is what write-adjacent surfaces keep resolving to.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
 	});
 });
 

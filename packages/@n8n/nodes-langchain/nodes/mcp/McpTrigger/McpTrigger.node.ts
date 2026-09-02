@@ -250,7 +250,11 @@ export class McpTrigger extends Node {
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}
-			await context.establishTriggerIdentity(authResult.token, authResult.resource);
+			await context.establishTriggerIdentity(
+				authResult.token,
+				authResult.resource,
+				authResult.user.id,
+			);
 			authedUser = authResult.user;
 		} else {
 			try {

@@ -14,13 +14,7 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -52,6 +46,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 
 const ctx = {
 	resumeData: undefined,
@@ -131,8 +126,6 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		mock<FreeAiCreditsService>(),
 		telemetry,
 	);
@@ -240,10 +233,23 @@ function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
 	} as unknown as Agent;
 }
 
+function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
+	return {
+		id: 'task-1',
+		name: 'Daily summary',
+		objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+		cronExpression: '0 9 * * *',
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
 describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
+	const credentialService = mock<InstanceAiCredentialService>();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -257,14 +263,20 @@ describe('AgentsBuilderToolsService', () => {
 	describe('JSON config tools', () => {
 		function getJsonTool(service: AgentsBuilderToolsService, name: string) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === name)!;
 		}
 
 		it('registers MCP-specific tools in the builder toolset', () => {
 			const { service } = makeService();
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const tools = service.getTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
@@ -275,7 +287,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service } = makeService();
 
 			const toolNames = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.FINISH_SETUP);
 		});
@@ -284,7 +296,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service } = makeService();
 
 			const toolNames = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.PUBLISH_AGENT);
 			expect(toolNames).toContain(BUILDER_TOOLS.UNPUBLISH_AGENT);
@@ -293,10 +305,10 @@ describe('AgentsBuilderToolsService', () => {
 		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
 			const { service, outboundHttp } = makeService();
 
-			service.getTools(agentId, projectId, credentialProvider, user);
+			service.getTools(agentId, projectId, credentialProvider, credentialService, user);
 
 			expect(outboundHttp.transport).toHaveBeenCalledWith(
-				expect.not.objectContaining({ ssrf: 'disabled' }),
+				expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 			);
 		});
 
@@ -392,7 +404,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(description).toContain('never use `ask_credential` for chat-channel credentials');
 		});
 
-		it('list_sub_agents returns published same-project agents except the target agent', async () => {
+		it('list_sub_agents returns saved same-project agents except the target agent', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findByProjectId.mockResolvedValue([
 				{
@@ -425,6 +437,10 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
+					},
+					{
+						agentId: 'agent-draft',
+						name: 'Draft Agent',
 					},
 					{
 						agentId: 'agent-risk',
@@ -1342,7 +1358,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('list_workflows tool', () => {
 		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === 'list_workflows')!;
 		}
 
@@ -1364,7 +1380,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('build_custom_tool tool', () => {
 		function getBuildCustomTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
@@ -1438,7 +1454,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('create_skills tool', () => {
 		function getCreateSkillsTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILLS)!;
 		}
 
@@ -1606,7 +1622,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			agentsService.getSkill.mockResolvedValue(skill);
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1644,7 +1660,7 @@ describe('AgentsBuilderToolsService', () => {
 				],
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1681,7 +1697,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.getSkill.mockRejectedValue(new Error('Skill not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1710,7 +1726,7 @@ describe('AgentsBuilderToolsService', () => {
 				},
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'list_skills');
 
 			expect(tool).toBeDefined();
@@ -1740,7 +1756,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.listSkills.mockRejectedValue(new Error('Agent not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'list_skills');
 
 			expect(tool).toBeDefined();
@@ -1770,7 +1786,7 @@ describe('AgentsBuilderToolsService', () => {
 				versionId: 'v2',
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1806,7 +1822,7 @@ describe('AgentsBuilderToolsService', () => {
 				versionId: 'v2',
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1846,7 +1862,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockRejectedValue(new Error('Skill not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1867,7 +1883,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('create_tasks tool', () => {
 		function getCreateTasksTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASKS)!;
 		}
 
@@ -1881,68 +1897,6 @@ describe('AgentsBuilderToolsService', () => {
 			objective: 'Summarize the week across #general and email a digest to the team.',
 			cronExpression: '0 9 * * 1',
 		};
-
-		function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
-			return {
-				id: 'task-1',
-				...taskOneInput,
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				...overrides,
-			};
-		}
-
-		it('is available to the builder with batch and config attachment guidance', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool).toBeDefined();
-			expect(tool.description).toContain('all-or-nothing');
-			expect(tool.description).toContain(
-				'Pass every task you currently know how to write in one `tasks` array',
-			);
-			expect(tool.description).toContain('config.tasks');
-			expect(tool.description).toContain('{ ok: true, configMutated: true, agentId, tasks:');
-			expect(tool.description).toContain('{ ok: false, errors }');
-		});
-
-		it('puts quality and batching guardrails in systemInstruction, not description', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool.systemInstruction).toContain('vague, broad, or placeholder objective');
-			expect(tool.systemInstruction).toContain('ask the user clarifying questions');
-			expect(tool.systemInstruction).toContain('self-contained');
-			expect(tool.systemInstruction).toContain('Success criteria');
-			expect(tool.systemInstruction).toContain('A task can only use tools the agent already has');
-			expect(tool.systemInstruction).toContain('Batch every task');
-			expect(tool.description).not.toContain('ask the user clarifying questions');
-			expect(tool.description).not.toContain('Success criteria');
-		});
-
-		it('puts the structured objective template in each task objective parameter', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-			const objectiveSchema = (
-				tool.inputSchema as unknown as {
-					shape: { tasks: { element: { shape: { objective: { description?: string } } } } };
-				}
-			).shape.tasks.element.shape.objective;
-
-			for (const heading of [
-				'## Objective',
-				'## Context',
-				'## Steps',
-				'## Output',
-				'## Constraints',
-				'## Success criteria',
-			]) {
-				expect(objectiveSchema.description).toContain(heading);
-			}
-		});
 
 		it('creates multiple tasks without emitting legacy builder task telemetry', async () => {
 			const { service, agentsService, agentTaskService, telemetry } = makeService();
@@ -2034,10 +1988,116 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
+	describe('list_tasks tool', () => {
+		function getListTasksTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.LIST_TASKS)!;
+		}
+
+		it('lists task bodies with enabled state from the current config', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(
+				makeAgent({
+					...baseConfig,
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				}),
+			);
+			agentTaskService.list.mockResolvedValue([
+				makeTaskDto(),
+				makeTaskDto({
+					id: 'task-2',
+					name: 'Weekly digest',
+					objective: 'Summarize the week and email a digest to the team.',
+					cronExpression: '0 9 * * 1',
+				}),
+			]);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				tasks: [
+					{
+						id: 'task-1',
+						name: 'Daily summary',
+						objective:
+							'Summarize the team Slack #general channel from the last 24h and post a recap.',
+						cronExpression: '0 9 * * *',
+						enabled: true,
+					},
+					{
+						id: 'task-2',
+						name: 'Weekly digest',
+						objective: 'Summarize the week and email a digest to the team.',
+						cronExpression: '0 9 * * 1',
+						enabled: false,
+					},
+				],
+			});
+		});
+
+		it('does not list task bodies when the agent is outside the project', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
+			expect(agentTaskService.list).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('update_task tool', () => {
+		function getUpdateTaskTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.UPDATE_TASK)!;
+		}
+
+		it('updates only supplied fields while preserving the task id', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.update.mockResolvedValue(
+				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
+			);
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { cronExpression: '0 10 * * *' } },
+				ctx,
+			);
+
+			expect(agentTaskService.update).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'task-1',
+				{ cronExpression: '0 10 * * *' },
+				{ user, modifiedBy: 'builder' },
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'task-1',
+				name: 'Daily summary',
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('rejects an update without changed fields', () => {
+			const { service } = makeService();
+			const result = (
+				getUpdateTaskTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ taskId: 'task-1', updates: {} });
+
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('call_agent tool', () => {
 		function getCallAgentTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.CALL_AGENT)!;
 		}
 
@@ -2319,13 +2379,13 @@ describe('AgentsBuilderToolsService', () => {
 	describe('publish_agent / unpublish_agent tools', () => {
 		function getPublishTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
 		}
 

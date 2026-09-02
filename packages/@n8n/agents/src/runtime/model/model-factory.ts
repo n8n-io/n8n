@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
@@ -130,7 +131,11 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
-type OpenAiCompatibleProviderId = 'nvidia' | 'moonshotai';
+type OpenAiCompatibleProviderId = 'nvidia';
+
+function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
@@ -157,9 +162,13 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
 			// vLLM, Ollama), which speaks /chat/completions; the provider's default
 			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. A proxy in front of real OpenAI also sets a
-			// baseURL but does serve /responses, so `apiStyle` overrides the guess.
-			const useChat = apiStyle ? apiStyle === 'chat' : Boolean(providerCreds.baseURL);
+			// servers do not implement. OpenAI credentials also carry the official
+			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
+			// explicitly support one API or the other.
+			const useChat =
+				apiStyle === 'chat' ||
+				(apiStyle === undefined &&
+					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
 			return useChat ? provider.chat(model) : provider(model);
 		},
 	},
@@ -205,7 +214,15 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	google: {
 		build: (creds, model, fetch) => {
 			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogle({ ...creds, fetch })(model);
+			// The SDK expects a version-qualified base (its own default ends in
+			// `/v1beta`), but `googlePalmApi.host` stores the bare host — the Gemini
+			// node's SDK appends the API version itself. Passing the host through
+			// unqualified drops the version from every request path, and Google
+			// answers 404 for any model.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/v1beta')
+				: creds.baseURL;
+			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	xai: {
@@ -252,14 +269,62 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
-	moonshotai: openAiCompatibleEntry('moonshotai', 'https://api.moonshot.ai/v1', {
-		includeUsage: true,
-		supportsStructuredOutputs: true,
-	}),
+	moonshotai: {
+		build: (creds, model, fetch) => {
+			const { createMoonshotAI } =
+				require('@ai-sdk/moonshotai') as typeof import('@ai-sdk/moonshotai');
+			return createMoonshotAI({ ...creds, fetch })(model);
+		},
+	},
+	alibaba: {
+		build: (creds, model, fetch) => {
+			const { createAlibaba } = require('@ai-sdk/alibaba') as typeof import('@ai-sdk/alibaba');
+			// The SDK expects the OpenAI-compatible base, but n8n Alibaba credentials
+			// store the region's bare host — Alibaba serves its native and its
+			// OpenAI-compatible API under different paths on that host.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/compatible-mode/v1')
+				: creds.baseURL;
+			return createAlibaba({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	minimax: {
+		build: (creds, model, fetch) => {
+			const { createMiniMax } = require('@ai-sdk/minimax') as typeof import('@ai-sdk/minimax');
+			// The SDK speaks MiniMax's Anthropic-compatible API, which MiniMax also
+			// recommends, but n8n MiniMax credentials store the OpenAI-compatible base.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/anthropic/v1', { stripSuffix: '/v1' })
+				: creds.baseURL;
+			return createMiniMax({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+
+			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
+			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
+			// classic `*.openai.azure.com` shape (it appends `/openai` and injects
+			// `/deployments/{id}`), which mangles the Foundry URL into
+			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
+			// so the configured base is used verbatim.
+			if (endpointType === 'foundry') {
+				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+			}
+
+			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
+			// Use chat completions over deployment-based URLs so the credential's
+			// date-based `apiVersion` (e.g. `2025-03-01-preview`) matches the URL
+			// scheme Azure expects — mirroring the LangChain Azure node, which
+			// forces `useResponsesApi: false`. The SDK's default `provider(model)`
+			// selects the Responses API + the `/v1/` path, which Azure rejects with
+			// "API version not supported" for date-based versions.
+			//
+			// Azure deployments are user-named and surfaced in the deployment-based
+			// URL path. The catalog model id is not the deployment id, so prefer the
+			// user's `deploymentName` when provided and fall back to the model id.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
-			const { baseURL, resourceName, apiVersion, apiKey } = creds;
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
 			if (normalizedBaseURL) {
@@ -269,9 +334,14 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
-			return createAzure({ resourceName, apiKey, baseURL: normalizedBaseURL, apiVersion, fetch })(
-				model,
-			);
+			return createAzure({
+				resourceName,
+				apiKey,
+				baseURL: normalizedBaseURL,
+				apiVersion,
+				useDeploymentBasedUrls: true,
+				fetch,
+			}).chat(deploymentName ?? model);
 		},
 	},
 	'aws-bedrock': {

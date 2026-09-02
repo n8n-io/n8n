@@ -190,13 +190,21 @@ export class PostHogClient {
 	}
 
 	/**
-	 * Applies env-var overrides on top of PostHog-resolved flags. The override
-	 * is force-enable only — `false` defers to PostHog. Cached PostHog data is
-	 * stored without overrides so changing the env var (across restarts)
+	 * Applies env-var overrides on top of PostHog-resolved flags. Cached PostHog
+	 * data is stored without overrides so changing an env var (across restarts)
 	 * doesn't poison the cache.
+	 *
+	 * Both tiers win over PostHog. Between themselves, the generic map goes
+	 * first so a dedicated per-feature env var always has the final say:
+	 * 1. The generic map (`N8N_FEATURE_FLAG_OVERRIDES`) — sets a flag to any
+	 *    value, so unlike tier 2 it can force a flag *off* as well as on.
+	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
+	 *    only; `false` defers to PostHog. Applied last so the generic map
+	 *    cannot undo a feature an operator enabled explicitly.
 	 */
 	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
-		const overrides: FeatureFlags = {};
+		const overrides: FeatureFlags = { ...this.globalConfig.featureFlags.override };
+
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
 		}

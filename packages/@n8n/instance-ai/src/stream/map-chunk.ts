@@ -8,6 +8,7 @@ import {
 	webSearchMetaSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
+	credentialDestinationSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -329,6 +330,7 @@ function mapSuspendedChunk(
 		suspendPayload.credentialRequests,
 		credentialRequestSchema,
 	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
@@ -338,6 +340,10 @@ function mapSuspendedChunk(
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
 	const resourceDecision = parseSchemaRecord(
@@ -377,11 +383,13 @@ function mapSuspendedChunk(
 					: 'Confirmation required',
 			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
 			...(questions ? { questions } : {}),

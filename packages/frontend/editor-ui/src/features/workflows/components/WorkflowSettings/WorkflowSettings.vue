@@ -22,6 +22,7 @@ import {
 	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
+	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -228,6 +229,17 @@ const workflowId = computed(() => workflowDocumentStore.value.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
+
+/**
+ * Whether the policy was `any` when the dialog opened. An instance that lost the Sharing
+ * feature (downgrade, lapsed license) can still carry the deprecated value, so the field
+ * has to stay reachable for them to leave it. Latched on open rather than read live, so
+ * the field does not disappear mid-edit once another policy is picked.
+ */
+const openedWithDeprecatedCallerPolicy = ref(false);
+const isCallerPolicyVisible = computed(
+	() => isSharingEnabled.value || openedWithDeprecatedCallerPolicy.value,
 );
 const workflowOwnerName = computed(() => {
 	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
@@ -811,9 +823,9 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
-const updateTimeSavedPerExecution = (value: string) => {
-	const numValue = parseInt(value, 10);
-	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
+const updateTimeSavedPerExecution = (value: number | null | undefined) => {
+	const numValue = typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : NaN;
+	workflowSettings.value.timeSavedPerExecution = Number.isNaN(numValue)
 		? undefined
 		: numValue < 0
 			? 0
@@ -913,6 +925,11 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
+	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+		workflowSettingsData.callerPolicy = 'none';
+	}
+	// After the exclusion override, so a policy forced to `none` never counts as deprecated.
+	openedWithDeprecatedCallerPolicy.value = workflowSettingsData.callerPolicy === 'any';
 	if (workflowSettingsData.executionTimeout === undefined) {
 		workflowSettingsData.executionTimeout = rootStore.executionTimeout;
 	}
@@ -1141,7 +1158,7 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
+				<div v-if="isCallerPolicyVisible" data-test-id="workflow-caller-policy">
 					<ElRow>
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
@@ -1156,10 +1173,15 @@ onBeforeUnmount(() => {
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="workflowSettings.callerPolicy"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:disabled="
+									readOnlyEnv ||
+									!workflowPermissions.update ||
+									settingsStore.isExecuteWorkflowNodeExcluded
+								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
+								data-test-id="workflow-caller-policy-select"
 							>
 								<N8nOption
 									v-for="option of workflowCallerPolicyOptions"
@@ -1169,6 +1191,15 @@ onBeforeUnmount(() => {
 								>
 								</N8nOption>
 							</N8nSelect>
+						</ElCol>
+					</ElRow>
+					<ElRow v-if="workflowSettings.callerPolicy === 'any'">
+						<ElCol :span="24">
+							<N8nNotice
+								theme="warning"
+								:content="i18n.baseText('workflowSettings.callerPolicy.any.deprecationNotice')"
+								data-test-id="workflow-caller-policy-any-deprecation"
+							/>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
@@ -1688,6 +1719,7 @@ onBeforeUnmount(() => {
 								controls-position="right"
 								size="medium"
 								:controls="true"
+								:class="$style.timeSavedPerExecution"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								:min="0"
@@ -1869,10 +1901,11 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
 
-	:global(.el-input-number) {
-		width: var(--spacing--4xl);
-	}
+.timeSavedPerExecution {
+	width: var(--spacing--4xl);
+	flex-shrink: 0;
 }
 
 .time-saved-dropdown {

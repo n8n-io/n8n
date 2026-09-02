@@ -17,7 +17,7 @@ const modalBus = createEventBus();
 		width="540"
 	>
 		<template #content>
-			<BrowserUseSetupContent @close="modalBus.emit('close')" />
+			<BrowserUseSetupContent auto-connect @close="modalBus.emit('close')" />
 		</template>
 	</Modal>
 </template>

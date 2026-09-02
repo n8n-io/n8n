@@ -30,7 +30,7 @@ interface NormalizedNode {
 	typeVersion: number;
 	position: [number, number];
 	parameters: Record<string, unknown>;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: NodeRaw['credentials'];
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;

@@ -4,7 +4,11 @@ import path from 'node:path';
 import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	GlobalConfig,
+	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+} from '../src/index';
 
 const { readFileSyncMock } = vi.hoisted(() => ({
 	readFileSyncMock: vi.fn(),
@@ -135,6 +139,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				showScopes: [],
 				skipTypes: [],
 			},
 		},
@@ -189,6 +194,9 @@ describe('GlobalConfig', () => {
 		externalHooks: {
 			separator: ':',
 			files: [],
+		},
+		featureFlags: {
+			override: {},
 		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
@@ -253,6 +261,7 @@ describe('GlobalConfig', () => {
 				queueMetricsInterval: 20,
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
+				includePollTriggerMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -354,15 +363,11 @@ describe('GlobalConfig', () => {
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
-			outputRedactionEnabled: true,
-			outputRedactionSecrets: true,
-			outputRedactionPii: 'credit-card',
-			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
+			instanceAiSetupPanelEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 		},
@@ -473,12 +478,18 @@ describe('GlobalConfig', () => {
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
 			enabledForPollTriggers: false,
+			pollTimeoutSeconds: 45,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
-		},
-		poller: {
 			durableCursorsEnabled: false,
+			enabledForSystemTasks: false,
+			ownerReconciliationEnabled: true,
+			ownerReconciliationIntervalSeconds: 900,
+			ownerReconciliationTimeoutSeconds: 300,
+			ownerReconciliationBatchSize: 500,
+			ownerQuarantineGraceSeconds: 86400,
+			ownerSettleSeconds: 300,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -502,10 +513,10 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
+			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
 			daysAbandonedWorkflow: 90,
-			contentSecurityPolicy: '{}',
-			contentSecurityPolicyReportOnly: false,
+			contentSecurityPolicy: undefined,
+			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
@@ -615,6 +626,9 @@ describe('GlobalConfig', () => {
 			globalUserAgentValue: '',
 			responseBodyReadTimeout: 300000,
 		},
+		outboundProxy: {
+			mode: 'all',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -684,11 +698,13 @@ describe('GlobalConfig', () => {
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
 			modules: [],
+			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			channelReconcileIntervalSeconds: 60,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -711,6 +727,15 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingEnabled).toBe(false);
 	});
 
+	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
+		process.env = {
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+	});
+
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
 		process.env = {
 			N8N_AGENTS_TRACING_RECORD_INPUTS: 'false',
@@ -729,15 +754,6 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
-	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxEphemeral).toBe(true);
-	});
-
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
 		process.env = {
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
@@ -745,6 +761,18 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {
+		process.env = {
+			N8N_MANAGED_OAUTH_SHOW_SCOPES: 'googleOAuth2Api,microsoftOAuth2Api',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.credentials.overwrite.showScopes).toEqual([
+			'googleOAuth2Api',
+			'microsoftOAuth2Api',
+		]);
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -864,7 +892,7 @@ describe('GlobalConfig', () => {
 		expect(config.database.postgresdb.password).toBe('password-from-file');
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+				'DB_POSTGRESDB_PASSWORD_FILE contained leading or trailing whitespace',
 			),
 		);
 	});

@@ -10,9 +10,6 @@
         "stream": true,
         "max_tokens": 16384,
         "tools": [],
-        "thinking": {
-          "type": "disabled"
-        },
         "messages": [
           {
             "role": "user",

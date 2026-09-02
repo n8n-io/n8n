@@ -6,7 +6,6 @@ export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
 export const PROJECT_AGENTS = 'ProjectAgents';
-export const AGENT_BUILDER_SETTINGS_VIEW = 'SettingsAgentBuilderView';
 
 export const AGENTS_MODULE_NAME = 'agents';
 
@@ -48,3 +47,4 @@ export {
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+export const NEW_SESSION_PARAM = 'newSession';

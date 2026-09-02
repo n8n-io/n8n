@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.35.0",
+  "version": "2.37.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -51,6 +51,7 @@
       "dist/credentials/AsanaApi.credentials.js",
       "dist/credentials/AsanaOAuth2Api.credentials.js",
       "dist/credentials/AtlassianOAuth2Api.credentials.js",
+      "dist/credentials/AtlassianServiceAccountApi.credentials.js",
       "dist/credentials/Auth0ManagementApi.credentials.js",
       "dist/credentials/AutopilotApi.credentials.js",
       "dist/credentials/Aws.credentials.js",
@@ -359,6 +360,7 @@
       "dist/credentials/ShopifyOAuth2Api.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
+      "dist/credentials/SlackManagerOAuth2Api.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",
       "dist/credentials/Sms77Api.credentials.js",
       "dist/credentials/Smtp.credentials.js",
@@ -948,7 +950,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",

@@ -368,7 +368,7 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentTestChatService.clearTestChatMessages(projectId, agentId, req.user.id);
+		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 }
