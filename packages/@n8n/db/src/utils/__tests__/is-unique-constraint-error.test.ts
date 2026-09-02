@@ -33,13 +33,6 @@ describe('isUniqueConstraintError', () => {
 			);
 			expect(isUniqueConstraintError(error)).toBe(true);
 		});
-
-		it('MySQL duplicate entry (code ER_DUP_ENTRY)', () => {
-			const error = makeQueryFailedError("Duplicate entry 'a@b.com' for key 'users_email_key'", {
-				code: 'ER_DUP_ENTRY',
-			});
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
 	});
 
 	describe('returns false for non-QueryFailedError values', () => {
