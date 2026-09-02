@@ -32,7 +32,7 @@ describe('AiTransformDeprecatedRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(2);
 			expect(result.issues.map((i) => i.nodeName)).toEqual(['Transform A', 'Transform B']);
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].nodeId).toBe('node-Transform A');
 		});
 	});
