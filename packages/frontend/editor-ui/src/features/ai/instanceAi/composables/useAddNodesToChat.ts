@@ -1,5 +1,5 @@
 import { useRouter } from 'vue-router';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -10,13 +10,10 @@ import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { buildNodesAttachment, type NodeContextWorkflow } from '../utils/buildNodesAttachment';
 import type { IWorkflowDb } from '@/Interface';
 
-/** Which affordance triggered add-to-chat — mirrors the telemetry event's `source`. */
-export type AddNodesToChatSource =
-	| 'node_toolbar'
-	| 'selection_toolbar'
-	| 'context_menu'
-	| 'group_title_bar'
-	| 'keyboard';
+/** Which affordance triggered add-to-chat — derived from the telemetry event's `source`. */
+export type AddNodesToChatSource = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.INSTANCE_AI.USER_ADDED_NODES_TO_CHAT
+>['source'];
 
 export function useAddNodesToChat() {
 	const store = useInstanceAiStore();
