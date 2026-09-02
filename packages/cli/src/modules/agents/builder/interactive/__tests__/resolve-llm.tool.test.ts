@@ -227,6 +227,62 @@ describe('resolve_llm tool', () => {
 			});
 		});
 
+		it('resolves the free-credits model against the newly claimed credential', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+				{ name: 'GPT-5 nano', value: 'gpt-5-nano' },
+			]);
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({ ok: true, model: 'gpt-5-mini' });
+			expect(modelLookup.list).toHaveBeenCalledWith('free-1', 'openAiApi', 'openai');
+		});
+
+		it('falls back to the first allowlisted model when the free-credits model is retired', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5.6 luna', value: 'gpt-5.6-luna' },
+			]);
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				model: 'gpt-5.6-luna',
+				claimedFreeOpenAiCredits: true,
+			});
+		});
+
+		it('keeps the claim when the free-credits model list cannot be reached', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => {
+				throw new Error('proxy unavailable');
+			});
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				model: 'gpt-5-mini',
+				credentialId: 'free-1',
+				claimedFreeOpenAiCredits: true,
+			});
+		});
+
 		it('returns missing_credential when no LLM credentials exist and free credits are not eligible', async () => {
 			const credentialProvider = makeProvider([]);
 			const modelLookup = makeModelLookup();
@@ -629,6 +685,33 @@ describe('resolve_llm tool', () => {
 				provider: 'anthropic',
 				requestedModel: 'gpt-9000',
 				availableModels: available,
+			});
+		});
+
+		it('caps availableModels and reports how many were left out', async () => {
+			const credentialProvider = makeProvider([
+				{ id: 'c1', name: 'My OpenRouter', type: 'openRouterApi' },
+			]);
+			const available = Array.from({ length: 40 }, (_, i) => ({
+				name: `Model ${i}`,
+				value: `vendor/model-${i}`,
+			}));
+			const modelLookup = makeModelLookup(async () => available);
+			const tool = buildResolveLlmTool({
+				credentialProvider,
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'openrouter', model: 'nothing-like-it' }, {});
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'openrouter',
+				requestedModel: 'nothing-like-it',
+				availableModels: available.slice(0, 25),
+				availableModelsTruncated: true,
+				totalAvailableModels: 40,
 			});
 		});
 

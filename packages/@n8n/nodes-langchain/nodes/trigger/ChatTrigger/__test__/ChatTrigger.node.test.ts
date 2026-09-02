@@ -8,6 +8,7 @@ import { ChatTrigger } from '../ChatTrigger.node';
 import { ChatTriggerAuthorizationError } from '../error';
 import {
 	establishChatSessionIdentity,
+	handleChatTokenRefresh,
 	resolveInnerFrameIdentity,
 	validateAuth,
 } from '../GenericFunctions';
@@ -16,6 +17,7 @@ import type { LoadPreviousSessionChatOption } from '../types';
 vi.mock('../GenericFunctions', () => ({
 	validateAuth: vi.fn(),
 	establishChatSessionIdentity: vi.fn(),
+	handleChatTokenRefresh: vi.fn(),
 	resolveInnerFrameIdentity: vi.fn(),
 }));
 
@@ -571,7 +573,7 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
-			vi.mocked(establishChatSessionIdentity).mockResolvedValue(true);
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue({ expiresIn: 3600 });
 			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue({
 				visitor,
 				authToken: 'as-token',
@@ -631,7 +633,7 @@ describe('ChatTrigger Node', () => {
 		// never on the sandboxed frame's own request — a redirect to sign-in/consent from
 		// inside that opaque-origin frame would render editor-ui inside it and crash.
 		it('does not render the shell while the outer AS handshake is still in flight', async () => {
-			vi.mocked(establishChatSessionIdentity).mockResolvedValue(false);
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue(null);
 
 			const result = await renderSetupPage();
 
@@ -698,6 +700,7 @@ describe('ChatTrigger Node', () => {
 			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			expect(renderedPage()).not.toContain('n8nShellInner');
+			expect(renderedPage()).not.toContain('n8nChatRefresh');
 		});
 
 		it.each(['none', 'basicAuth'])(
@@ -709,8 +712,53 @@ describe('ChatTrigger Node', () => {
 				expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 				expect(renderedPage()).toContain('createChat');
 				expect(renderedPage()).not.toContain('n8nShellInner');
+				expect(renderedPage()).not.toContain('n8nChatRefresh');
 			},
 		);
+
+		it('carries the refresh endpoint and schedule into the shell', async () => {
+			await renderSetupPage();
+
+			expect(renderedPage()).toContain('/webhook/abc/chat?n8nChatRefresh=1');
+			expect(renderedPage()).toContain("'x-n8n-chat-refresh': '1'");
+			// The session's duration, passed straight through — no timestamp of ours
+			// for the page's clock to disagree with.
+			expect(renderedPage()).toContain('planFor(3600)');
+		});
+
+		// The leg answers with JSON, not a page, and authenticates from its own httpOnly
+		// cookie — so it must be handled before either render branch decides anything.
+		it('routes the refresh leg ahead of the shell render', async () => {
+			mockRequest.query = { n8nChatRefresh: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				'x-n8n-chat-refresh': '1',
+				'sec-fetch-site': 'same-origin',
+			};
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(handleChatTokenRefresh).toHaveBeenCalledWith(
+				mockContext,
+				'http://localhost:5678/webhook/abc/chat',
+			);
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
+			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
+			expect(mockResponse.send).not.toHaveBeenCalled();
+		});
+
+		// Without the custom header the request is forgeable by shape alone, so it must
+		// fall through to the ordinary shell render rather than reach the leg.
+		it('does not route the refresh leg without the custom header', async () => {
+			mockRequest.query = { n8nChatRefresh: '1' };
+
+			await renderSetupPage();
+
+			expect(handleChatTokenRefresh).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).toHaveBeenCalled();
+		});
 
 		// The builder opens the test URL from the canvas, so it must split exactly as
 		// production does for the flow to be testable end to end.
