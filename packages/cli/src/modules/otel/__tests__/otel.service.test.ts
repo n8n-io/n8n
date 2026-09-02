@@ -775,6 +775,36 @@ describe('OtelService', () => {
 			expect(result).toEqual({ success: false, error: '401 Unauthorized' });
 		});
 
+		it('strips a trailing empty resolution note from the error message', async () => {
+			mockExportImpl = (_spans, resultCallback) =>
+				resultCallback({
+					error: new Error(
+						'14 UNAVAILABLE: No connection established. Last error: Protocol error. Resolution note: ',
+					),
+				});
+
+			const result = await service.sendTestTrace(connection);
+
+			expect(result).toEqual({
+				success: false,
+				error: '14 UNAVAILABLE: No connection established. Last error: Protocol error.',
+			});
+		});
+
+		it('keeps a resolution note that carries text', async () => {
+			mockExportImpl = (_spans, resultCallback) =>
+				resultCallback({
+					error: new Error('14 UNAVAILABLE: … Resolution note: DNS lookup used a proxy'),
+				});
+
+			const result = await service.sendTestTrace(connection);
+
+			expect(result).toEqual({
+				success: false,
+				error: '14 UNAVAILABLE: … Resolution note: DNS lookup used a proxy',
+			});
+		});
+
 		it('returns failure instead of throwing when the exporter cannot be built', async () => {
 			vi.mocked(OTLPTraceExporter).mockImplementationOnce(function () {
 				throw new Error('Configuration: timeoutMillis is invalid');

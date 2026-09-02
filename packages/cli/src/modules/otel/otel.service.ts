@@ -27,6 +27,11 @@ import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
+// grpc-js ends its connection errors with "Resolution note: <note>" and leaves
+// the note empty unless its resolver has something to add.
+const stripEmptyResolutionNote = (message: string) =>
+	message.replace(/\s*Resolution note:\s*$/, '');
+
 @Service()
 export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
@@ -79,7 +84,7 @@ export class OtelService {
 							exporter.export([span], (result) =>
 								resolve(
 									result.error
-										? { success: false, error: result.error.message }
+										? { success: false, error: stripEmptyResolutionNote(result.error.message) }
 										: { success: true },
 								),
 							),
