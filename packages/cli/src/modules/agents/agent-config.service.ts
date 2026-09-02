@@ -199,6 +199,7 @@ export class AgentConfigService {
 		const toolsProvided = validatedConfig.tools !== undefined;
 		const skillsProvided = validatedConfig.skills !== undefined;
 		const credentialProvided = validatedConfig.credential !== undefined;
+		const modelDeploymentNameProvided = validatedConfig.modelDeploymentName !== undefined;
 		const personalisationProvided = validatedConfig.personalisation !== undefined;
 		const memoryProvided = validatedConfig.memory !== undefined;
 		const subAgentsProvided = validatedConfig.subAgents !== undefined;
@@ -240,6 +241,15 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (modelDeploymentNameProvided) {
+			const deploymentName = decomposedSchema.modelDeploymentName?.trim();
+			if (deploymentName) {
+				nextSchema.modelDeploymentName = deploymentName;
+			} else {
+				delete nextSchema.modelDeploymentName;
+			}
+		}
 
 		if (options?.clearOmittedOptionalFields) {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);
@@ -403,6 +413,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
 	const optionalFields = [
 		'credential',
+		'modelDeploymentName',
 		'personalisation',
 		'memory',
 		'subAgents',
