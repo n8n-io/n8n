@@ -167,6 +167,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * would come back without an id. `name` is unique and every input job has a row
 	 * once the insert returns (ours, or the concurrent writer's), so the read-back
 	 * yields exactly one id per job.
+	 *
+	 * @throws {UnexpectedError} when a name's row belongs to a different owner. Job
+	 * names are scoped by convention, not by the schema, so a collision would
+	 * otherwise have `orIgnore` hand back another owner's id and let this call
+	 * reschedule their job.
 	 */
 	async insertMany(
 		manager: EntityManager,
@@ -198,7 +203,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		for (let start = 0; start < names.length; start += size) {
 			const found = await manager.find(ScheduledJob, {
 				where: { name: In(names.slice(start, start + size)) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			rows.push(...found);
 		}
@@ -500,22 +505,32 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 }
 
+/** A read-back row, carrying the owner the id is only valid under. */
+type InsertedRow = Pick<ScheduledJob, 'id' | 'name' | 'ownerType' | 'ownerId' | 'ownerMemberId'>;
+
 /**
- * Ids for `jobs`, in input order, from rows carrying their `{ id, name }`.
+ * Ids for `jobs`, in input order, from the rows read back after the insert.
  * Throws on a name with no row: the caller zips the result back to `jobs` by
- * index, so a gap would misalign every id after it.
+ * index, so a gap would misalign every id after it. Throws too on a row owned by
+ * someone else, rather than handing back an id this caller has no claim to.
  */
-function orderIdsByName(
-	rows: Array<{ id: number; name: string }>,
-	jobs: NewScheduledJob[],
-): number[] {
-	const idByName = new Map(rows.map((row) => [row.name, row.id]));
+function orderIdsByName(rows: InsertedRow[], jobs: NewScheduledJob[]): number[] {
+	const rowByName = new Map(rows.map((row) => [row.name, row]));
 	return jobs.map((job) => {
-		const id = idByName.get(job.name);
-		if (id === undefined) {
+		const row = rowByName.get(job.name);
+		if (row === undefined) {
 			throw new UnexpectedError(`No row found for scheduled job "${job.name}" after insert`);
 		}
-		return id;
+		if (
+			row.ownerType !== job.ownerType ||
+			row.ownerId !== job.ownerId ||
+			row.ownerMemberId !== job.ownerMemberId
+		) {
+			throw new UnexpectedError('Scheduled job name is already taken by another owner', {
+				extra: { name: job.name, ownerType: job.ownerType, ownerId: job.ownerId },
+			});
+		}
+		return row.id;
 	});
 }
 
