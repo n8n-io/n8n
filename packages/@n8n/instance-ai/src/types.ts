@@ -5,7 +5,6 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -1735,12 +1734,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/**
-	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
-	 * default policy, which on the durable-log path would persist redacted text
-	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
-	 */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

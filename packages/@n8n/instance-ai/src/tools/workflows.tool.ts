@@ -4,6 +4,11 @@
  * update-version.
  */
 import { Tool } from '@n8n/agents';
+import {
+	buildCredentialDestinationGrantKey,
+	credentialDestinationSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
@@ -15,6 +20,7 @@ import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.erro
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
+	findSetupHintTestUrlOriginProblem,
 	INVALID_SETUP_HINT_MESSAGE,
 	setupHintField,
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
@@ -324,7 +330,8 @@ const confirmationSuspendSchema = setupSuspendSchema
 		severity: true,
 		workflowId: true,
 	})
-	.partial({ workflowId: true });
+	.partial({ workflowId: true })
+	.extend({ credentialDestination: credentialDestinationSchema.optional() });
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
@@ -891,6 +898,90 @@ function appliedCredentialIdList(
 		.flatMap(([, byType]) => Object.values(byType));
 }
 
+interface RequiredCredentialDestination {
+	origin: string;
+	nodeNames: string[];
+	grantKey: string;
+}
+
+function inspectCredentialDestinations(
+	workflowId: string,
+	requests: readonly SetupRequest[],
+	requestsForNodeUrls: readonly SetupRequest[] = requests,
+): { problems: string[]; destinations: RequiredCredentialDestination[] } {
+	const problems: string[] = [];
+	const byGrantKey = new Map<string, RequiredCredentialDestination>();
+	const nodeUrls = requestsForNodeUrls.map((request) => request.node.parameters?.url);
+	for (const request of requests) {
+		if (
+			request.credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
+			request.needsAction === false ||
+			!request.setupHint
+		) {
+			continue;
+		}
+
+		const origin = request.setupHint.serviceOrigin;
+		if (!origin) {
+			problems.push(
+				`${request.node.name}: credential destination cannot be verified because the workflow node has no statically derivable HTTP origin`,
+			);
+			continue;
+		}
+
+		const hintProblems = findSetupHintProblems(request.setupHint, { nodeUrls });
+		const originProblem = findSetupHintTestUrlOriginProblem(request.setupHint, origin);
+		problems.push(
+			...hintProblems.map((problem) => `${request.node.name}: ${problem}`),
+			...(originProblem ? [`${request.node.name}: ${originProblem}`] : []),
+		);
+
+		const grantKey = buildCredentialDestinationGrantKey(workflowId, origin);
+		const existing = byGrantKey.get(grantKey);
+		if (existing) {
+			existing.nodeNames.push(request.node.name);
+			continue;
+		}
+		byGrantKey.set(grantKey, {
+			origin,
+			nodeNames: [request.node.name],
+			grantKey,
+		});
+	}
+	return { problems, destinations: [...byGrantKey.values()] };
+}
+
+function findUnapprovedCredentialDestination(
+	context: InstanceAiContext,
+	destinations: readonly RequiredCredentialDestination[],
+	justApprovedGrantKey?: string,
+): RequiredCredentialDestination | undefined {
+	return destinations.find(
+		(destination) =>
+			destination.grantKey !== justApprovedGrantKey &&
+			context.sessionApprovedToolKeys?.has(destination.grantKey) !== true,
+	);
+}
+
+async function suspendForCredentialDestination(
+	ctx: WorkflowToolContext,
+	state: SetupState,
+	workflowId: string,
+	destination: RequiredCredentialDestination,
+) {
+	state.currentRequestId = nanoid();
+	return await ctx.suspend({
+		requestId: state.currentRequestId,
+		message: 'Review where this credential will be used',
+		severity: 'warning' as const,
+		workflowId,
+		credentialDestination: {
+			origin: destination.origin,
+			nodeNames: destination.nodeNames,
+		},
+	});
+}
+
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
 async function handleSetupTestTrigger(
 	context: InstanceAiContext,
@@ -938,6 +1029,26 @@ async function handleSetupTestTrigger(
 		getSkippedSetupSubjects(context),
 	);
 	applyCredentialHints(refreshedPending, input.credentialHints);
+	const destinationInspection = inspectCredentialDestinations(
+		input.workflowId,
+		refreshedPending,
+		refreshedRequests,
+	);
+	if (destinationInspection.problems.length > 0) {
+		return {
+			error: 'invalid_credential_hints',
+			message: INVALID_SETUP_HINT_MESSAGE,
+			problems: destinationInspection.problems,
+		};
+	}
+
+	const destination = findUnapprovedCredentialDestination(
+		context,
+		destinationInspection.destinations,
+	);
+	if (destination) {
+		return await suspendForCredentialDestination(ctx, state, input.workflowId, destination);
+	}
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -1165,9 +1276,18 @@ async function handleSetup(
 	}
 
 	const resumeData = ctx.resumeData;
+	const destinationDecision = resumeData?.credentialDestination;
+
+	if (destinationDecision && !resumeData.approved) {
+		return {
+			success: false,
+			denied: true,
+			reason: `User did not approve credential use with ${destinationDecision.origin}.`,
+		};
+	}
 
 	// State 1: Analyze workflow and suspend for user setup
-	if (resumeData === undefined || resumeData === null) {
+	if (resumeData === undefined || resumeData === null || destinationDecision !== undefined) {
 		const allSetupRequests = await analyzeWorkflow(
 			context,
 			input.workflowId,
@@ -1214,24 +1334,6 @@ async function handleSetup(
 			await forgetSkippedSetup(context, subjects);
 		}
 
-		// Setup after a build covers only the nodes that build changed —
-		// pre-existing, unrelated nodes must not surface in the setup card.
-		const scopeNodeNames = input.includeAllNodes
-			? undefined
-			: await resolveSetupScopeNodeNames(context, input.workflowId);
-		const scopedRequests = scopeNodeNames
-			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
-			: allSetupRequests;
-
-		// Two reasons a card stays out, applied in order: this build never touched the node, or
-		// the user declined it. Partitioning the scoped list keeps them apart in the report —
-		// an out-of-scope card is not something the user passed on.
-		const { pending: setupRequests, skippedByUser } = partitionSkippedSetupRequests(
-			scopedRequests,
-			input.workflowId,
-			getSkippedSetupSubjects(context),
-		);
-
 		// Validated against the workflow's node URLs so a recipe can't set one of
 		// the workflow's own (action) endpoints as its probe testUrl. Checked against every
 		// analyzed node, not just the pending ones — narrowing it to what the card shows would
@@ -1250,7 +1352,33 @@ async function handleSetup(
 			};
 		}
 
-		applyCredentialHints(setupRequests, input.credentialHints);
+		applyCredentialHints(allSetupRequests, input.credentialHints);
+		const destinationInspection = inspectCredentialDestinations(input.workflowId, allSetupRequests);
+		if (destinationInspection.problems.length > 0) {
+			return {
+				error: 'invalid_credential_hints',
+				message: INVALID_SETUP_HINT_MESSAGE,
+				problems: destinationInspection.problems,
+			};
+		}
+
+		// Setup after a build covers only the nodes that build changed —
+		// pre-existing, unrelated nodes must not surface in the setup card.
+		const scopeNodeNames = input.includeAllNodes
+			? undefined
+			: await resolveSetupScopeNodeNames(context, input.workflowId);
+		const scopedRequests = scopeNodeNames
+			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
+			: allSetupRequests;
+
+		// Two reasons a card stays out, applied in order: this build never touched the node, or
+		// the user declined it. Partitioning the scoped list keeps them apart in the report —
+		// an out-of-scope card is not something the user passed on.
+		const { pending: setupRequests, skippedByUser } = partitionSkippedSetupRequests(
+			scopedRequests,
+			input.workflowId,
+			getSkippedSetupSubjects(context),
+		);
 
 		// A provider documenting `Authorization: Bearer <token>` reliably lures the
 		// model into httpBearerAuth despite the skill guidance, so new plain generic
@@ -1274,6 +1402,36 @@ async function handleSetup(
 					})),
 				};
 			}
+		}
+
+		const setupNodeNames = new Set(setupRequests.map((request) => request.node.name));
+		const credentialDestinations = destinationInspection.destinations.flatMap((destination) => {
+			const nodeNames = destination.nodeNames.filter((name) => setupNodeNames.has(name));
+			return nodeNames.length > 0 ? [{ ...destination, nodeNames }] : [];
+		});
+		let justApprovedGrantKey: string | undefined;
+		if (destinationDecision) {
+			const approvedDestination = credentialDestinations.find(
+				(destination) => destination.origin === destinationDecision.origin,
+			);
+			if (!approvedDestination) {
+				return {
+					error: 'credential_destination_changed',
+					message:
+						'The credential destination changed before approval was applied. Call setup again to review the current destination.',
+				};
+			}
+			await context.grantSessionToolApproval?.(approvedDestination.grantKey);
+			justApprovedGrantKey = approvedDestination.grantKey;
+		}
+
+		const destination = findUnapprovedCredentialDestination(
+			context,
+			credentialDestinations,
+			justApprovedGrantKey,
+		);
+		if (destination) {
+			return await suspendForCredentialDestination(ctx, state, input.workflowId, destination);
 		}
 
 		if (setupRequests.length === 0) {

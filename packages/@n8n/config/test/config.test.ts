@@ -367,6 +367,7 @@ describe('GlobalConfig', () => {
 			thinkingEnabled: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
+			instanceAiSetupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
@@ -507,7 +508,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
+			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,

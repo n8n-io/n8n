@@ -160,26 +160,20 @@ describe('KeyManagerService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.seedLegacyCbcKey).not.toHaveBeenCalled();
 		});
 
-		it('encrypts the instance key and inserts as inactive when no CBC key exists', async () => {
+		it('encrypts the instance key and seeds it when no CBC key exists', async () => {
 			repository.findOne.mockResolvedValue(null);
-			const entity = makeKey({ algorithm: 'aes-256-cbc', status: 'inactive' });
-			repository.create.mockReturnValue(entity);
-			repository.save.mockResolvedValue(entity);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-instance-key');
 
 			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
 
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('instance-key');
-			expect(repository.create).toHaveBeenCalledWith({
-				type: 'data_encryption',
-				value: 'encrypted-instance-key',
-				algorithm: 'aes-256-cbc',
-				status: 'inactive',
-			});
-			expect(repository.save).toHaveBeenCalledWith(entity);
+			// The repository seeds inside a DbLock critical section, which keeps
+			// concurrent startups from creating duplicate rows.
+			expect(repository.seedLegacyCbcKey).toHaveBeenCalledWith('encrypted-instance-key');
+			expect(repository.save).not.toHaveBeenCalled();
 		});
 	});
 

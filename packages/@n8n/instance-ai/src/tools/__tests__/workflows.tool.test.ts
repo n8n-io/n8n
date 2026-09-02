@@ -1,4 +1,9 @@
-import type { InstanceAiPermissions } from '@n8n/api-types';
+import { zodToJsonSchema } from '@n8n/agents';
+import {
+	buildCredentialDestinationGrantKey,
+	type InstanceAiCredentialSetupHint,
+	type InstanceAiPermissions,
+} from '@n8n/api-types';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -17,7 +22,7 @@ import {
 	refreshWorkflowSourceFileBindingFromSave,
 	saveWorkflowSourceFileBinding,
 } from '../workflows/workflow-file-bindings';
-import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
+import { createWorkflowsTool, type WorkflowAction, workflowsResumeSchema } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
@@ -39,6 +44,45 @@ vi.mock('@n8n/workflow-sdk', async (importOriginal) => {
 });
 
 const emptyList = { workflows: [], total: 0, totalInScope: 0 };
+
+function templatedSetupFixture(
+	options: {
+		nodeUrl?: string;
+		testUrl?: string;
+		serviceOrigin?: string | null;
+	} = {},
+) {
+	const nodeUrl = options.nodeUrl ?? 'https://api.example.com/v1/account';
+	const serviceOrigin =
+		options.serviceOrigin === undefined ? 'https://api.example.com' : options.serviceOrigin;
+	const recipe: InstanceAiCredentialSetupHint = {
+		template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+		placeholders: [{ name: 'api_key', title: 'API key' }],
+		...(options.testUrl ? { testUrl: options.testUrl } : {}),
+	};
+	const request = {
+		node: {
+			name: 'Fetch account',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: { url: nodeUrl },
+		},
+		credentialType: 'httpTemplatedCustomAuth',
+		needsAction: true,
+		setupHint: {
+			...recipe,
+			...(serviceOrigin ? { serviceHost: new URL(serviceOrigin).hostname, serviceOrigin } : {}),
+		},
+	};
+	return {
+		recipe,
+		request,
+		input: {
+			action: 'setup' as const,
+			workflowId: 'wf1',
+			credentialHints: [{ ...recipe, nodeName: request.node.name }],
+		},
+	};
+}
 
 function createMockContext(
 	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
@@ -131,6 +175,10 @@ function parseInput(tool: unknown, input: unknown): Record<string, unknown> {
 describe('workflows tool', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('exports the resume schema without unsupported URI formats', () => {
+		expect(JSON.stringify(zodToJsonSchema(workflowsResumeSchema))).not.toContain('"format":"uri"');
 	});
 
 	describe('surface filtering', () => {
@@ -2278,6 +2326,155 @@ describe('workflows tool', () => {
 			expect(suspend).toHaveBeenCalled();
 		});
 
+		it('should accept a credential test URL on the workflow service origin', async () => {
+			const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+			(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(createMockContext(), 'full');
+			await executeTool(tool, fixture.input, { suspend, resumeData: undefined } as never);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf1',
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
+				}),
+			);
+		});
+
+		it('should remember an approved credential destination and open setup', async () => {
+			const first = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+			const second = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+			(analyzeWorkflow as Mock)
+				.mockResolvedValueOnce([first.request])
+				.mockResolvedValueOnce([second.request]);
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ grantSessionToolApproval });
+			const suspend = vi.fn();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, first.input, { suspend, resumeData: undefined } as never);
+			suspend.mockClear();
+			await executeTool(tool, first.input, {
+				suspend,
+				resumeData: {
+					approved: true,
+					credentialDestination: { origin: 'https://api.example.com' },
+				},
+			} as never);
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(
+				buildCredentialDestinationGrantKey('wf1', 'https://api.example.com'),
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Configure credentials for your workflow',
+					setupRequests: [second.request],
+				}),
+			);
+		});
+
+		it('should reuse approval only for the same workflow credential destination', async () => {
+			const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+			(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+			const context = createMockContext({
+				sessionApprovedToolKeys: new Set([
+					buildCredentialDestinationGrantKey('wf1', 'https://api.example.com'),
+				]),
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, fixture.input, { suspend, resumeData: undefined } as never);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Configure credentials for your workflow',
+					setupRequests: [fixture.request],
+				}),
+			);
+		});
+
+		it('should require review again when the credential destination changes', async () => {
+			const fixture = templatedSetupFixture({
+				nodeUrl: 'https://api-v2.example.com/v1/account',
+				testUrl: 'https://api-v2.example.com/me',
+				serviceOrigin: 'https://api-v2.example.com',
+			});
+			(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+			const grantSessionToolApproval = vi.fn();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(createMockContext({ grantSessionToolApproval }), 'full');
+			const result = await executeTool(tool, fixture.input, {
+				suspend,
+				resumeData: {
+					approved: true,
+					credentialDestination: { origin: 'https://api.example.com' },
+				},
+			} as never);
+
+			expect(result).toMatchObject({ error: 'credential_destination_changed' });
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('should stop setup when the credential destination is declined', async () => {
+			const tool = createWorkflowsTool(createMockContext(), 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: false,
+					credentialDestination: { origin: 'https://api.example.com' },
+				},
+			} as never);
+
+			expect(result).toMatchObject({
+				success: false,
+				denied: true,
+				reason: 'User did not approve credential use with https://api.example.com.',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should reject a credential test URL on a different service origin', async () => {
+			const fixture = templatedSetupFixture({ testUrl: 'https://status.example.net/me' });
+			(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(createMockContext(), 'full');
+			const result = await executeTool(tool, fixture.input, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(result).toMatchObject({ error: 'invalid_credential_hints' });
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('should reject a templated setup when the workflow service origin is unavailable', async () => {
+			const fixture = templatedSetupFixture({
+				nodeUrl: '={{ $json.url }}',
+				serviceOrigin: null,
+			});
+			(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(createMockContext(), 'full');
+			const result = await executeTool(tool, fixture.input, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(result).toMatchObject({
+				error: 'invalid_credential_hints',
+				problems: [expect.stringContaining('no statically derivable HTTP origin')],
+			});
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it('should allow a plain generic type when credentials of it already exist', async () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([
 				{
@@ -2750,6 +2947,62 @@ describe('workflows tool', () => {
 
 				expect(suspend).toHaveBeenCalledTimes(1);
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
+			});
+
+			it('revalidates the credential test destination after a trigger test', async () => {
+				const fixture = templatedSetupFixture({ testUrl: 'https://status.example.net/me' });
+				(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+				const context = createGrantAwareContext();
+				(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, fixture.input, {
+					suspend,
+					resumeData: {
+						approved: true,
+						action: 'test-trigger',
+						testTriggerNode: 'Fetch account',
+					},
+				} as never);
+
+				expect(result).toMatchObject({ error: 'invalid_credential_hints' });
+				expect(suspend).not.toHaveBeenCalled();
+			});
+
+			it('checks refreshed credential test destinations against skipped node URLs', async () => {
+				const fixture = templatedSetupFixture({
+					testUrl: 'https://api.example.com/v1/action',
+				});
+				const skippedRequest = {
+					node: {
+						name: 'Run action',
+						type: 'n8n-nodes-base.httpRequest',
+						parameters: { url: fixture.recipe.testUrl },
+					},
+					credentialType: 'httpHeaderAuth',
+					needsAction: true,
+					credentialNeedsAction: true,
+				};
+				(analyzeWorkflow as Mock).mockResolvedValue([fixture.request, skippedRequest]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+				const context = createGrantAwareContext(['workflows:setup-skip:cred:httpHeaderAuth']);
+				(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, fixture.input, {
+					suspend,
+					resumeData: {
+						approved: true,
+						action: 'test-trigger',
+						testTriggerNode: 'Fetch account',
+					},
+				} as never);
+
+				expect(result).toMatchObject({ error: 'invalid_credential_hints' });
+				expect(suspend).not.toHaveBeenCalled();
 			});
 
 			it('keeps another node Slack skip when only a parameter was completed', async () => {
