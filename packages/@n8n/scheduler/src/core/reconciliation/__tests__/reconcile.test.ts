@@ -322,6 +322,7 @@ describe('reconcile', () => {
 			);
 
 			expect(first).toMatchObject({
+				ownersChecked: 2,
 				revived: 2,
 				drained: false,
 				resumeFrom: { ownerType: 'workflow' },
@@ -341,8 +342,11 @@ describe('reconcile', () => {
 				BATCH_SIZE,
 				'wf-2',
 			);
-			expect(second).toMatchObject({ revived: 1, drained: true });
+			// The re-read page counts as checked again, but only the lift it
+			// still had to do counts as revived.
+			expect(second).toMatchObject({ ownersChecked: 3, revived: 1, drained: true });
 			expect(second.resumeFrom).toBeUndefined();
+			expect(store.liftQuarantine).toHaveBeenCalledTimes(3);
 		});
 
 		it('resumes at the first unfinished page when a later owner type also leaves one', async () => {
