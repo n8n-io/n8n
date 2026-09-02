@@ -3,6 +3,7 @@ import { nodeConfig } from '@n8n/eslint-config/node';
 import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
+import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
 import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
 
 export default defineConfig(
@@ -10,7 +11,12 @@ export default defineConfig(
 	// This config fragment lives under nodes/ so it sits next to the code it
 	// governs, but it's not lintable TS source — same reason eslint.config.mjs
 	// itself is never linted.
-	globalIgnores(['scenarios/**', 'scripts/**', './nodes/Kafka/eslint-import-restrictions.mjs']),
+	globalIgnores([
+		'scenarios/**',
+		'scripts/**',
+		'./nodes/Databricks/eslint-user-agent-restriction.mjs',
+		'./nodes/Kafka/eslint-import-restrictions.mjs',
+	]),
 	{
 		plugins: {
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,
@@ -194,5 +200,6 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
+	...databricksUserAgentRestriction,
 	...kafkaImportRestrictions,
 );

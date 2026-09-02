@@ -7,8 +7,12 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('renders the project executions list with seeded executions', async ({ n8n, api }) => {
-			await adminViewsExecutionsList({ n8n, api });
+		test('renders the project executions list with seeded executions', async ({
+			n8n,
+			api,
+			a11y,
+		}) => {
+			await adminViewsExecutionsList({ n8n, api, a11y });
 		});
 	},
 );
