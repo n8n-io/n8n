@@ -262,14 +262,12 @@ function renderRuntimeSkillMarkdown(
 	addFrontmatterField(lines, 'metadata', skill.metadata);
 	lines.push('---', '');
 
-	// At this point, any {{placeholder}}s in the instructions text are already resolved
 	const instructions = substituteRuntimeSkillVars(
 		skill.instructions,
 		skillDir,
 		workspaceRoot,
 		skillsRoot,
 	);
-
 	const sourceNote =
 		entry.sourceDirectory && entry.sourceDirectory !== entry.name
 			? `<!-- materialized from ${entry.sourceDirectory} -->\n\n`

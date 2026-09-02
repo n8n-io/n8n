@@ -9,7 +9,6 @@ const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recogniti
 
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 
-/** Prompt text a skill can pull in by placeholder rather than keeping its own copy. */
 const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
 	GROUPING_GUIDANCE_PLACEHOLDER: GROUPING_GUIDANCE,
 };
