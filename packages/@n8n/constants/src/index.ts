@@ -70,6 +70,7 @@ export const LICENSE_QUOTAS = {
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
 	EVALUATION_CONCURRENCY_LIMIT: 'quota:evaluations:concurrencyLimit',
+	PROJECT_EXECUTION_LIMIT: 'quota:project:executionLimit',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;

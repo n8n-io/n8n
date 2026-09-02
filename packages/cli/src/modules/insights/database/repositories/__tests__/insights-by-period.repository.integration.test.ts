@@ -219,6 +219,115 @@ describe('InsightsByPeriodRepository', () => {
 		);
 	});
 
+	describe('getTrailingHourlyRows', () => {
+		// Regression coverage for a real bug: getRawMany() returns driver-native
+		// values, not entity-mapped ones. On SQLite (n8n's default DB), a
+		// datetime column comes back as a plain string, not a `Date` instance,
+		// even though the method's return type promises `Date`. A caller doing
+		// `DateTime.fromJSDate(row.periodStart)` on that string produces an
+		// Invalid DateTime silently (no exception), which is exactly what
+		// happened in ProjectExecutionQuotaService.getSpikes before this fix.
+		//
+		// These tests intentionally write data within the last 7 days (the
+		// spike-guard's own trailing window), unlike the rest of this file
+		// which anchors fixture data hundreds of days in the past specifically
+		// to stay out of that window. Truncate afterwards so the "access
+		// filter" describe block below (which aggregates over an unfiltered
+		// `now - 7 days` to `now` range) doesn't pick up this data too.
+		afterAll(async () => {
+			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
+		});
+
+		test('returns periodStart as a genuine Date and value as a number', async () => {
+			// ARRANGE
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({ nodes: [] }, project);
+			await createMetadata(workflow);
+
+			const periodStart = DateTime.utc().minus({ days: 2 }).startOf('hour');
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 5,
+				periodUnit: 'hour',
+				periodStart,
+			});
+
+			// ACT
+			const since = DateTime.utc().minus({ days: 7 }).startOf('day').toJSDate();
+			const rows = await insightsByPeriodRepository.getTrailingHourlyRows(workflow.id, since);
+
+			// ASSERT
+			expect(rows).toHaveLength(1);
+			expect(rows[0].periodStart).toBeInstanceOf(Date);
+			expect(DateTime.fromJSDate(rows[0].periodStart).isValid).toBe(true);
+			expect(DateTime.fromJSDate(rows[0].periodStart).toUTC().toISO()).toBe(
+				periodStart.toUTC().toISO(),
+			);
+			expect(rows[0].value).toBe(5);
+			expect(typeof rows[0].value).toBe('number');
+		});
+
+		test('sums success and failure rows but excludes other types, other workflows, and rows before `since`', async () => {
+			// ARRANGE
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({ nodes: [] }, project);
+			const otherWorkflow = await createWorkflow({ nodes: [] }, project);
+			await createMetadata(workflow);
+			await createMetadata(otherWorkflow);
+
+			const recentHour = DateTime.utc().minus({ hours: 3 }).startOf('hour');
+			const tooOldHour = DateTime.utc().minus({ days: 30 }).startOf('hour');
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 2,
+				periodUnit: 'hour',
+				periodStart: recentHour,
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: recentHour,
+			});
+			// Excluded: not success/failure
+			await createCompactedInsightsEvent(workflow, {
+				type: 'time_saved_min',
+				value: 100,
+				periodUnit: 'hour',
+				periodStart: recentHour,
+			});
+			// Excluded: different workflow
+			await createCompactedInsightsEvent(otherWorkflow, {
+				type: 'success',
+				value: 99,
+				periodUnit: 'hour',
+				periodStart: recentHour,
+			});
+			// Excluded: before `since`
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 50,
+				periodUnit: 'hour',
+				periodStart: tooOldHour,
+			});
+
+			// ACT
+			const since = DateTime.utc().minus({ days: 7 }).startOf('day').toJSDate();
+			const rows = await insightsByPeriodRepository.getTrailingHourlyRows(workflow.id, since);
+
+			// ASSERT
+			expect(rows).toHaveLength(2);
+			const total = rows.reduce((sum, row) => sum + row.value, 0);
+			expect(total).toBe(3);
+			for (const row of rows) {
+				expect(row.periodStart).toBeInstanceOf(Date);
+			}
+		});
+	});
+
 	describe('Avoid deadlock error', () => {
 		let defaultBatchSize: number;
 		beforeAll(() => {

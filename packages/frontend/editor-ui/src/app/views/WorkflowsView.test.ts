@@ -768,3 +768,79 @@ describe('onboarding loading state', () => {
 		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
 	});
 });
+
+describe('Execution quota spikes', () => {
+	beforeEach(async () => {
+		await router.push('/project-1');
+		await router.isReady();
+		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		settingsStore = mockedStore(useSettingsStore);
+
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
+
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		// The mocked useProjectPages() only declares isOverviewSubPage/isSharedSubPage;
+		// this view's own execution-quota gate also reads isProjectsSubPage, which the
+		// real composable derives from `route.params.projectId !== undefined`.
+		(projectPages as unknown as Record<string, boolean>).isProjectsSubPage = true;
+	});
+
+	const workflowResource = (id: string): WorkflowListResource => ({
+		resource: 'workflow',
+		id,
+		name: `Workflow ${id}`,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		active: true,
+		activeVersionId: 'v1',
+		isArchived: false,
+		versionId: '1',
+		homeProject: {
+			id: 'project-1',
+			name: 'Project 1',
+			icon: null,
+			type: 'team',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	});
+
+	// Regression test for the "N calls instead of 1" failure mode: the spikes
+	// endpoint must be fetched once for the whole project view and looked up
+	// per row from a cached map, never re-fetched once per workflow card.
+	it('fetches execution quota spikes once for the whole view, not once per workflow row', async () => {
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			workflowResource('1'),
+			workflowResource('2'),
+			workflowResource('3'),
+		]);
+
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.getExecutionQuota.mockResolvedValue({
+			limit: 100,
+			periodUnit: 'day',
+			consumed: 10,
+			remaining: 90,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		});
+		projectsStore.getExecutionQuotaSpikes.mockResolvedValue([
+			{ workflowId: '2', todayCount: 50, baseline: 5, multiplier: 5 },
+		]);
+
+		const { getAllByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(getAllByTestId('resources-list-item-workflow')).toHaveLength(3);
+		expect(projectsStore.getExecutionQuotaSpikes).toHaveBeenCalledTimes(1);
+		expect(projectsStore.getExecutionQuotaSpikes).toHaveBeenCalledWith('project-1');
+	});
+});

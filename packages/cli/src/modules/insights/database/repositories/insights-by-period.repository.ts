@@ -557,6 +557,60 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return { affected: result.affected };
 	}
 
+	/**
+	 * Trailing hourly rollups for one workflow, used to build a
+	 * spike-detection baseline. Day-unit rows are not usable for this: hour
+	 * to day compaction only runs for data older than
+	 * `compactionHourlyToDailyThresholdDays` (default 90 days), so day rows
+	 * don't exist yet for recent activity.
+	 */
+	async getTrailingHourlyRows(
+		workflowId: string,
+		since: Date,
+	): Promise<Array<{ periodStart: Date; value: number }>> {
+		// periodUnit/type are stored as ints (see PeriodUnitToNumber/TypeToNumber),
+		// not the string labels — compare against the numeric mapping, matching
+		// the convention used elsewhere in this file (e.g. getAggregationQuery),
+		// rather than string literals which would never match (or error on
+		// Postgres, which has no int = text operator).
+		const rawRows = await this.createQueryBuilder('insights')
+			.select('insights.periodStart', 'periodStart')
+			.addSelect('insights.value', 'value')
+			.innerJoin('insights.metadata', 'metadata')
+			.where('metadata.workflowId = :workflowId', { workflowId })
+			.andWhere(`insights.periodUnit = ${PeriodUnitToNumber.hour}`)
+			.andWhere(`insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure})`)
+			.andWhere('insights.periodStart >= :since', { since })
+			.getRawMany<{ periodStart: Date | string; value: number | string }>();
+
+		// getRawMany() returns driver-native values, not entity-mapped ones: on
+		// SQLite periodStart comes back as a string (not a Date), and on
+		// Postgres a BIGINT value column can come back as a string. Coerce both
+		// explicitly rather than trusting the declared return type, matching
+		// the existing conventions in this file (`new Date(...)` in
+		// getEarliestDataDate above, `Number(...)` coercion used throughout
+		// the zod parsers in this file, and in ProjectExecutionCounterRepository
+		// .getProjectPeriodTotal for the same BIGINT-as-string issue).
+		//
+		// periodStart needs more than a bare `new Date(...)`: SQLite's raw
+		// string has no timezone marker (e.g. '2026-08-30 10:00:00.000'), so
+		// the native Date parser reads it in the *local* system timezone
+		// instead of UTC, silently shifting it. Parse explicitly as UTC via
+		// Luxon's SQL parser, the same approach already used for this reason
+		// in this file's `aggregatedInsightsByTimeParser` above.
+		return rawRows.map((row) => {
+			let periodStart: Date;
+			if (row.periodStart instanceof Date) {
+				periodStart = row.periodStart;
+			} else {
+				const parsed = DateTime.fromSQL(row.periodStart, { zone: 'utc' });
+				periodStart = parsed.isValid ? parsed.toJSDate() : new Date(row.periodStart);
+			}
+
+			return { periodStart, value: Number(row.value) };
+		});
+	}
+
 	async getEarliestDataDate(): Promise<Date | null> {
 		const result = await this.createQueryBuilder('ibp')
 			.select('MIN(ibp.periodStart)', 'minDate')

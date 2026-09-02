@@ -1436,4 +1436,22 @@ describe('WorkflowCard', () => {
 			});
 		});
 	});
+
+	describe('execution quota spike badge', () => {
+		it('renders the spike badge and tooltip when executionQuotaSpike is passed', async () => {
+			const data = createWorkflow();
+			const { getByTestId } = renderComponent({
+				props: { data, executionQuotaSpike: { todayCount: 120, baseline: 20 } },
+			});
+
+			expect(getByTestId('workflow-card-execution-quota-spike-badge')).toBeInTheDocument();
+		});
+
+		it('does not render the spike badge when executionQuotaSpike is not passed', async () => {
+			const data = createWorkflow();
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('workflow-card-execution-quota-spike-badge')).not.toBeInTheDocument();
+		});
+	});
 });

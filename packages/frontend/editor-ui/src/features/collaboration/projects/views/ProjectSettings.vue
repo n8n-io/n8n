@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -27,6 +27,7 @@ import type { TableOptions } from '@n8n/design-system';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectExecutionQuota from '../components/ProjectExecutionQuota.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -51,6 +52,7 @@ type FormDataDiff = {
 
 const usersStore = useUsersStore();
 const i18n = useI18n();
+const route = useRoute();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -67,6 +69,11 @@ const canUpdateProject = computed(
 /** Changing the membership list is gated separately from editing project details. */
 const canManageMembers = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
+);
+
+/** Changing the execution quota is gated separately from editing project details. */
+const canManageExecutionQuota = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageExecutionQuota,
 );
 
 const showSaveError = (error: Error) => {
@@ -659,6 +666,11 @@ onMounted(async () => {
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<ProjectExecutionQuota
+				:project-id="route.params.projectId as string"
+				:can-manage="canManageExecutionQuota"
+			/>
 
 			<template v-if="canUpdateProject || canManageMembers">
 				<fieldset id="projectMembers">

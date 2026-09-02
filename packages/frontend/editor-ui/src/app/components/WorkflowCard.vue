@@ -82,6 +82,7 @@ const props = withDefaults(
 		canManageInstanceMcp?: boolean;
 		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
+		executionQuotaSpike?: { todayCount: number; baseline: number };
 	}>(),
 	{
 		readOnly: false,
@@ -93,6 +94,7 @@ const props = withDefaults(
 		canManageInstanceMcp: false,
 		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
+		executionQuotaSpike: undefined,
 	},
 );
 
@@ -140,6 +142,16 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+
+const executionQuotaSpikeTooltip = computed(() => {
+	if (!props.executionQuotaSpike) return '';
+	return locale.baseText('projects.executionQuota.spike.tooltip', {
+		interpolate: {
+			todayCount: String(props.executionQuotaSpike.todayCount),
+			baseline: props.executionQuotaSpike.baseline.toFixed(1),
+		},
+	});
+});
 
 const globalPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).workflow,
@@ -628,6 +640,19 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<N8nTooltip v-if="executionQuotaSpike" placement="top">
+					<N8nBadge
+						class="ml-3xs"
+						theme="warning"
+						bold
+						data-test-id="workflow-card-execution-quota-spike-badge"
+					>
+						{{ locale.baseText('projects.executionQuota.spike.badge') }}
+					</N8nBadge>
+					<template #content>
+						{{ executionQuotaSpikeTooltip }}
+					</template>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">

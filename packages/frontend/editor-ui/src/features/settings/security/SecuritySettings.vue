@@ -23,6 +23,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
+import ExecutionQuotaTable from './ExecutionQuotaTable.vue';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const $style = useCssModule();
@@ -403,6 +404,19 @@ const sharingCountText = computed(() => {
 				/>
 			</div>
 		</template>
+
+		<div class="mb-s" :class="$style.headerTitle">
+			<N8nHeading tag="h2" size="large">
+				{{ i18n.baseText('settings.security.executionQuota.title') }}
+			</N8nHeading>
+			<N8nText size="small" color="text-base">
+				{{ i18n.baseText('settings.security.executionQuota.description') }}
+			</N8nText>
+		</div>
+
+		<div :class="$style.settingsSection">
+			<ExecutionQuotaTable />
+		</div>
 
 		<N8nAlertDialog
 			:open="showPublishingDialog"

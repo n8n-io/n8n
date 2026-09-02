@@ -40,3 +40,25 @@ export type ProjectListItem = ProjectSharingData & {
 	scopes?: Scope[];
 };
 export type ProjectsCount = Record<ProjectType, number>;
+
+export type ProjectExecutionQuotaPeriodUnit = 'day' | 'week' | 'month';
+
+export type ProjectExecutionQuota = {
+	limit: number;
+	periodUnit: ProjectExecutionQuotaPeriodUnit;
+	consumed: number;
+	remaining: number | null;
+	resetsAt: string;
+};
+
+export type ProjectExecutionQuotaRow = ProjectExecutionQuota & {
+	projectId: string;
+	projectName: string;
+};
+
+export type ProjectExecutionQuotaSpike = {
+	workflowId: string;
+	todayCount: number;
+	baseline: number;
+	multiplier: number;
+};

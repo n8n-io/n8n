@@ -39,6 +39,8 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
+export { ProjectExecutionQuotaRepository } from './project-execution-quota.repository';
+export { ProjectExecutionCounterRepository } from './project-execution-counter.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';

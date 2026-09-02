@@ -29,6 +29,8 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectExecutionCounter } from './project-execution-counter';
+import { ProjectExecutionQuota, type ExecutionQuotaPeriodUnit } from './project-execution-quota';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -121,6 +123,9 @@ export {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectExecutionCounter,
+	ProjectExecutionQuota,
+	type ExecutionQuotaPeriodUnit,
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
@@ -200,6 +205,8 @@ export const entities = {
 	EvaluationConfig,
 	Folder,
 	Project,
+	ProjectExecutionCounter,
+	ProjectExecutionQuota,
 	ProjectRelation,
 	RoleMappingRule,
 	Scope,

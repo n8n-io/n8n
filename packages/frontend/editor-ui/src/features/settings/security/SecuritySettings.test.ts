@@ -16,6 +16,11 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
 }));
 
+const getAllProjectsExecutionQuota = vi.fn();
+vi.mock('@/features/collaboration/projects/projects.api', () => ({
+	getAllProjectsExecutionQuota: (...args: unknown[]) => getAllProjectsExecutionQuota(...args),
+}));
+
 const showToast = vi.fn();
 const showError = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
@@ -57,6 +62,7 @@ describe('SecuritySettings', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getSecuritySettings.mockResolvedValue(defaultSettings);
+		getAllProjectsExecutionQuota.mockResolvedValue([]);
 
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
@@ -950,6 +956,30 @@ describe('SecuritySettings', () => {
 			await userEvent.click(getByRole('button', { name: 'Cancel' }));
 
 			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('execution quota', () => {
+		it('should render the execution quota section and table unconditionally', async () => {
+			const { getByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getSecuritySettings).toHaveBeenCalled();
+			});
+
+			expect(getByText('Execution quota')).toBeInTheDocument();
+			expect(getByTestId('execution-quota-table')).toBeInTheDocument();
+		});
+
+		it('should still render the execution quota section when the security settings endpoint 403s', async () => {
+			getSecuritySettings.mockRejectedValue(new Error('403'));
+			const { getByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('execution-quota-table')).toBeInTheDocument();
+			});
+
+			expect(getByText('Execution quota')).toBeInTheDocument();
 		});
 	});
 });

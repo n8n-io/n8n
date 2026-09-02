@@ -11,6 +11,7 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoadingState.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
+import ProjectExecutionQuotaCard from '@/features/collaboration/projects/components/ProjectExecutionQuotaCard.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
@@ -84,6 +85,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
 import {
 	type Project,
+	type ProjectExecutionQuotaSpike,
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
@@ -226,6 +228,8 @@ const currentSort = ref('updatedAt:desc');
 const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
+
+const executionQuotaSpikesByWorkflowId = ref<Map<string, ProjectExecutionQuotaSpike>>(new Map());
 
 /**
  * Folder actions
@@ -710,6 +714,11 @@ const onFolderDeleted = async (payload: {
 	});
 };
 
+// The execution quota is a per-project concept, so the card and the spike
+// badges only make sense on a single project's own workflow list — not on
+// the aggregate Overview or Shared pages, which span multiple projects.
+const showExecutionQuota = computed(() => projectPages.isProjectsSubPage);
+
 const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
@@ -786,6 +795,20 @@ const fetchEmptyStateData = async () => {
 	}
 };
 
+// Fetched once per project view load (see ResourcesListLayout's route watcher,
+// which re-runs `initialize` on every project switch) and cached by workflow
+// id so each workflow row can look itself up instead of triggering its own request.
+const fetchExecutionQuotaSpikes = async (projectId: string) => {
+	try {
+		const spikes = await projectsStore.getExecutionQuotaSpikes(projectId);
+		executionQuotaSpikesByWorkflowId.value = new Map(
+			spikes.map((spike) => [spike.workflowId, spike]),
+		);
+	} catch (error) {
+		executionQuotaSpikesByWorkflowId.value = new Map();
+	}
+};
+
 const initialize = async () => {
 	if (isInitializing.value) {
 		// A route change landed mid-fetch; re-run once the current pass settles
@@ -802,6 +825,11 @@ const initialize = async () => {
 
 		// Fetched in parallel to avoid a second round-trip on first run
 		const emptinessUnknown = projectPages.isOverviewSubPage && !hasKnownInstanceContent.value;
+		const executionQuotaProjectId = route.params.projectId as string | undefined;
+
+		if (!showExecutionQuota.value || !executionQuotaProjectId) {
+			executionQuotaSpikesByWorkflowId.value = new Map();
+		}
 
 		await Promise.all([
 			fetchWorkflows(),
@@ -812,6 +840,9 @@ const initialize = async () => {
 				currentFolderId.value ?? undefined,
 			),
 			...(emptinessUnknown ? [fetchEmptyStateData()] : []),
+			...(showExecutionQuota.value && executionQuotaProjectId
+				? [fetchExecutionQuotaSpikes(executionQuotaProjectId)]
+				: []),
 		]);
 
 		// Stale case: stores showed content but the fresh workflow count is 0,
@@ -2223,6 +2254,10 @@ const onNameSubmit = async (name: string) => {
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
 				/>
+				<ProjectExecutionQuotaCard
+					v-if="showExecutionQuota && route.params.projectId"
+					:project-id="route.params.projectId as string"
+				/>
 			</ProjectHeader>
 		</template>
 		<template v-if="showRegisteredCommunityCTA" #add-button>
@@ -2426,6 +2461,9 @@ const onNameSubmit = async (name: string) => {
 					:data="data as WorkflowResource"
 					:workflow-list-event-bus="workflowListEventBus"
 					:read-only="readOnlyEnv"
+					:execution-quota-spike="
+						executionQuotaSpikesByWorkflowId.get((data as WorkflowResource).id)
+					"
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
