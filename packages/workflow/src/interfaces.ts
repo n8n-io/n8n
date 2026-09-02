@@ -1617,6 +1617,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
 	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/**
+	 * The n8n user who started this test run, recorded on the webhook registration.
+	 * Only test webhooks carry it, so this resolves to `undefined` in production.
+	 */
+	getTestWebhookUser(): Promise<IUser | undefined>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
@@ -3852,6 +3857,7 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
+	getUserById?: (id: string) => Promise<IUser | undefined>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.

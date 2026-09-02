@@ -23,6 +23,7 @@ import type {
 	IBinaryData,
 	INodeProperties,
 	CredentialCheckResult,
+	IUser,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
@@ -48,6 +49,32 @@ import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
+
+/**
+ * The emitted item's `json` starts as the caller's own request body, so a caller can
+ * put a `user` key in it and have it land in the output. Drop any claimed `user`
+ * unconditionally and re-add only the identity the server itself resolved, so
+ * `json.user` is either absent or trustworthy — never whatever the request claimed.
+ *
+ * An array body is returned as is: it can carry no `user` key, and object rest would
+ * silently turn it into `{ 0: …, 1: … }`.
+ */
+function withAuthenticatedUser(json: IDataObject, user: IUser | undefined): IDataObject {
+	if (Array.isArray(json)) return json;
+	const { user: claimedUser, ...rest } = json;
+	if (!user) return rest;
+	// Field by field, so a future `IUser` field cannot leak into workflow data.
+	return {
+		...rest,
+		user: {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		},
+	};
+}
+
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -248,8 +275,8 @@ export class ChatTrigger extends Node {
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
-		defaultVersion: 1.4,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -458,6 +485,23 @@ export class ChatTrigger extends Node {
 				},
 				description:
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
+				displayName: 'Include User in Output',
+				name: 'includeUserInOutput',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+				// No `mode` gate, unlike its neighbour: `n8nUserAuth` also works in `webhook`
+				// mode through the cookie check, and that path emits an item too.
+				description:
+					"Whether to include the logged-in user's ID, email and name in the trigger output",
 			},
 			{
 				displayName: 'Initial Message(s)',
@@ -890,12 +934,20 @@ export class ChatTrigger extends Node {
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
 
+		const authentication = ctx.getNodeParameter('authentication', 'none');
+		let authedUser: IUser | undefined;
 		try {
 			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
 			// test route (flagged by the backend at registration) is exempt from auth. Every
 			// other request — production or sessionless test — enforces the configured auth.
-			if (mode !== 'test' || !ctx.isChatSessionTest()) {
-				await validateAuth(ctx);
+			if (mode === 'test' && ctx.isChatSessionTest()) {
+				// Auth is skipped here, but the editor user who started the run is known, so
+				// report them under the same conditions production would.
+				if (authentication === 'n8nUserAuth') {
+					authedUser = await ctx.getTestWebhookUser();
+				}
+			} else {
+				authedUser = await validateAuth(ctx);
 			}
 		} catch (error) {
 			if (error) {
@@ -1085,7 +1137,6 @@ export class ChatTrigger extends Node {
 			}
 		}
 
-		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 
 		// Handle streaming responses
@@ -1109,27 +1160,35 @@ export class ChatTrigger extends Node {
 
 			// Flush headers immediately
 			res.flushHeaders();
+		}
 
-			if (req.contentType === 'multipart/form-data') {
-				returnData = [await this.handleFormData(ctx)];
-			} else {
-				returnData = [{ json: bodyData }];
-			}
+		const isMultipart = req.contentType === 'multipart/form-data';
+		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
 
+		// The single merge point for all three emission paths — see `withAuthenticatedUser`.
+		// Spread so the multipart path keeps its `binary` attachments.
+		const returnItem: INodeExecutionData = {
+			...item,
+			json: withAuthenticatedUser(
+				item.json,
+				ctx.getNodeParameter('includeUserInOutput', true) !== false ? authedUser : undefined,
+			),
+		};
+
+		const returnData: INodeExecutionData[] = [returnItem];
+
+		if (enableStreaming) {
 			return {
 				workflowData: [ctx.helpers.returnJsonArray(returnData)],
 				noWebhookResponse: true,
 			};
 		}
 
-		if (req.contentType === 'multipart/form-data') {
-			returnData = [await this.handleFormData(ctx)];
+		if (isMultipart) {
 			return {
 				webhookResponse,
 				workflowData: [returnData],
 			};
-		} else {
-			returnData = [{ json: bodyData }];
 		}
 
 		return {

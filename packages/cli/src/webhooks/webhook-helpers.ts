@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
@@ -591,6 +592,17 @@ export async function executeWebhook(
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
 		const user = await authService.validateCookieToken(token);
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		};
+	};
+
+	additionalData.getUserById = async (id: string) => {
+		const user = await Container.get(UserRepository).findByIdWithRole(id);
+		if (!user) return undefined;
 		return {
 			id: user.id,
 			email: user.email,
