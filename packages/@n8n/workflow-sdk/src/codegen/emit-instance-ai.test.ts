@@ -240,6 +240,7 @@ describe('emit-instance-ai', () => {
 			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
+			'locateNodeDeclarations',
 			'parseWorkflowCode',
 			'parseWorkflowCodeToBuilder',
 			// Code-step helpers — appear as arguments to `.code()` callbacks, not as

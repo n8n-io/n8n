@@ -1009,7 +1009,7 @@ describe('workflows tool', () => {
 				filePath,
 				status: 'written',
 				nodeCount: 1,
-				nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', line: 6 }],
+				nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', line: 3 }],
 			});
 			expect(files.get(filePath)).toBe(
 				`import { workflow, trigger } from '@n8n/workflow-sdk';\n\n${GENERATED}`,
@@ -1123,7 +1123,7 @@ describe('workflows tool', () => {
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
 			const filePath = 'src/workflows/test-wf.workflow.ts';
-			// Two lines prepended: the node head moves from line 6 to line 8 on disk.
+			// Two lines prepended: the node declaration moves from line 3 to line 5 on disk.
 			files.set(filePath, `// note\n// note\n${files.get(filePath)}`);
 
 			const result = await executeTool<{ status: string; nodes: Array<{ line: number }> }>(
@@ -1133,7 +1133,7 @@ describe('workflows tool', () => {
 			);
 
 			expect(result.status).toBe('conflict');
-			expect(result.nodes[0].line).toBe(8);
+			expect(result.nodes[0].line).toBe(5);
 		});
 
 		it('retries when the workflow changes between the source read and the checksum read', async () => {

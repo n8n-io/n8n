@@ -64,81 +64,33 @@ export function workflowSourceFileSlug(name: string, workflowId: string): string
 
 /**
  * Line of each node's declaration, so the agent can jump to a node with a ranged
- * read instead of scanning the whole file. Nodes are located by their emitted id;
- * a node without one (a duplicate id is emitted only for its first claimant) falls
- * back to its unique name, matched only where a node head declares it.
+ * read instead of scanning the whole file. Declarations come from parsing the
+ * source, so the same text inside a sticky note or a parameter value cannot match.
+ * A node is found by its id when that id is unique, else by its name; a node the
+ * source does not declare, or source that does not parse, reports line 0.
  */
-export function indexSourceNodes(json: WorkflowJSON, code: string): SourceNodeIndexEntry[] {
-	const lines = code.split('\n');
-	const findLine = (needle: string): number => lines.findIndex((line) => line.includes(needle)) + 1;
-	return (json.nodes ?? []).map((node) => {
+export async function indexSourceNodes(
+	json: WorkflowJSON,
+	code: string,
+): Promise<SourceNodeIndexEntry[]> {
+	const { locateNodeDeclarations } = await import('@n8n/workflow-sdk');
+	const byId = new Map<string, number>();
+	const byName = new Map<string, number>();
+	for (const { id, name, line } of locateNodeDeclarations(code)) {
+		if (id !== undefined && !byId.has(id)) byId.set(id, line);
+		if (name !== undefined && !byName.has(name)) byName.set(name, line);
+	}
+
+	const nodes = json.nodes ?? [];
+	const idCounts = new Map<string, number>();
+	for (const node of nodes) idCounts.set(node.id, (idCounts.get(node.id) ?? 0) + 1);
+
+	return nodes.map((node) => {
 		const name = node.name ?? '';
-		const byId = node.id ? findLine(`id: '${escapeSingleQuotes(node.id)}'`) : 0;
-		const line = byId > 0 ? byId : findNodeHeadLine(lines, `name: '${escapeSingleQuotes(name)}'`);
-		return { name, type: node.type, line };
+		// Codegen emits a duplicated id for its first claimant only, so it locates that node alone.
+		const byUniqueId = idCounts.get(node.id) === 1 ? byId.get(node.id) : undefined;
+		return { name, type: node.type, line: byUniqueId ?? byName.get(name) ?? 0 };
 	});
-}
-
-function escapeSingleQuotes(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
-const CONFIG_OPEN = 'config: {';
-/** A sticky note carries its name in the options object after its node list: `sticky(content, [...], { ... })`. */
-const STICKY_OPTIONS_OPEN = '], {';
-const ID_LINE = /^\s*id: '(?:[^'\\]|\\.)*',?$/;
-
-/**
- * A node's own `name:` is a direct key of its `config: {` object: on the same
- * line when the config is single-line, or on the first line after it (past an
- * optional `id:` line) when it spans lines. A sticky note's `name:` is a direct
- * key of its trailing options object instead. A `name:` inside `parameters`
- * sits deeper, so it never qualifies — even on a one-line config that also holds
- * the parameters — and cannot shadow a node declared further down.
- */
-function findNodeHeadLine(lines: string[], needle: string): number {
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		// The name text can also appear inside a value on the same line (a template
-		// literal's last content line ends with the sticky options), so every
-		// occurrence is checked, not only the first.
-		for (let at = line.indexOf(needle); at >= 0; at = line.indexOf(needle, at + 1)) {
-			if (isDirectKeyOf(line, CONFIG_OPEN, at) || isDirectKeyOf(line, STICKY_OPTIONS_OPEN, at)) {
-				return i + 1;
-			}
-		}
-		if (!line.includes(needle) || line.includes(CONFIG_OPEN)) continue;
-		const previous = lines[i - 1]?.trim() ?? '';
-		if (previous.endsWith(CONFIG_OPEN)) return i + 1;
-		if (ID_LINE.test(lines[i - 1] ?? '') && (lines[i - 2]?.trim() ?? '').endsWith(CONFIG_OPEN)) {
-			return i + 1;
-		}
-	}
-	return 0;
-}
-
-/** True when the text at `at` is a direct key of the nearest `opener` object before it on the line. */
-function isDirectKeyOf(line: string, opener: string, at: number): boolean {
-	const openerAt = line.lastIndexOf(opener, at);
-	return openerAt >= 0 && braceDepthBetween(line, openerAt + opener.length, at) === 0;
-}
-
-/** Net `{`/`[` nesting between two offsets of one line, ignoring string contents. */
-function braceDepthBetween(line: string, from: number, to: number): number {
-	let depth = 0;
-	let quote: string | undefined;
-	for (let i = from; i < to; i++) {
-		const ch = line[i];
-		if (quote) {
-			if (ch === '\\') i++;
-			else if (ch === quote) quote = undefined;
-			continue;
-		}
-		if (ch === "'" || ch === '"' || ch === '`') quote = ch;
-		else if (ch === '{' || ch === '[') depth++;
-		else if (ch === '}' || ch === ']') depth--;
-	}
-	return depth;
 }
 
 async function resolveSourceFilePath(

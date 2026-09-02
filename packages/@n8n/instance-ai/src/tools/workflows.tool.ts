@@ -693,7 +693,7 @@ async function handleGetAsCode(
 				workflowId: input.workflowId,
 				name: json.name,
 				nodeCount: json.nodes?.length ?? 0,
-				nodes: indexSourceNodes(json, code),
+				nodes: await indexSourceNodes(json, code),
 				code,
 			};
 		}
@@ -710,7 +710,7 @@ async function handleGetAsCode(
 				versionId: saved.versionId,
 				checksum: saved.checksum,
 			});
-			return { ...base, nodes: indexSourceNodes(json, code), code };
+			return { ...base, nodes: await indexSourceNodes(json, code), code };
 		}
 
 		const materialized = await materializeWorkflowSource(context, {
@@ -729,7 +729,7 @@ async function handleGetAsCode(
 			filePath: materialized.filePath,
 			status: materialized.status,
 			// Index what is on disk: for `current` and `conflict` that is not the regenerated code.
-			nodes: indexSourceNodes(json, materialized.content),
+			nodes: await indexSourceNodes(json, materialized.content),
 			note: SOURCE_FILE_NOTES[materialized.status],
 			...(materialized.status !== 'conflict' && code.length <= INLINE_SOURCE_LIMIT_CHARS
 				? { code }

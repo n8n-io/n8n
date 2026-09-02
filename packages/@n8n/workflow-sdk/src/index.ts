@@ -193,6 +193,10 @@ export {
 	type EmitInstanceAiOptions,
 } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
+export {
+	locateNodeDeclarations,
+	type NodeDeclarationLocation,
+} from './codegen/locate-node-declarations';
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';

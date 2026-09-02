@@ -56,133 +56,86 @@ describe('workflowSourceFileSlug', () => {
 });
 
 describe('indexSourceNodes', () => {
-	it('reports the source line of each node, located by its emitted id', () => {
-		const json: WorkflowJSON = {
-			name: 'W',
-			nodes: [
-				{
-					id: 'n1',
-					name: 'First',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 3.4,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: 'n2',
-					name: 'Second',
-					type: 'n8n-nodes-base.if',
-					typeVersion: 2.2,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-			connections: {},
-		};
+	type NodeJson = NonNullable<WorkflowJSON['nodes']>[number];
+	const nodeJson = (id: string, name: string, type = 'n8n-nodes-base.set'): NodeJson => ({
+		id,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	});
+	const withNodes = (...nodes: NodeJson[]): WorkflowJSON => ({ name: 'W', nodes, connections: {} });
+
+	it('reports the line of each node declaration', async () => {
 		const code = [
-			"import { node } from '@n8n/workflow-sdk';",
+			"import { node, workflow } from '@n8n/workflow-sdk';",
 			'',
 			'const first = node({',
+			"  type: 'n8n-nodes-base.set',",
+			'  version: 3.4,',
 			"  config: { id: 'n1', name: 'First' }",
 			'});',
-			"const second = node({ config: { id: 'n2', name: 'Second' } });",
+			"const second = node({ type: 'n8n-nodes-base.if', version: 2.2, config: { id: 'n2', name: 'Second' } });",
+			"export default workflow('w', 'W').add(first).to(second);",
 		].join('\n');
+		const json = withNodes(nodeJson('n1', 'First'), nodeJson('n2', 'Second', 'n8n-nodes-base.if'));
 
-		expect(indexSourceNodes(json, code)).toEqual([
-			{ name: 'First', type: 'n8n-nodes-base.set', line: 4 },
-			{ name: 'Second', type: 'n8n-nodes-base.if', line: 6 },
+		await expect(indexSourceNodes(json, code)).resolves.toEqual([
+			{ name: 'First', type: 'n8n-nodes-base.set', line: 3 },
+			{ name: 'Second', type: 'n8n-nodes-base.if', line: 8 },
 		]);
 	});
 
-	it('falls back to the node head that declares the name when the id is not emitted', () => {
-		const json: WorkflowJSON = {
-			name: 'W',
-			nodes: [
-				{
-					id: 'dup',
-					name: 'carrier',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 3.4,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-			connections: {},
-		};
-		// An earlier root node carries the same text as a parameter key, on its
-		// single-line config — shallower than the nested subnode declared later.
+	it('locates a node by name when its id is emitted for another node, ignoring the name in values', async () => {
+		// Codegen emits the shared id once. The second node's name also appears as a
+		// parameter key on the first node and inside the sticky note's content.
 		const code = [
-			'const other = node({',
-			"  config: { id: 'x', name: 'Other', parameters: { assignments: [{ name: 'carrier', value: 'dhl' }] } }",
+			"const first = node({ type: 't', version: 1, config: { id: 'shared', name: 'First', parameters: { assignments: [{ name: 'Second' }] } } });",
+			'const second = node({',
+			"  type: 't',",
+			'  version: 1,',
+			"  config: { name: 'Second' }",
 			'});',
-			'const agent = node({',
-			'  config: {',
-			"    id: 'a',",
-			"    name: 'Agent',",
-			"    subnodes: { tools: [tool({ type: 't', version: 1, config: { name: 'carrier', parameters: { x: 1 } } })] }",
-			'  }',
-			'});',
+			"export default workflow('w', 'W').add(first).to(second).add(sticky(`# Notes",
+			"], { name: 'Second'",
+			"`, [], { name: 'Notes' }));",
 		].join('\n');
+		const json = withNodes(
+			nodeJson('shared', 'First'),
+			nodeJson('shared', 'Second'),
+			nodeJson('note', 'Notes', 'n8n-nodes-base.stickyNote'),
+		);
 
-		expect(indexSourceNodes(json, code)).toEqual([
-			{ name: 'carrier', type: 'n8n-nodes-base.set', line: 8 },
+		await expect(indexSourceNodes(json, code)).resolves.toEqual([
+			{ name: 'First', type: 'n8n-nodes-base.set', line: 1 },
+			{ name: 'Second', type: 'n8n-nodes-base.set', line: 2 },
+			{ name: 'Notes', type: 'n8n-nodes-base.stickyNote', line: 7 },
 		]);
 	});
 
-	it('finds a sticky note by the name in its options object when its id is not emitted', () => {
-		const json: WorkflowJSON = {
-			name: 'W',
-			nodes: [
-				{
-					id: 'dup',
-					name: 'Notes',
-					type: 'n8n-nodes-base.stickyNote',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: { content: '## Notes\nname: Notes' },
-				},
-			],
-			connections: {},
-		};
-		const code = [
-			"const send = node({ config: { id: 'x', name: 'Send', parameters: { note: 'name: Notes' } } });",
-			'const sticky1 = sticky(`## Notes',
-			"name: 'Notes'`, [send], { name: 'Notes', color: 4 });",
-		].join('\n');
+	it('falls back to a unique id when the file renamed the node', async () => {
+		const code =
+			"const a = node({ type: 't', version: 1, config: { id: 'n1', name: 'Renamed' } });";
 
-		expect(indexSourceNodes(json, code)).toEqual([
-			{ name: 'Notes', type: 'n8n-nodes-base.stickyNote', line: 3 },
+		await expect(indexSourceNodes(withNodes(nodeJson('n1', 'Original')), code)).resolves.toEqual([
+			{ name: 'Original', type: 'n8n-nodes-base.set', line: 1 },
 		]);
 	});
 
-	it('finds a multi-line config head with the name after the id line', () => {
-		const json: WorkflowJSON = {
-			name: 'W',
-			nodes: [
-				{
-					id: 'dup',
-					name: 'Send',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 4.2,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-			connections: {},
-		};
-		const code = [
-			'const send = node({',
-			'  config: {',
-			"    id: 'other-id',",
-			"    name: 'Send',",
-			'    parameters: { jsonBody: expr(`{\n  "name": "Send"\n}`) }',
-			'  }',
-			'});',
-		].join('\n');
+	it('reports line 0 for a node the source does not declare, or when the source does not parse', async () => {
+		const json = withNodes(nodeJson('n1', 'Missing'));
+		const expected = [{ name: 'Missing', type: 'n8n-nodes-base.set', line: 0 }];
 
-		expect(indexSourceNodes(json, code)).toEqual([
-			{ name: 'Send', type: 'n8n-nodes-base.httpRequest', line: 4 },
-		]);
+		await expect(
+			indexSourceNodes(
+				json,
+				"const a = node({ type: 't', version: 1, config: { id: 'x', name: 'Other' } });",
+			),
+		).resolves.toEqual(expected);
+		await expect(
+			indexSourceNodes(json, "const a = node({ config: { id: 'n1', name: 'Missing' }"),
+		).resolves.toEqual(expected);
 	});
 });
 
