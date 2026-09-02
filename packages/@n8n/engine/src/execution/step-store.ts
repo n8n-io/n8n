@@ -1,11 +1,19 @@
-import type { StepError, StepKey, StepKeyId, StepSlots, StepStatus } from './execution.types';
+import type {
+	StepError,
+	StepKey,
+	StepKeyId,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from './execution.types';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
- * Creation statuses only: a row becomes `running`, `failed`, or `cancelled`
- * solely through `claimStep`, `failStep`, or `cancelQueuedSteps`, so it
- * cannot bypass the checks and locking those transitions enforce.
+ * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
+ * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
+ * `cancelQueuedSteps`, so it cannot bypass the checks and locking those
+ * transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
@@ -97,6 +105,13 @@ export interface StepStore {
 	 * so they can't be observed apart.
 	 */
 	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
+
+	/**
+	 * Record a wait: persist `wait` and move the step to `waiting`. A
+	 * compare-and-set on `running`, as `completeStep` - but `waiting` is no
+	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 */
+	suspendStep(id: string, wait: WaitDeclaration): Promise<boolean>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
