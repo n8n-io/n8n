@@ -34582,14 +34582,6 @@ snapshots:
 
   '@volar/source-map@2.4.28': {}
 
-  '@volar/typescript@2.4.12(@typescript/typescript6@6.0.2)':
-    dependencies:
-      '@volar/language-core': 2.4.12
-      path-browserify: 1.0.1
-      vscode-uri: 3.0.8
-    optionalDependencies:
-      typescript: '@typescript/typescript6@6.0.2'
-
   '@volar/typescript@2.4.12(typescript@6.0.2)':
     dependencies:
       '@volar/language-core': 2.4.12
@@ -34598,14 +34590,13 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
-  '@volar/typescript@2.4.12(typescript@7.0.2)':
+  '@volar/typescript@2.4.28(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@volar/language-core': 2.4.12
+      '@volar/language-core': 2.4.28
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
     optionalDependencies:
-      typescript: 7.0.2
-    optional: true
+      typescript: '@typescript/typescript6@6.0.2'
 
   '@volar/typescript@2.4.28(typescript@5.9.3)':
     dependencies:
@@ -34614,6 +34605,23 @@ snapshots:
       vscode-uri: 3.0.8
     optionalDependencies:
       typescript: 5.9.3
+
+  '@volar/typescript@2.4.28(typescript@6.0.2)':
+    dependencies:
+      '@volar/language-core': 2.4.28
+      path-browserify: 1.0.1
+      vscode-uri: 3.0.8
+    optionalDependencies:
+      typescript: 6.0.2
+
+  '@volar/typescript@2.4.28(typescript@7.0.2)':
+    dependencies:
+      '@volar/language-core': 2.4.28
+      path-browserify: 1.0.1
+      vscode-uri: 3.0.8
+    optionalDependencies:
+      typescript: 7.0.2
+    optional: true
 
   '@vscode/markdown-it-katex@1.1.2':
     dependencies:
@@ -34732,7 +34740,7 @@ snapshots:
 
   '@vue/language-core@2.2.8(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@volar/language-core': 2.4.12
+      '@volar/language-core': 2.4.28
       '@vue/compiler-dom': 3.5.40
       '@vue/compiler-vue2': 2.7.16
       '@vue/shared': 3.5.40
@@ -34745,7 +34753,7 @@ snapshots:
 
   '@vue/language-core@2.2.8(typescript@6.0.2)':
     dependencies:
-      '@volar/language-core': 2.4.12
+      '@volar/language-core': 2.4.28
       '@vue/compiler-dom': 3.5.40
       '@vue/compiler-vue2': 2.7.16
       '@vue/shared': 3.5.40
@@ -34758,7 +34766,7 @@ snapshots:
 
   '@vue/language-core@2.2.8(typescript@7.0.2)':
     dependencies:
-      '@volar/language-core': 2.4.12
+      '@volar/language-core': 2.4.28
       '@vue/compiler-dom': 3.5.40
       '@vue/compiler-vue2': 2.7.16
       '@vue/shared': 3.5.40
@@ -46240,19 +46248,19 @@ snapshots:
 
   vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2):
     dependencies:
-      '@volar/typescript': 2.4.12(@typescript/typescript6@6.0.2)
+      '@volar/typescript': 2.4.28(@typescript/typescript6@6.0.2)
       '@vue/language-core': 2.2.8(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
 
   vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2):
     dependencies:
-      '@volar/typescript': 2.4.12(typescript@6.0.2)
+      '@volar/typescript': 2.4.28(typescript@6.0.2)
       '@vue/language-core': 2.2.8(typescript@6.0.2)
       typescript: 6.0.2
 
   vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2):
     dependencies:
-      '@volar/typescript': 2.4.12(typescript@7.0.2)
+      '@volar/typescript': 2.4.28(typescript@7.0.2)
       '@vue/language-core': 2.2.8(typescript@7.0.2)
       typescript: 7.0.2
     optional: true
