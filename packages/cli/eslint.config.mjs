@@ -218,7 +218,6 @@ export default defineConfig(
 		// Shrink-only ratchet: node-write sites not yet migrated to the sealed repository path.
 		// NEVER add a new write here — it must fail CI. Remove each entry as its site migrates.
 		files: [
-			'./src/services/import.service.ts',
 			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
 			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 		],

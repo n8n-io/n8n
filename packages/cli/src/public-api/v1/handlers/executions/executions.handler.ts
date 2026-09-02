@@ -33,8 +33,6 @@ const handleError = (error: unknown) => {
 type ExecutionHandlers = {
 	getExecutions: PublicAPIEndpoint<ExecutionRequest.GetAll>;
 	retryExecution: PublicAPIEndpoint<ExecutionRequest.Retry>;
-	getExecutionTags: PublicAPIEndpoint<ExecutionRequest.GetTags>;
-	updateExecutionTags: PublicAPIEndpoint<ExecutionRequest.UpdateTags>;
 	stopExecution: PublicAPIEndpoint<ExecutionRequest.Stop>;
 	stopManyExecutions: PublicAPIEndpoint<ExecutionRequest.StopMany>;
 };
@@ -140,49 +138,6 @@ const executionHandlers: ExecutionHandlers = {
 				});
 
 				return res.json(replaceCircularReferences(retriedExecution));
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	getExecutionTags: [
-		publicApiScope('executionTags:list'),
-		async (req, res) => {
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:read']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await Container.get(ExecutionService).getExecutionTags(
-				req.params.id,
-				sharedWorkflowsIds,
-			);
-
-			return res.json(tags);
-		},
-	],
-	updateExecutionTags: [
-		publicApiScope('executionTags:update'),
-		async (req, res) => {
-			const newTagIds = req.body.map((tag) => tag.id);
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:update']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			try {
-				const tags = await Container.get(ExecutionService).updateExecutionTags(
-					req.params.id,
-					newTagIds,
-					sharedWorkflowsIds,
-				);
-				return res.json(tags);
 			} catch (error) {
 				return handleError(error);
 			}

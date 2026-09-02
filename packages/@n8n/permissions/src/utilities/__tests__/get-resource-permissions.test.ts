@@ -22,6 +22,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			oidc: {},
 			orchestration: {},
 			project: {},
@@ -117,6 +118,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			orchestration: {},
 			project: {
 				list: true,
