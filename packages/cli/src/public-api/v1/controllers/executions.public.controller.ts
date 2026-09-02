@@ -223,8 +223,6 @@ export class ExecutionsPublicController {
 		res: Response,
 		@Body body: StopManyExecutionsPublicDto,
 	): Promise<StoppedExecutionsPublicDto | undefined> {
-		// Answered here, not by the request DTO: this 400 body predates the standard one and carries
-		// an `example` field callers may read. It also has to land before the shared-workflow lookup.
 		if (body.status.length === 0) {
 			res.status(400).json({
 				message:
@@ -296,13 +294,10 @@ export class ExecutionsPublicController {
 
 			return toStoppedExecutionPublicDto(stopResult);
 		} catch (error) {
-			// A `UserError` would otherwise surface as a 400.
 			if (error instanceof MissingExecutionStopError) {
 				throw new NotFoundError(error.message);
 			}
 
-			// `assertStoppable` is the only source in this path, and it is not an `HttpError`, so
-			// without this the caller sees a 500 for an execution that has already finished.
 			if (error instanceof WorkflowOperationError) {
 				throw new ConflictError(error.message);
 			}
