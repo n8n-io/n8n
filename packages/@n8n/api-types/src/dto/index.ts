@@ -182,6 +182,10 @@ export {
 	WorkflowPublishBlockedErrorPublicDto,
 	workflowPublishBlockedErrorPublicSchema,
 } from './workflows/workflow-publish-blocked-error-public.dto';
+export {
+	WorkflowPublishForbiddenErrorPublicDto,
+	workflowPublishForbiddenErrorPublicSchema,
+} from './workflows/workflow-publish-forbidden-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
