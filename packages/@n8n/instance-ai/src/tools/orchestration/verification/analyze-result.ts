@@ -248,7 +248,7 @@ function classifyVerificationFailure(
 						lastNodeExecuted,
 						chatModelRecovery?.creditsCoveredNodeNames,
 					)
-					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
 					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
 		return createRemediation({
@@ -335,8 +335,20 @@ function buildCoverageNote(
 	result: ExecutionRunResult,
 	success: boolean,
 	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -346,7 +358,18 @@ function buildCoverageNote(
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
 			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
 			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
-			'treating it as verified.'
+			'treating it as verified.' +
+			triggerScopeNote
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			" Any unreached node that IS on this trigger's branch did not receive input items " +
+			'(usually an empty lookup or query) — seed matching test data and re-run before treating ' +
+			'it as verified.'
 		);
 	}
 	const ending = result.lastNodeExecuted
@@ -415,6 +438,8 @@ export function analyzeVerificationResult(args: {
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -425,12 +450,26 @@ export function analyzeVerificationResult(args: {
 		runId,
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
+		triggerNodeName,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
-	const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
+	// Nodes fed by pinned data saved on the workflow did not really execute
+	// either — count them as simulated so a pin-fed run never passes as a live
+	// test (INS-1216: stale AI fixtures adopted as pins looked fully verified).
+	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
+		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
+		.map((name) => ({
+			nodeName: name,
+			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
+		}));
+	const reachedSimulatedNodes = [
+		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
+		...workflowPinnedNodes,
+	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
 		.filter((name) => !reachedNames.has(name));
@@ -472,6 +511,7 @@ export function analyzeVerificationResult(args: {
 			result,
 			success,
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
 		),
 		errorMessage,
 		nodeErrors,

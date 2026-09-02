@@ -1,6 +1,10 @@
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { OAUTH_SESSION_COOKIE_NAME } from '@/modules/oauth-server/oauth-session.service';
+import { OIDC_ID_TOKEN_COOKIE_NAME } from '@/modules/sso-oidc/constants';
+import { OAUTH_BINDING_COOKIE_NAME } from '@/oauth/oauth-browser-binding.service';
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
 
 describe('webhookRequestSanitizer', () => {
@@ -263,6 +267,100 @@ describe('webhookRequestSanitizer', () => {
 			expect(mockRequest.cookies).toEqual({
 				'other-cookie': 'value',
 			});
+		});
+	});
+
+	// The form endpoints skip sanitizing for their own node types, so removing these
+	// here only affects the webhooks that have no use for them. The form auth cookie
+	// names embed the workflow or execution they were minted for, hence the suffixes.
+	describe('when the form cookies are present', () => {
+		const formCookieNames = [
+			'n8n-form-auth-wf-a-workflow-id',
+			'n8n-form-auth-ex-12345',
+			'n8n-form-oauth',
+		];
+
+		it.each(formCookieNames)('should remove %s from the header', (name) => {
+			mockRequest.headers = {
+				cookie: `${name}=abc123; other-cookie=value`,
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(formCookieNames)('should remove %s from parsed cookies', (name) => {
+			mockRequest.cookies = {
+				[name]: 'abc123',
+				'other-cookie': 'value',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({
+				'other-cookie': 'value',
+			});
+		});
+
+		it('should leave an unrelated cookie that merely begins with the prefix', () => {
+			mockRequest.headers = {
+				cookie: 'n8n-form-authentic=abc123; n8n-form-auth-ex-12345=def',
+			};
+			mockRequest.cookies = {
+				'n8n-form-authentic': 'abc123',
+				'n8n-form-auth-ex-12345': 'def',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('n8n-form-authentic=abc123');
+			expect(mockRequest.cookies).toEqual({ 'n8n-form-authentic': 'abc123' });
+		});
+
+		it('should remove every disallowed cookie in one pass', () => {
+			mockRequest.headers = {
+				cookie:
+					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; other-cookie=value',
+			};
+			mockRequest.cookies = {
+				'n8n-auth': 'a',
+				'n8n-browserId': 'b',
+				'n8n-form-auth-ex-12345': 'c',
+				'n8n-form-oauth': 'd',
+				'other-cookie': 'value',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+	});
+
+	describe('cookies n8n issues for its own flows', () => {
+		const N8N_ISSUED_COOKIES = [
+			OAUTH_SESSION_COOKIE_NAME,
+			OAUTH_BINDING_COOKIE_NAME,
+			OIDC_ID_TOKEN_COOKIE_NAME,
+			OIDC_STATE_COOKIE_NAME,
+			OIDC_NONCE_COOKIE_NAME,
+		];
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the cookie header', (name) => {
+			mockRequest.headers = { cookie: `${name}=abc123; other-cookie=value` };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the parsed cookies', (name) => {
+			mockRequest.cookies = { [name]: 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
 		});
 	});
 });

@@ -7,7 +7,12 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../../entities/data-table/data-table.types';
 import type { PersistedWorkflowOutcome } from '../../entities/workflow/workflow-import.types';
-import type { ImportContext, ImportPackageRequest } from '../../n8n-packages.types';
+import type {
+	ImportContext,
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
+	ResolvedImportPackageRequest,
+} from '../../n8n-packages.types';
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { ImportContentResult } from '../import-orchestrator';
@@ -35,6 +40,8 @@ const scope = (input: {
 	projectId: string;
 	folderId?: string | null;
 	outcomes: PersistedWorkflowOutcome[];
+	removedWorkflows?: RemovedWorkflowSummary[];
+	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
 	dataTable?: { matched: number; created: number; requirements: number };
@@ -83,6 +90,8 @@ const scope = (input: {
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
+		removedWorkflows: input.removedWorkflows ?? [],
+		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
@@ -152,13 +161,14 @@ const scope = (input: {
 	};
 };
 
-const request = mock<ImportPackageRequest>({
+const request = mock<ResolvedImportPackageRequest>({
 	user: mock(),
 	workflowConflictPolicy: 'new-version',
 	workflowIdPolicy: 'new',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
 	variableConflictPolicy: 'overwrite',
 	variableParentPolicy: 'global',
@@ -243,7 +253,8 @@ describe('emitPackageImportedEvent', () => {
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
-			workflows: { created: 1, updated: 1, skipped: 1 },
+			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
+			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
 			dataTables: { matched: 1, created: 2, requirements: 3 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
@@ -321,6 +332,46 @@ describe('emitPackageImportedEvent', () => {
 			updated: 0,
 			requirements: 2,
 		});
+	});
+
+	it('counts reconciliation removals by what actually happened', () => {
+		const eventService = mock<EventService>();
+		const removed = (workflowId: string, deletion: 'archived' | 'deleted') => ({
+			workflowId,
+			name: workflowId,
+			projectId: 'P1',
+			parentFolderId: null,
+			deletion,
+		});
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					// A hard-delete whose row could not be dropped yet reports archived, and counts so.
+					removedWorkflows: [removed('stale-1', 'archived'), removed('stale-2', 'deleted')],
+					removedFolders: [
+						{ folderId: 'F-stale', name: 'stale', projectId: 'P1', parentFolderId: null },
+					],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+				}),
+			],
+		});
+
+		const payload = lastImportedPayload(eventService);
+		expect(payload.counts.workflows).toEqual({
+			created: 1,
+			updated: 0,
+			skipped: 0,
+			archived: 1,
+			deleted: 1,
+		});
+		expect(payload.counts.folders).toEqual({ removed: 1 });
+		// The settled policy is reported as-is; the dispatcher resolved it before any importer ran.
+		expect(payload.options.folderConflictPolicy).toBe('overwrite');
 	});
 
 	it('preserves the folder id for a single-scope import', () => {

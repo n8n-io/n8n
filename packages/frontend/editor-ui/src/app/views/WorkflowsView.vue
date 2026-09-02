@@ -24,8 +24,6 @@ import type {
 	WorkflowListEventMap,
 } from '@/features/core/folders/folders.types';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -53,8 +51,7 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
@@ -178,8 +175,6 @@ const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
-const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
-const reviewStatusStore = useWorkflowReviewStatusStore();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
@@ -919,11 +914,6 @@ const fetchWorkflows = async () => {
 			.map((r) => r.id);
 		if (workflowIds.length > 0) {
 			void fetchDependencyCounts(workflowIds, 'workflow');
-			// Same fire-and-forget pattern for the review badges. Gated up front so a
-			// disabled feature issues no review request at all.
-			if (isWorkflowReviewsEnabled.value) {
-				void reviewStatusStore.fetchReviewStatuses(workflowIds);
-			}
 		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows

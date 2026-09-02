@@ -50,6 +50,8 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -150,6 +152,7 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
@@ -198,6 +201,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
 					name: remote.name,
+					description: remote.description,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -219,6 +223,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -242,6 +247,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -264,6 +270,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -300,6 +307,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -870,7 +878,8 @@ export class SourceControlImportService {
 		}
 
 		if (archivedByPull) {
-			await this.workflowMutationHooks.afterWorkflowArchived(id);
+			// A pull is a system mutation: no acting user to attribute the archive to.
+			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
 		try {
@@ -890,13 +899,20 @@ export class SourceControlImportService {
 			(w) => w.workflowId === id && w.role === 'workflow:owner',
 		);
 
-		await this.syncResourceOwnership({
+		const targetOwnerProject = await this.syncResourceOwnership({
 			resourceId: id,
 			remoteOwner: owner,
 			localOwner,
 			fallbackProject: personalProject,
 			repository: this.sharedWorkflowRepository,
 		});
+
+		// Advisory only — never blocks the pull, per contentImport being `evaluate`, not `enforce`.
+		const contentImportPolicy = await evaluateContentImportSafely(
+			this.policyEnforcementService,
+			{ workflow: { id, name: importedWorkflow.name, nodes }, projectId: targetOwnerProject.id },
+			this.logger,
+		);
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
@@ -913,6 +929,9 @@ export class SourceControlImportService {
 			publishingError: finalPublishingError,
 			...(finalPublishingErrorDetails && {
 				publishingErrorDetails: finalPublishingErrorDetails,
+			}),
+			...((contentImportPolicy.violations.length || contentImportPolicy.checkErrors.length) && {
+				contentImportPolicy,
 			}),
 		};
 	}
@@ -1880,11 +1899,10 @@ export class SourceControlImportService {
 			if (workflow) workflows.push(workflow);
 		}
 
-		// The hook may throw to abort the deletion, so it runs for every workflow
-		// before any destructive teardown — a rejection halfway through the batch
-		// must not leave earlier workflows deactivated with their executions gone.
+		// Capture-only, before any destructive teardown, while the rows the deletes
+		// will cascade away still exist. A pull is a system mutation: no acting user.
 		for (const workflow of workflows) {
-			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id, null);
 		}
 
 		for (const workflow of workflows) {
@@ -1948,7 +1966,7 @@ export class SourceControlImportService {
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 		transactionManager?: EntityManager;
 		targetOwnerProject?: Project;
-	}): Promise<void> {
+	}): Promise<Project> {
 		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
 		const trx = transactionManager ?? this.workflowRepository.manager;
@@ -1961,6 +1979,8 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+
+		return targetOwnerProject;
 	}
 
 	private async resolveTargetOwnerProject(

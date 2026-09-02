@@ -1,16 +1,8 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
-import { ProjectRelationRepository, type AuthenticatedRequest } from '@n8n/db';
+import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { InvitationController } from '@/controllers/invitation.controller';
-import { UsersController } from '@/controllers/users.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import type { UserRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
-
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import { toPublicApiUser } from './users.mapper';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
@@ -19,6 +11,13 @@ import {
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserRequest } from '@/requests';
+import { ProjectService } from '@/services/project.service.ee';
+import { UserService } from '@/services/user.service';
 
 type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
@@ -40,7 +39,7 @@ const usersHandlers: UsersHandlers = {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
 
-			const user = await getUser({ withIdentifier: id, includeRole });
+			const user = await Container.get(UserService).getUser(id);
 
 			if (!user) {
 				throw new NotFoundError(`Could not find user with id: ${id}`);
@@ -51,7 +50,7 @@ const usersHandlers: UsersHandlers = {
 				publicApi: true,
 			});
 
-			return res.json(clean(user, { includeRole }));
+			return res.json(toPublicApiUser(user, { includeRole }));
 		},
 	],
 	getUsers: [
@@ -60,18 +59,18 @@ const usersHandlers: UsersHandlers = {
 		validCursor,
 		async (req, res) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
+			const userService = Container.get(UserService);
 
-			await Container.get(UserService).assertGetUsersAccess(req.user, projectId);
+			await userService.assertGetUsersAccess(req.user, projectId);
 
-			const _in = projectId
-				? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(projectId)
+			const userIdsInProject = projectId
+				? await Container.get(ProjectService).findUserIdsByProjectId(projectId)
 				: undefined;
 
-			const [users, count] = await getAllUsersAndCount({
-				includeRole,
+			const { users, count } = await userService.getUsersAndCount({
+				ids: userIdsInProject,
 				limit,
 				offset,
-				in: _in,
 			});
 
 			Container.get(EventService).emit('user-retrieved-all-users', {
@@ -80,7 +79,7 @@ const usersHandlers: UsersHandlers = {
 			});
 
 			return res.json({
-				data: clean(users, { includeRole }),
+				data: toPublicApiUser(users, { includeRole }),
 				nextCursor: encodeNextCursor({
 					offset,
 					limit,
@@ -97,18 +96,14 @@ const usersHandlers: UsersHandlers = {
 				throw new BadRequestError(error.errors[0]?.message ?? 'Invalid request body');
 			}
 
-			const usersInvited = await Container.get(InvitationController).inviteUser(
-				req,
-				res,
-				data as InviteUsersRequestDto,
-			);
+			const usersInvited = await Container.get(UserService).inviteUser(req.user, data);
 			return res.status(201).json(usersInvited);
 		},
 	],
 	deleteUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:delete' }),
 		async (req, res) => {
-			await Container.get(UsersController).deleteUser(req);
+			await Container.get(UserService).deleteUser(req.user, req.params.id, req.query.transferId);
 
 			return res.status(204).send();
 		},
@@ -122,12 +117,7 @@ const usersHandlers: UsersHandlers = {
 				throw new BadRequestError(validation.error.errors[0]?.message ?? 'Invalid request body');
 			}
 
-			await Container.get(UsersController).changeGlobalRole(
-				req,
-				res,
-				validation.data,
-				req.params.id,
-			);
+			await Container.get(UserService).changeGlobalRole(req.user, req.params.id, validation.data);
 
 			return res.status(204).send();
 		},

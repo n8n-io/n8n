@@ -19,6 +19,8 @@ const API_KEY = 'n8n-sandbox-ci-key';
 const RUNNER_API_KEY = 'ci-runner-key';
 const REGISTRATION_TOKEN = 'ci-reg-token';
 const SANDBOX_READY_TIMEOUT_MS = 120_000;
+/** Preflight only — a slow answer means fall back, not wait it out. */
+const HOSTED_HEALTH_TIMEOUT_MS = 10_000;
 const SANDBOX_READY_POLL_INTERVAL_MS = 1_000;
 const DOCKER_COMMAND_MAX_BUFFER = 10 * 1024 * 1024;
 
@@ -135,8 +137,70 @@ async function generateMtlsCerts(network: StartedNetwork, projectName: string): 
 	return tlsDir;
 }
 
+/**
+ * A deployed sandbox service, as configured in the host environment — CI passes
+ * both vars as secrets, and a local run gets the same path by exporting them.
+ * Config alone is not enough to use it: `hostedEnv` still has to reach it. With
+ * a var missing (fork PRs have no secrets) the local containers start instead.
+ */
+function hostedSandboxConfig(): SandboxMeta | undefined {
+	// Trailing slash stripped once, here: everything downstream appends `/sandboxes`
+	// and would otherwise build `//sandboxes`.
+	const apiUrl = process.env.N8N_SANDBOX_SERVICE_URL?.trim().replace(/\/+$/, '');
+	const apiKey = process.env.N8N_SANDBOX_SERVICE_API_KEY?.trim();
+	if (!apiUrl || !apiKey) return undefined;
+	return { apiUrl, apiKey };
+}
+
+/**
+ * `GET /sandboxes` is the cheapest call that proves the whole chain the tests
+ * depend on: the deployment answers from this machine, and the key resolves to
+ * a tenant. `/healthz` would be wrong here — it is unauthenticated and returns
+ * a static 200, so it passes with a revoked or misspelled key.
+ *
+ * Returns `true` when healthy, otherwise the reason to report.
+ */
+async function checkHostedSandbox(meta: SandboxMeta): Promise<true | string> {
+	try {
+		const response = await fetch(`${meta.apiUrl}/sandboxes`, {
+			headers: { 'X-Api-Key': meta.apiKey },
+			signal: AbortSignal.timeout(HOSTED_HEALTH_TIMEOUT_MS),
+		});
+		if (response.ok) return true;
+		return `HTTP ${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim();
+	} catch (error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+}
+
 export const sandbox: Service<SandboxResult> = {
 	description: 'Sandbox service (API + runner)',
+
+	async hostedEnv(): Promise<Record<string, string> | undefined> {
+		const hosted = hostedSandboxConfig();
+		if (!hosted) return undefined;
+
+		const health = await checkHostedSandbox(hosted);
+		if (health !== true) {
+			// An outage in the deployment must not turn every instance-ai spec red, so
+			// hand the run back to the local stack. Warn rather than log: the run stays
+			// green but slower, and someone still has to go look at the deployment.
+			const message = `Hosted sandbox service is not usable (${health}) — falling back to the local sandbox stack`;
+			// GitHub surfaces `::warning::` in the run summary, so the downgrade doesn't
+			// hide behind thousands of lines of test output.
+			console.warn(
+				process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `⚠ ${message}`,
+			);
+			return undefined;
+		}
+
+		// One URL for both n8n-in-network and host callers — it isn't stack-local.
+		return {
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox',
+			N8N_SANDBOX_SERVICE_URL: hosted.apiUrl,
+			N8N_SANDBOX_SERVICE_API_KEY: hosted.apiKey,
+		};
+	},
 
 	async start(network: StartedNetwork, projectName: string): Promise<SandboxResult> {
 		const tlsDir = await generateMtlsCerts(network, projectName);
@@ -194,7 +258,7 @@ export const sandbox: Service<SandboxResult> = {
 					SANDBOX_RUNNER_API_KEYS: RUNNER_API_KEY,
 					SANDBOX_RUNNER_REGISTRATION_TOKEN: REGISTRATION_TOKEN,
 					SANDBOX_RUNNER_API_GRPC_ADDR: `${API_HOSTNAME}:${API_GRPC_PORT}`,
-					SANDBOX_RUNNER_HTTP_BASE_URL: `http://${RUNNER_HOSTNAME}:${API_HTTP_PORT}`,
+					SANDBOX_RUNNER_HTTP_BASE_URL: `https://${RUNNER_HOSTNAME}:${API_HTTP_PORT}`,
 					SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR: ':9091',
 					SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR: `${RUNNER_HOSTNAME}:9091`,
 					SANDBOX_RUNNER_ID: 'ci-runner-1',
@@ -210,8 +274,11 @@ export const sandbox: Service<SandboxResult> = {
 				})
 				.withExposedPorts(API_HTTP_PORT)
 				.withWaitStrategy(
+					// `/healthz` is the one route exempt from the client-certificate check.
+					// BusyBox wget cannot be given a CA file, so the probe skips verification:
+					// it answers "is the listener up", and the mTLS path is what the API uses.
 					Wait.forSuccessfulCommand(
-						`wget -q -O /dev/null --header='X-Api-Key: ${RUNNER_API_KEY}' http://localhost:${API_HTTP_PORT}/healthz`,
+						`wget -q -O /dev/null --no-check-certificate https://localhost:${API_HTTP_PORT}/healthz`,
 					).withStartupTimeout(120_000),
 				)
 				.withLogConsumer(runnerConsumer)

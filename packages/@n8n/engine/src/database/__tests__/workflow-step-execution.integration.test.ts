@@ -8,6 +8,8 @@ import { StepNotFoundError, type NewStepRecord } from '../../execution/step-stor
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
+import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
 describe('workflow_step_execution table (integration)', () => {
@@ -26,10 +28,19 @@ describe('workflow_step_execution table (integration)', () => {
 		if (container) await container.stop();
 	});
 
+	/** The read path over the same table, for the step-view cases below. */
+	function viewStore(): TypeOrmExecutionViewStore {
+		return new TypeOrmExecutionViewStore(
+			dataSource.getRepository(WorkflowExecution),
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+	}
+
 	/** Steps FK to an execution, so create a parent row first. */
 	async function createExecution(): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
+			id: generateId(),
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
@@ -218,14 +229,13 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 
 		// the winning claim gets the step back, already `running`
-		expect(await store.claimStep(id)).toEqual({
+		expect(await store.claimStep(id)).toMatchObject({
 			id,
 			executionId,
 			nodeId: 'a',
 			iteration: 0,
 			status: 'running',
 			outputs: null,
-			error: null,
 		});
 		// second claim of the same step loses the race
 		expect(await store.claimStep(id)).toBeNull();
@@ -431,7 +441,6 @@ describe('workflow_step_execution table (integration)', () => {
 		const step = await store.loadStep(id);
 		expect(step.status).toBe('skipped');
 		expect(step.outputs).toBeNull();
-		expect(step.error).toBeNull();
 	});
 
 	it('TypeOrmStepStore.loadStepsByKeys returns rows keyed by step key, omitting absent keys', async () => {
@@ -674,7 +683,7 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmStepStore.loadLatestStep returns the highest-iteration row, or null', async () => {
+	it("TypeOrmStepStore.loadLatestStepSummaries returns each node's highest-iteration row", async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -685,10 +694,22 @@ describe('workflow_step_execution table (integration)', () => {
 		const otherExecutionId = await createExecution();
 		await store.createSteps(otherExecutionId, [{ nodeId: 'b', iteration: 5, status: 'queued' }]);
 
-		const latest = await store.loadLatestStep(executionId, 'b');
-		expect(latest).toMatchObject({ nodeId: 'b', iteration: 1, status: 'completed' });
+		await store.createSteps(executionId, [
+			{ nodeId: 'c', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },
+		]);
 
-		expect(await store.loadLatestStep(executionId, 'ghost')).toBeNull();
+		const latest = await store.loadLatestStepSummaries(executionId, ['b', 'c', 'ghost']);
+
+		expect(latest.b).toMatchObject({
+			nodeId: 'b',
+			iteration: 1,
+			status: 'completed',
+			filledOutputSlots: [true, false],
+		});
+		expect(latest.c).toMatchObject({ nodeId: 'c', iteration: 0 });
+		expect(latest.ghost).toBeUndefined();
+
+		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
 	it('carries the unique key and the failed-rows partial index in the schema', async () => {
@@ -710,5 +731,56 @@ describe('workflow_step_execution table (integration)', () => {
 				 WHERE table_name = 'workflow_step_execution' AND column_name = 'iteration'`,
 		);
 		expect(column).toEqual({ is_nullable: 'NO', column_default: '0' });
+	});
+
+	it('TypeOrmExecutionViewStore.loadStepViews returns every row of the execution, none of another', async () => {
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+		]);
+		await store.createSteps(otherExecutionId, [{ nodeId: 'c', iteration: 0, status: 'queued' }]);
+
+		const steps = await viewStore().loadStepViews(executionId);
+
+		expect(steps.map((step) => step.nodeId).sort()).toEqual(['a', 'b']);
+	});
+
+	it('TypeOrmExecutionViewStore.loadStepViews returns [] for an execution with no steps', async () => {
+		const executionId = await createExecution();
+
+		expect(await viewStore().loadStepViews(executionId)).toEqual([]);
+	});
+
+	it('TypeOrmExecutionViewStore.loadStepViews carries outputs, error and timestamps', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
+		]);
+		const [{ id: failedId }] = await store.createSteps(executionId, [
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+		]);
+		await store.claimStep(failedId);
+		await store.failStep(failedId, { name: 'Error', message: 'boom' });
+
+		const steps = await viewStore().loadStepViews(executionId);
+
+		const completed = steps.find((step) => step.nodeId === 'a');
+		expect(completed).toMatchObject({
+			status: 'completed',
+			outputs: [[{ json: { ok: true } }]],
+			error: null,
+		});
+		expect(completed?.createdAt).toBeInstanceOf(Date);
+		expect(completed?.updatedAt).toBeInstanceOf(Date);
+		const failed = steps.find((step) => step.nodeId === 'b');
+		expect(failed).toMatchObject({
+			status: 'failed',
+			outputs: null,
+			error: { name: 'Error', message: 'boom' },
+		});
 	});
 });

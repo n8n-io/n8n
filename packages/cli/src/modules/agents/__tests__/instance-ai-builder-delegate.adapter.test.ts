@@ -1,11 +1,13 @@
 import type {
 	BuiltTelemetry,
+	BuiltTool,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -35,6 +37,7 @@ function setup() {
 	const agentThreadRepository = mock<AgentThreadRepository>();
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
+	const credentialService = mock<InstanceAiCredentialService>();
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
@@ -47,7 +50,7 @@ function setup() {
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
+	const delegate = service.createDelegate(user, 'project-1', credentialProvider, credentialService);
 
 	return {
 		service,
@@ -60,6 +63,7 @@ function setup() {
 		agentConfig,
 		agentSkills,
 		credentialProvider,
+		credentialService,
 	};
 }
 
@@ -68,6 +72,14 @@ async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
 }
 
 const abortSignal = new AbortController().signal;
+
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
+}
 
 describe('InstanceAiBuilderDelegateAdapterService', () => {
 	afterEach(() => {
@@ -102,10 +114,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 
 		it('builds the sub-agent session from the delegate session: thread ids, run id, model config, and addendum', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
+			const mcpTools = fakeMcpTools();
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
@@ -114,6 +128,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
 				telemetry: sentinel,
+				mcpTools,
 			});
 
 			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
@@ -121,6 +136,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'project-1',
 				'hi',
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
@@ -130,6 +146,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
+					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});
@@ -147,7 +165,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				abortSignal,
 			});
 
-			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
+			const [, , , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
@@ -170,8 +188,10 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 	describe('resumeBuild', () => {
 		it('forwards to agentsBuilderService.resumeBuild and accumulates text-delta chunks', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const mcpTools = fakeMcpTools();
 
 			const chunks: StreamChunk[] = [
 				{ type: 'text-delta', id: '1', delta: 'Using ' },
@@ -188,6 +208,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					abortSignal,
+					mcpTools,
 				},
 			);
 
@@ -203,6 +224,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'call-1',
 				{ approved: true },
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
@@ -211,6 +233,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});

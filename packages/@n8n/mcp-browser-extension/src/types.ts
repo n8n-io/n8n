@@ -77,6 +77,12 @@ export type ExternalMessage = ExternalConnectMessage | ExternalConnectResultMess
 
 export interface ExternalConnectResponse {
 	accepted: boolean;
+	/**
+	 * False when the host was already allowed and no confirmation was shown, so the page can
+	 * say "connecting" rather than point at a popup that never appears. Older extensions
+	 * omit it — treat as true.
+	 */
+	confirmationRequired?: boolean;
 }
 
 export interface ExternalConnectResultResponse {

@@ -32,7 +32,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed, n8n-controlled host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}

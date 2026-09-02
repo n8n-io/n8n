@@ -59,5 +59,8 @@
   "peerDependencies": {
     "eslint": "catalog:"
   },
-  "license": "LicenseRef-n8n-sustainable-use"
+  "license": "LicenseRef-n8n-sustainable-use",
+  "dependencies": {
+    "@n8n/eslint-plugin-design-system": "workspace:*"
+  }
 }

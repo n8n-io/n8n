@@ -13,6 +13,7 @@ import {
 	isSafeMcpIdentifierName,
 } from '../agent/mcp-tool-name-validation';
 import type { McpToolNameValidationError } from '../agent/mcp-tool-name-validation';
+import type { McpDescriptionTruncation } from '../agent/sanitize-mcp-descriptions';
 import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
@@ -110,6 +111,18 @@ function warnSkippedMcpSchema(logger: Logger, source: string) {
 			limitType: error.details.limitType,
 			limit: error.details.limit,
 			reason: error.message,
+		});
+	};
+}
+
+function warnTruncatedMcpDescription(logger: Logger, source: string) {
+	return (truncation: McpDescriptionTruncation) => {
+		logger.warn('Truncated overlong MCP description', {
+			toolName: truncation.toolName,
+			source,
+			path: truncation.path,
+			originalLength: truncation.originalLength,
+			limit: truncation.limit,
 		});
 	};
 }
@@ -290,6 +303,7 @@ export class McpClientManager {
 
 		const sanitizedTools = sanitizeMcpToolSchemas(registry, {
 			onError: warnSkippedMcpSchema(logger, source),
+			onDescriptionTruncated: warnTruncatedMcpDescription(logger, source),
 		});
 
 		const safeTools: McpToolRegistry = createToolRegistry();

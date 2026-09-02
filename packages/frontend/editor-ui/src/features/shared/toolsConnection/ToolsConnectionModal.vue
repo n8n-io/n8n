@@ -8,7 +8,7 @@ import {
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
+import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -32,9 +32,13 @@ const props = withDefaults(
 		items: ToolConnectionItem[];
 		/** Tabs to render, in order. Declared categories show even while empty. */
 		categories: ToolCategoryKey[];
+		title?: string;
+		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
+		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
+		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
 	}>(),
@@ -42,6 +46,7 @@ const props = withDefaults(
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
+		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
 	},
@@ -63,6 +68,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
+const searchPlaceholder = computed(
+	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
+);
 
 const ITEM_HEIGHT = 58;
 
@@ -131,8 +140,19 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 	return item.category ?? CATEGORY_BY_KIND[item.kind];
 }
 
+/**
+ * "All" ranks connected tools first, then those backed by n8n credits, then the
+ * rest — so the most immediately usable tools sit on top. Lower rank sorts first.
+ */
+function allSortRank(item: ToolConnectionItem): number {
+	if (hasToolConnection(item.status)) return 0;
+	if (item.freeCredits) return 1;
+	return 2;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
-	if (category === 'all') return props.items;
+	// Stable sort keeps each bucket in its original order (Array.sort is stable).
+	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	return props.items.filter(
 		(item) =>
@@ -200,6 +220,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	mcp: 'tools.connection.categories.mcp',
 	ai: 'tools.connection.categories.ai',
 	n8n: 'tools.connection.categories.n8n',
+	'n8n-connect': 'tools.connection.categories.n8nConnect',
 	'app-action': 'tools.connection.categories.appAction',
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
@@ -261,10 +282,10 @@ function handleOpenChange(value: boolean) {
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
-		:header="detailItem ? '' : i18n.baseText('tools.connection.title')"
+		:size="size"
+		:header="detailItem ? '' : modalTitle"
 		:show-close-button="!detailItem"
-		:aria-label="i18n.baseText('tools.connection.title')"
+		:aria-label="modalTitle"
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
@@ -310,7 +331,7 @@ function handleOpenChange(value: boolean) {
 				<N8nInput
 					ref="searchInputRef"
 					v-model="searchQuery"
-					:placeholder="i18n.baseText('tools.connection.search.placeholder')"
+					:placeholder="searchPlaceholder"
 					clearable
 					data-test-id="tools-connection-search"
 					:class="$style.searchInput"

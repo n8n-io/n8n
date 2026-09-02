@@ -95,6 +95,18 @@ describe('GET /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
 
+	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.get(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -258,6 +270,17 @@ describe('DELETE /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/executions/1', 'abcXYZ'));
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should delete an execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -291,6 +314,30 @@ describe('DELETE /executions/:id', () => {
 		expect(waitTill).toBeNull();
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
+	});
+
+	test('should return 400 when deleting a running execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createdExecutionWithStatus(workflow, 'running');
+
+		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
+
+	test('member should not delete an execution of another user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
 	});
 });
 
@@ -722,6 +769,135 @@ describe('GET /executions', () => {
 		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
 			expect.arrayContaining([firstExecution.id, secondExecution.id]),
 		);
+	});
+
+	describe('with startedAfter and startedBefore filters', () => {
+		test('should retrieve executions started after a given time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				later.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toContain(
+				earlier.id,
+			);
+		});
+
+		test('should retrieve executions started before a given time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedBefore: '2020-07-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				earlier.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toContain(
+				later.id,
+			);
+		});
+
+		test('should retrieve executions started within a time range', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const earlier = await createExecution(
+				{ startedAt: new Date('2020-01-01T00:00:00.000Z') },
+				workflow,
+			);
+			const inRange = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z') },
+				workflow,
+			);
+			const later = await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z') },
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-03-01T00:00:00.000Z',
+				startedBefore: '2020-09-01T00:00:00.000Z',
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				inRange.id,
+			]);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).not.toEqual(
+				expect.arrayContaining([earlier.id, later.id]),
+			);
+		});
+
+		test('should combine start-time filters with status and workflowId', async () => {
+			const [workflow, otherWorkflow] = await createManyWorkflows(2, {}, owner);
+			const matching = await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'success' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'error' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-12-31T00:00:00.000Z'), status: 'success' },
+				workflow,
+			);
+			await createExecution(
+				{ startedAt: new Date('2020-06-01T00:00:00.000Z'), status: 'success' },
+				otherWorkflow,
+			);
+
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-03-01T00:00:00.000Z',
+				startedBefore: '2020-09-01T00:00:00.000Z',
+				status: 'success',
+				workflowId: workflow.id,
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
+				matching.id,
+			]);
+		});
+
+		test('should return 400 for a malformed startedAfter value', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: 'not-a-date',
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('startedAfter');
+		});
+
+		test('should return 400 for a malformed startedBefore value', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedBefore: 'not-a-date',
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('startedBefore');
+		});
 	});
 
 	test('owner should retrieve all executions regardless of ownership', async () => {

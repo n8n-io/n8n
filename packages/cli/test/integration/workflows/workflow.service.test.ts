@@ -26,8 +26,10 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -37,6 +39,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -67,6 +70,7 @@ const nodeTypes = mockInstance(NodeTypes);
 const webhookServiceMock = mockInstance(WebhookService);
 const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
 const workflowPublicationNotifier = mock<WorkflowPublicationNotifier>();
+const externalHooks = mock<ExternalHooks>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -87,7 +91,7 @@ beforeAll(async () => {
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
-		mock(),
+		externalHooks,
 		activeWorkflowManager,
 		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
@@ -111,6 +115,10 @@ beforeAll(async () => {
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
 		mock(), // workflowMutationHooks
+		// Real service on purpose: with no backend registered it clears every save and
+		// publish, so these tests also prove behavior is unchanged with the module off.
+		Container.get(PolicyEnforcementService), // policyEnforcementService
+		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
 });
 
@@ -336,6 +344,29 @@ describe('update()', () => {
 });
 
 describe('activateWorkflow()', () => {
+	// The rest of this suite runs with no checks registered, proving activation is
+	// unchanged when the module is off. Spied rather than registered via
+	// `setImplementation`, which is single-shot and would leak into those tests.
+	test('should enforce the publish policy with the version being activated', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const policyEnforcementService = Container.get(PolicyEnforcementService);
+		vi.spyOn(policyEnforcementService, 'hasChecksFor').mockReturnValue(true);
+		const enforceSpy = vi.spyOn(policyEnforcementService, 'enforceWorkflowPublish');
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
+
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
+			workflow: {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: expect.any(Array),
+			},
+			projectId: expect.any(String),
+		});
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+	});
+
 	test('should activate current workflow version if no version provided', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
@@ -601,8 +632,9 @@ describe('activateWorkflow()', () => {
 
 		const workflow = await createWorkflowWithHistory({}, project);
 
+		// Resolvable through the member's update scope, so the refusal is about publishing, not access.
 		await expect(workflowService.activateWorkflow(member, workflow.id)).rejects.toThrow(
-			'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
 		);
 
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
@@ -1000,13 +1032,9 @@ describe('getMany()', () => {
 			await createWorkflow({ name: 'Member2 Private Workflow 2' }, member2);
 
 			// member1 (who has NO relation to member2's personal project) tries to query member2's personal project
-			const result = await workflowService.getMany(
-				member1,
-				{ filter: { projectId: member2PersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member1, {
+				filter: { projectId: member2PersonalProject.id },
+			});
 
 			// SECURITY: member1 should NOT see any of member2's workflows
 			expect(result.workflows).toHaveLength(0);
@@ -1027,13 +1055,9 @@ describe('getMany()', () => {
 			const workflow2 = await createWorkflow({ name: 'Member Private Workflow 2' }, member);
 
 			// owner (with global workflow:read) can query member's personal project
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			// Admin with global scope CAN see the workflows
 			expect(result.workflows).toHaveLength(2);
@@ -1061,13 +1085,9 @@ describe('getMany()', () => {
 				}),
 			);
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].id).toBe(memberOwnedWorkflow.id);
@@ -1093,13 +1113,9 @@ describe('getMany()', () => {
 				}),
 			);
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(0);
 			expect(result.count).toBe(0);
@@ -1108,13 +1124,9 @@ describe('getMany()', () => {
 		test('should return empty when filtering by non-existent project', async () => {
 			const owner = await createOwner();
 
-			const result = await workflowService.getMany(
-				owner,
-				{ filter: { projectId: 'non-existent-project-id' } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(owner, {
+				filter: { projectId: 'non-existent-project-id' },
+			});
 
 			expect(result.workflows).toHaveLength(0);
 			expect(result.count).toBe(0);
@@ -1131,13 +1143,9 @@ describe('getMany()', () => {
 			const workflow1 = await createWorkflow({ name: 'Workflow 1' }, member);
 			const workflow2 = await createWorkflow({ name: 'Workflow 2' }, member);
 
-			const result = await workflowService.getMany(
-				member,
-				{ filter: { projectId: memberPersonalProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member, {
+				filter: { projectId: memberPersonalProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(2);
 			expect(result.count).toBe(2);
@@ -1155,13 +1163,9 @@ describe('getMany()', () => {
 			const teamWorkflow1 = await createWorkflow({ name: 'Team Workflow 1' }, teamProject);
 			const teamWorkflow2 = await createWorkflow({ name: 'Team Workflow 2' }, teamProject);
 
-			const result = await workflowService.getMany(
-				member,
-				{ filter: { projectId: teamProject.id } },
-				false,
-				false,
-				false,
-			);
+			const result = await workflowService.getMany(member, {
+				filter: { projectId: teamProject.id },
+			});
 
 			expect(result.workflows).toHaveLength(2);
 			expect(result.count).toBe(2);
@@ -1204,11 +1208,12 @@ describe('publishAsSystem()', () => {
 			{ id: uuid(), name: 'Group', nodeIds: [nodes[0].id], description: undefined },
 		];
 
-		const result = await workflowService.publishAsSystem(workflow.id, {
-			nodes,
-			connections: {},
-			nodeGroups,
-		});
+		externalHooks.run.mockClear();
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes, connections: {}, nodeGroups },
+			previousActiveVersionId,
+		);
 
 		expect(result.published).toBe(true);
 		if (!result.published) throw new Error('unreachable');
@@ -1249,39 +1254,46 @@ describe('publishAsSystem()', () => {
 		expect(outboxRecord.publishedVersionId).toBe(versionId);
 		expect(outboxRecord.status).toBe(WorkflowPublicationOutboxStatus.Pending);
 		expect(workflowPublicationNotifier.requestDrain).toHaveBeenCalled();
+		// No lifecycle hook fires: the workflow's active state did not change, and
+		// hook consumers must not observe a phantom user-less activation.
+		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 
-	it('rejects a workflow without an active version and writes nothing', async () => {
+	it('returns superseded for a workflow without an active version and writes nothing', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		await expect(
-			workflowService.publishAsSystem(workflow.id, {
-				nodes: systemNodes(),
-				connections: {},
-				nodeGroups: [],
-			}),
-		).rejects.toThrow('Cannot publish a system-authored version');
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+			uuid(),
+		);
 
+		expect(result).toEqual({ published: false, reason: 'superseded' });
 		const untouched = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		expect(untouched.activeVersionId).toBeNull();
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 
-	it('rejects a missing workflow', async () => {
+	it('returns superseded for a missing workflow', async () => {
 		await expect(
-			workflowService.publishAsSystem(uuid(), {
-				nodes: systemNodes(),
-				connections: {},
-				nodeGroups: [],
-			}),
-		).rejects.toThrow('Cannot publish a system-authored version');
+			workflowService.publishAsSystem(
+				uuid(),
+				{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+				uuid(),
+			),
+		).resolves.toEqual({ published: false, reason: 'superseded' });
 	});
 
-	it('refuses to publish when the active version moved after the read', async () => {
+	it('refuses to publish when the active version moved past the caller baseline', async () => {
+		// The caller (the applier) baselines on the version it healed. A user
+		// publishing a newer clean version while that record was in flight must
+		// win: the healed copy of the older version is discarded, not published
+		// over the newer one.
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
+		const healedSourceVersionId = workflow.activeVersionId as string;
 		const interloperVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: interloperVersionId });
 		const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
@@ -1291,24 +1303,14 @@ describe('publishAsSystem()', () => {
 			workflowId: workflow.id,
 		});
 
-		const findOne = workflowRepository.findOne.bind(workflowRepository);
-		vi.spyOn(workflowRepository, 'findOne').mockImplementationOnce(async (options) => {
-			const result = await findOne(options);
-			// A concurrent publish lands between publishAsSystem's read and its
-			// transaction. (It must land before the transaction opens: sqlite's
-			// single writer would serialize it after the commit otherwise.)
-			await workflowRepository.update(
-				{ id: workflow.id },
-				{ activeVersionId: interloperVersionId },
-			);
-			return result;
-		});
+		// The user's newer publish lands before the system publish is attempted.
+		await workflowRepository.update({ id: workflow.id }, { activeVersionId: interloperVersionId });
 
-		const result = await workflowService.publishAsSystem(workflow.id, {
-			nodes: systemNodes(),
-			connections: {},
-			nodeGroups: [],
-		});
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+			healedSourceVersionId,
+		);
 
 		expect(result).toEqual({ published: false, reason: 'superseded' });
 		const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });

@@ -16,6 +16,7 @@ export type {
 	Schedule,
 } from './types';
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
+export { scheduleFromDefinition } from './recurrence/resolve';
 export { validateSchedule } from './recurrence/validate';
 
 export {
@@ -44,12 +45,13 @@ export type {
 	ProvisionedJob,
 	ProvisionSummary,
 } from './provisioning';
-export { createDispatchReporter } from './executor';
+export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
 	DispatchReporter,
 	DispatchDecision,
+	BackoffOptions,
 } from './executor';
 export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 export type {

@@ -47,6 +47,15 @@
 		"POST /role-mapping-rules": {
 			"status": "gap"
 		},
+		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
+			"status": "gap"
+		},
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
+		"DELETE /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
@@ -102,11 +111,11 @@
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
 		},
-		"GET /executions/{id}": {
+		"GET /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:get"
 		},
-		"DELETE /executions/{id}": {
+		"DELETE /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
@@ -166,6 +175,9 @@
 		"GET /workflows/{id}/{versionId}": {
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
+		},
+		"GET /workflows/{workflowId}/versions/{versionId}": {
+			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {
 			"status": "gap"
@@ -230,6 +242,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/pull": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

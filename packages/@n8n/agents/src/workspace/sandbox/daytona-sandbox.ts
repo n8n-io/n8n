@@ -26,6 +26,7 @@ import type { ErrorReporter, Logger } from './logger';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
+const SANDBOX_STATE_PAUSED = 'paused';
 const SANDBOX_STATE_ARCHIVED = 'archived';
 const SANDBOX_STATE_CREATING = 'creating';
 const SANDBOX_STATE_RESTORING = 'restoring';
@@ -37,6 +38,7 @@ const SANDBOX_STATE_RESIZING = 'resizing';
 const SANDBOX_STATE_SNAPSHOTTING = 'snapshotting';
 const SANDBOX_STATE_BUILDING_SNAPSHOT = 'building_snapshot';
 const SANDBOX_STATE_STOPPING = 'stopping';
+const SANDBOX_STATE_PAUSING = 'pausing';
 const SANDBOX_STATE_ARCHIVING = 'archiving';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
@@ -56,9 +58,9 @@ const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
 
 /**
  * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
- * Daytona auto-stopped, or one that was auto-archived. `start()` brings both back to
+ * Daytona auto-stopped, auto-paused, or auto-archived. `start()` brings each back to
  * 'started'. Deliberately narrow — it excludes:
- *  - transient states (creating/starting/stopping/resizing/pending_build): a reset+restart
+ *  - transient states (creating/starting/stopping/pausing/resizing/pending_build): a reset+restart
  *    would race the in-flight transition;
  *  - failed states (error/build_failed): those can be silently deleted and recreated, which
  *    we don't want to trigger off an unrelated operation failure.
@@ -66,6 +68,7 @@ const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
  */
 const RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_STOPPED,
+	SANDBOX_STATE_PAUSED,
 	SANDBOX_STATE_ARCHIVED,
 ]);
 
@@ -95,6 +98,7 @@ const STATEFUL_TRANSITION_SANDBOX_STATES = new Set<SandboxState>([
 
 const WAIT_FOR_RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_STOPPING,
+	SANDBOX_STATE_PAUSING,
 	SANDBOX_STATE_ARCHIVING,
 ]);
 
@@ -527,9 +531,9 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * one is 404, auth is 401/403, and transport/proxy conditions vary. Instead we consult
 	 * the authoritative state via the management API — which responds even when the container
 	 * is stopped — and recover only when the sandbox is gone, or in an explicitly recoverable
-	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/archived). Any other state (running,
-	 * a transient transition, or a failed build) propagates the original error so we neither
-	 * mask real failures nor recreate a sandbox off an unrelated error.
+	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/paused/archived). Any other state
+	 * (running, a transient transition, or a failed build) propagates the original error so we
+	 * neither mask real failures nor recreate a sandbox off an unrelated error.
 	 *
 	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
 	 * uses the same credentials), so we fall through to `false` and never recreate.
@@ -547,12 +551,12 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Run a sandbox operation, recovering once if the remote was stopped/archived/deleted out
-	 * from under us. On a recoverable failure the sandbox is resumed (or recreated if gone) and
-	 * the operation is retried exactly once; a second failure propagates.
+	 * Run a sandbox operation, recovering once if the remote was stopped, paused, archived, or
+	 * deleted out from under us. On a recoverable failure the sandbox is resumed (or recreated if
+	 * gone) and the operation is retried exactly once; a second failure propagates.
 	 *
 	 * Replaying the operation is safe because recovery only triggers when the probe confirms
-	 * the remote was NOT running (stopped/archived/gone — see {@link isRecoverable}). In those
+	 * the remote was NOT running (stopped/paused/archived/gone — see {@link isRecoverable}). In those
 	 * states the toolbox/exec request never reached a live container, so it could not have
 	 * partially executed. Operations on a running sandbox are never retried — their error
 	 * propagates untouched.
@@ -626,9 +630,9 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Drive an existing sandbox toward 'started': resume a stopped/archived one, or wait out a
-	 * transitional state. A single wait is capped at half the remaining acquisition budget so a
-	 * sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
+	 * Drive an existing sandbox toward 'started': resume a stopped, paused, or archived one, or wait
+	 * out a transitional state. A single wait is capped at half the remaining acquisition budget so
+	 * a sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
 	 *  - a provisioning sandbox ({@link PROVISIONING_SANDBOX_STATES}: no workspace state yet)
 	 *    is treated as wedged and deleted so the caller can create a fresh one with the rest
 	 *    of the budget;

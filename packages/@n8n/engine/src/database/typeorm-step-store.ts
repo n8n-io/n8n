@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -14,11 +15,27 @@ import {
 import {
 	StepNotFoundError,
 	type NewStepRecord,
-	type StepError,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
 } from '../execution/step-store';
+
+/**
+ * Reports which output slots a step filled, without fetching what it put in them.
+ */
+const FILLED_OUTPUT_SLOTS = `COALESCE(
+	(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
+	 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
+	'{}'
+)`;
+
+type StepSummaryRow = {
+	id: string;
+	nodeId: string;
+	iteration: number;
+	status: StepStatus;
+	filledOutputSlots: boolean[];
+};
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
@@ -105,7 +122,7 @@ export class TypeOrmStepStore implements StepStore {
 		// The one transition that hands the row back, so the claimant doesn't
 		// need a second query to learn which node it now runs. RETURNING covers
 		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
+		// an outcome yet, so `outputs` is `null` by the lifecycle.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -144,7 +161,6 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
-				error: null,
 			};
 		});
 	}
@@ -212,30 +228,14 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<Record<StepKeyId, StepSummary>> {
 		if (keys.length === 0) return {};
 
-		// The per-slot booleans are computed inside the query, so the potentially
-		// large outputs payloads are never transferred. A slot counts as filled
-		// unless it holds JSON null.
 		const { fragment, parameters } = stepKeyFilter(keys);
-		const rows: Array<{
-			id: string;
-			nodeId: string;
-			iteration: number;
-			status: StepStatus;
-			filledOutputSlots: boolean[];
-		}> = await this.repo
+		const rows: StepSummaryRow[] = await this.repo
 			.createQueryBuilder('step')
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
 			.addSelect('step.iteration', 'iteration')
 			.addSelect('step.status', 'status')
-			.addSelect(
-				`COALESCE(
-					(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
-					 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
-					'{}'
-				)`,
-				'filledOutputSlots',
-			)
+			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
 			.andWhere(fragment, parameters)
 			.getRawMany();
@@ -243,11 +243,33 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null> {
-		// NOTE: `findOne({ where })`, not `findOneBy`, as in `loadStep`.
-		return await this.repo.findOne({
-			where: { executionId, nodeId },
-			order: { iteration: 'DESC' },
+	async loadLatestStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>> {
+		if (nodeIds.length === 0) return {};
+
+		const rows: StepSummaryRow[] = await this.repo
+			.createQueryBuilder('step')
+			.distinctOn(['step.node_id'])
+			.select('step.id', 'id')
+			.addSelect('step.node_id', 'nodeId')
+			.addSelect('step.iteration', 'iteration')
+			.addSelect('step.status', 'status')
+			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.orderBy('step.node_id')
+			.addOrderBy('step.iteration', 'DESC')
+			.getRawMany();
+
+		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+	}
+
+	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
 		});
 	}
 

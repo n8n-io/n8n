@@ -3,6 +3,9 @@ import type {
 	WorkflowReviewDecisionActivityData,
 	WorkflowReviewOpenedActivityData,
 	WorkflowReviewVersionUpdatedActivityData,
+	WorkflowReviewWorkflowCauseActivityData,
+	WorkflowReviewWorkflowCauseActivityType,
+	WorkflowReviewWorkflowPublishedActivityData,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan } from '@n8n/typeorm';
@@ -25,13 +28,18 @@ export type WorkflowReviewActivityFeedEntry = {
  */
 export type WorkflowReviewActivityPayload =
 	| { type: 'review.opened'; data: WorkflowReviewOpenedActivityData }
-	| { type: 'comment.created' | 'workflow.published'; data: null }
+	| { type: 'comment.created'; data: null }
 	| {
 			type: 'review.changes_requested' | 'review.approved';
 			data: WorkflowReviewDecisionActivityData;
 	  }
 	| { type: 'review.version_updated'; data: WorkflowReviewVersionUpdatedActivityData }
-	| { type: 'review.closed'; data: WorkflowReviewClosedActivityData };
+	| { type: 'review.closed'; data: WorkflowReviewClosedActivityData }
+	| {
+			type: WorkflowReviewWorkflowCauseActivityType;
+			data: WorkflowReviewWorkflowCauseActivityData;
+	  }
+	| { type: 'workflow.published'; data: WorkflowReviewWorkflowPublishedActivityData };
 
 @Service()
 export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowReviewActivity> {

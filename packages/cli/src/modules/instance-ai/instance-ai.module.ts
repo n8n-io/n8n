@@ -36,20 +36,17 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Durable-log flag (resilience phase): startup sweep resolves runs the
-		// previous process left mid-flight by converting their in-flight tool
-		// calls into tool-interrupted facts and appending run-finish{interrupted}.
-		const { GlobalConfig } = await import('@n8n/config');
-		if (Container.get(GlobalConfig).instanceAi.durableLog) {
-			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
-			const { InstanceAiService } = await import('./instance-ai.service.js');
-			const logger = Container.get(Logger).scoped('instance-ai');
-			const sweeper = Container.get(InterruptedRunSweeper);
-			sweeper.setResumeHost(Container.get(InstanceAiService));
-			void sweeper.sweep().catch((error: unknown) => {
-				logger.error('Interrupted-run sweep failed on startup', { error });
-			});
-		}
+		// Startup sweep resolves runs the previous process left mid-flight by
+		// converting their in-flight tool calls into tool-interrupted facts and
+		// appending run-finish{interrupted}.
+		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const sweepLogger = Container.get(Logger).scoped('instance-ai');
+		const sweeper = Container.get(InterruptedRunSweeper);
+		sweeper.setResumeHost(Container.get(InstanceAiService));
+		void sweeper.sweep().catch((error: unknown) => {
+			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
+		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
@@ -80,6 +77,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
+			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 

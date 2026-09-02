@@ -159,6 +159,8 @@ describe('OAuthServerService', () => {
 
 		describe('getClient — virtual first-party client', () => {
 			const FIRST_PARTY_URL = 'https://n8n.example.com/form/abc';
+			const CHAT_FIRST_PARTY_URL =
+				'https://n8n.example.com/webhook/f0a1b2c3-d4e5-4678-9abc-def012345678/chat';
 			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
 			let firstPartyService: OAuthServerService;
 
@@ -171,6 +173,18 @@ describe('OAuthServerService', () => {
 					getResourceUrl: () => FIRST_PARTY_URL,
 					getAudiences: () => [FIRST_PARTY_URL],
 					getAllowedRedirectUris: async () => [FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				// A chat trigger's resource: served under the generic webhook base URL rather
+				// than a dedicated endpoint, so it covers the client-id guard's prefix check.
+				registry.register({
+					id: 'chat-abc',
+					isFirstParty: true,
+					displayName: 'My Chat',
+					getResourceUrl: () => CHAT_FIRST_PARTY_URL,
+					getAudiences: () => [CHAT_FIRST_PARTY_URL],
+					getAllowedRedirectUris: async () => [CHAT_FIRST_PARTY_URL],
 					scopes: [],
 					authorize: async () => true,
 				});
@@ -226,6 +240,31 @@ describe('OAuthServerService', () => {
 					response_types: ['code'],
 					logo_uri: undefined,
 					tos_uri: undefined,
+				});
+			});
+
+			it('lazily upserts and returns a virtual client for a chat trigger resource URL', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(CHAT_FIRST_PARTY_URL);
+
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: CHAT_FIRST_PARTY_URL,
+						name: 'My Chat',
+						redirectUris: [CHAT_FIRST_PARTY_URL],
+						grantTypes: ['authorization_code'],
+						tokenEndpointAuthMethod: 'none',
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						isFirstParty: true,
+					},
+					['id'],
+				);
+				expect(result).toMatchObject({
+					client_id: CHAT_FIRST_PARTY_URL,
+					client_name: 'My Chat',
+					redirect_uris: [CHAT_FIRST_PARTY_URL],
 				});
 			});
 
@@ -376,6 +415,126 @@ describe('OAuthServerService', () => {
 				await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
 					'Database error',
 				);
+			});
+
+			describe('validation', () => {
+				const baseClientInfo = {
+					client_id: 'new-client-123',
+					client_name: 'New Client',
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+					response_types: ['code'],
+					scope: 'read',
+					logo_uri: undefined,
+					tos_uri: undefined,
+				};
+
+				beforeEach(() => {
+					oauthClientRepository.insert.mockResolvedValue({} as any);
+				});
+
+				it('accepts a client_name at the maximum length', async () => {
+					const clientInfo = { ...baseClientInfo, client_name: 'a'.repeat(255) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('accepts a client_name at the maximum length containing supplementary-plane characters', async () => {
+					// Each 🚀 is one code point but two UTF-16 code units — 255 of them
+					// must still be accepted, not treated as 510 characters.
+					const clientInfo = { ...baseClientInfo, client_name: '🚀'.repeat(255) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('rejects a client_name over the maximum length', async () => {
+					const clientInfo = { ...baseClientInfo, client_name: 'a'.repeat(256) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'client_name exceeds maximum length',
+					);
+				});
+
+				it('rejects grant_types containing an unsupported value', async () => {
+					const clientInfo = { ...baseClientInfo, grant_types: ['client_credentials'] };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types contains an unsupported value',
+					);
+				});
+
+				it('rejects grant_types containing an oversized entry', async () => {
+					const clientInfo = { ...baseClientInfo, grant_types: ['a'.repeat(10_000)] };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types contains an unsupported value',
+					);
+				});
+
+				it('rejects grant_types exceeding the maximum count', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						grant_types: ['authorization_code', 'refresh_token', 'authorization_code'],
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types exceeds maximum count',
+					);
+				});
+
+				it('rejects redirect_uris exceeding the maximum count', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						redirect_uris: Array.from({ length: 11 }, (_, i) => `https://example.com/callback${i}`),
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'redirect_uris exceeds maximum count',
+					);
+				});
+
+				it('rejects a redirect_uri over the maximum length', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						redirect_uris: [`https://example.com/${'a'.repeat(2048)}`],
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'redirect_uri exceeds maximum length',
+					);
+				});
+
+				it('accepts a supported token_endpoint_auth_method', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						token_endpoint_auth_method: 'client_secret_post',
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('accepts a missing token_endpoint_auth_method', async () => {
+					const clientInfo = { ...baseClientInfo, token_endpoint_auth_method: undefined };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('rejects an oversized token_endpoint_auth_method', async () => {
+					const clientInfo = { ...baseClientInfo, token_endpoint_auth_method: 'a'.repeat(10_000) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'token_endpoint_auth_method contains an unsupported value',
+					);
+				});
 			});
 		});
 	});
@@ -834,6 +993,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -865,6 +1025,7 @@ describe('OAuthServerService', () => {
 				'client-123',
 				'user-456',
 				['workflow:read'],
+				TEST_RESOURCE_URL,
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -939,6 +1100,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: formResourceUrl,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -977,6 +1139,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
@@ -989,12 +1152,131 @@ describe('OAuthServerService', () => {
 			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
 				'auth-code-123',
 			);
+			// A code carrying no resource was approved against the default resource,
+			// so that is what the token is minted for.
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
 				'client-123',
-				undefined,
+				TEST_RESOURCE_URL,
 				['workflow:read'],
 			);
+		});
+
+		describe('resource binding', () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			// A second registered resource the code was never approved for.
+			const otherResourceUrl = 'https://n8n.example.com/mcp/other';
+			let boundService: OAuthServerService;
+
+			beforeEach(() => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				registry.register({
+					id: 'instance-mcp',
+					getResourceUrl: () => TEST_RESOURCE_URL,
+					getAudiences: () => [TEST_RESOURCE_URL],
+					scopes: SUPPORTED_SCOPES,
+					isDefault: true,
+					authorize: async () => true,
+				});
+				registry.register({
+					id: 'other-resource',
+					getResourceUrl: () => otherResourceUrl,
+					getAudiences: () => [otherResourceUrl],
+					scopes: [],
+					authorize: async () => true,
+				});
+
+				boundService = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+					eventService,
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
+				);
+
+				tokenService.generateTokenPair.mockReturnValue({
+					accessToken: 'access-token-123',
+					refreshToken: 'refresh-token-456',
+					audience: TEST_RESOURCE_URL,
+				});
+				tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+			});
+
+			const mockCode = (resource: string | null) =>
+				authorizationCodeService.findAuthorizationCode.mockResolvedValue({
+					userId: 'user-456',
+					clientId: 'client-123',
+					resource,
+					scope: [] as string[],
+				} as AuthorizationCode);
+
+			it('should reject a token request naming a resource the code was not approved for', async () => {
+				mockCode(TEST_RESOURCE_URL);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+
+				expect(authorizationCodeService.markAuthorizationCodeAsUsed).not.toHaveBeenCalled();
+			});
+
+			it('should reject a resource introduced at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+			});
+
+			it('should accept the default resource at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await boundService.exchangeAuthorizationCode(
+					client,
+					'auth-code-123',
+					'verifier-123',
+					'https://example.com/callback',
+					new URL(TEST_RESOURCE_URL),
+				);
+
+				expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+					'user-456',
+					'client-123',
+					TEST_RESOURCE_URL,
+					[],
+				);
+			});
 		});
 
 		it('should propagate InvalidGrantError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {

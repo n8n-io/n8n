@@ -1,4 +1,5 @@
-import type { PollerConfig } from '@n8n/config';
+import type { Logger } from '@n8n/backend-common';
+import type { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
@@ -12,28 +13,40 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
+	const logger = mock<Logger>();
 	const pollerStateRepository = mock<PollerStateRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const eventService = mock<EventService>();
 
 	let txRunner: MockProxy<TransactionRunner>;
 
-	const buildService = (durableCursorsEnabled = true, durablePollersAllowed = true) => {
+	const buildService = (
+		durableCursorsEnabled = true,
+		{
+			schedulerEnabled = true,
+			schedulerEnabledForPollTriggers = true,
+			useWorkflowPublicationService = true,
+		} = {},
+	) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
 		);
 
 		return new PollCursorService(
+			logger,
 			pollerStateRepository,
 			txRunner,
 			executionPersistence,
-			mock<PollerConfig>({ durableCursorsEnabled }),
-			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
+			mock<SchedulerConfig>({
+				enabled: schedulerEnabled,
+				enabledForPollTriggers: schedulerEnabledForPollTriggers,
+				durableCursorsEnabled,
+			}),
+			mock<WorkflowsConfig>({ useWorkflowPublicationService }),
 			eventService,
 		);
 	};
@@ -52,11 +65,54 @@ describe('PollCursorService', () => {
 	});
 
 	describe('enabled', () => {
-		it('requires both the config flag and the duplicate-id gate', () => {
-			expect(buildService(true, true).enabled).toBe(true);
-			expect(buildService(true, false).enabled).toBe(false);
-			expect(buildService(false, true).enabled).toBe(false);
-			expect(buildService(false, false).enabled).toBe(false);
+		it('requires the config flag', () => {
+			expect(buildService(true).enabled).toBe(true);
+			expect(buildService(false).enabled).toBe(false);
+		});
+
+		it('requires the workflow publication service: legacy activation must never create cursor rows', () => {
+			expect(buildService(true, { useWorkflowPublicationService: false }).enabled).toBe(false);
+		});
+
+		it('requires the durable scheduler and durable pollers to be enabled', () => {
+			expect(
+				buildService(true, { schedulerEnabled: false, schedulerEnabledForPollTriggers: true })
+					.enabled,
+			).toBe(false);
+			expect(
+				buildService(true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false })
+					.enabled,
+			).toBe(false);
+			expect(
+				buildService(true, {
+					schedulerEnabled: false,
+					schedulerEnabledForPollTriggers: false,
+				}).enabled,
+			).toBe(false);
+		});
+
+		it('warns once when durable cursors are configured without the scheduler chain', () => {
+			buildService(true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false });
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_POLLER_DURABLE_CURSORS_ENABLED'),
+			);
+		});
+
+		it('does not warn when durable cursors are off, whatever the scheduler flags', () => {
+			buildService(false, {
+				schedulerEnabled: false,
+				schedulerEnabledForPollTriggers: false,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('does not warn when the full chain is enabled', () => {
+			buildService(true);
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -84,22 +140,53 @@ describe('PollCursorService', () => {
 			);
 		});
 
-		it('does not create a row when the flag is off and the node has never migrated', async () => {
-			const service = buildService(false);
-			pollerStateRepository.findCursor.mockResolvedValue(null);
+		it('uses a prefetched cursor without any read or transaction when the flag is on', async () => {
+			const service = buildService(true);
 
-			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
-				migrated: false,
-			});
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'from-static-data' },
+				{ lastItemId: 'prefetched' },
+			);
 
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'prefetched' } });
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+			expect(pollerStateRepository.findCursor).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('treats an empty prefetched cursor as a stored cursor, not a missing one', async () => {
+			const service = buildService(true);
+
+			const resolved = await service.resolveCursor('wf-1', 'node-1', { lastItemId: 'seed' }, {});
+
+			expect(resolved).toEqual({ migrated: true, cursor: {} });
 			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
 		});
 
-		// Pins the ticket's sticky-row remedy: with the gate refusing, a deleted
-		// `poller_state` row must never be recreated, even though the flag is on —
-		// otherwise deleting an offender's rows would not be terminal.
-		it('does not create a row when the flag is on but the gate refuses durable pollers', async () => {
-			const service = buildService(true, false);
+		it('falls back to getOrCreateCursor when no cursor was prefetched', async () => {
+			const service = buildService(true);
+			pollerStateRepository.getOrCreateCursor.mockResolvedValue({ lastItemId: 'from-db' });
+
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				undefined,
+			);
+
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'from-db' } });
+			expect(pollerStateRepository.getOrCreateCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				expect.anything(),
+			);
+		});
+
+		it('does not create a row when the flag is off and the node has never migrated', async () => {
+			const service = buildService(false);
 			pollerStateRepository.findCursor.mockResolvedValue(null);
 
 			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({

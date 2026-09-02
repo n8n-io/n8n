@@ -79,10 +79,13 @@ flow*, not the anchor.
    and shapes you actually read. If the target system is cheap to read (e.g. a
    read operation of the same node type), offer a read-back of the destination
    as final confirmation.
-5. **Offer cleanup.** When the operation succeeded, ask whether to keep the
-   workflow for future reuse or delete it now that the job is done. Never
-   delete without asking. If the user keeps it, mention it stays unpublished
-   unless they say otherwise.
+5. **Offer to clean up the workflow.** When the operation succeeded, ask whether
+   to keep the workflow for future reuse or delete it now that the job is done.
+   Never delete without asking. If the user keeps it, mention it stays
+   unpublished unless they say otherwise. This step is about the *workflow*: the
+   data a one-off wrote is the deliverable the user asked for, so never offer to
+   undo that. Test data left behind by a *test* run is the opposite case — see
+   "Cleaning up after a live test" in `post-build-flow`.
 
 ## Optional pre-flight verification
 

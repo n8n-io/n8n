@@ -80,6 +80,7 @@ function makeWorkflow(
 		workflowName: 'Payment handler',
 		workflowVersionId: '77b70644-0000-0000-0000-000000000000',
 		pinnedVersion: makeSnapshot(),
+		publishedVersionId: null,
 		baselineVersion: makeSnapshot({
 			versionId: '0f123890-0000-0000-0000-000000000000',
 			nodes: [makeNode({ id: 'node-removed', name: 'Removed node' }), makeNode()],
@@ -127,13 +128,13 @@ describe('WorkflowReviewChangesSection', () => {
 	it.each([
 		['null', null],
 		['empty', ''],
-	])('falls back to the short id when the name is %s', (_case, name) => {
+	])('falls back to the id-derived label when the name is %s', (_case, name) => {
 		const { getByTestId } = renderComponent({
 			props: { workflow: makeWorkflow({ pinnedVersion: makeSnapshot({ name }) }) },
 		});
 
 		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
-			'In review: 77b70644',
+			'In review: Version 77b70644',
 		);
 	});
 

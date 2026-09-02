@@ -78,6 +78,18 @@ export interface InternalMcpToolsListResult {
 	tools: McpToolDefinition[];
 }
 
+/**
+ * Arguments accepted by the search_workflows tool. A type alias rather than an
+ * interface so it still satisfies the `Record<string, unknown>` tool-call payload.
+ */
+export type SearchWorkflowsArgs = {
+	limit?: number;
+	query?: string;
+	projectId?: string;
+	folderId?: string;
+	includeSubfolders?: boolean;
+};
+
 /** Response from search_workflows tool */
 export interface SearchWorkflowsResult {
 	data: Array<{
@@ -89,9 +101,11 @@ export interface SearchWorkflowsResult {
 		updatedAt: string | null;
 		triggerCount: number | null;
 		availableInMCP: boolean;
+		parentFolderId: string | null;
 		tags: Array<{ id: string; name: string }>;
 	}>;
 	count: number;
+	error?: string;
 }
 
 /** Response from get_workflow_details tool */
@@ -950,7 +964,7 @@ export class McpApiHelper {
 	 */
 	async internalMcpSearchWorkflows(
 		apiKey: string,
-		args: { limit?: number; query?: string; projectId?: string } = {},
+		args: SearchWorkflowsArgs = {},
 	): Promise<SearchWorkflowsResult> {
 		return await this.callInternalMcpTool<SearchWorkflowsResult>(apiKey, 'search_workflows', args);
 	}

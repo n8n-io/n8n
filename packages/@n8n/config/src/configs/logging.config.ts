@@ -52,7 +52,10 @@ export const LOG_SCOPES = [
 	'poll-trigger',
 	'metrics',
 	'scheduler',
+	'system-tasks',
 	'enqueued-execution-recovery',
+	'engine-v2',
+	'policy',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

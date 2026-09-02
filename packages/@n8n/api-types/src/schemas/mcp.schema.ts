@@ -69,6 +69,10 @@ export function getMcpClientType(clientName: string): McpClientType | null {
 	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.type ?? null;
 }
 
+export function getMcpClientBrand(clientName: string): McpClientBrandName | null {
+	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? null;
+}
+
 /**
  * Client-type buckets offered by the connected-clients filter (per design),
  * coarser than the derived brand types shown in the table rows.

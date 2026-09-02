@@ -160,6 +160,10 @@ export async function fetchUrl(
 	const originalHost = normalizeHost(url);
 
 	const config: AxiosRequestConfig = {
+		// Disable axios's own env-proxy handling: it mishandles https targets behind an
+		// http proxy (axios#4531). With no explicit agent, requests go through the
+		// process-wide env-proxy global agents, which route per HTTP(S)_PROXY/NO_PROXY.
+		proxy: false,
 		// Honored by Node's http(s) agent on every hop; validates the resolved IP at
 		// connect time, preventing DNS-rebinding TOCTOU.
 		lookup: ssrf.createSecureLookup() as AxiosRequestConfig['lookup'],

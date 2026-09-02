@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
@@ -21,6 +20,7 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowId: string;
 	workflowName: string;
 	workflowVersionId: string | null;
+	activeVersionId: string | null;
 	baselineVersionId: string | null;
 	/**
 	 * The parent request's state. It comes from this same query, so it always matches
@@ -31,11 +31,7 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<WorkflowReviewRequestWorkflow> {
-	constructor(
-		dataSource: DataSource,
-		transactionRunner: TransactionRunner,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
-	) {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowReviewRequestWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -78,9 +74,35 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 	}
 
 	/**
+	 * Every request — open or closed — whose pin matches the published version exactly. The happy
+	 * path is approval (which closes the request) followed by auto-publish, so the publish
+	 * recorder must reach closed requests too; the exact-version match is what keeps those
+	 * appends bounded.
+	 */
+	async findRequestIdsPinnedToVersion(
+		input: { workflowId: string; workflowVersionId: string },
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const rows = await this.managerFor(ctx).find(WorkflowReviewRequestWorkflow, {
+			select: ['workflowReviewRequestId'],
+			where: {
+				workflowId: input.workflowId,
+				workflowVersionId: input.workflowVersionId,
+			},
+		});
+
+		return rows.map((row) => row.workflowReviewRequestId);
+	}
+
+	/**
 	 * Freeze the live published pointer onto the child row at approval time.
-	 * Reads through the published-version repo with `ctx` so both the SELECT and
-	 * UPDATE share the lock transaction (no second pooled connection).
+	 * Read from the workflow row, which both publication paths maintain — the
+	 * publication-service table exists only on the outbox path, so reading it here
+	 * would freeze null everywhere else. On the outbox path the row can run ahead
+	 * of the wired triggers while the outbox drains, but the committed pointer is
+	 * what every surface (canvas, publish timeline, the feed's published entry)
+	 * already calls "published". Both the SELECT and UPDATE go through `ctx` so
+	 * they share the lock transaction.
 	 */
 	async captureApprovalBaseline(
 		input: {
@@ -89,10 +111,10 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		},
 		ctx: OperationContext,
 	): Promise<void> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			input.workflowId,
-			ctx,
-		);
+		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: ['activeVersionId'],
+			where: { id: input.workflowId },
+		});
 
 		await this.managerFor(ctx).update(
 			WorkflowReviewRequestWorkflow,
@@ -100,7 +122,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowReviewRequestId: input.workflowReviewRequestId,
 				workflowId: input.workflowId,
 			},
-			{ baselineVersionId: publishedVersionId },
+			{ baselineVersionId: workflow?.activeVersionId ?? null },
 		);
 	}
 
@@ -114,7 +136,11 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		});
 	}
 
-	/** One workflow per review for now; multi-workflow "primary" selection can wait. */
+	/**
+	 * One workflow per review today, so one name per request is enough. With
+	 * several rows the Map below would keep an arbitrary one — the inbox card
+	 * needs a different treatment (and query) before multi-workflow lands.
+	 */
 	async findLinkedWorkflowsByRequestIds(
 		requestIds: string[],
 	): Promise<Map<string, WorkflowReviewRequestLinkedWorkflow>> {
@@ -157,6 +183,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			.innerJoin(WorkflowReviewRequest, 'request', 'request.id = wrw.workflowReviewRequestId')
 			.select('wrw.workflowId', 'workflowId')
 			.addSelect('workflow.name', 'workflowName')
+			.addSelect('workflow.activeVersionId', 'activeVersionId')
 			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
 			.addSelect('wrw.baselineVersionId', 'baselineVersionId')
 			.addSelect('request.state', 'requestState')
@@ -166,6 +193,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowId: string;
 				workflowName: string;
 				workflowVersionId: string | null;
+				activeVersionId: string | null;
 				baselineVersionId: string | null;
 				requestState: WorkflowReviewRequestState;
 			}>();
@@ -174,6 +202,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			workflowId: row.workflowId,
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId ?? null,
+			activeVersionId: row.activeVersionId ?? null,
 			baselineVersionId: row.baselineVersionId ?? null,
 			requestState: row.requestState,
 		}));

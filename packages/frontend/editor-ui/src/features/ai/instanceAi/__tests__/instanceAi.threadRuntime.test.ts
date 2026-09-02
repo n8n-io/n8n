@@ -7,7 +7,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
+import {
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiCredentialDestination,
+	type InstanceAiTargetApproval,
+} from '@n8n/api-types';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -311,6 +315,91 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).messages[0].runId).toBe('run-1');
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
+	test('setup-items SSE events fold last-wins per workflowId', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:notionApi',
+							kind: 'credential',
+							credentialType: 'notionApi',
+						},
+					],
+				},
+			}),
+		);
+
+		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
+	});
+
+	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [
+				{
+					id: 'msg-1',
+					runId: 'run-1',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [],
+						setupItemsByWorkflowId: {
+							'wf-1': [
+								{
+									id: 'wf-1:credential:slackApi',
+									kind: 'credential',
+									credentialType: 'slackApi',
+								},
+							],
+						},
+					},
+				},
+			],
+			nextEventId: 10,
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
+		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
@@ -1105,7 +1194,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const context = {
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				documentationUrl:
 					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
@@ -1737,6 +1826,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			severity?: 'info' | 'warning' | 'destructive';
 			channelConfig?: { integrationType: string; agentId: string };
 			targetApproval?: InstanceAiTargetApproval;
+			credentialDestination?: InstanceAiCredentialDestination;
 			workflowId?: string;
 		},
 	): void {
@@ -1768,6 +1858,9 @@ describe('createThreadRuntime - session always-allow', () => {
 							message: 'Approve?',
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
+							...(opts.credentialDestination
+								? { credentialDestination: opts.credentialDestination }
+								: {}),
 							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
 					},
@@ -1846,6 +1939,26 @@ describe('createThreadRuntime - session always-allow', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-target-approval')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('does not auto-approve credential destinations with a generic setup grant', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destination',
+			requestId: 'req-destination',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'workflow-1' },
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destination')).toBe(false);
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
