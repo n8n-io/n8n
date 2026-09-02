@@ -277,6 +277,13 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/collapsed group clips the description/i);
 		});
 
+		it('forbids opening on the nodes the group is built from', () => {
+			// A build spent the visible half of a description on "AI agent with Postgres
+			// chat memory", which the reader can already see on the canvas.
+			expect(GROUPING_GUIDANCE).toMatch(/never on what the group is built from/i);
+			expect(GROUPING_GUIDANCE).toMatch(/opens on the parts list/i);
+		});
+
 		it('interpolates the length cap instead of hardcoding it', () => {
 			// A hardcoded number silently starts lying the day the constant moves.
 			expect(GROUPING_GUIDANCE).toContain(`${GROUP_DESCRIPTION_MAX_LENGTH} characters`);

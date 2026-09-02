@@ -137,7 +137,7 @@ Groups are created collapsed, so the title is the first and often the only thing
 
 - Write one for every group, at most ${GROUP_DESCRIPTION_MAX_LENGTH} characters.
 - It must add to the title, never restate it, and it must not open by repeating it. "Validates the shipping address against the Google API and reduces it to a verdict" under the title "Validate via Google" wastes the words the user actually reads.
-- Lead with the detail that earns its place. A collapsed group clips the description, so the first few words are often all the user sees — spend them on the trigger, the destination, or the scope, never on the title again.
+- Lead with the detail that earns its place. A collapsed group clips the description, so the first few words are often all the user sees — spend them on the trigger, the destination, or the scope. Never on the title again, and never on what the group is built from: "AI agent with Postgres chat memory drafts a reply" opens on the parts list and says nothing the reader could not already see.
 - The detail worth adding is the trigger or input, the destination or output, or the scope boundary.
 - Plain language a non-technical reader follows — no node types or parameter values.
 
@@ -146,6 +146,7 @@ Examples:
 - "Fetch new recordings" → "Polls Gong every 15 min for fresh calls, downloads audio, stores raw files in Google Drive"
 - "Generate call summary" → "Transcribes the audio, then extracts action items, sentiment, and key topics"
 - "Save and notify" → "Writes summary and metadata to Supabase, then alerts the sales team in Slack"
+- "Draft support reply" → "Turns the email and the customer's plan and open tickets into a draft, citing our docs"
 
 Read the node groups reference for the exact rules before creating groups.`;
 
