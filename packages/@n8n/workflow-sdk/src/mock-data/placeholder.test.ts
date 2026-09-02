@@ -113,6 +113,90 @@ describe('buildSchemaPlaceholderItem', () => {
 		});
 	});
 
+	it('anchors a plain-string timestamp field, which is how node schemas record them', () => {
+		// Recorded `__schema__` files carry no `format`, so the field name is the
+		// only signal that 'sample' would break a downstream date parse.
+		const item = buildSchemaPlaceholderItem(
+			ctx({
+				schema: {
+					type: 'object',
+					properties: {
+						createdAt: { type: 'string' },
+						modifiedAt: { type: 'string' },
+						expires_at: { type: 'string' },
+						timestamp: { type: 'string' },
+						subject: { type: 'string' },
+						format: { type: 'string' },
+						chat: { type: 'string' },
+					},
+				},
+			}),
+			options,
+		);
+
+		expect(item).toEqual({
+			createdAt: '2026-09-01T10:30:00.000Z',
+			modifiedAt: '2026-09-01T10:30:00.000Z',
+			expires_at: '2026-09-01T10:30:00.000Z',
+			timestamp: '2026-09-01T10:30:00.000Z',
+			subject: 'sample',
+			format: 'sample',
+			chat: 'sample',
+		});
+	});
+
+	it('keeps an explicit format ahead of the field name', () => {
+		const item = buildSchemaPlaceholderItem(
+			ctx({
+				schema: {
+					type: 'object',
+					properties: { createdAt: { type: 'string', format: 'date' } },
+				},
+			}),
+			options,
+		);
+
+		expect(item).toEqual({ createdAt: '2026-09-01' });
+	});
+
+	it('merges every allOf branch, since allOf is an intersection', () => {
+		const item = buildSchemaPlaceholderItem(
+			ctx({
+				schema: {
+					allOf: [
+						{ type: 'object', properties: { id: { type: 'integer' } } },
+						{ type: 'object', properties: { name: { type: 'string' } } },
+					],
+				},
+			}),
+			options,
+		);
+
+		expect(item).toEqual({ id: 1, name: 'sample' });
+	});
+
+	it('keeps every column of an exact contract, even past the property cap', () => {
+		const columns = Array.from({ length: 55 }, (_, i) => ({
+			name: `col${String(i)}`,
+			type: 'string',
+		}));
+
+		const item = buildSchemaPlaceholderItem(
+			ctx({
+				nodeType: 'n8n-nodes-base.dataTable',
+				dataTableColumns: columns,
+				declaredFields: {
+					keys: columns.map((column) => column.name),
+					exact: true,
+					source: 'data-table-columns',
+				},
+			}),
+			options,
+		);
+
+		expect(Object.keys(item)).toHaveLength(55);
+	});
+
 	it('takes the item shape from the element schema when the output is an array', () => {
 		const item = buildSchemaPlaceholderItem(
 			ctx({

@@ -144,6 +144,117 @@ function buildUpstreamContext(
 	return ['Immediate upstream nodes (this node passes their data through):', ...lines].join('\n');
 }
 
+/**
+ * Nodes whose real output is their INPUT passed through unchanged. They have
+ * no output schema of their own, so their floor has to be borrowed from
+ * upstream — pinning `{}` on a Wait wipes the fields every node below it
+ * reads. (The classifier already lets short waits execute for exactly this
+ * reason; a long wait has to be simulated, so it needs the borrowed shape.)
+ */
+const PASS_THROUGH_NODE_TYPES = new Set([
+	'n8n-nodes-base.wait',
+	'@n8n/n8n-nodes-langchain.textClassifier',
+]);
+
+/** Hops to walk up before giving up on finding an upstream shape. */
+const MAX_UPSTREAM_HOPS = 5;
+
+type NamedNode = WorkflowJSON['nodes'][number] & { name: string };
+
+function hasFields(items: Array<Record<string, unknown>> | undefined): boolean {
+	return Boolean(items?.some((item) => Object.keys(item).length > 0));
+}
+
+/**
+ * Lazy per-node schema context, so a placeholder can be built for any node in
+ * the workflow — not only the simulated ones the prompt was assembled from.
+ */
+function createSchemaContextResolver(
+	workflow: WorkflowJSON,
+	outputSchemaLookup: OutputSchemaLookup | undefined,
+	seed: Map<string, NodeSchemaContext> = new Map(),
+): (nodeName: string) => NodeSchemaContext | undefined {
+	const nodesByName = new Map(
+		(workflow.nodes ?? [])
+			.filter((node): node is NamedNode => typeof node.name === 'string')
+			.map((node) => [node.name, node] as const),
+	);
+	const outputParserTargets = findOutputParserTargets(workflow);
+
+	return (nodeName: string) => {
+		if (seed.has(nodeName)) return seed.get(nodeName);
+		const node = nodesByName.get(nodeName);
+		if (!node) return undefined;
+		const [context] = buildSchemaContexts([node], outputSchemaLookup, outputParserTargets);
+		seed.set(nodeName, context);
+		return context;
+	};
+}
+
+/**
+ * Give every pass-through node that still has no fields the shape of its
+ * nearest upstream ancestor: that ancestor's own fixture when one exists,
+ * otherwise the ancestor's schema placeholder.
+ */
+function withPassThroughFloor(
+	fixtures: SimulationFixtures,
+	workflow: WorkflowJSON,
+	connectionsByDestination: IConnections,
+	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
+	now: Date,
+): SimulationFixtures {
+	const typeByName = new Map(
+		(workflow.nodes ?? [])
+			.filter((node): node is NamedNode => typeof node.name === 'string')
+			.map((node) => [node.name, node.type] as const),
+	);
+	const result = { ...fixtures };
+
+	for (const nodeName of Object.keys(fixtures)) {
+		const nodeType = typeByName.get(nodeName);
+		if (!nodeType || !PASS_THROUGH_NODE_TYPES.has(nodeType)) continue;
+		if (hasFields(result[nodeName])) continue;
+		const borrowed = findUpstreamShape(
+			nodeName,
+			result,
+			connectionsByDestination,
+			resolveContext,
+			now,
+		);
+		if (borrowed) result[nodeName] = borrowed;
+	}
+
+	return result;
+}
+
+function findUpstreamShape(
+	nodeName: string,
+	fixtures: SimulationFixtures,
+	connectionsByDestination: IConnections,
+	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
+	now: Date,
+): Array<Record<string, unknown>> | undefined {
+	const visited = new Set([nodeName]);
+	let frontier = getParentNodes(connectionsByDestination, nodeName, 'main', 1);
+
+	for (let hop = 0; hop < MAX_UPSTREAM_HOPS && frontier.length > 0; hop++) {
+		const next: string[] = [];
+		for (const parent of frontier) {
+			if (visited.has(parent)) continue;
+			visited.add(parent);
+			// A parent that is itself simulated already carries the shape the
+			// pass-through node would have seen.
+			if (hasFields(fixtures[parent])) return fixtures[parent];
+			const placeholder = buildSchemaPlaceholderItem(resolveContext(parent), { now });
+			if (Object.keys(placeholder).length > 0) return [placeholder];
+			next.push(...getParentNodes(connectionsByDestination, parent, 'main', 1));
+		}
+		frontier = next;
+	}
+
+	return undefined;
+}
+
 function placeholderFixtures(
 	nodeNames: string[],
 	schemaContextByName: Map<string, NodeSchemaContext>,
@@ -168,19 +279,18 @@ export function buildPlaceholderFixtures(
 	outputSchemaLookup?: OutputSchemaLookup,
 	now: Date = new Date(),
 ): SimulationFixtures {
-	const wanted = new Set(nodeNames);
-	const nodes = (workflow.nodes ?? []).filter(
-		(node): node is WorkflowJSON['nodes'][number] & { name: string } =>
-			typeof node.name === 'string' && wanted.has(node.name),
+	const resolveContext = createSchemaContextResolver(workflow, outputSchemaLookup);
+	const schemaContextByName = new Map(
+		nodeNames.flatMap((name) => {
+			const context = resolveContext(name);
+			return context ? [[name, context] as const] : [];
+		}),
 	);
-	const schemaContexts = buildSchemaContexts(
-		nodes,
-		outputSchemaLookup,
-		findOutputParserTargets(workflow),
-	);
-	return placeholderFixtures(
-		nodeNames,
-		new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const)),
+	return withPassThroughFloor(
+		placeholderFixtures(nodeNames, schemaContextByName, now),
+		workflow,
+		mapConnectionsByDestination(toEngineConnections(workflow.connections)),
+		resolveContext,
 		now,
 	);
 }
@@ -210,6 +320,13 @@ export async function generateSimulationFixtures(
 	const outputParserTargets = findOutputParserTargets(input.workflow);
 	const schemaContexts = buildSchemaContexts(nodes, input.outputSchemaLookup, outputParserTargets);
 	const schemaContextByName = new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const));
+	// Same map, extended on demand: the pass-through floor needs contexts for
+	// upstream nodes that are not simulated themselves.
+	const resolveContext = createSchemaContextResolver(
+		input.workflow,
+		input.outputSchemaLookup,
+		schemaContextByName,
+	);
 
 	const connectionsByDestination = mapConnectionsByDestination(
 		toEngineConnections(input.workflow.connections),
@@ -251,7 +368,13 @@ export async function generateSimulationFixtures(
 			'Simulation fixture generation failed; simulated nodes get schema-shaped placeholders',
 			{ reason: result.reason, nodeCount: nodeNames.length },
 		);
-		return placeholderFixtures(nodeNames, schemaContextByName, now);
+		return withPassThroughFloor(
+			placeholderFixtures(nodeNames, schemaContextByName, now),
+			input.workflow,
+			connectionsByDestination,
+			resolveContext,
+			now,
+		);
 	}
 
 	// Shared normalization + envelope repair, matching the eval pin-data paths:
@@ -274,5 +397,11 @@ export async function generateSimulationFixtures(
 			? items
 			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
 	}
-	return fixtures;
+	return withPassThroughFloor(
+		fixtures,
+		input.workflow,
+		connectionsByDestination,
+		resolveContext,
+		now,
+	);
 }

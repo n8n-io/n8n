@@ -365,6 +365,114 @@ describe('generateSimulationFixtures', () => {
 		vi.useRealTimers();
 	});
 
+	it('gives a simulated Wait the shape of its upstream node, not an empty item', async () => {
+		// Wait passes its input through, so pinning `{}` would wipe the fields
+		// every node below it reads.
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Wait 2 Days')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result['Get Contact']).toEqual([{ email: 'sample' }]);
+		expect(result['Wait 2 Days']).toEqual([{ email: 'sample' }]);
+	});
+
+	it('borrows from an upstream node that is not simulated itself', async () => {
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Read Rows', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Read Rows': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			// Only the Wait is simulated; the read runs for real.
+			plan: [executeVerdict('Read Rows'), simulateVerdict('Wait 2 Days')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { id: { type: 'integer' } } }),
+		});
+
+		expect(result['Read Rows']).toBeUndefined();
+		expect(result['Wait 2 Days']).toEqual([{ id: 1 }]);
+	});
+
+	it('walks past an upstream node that has no shape either', async () => {
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Edit Fields', type: 'n8n-nodes-base.noOp' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Edit Fields', type: 'main', index: 0 }]] },
+			'Edit Fields': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Wait 2 Days')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result['Wait 2 Days']).toEqual([{ email: 'sample' }]);
+	});
+
+	it('keeps the items the LLM produced for a Wait', async () => {
+		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { email: 'real@example.com' } }] }));
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Wait 2 Days')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
+		});
+
+		expect(result['Wait 2 Days']).toEqual([{ email: 'real@example.com' }]);
+	});
+
+	it('leaves a Wait empty rather than looping when its upstream cycles back', async () => {
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+			{ name: 'Edit Fields', type: 'n8n-nodes-base.noOp' },
+		]);
+		workflow.connections = {
+			'Wait 2 Days': { main: [[{ node: 'Edit Fields', type: 'main', index: 0 }]] },
+			'Edit Fields': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Wait 2 Days')],
+		});
+
+		expect(result['Wait 2 Days']).toEqual([{}]);
+	});
+
 	it('gives a fixture-less simulated node a placeholder without an LLM call', () => {
 		const workflow = wf([
 			{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },

@@ -45,7 +45,7 @@ export function buildSchemaPlaceholderItem(
 	// A Data Table row must carry exactly its columns, so the static
 	// `__schema__` (which only knows the system columns) is discarded.
 	if (declared?.exact) {
-		return fromDeclaredKeys(declared.keys, ctx.dataTableColumns, options);
+		return fromDeclaredKeys(declared.keys, ctx.dataTableColumns, options, { capped: false });
 	}
 
 	const fromSchema = buildFromSchema(ctx.schema, options);
@@ -65,22 +65,27 @@ function overlayDeclaredFields(
 	options: PlaceholderItemOptions,
 ): Record<string, unknown> {
 	if (keys.length === 0) return base;
-	const fields = fromDeclaredKeys(keys, undefined, options);
+	const fields = fromDeclaredKeys(keys, undefined, options, { capped: true });
 	if (!envelopeKey) return { ...base, ...fields };
 	const existing = isRecord(base[envelopeKey]) ? base[envelopeKey] : {};
 	return { ...base, [envelopeKey]: { ...existing, ...fields } };
 }
 
+/**
+ * An exact contract is not capped: dropping a real Data Table column would
+ * contradict the "every row carries every column" promise the caller relies
+ * on. The cap only guards open-ended schema/parser field lists.
+ */
 function fromDeclaredKeys(
 	keys: string[],
 	columns: DataTableColumnInfo[] | undefined,
 	options: PlaceholderItemOptions,
+	{ capped }: { capped: boolean },
 ): Record<string, unknown> {
 	const typeByColumn = new Map((columns ?? []).map((column) => [column.name, column.type]));
+	const wanted = capped ? keys.slice(0, MAX_PROPERTIES) : keys;
 	return Object.fromEntries(
-		keys
-			.slice(0, MAX_PROPERTIES)
-			.map((key) => [key, declaredValue(key, typeByColumn.get(key), options)]),
+		wanted.map((key) => [key, declaredValue(key, typeByColumn.get(key), options)]),
 	);
 }
 
@@ -110,12 +115,22 @@ function declaredValue(
  * expressions this floor exists to keep alive.
  */
 function valueForKeyName(key: string, options: PlaceholderItemOptions): unknown {
-	const lower = key.toLowerCase();
-	if (lower === 'id') return 1;
-	if (lower.endsWith('at') && (lower.includes('creat') || lower.includes('updat'))) {
-		return options.now.toISOString();
-	}
-	return PLACEHOLDER_STRING;
+	if (key.toLowerCase() === 'id') return 1;
+	return dateKeyValue(key, options) ?? PLACEHOLDER_STRING;
+}
+
+/**
+ * Recorded node schemas almost never carry a `format`, so a timestamp field
+ * arrives as a plain string. The field NAME is the only signal left, and
+ * "sample" in a `createdAt` breaks every downstream date parse or comparison.
+ * Matched on the camelCase/snake_case `At` boundary and a few exact names, so
+ * ordinary words that end in "at" (chat, format, seat) are left alone.
+ */
+function dateKeyValue(key: string, options: PlaceholderItemOptions): string | undefined {
+	const isTimestampKey =
+		/(?:[a-z0-9]At|_at)$/.test(key) ||
+		['timestamp', 'date', 'datetime', 'time'].includes(key.toLowerCase());
+	return isTimestampKey ? options.now.toISOString() : undefined;
 }
 
 /** Synthesize an item from a node `__schema__`. Returns `{}` for anything unusable. */
@@ -133,10 +148,12 @@ function buildFromSchema(
 	return isRecord(value) ? value : {};
 }
 
+/** `key` is the property name this value sits under, when it has one. */
 function placeholderValue(
 	schema: unknown,
 	depth: number,
 	options: PlaceholderItemOptions,
+	key?: string,
 ): unknown {
 	if (!isRecord(schema)) return PLACEHOLDER_STRING;
 	const resolved = resolveComposite(schema);
@@ -161,7 +178,7 @@ function placeholderValue(
 			// One element keeps downstream item-level expressions resolvable; an
 			// unspecified element shape stays empty rather than inventing one.
 			if (depth >= MAX_DEPTH || !isRecord(resolved.items)) return [];
-			return [placeholderValue(resolved.items, depth + 1, options)];
+			return [placeholderValue(resolved.items, depth + 1, options, key)];
 		}
 		case 'integer':
 		case 'number':
@@ -171,7 +188,7 @@ function placeholderValue(
 		case 'null':
 			return null;
 		case 'string':
-			return stringValue(resolved, options);
+			return stringValue(resolved, key, options);
 		default:
 			return PLACEHOLDER_STRING;
 	}
@@ -193,10 +210,14 @@ function propertyValue(
 			Array.isArray(resolved.examples);
 		if (!hasLiteral && resolveType(resolved) === undefined) return valueForKeyName(key, options);
 	}
-	return placeholderValue(definition, depth, options);
+	return placeholderValue(definition, depth, options, key);
 }
 
-function stringValue(schema: Record<string, unknown>, options: PlaceholderItemOptions): string {
+function stringValue(
+	schema: Record<string, unknown>,
+	key: string | undefined,
+	options: PlaceholderItemOptions,
+): string {
 	const format = typeof schema.format === 'string' ? schema.format : undefined;
 	switch (format) {
 		case 'date-time':
@@ -213,19 +234,45 @@ function stringValue(schema: Record<string, unknown>, options: PlaceholderItemOp
 		case 'uuid':
 			return '00000000-0000-4000-8000-000000000000';
 		default:
-			return PLACEHOLDER_STRING;
+			return (key ? dateKeyValue(key, options) : undefined) ?? PLACEHOLDER_STRING;
 	}
 }
 
-/** Collapse `allOf`/`anyOf`/`oneOf` onto the first branch that carries a shape. */
+/**
+ * Flatten a composite schema. `allOf` is an intersection, so every branch
+ * contributes — merging only the first would silently drop fields. `anyOf` and
+ * `oneOf` are alternatives: the first usable branch stands in for the union.
+ */
 function resolveComposite(schema: Record<string, unknown>): Record<string, unknown> {
-	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
-		const branches = schema[key];
+	let resolved = schema;
+
+	const allOf = schema.allOf;
+	if (Array.isArray(allOf)) {
+		for (const branch of allOf) {
+			if (isRecord(branch)) resolved = mergeBranch(resolved, branch);
+		}
+	}
+
+	for (const key of ['anyOf', 'oneOf'] as const) {
+		const branches = resolved[key];
 		if (!Array.isArray(branches)) continue;
 		const branch = branches.find((candidate) => isRecord(candidate));
-		if (isRecord(branch)) return { ...schema, ...branch };
+		if (isRecord(branch)) resolved = mergeBranch(resolved, branch);
 	}
-	return schema;
+
+	return resolved;
+}
+
+/** Later branches win on scalars, but their `properties` accumulate. */
+function mergeBranch(
+	base: Record<string, unknown>,
+	branch: Record<string, unknown>,
+): Record<string, unknown> {
+	const merged = { ...base, ...branch };
+	if (isRecord(base.properties) && isRecord(branch.properties)) {
+		merged.properties = { ...base.properties, ...branch.properties };
+	}
+	return merged;
 }
 
 /** JSON Schema `type`, tolerating union types and inferring from the keywords. */
