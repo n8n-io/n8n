@@ -56,11 +56,25 @@ const mockMkdir = vi.mocked(mkdir);
 const mockRename = vi.mocked(rename);
 const mockRm = vi.mocked(rm);
 
+const REPOSITORY_OUT_OF_BOUNDS =
+	'The git repository containing this path is outside the allowed file paths';
+
 describe('Git Node', () => {
 	let gitNode: Git;
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let deploymentConfig: Mocked<DeploymentConfig>;
 	let securityConfig: Mocked<SecurityConfig>;
+	// `git rev-parse --show-toplevel --absolute-git-dir --git-common-dir`
+	let revParseLayout: string[];
+	let reflogOutput: string;
+
+	// `raw` serves both the layout lookup and reflog, so it has to answer by argument
+	// rather than from a positional queue.
+	const rawResponse = async (args: string[]) => {
+		if (args[0] === 'rev-parse') return `${revParseLayout.join('\n')}\n`;
+		if (args[0] === 'reflog') return reflogOutput;
+		return '';
+	};
 
 	beforeEach(() => {
 		gitNode = new Git();
@@ -84,6 +98,9 @@ describe('Git Node', () => {
 				isFilePathBlocked: vi.fn(() => false),
 				assertNoSymlinkInPath: vi.fn(async () => {}),
 				ensureParentDirectoryWithoutFollowingSymlinks: vi.fn(async () => {}),
+				// Production returns the containing allowed base, not the target's parent, so no
+				// mocked clone test can tell the two apart. The real-git suite covers that
+				// ('rejects a clone source the staging base puts outside the allowed path').
 				resolveStagingBaseForTarget: vi.fn(
 					async (target: string) => dirname(target) as ResolvedFilePath,
 				),
@@ -97,7 +114,8 @@ describe('Git Node', () => {
 					case 'operation':
 						return 'log';
 					case 'repositoryPath':
-						return '/repo';
+						// A subdirectory of the top level, so the two candidate bases differ.
+						return '/repo/sub';
 					case 'options':
 						return {};
 					default:
@@ -105,13 +123,15 @@ describe('Git Node', () => {
 				}
 			},
 		);
+		revParseLayout = ['/repo', '/repo/.git', '/repo/.git'];
+		reflogOutput = '';
 		mockGit.listConfig.mockResolvedValue({
 			files: ['.git/config', 'command line:'],
 			values: { '.git/config': {}, 'command line:': {} },
 			all: {},
 		} as any);
 		mockGit.log.mockResolvedValue({ all: [] } as any);
-		mockGit.raw.mockResolvedValue('');
+		mockGit.raw.mockImplementation(rawResponse as unknown as typeof mockGit.raw);
 		mockMkdir.mockResolvedValue(undefined);
 		mockRename.mockResolvedValue(undefined);
 		mockRm.mockResolvedValue(undefined);
@@ -264,6 +284,142 @@ describe('Git Node', () => {
 					baseDir: resolvedPath,
 				}),
 			);
+		});
+	});
+
+	describe('Repository layout validation', () => {
+		it.each([
+			{ operation: 'add', params: ['add', '/repo', {}, 'file.txt'], guard: 'add' },
+			{
+				operation: 'addConfig',
+				params: ['addConfig', '/repo', {}, 'user.name', 'test user'],
+				guard: 'addConfig',
+			},
+			{
+				operation: 'commit',
+				params: ['commit', '/repo', { branch: 'feature' }, 'test commit'],
+				guard: 'commit',
+			},
+			{ operation: 'fetch', params: ['fetch', '/repo', {}], guard: 'fetch' },
+			{ operation: 'log', params: ['log', '/repo', {}], guard: 'log' },
+			{ operation: 'pull', params: ['pull', '/repo', {}], guard: 'pull' },
+			{ operation: 'push', params: ['push', '/repo', {}], guard: 'push' },
+			{ operation: 'pushTags', params: ['pushTags', '/repo', {}], guard: 'pushTags' },
+			{ operation: 'reflog', params: ['reflog', '/repo', {}], guard: 'raw' },
+			{ operation: 'listConfig', params: ['listConfig', '/repo', {}], guard: 'listConfig' },
+			{ operation: 'status', params: ['status', '/repo', {}], guard: 'status' },
+			{
+				operation: 'switchBranch',
+				params: ['switchBranch', '/repo', {}, 'main'],
+				guard: 'checkout',
+			},
+			{ operation: 'tag', params: ['tag', '/repo', {}, 'v1.0.0'], guard: 'addTag' },
+		])(
+			'rejects $operation when the enclosing repository is outside the allowed path',
+			async ({ params, guard }) => {
+				for (const value of params) {
+					mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(value);
+				}
+				revParseLayout = ['/outside/top', '/outside/top/.git', '/outside/top/.git'];
+				mockExecuteFunctions.helpers.isFilePathBlocked = vi.fn(
+					(path: string) => path === '/outside/top',
+				);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					REPOSITORY_OUT_OF_BOUNDS,
+				);
+
+				expect(mockGit.listConfig).not.toHaveBeenCalled();
+				expect(mockGit.checkout).not.toHaveBeenCalled();
+				if (guard === 'raw') {
+					expect(mockGit.raw).not.toHaveBeenCalledWith(['reflog', expect.anything()]);
+				} else {
+					expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+				}
+			},
+		);
+
+		it('rejects a relative remote URL that the top level puts outside the allowed path', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('addConfig')
+				.mockReturnValueOnce('/repo/sub')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('remote.origin.url')
+				.mockReturnValueOnce('../outside');
+			// Stands in for realpath on a symlink-free tree.
+			mockExecuteFunctions.helpers.resolvePath = vi.fn(
+				async (path: string) => resolve(path) as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = vi.fn((path: string) => path === '/outside');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockGit.addConfig).not.toHaveBeenCalled();
+		});
+
+		it('resolves each item against its own repository', async () => {
+			mockExecuteFunctions.getInputData = vi.fn(() => [{ json: {} }, { json: {} }]);
+			mockExecuteFunctions.continueOnFail = vi.fn(() => true);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, itemIndex: number, fallbackValue?: unknown) => {
+					switch (name) {
+						case 'operation':
+							return 'addConfig';
+						case 'repositoryPath':
+							return itemIndex === 0 ? '/repo/sub' : '/deep/nest/sub';
+						case 'key':
+							return 'remote.origin.url';
+						case 'value':
+							// Lands on `/outside/x` from `/repo` and on `/deep/outside/x` from `/deep/nest`.
+							return '../outside/x';
+						case 'options':
+							return {};
+						default:
+							return fallbackValue ?? '';
+					}
+				},
+			);
+			// Like git, report the layout of whichever directory simple-git was pointed at.
+			mockGit.raw.mockImplementation((async (args: string[]) => {
+				if (args[0] !== 'rev-parse') return '';
+				const baseDir = mockSimpleGit.mock.calls.at(-1)?.[0]?.baseDir as string;
+				const topLevel = dirname(baseDir);
+				return `${topLevel}\n${topLevel}/.git\n${topLevel}/.git\n`;
+			}) as unknown as typeof mockGit.raw);
+			mockExecuteFunctions.helpers.resolvePath = vi.fn(
+				async (path: string) => resolve(path) as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = vi.fn((path: string) =>
+				path.startsWith('/outside'),
+			);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(2);
+			expect(result[0][0].json.error).toContain(
+				'Access to the source repository path is not allowed',
+			);
+			expect(result[0][1].json).toEqual({ success: true });
+			expect(mockGit.addConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not read the repository config when the layout cannot be determined', async () => {
+			mockGit.raw.mockImplementation((async (args: string[]) => {
+				if (args[0] === 'rev-parse') throw new Error('fatal: not a git repository');
+				return '';
+			}) as unknown as typeof mockGit.raw);
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('listConfig')
+				.mockReturnValueOnce('/repo/sub')
+				.mockReturnValueOnce({});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Could not determine the git repository for this path',
+			);
+
+			expect(mockGit.listConfig).not.toHaveBeenCalled();
 		});
 	});
 
@@ -441,6 +597,8 @@ describe('Git Node', () => {
 				'Access to the target repository path is not allowed',
 			);
 
+			expect(mockGit.listConfig).not.toHaveBeenCalled();
+			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).not.toHaveBeenCalled();
 		});
 
@@ -1689,11 +1847,9 @@ describe('Git Node', () => {
 				.mockReturnValueOnce(false) // returnAll
 				.mockReturnValueOnce(10); // limit
 
-			const mockReflogOutput = `abc123 HEAD@{0}: commit: Update README
+			reflogOutput = `abc123 HEAD@{0}: commit: Update README
 def456 HEAD@{1}: pull: Fast-forward
 789xyz HEAD@{2}: checkout: moving from main to feature`;
-
-			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
@@ -1719,10 +1875,8 @@ def456 HEAD@{1}: pull: Fast-forward
 				.mockReturnValueOnce(false) // returnAll
 				.mockReturnValueOnce(10); // limit
 
-			const mockReflogOutput = `abc123 main@{0}: commit: Feature complete
+			reflogOutput = `abc123 main@{0}: commit: Feature complete
 def456 main@{1}: commit: Initial commit`;
-
-			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
@@ -1741,7 +1895,7 @@ def456 main@{1}: commit: Initial commit`;
 				'Reference cannot start with a hyphen',
 			);
 
-			expect(mockGit.raw).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalledWith(['reflog', expect.anything()]);
 		});
 
 		it('should handle reflog operation with limit', async () => {
@@ -1752,12 +1906,10 @@ def456 main@{1}: commit: Initial commit`;
 				.mockReturnValueOnce(false) // returnAll = false
 				.mockReturnValueOnce(2); // limit = 2
 
-			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+			reflogOutput = `abc123 HEAD@{0}: commit: First
 def456 HEAD@{1}: commit: Second
 789xyz HEAD@{2}: commit: Third
 012abc HEAD@{3}: commit: Fourth`;
-
-			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
@@ -1773,12 +1925,10 @@ def456 HEAD@{1}: commit: Second
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce(true); // returnAll = true
 
-			const mockReflogOutput = `abc123 HEAD@{0}: commit: First
+			reflogOutput = `abc123 HEAD@{0}: commit: First
 def456 HEAD@{1}: commit: Second
 789xyz HEAD@{2}: commit: Third
 012abc HEAD@{3}: commit: Fourth`;
-
-			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
@@ -1792,10 +1942,8 @@ def456 HEAD@{1}: commit: Second
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce(true); // returnAll
 
-			const mockReflogOutput = `abc123 HEAD@{0}: commit: Valid entry
+			reflogOutput = `abc123 HEAD@{0}: commit: Valid entry
 invalid line without proper format`;
-
-			mockGit.raw.mockResolvedValueOnce(mockReflogOutput);
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 

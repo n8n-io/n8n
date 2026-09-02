@@ -2,9 +2,9 @@ import { RuleTester } from '@typescript-eslint/rule-tester';
 
 // Syntactic detection: it flags WorkflowEntity writes by the shapes that actually occur — a
 // `WorkflowEntity` generic arg or first-arg identifier on an EntityManager/query-builder write,
-// a full-entity write on a `workflowRepository` receiver, or a `.update(…, { nodes })` payload.
-// Aliased/injected receivers and `getRepository(WorkflowEntity)` are the known ceiling (see the
-// rule's doc comment).
+// a full-entity write on a workflow-repository receiver, or a `.update(…, { nodes })` payload.
+// Aliased receivers and `getRepository(WorkflowEntity)` are the known ceiling (see the rule's
+// doc comment).
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 
 const ruleTester = new RuleTester();
@@ -43,6 +43,9 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 			code: 'this.sharedWorkflowRepository.insert({ workflowId, projectId });',
 			filename: businessLogic,
 		},
+		{ code: 'this.sharedWorkflowRepo.save(sw);', filename: businessLogic },
+		// `create` builds an entity without persisting it.
+		{ code: 'this.workflowRepo.create({ id, nodes });', filename: businessLogic },
 		// Tests/fixtures write WorkflowEntity for setup — exempt.
 		{
 			code: 'await workflowRepository.save(workflow);',
@@ -77,6 +80,22 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 		},
 		{
 			code: 'this.workflowRepository.update(id, { nodes: [] });',
+			filename: businessLogic,
+			errors: [{ messageId: 'unsealedWrite' }],
+		},
+		// The repository injected under a shorter name is the same write.
+		{
+			code: 'this.workflowRepo.save(this.workflowRepo.create({ id, nodes }));',
+			filename: businessLogic,
+			errors: [{ messageId: 'unsealedWrite' }],
+		},
+		{
+			code: 'this.workflowsRepository.insert(wf);',
+			filename: businessLogic,
+			errors: [{ messageId: 'unsealedWrite' }],
+		},
+		{
+			code: 'workflowRepo.update(id, { nodes: [] });',
 			filename: businessLogic,
 			errors: [{ messageId: 'unsealedWrite' }],
 		},

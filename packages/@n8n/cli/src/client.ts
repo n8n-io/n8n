@@ -64,10 +64,11 @@ export interface ExportPackageResult {
 export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
+	commitSha: string;
 };
 
 export interface ImportPackageCounts {
-	projects: { created: number; updated: number; skipped: number };
+	projects: { created: number; updated: number; skipped: number; deleted: number };
 	folders: { created: number; skipped: number; removed: number };
 	workflows: {
 		created: number;
@@ -98,6 +99,7 @@ export interface ImportPackageCounts {
 export type PullGitConnectionResult = {
 	connectionId: string;
 	counts: ImportPackageCounts;
+	commitSha: string;
 };
 
 export class ApiError extends Error {
@@ -288,8 +290,8 @@ export class N8nClient {
 		return await this.del<undefined>(`/git-connections/${id}`);
 	}
 
-	async pushGitConnectionProjects(id: string) {
-		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`);
+	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
 	}
 
 	async listGitConnectionProjects(id: string) {

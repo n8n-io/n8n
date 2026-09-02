@@ -1,8 +1,8 @@
 operationId: pullGitConnectionProjects
 tags:
   - GitConnections
-summary: Import all projects from a Git connection working copy
-description: Work in progress. Imports all projects from the local repository working copy into the instance, overwriting to match it. It does not pull from the remote yet, so it imports whatever the last clone produced.
+summary: Pull projects from a Git connection
+description: Resets the local clone to the configured branch tip and imports projects into the instance, overwriting to match. Requires the repository to be cloned first.
 x-required-scope: gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -38,10 +38,14 @@ responses:
                     skipped:
                       type: integer
                       minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
                   required:
                     - created
                     - updated
                     - skipped
+                    - deleted
                 folders:
                   type: object
                   properties:
@@ -187,9 +191,12 @@ responses:
                 - dataTables
                 - variables
                 - tags
+            commitSha:
+              type: string
           required:
             - connectionId
             - counts
+            - commitSha
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
@@ -198,5 +205,9 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

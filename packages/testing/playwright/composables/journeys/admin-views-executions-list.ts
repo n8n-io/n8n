@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import type { A11yChecker } from '../../fixtures/a11y';
 import type { n8nPage } from '../../pages/n8nPage';
 import type { ApiHelpers } from '../../services/api-helper';
 import type { TestUser } from '../../services/user-api-helper';
@@ -99,11 +100,26 @@ export async function viewExecutionsListAsAdmin(
 	});
 }
 
+/**
+ * The journey as a test drives it: seed, sign in as the project admin, open the
+ * executions list.
+ *
+ * Pass `a11y` to scan the screens the journey lands on. The scans happen after the
+ * list has rendered - scanning mid-navigation reports the loading state, not the
+ * screen the admin ends up looking at. They never fail the journey on their own;
+ * `PLAYWRIGHT_A11Y_MAX_VIOLATIONS` decides that, and is unset by default.
+ */
 export async function adminViewsExecutionsList(deps: {
 	n8n: n8nPage;
 	api: ApiHelpers;
+	a11y?: A11yChecker;
 }): Promise<void> {
 	const ctx = await setupAdminViewsExecutionsList(deps.api);
 	const adminN8n = await deps.n8n.start.withUser(ctx.admin);
 	await viewExecutionsListAsAdmin(adminN8n, ctx);
+
+	// `withUser` opens its own page, so point the checker at the admin's.
+	const a11y = deps.a11y?.for(adminN8n);
+	await a11y?.check('page');
+	await a11y?.check('sidebar');
 }
