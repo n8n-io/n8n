@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -257,21 +256,6 @@ async function readRuntimeBundle(): Promise<string> {
 	while (dir !== path.dirname(dir)) {
 		try {
 			_runtimeBundle = await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
-			return _runtimeBundle;
-		} catch {}
-		dir = path.dirname(dir);
-	}
-	throw new Error(
-		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
-	);
-}
-
-function readRuntimeBundleSync(): string {
-	if (_runtimeBundle !== null) return _runtimeBundle;
-	let dir = __dirname;
-	while (dir !== path.dirname(dir)) {
-		try {
-			_runtimeBundle = readFileSync(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
 			return _runtimeBundle;
 		} catch {}
 		dir = path.dirname(dir);
@@ -540,14 +524,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (this.disposed) throw new Error('Bridge has been disposed and cannot be reinitialized.');
 		if (this.initialized) return;
 
-		if (_quickjsWasm === null) {
+		// Both caches are populated by the same async initialize() (pool
+		// warmup), so the sync path never touches the filesystem or the
+		// event loop beyond the context setup itself.
+		if (_quickjsWasm === null || _runtimeBundle === null) {
 			throw new Error(
-				'QuickJS WASM module is not loaded yet: an async initialize() must run once ' +
-					'(pool warmup) before bridges can be created synchronously',
+				'QuickJS WASM module and runtime bundle are not loaded yet: an async initialize() ' +
+					'must run once (pool warmup) before bridges can be created synchronously',
 			);
 		}
 
-		this.setupContext(_quickjsWasm, readRuntimeBundleSync());
+		this.setupContext(_quickjsWasm, _runtimeBundle);
 	}
 
 	/** Everything after module/bundle acquisition is synchronous and shared. */

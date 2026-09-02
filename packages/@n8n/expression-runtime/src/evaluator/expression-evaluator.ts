@@ -117,6 +117,9 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	 * newly opened" and keeps the same do-not-double-release contract.
 	 */
 	async acquire(caller: object): Promise<boolean> {
+		// The pool throws this for eager acquisition; the lazy branch would
+		// otherwise happily open scopes whose every evaluation then fails.
+		if (this.disposed) throw new PoolDisposedError();
 		if (this.bridgesByCaller.has(caller)) return false;
 		if (this.config.lazyAcquire) {
 			if (this.lazyScopes.has(caller)) return false;
@@ -149,12 +152,19 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			if (error instanceof PoolDisposedError) throw error;
 			if (!(error instanceof PoolExhaustedError)) throw error;
 			bridge = this.config.createBridge();
-			if (typeof bridge.initializeSync !== 'function') {
-				throw new IsolateError(
-					'Isolate pool exhausted and the bridge has no synchronous initializer for a lazy cold start',
-				);
+			// A failed cold start must not leak the bridge: it is not yet
+			// recorded anywhere, so dispose it here before rethrowing.
+			try {
+				if (typeof bridge.initializeSync !== 'function') {
+					throw new IsolateError(
+						'Isolate pool exhausted and the bridge has no synchronous initializer for a lazy cold start',
+					);
+				}
+				bridge.initializeSync();
+			} catch (initError) {
+				void bridge.dispose();
+				throw initError;
 			}
-			bridge.initializeSync();
 		}
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		return bridge;
