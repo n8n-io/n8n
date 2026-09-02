@@ -62,9 +62,9 @@ export function buildExecuteNodeSessionGrantKey(
 	nodeType: string,
 	parameters?: Record<string, unknown>,
 ): string {
-	const resource = typeof parameters?.resource === 'string' ? parameters.resource : undefined;
-	const operation = typeof parameters?.operation === 'string' ? parameters.operation : undefined;
-	return `nodes:execute:${[nodeType, resource, operation].filter(Boolean).join('_')}`;
+	const resource = typeof parameters?.resource === 'string' ? parameters.resource : '';
+	const operation = typeof parameters?.operation === 'string' ? parameters.operation : '';
+	return `nodes:execute:${nodeType}:${resource}:${operation}`;
 }
 
 /**

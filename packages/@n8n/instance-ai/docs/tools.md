@@ -796,8 +796,8 @@ policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
 workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
-type + resource + operation (`nodes:execute:<type>_<resource>_<operation>`,
-discriminators omitted when the node has none) — the same split the generated
+type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`,
+discriminator slots empty when the node has none) — the same split the generated
 node TS types use, so a future per-operation destructiveness policy plugs in
 without changing the key format. Later executions of the same operation skip
 the prompt for the session.

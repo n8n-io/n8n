@@ -640,7 +640,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set']),
+					sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set::']),
 				}),
 				'full',
 			);
@@ -677,7 +677,7 @@ describe('nodes tool', () => {
 			);
 
 			expect(grantSessionToolApproval).toHaveBeenCalledWith(
-				'nodes:execute:n8n-nodes-base.slack_message_post',
+				'nodes:execute:n8n-nodes-base.slack:message:post',
 			);
 			expect(executeNodeService.execute).toHaveBeenCalled();
 		});
@@ -698,7 +698,7 @@ describe('nodes tool', () => {
 				} as never,
 			);
 
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('nodes:execute:n8n-nodes-base.set');
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('nodes:execute:n8n-nodes-base.set::');
 		});
 
 		it('should return a denied result without executing when the user denies', async () => {
