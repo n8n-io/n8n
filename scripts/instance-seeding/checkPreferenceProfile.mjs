@@ -10,7 +10,7 @@
 // Some nodes declare parameters outside their own directory, via a spread or an
 // exported constant. Those sources need listing in SOURCES or the check false-fails.
 
-import { execSync } from 'node:child_process';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -38,22 +38,29 @@ const SOURCES = {
 	],
 };
 
+/** Every `.ts` file under `target`, which may itself be a file. */
+function typeScriptFiles(target) {
+	const stat = statSync(target, { throwIfNoEntry: false });
+	if (!stat) throw new Error(`SOURCES points at a missing path: ${target}`);
+	if (stat.isFile()) return target.endsWith('.ts') ? [target] : [];
+	return readdirSync(target, { withFileTypes: true }).flatMap((entry) => {
+		const child = path.join(target, entry.name);
+		if (entry.isDirectory()) return typeScriptFiles(child);
+		return entry.isFile() && child.endsWith('.ts') ? [child] : [];
+	});
+}
+
+// Read the files in Node rather than shelling out to grep. A missing path now throws
+// instead of arriving as an empty result set, and there is no dependency on which
+// grep the platform provides or on its exit codes.
 function declaredNames(dirs) {
 	const out = new Set();
 	for (const dir of dirs) {
-		let txt = '';
-		try {
-			txt = execSync(
-				`grep -rhoE "(name: |_FIELD = )'[A-Za-z0-9_]+'" "${path.join(REPO, dir)}" --include='*.ts'`,
-				{
-					encoding: 'utf8',
-				},
-			);
-		} catch {
-			// grep exits non-zero when nothing matches; an empty set is the right answer.
+		for (const file of typeScriptFiles(path.join(REPO, dir))) {
+			const txt = readFileSync(file, 'utf8');
+			for (const m of txt.matchAll(/name: '([A-Za-z0-9_]+)'/g)) out.add(m[1]);
+			for (const m of txt.matchAll(/_FIELD = '([A-Za-z0-9_]+)'/g)) out.add(m[1]);
 		}
-		for (const m of txt.matchAll(/name: '([A-Za-z0-9_]+)'/g)) out.add(m[1]);
-		for (const m of txt.matchAll(/_FIELD = '([A-Za-z0-9_]+)'/g)) out.add(m[1]);
 	}
 	return out;
 }

@@ -20,11 +20,17 @@ const { stringify } = require(
 	require.resolve('flatted', { paths: [path.join(REPO, 'packages/cli')] }),
 );
 
+// Mirrors `getN8nFolder()` in @n8n/config: the `.n8n` directory sits *inside*
+// N8N_USER_FOLDER, so joining the db name straight onto that variable looks one
+// directory too high.
 const DB_PATH =
 	process.env.DB_SQLITE_DATABASE ??
-	path.join(process.env.N8N_USER_FOLDER ?? path.join(os.homedir(), '.n8n'), 'database.sqlite');
+	path.join(process.env.N8N_USER_FOLDER ?? os.homedir(), '.n8n', 'database.sqlite');
 
 const SEED_PREFIX = '[seed] ';
+// Threads have no name to prefix, so they carry this in `metadata` instead. It is how
+// the clear step tells its own rows from a developer's real assistant threads.
+const THREAD_MARKER = '"seeded":true';
 const DAYS = Number(process.env.HISTORY_DAYS) || 14;
 
 // Fixed seed and fixed clock, for the same reason the estate is fixed: an A/B eval
@@ -192,21 +198,26 @@ function main() {
 			db.prepare(`DELETE FROM execution_data WHERE executionId IN (${p})`).run(...priorExec);
 			db.prepare(`DELETE FROM execution_entity WHERE id IN (${p})`).run(...priorExec);
 		}
-		// Cleared by project, not workflow id. Re-seeding replaces the workflows with
-		// fresh ids, so anything keyed on those orphans the old rows, and the seeded ids
-		// then collide. Executions cascade when their workflow is deleted.
+		// Matched on this script's own marker, not on workflow id and not on project
+		// alone. Workflow id fails because re-seeding replaces the workflows with fresh
+		// ids, which orphans the old rows and then collides on the seeded primary keys.
+		// Project alone fails the other way: a developer who opens the assistant on a
+		// seeded workflow, or whose instance writes real activity in that project, would
+		// have that work deleted by the next run. Executions need neither, because
+		// deleting a workflow cascades them.
 		const priorThreads = db
-			.prepare('SELECT id FROM instance_ai_threads WHERE projectId = ?')
-			.all(project.id)
+			.prepare(`SELECT id FROM instance_ai_threads WHERE projectId = ? AND metadata LIKE ?`)
+			.all(project.id, `%${THREAD_MARKER}%`)
 			.map((r) => r.id);
 		if (priorThreads.length > 0) {
 			const p = priorThreads.map(() => '?').join(',');
 			db.prepare(`DELETE FROM instance_ai_messages WHERE threadId IN (${p})`).run(...priorThreads);
 			db.prepare(`DELETE FROM instance_ai_threads WHERE id IN (${p})`).run(...priorThreads);
 		}
+		// `[` is not a LIKE wildcard in SQLite, so the prefix matches literally.
 		const clearedActivity = db
-			.prepare('DELETE FROM activity_event WHERE projectId = ?')
-			.run(project.id);
+			.prepare('DELETE FROM activity_event WHERE projectId = ? AND resourceName LIKE ?')
+			.run(project.id, `${SEED_PREFIX}%`);
 		console.log(
 			`Cleared prior: ${priorExec.length} executions, ${priorThreads.length} threads, ${clearedActivity.changes} activity entries`,
 		);
@@ -292,7 +303,7 @@ function main() {
 				wf.id,
 				project.id,
 				`Working on ${short}`,
-				JSON.stringify({ seeded: true }),
+				`{${THREAD_MARKER}}`,
 				iso(threadAt),
 				iso(threadAt + 600e3),
 			);

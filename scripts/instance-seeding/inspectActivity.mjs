@@ -9,40 +9,61 @@
 // column comes from an allowlist because a column name cannot be bound.
 
 import { DatabaseSync } from 'node:sqlite';
+import { realpathSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 
+// Mirrors `getN8nFolder()` in @n8n/config: `.n8n` sits inside N8N_USER_FOLDER.
 const DB_PATH =
 	process.env.DB_SQLITE_DATABASE ??
-	path.join(process.env.N8N_USER_FOLDER ?? path.join(os.homedir(), '.n8n'), 'database.sqlite');
+	path.join(process.env.N8N_USER_FOLDER ?? os.homedir(), '.n8n', 'database.sqlite');
 const PORT = Number(process.env.PORT) || 5699;
 const HOST = '127.0.0.1';
 const PAGE_SIZES = [25, 50, 100, 250];
 
+// Assigned by `open()`, not at import. Opening the database and binding a port are
+// side effects, and a module that does them on import cannot be tested or reused.
 let db;
-try {
-	db = new DatabaseSync(DB_PATH, { readOnly: true });
-} catch (e) {
-	console.error(`Cannot open ${DB_PATH} read-only: ${e.message}`);
-	process.exit(1);
+let COLUMNS = [];
+let SORTABLE = new Set();
+
+function open(dbPath) {
+	try {
+		db = new DatabaseSync(dbPath, { readOnly: true });
+	} catch (e) {
+		console.error(`Cannot open ${dbPath} read-only: ${e.message}`);
+		process.exit(1);
+	}
+
+	const tableExists = db
+		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_event'")
+		.get();
+	if (!tableExists) {
+		console.error(`No activity_event table in ${dbPath}.`);
+		console.error('The table ships with the activity-event migration; this instance predates it.');
+		process.exit(1);
+	}
+
+	// Derived from the table, so a new column becomes sortable without a code change.
+	COLUMNS = db
+		.prepare("SELECT name FROM pragma_table_info('activity_event')")
+		.all()
+		.map((r) => r.name);
+	SORTABLE = new Set(COLUMNS);
 }
 
-const tableExists = db
-	.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_event'")
-	.get();
-if (!tableExists) {
-	console.error(`No activity_event table in ${DB_PATH}.`);
-	console.error('The table ships with the activity-event migration; this instance predates it.');
-	process.exit(1);
+// Match the whole authority, not a prefix of it. Slicing up to the first `]` accepts
+// `[::1]evil.com`, and splitting on `:` accepts `127.0.0.1.evil.com`, so both let a
+// rebinding host through. Anchored patterns with an optional numeric port do not.
+export function isLoopbackHost(rawHost) {
+	const host = rawHost ?? '';
+	const bracketed = /^\[([0-9a-fA-F:]+)\](?::\d+)?$/.exec(host);
+	if (bracketed) return ['::1', '0:0:0:0:0:0:0:1'].includes(bracketed[1].toLowerCase());
+	const plain = /^([0-9a-zA-Z.-]+)(?::\d+)?$/.exec(host);
+	return plain !== null && ['127.0.0.1', 'localhost'].includes(plain[1].toLowerCase());
 }
-
-// Derived from the table, so a new column becomes sortable without a code change.
-const COLUMNS = db
-	.prepare("SELECT name FROM pragma_table_info('activity_event')")
-	.all()
-	.map((r) => r.name);
-const SORTABLE = new Set(COLUMNS);
 
 const esc = (v) =>
 	v === null || v === undefined
@@ -174,12 +195,7 @@ function page({ q, sort, dir, limit, offset, total, rows }) {
 const server = http.createServer((req, res) => {
 	// The socket is loopback, but a hostname resolving to 127.0.0.1 would still be
 	// served. Requiring a loopback Host closes that. Nothing else authenticates.
-	// Strip the port without breaking IPv6: splitting on ':' turns `[::1]:5699` into `[`.
-	const rawHost = req.headers.host ?? '';
-	const host = rawHost.startsWith('[')
-		? rawHost.slice(0, rawHost.indexOf(']') + 1)
-		: rawHost.split(':')[0];
-	if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) {
+	if (!isLoopbackHost(req.headers.host)) {
 		res.writeHead(403, { 'content-type': 'text/plain' });
 		return res.end('Loopback host required.\n');
 	}
@@ -220,9 +236,14 @@ const server = http.createServer((req, res) => {
 	}
 });
 
-server.listen(PORT, HOST, () => {
-	console.log(`activity_event viewer  http://${HOST}:${PORT}`);
-	console.log(`database               ${DB_PATH} (read-only)`);
-	console.log(`columns                ${COLUMNS.join(', ')}`);
-	console.log('Loopback only, unauthenticated. Ctrl-C to stop.');
-});
+// Only serve when run as a script. Importing this module gives you `isLoopbackHost`
+// and the server without either touching the database or taking the port.
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
+	open(DB_PATH);
+	server.listen(PORT, HOST, () => {
+		console.log(`activity_event viewer  http://${HOST}:${PORT}`);
+		console.log(`database               ${DB_PATH} (read-only)`);
+		console.log(`columns                ${COLUMNS.join(', ')}`);
+		console.log('Loopback only, unauthenticated. Ctrl-C to stop.');
+	});
+}
