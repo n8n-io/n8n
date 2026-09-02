@@ -305,8 +305,11 @@ export class WorkflowImporter {
 			transition === 'archive'
 				? await this.workflowService.archive(context.user, item.existing.id, {
 						skipArchived: true,
+						publicApi: true,
 					})
-				: await this.workflowService.unarchive(context.user, item.existing.id);
+				: await this.workflowService.unarchive(context.user, item.existing.id, {
+						publicApi: true,
+					});
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.
 		if (!workflow) {

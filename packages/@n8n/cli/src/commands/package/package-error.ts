@@ -58,7 +58,9 @@ function formatIssue(issue: unknown): string {
 	}
 	if (it.type === 'workflow-lineage-conflict') {
 		const workflows = Array.isArray(it.existingWorkflows)
-			? it.existingWorkflows.map(({ id, name }) => `"${name}" (${id})`).join(', ')
+			? it.existingWorkflows
+					.map(({ id, name, isArchived }) => `"${name}" (${id}${isArchived ? ', archived' : ''})`)
+					.join(', ')
 			: '';
 		return `source workflow ${it.sourceWorkflowId} matches multiple workflows in project ${it.projectId}: ${workflows}`;
 	}

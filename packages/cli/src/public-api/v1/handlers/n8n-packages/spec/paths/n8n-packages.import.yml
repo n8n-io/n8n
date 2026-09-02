@@ -439,7 +439,8 @@ post:
                       type: boolean
                       description: >
                         Whether the workflow is archived on the target after import. Under
-                        `new-version` this follows the package's `isArchived` flag.
+                        `new-version` this follows the package's `isArchived` flag. A skipped
+                        workflow keeps its own state.
                     publishing:
                       type: object
                       required:

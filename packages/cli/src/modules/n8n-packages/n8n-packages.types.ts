@@ -427,7 +427,10 @@ export interface ImportedWorkflowSummary {
 	parentFolderId: string | null;
 	/** Published version on the target instance, or `null` when not published after import. */
 	activeVersionId: string | null;
-	/** Whether the workflow is archived on the target after import. Follows the package. */
+	/**
+	 * Whether the workflow is archived on the target after import. Under `new-version` this follows
+	 * the package; a skipped workflow keeps its own state.
+	 */
 	isArchived: boolean;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
