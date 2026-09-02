@@ -19,24 +19,85 @@ export function escapeString(str: string): string {
 }
 
 /**
- * Escape a string for use inside a template literal. Newlines stay raw so the
- * generated source keeps the value's own line structure.
+ * Escape a string for use inside a template literal. Line feeds stay raw so the
+ * generated source keeps the value's own line structure. Carriage returns are
+ * escaped: a template literal normalizes a raw CR or CRLF to LF, which would
+ * silently change the value.
  */
 export function escapeTemplateLiteral(str: string): string {
-	return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+	return str
+		.replace(/\\/g, '\\\\')
+		.replace(/\r/g, '\\r')
+		.replace(/`/g, '\\`')
+		.replace(/\$\{/g, '\\${');
 }
 
 /**
- * Format a string value as a code literal. Values with line breaks become template
+ * True when a string value is emitted as a multi-line template literal.
+ */
+export function isMultilineStringValue(str: string): boolean {
+	return str.includes('\n');
+}
+
+/**
+ * Format a string value as a code literal. Values with line feeds become template
  * literals so each line of a JSON body, prompt, or script lands on its own source
  * line — a scoped text edit can then target one line instead of a single escaped
  * line that holds the whole value. Everything else stays a single-quoted string.
  */
 export function formatStringLiteral(str: string): string {
-	if (str.includes('\n') || str.includes('\r')) {
+	if (isMultilineStringValue(str)) {
 		return `\`${escapeTemplateLiteral(str)}\``;
 	}
 	return `'${escapeString(str)}'`;
+}
+
+type ScanState = 'code' | 'single' | 'double' | 'template' | 'block-comment';
+
+/**
+ * Advance a lexical scan over one line of generated code. Only template-literal
+ * content lines must keep their exact text, but a backtick inside a quoted
+ * string or a comment must not be mistaken for a template boundary.
+ */
+function scanLine(line: string, state: ScanState): ScanState {
+	for (let i = 0; i < line.length; i++) {
+		const ch = line[i];
+		switch (state) {
+			case 'code':
+				if (ch === "'") state = 'single';
+				else if (ch === '"') state = 'double';
+				else if (ch === '`') state = 'template';
+				else if (ch === '/' && line[i + 1] === '*') {
+					state = 'block-comment';
+					i++;
+				} else if (ch === '/' && line[i + 1] === '/') {
+					return state;
+				}
+				break;
+			case 'single':
+			case 'double':
+			case 'template': {
+				if (ch === '\\') {
+					i++;
+				} else if (
+					(state === 'single' && ch === "'") ||
+					(state === 'double' && ch === '"') ||
+					(state === 'template' && ch === '`')
+				) {
+					state = 'code';
+				}
+				break;
+			}
+			case 'block-comment':
+				if (ch === '*' && line[i + 1] === '/') {
+					state = 'code';
+					i++;
+				}
+				break;
+		}
+	}
+	// Quoted strings cannot span lines; only templates and block comments carry over.
+	return state === 'single' || state === 'double' ? 'code' : state;
 }
 
 /**
@@ -47,17 +108,11 @@ export function indentContinuationLines(text: string, indent: string): string {
 	const lines = text.split('\n');
 	if (lines.length === 1) return text;
 
-	let inTemplate = false;
+	let state: ScanState = 'code';
 	return lines
 		.map((line, index) => {
-			const result = index === 0 || inTemplate ? line : `${indent}${line}`;
-			for (let i = 0; i < line.length; i++) {
-				if (line[i] === '\\') {
-					i++;
-				} else if (line[i] === '`') {
-					inTemplate = !inTemplate;
-				}
-			}
+			const result = index === 0 || state === 'template' ? line : `${indent}${line}`;
+			state = scanLine(line, state);
 			return result;
 		})
 		.join('\n');

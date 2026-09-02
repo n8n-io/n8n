@@ -18,6 +18,7 @@ import {
 	escapeString,
 	formatStringLiteral,
 	indentContinuationLines,
+	isMultilineStringValue,
 	formatKey,
 	isPlaceholderValue,
 	extractPlaceholderHint,
@@ -129,7 +130,7 @@ function containsExpressionAnnotation(value: unknown, ctx?: FormatValueContext):
  */
 function containsMultilineString(value: unknown): boolean {
 	if (typeof value === 'string') {
-		return !isPlaceholderValue(value) && (value.includes('\n') || value.includes('\r'));
+		return !isPlaceholderValue(value) && isMultilineStringValue(value);
 	}
 	if (Array.isArray(value)) {
 		return value.some((v) => containsMultilineString(v));

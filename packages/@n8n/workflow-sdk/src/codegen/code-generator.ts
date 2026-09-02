@@ -478,7 +478,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
 	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
@@ -677,7 +681,11 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
 	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {

@@ -185,6 +185,14 @@ describe('string-utils', () => {
 		it('escapes backticks, interpolations and backslashes inside template literals', () => {
 			expect(escapeTemplateLiteral('a `b` ${c} d\\e\n')).toBe('a \\`b\\` \\${c} d\\\\e\n');
 		});
+
+		it('escapes carriage returns, which a template literal would otherwise normalize away', () => {
+			expect(formatStringLiteral('a\r\nb')).toBe('`a\\r\nb`');
+		});
+
+		it('keeps a value with only a carriage return single-quoted', () => {
+			expect(formatStringLiteral('a\rb')).toBe("'a\\rb'");
+		});
 	});
 
 	describe('indentContinuationLines', () => {
@@ -196,6 +204,13 @@ describe('string-utils', () => {
 		it('treats an escaped backtick as content, not a boundary', () => {
 			const text = 'a: `x \\` y\nz`,\nb: 1';
 			expect(indentContinuationLines(text, '  ')).toBe('a: `x \\` y\nz`,\n  b: 1');
+		});
+
+		it('ignores backticks inside quoted strings and comments', () => {
+			const text = "{\n  a: 'tick ` here',\n  /** @example `x` */\n  b: `line1\nline2`,\n  c: 1\n}";
+			expect(indentContinuationLines(text, '  ')).toBe(
+				"{\n    a: 'tick ` here',\n    /** @example `x` */\n    b: `line1\nline2`,\n    c: 1\n  }",
+			);
 		});
 	});
 });

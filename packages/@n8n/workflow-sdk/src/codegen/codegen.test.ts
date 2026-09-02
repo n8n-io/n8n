@@ -3147,7 +3147,8 @@ describe('Sequential polling loops', () => {
 	it('should emit multi-line strings as template literals and round-trip them exactly', () => {
 		const jsonBody =
 			'{\n  "orderId": "={{ $json.order_id }}",\n  "note": "a `tick` and ${not_an_expr} and a \\ backslash",\n  "quote": "it\'s"\n}';
-		const jsCode = 'const msg = `Hello ${name}`;\nreturn [{ json: { msg, when: $now.toISO() } }];';
+		const jsCode =
+			'const msg = `Hello ${name}`;\r\nreturn [{ json: { msg, when: $now.toISO() } }];';
 		const json: WorkflowJSON = {
 			name: 'Multi-line strings',
 			nodes: [
@@ -3175,7 +3176,12 @@ describe('Sequential polling loops', () => {
 
 		// Each body line is its own source line, so a scoped edit can target one key.
 		expect(code).toContain('jsonBody: expr(`{\n  "orderId": "={{ $json.order_id }}",\n');
-		expect(code).toContain('jsCode: `const msg = \\`Hello \\${name}\\`;\n');
+		// The parameters object nests under config; only the template content keeps its own indentation.
+		expect(code).toContain(
+			"    parameters: {\n      method: 'POST',\n      specifyBody: 'json',\n      jsonBody: expr(`{\n  \"orderId\"",
+		);
+		// The CR is escaped: a raw CR inside a template literal would be normalized to LF.
+		expect(code).toContain('jsCode: `const msg = \\`Hello \\${name}\\`;\\r\n');
 
 		const parsed = parseWorkflowCode(code);
 		const send = parsed.nodes.find((n) => n.name === 'Send');

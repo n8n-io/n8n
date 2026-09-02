@@ -237,6 +237,7 @@ describe('emit-instance-ai', () => {
 			'isSwitchNodeType',
 			'isWebhookType',
 			// Codegen + parse round-trip
+			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
 			'parseWorkflowCode',
