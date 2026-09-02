@@ -36,6 +36,8 @@ describe('decorators', () => {
 	it('should treat a set-but-blank number env value as unset', () => {
 		process.env.NUMBER_VALUE = '';
 		process.env.OPTIONAL_NUMBER_VALUE = '   ';
+		// A coercing schema turns '' into 0 too, so the guard must run before it.
+		process.env.SCHEMA_NUMBER_VALUE = '';
 
 		@Config
 		class TestConfig {
@@ -44,11 +46,27 @@ describe('decorators', () => {
 
 			@Env('OPTIONAL_NUMBER_VALUE')
 			optionalValue?: number;
+
+			@Env('SCHEMA_NUMBER_VALUE', z.coerce.number().int().gte(0))
+			schemaValue: number = 30_000;
 		}
 
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe(42);
 		expect(config.optionalValue).toBeUndefined();
+		expect(config.schemaValue).toBe(30_000);
+	});
+
+	it('should still parse a blank env value for a non-numeric schema field', () => {
+		process.env.STRING_SCHEMA_VALUE = '';
+
+		@Config
+		class TestConfig {
+			@Env('STRING_SCHEMA_VALUE', z.string())
+			value: string = 'default';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('');
 	});
 
 	it('should read value from _FILE env variable', () => {

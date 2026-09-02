@@ -47,7 +47,8 @@ export class AiConfig {
 	 * minutes in prompt processing before the provider sends anything. The agent
 	 * runtime clamps it to at least the idle timeout, so 0 cannot disable it —
 	 * non-positive values are ignored. Unset uses the agent runtime's default
-	 * (3 minutes).
+	 * (3 minutes). That clamp also applies to the default: an idle timeout above
+	 * 3 minutes raises the effective first-output deadline to match it.
 	 */
 	@Env('N8N_AI_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS')
 	modelStreamFirstOutputTimeoutMs?: number;

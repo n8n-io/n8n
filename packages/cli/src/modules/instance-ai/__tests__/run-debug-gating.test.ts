@@ -68,6 +68,8 @@ describe('InstanceAiService run debug gating', () => {
 		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
 		expect(streamOptions.modelStreamIdleTimeoutMs).toBe(90_000);
 		expect(resumeOptions.modelStreamIdleTimeoutMs).toBe(90_000);
+		expect(streamOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
+		expect(resumeOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
 		// Both paths must carry the run's signal, or a stop cannot reach the agent
 		// loop and its sub-agents (AGENT-453).
 		expect(streamOptions.abortSignal).toBe(signal);

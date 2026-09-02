@@ -57,6 +57,13 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
+				// A set-but-blank var (common in .env templates) must mean "unset" for
+				// a numeric field: both `Number('')` and `z.coerce.number()` turn it
+				// into 0, and 0 is a meaningful value for many of them (e.g. "disable"
+				// or "wait indefinitely"). Checked before the schema branch, which
+				// would otherwise coerce it first.
+				if (type === Number && value.trim() === '') continue;
+
 				if (schema) {
 					const result = schema.safeParse(normalizeEnvValue(value));
 					if (result.error) {
@@ -67,9 +74,6 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					}
 					config[key] = result.data;
 				} else if (type === Number) {
-					// A set-but-blank var (common in .env templates) must mean "unset",
-					// not Number('') === 0 — 0 is a meaningful value for many fields.
-					if (value.trim() === '') continue;
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);

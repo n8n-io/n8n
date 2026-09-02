@@ -8655,6 +8655,31 @@ describe('AgentRuntime — model stream stall handling', () => {
 	});
 
 	/**
+	 * Run `source` through the transforms the AI SDK would apply, so the
+	 * raw-chunk tap actually executes — a plain mocked stream bypasses it, and
+	 * with it the liveness the watchdog depends on in production.
+	 */
+	function pipeThroughSdkTransforms(
+		args: Record<string, unknown>,
+		source: AsyncGenerator<Record<string, unknown>>,
+	): ReadableStream {
+		const readable = new ReadableStream<Record<string, unknown>>({
+			async pull(controller) {
+				const { done, value } = await source.next();
+				if (done) controller.close();
+				else controller.enqueue(value);
+			},
+		});
+		const transforms = args.experimental_transform as Array<
+			(opts: { tools: unknown; stopStream: () => void }) => TransformStream
+		>;
+		return transforms.reduce<ReadableStream>(
+			(piped, transform) => piped.pipeThrough(transform({ tools: {}, stopStream: () => {} })),
+			readable,
+		);
+	}
+
+	/**
 	 * streamText response that emits `chunks` then goes silent — a dead
 	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
 	 * which arrives before any provider byte and must not count as content.
@@ -8724,27 +8749,33 @@ describe('AgentRuntime — model stream stall handling', () => {
 	});
 
 	it('raw keepalive chunks reset the idle timer during a mid-turn quiet spell', async () => {
-		// Gap between content chunks (600ms) exceeds the idle limit (500ms), but
-		// provider keepalives (raw `ping` events) arrive every 100ms — the turn is
-		// alive and must complete instead of tripping the watchdog. Margins are
+		// Applies the transforms the way the AI SDK does, so the raw-chunk tap
+		// actually runs: it consumes the keepalives, and the only thing keeping
+		// the turn alive across the 600ms content gap is the liveness the tap
+		// stamps. Without that wiring the watchdog (500ms) fires. Margins are
 		// wide (400ms) so CI scheduler jitter cannot trip the real timers.
-		streamText.mockReturnValue({
+		streamText.mockImplementation((args: Record<string, unknown>) => ({
 			...makeStreamSuccess('slow but alive'),
-			stream: (async function* () {
-				yield { type: 'start' };
-				yield { type: 'text-delta', id: 'text-1', text: 'slow ' };
-				for (let i = 0; i < 6; i++) {
-					await sleep(100);
-					yield { type: 'raw', rawValue: { type: 'ping' } };
-				}
-				yield { type: 'text-delta', id: 'text-1', text: 'but alive' };
-			})(),
-		});
+			stream: pipeThroughSdkTransforms(
+				args,
+				(async function* () {
+					yield { type: 'start' };
+					yield { type: 'text-delta', id: 'text-1', text: 'slow ' };
+					for (let i = 0; i < 6; i++) {
+						await sleep(100);
+						yield { type: 'raw', rawValue: { type: 'ping' } };
+					}
+					yield { type: 'text-delta', id: 'text-1', text: 'but alive' };
+				})(),
+			),
+		}));
 		const { runtime } = createRuntime();
 
 		const result = await runtime.stream('hi', {
 			modelStreamIdleTimeoutMs: 500,
 			modelStreamFirstOutputTimeoutMs: 500,
+			// Only the tap in the chain: smoothing would re-time the deltas.
+			smoothStream: false,
 		});
 		const chunks = await collectChunks(result.stream);
 
@@ -8758,6 +8789,39 @@ describe('AgentRuntime — model stream stall handling', () => {
 			.join('');
 		expect(text).toBe('slow but alive');
 		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('stalls when the wire goes silent even though the tap is installed', async () => {
+		// Counterpart to the test above: same pipeline, no keepalives. The tap
+		// must not keep a dead turn alive.
+		streamText.mockImplementation((args: Record<string, unknown>) => ({
+			stream: pipeThroughSdkTransforms(
+				args,
+				(async function* () {
+					yield { type: 'start' };
+					yield { type: 'text-delta', id: 'text-1', text: 'then silence' };
+					await new Promise(() => {});
+				})(),
+			),
+			finishReason: new Promise(() => {}),
+			usage: new Promise(() => {}),
+			response: new Promise(() => {}),
+			toolCalls: new Promise(() => {}),
+		}));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 300,
+			modelStreamFirstOutputTimeoutMs: 300,
+			smoothStream: false,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
 	});
 
 	it('still silently retries when the stalled turn emitted only raw keepalives', async () => {

@@ -124,15 +124,22 @@ export class StreamSink implements RunOutputSink<void> {
 	 * downstream ever sees them. Must run BEFORE smoothStream — it flushes its
 	 * word buffer on every non-text chunk, so raw chunks interleaved with text
 	 * deltas would silently defeat smoothing.
+	 *
+	 * The readers are bound per attempt, not read off `this`: an abandoned
+	 * attempt's pipeline can still drain buffered chunks after a stall retry
+	 * swapped in fresh readers, which would bill its usage against the retry.
 	 */
-	private buildRawChunkTap(activity: { lastAt: number }): StreamTextTransform<ToolSet> {
+	private buildRawChunkTap(
+		activity: { lastAt: number },
+		readers: { usage: RawUsageReader | undefined; error: RawErrorReader | undefined },
+	): StreamTextTransform<ToolSet> {
 		return () =>
 			new TransformStream({
 				transform: (chunk, controller) => {
 					activity.lastAt = Date.now();
 					if (chunk.type === 'raw') {
-						this.rawUsageReader?.capture(chunk.rawValue);
-						this.rawErrorReader?.capture(chunk.rawValue);
+						readers.usage?.capture(chunk.rawValue);
+						readers.error?.capture(chunk.rawValue);
 						return;
 					}
 					controller.enqueue(chunk);
@@ -242,7 +249,14 @@ export class StreamSink implements RunOutputSink<void> {
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
-			...this.buildTransformOptions(needsRawChunks ? this.buildRawChunkTap(activity) : undefined),
+			...this.buildTransformOptions(
+				needsRawChunks
+					? this.buildRawChunkTap(activity, {
+							usage: this.rawUsageReader,
+							error: this.rawErrorReader,
+						})
+					: undefined,
+			),
 		});
 
 		// A healthy streaming response emits chunks continuously (raw provider
