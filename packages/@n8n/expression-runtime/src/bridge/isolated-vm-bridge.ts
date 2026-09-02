@@ -312,23 +312,31 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	initializeSync(): void {
 		if (this.initialized) return;
 
-		this.context = this.isolate.createContextSync();
-		const jail = this.context.global;
-		jail.setSync('global', jail.derefInto());
+		try {
+			this.context = this.isolate.createContextSync();
+			const jail = this.context.global;
+			jail.setSync('global', jail.derefInto());
 
-		this.context.evalSync(readRuntimeBundleSync());
+			this.context.evalSync(readRuntimeBundleSync());
 
-		// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
-		const verified = this.context.evalSync(
-			`typeof DateTime !== 'undefined' && typeof extend !== 'undefined' &&
+			// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
+			const verified = this.context.evalSync(
+				`typeof DateTime !== 'undefined' && typeof extend !== 'undefined' &&
 			 typeof createDeepLazyProxy !== 'undefined' && typeof SafeObject !== 'undefined' &&
 			 typeof SafeError !== 'undefined' && typeof buildContext !== 'undefined'`,
-		);
-		if (verified !== true) {
-			throw new Error('Runtime bundle verification failed during synchronous initialization');
-		}
+			);
+			if (verified !== true) {
+				throw new Error('Runtime bundle verification failed during synchronous initialization');
+			}
 
-		this.context.evalSync(ERROR_HANDLER_SOURCE);
+			this.context.evalSync(ERROR_HANDLER_SOURCE);
+		} catch (error) {
+			// A failed cold start must not retain the native isolate. dispose()
+			// has no awaits before the isolate is released, so not awaiting it
+			// here is safe.
+			void this.dispose();
+			throw error;
+		}
 
 		this.initialized = true;
 		this.logger.debug('[IsolatedVmBridge] Initialized synchronously');

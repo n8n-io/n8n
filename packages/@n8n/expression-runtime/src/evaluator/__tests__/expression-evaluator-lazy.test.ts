@@ -123,7 +123,7 @@ describe('ExpressionEvaluator — lazy acquisition', () => {
 	});
 
 	it('reports a clear error when the bridge has no synchronous initializer', async () => {
-		const { evaluator } = await setup({ syncInit: false });
+		const { evaluator, bridges } = await setup({ syncInit: false });
 
 		const callerA = {};
 		const callerB = {};
@@ -135,9 +135,50 @@ describe('ExpressionEvaluator — lazy acquisition', () => {
 			'no synchronous initializer',
 		);
 
+		// The unusable cold-start bridge must not be leaked.
+		const coldBridge = bridges[bridges.length - 1];
+		expect(coldBridge.dispose).toHaveBeenCalledTimes(1);
+
 		await evaluator.release(callerA);
 		await evaluator.release(callerB);
 		await evaluator.dispose();
+	});
+
+	it('disposes the cold-start bridge when its synchronous initialization fails', async () => {
+		const { evaluator, createBridge } = await setup();
+
+		const callerA = {};
+		const callerB = {};
+		await evaluator.acquire(callerA);
+		await evaluator.acquire(callerB);
+
+		// A pops the warm bridge (queuing async replenishment, whose
+		// createBridge call fires inside this evaluate). B's cold start is
+		// then the next createBridge call, since no microtask can run between
+		// the two synchronous evaluations.
+		evaluator.evaluate('{{ $json.x }}', DATA, callerA);
+		const failingBridge = {
+			...createMockBridge(),
+			initializeSync: vi.fn(() => {
+				throw new Error('sync init failed');
+			}),
+		};
+		createBridge.mockImplementationOnce(() => failingBridge);
+
+		expect(() => evaluator.evaluate('{{ $json.x }}', DATA, callerB)).toThrow('sync init failed');
+		expect(failingBridge.dispose).toHaveBeenCalledTimes(1);
+
+		await evaluator.release(callerA);
+		await evaluator.release(callerB);
+		await evaluator.dispose();
+	});
+
+	it('acquire throws after the evaluator is disposed', async () => {
+		const { evaluator } = await setup();
+
+		await evaluator.dispose();
+
+		await expect(evaluator.acquire({})).rejects.toThrow('Pool is disposed');
 	});
 
 	it('release disposes a lazily created bridge', async () => {
