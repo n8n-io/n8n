@@ -62,7 +62,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				// into 0, and 0 is a meaningful value for many of them (e.g. "disable"
 				// or "wait indefinitely"). Checked before the schema branch, which
 				// would otherwise coerce it first.
-				if (type === Number && value.trim() === '') continue;
+				if (type === Number && normalizeEnvValue(value).trim() === '') continue;
 
 				if (schema) {
 					const result = schema.safeParse(normalizeEnvValue(value));
