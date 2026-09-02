@@ -8,6 +8,10 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import {
+	evaluateSimpleExpression,
+	isSimpleExpressionPathEnabled,
+} from './expressions/simple-expression';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -249,6 +253,7 @@ export class Expression {
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		lazyAcquire?: boolean;
 	}): Promise<void> {
 		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -275,6 +280,7 @@ export class Expression {
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
+				lazyAcquire: options.lazyAcquire,
 				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
@@ -564,6 +570,15 @@ export class Expression {
 		// Remove the equal sign
 		parameterValue = parameterValue.substr(1);
 
+		// POC fast path: expressions that only traverse data and use basic
+		// operators are interpreted natively, skipping the global-context
+		// setup, extendSyntax, and the engine (isolate) entirely. Anything not
+		// provably simple falls through to the regular pipeline below.
+		if (isSimpleExpressionPathEnabled()) {
+			const fast = evaluateSimpleExpression(parameterValue, data);
+			if (fast.handled) return this.finalizeResolvedValue(fast.value, returnObjectAsString);
+		}
+
 		// Support only a subset of process properties
 		data.process =
 			typeof process !== 'undefined'
@@ -629,20 +644,25 @@ export class Expression {
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
+		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+	}
+
+	private finalizeResolvedValue(
+		returnValue: unknown,
+		returnObjectAsString: boolean,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new UserError('this is a DateTime, please access its methods');
 
 			throw new UserError('this is a function, please add ()');
-		} else if (typeof returnValue === 'string') {
-			return returnValue;
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue);
-			}
+		} else if (returnValue !== null && typeof returnValue === 'object' && returnObjectAsString) {
+			return this.convertObjectValueToString(returnValue);
 		}
 
-		return returnValue;
+		// The engines return arbitrary JSON-ish values; mirror the loose typing
+		// the previous inline code relied on.
+		return returnValue as NodeParameterValue;
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
