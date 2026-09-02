@@ -1,0 +1,15 @@
+packages/cli/eslint.config.mjs
+  ai_agent 58-60,387-427,432
+packages/@n8n/eslint-config/src/rules/index.ts
+  ai_agent 35,71
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.test.ts
+  ai_agent 1-22
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.ts
+  ai_agent 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a20d14d1dbef5869cdace3b8f3ebfd492c4d922",
+  "prompts": {}
+}
