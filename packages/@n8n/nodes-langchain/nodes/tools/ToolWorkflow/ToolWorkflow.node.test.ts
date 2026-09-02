@@ -248,116 +248,116 @@ describe('ToolWorkflowV1', () => {
 					case 'source':
 						return 'database';
 					case 'workflowId':
-					return { value: 'wf-id' };
-				default:
-					return fallback;
-			}
-		}),
-		getWorkflowDataProxy: vi.fn(
-			() =>
-				({
-					$execution: { id: 'exec-id' },
-					$workflow: { id: 'workflow-id' },
-				}) as unknown as IWorkflowDataProxyData,
-		),
-		getMode: vi.fn((): WorkflowExecuteMode => 'manual'),
-		addInputData: vi.fn(() => ({ index: 0 })),
-		addOutputData: vi.fn(),
-		executeWorkflow: vi.fn(),
-		logAiEvent,
-	});
-	return { ctx, logAiEvent };
-};
-
-it('should emit ai-tool-called on successful invocation', async () => {
-	const { ctx, logAiEvent } = createContext();
-	const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
-		data: [[{ json: { result: 'ok' } }]],
-		executionId: 'test-execution',
+						return { value: 'wf-id' };
+					default:
+						return fallback;
+				}
+			}),
+			getWorkflowDataProxy: vi.fn(
+				() =>
+					({
+						$execution: { id: 'exec-id' },
+						$workflow: { id: 'workflow-id' },
+					}) as unknown as IWorkflowDataProxyData,
+			),
+			getMode: vi.fn((): WorkflowExecuteMode => 'manual'),
+			addInputData: vi.fn(() => ({ index: 0 })),
+			addOutputData: vi.fn(),
+			executeWorkflow: vi.fn(),
+			logAiEvent,
+		});
+		return { ctx, logAiEvent };
 	};
-	vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
 
-	const toolWorkflowNode = new ToolWorkflow();
-	const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
-	const supplyDataResult = await node.supplyData.call(ctx, 0);
-	const tool = supplyDataResult.response as DynamicTool;
+	it('should emit ai-tool-called on successful invocation', async () => {
+		const { ctx, logAiEvent } = createContext();
+		const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+			data: [[{ json: { result: 'ok' } }]],
+			executionId: 'test-execution',
+		};
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
 
-	const expectedResponse = JSON.stringify({ result: 'ok' }, null, 2);
-	await expect(tool.func('hello')).resolves.toBe(expectedResponse);
-	expect(logAiEvent).toHaveBeenCalledWith(
-		'ai-tool-called',
-		JSON.stringify({ query: 'hello', response: expectedResponse }),
-	);
-});
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
 
-it('should emit ai-tool-called when the sub-workflow fails', async () => {
-	const { ctx, logAiEvent } = createContext();
-	vi.spyOn(ctx, 'executeWorkflow').mockRejectedValueOnce(new Error('Workflow execution failed'));
-
-	const toolWorkflowNode = new ToolWorkflow();
-	const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
-	const supplyDataResult = await node.supplyData.call(ctx, 0);
-	const tool = supplyDataResult.response as DynamicTool;
-
-	const result = await tool.func('hello');
-
-	expect(result).toContain('There was an error');
-	expect(result).toContain('Workflow execution failed');
-	expect(logAiEvent).toHaveBeenCalledWith(
-		'ai-tool-called',
-		JSON.stringify({ query: 'hello', response: result }),
-	);
-});
-
-it('should return a placeholder when the sub-workflow is waiting with no items', async () => {
-	const { ctx } = createContext();
-	vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
-		data: [],
-		executionId: 'test-execution',
-		waitTill: new Date('3000-01-01'),
+		const expectedResponse = JSON.stringify({ result: 'ok' }, null, 2);
+		await expect(tool.func('hello')).resolves.toBe(expectedResponse);
+		expect(logAiEvent).toHaveBeenCalledWith(
+			'ai-tool-called',
+			JSON.stringify({ query: 'hello', response: expectedResponse }),
+		);
 	});
 
-	const toolWorkflowNode = new ToolWorkflow();
-	const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
-	const supplyDataResult = await node.supplyData.call(ctx, 0);
-	const tool = supplyDataResult.response as DynamicTool;
-	const result = await tool.func('hello');
+	it('should emit ai-tool-called when the sub-workflow fails', async () => {
+		const { ctx, logAiEvent } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockRejectedValueOnce(new Error('Workflow execution failed'));
 
-	expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
-	expect(result).not.toContain('The workflow did not return a response');
-});
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
 
-it('should return the payload when the sub-workflow is waiting with items', async () => {
-	const { ctx } = createContext();
-	vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
-		data: [[{ json: { msg: 'approved' } }]],
-		executionId: 'test-execution',
-		waitTill: new Date('3000-01-01'),
+		const result = await tool.func('hello');
+
+		expect(result).toContain('There was an error');
+		expect(result).toContain('Workflow execution failed');
+		expect(logAiEvent).toHaveBeenCalledWith(
+			'ai-tool-called',
+			JSON.stringify({ query: 'hello', response: result }),
+		);
 	});
 
-	const toolWorkflowNode = new ToolWorkflow();
-	const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
-	const supplyDataResult = await node.supplyData.call(ctx, 0);
-	const tool = supplyDataResult.response as DynamicTool;
-	const result = await tool.func('hello');
+	it('should return a placeholder when the sub-workflow is waiting with no items', async () => {
+		const { ctx } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
 
-	expect(result).toBe(JSON.stringify({ msg: 'approved' }, null, 2));
-	expect(result).not.toContain('The workflow did not return a response');
-});
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
 
-it('should return the missing-response error when the sub-workflow is not waiting', async () => {
-	const { ctx } = createContext();
-	vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
-		data: [],
-		executionId: 'test-execution',
+		expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
+		expect(result).not.toContain('The workflow did not return a response');
 	});
 
-	const toolWorkflowNode = new ToolWorkflow();
-	const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
-	const supplyDataResult = await node.supplyData.call(ctx, 0);
-	const tool = supplyDataResult.response as DynamicTool;
-	const result = await tool.func('hello');
+	it('should return the payload when the sub-workflow is waiting with items', async () => {
+		const { ctx } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [[{ json: { msg: 'approved' } }]],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
 
-	expect(result).toContain('The workflow did not return a response');
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
+
+		expect(result).toBe(JSON.stringify({ msg: 'approved' }, null, 2));
+		expect(result).not.toContain('The workflow did not return a response');
+	});
+
+	it('should return the missing-response error when the sub-workflow is not waiting', async () => {
+		const { ctx } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [],
+			executionId: 'test-execution',
+		});
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
+
+		expect(result).toContain('The workflow did not return a response');
 	});
 });
