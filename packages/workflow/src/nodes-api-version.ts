@@ -35,7 +35,7 @@ export type NodesApiVersionCheck =
  * reported as incompatible — the runtime cannot distinguish an old package
  * from a corrupt or hostile one if both fall back to legacy.
  */
-export function getNodesApiVersion(pkgJson: NodesApiVersionPackageJson): NodesApiVersionCheck {
+export function checkNodesApiVersion(pkgJson: NodesApiVersionPackageJson): NodesApiVersionCheck {
 	const declared = pkgJson?.n8n?.n8nNodesApiVersion;
 
 	if (declared === undefined) {
