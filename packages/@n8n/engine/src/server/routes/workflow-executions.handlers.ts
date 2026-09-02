@@ -5,6 +5,7 @@ import {
 	ExecutionNotFoundError,
 	type ExecutionQueryService,
 	type ExecutionView,
+	type ExecutionWithStepsView,
 	type StepView,
 } from '../../execution';
 import type { ExecutionSnapshot, StepDetail } from '../api.types';
@@ -27,7 +28,7 @@ function parseExecutionId(req: Request, res: Response): string | null {
 	return null;
 }
 
-function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
+function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): ExecutionSnapshot {
 	return {
 		id: record.id,
 		workflowId: record.workflowId,
@@ -37,6 +38,9 @@ function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
+		// Absent unless the request asked for steps, which a caller cannot tell
+		// from an execution that ran none.
+		...('steps' in record ? { steps: record.steps.map(toStepDetail) } : {}),
 	};
 }
 
@@ -64,9 +68,14 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 			return;
 		}
 
-		let execution: ExecutionView;
+		// The steps ride along, to save the caller a second round trip, and are read
+		// in the same query so the status cannot predate them.
+		let execution: ExecutionView | ExecutionWithStepsView;
 		try {
-			execution = await executionQuery.getExecution(id);
+			execution =
+				query.data.includeSteps === 'true'
+					? await executionQuery.getExecutionWithSteps(id)
+					: await executionQuery.getExecution(id);
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
 				fail(res, 404, { error: 'not_found' });
@@ -75,14 +84,6 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 			throw error;
 		}
 
-		const snapshot = toExecutionSnapshot(execution);
-
-		// The steps ride along, to save the caller a second round trip.
-		if (query.data.includeSteps === 'true') {
-			const steps = await executionQuery.getSteps(id);
-			snapshot.steps = steps.map(toStepDetail);
-		}
-
-		res.status(200).json(snapshot);
+		res.status(200).json(toExecutionSnapshot(execution));
 	};
 }

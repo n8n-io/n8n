@@ -25,6 +25,7 @@ import { createRunExecutionData, WorkflowOperationError } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
+import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
@@ -68,6 +69,9 @@ export function toV1RunExecutionData(graph: WorkflowGraph, steps: StepDetail[]) 
 			error: failed?.taskData.error,
 			lastNodeExecuted: (failed ?? bySettleTime.at(-1))?.nodeName,
 		},
+		// A read reports what ran. The factory otherwise fills in the runtime
+		// structures a run needs, such as the node execution stack.
+		executionData: null,
 		// A v2 execution has no resume token. The factory otherwise mints one.
 		resumeToken: '',
 	});
@@ -102,18 +106,11 @@ function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
 }
 
 function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
-	const edgesByTarget = new Map<string, GraphEdge[]>();
-	for (const edge of graph.edges) {
-		// A back edge's source is the previous pass, so v1 reads the forward edge
-		// into the loop entry instead.
-		if (edge.isBackEdge === true) continue;
-		const edges = edgesByTarget.get(edge.to);
-		if (edges) edges.push(edge);
-		else edgesByTarget.set(edge.to, [edge]);
-	}
-
 	const lastIterationByNodeId = new Map<string, number>();
 	for (const step of steps) {
+		// Only a reported pass counts. A pass v1 never hears about, such as a body
+		// step skipped on the last pass, would name a run that has no `runData`.
+		if (!TASK_STATUS_V1.has(step.status)) continue;
 		const seen = lastIterationByNodeId.get(step.nodeId);
 		if (seen === undefined || step.iteration > seen) {
 			lastIterationByNodeId.set(step.nodeId, step.iteration);
@@ -121,36 +118,18 @@ function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
 	}
 
 	return {
-		namesById: new Map(graph.nodes.map((node) => [node.id, node.name])),
-		edgesByTarget,
+		namesById: nodeNamesById(graph),
+		edgesByTarget: forwardEdgesByTarget(graph),
 		loops: deriveLoops(graph),
 		lastIterationByNodeId,
 	};
 }
 
-/** One entry for each input slot, indexed by slot. Empty for a node with no input. */
+/** Unlike the execute path, a read reports which pass of the predecessor fed each one. */
 function toSources(lineage: Lineage, step: StepDetail): Array<ISourceData | null> {
-	const sources: Array<ISourceData | null> = [];
-
-	for (const edge of lineage.edgesByTarget.get(step.nodeId) ?? []) {
-		const previousNode = lineage.namesById.get(edge.from);
-		if (previousNode === undefined) continue;
-
-		const inputIndex = edge.inputIndex ?? 0;
-		while (sources.length <= inputIndex) sources.push(null);
-		// First edge into a slot wins, matching `toV1Sources`.
-		if (sources[inputIndex] !== null) continue;
-
-		const previousNodeRun = toPreviousNodeRun(lineage, edge, step.iteration);
-		sources[inputIndex] = {
-			previousNode,
-			previousNodeOutput: edge.outputIndex,
-			// v1 reads a missing value as 0, so only a real loop pass is reported.
-			...(previousNodeRun === 0 ? {} : { previousNodeRun }),
-		};
-	}
-
-	return sources;
+	return toSourceSlots(lineage.edgesByTarget.get(step.nodeId) ?? [], lineage.namesById, (edge) =>
+		toPreviousNodeRun(lineage, edge, step.iteration),
+	);
 }
 
 /**
@@ -191,7 +170,6 @@ function toTaskData(
 	};
 }
 
-/** v1 reads whatever `ITaskData[]` entry it finds, so a hole would crash it. */
 function toRunData(runs: StepRun[]): IRunData {
 	const runData: IRunData = {};
 
@@ -204,17 +182,6 @@ function toRunData(runs: StepRun[]): IRunData {
 	}
 
 	return runData;
-}
-
-/** A pass the node never recorded. One empty slot: zero slots reads as no data. */
-function emptyRun(executionIndex: number): ITaskData {
-	return {
-		startTime: 0,
-		executionTime: 0,
-		executionIndex,
-		source: [],
-		data: { [MAIN_CONNECTION_TYPE]: [[]] },
-	};
 }
 
 /**

@@ -184,6 +184,10 @@ describe('toV1RunExecutionData', () => {
 		expect(toV1RunExecutionData(graph, [step()]).resumeToken).toBe('');
 	});
 
+	it('carries no execution data, since a read reports no runtime state', () => {
+		expect(toV1RunExecutionData(graph, [step()]).executionData).toBeUndefined();
+	});
+
 	describe('parallel branches', () => {
 		// Two branches off the trigger. Row creation order says nothing about
 		// which branch settled first.
@@ -277,6 +281,45 @@ describe('toV1RunExecutionData', () => {
 			expect(data.resultData.runData.Done[0].source).toEqual([
 				{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 },
 			]);
+		});
+
+		// Trigger ──► Loop ──o1──► Body ──(back)──► Loop
+		//     │                       └───o1──► Aside
+		//     └────────────────────────────────► Aside
+		//
+		// `Aside` still runs on a pass where `Body` is skipped, because its other
+		// input is live.
+		const skippedLastPass: WorkflowGraph = {
+			nodes: [
+				...looped.nodes.filter((node) => node.id !== 'done'),
+				{ id: 'aside', name: 'Aside', type: 'v1-node' },
+			],
+			edges: [
+				...looped.edges.filter((edge) => edge.to !== 'done'),
+				{ from: 'body', to: 'aside', outputIndex: 1, inputIndex: 0 },
+				{ from: 't', to: 'aside', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+
+		it('points a node after a loop at the last pass that was reported', () => {
+			const data = toV1RunExecutionData(skippedLastPass, [
+				step({ nodeId: 'loop', iteration: 0 }),
+				step({ id: 's2', nodeId: 'body', iteration: 0 }),
+				step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+				step({ id: 's4', nodeId: 'body', iteration: 1 }),
+				step({ id: 's5', nodeId: 'loop', iteration: 2 }),
+				// The last pass of the body ran nothing, so it gets no run data.
+				step({ id: 's6', nodeId: 'body', iteration: 2, status: 'skipped', outputs: null }),
+				step({ id: 's7', nodeId: 'aside', iteration: 0 }),
+			]);
+
+			// Pass 2 has no run, so naming it would name a run v1 cannot read.
+			expect(data.resultData.runData.Body).toHaveLength(2);
+			expect(data.resultData.runData.Aside[0].source[0]).toEqual({
+				previousNode: 'Body',
+				previousNodeOutput: 1,
+				previousNodeRun: 1,
+			});
 		});
 
 		it('points the loop entry at run 0, since the predecessor ran once', () => {

@@ -84,16 +84,19 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmExecutionViewStore.loadExecutionView throws for an unknown id', async () => {
-		const viewStore = new TypeOrmExecutionViewStore(
-			dataSource.getRepository(WorkflowExecution),
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
+		'TypeOrmExecutionViewStore.%s throws for an unknown id',
+		async (method) => {
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
 
-		await expect(
-			viewStore.loadExecutionView('00000000-0000-0000-0000-000000000000'),
-		).rejects.toBeInstanceOf(ExecutionNotFoundError);
-	});
+			await expect(
+				viewStore[method]('00000000-0000-0000-0000-000000000000'),
+			).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		},
+	);
 
 	it('counts rows by workflowId and status (admittance support)', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
