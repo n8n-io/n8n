@@ -95,12 +95,9 @@ describe('GET /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
 
-	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.get(`/executions/${executionId}`);
 
 			expect(response.statusCode).toBe(400);
@@ -273,8 +270,6 @@ describe('DELETE /executions/:id', () => {
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
 
 			expect(response.statusCode).toBe(400);
@@ -962,12 +957,9 @@ describe('GET /executions/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.get(`/executions/${executionId}/tags`);
 
 			expect(response.statusCode).toBe(400);
@@ -1024,12 +1016,9 @@ describe('PUT /executions/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.put(`/executions/${executionId}/tags`).send([]);
 
 			expect(response.statusCode).toBe(400);
