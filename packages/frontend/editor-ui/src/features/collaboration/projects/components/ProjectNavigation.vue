@@ -63,7 +63,7 @@ const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	icon: project.icon as IMenuItem['icon'],
 	route: {
 		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
+			name: VIEWS.PROJECT_HOME,
 			params: { projectId: project.id },
 		},
 	},
@@ -75,7 +75,7 @@ const personalProject = computed<IMenuItem>(() => ({
 	icon: 'user',
 	route: {
 		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
+			name: VIEWS.PROJECT_HOME,
 			params: { projectId: projectsStore.personalProject?.id },
 		},
 	},

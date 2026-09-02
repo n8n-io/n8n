@@ -11,6 +11,7 @@ const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
 	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
+const ProjectHome = async () => await import('./views/ProjectHome.vue');
 const ExecutionsView = async () =>
 	await import('@/features/execution/executions/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
@@ -129,13 +130,24 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				meta: {
 					middleware: ['authenticated'],
 				},
-				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
+				redirect: { name: VIEWS.PROJECT_HOME },
 				children: commonChildRoutes
 					.map((route, idx) => ({
 						...route,
 						name: commonChildRouteExtensions.projects[idx].name,
 					}))
 					.concat([
+						{
+							path: 'overview',
+							name: VIEWS.PROJECT_HOME,
+							component: ProjectHome,
+							meta: {
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => checkProjectAvailability(options?.to),
+								},
+							},
+						},
 						{
 							path: 'settings',
 							name: VIEWS.PROJECT_SETTINGS,

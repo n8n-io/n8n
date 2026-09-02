@@ -45,6 +45,7 @@ export const enum VIEWS {
 	WORKER_VIEW = 'WorkerView',
 	PROJECTS = 'Projects',
 	PROJECT_DETAILS = 'ProjectDetails',
+	PROJECT_HOME = 'ProjectHome',
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',

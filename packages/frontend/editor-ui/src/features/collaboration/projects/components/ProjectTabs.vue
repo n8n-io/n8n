@@ -47,6 +47,10 @@ const getRouteConfigs = () => {
 	// For project pages
 	if (projectId.value) {
 		return {
+			home: {
+				name: VIEWS.PROJECT_HOME,
+				params: { projectId: projectId.value },
+			},
 			workflows: {
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: projectId.value },
@@ -102,6 +106,7 @@ const createTab = (
 const options = computed<Array<TabOptions<string>>>(() => {
 	const routes = getRouteConfigs();
 	const tabs = [
+		...(projectId.value ? [createTab('projectHome.tab', 'home', routes)] : []),
 		createTab('mainSidebar.workflows', 'workflows', routes),
 		createTab('mainSidebar.credentials', 'credentials', routes),
 	];
