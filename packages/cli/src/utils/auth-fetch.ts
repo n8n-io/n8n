@@ -9,6 +9,7 @@ interface CreateAuthFetchOptions {
 	/** Proxy-aware base `fetch` every request routes through (see `createAiProxyFetch`). */
 	baseFetch: CustomFetch;
 	initialHeaders: Record<string, string>;
+	initialQuery?: Readonly<Record<string, string>>;
 	/**
 	 * Called on a 401 response. Should return a fresh set of auth headers, or
 	 * `null` if the refresh failed. The returned headers replace the cached
@@ -68,12 +69,14 @@ function assertDomainPolicyAllowsUrl(url: string, policy: AuthFetchDomainPolicy)
 export function createAuthFetch({
 	baseFetch,
 	initialHeaders,
+	initialQuery,
 	onUnauthorized,
 	allowedDomains,
 }: CreateAuthFetchOptions): typeof fetch {
 	return createRefreshingAuthFetch({
 		baseFetch,
 		initialHeaders,
+		...(initialQuery ? { initialQuery } : {}),
 		...(onUnauthorized ? { refreshHeaders: async () => await onUnauthorized() } : {}),
 		...(allowedDomains
 			? {

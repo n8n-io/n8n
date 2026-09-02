@@ -35,6 +35,7 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -208,6 +209,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly credentialsHelper: CredentialsHelper,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -497,6 +499,7 @@ export class AgentRuntimeReconstructionService {
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
+				credentialsHelper: this.credentialsHelper,
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,

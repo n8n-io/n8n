@@ -1,5 +1,6 @@
 import type { CredentialProvider, McpClient } from '@n8n/agents';
 import type { CustomFetch } from '@n8n/backend-network';
+import type { ICredentialsHelper } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -29,6 +30,7 @@ function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>
 		projectId: 'proj-1',
 		proxyFetch: vi.fn() as unknown as CustomFetch,
 		...overrides,
+		credentialsHelper: overrides.credentialsHelper ?? mock<ICredentialsHelper>(),
 	};
 }
 

@@ -14,7 +14,7 @@ export interface McpRegistryConnection {
 }
 
 export interface McpRegistryCredentialBinding {
-	credentialType: McpOAuth2CredentialType;
+	credentialType: string;
 	selector: string;
 }
 
@@ -25,7 +25,7 @@ export interface ResolvedMcpRegistryConnection {
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
-	credentialType: McpOAuth2CredentialType;
+	credentialType: string;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -34,15 +34,20 @@ export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: true;
 			value: McpRegistryConnection & {
-				credentialType: McpOAuth2CredentialType;
+				credentialType: string;
 				headers: Record<string, string>;
+				query?: Record<string, string>;
 				allowedDomains: string;
 			};
 	  }
 	| {
 			ok: false;
 			error: {
-				code: 'missing_access_token' | 'unsupported_credential' | 'not_registered';
+				code:
+					| 'invalid_authentication'
+					| 'missing_access_token'
+					| 'unsupported_credential'
+					| 'not_registered';
 				message: string;
 			};
 	  };
@@ -52,7 +57,9 @@ export interface McpRegistryRuntime {
 		nodeTypeName: string,
 		selector?: string,
 	): ResolvedMcpRegistryConnection | undefined;
-	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
+	prepareConnection(
+		input: PrepareMcpRegistryConnectionInput,
+	): PrepareMcpRegistryConnectionResult | Promise<PrepareMcpRegistryConnectionResult>;
 }
 
 /**

@@ -130,30 +130,38 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			if (typeof credentialType.authenticate === 'object') {
-				if (!workflow || !node) {
-					throw new UnexpectedError(
-						'Workflow and node are required for declarative credential authentication',
-					);
-				}
-				// Predefined authentication method
-
-				let keyResolved: string;
-				let valueResolved: string;
+				const expressionWorkflow =
+					workflow ??
+					new Workflow({
+						nodes: [mockNode],
+						connections: {},
+						active: false,
+						nodeTypes: mockNodeTypes,
+					});
+				const expressionNode = node ?? mockNode;
 				const { authenticate } = credentialType;
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
 
-				if (authenticate.type === 'generic') {
-					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
-						Object.entries(outerValue).forEach(([key, value]) => {
-							keyResolved = this.resolveValue(key, { $credentials: credentials }, workflow, node);
+				if (!workflow) await expressionWorkflow.expression.acquireIsolate();
+				try {
+					if (authenticate.type !== 'generic') return requestOptions as IHttpRequestOptions;
 
-							valueResolved = this.resolveValue(
+					for (const [outerKey, outerValue] of Object.entries(authenticate.properties)) {
+						Object.entries(outerValue).forEach(([key, value]) => {
+							const keyResolved = this.resolveValue(
+								key,
+								{ $credentials: credentials },
+								expressionWorkflow,
+								expressionNode,
+							);
+
+							const valueResolved = this.resolveValue(
 								value as string,
 								{ $credentials: credentials },
-								workflow,
-								node,
+								expressionWorkflow,
+								expressionNode,
 							);
 
 							// @ts-expect-error dynamic key on request options
@@ -164,7 +172,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
-					});
+					}
+				} finally {
+					if (!workflow) await expressionWorkflow.expression.releaseIsolate();
 				}
 			}
 		}

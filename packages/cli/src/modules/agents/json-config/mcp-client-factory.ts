@@ -3,7 +3,11 @@ import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsHelper,
+	McpRegistryConnection,
+} from 'n8n-workflow';
 
 import {
 	prepareMcpRegistryConnection,
@@ -84,6 +88,13 @@ function isNativeOAuth2Credential(authentication: string): boolean {
 	);
 }
 
+function withQuery(url: string, query: Record<string, string> | undefined): string {
+	if (!query) return url;
+	const parsed = new URL(url);
+	for (const [name, value] of Object.entries(query)) parsed.searchParams.set(name, value);
+	return parsed.toString();
+}
+
 function resolveMcpDomainPolicy(
 	server: AgentJsonMcpServerConfig,
 	credentialData: ICredentialDataDecryptedObject,
@@ -105,6 +116,7 @@ function resolveMcpDomainPolicy(
 
 export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider;
+	credentialsHelper: Pick<ICredentialsHelper, 'authenticate'>;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens on a 401 response without an
@@ -138,6 +150,7 @@ export async function buildMcpClientForServer(
 ): Promise<McpClient> {
 	const {
 		credentialProvider,
+		credentialsHelper,
 		oauthService,
 		projectId,
 		proxyFetch,
@@ -149,6 +162,7 @@ export async function buildMcpClientForServer(
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
 	const { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
+	let initialQuery: Record<string, string> | undefined;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
 	const nativeMcpHostname =
@@ -167,22 +181,21 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
-			if (
-				!connection ||
-				!credentialData ||
-				!credentialType ||
-				!isMcpOAuth2Authentication(credentialType)
-			) {
+			if (!connection || !credentialData || !credentialType) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
-			const prepared = prepareMcpRegistryConnection({
-				connection,
-				credentialType,
-				credentialData,
-			});
+			const prepared = await prepareMcpRegistryConnection(
+				{
+					connection,
+					credentialType,
+					credentialData,
+				},
+				credentialsHelper,
+			);
 			if (!prepared.ok) throw new OperationalError(prepared.error.message);
 			initialHeaders = prepared.value.headers;
-			runtimeUrl = prepared.value.endpointUrl;
+			initialQuery = prepared.value.query;
+			runtimeUrl = withQuery(prepared.value.endpointUrl, prepared.value.query);
 			runtimeTransport = toAgentMcpTransport(prepared.value.transport);
 			allowedDomains = { mode: 'domains', domains: prepared.value.allowedDomains };
 		} catch (error) {
@@ -216,6 +229,7 @@ export async function buildMcpClientForServer(
 		: createAuthFetch({
 				baseFetch: proxyFetch,
 				initialHeaders,
+				initialQuery,
 				onUnauthorized,
 				allowedDomains,
 			});

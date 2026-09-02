@@ -42,6 +42,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -295,6 +296,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly credentialsHelper: CredentialsHelper,
 	) {}
 
 	/**
@@ -941,6 +943,7 @@ export class AgentsBuilderToolsService {
 			buildVerifyMcpServerTool({
 				agentId,
 				credentialProvider,
+				credentialsHelper: this.credentialsHelper,
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: createAiMcpFetch(this.outboundHttp),

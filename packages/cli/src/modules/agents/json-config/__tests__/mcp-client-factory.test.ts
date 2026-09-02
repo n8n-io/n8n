@@ -2,7 +2,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { UserError, type ICredentialsHelper } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
@@ -29,6 +29,7 @@ vi.mock('@n8n/agents', () => ({
 // Stands in for the proxy-aware transport fetch the caller injects via deps.
 const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
+const defaultCredentialsHelper = mock<ICredentialsHelper>();
 
 function headersToCaseInsensitiveRecord(headers: HeadersInit | undefined): Record<string, string> {
 	const values = Object.fromEntries(new Headers(headers).entries());
@@ -98,6 +99,7 @@ describe('buildMcpClientForServer — header derivation', () => {
 
 		await buildMcpClientForServer(server, {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -156,6 +158,52 @@ describe('buildMcpClientForServer — header derivation', () => {
 	});
 });
 
+describe('buildMcpClientForServer — registry declarative authentication', () => {
+	it('applies headers and query parameters from the credential type', async () => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'secret' });
+		const credentialsHelper = mock<ICredentialsHelper>();
+		credentialsHelper.authenticate.mockResolvedValue({
+			url: 'https://example.test/mcp',
+			headers: { Authorization: 'Bearer secret' },
+			qs: { api_key: 'secret' },
+		});
+
+		await buildMcpClientForServer(
+			makeServer({
+				authentication: 'firecrawlApi',
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+			}),
+			{
+				credentialProvider,
+				credentialsHelper,
+				oauthService: mock<OauthService>(),
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.firecrawl',
+					endpointUrl: 'https://example.test/mcp',
+					endpointHostname: 'example.test',
+					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType: 'firecrawlApi', selector: 'firecrawlApi' }],
+				}),
+			},
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch; url: string }>];
+		await configs[0].fetch(configs[0].url);
+
+		const [rawInput, init] = proxyFetchMock.mock.calls.at(-1) as [RequestInfo | URL, RequestInit];
+		const inputUrl = new URL(rawInput instanceof Request ? rawInput.url : rawInput);
+		expect(inputUrl.searchParams.get('api_key')).toBe('secret');
+		expect(new Headers(init.headers).get('authorization')).toBe('Bearer secret');
+	});
+});
+
 // ---------------------------------------------------------------------------
 // buildMcpClientForServer — OAuth2 refresh path
 // ---------------------------------------------------------------------------
@@ -181,7 +229,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -207,7 +255,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -241,6 +289,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			}),
 			{
 				credentialProvider,
+				credentialsHelper: mock<ICredentialsHelper>(),
 				oauthService,
 				projectId: 'proj-1',
 				proxyFetch,
@@ -268,6 +317,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 
 		await buildMcpClientForServer(makeServer(), {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -284,6 +334,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 
 		await buildMcpClientForServer(makeServer(), {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -306,6 +357,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 
 		await buildMcpClientForServer(makeServer(), {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -334,6 +386,7 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 
 		await buildMcpClientForServer(server, {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -439,6 +492,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 			}),
 			{
 				credentialProvider,
+				credentialsHelper: mock<ICredentialsHelper>(),
 				oauthService,
 				projectId: 'proj-1',
 				proxyFetch,
@@ -470,6 +524,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 		// credential field intentionally absent
 		await buildMcpClientForServer(makeServer({ authentication: 'mcpOAuth2Api' }), {
 			credentialProvider,
+			credentialsHelper: mock<ICredentialsHelper>(),
 			oauthService,
 			projectId: 'proj-1',
 			proxyFetch,
@@ -504,7 +559,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -526,7 +581,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 				credential: 'cred-1',
 				url: 'https://api.githubcopilot.com/mcp/',
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -549,7 +604,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 				credential: 'cred-1',
 				url: 'https://example.test/mcp',
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -569,6 +624,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		await expect(
 			buildMcpClientForServer(makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }), {
 				credentialProvider,
+				credentialsHelper: mock<ICredentialsHelper>(),
 				oauthService,
 				projectId: 'proj-1',
 				proxyFetch,
@@ -590,7 +646,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -608,6 +664,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		await expect(
 			buildMcpClientForServer(makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }), {
 				credentialProvider,
+				credentialsHelper: mock<ICredentialsHelper>(),
 				oauthService,
 				projectId: 'proj-1',
 				proxyFetch,
@@ -622,6 +679,7 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		await expect(
 			buildMcpClientForServer(makeServer({ authentication: 'none' }), {
 				credentialProvider,
+				credentialsHelper: mock<ICredentialsHelper>(),
 				oauthService,
 				projectId: 'proj-1',
 				proxyFetch,
@@ -651,7 +709,7 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{ credentialProvider, credentialsHelper: defaultCredentialsHelper, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -669,6 +727,7 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 describe('listMcpServerTools', () => {
 	const deps = () => ({
 		credentialProvider: mock<CredentialProvider>(),
+		credentialsHelper: defaultCredentialsHelper,
 		oauthService: mock<OauthService>(),
 		projectId: 'proj-1',
 		proxyFetch,

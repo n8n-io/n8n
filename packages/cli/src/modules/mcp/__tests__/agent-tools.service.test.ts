@@ -26,6 +26,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import type { EventService } from '@/events/event.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -160,6 +161,7 @@ describe('McpAgentToolsService', () => {
 		outboundHttp,
 		urlService,
 		projectScopeService,
+		mockInstance(CredentialsHelper),
 	);
 
 	let tools: Map<string, RegisteredTool>;

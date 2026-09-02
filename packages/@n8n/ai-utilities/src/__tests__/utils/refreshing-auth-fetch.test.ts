@@ -19,6 +19,7 @@ describe('createRefreshingAuthFetch', () => {
 		const fetchWithAuth = createRefreshingAuthFetch({
 			baseFetch,
 			initialHeaders: { Authorization: 'Bearer token' },
+			initialQuery: { api_key: 'secret' },
 		});
 
 		await fetchWithAuth(request);
@@ -26,6 +27,7 @@ describe('createRefreshingAuthFetch', () => {
 		const [input, init] = baseFetch.mock.calls[0] as [Request, RequestInit];
 		expect(input).toBeInstanceOf(Request);
 		expect(input.method).toBe('POST');
+		expect(new URL(input.url).searchParams.get('api_key')).toBe('secret');
 		expect(await input.text()).toBe('payload');
 		const headers = new Headers(init.headers);
 		expect(headers.get('x-request')).toBe('value');
@@ -62,6 +64,27 @@ describe('createRefreshingAuthFetch', () => {
 		expect(headers.get('x-api-key')).toBe('secret');
 		expect(headers.get('cookie')).toBe('session=secret');
 		expect(headers.get('x-request')).toBe('value');
+	});
+
+	it('adds auth query parameters to the initial request and redirect', async () => {
+		const baseFetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeRedirect('https://redirected.example/mcp?cursor=next'))
+			.mockResolvedValueOnce(new Response('ok'));
+		const fetchWithAuth = createRefreshingAuthFetch({
+			baseFetch,
+			initialQuery: { api_key: 'secret' },
+			assertAllowedUrl: vi.fn(),
+		});
+
+		await fetchWithAuth('https://example.com/mcp?existing=value');
+
+		const [firstInput] = baseFetch.mock.calls[0] as [URL];
+		const [secondInput] = baseFetch.mock.calls[1] as [URL];
+		expect(firstInput.searchParams.get('existing')).toBe('value');
+		expect(firstInput.searchParams.get('api_key')).toBe('secret');
+		expect(secondInput.searchParams.get('cursor')).toBe('next');
+		expect(secondInput.searchParams.get('api_key')).toBe('secret');
 	});
 
 	describe('401 handling', () => {

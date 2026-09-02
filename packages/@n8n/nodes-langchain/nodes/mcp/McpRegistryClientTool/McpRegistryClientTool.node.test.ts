@@ -411,10 +411,10 @@ describe('McpRegistryClientTool', () => {
 	});
 
 	describe('prepareConnection', () => {
-		it('reports not_registered when the registry runtime is missing', () => {
+		it('reports not_registered when the registry runtime is missing', async () => {
 			new McpRegistryClientTool().setRegistryRuntime(undefined);
 
-			expect(
+			await expect(
 				McpRegistryClientTool.prepareConnection({
 					connection: {
 						nodeTypeName: '@n8n/mcp-registry.notion',
@@ -426,7 +426,7 @@ describe('McpRegistryClientTool', () => {
 					credentialType: 'someServiceMcpOAuth2Api',
 					credentialData: { oauthTokenData: { access_token: 'token' } },
 				}),
-			).toEqual({
+			).resolves.toEqual({
 				ok: false,
 				error: {
 					code: 'not_registered',

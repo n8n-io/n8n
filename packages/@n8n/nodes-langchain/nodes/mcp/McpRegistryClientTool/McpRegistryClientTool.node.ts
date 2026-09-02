@@ -7,7 +7,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
-	type McpOAuth2CredentialType,
 	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
@@ -45,17 +44,18 @@ export class McpRegistryClientTool implements INodeType {
 		throw new NodeOperationError(node, 'MCP registry connection is not registered');
 	}
 
-	static prepareConnection(
+	static async prepareConnection(
 		input: PrepareMcpRegistryConnectionInput,
-	): PrepareMcpRegistryConnectionResult {
-		return (
-			this.registryRuntime?.prepareConnection(input) ?? {
+	): Promise<PrepareMcpRegistryConnectionResult> {
+		return await (
+			this.registryRuntime?.prepareConnection(input) ??
+			Promise.resolve<PrepareMcpRegistryConnectionResult>({
 				ok: false,
 				error: {
 					code: 'not_registered',
 					message: 'MCP registry connection is not registered',
 				},
-			}
+			})
 		);
 	}
 	description: INodeTypeDescription = {
@@ -191,7 +191,8 @@ export class McpRegistryClientTool implements INodeType {
 					registryCredential: {
 						connection: resolved.connection,
 						credentialType: authentication,
-						prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
+						prepareConnection: async (input) =>
+							await McpRegistryClientTool.prepareConnection(input),
 					},
 					timeout: this.getNodeParameter('options.timeout', 60000) as number,
 				});
@@ -226,7 +227,7 @@ function resolveConfig(
 		registryCredential: {
 			connection: resolved.connection,
 			credentialType: authentication,
-			prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
+			prepareConnection: async (input) => await McpRegistryClientTool.prepareConnection(input),
 		},
 		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
 		toolFilter: {
@@ -240,7 +241,7 @@ function resolveConfig(
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 	resolved: ResolvedMcpRegistryConnection,
-): McpOAuth2CredentialType {
+): string {
 	const node = ctx.getNode();
 	const { credentialType } = resolved.binding;
 	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {

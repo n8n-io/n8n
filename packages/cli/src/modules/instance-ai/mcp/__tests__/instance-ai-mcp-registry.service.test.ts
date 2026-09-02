@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -41,6 +42,10 @@ vi.mock('@n8n/agents', () => ({
 			listTools: mcpClientListToolsMock,
 		};
 	}),
+}));
+
+vi.mock('@/workflow-execute-additional-data.js', () => ({
+	getBase: vi.fn().mockResolvedValue({}),
 }));
 
 // Stands in for the proxy-aware transport fetch the service builds from its
@@ -97,6 +102,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		const mcpRegistryService = mock<McpRegistryService>();
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		const credentialsService = mock<CredentialsService>();
+		const credentialsHelper = mock<CredentialsHelper>();
+		credentialsHelper.getDecrypted.mockImplementation(
+			async () => await credentialsService.decrypt(credential, true),
+		);
 		const credentialTypes = mock<CredentialTypes>();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialTypes.getParentTypes.mockReturnValue(['mcpOAuth2Api', 'oAuth2Api']);
@@ -117,7 +126,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			connectionRepository,
 			mcpRegistryService,
 			credentialsFinderService,
-			credentialsService,
+			credentialsHelper,
 			credentialTypes,
 			oauthService,
 			eventService,
@@ -131,6 +140,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			mcpRegistryService,
 			credentialsFinderService,
 			credentialsService,
+			credentialsHelper,
 			credentialTypes,
 			oauthService,
 			eventService,
@@ -268,6 +278,56 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(outboundHttp.transport).toHaveBeenCalledWith(
 			expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 		);
+	});
+
+	it('applies declarative headers and query parameters', async () => {
+		const {
+			service,
+			connectionRepository,
+			mcpRegistryService,
+			credentialsFinderService,
+			credentialsHelper,
+			credentialTypes,
+		} = createService();
+		const firecrawlCredential = {
+			...credential,
+			type: 'firecrawlApi',
+		} as CredentialsEntity;
+		connectionRepository.findBy.mockResolvedValue([
+			{ id: '1', userId: user.id, serverSlug: 'firecrawl', credentialId: credential.id },
+		] as InstanceAiMcpRegistryConnection[]);
+		mcpRegistryService.getBySlugs.mockResolvedValue([
+			makeRegistryServer('firecrawl', {
+				usesCredentials: [
+					{ credentialType: 'firecrawlApi', name: 'Firecrawl API', value: 'firecrawlApi' },
+				],
+			}),
+		]);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(firecrawlCredential);
+		credentialTypes.getParentTypes.mockReturnValue([]);
+		credentialTypes.getByName.mockReturnValue({
+			name: 'firecrawlApi',
+			displayName: 'Firecrawl API',
+			properties: [],
+			authenticate: {
+				type: 'generic',
+				properties: { headers: { Authorization: '=Bearer {{$credentials.apiKey}}' } },
+			},
+		});
+		credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'secret' });
+		credentialsHelper.authenticate.mockResolvedValue({
+			url: 'https://firecrawl.example.com/mcp',
+			headers: { Authorization: 'Bearer secret' },
+			qs: { api_key: 'secret' },
+		});
+		proxyFetchMock.mockResolvedValue(new Response('ok'));
+
+		const [server] = await service.getRegistryMcpServers(user);
+		await server.fetch?.('https://firecrawl.example.com/mcp');
+
+		const [input, init] = proxyFetchMock.mock.calls[0] as [URL, RequestInit];
+		expect(input.searchParams.get('api_key')).toBe('secret');
+		expect(new Headers(init.headers).get('authorization')).toBe('Bearer secret');
 	});
 
 	it('skips connections with missing server slugs or unsupported remotes', async () => {

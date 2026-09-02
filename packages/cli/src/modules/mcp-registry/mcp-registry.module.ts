@@ -3,6 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { CredentialsHelper } from '@/credentials-helper';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @BackendModule({ name: 'mcp-registry' })
@@ -27,7 +28,11 @@ export class McpRegistryModule implements ModuleInterface {
 		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader.js');
 
 		return [
-			new McpRegistryNodeLoader(Container.get(LoadNodesAndCredentials), Container.get(Logger)),
+			new McpRegistryNodeLoader(
+				Container.get(LoadNodesAndCredentials),
+				Container.get(Logger),
+				() => Container.get(CredentialsHelper),
+			),
 		];
 	}
 }

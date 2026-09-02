@@ -15,6 +15,7 @@ import {
 export interface VerifyMcpServerDeps {
 	agentId?: string;
 	credentialProvider: CredentialProvider;
+	credentialsHelper: BuildMcpClientDeps['credentialsHelper'];
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;

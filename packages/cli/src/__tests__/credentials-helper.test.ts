@@ -900,6 +900,37 @@ describe('CredentialsHelper', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		test('resolves declarative authentication without a workflow context', async () => {
+			const credentialType: ICredentialType = {
+				name: 'standaloneApi',
+				displayName: 'Standalone API',
+				properties: [],
+				authenticate: {
+					type: 'generic',
+					properties: {
+						headers: { Authorization: '=Bearer {{$credentials.apiKey}}' },
+						qs: { api_key: '={{$credentials.apiKey}}' },
+					},
+				},
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+
+			const result = await credentialsHelper.authenticate(
+				{ apiKey: 'secret' },
+				credentialType.name,
+				deepCopy(incomingRequestOptions),
+			);
+
+			expect(result).toEqual({
+				url: '',
+				headers: { Authorization: 'Bearer secret' },
+				qs: { api_key: 'secret' },
+			});
+		});
 	});
 
 	describe('updateCredentialsOauthTokenData', () => {

@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -406,6 +407,7 @@ export class McpAgentToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly credentialsHelper: CredentialsHelper,
 	) {}
 
 	/**
@@ -1626,6 +1628,7 @@ export class McpAgentToolsService {
 			},
 			{
 				credentialProvider,
+				credentialsHelper: this.credentialsHelper,
 				oauthService: this.oauthService,
 				projectId: input.projectId,
 				proxyFetch: createAiMcpFetch(this.outboundHttp),

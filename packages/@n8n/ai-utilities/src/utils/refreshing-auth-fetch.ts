@@ -3,6 +3,7 @@ import { fetchFollowingRedirects } from './follow-redirects';
 export interface RefreshingAuthFetchOptions {
 	baseFetch: typeof fetch;
 	initialHeaders?: HeadersInit;
+	initialQuery?: Readonly<Record<string, string>>;
 	refreshHeaders?: (current: Headers) => Promise<HeadersInit | null>;
 	assertAllowedUrl?: (url: string) => void | Promise<void>;
 }
@@ -17,9 +18,21 @@ function getInputHeaders(input: RequestInfo | URL, init?: RequestInit): HeadersI
 	return init?.headers ?? (input instanceof Request ? input.headers : undefined);
 }
 
+function mergeQuery(
+	input: RequestInfo | URL,
+	query: Readonly<Record<string, string>>,
+): RequestInfo | URL {
+	if (Object.keys(query).length === 0) return input;
+	const inputUrl = input instanceof Request ? input.url : input;
+	const url = new URL(inputUrl);
+	for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
+	return input instanceof Request ? new Request(url, input) : url;
+}
+
 export function createRefreshingAuthFetch({
 	baseFetch,
 	initialHeaders,
+	initialQuery = {},
 	refreshHeaders,
 	assertAllowedUrl,
 }: RefreshingAuthFetchOptions): typeof fetch {
@@ -48,12 +61,13 @@ export function createRefreshingAuthFetch({
 			requestInput: RequestInfo | URL,
 			requestInit?: RequestInit,
 		): Promise<Response> => {
+			const inputWithQuery = mergeQuery(requestInput, initialQuery);
 			const requestAuthVersion = authVersion;
 			const execute = async () =>
-				await baseFetch(requestInput instanceof Request ? requestInput.clone() : requestInput, {
+				await baseFetch(inputWithQuery instanceof Request ? inputWithQuery.clone() : inputWithQuery, {
 					...requestInit,
 					// Include auth headers for redirect requests too
-					headers: mergeHeaders(getInputHeaders(requestInput, requestInit), authHeaders),
+					headers: mergeHeaders(getInputHeaders(inputWithQuery, requestInit), authHeaders),
 				});
 
 			const response = await execute();

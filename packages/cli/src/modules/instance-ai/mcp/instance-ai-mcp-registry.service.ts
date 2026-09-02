@@ -12,12 +12,12 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { isMcpOAuth2Authentication, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -118,7 +118,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly connectionRepository: InstanceAiMcpRegistryConnectionRepository,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly credentialsService: CredentialsService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
@@ -452,11 +452,14 @@ export class InstanceAiMcpRegistryService {
 			});
 			return null;
 		}
-		const prepared = prepareMcpRegistryConnection({
-			connection: config.connection,
-			credentialType,
-			credentialData: credentialWithData.data,
-		});
+		const prepared = await prepareMcpRegistryConnection(
+			{
+				connection: config.connection,
+				credentialType,
+				credentialData: credentialWithData.data,
+			},
+			this.credentialsHelper,
+		);
 		if (!prepared.ok) {
 			this.logger.warn('Skipping MCP registry connection with invalid credential', {
 				connectionId,
@@ -471,10 +474,18 @@ export class InstanceAiMcpRegistryService {
 		return createAuthFetch({
 			baseFetch,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async () =>
-				projectId
-					? await this.oauthService.refreshOAuth2CredentialById(config.credentialId, projectId)
-					: null,
+			initialQuery: prepared.value.query,
+			...(isMcpOAuth2Authentication(credentialType)
+				? {
+						onUnauthorized: async () =>
+							projectId
+								? await this.oauthService.refreshOAuth2CredentialById(
+										config.credentialId,
+										projectId,
+									)
+								: null,
+					}
+				: {}),
 			allowedDomains: {
 				mode: 'domains',
 				domains: prepared.value.allowedDomains,
@@ -495,7 +506,15 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
+		const projectId = credential.shared?.[0]?.projectId;
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({ userId: user.id, projectId });
+		const data = await this.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
 		if (!isObjectLiteral(data) || Object.keys(data).length === 0) {
 			return null;
 		}

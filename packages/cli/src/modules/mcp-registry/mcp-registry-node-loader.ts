@@ -18,6 +18,7 @@ import {
 } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { CredentialsHelper } from '@/credentials-helper';
 
 import {
 	LANGCHAIN_PACKAGE_NAME,
@@ -71,6 +72,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
+		private readonly getCredentialsHelper: () => CredentialsHelper,
 	) {}
 
 	setServers(servers: McpRegistryServer[]): void {
@@ -150,7 +152,8 @@ export class McpRegistryNodeLoader implements NodeLoader {
 							: connection.credentialBindings.find((candidate) => candidate.selector === selector);
 					return binding ? { connection, binding } : undefined;
 				},
-				prepareConnection: prepareMcpRegistryConnection,
+				prepareConnection: async (input) =>
+					await prepareMcpRegistryConnection(input, this.getCredentialsHelper()),
 			});
 		}
 	}

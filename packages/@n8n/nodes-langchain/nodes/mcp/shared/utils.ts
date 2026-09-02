@@ -8,7 +8,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	McpOAuth2CredentialType,
 	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
@@ -147,6 +146,7 @@ export function mapToNodeOperationError(
  */
 export async function connectMcpClient({
 	headers,
+	query,
 	serverTransport,
 	endpointUrl,
 	name,
@@ -159,6 +159,7 @@ export async function connectMcpClient({
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
 	headers?: Record<string, string>;
+	query?: Record<string, string>;
 	name: string;
 	version: number;
 	onUnauthorized?: OnUnauthorizedHandler;
@@ -181,7 +182,13 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, secureEgressFilter, onUnauthorized, allowedDomains);
+	const authFetch = createAuthFetch(
+		headers,
+		query,
+		secureEgressFilter,
+		onUnauthorized,
+		allowedDomains,
+	);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -302,6 +309,7 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
+	initialQuery: Record<string, string> | undefined,
 	secureEgressFilter: NodeEgressFilter,
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
@@ -310,6 +318,7 @@ function createAuthFetch(
 	return createRefreshingAuthFetch({
 		baseFetch: async (input, init) => await proxyFetch({ input, init, lookup: secureLookup }),
 		initialHeaders,
+		...(initialQuery ? { initialQuery } : {}),
 		...(onUnauthorized
 			? {
 					refreshHeaders: async (current: Headers) =>
@@ -436,28 +445,38 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
-			credentialType: McpOAuth2CredentialType;
+			credentialType: string;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
-			): PrepareMcpRegistryConnectionResult;
+			): PrepareMcpRegistryConnectionResult | Promise<PrepareMcpRegistryConnectionResult>;
 		};
 		surface: string;
 		signal?: AbortSignal;
 	},
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
-	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const standardAuth = await getAuthHeaders(ctx, config.authentication);
+	const credentials =
+		config.registryCredential && !standardAuth.credentials
+			? await ctx
+					.getCredentials<ICredentialDataDecryptedObject>(
+						config.registryCredential.credentialType,
+					)
+					.catch(() => null)
+			: standardAuth.credentials;
+	const { headers } = standardAuth;
 	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
 	let endpointUrl = config.endpointUrl;
 	let serverTransport = config.serverTransport;
 	let authHeaders = headers;
+	let authQuery: Record<string, string> | undefined;
 	let allowedDomains: string | undefined;
 
 	if (config.registryCredential) {
 		if (!credentials) {
-			throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+			throw new NodeOperationError(node, 'No MCP credential found');
 		}
-		const prepared = config.registryCredential.prepareConnection({
+		const prepared = await config.registryCredential.prepareConnection({
 			connection: config.registryCredential.connection,
 			credentialType: config.registryCredential.credentialType,
 			credentialData: credentials,
@@ -469,6 +488,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl = prepared.value.endpointUrl;
 		serverTransport = prepared.value.transport;
 		authHeaders = prepared.value.headers;
+		authQuery = prepared.value.query;
 		allowedDomains = prepared.value.allowedDomains;
 	} else if (credentials) {
 		allowedDomains = assertCredentialAllowsUrl({
@@ -483,6 +503,7 @@ export async function connectMcpClientForCredential(
 		serverTransport,
 		endpointUrl,
 		headers: authHeaders,
+		query: authQuery,
 		allowedDomains,
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
 		name: node.type,

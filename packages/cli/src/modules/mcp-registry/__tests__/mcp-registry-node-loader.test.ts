@@ -3,9 +3,11 @@ import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-
 import type { INodeType, INodeTypeDescription, NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsHelper } from '@/credentials-helper';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const logger = mock<Logger>();
+const credentialsHelper = mock<CredentialsHelper>();
 
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import {
@@ -110,16 +112,31 @@ describe('McpRegistryNodeLoader', () => {
 	describe('packageName', () => {
 		it('matches MCP_REGISTRY_PACKAGE_NAME', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 
 			expect(loader.packageName).toBe(MCP_REGISTRY_PACKAGE_NAME);
+		});
+
+		it('does not resolve credential services while loading node types', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const getCredentialsHelper = vi.fn(() => credentialsHelper);
+			const loader = new McpRegistryNodeLoader(
+				loadNodesAndCredentials,
+				logger,
+				getCredentialsHelper,
+			);
+			loader.setServers([notionMockServer]);
+
+			await loader.loadAll();
+
+			expect(getCredentialsHelper).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('loadAll', () => {
 		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
 			const { loadNodesAndCredentials, baseNode, sourcePath } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -166,7 +183,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -185,7 +202,7 @@ describe('McpRegistryNodeLoader', () => {
 				remotes: [],
 			};
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer, unsupportedServer]);
 
 			await loader.loadAll();
@@ -204,7 +221,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				withLangchainLoader: false,
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -217,7 +234,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				withBaseNode: false,
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -228,7 +245,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('resets prior state before loading', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -242,7 +259,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['slackOAuth2Api'],
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([slackExtendingMockServer]);
 
 			await loader.loadAll();
@@ -270,7 +287,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['gmailOAuth2'],
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([gmailDirectExtendMockServer]);
 
 			await loader.loadAll();
@@ -305,7 +322,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['githubOAuth2Api', 'githubApi'],
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([githubUsesCredentialsMockServer]);
 
 			await loader.loadAll();
@@ -343,7 +360,7 @@ describe('McpRegistryNodeLoader', () => {
 					authUrl: 'https://example.com/oauth/authorize',
 				},
 			};
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([prototypeKeyServer]);
 
 			await loader.loadAll();
@@ -356,7 +373,7 @@ describe('McpRegistryNodeLoader', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: [],
 			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([slackExtendingMockServer]);
 
 			await loader.loadAll();
@@ -372,7 +389,7 @@ describe('McpRegistryNodeLoader', () => {
 				slug: 'deprecated-server',
 				status: 'deprecated',
 			};
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([deprecatedServer]);
 
 			await loader.loadAll();
@@ -385,7 +402,7 @@ describe('McpRegistryNodeLoader', () => {
 	describe('getNode', () => {
 		it('returns the synthetic LoadedClass for a known type', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 			await loader.loadAll();
 
@@ -397,7 +414,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('throws UnrecognizedNodeTypeError for an unknown type', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 
 			expect(() => loader.getNode('unknown')).toThrow(UnrecognizedNodeTypeError);
 		});
@@ -406,7 +423,7 @@ describe('McpRegistryNodeLoader', () => {
 	describe('getCredential', () => {
 		it('returns the credential for a known credential type', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.loadAll();
@@ -418,7 +435,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('throws UnrecognizedCredentialTypeError for an unknown credential type', () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 
 			expect(() => loader.getCredential('unknown')).toThrow(UnrecognizedCredentialTypeError);
 		});
@@ -427,7 +444,7 @@ describe('McpRegistryNodeLoader', () => {
 	describe('state management', () => {
 		it('reset clears known, types, and registered node types', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 			await loader.loadAll();
 
@@ -446,7 +463,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('releaseTypes only clears types', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 			await loader.loadAll();
 
@@ -460,7 +477,7 @@ describe('McpRegistryNodeLoader', () => {
 
 		it('ensureTypesLoaded calls loadAll only when types are empty', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger, () => credentialsHelper);
 			loader.setServers([notionMockServer]);
 
 			await loader.ensureTypesLoaded();
