@@ -139,7 +139,6 @@ describe('FrontendService', () => {
 		getTeamProjectLimit: vi.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: vi.fn().mockReturnValue(false),
 		isAiAssistantEnabled: vi.fn().mockReturnValue(false),
-		isAskAiEnabled: vi.fn().mockReturnValue(false),
 		isAiCreditsEnabled: vi.fn().mockReturnValue(false),
 		getAiCredits: vi.fn().mockReturnValue(0),
 		isFoldersEnabled: vi.fn().mockReturnValue(false),

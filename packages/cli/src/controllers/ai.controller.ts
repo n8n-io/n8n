@@ -6,7 +6,6 @@ import type {
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
-	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
@@ -196,24 +195,6 @@ export class AiController {
 		try {
 			return await this.aiService.applySuggestion(payload, req.user);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
-		}
-	}
-
-	@Post('/ask-ai')
-	async askAi(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiAskRequestDto,
-	): Promise<AiAssistantSDK.AskAiResponsePayload> {
-		try {
-			return await this.aiService.askAi(payload, req.user);
-		} catch (e) {
-			if (e instanceof APIResponseError) {
-				throw this.toAiAssistantResponseError(e);
-			}
-
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}

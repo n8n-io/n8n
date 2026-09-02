@@ -4,7 +4,6 @@ import { N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -16,27 +15,16 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 
-const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
 
 const allowSendingSchema = ref(true);
 
-const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
 const isBuilderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
-const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
-const aiSettingsDescription = computed(() => {
-	if (isAssistantEnabled.value && isAskAiEnabled.value) {
-		return i18n.baseText('settings.ai.description.both');
-	} else if (isAssistantEnabled.value) {
-		return i18n.baseText('settings.ai.description.assistantOnly');
-	} else if (isAskAiEnabled.value) {
-		return i18n.baseText('settings.ai.description.askAiOnly');
-	}
-	// Fallback to 'both' if neither is enabled (edge case)
-	return i18n.baseText('settings.ai.description.both');
-});
+const aiSettingsDescription = computed(() =>
+	i18n.baseText('settings.ai.description.assistantOnly'),
+);
 
 const confirmationMessage = computed(() => {
 	if (isBuilderEnabled.value) {

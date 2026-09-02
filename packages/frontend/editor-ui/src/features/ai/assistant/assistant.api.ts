@@ -2,11 +2,7 @@ import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAI
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/app/constants';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type {
-	AskAiRequest,
-	ChatRequest,
-	ReplaceCodeRequest,
-} from '@/features/ai/assistant/assistant.types';
+import type { ChatRequest, ReplaceCodeRequest } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/app/utils/objectUtils';
 import type {
@@ -82,18 +78,6 @@ export async function replaceCode(
 		'/ai/chat/apply-suggestion',
 		data,
 	);
-}
-
-export async function generateCodeForPrompt(
-	ctx: IRestApiContext,
-	{ question, context, forNode }: AskAiRequest.RequestPayload,
-): Promise<{ code: string }> {
-	const body: IDataObject = {
-		question,
-		context,
-		forNode,
-	};
-	return await makeRestApiRequest(ctx, 'POST', '/ai/ask-ai', body);
 }
 
 export async function claimFreeAiCredits(

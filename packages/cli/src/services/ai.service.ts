@@ -1,8 +1,4 @@
-import type {
-	AiApplySuggestionRequestDto,
-	AiAskRequestDto,
-	AiChatRequestDto,
-} from '@n8n/api-types';
+import type { AiApplySuggestionRequestDto, AiChatRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -63,11 +59,6 @@ export class AiService {
 	async applySuggestion(payload: AiApplySuggestionRequestDto, user: IUser) {
 		const client = await this.getClient();
 		return await client.applySuggestion(payload, { id: user.id });
-	}
-
-	async askAi(payload: AiAskRequestDto, user: IUser) {
-		const client = await this.getClient();
-		return await client.askAi(payload, { id: user.id });
 	}
 
 	/** Whether the AI service proxy is enabled (license + base URL configured). */

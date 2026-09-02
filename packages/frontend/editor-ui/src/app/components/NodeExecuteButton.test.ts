@@ -27,7 +27,6 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@n8n/composables/useToast';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -108,7 +107,6 @@ let ndvStore: MockedStore<typeof useNDVStore>;
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
 let message: ReturnType<typeof useMessage>;
-let toast: ReturnType<typeof useToast>;
 let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 let nodeViewEventBusEmitSpy: ReturnType<typeof vi.spyOn>;
 
@@ -139,7 +137,6 @@ describe('NodeExecuteButton', () => {
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();
 		message = useMessage();
-		toast = useToast();
 	});
 
 	afterEach(() => {

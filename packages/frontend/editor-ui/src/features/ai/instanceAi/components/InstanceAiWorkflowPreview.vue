@@ -147,7 +147,6 @@ const isAgentEditingThisWorkflow = computed(() => {
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
-	askAi: false,
 	readOnly: isAgentWorking.value || isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
