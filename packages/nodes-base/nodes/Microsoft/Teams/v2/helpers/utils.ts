@@ -29,11 +29,16 @@ const MENTION_TEXT_ESCAPES: Record<string, string> = {
  * third-party input, and an unescaped angle bracket breaks the token, which Graph answers with a
  * 400 or a silently stripped mention. NOT `escapeHtml` from `utils/utilities.ts`: that one decodes.
  *
- * Known Microsoft-side ceiling: a display name containing `&` makes Teams echo a stray `/at&gt;`
- * after the token. Verified on a live tenant 2026-09-02 to be identical whether we send `&` raw
- * or as `&amp;`, and absent for the same endpoint and a name without `&`, so it is a Teams
- * defect we cannot influence from here. The mention still resolves and notifies (`tenantId` is
- * present in the echo). Escaping stays because it is correct HTML and costs nothing.
+ * Graph validates the `<at>` inner text against `mentions[].mentionText` and 400s on a mismatch
+ * ("Neither Body nor adaptive card content contains marker for mention with Id '0'"), so the two
+ * cannot be decoupled. It compares them DECODED: the error quotes the raw display name while the
+ * escaped form is accepted, which is why escaping here is safe. Live-verified 2026-09-02.
+ *
+ * Known Microsoft-side ceiling: a display name containing `&` makes Teams render a stray `/at>`
+ * after the mention chip. Verified byte-identical whether we send `&` raw, as `&amp;` or as
+ * `&#38;`, and absent on the same endpoint for a name without `&`, so it is a Teams defect we
+ * cannot influence from here. The mention still resolves and notifies (`tenantId` present in the
+ * echo). Escaping stays because it is correct HTML and costs nothing.
  */
 function escapeMentionText(text: string): string {
 	return text.replace(/[&<>]/g, (char) => MENTION_TEXT_ESCAPES[char]);
