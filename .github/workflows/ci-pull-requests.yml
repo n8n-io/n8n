@@ -27,6 +27,7 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      credential_scopes: ${{ fromJSON(steps.ci-filter.outputs.results)['credential-scopes'] == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
@@ -158,6 +159,12 @@ jobs:
               docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
+            credential-scopes:
+              packages/nodes-base/credentials/**
+              packages/@n8n/nodes-langchain/credentials/**
+              packages/nodes-base/scripts/check-released-scopes.mjs
+              packages/nodes-base/scripts/credential-scopes.mjs
+              .github/workflows/test-credential-scopes-reusable.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -364,6 +371,14 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  credential-scopes:
+    name: Credential scopes
+    needs: install-and-build
+    if: needs.install-and-build.outputs.credential_scopes == 'true'
+    uses: ./.github/workflows/test-credential-scopes-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
   # In-process discovery eval — asserts the orchestrator reaches for browser/computer-use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
@@ -399,6 +414,7 @@ jobs:
         performance,
         security-checks,
         workflow-scripts,
+        credential-scopes,
       ]
     if: always()
     runs-on: ubuntu-slim
