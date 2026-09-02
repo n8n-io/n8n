@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type WaitDeclaration,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
@@ -169,6 +170,16 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
+	async suspendStep(id: string, wait: WaitDeclaration): Promise<boolean> {
+		// `wait_till` is derived from the declaration in the same statement that
+		// writes it, so the column the sweep reads can never disagree with the
+		// declaration it fires.
+		return await this.transition(id, 'running', 'waiting', {
+			wait,
+			waitTill: wait.resumeAt === undefined ? null : new Date(wait.resumeAt),
+		});
+	}
+
 	async cancelQueuedSteps(executionId: string): Promise<void> {
 		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
 	}
@@ -201,7 +212,12 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: StepSlots; error?: StepError } = {},
+		fields: {
+			outputs?: StepSlots;
+			error?: StepError;
+			wait?: WaitDeclaration;
+			waitTill?: Date | null;
+		} = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;

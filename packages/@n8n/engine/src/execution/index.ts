@@ -14,6 +14,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
