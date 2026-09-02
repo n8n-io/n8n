@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_82508c87469e04::t_ff57577358c996 39,42
+  s_82508c87469e04::t_ca7610216b19e3 107-116
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_82508c87469e04::t_7faab2e68cde6d 143-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f81d832a0d9519919ce8fc1e5bb6b9427081d5f",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
