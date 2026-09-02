@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frontend Monthly — September 2026</title>
+<style>
+  :root {
+    --bg: #0d0d12;
+    --card: #1b1b27;
+    --card-2: #20202e;
+    --border: #2c2c3d;
+    --text: #f4f4f7;
+    --muted: #9a9aad;
+    --dim: #6e6e82;
+    --coral: #ea4b71;
+    --coral-2: #ff8f6b;
+    --teal: #21c2a8;
+    --blue: #6a7dff;
+    --violet: #a06bff;
+    --amber: #ffb648;
+    --green: #34d399;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(234,75,113,.10), transparent 60%),
+      radial-gradient(1000px 700px at -5% 110%, rgba(106,125,255,.08), transparent 55%),
+      #07070b;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* Fixed 16:9 canvas scaled to fit the window — renders identically on any screen */
+  #stage {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 1280px; height: 720px;
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: center center;
+    background:
+      radial-gradient(1000px 560px at 88% -12%, rgba(234,75,113,.14), transparent 60%),
+      radial-gradient(820px 560px at -6% 112%, rgba(106,125,255,.11), transparent 55%),
+      var(--bg);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 40px 120px rgba(0,0,0,.6);
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 54px 76px;
+    opacity: 0;
+    transition: opacity .4s ease, transform .4s ease;
+    transform: translateY(12px);
+  }
+  .slide.active { display: flex; opacity: 1; transform: translateY(0); }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--coral); margin-bottom: 18px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--coral), var(--coral-2)); }
+
+  h1 { font-size: 58px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; }
+  h2 { font-size: 40px; font-weight: 800; line-height: 1.08; letter-spacing: -.02em; margin-bottom: 6px; }
+  .sub { font-size: 18px; color: var(--muted); font-weight: 400; line-height: 1.5; max-width: 62ch; }
+  .lead { margin-top: 12px; }
+  code { font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-size: .9em; background: rgba(255,255,255,.05); padding: 1px 6px; border-radius: 5px; }
+
+  .grad { background: linear-gradient(100deg, var(--coral), var(--coral-2) 55%, var(--amber)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .title-meta { display: flex; gap: 40px; margin-top: 40px; }
+  .title-meta .k { font-size: 12px; letter-spacing: .13em; text-transform: uppercase; color: var(--dim); display: block; margin-bottom: 5px; }
+  .title-meta .v { font-size: 21px; font-weight: 700; }
+
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: linear-gradient(180deg, var(--card), var(--card-2));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card .ic-svg { width: 27px; height: 27px; margin-bottom: 11px; display: block; color: var(--coral); }
+  .card.t .ic-svg { color: var(--teal); }
+  .card.b .ic-svg { color: var(--blue); }
+  .card.v .ic-svg { color: var(--violet); }
+  .card.a .ic-svg { color: var(--amber); }
+  .card.g .ic-svg { color: var(--green); }
+  .ic-inline { width: 18px; height: 18px; vertical-align: -3px; margin-right: 9px; color: var(--blue); }
+  .card h3 { font-size: 18px; font-weight: 700; margin-bottom: 7px; letter-spacing: -.01em; }
+  .card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .card .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--coral); }
+  .card.t .accent { background: var(--teal); }
+  .card.b .accent { background: var(--blue); }
+  .card.v .accent { background: var(--violet); }
+  .card.a .accent { background: var(--amber); }
+  .card.g .accent { background: var(--green); }
+  .card .pr { color: var(--dim); font-size: 11.5px; font-weight: 600; display: block; margin-top: 8px; }
+
+  .stat .num { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+  .stat .lbl { margin-top: 10px; color: var(--muted); font-size: 15px; font-weight: 500; line-height: 1.4; }
+  .stat .num.c { color: var(--coral); }
+  .stat .num.t { color: var(--teal); }
+  .stat .num.b { color: var(--blue); }
+  .stat .num.a { color: var(--amber); }
+
+  .bar { display: flex; height: 42px; border-radius: 11px; overflow: hidden; margin-top: 28px; border: 1px solid var(--border); }
+  .bar span { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #0d0d12; white-space: nowrap; }
+  .legend { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 18px; }
+  .legend div { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  ul.feat { list-style: none; display: grid; gap: 13px; }
+  ul.feat li { display: flex; gap: 13px; align-items: flex-start; font-size: 16.5px; line-height: 1.45; }
+  ul.feat li .dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; background: linear-gradient(135deg, var(--coral), var(--coral-2)); }
+  ul.feat li b { font-weight: 700; }
+  ul.feat li .pr { color: var(--dim); font-size: .8em; font-weight: 600; }
+  ul.feat.t li .dot { background: var(--teal); }
+  ul.feat.b li .dot { background: var(--blue); }
+  ul.feat.v li .dot { background: var(--violet); }
+  ul.feat.a li .dot { background: var(--amber); }
+  ul.feat.g li .dot { background: var(--green); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1.1fr; gap: 50px; align-items: start; }
+
+  .tag { display: inline-block; padding: 5px 12px; border-radius: 999px; background: rgba(234,75,113,.12); color: var(--coral); border: 1px solid rgba(234,75,113,.3); font-size: 12px; font-weight: 700; letter-spacing: .03em; }
+  .tag.t { background: rgba(33,194,168,.12); color: var(--teal); border-color: rgba(33,194,168,.3); }
+  .tag.b { background: rgba(106,125,255,.12); color: var(--blue); border-color: rgba(106,125,255,.3); }
+  .tag.v { background: rgba(160,107,255,.12); color: var(--violet); border-color: rgba(160,107,255,.3); }
+  .tag.a { background: rgba(255,182,72,.12); color: var(--amber); border-color: rgba(255,182,72,.3); }
+  .tag.g { background: rgba(52,211,153,.12); color: var(--green); border-color: rgba(52,211,153,.3); }
+  .tagrow { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 20px; }
+
+  .footer { position: absolute; bottom: 64px; left: 76px; right: 76px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--dim); }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.01em; color: var(--muted); }
+  .brand .logo { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, var(--coral), var(--coral-2)); display: inline-block; }
+
+  .pager { position: absolute; bottom: 26px; right: 30px; font-size: 13px; color: var(--dim); font-weight: 700; }
+  .hint { position: absolute; bottom: 26px; left: 30px; font-size: 12px; color: var(--dim); }
+  kbd { background: var(--card); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; font-size: 11px; font-family: inherit; }
+  .progress { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, var(--coral), var(--coral-2)); width: 0; transition: width .4s ease; }
+
+  .pill-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; margin-top: 28px; max-width: 760px; }
+  .pill-list div { display: flex; align-items: baseline; gap: 14px; font-size: 19px; }
+  .pill-list .n { font-weight: 800; color: var(--coral); min-width: 38px; text-align: right; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1. TITLE -->
+  <section class="slide active">
+    <span class="eyebrow">Frontend Monthly</span>
+    <h1>What we shipped on the<br><span class="grad">Frontend</span> in one month</h1>
+    <p class="sub lead">A tour through <code>packages/frontend</code> — the month the AI Gateway wallet became a product, and agents got a workbench.</p>
+    <div class="title-meta">
+      <div><span class="k">Window</span><span class="v">Aug 4 → Sep 2, 2026</span></div>
+      <div><span class="k">Releases</span><span class="v">2.34.0 → 2.38.2</span></div>
+      <div><span class="k">Scope</span><span class="v">editor-ui + @n8n/*</span></div>
+    </div>
+    <div class="footer"><span class="brand"><span class="logo"></span> n8n · Frontend</span><span>Presented by Alex Grozav</span></div>
+  </section>
+
+  <!-- 2. BY THE NUMBERS -->
+  <section class="slide">
+    <span class="eyebrow">By the numbers</span>
+    <h2>The busiest month yet</h2>
+    <div class="grid g4" style="margin-top:26px">
+      <div class="card stat"><span class="accent"></span><div class="num c">386</div><div class="lbl">commits to <code>packages/frontend</code></div></div>
+      <div class="card stat t"><span class="accent"></span><div class="num t">72</div><div class="lbl">contributors (bots not counted)</div></div>
+      <div class="card stat b"><span class="accent"></span><div class="num b">5</div><div class="lbl">weekly minors cut · 2.34 → 2.38</div></div>
+      <div class="card stat a"><span class="accent"></span><div class="num a">+117k</div><div class="lbl">lines added · −46k removed</div></div>
+    </div>
+    <div class="bar">
+      <span style="width:41.4%;background:var(--blue)">feat · 157</span>
+      <span style="width:37.7%;background:var(--coral)">fix · 143</span>
+      <span style="width:9.0%;background:var(--violet)">refactor · 34</span>
+      <span style="width:11.9%;background:var(--dim)">other · 45</span>
+    </div>
+    <div class="legend">
+      <div><i style="background:var(--blue)"></i> Features — net-new capability</div>
+      <div><i style="background:var(--coral)"></i> Fixes — keeping the surface stable</div>
+      <div><i style="background:var(--violet)"></i> Refactors — paying down debt</div>
+    </div>
+    <p class="sub" style="margin-top:20px;font-size:15px">383 distinct PRs across <b>14</b> frontend packages — <code>editor-ui</code> took 3,037 of the file touches, <code>@n8n/design-system</code> 499.</p>
+  </section>
+
+  <!-- 3. THEMES OVERVIEW -->
+  <section class="slide">
+    <span class="eyebrow">The headlines</span>
+    <h2>Eight threads ran through the month</h2>
+    <div class="grid g4" style="margin-top:24px">
+      <div class="card"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><h3>Gateway credits</h3><p>New this month — the AI Gateway wallet became a metered, visible surface, and took a new name.<span class="pr">#37267 · #35873</span></p></div>
+      <div class="card b"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><h3>Agent Builder</h3><p>The month's biggest thread — 92 commits. Test runs, workflow tools, schedules.<span class="pr">#35716 · #36460 · #36449</span></p></div>
+      <div class="card t"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg><h3>AI Assistant</h3><p>A self-hosted front door, dynamic models, and MCP servers connected from the chat.<span class="pr">#35579 · #35927 · #35332</span></p></div>
+      <div class="card v"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><h3>Sessions &amp; channels</h3><p>Sessions became inspectable — and Slack, Discord and Telegram landed as chat channels.<span class="pr">#36493 · #35591 · #35331</span></p></div>
+      <div class="card a"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><h3>Workflow Reviews</h3><p>August's new gate grew an activity feed, comments, a Changes diff and reviewer rules.<span class="pr">#35791 · #35431 · #36040</span></p></div>
+      <div class="card g"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg><h3>End-user credentials</h3><p>n8n User Auth reached GA, and end-user credentials came to the Chat Trigger.<span class="pr">#35900 · #36811</span></p></div>
+      <div class="card"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg><h3>Trust &amp; governance</h3><p>A nonce-based CSP, permissions split finer, and MCP as a governed surface.<span class="pr">#36749 · #36802 · #35828</span></p></div>
+      <div class="card t"><span class="accent"></span><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><h3>Editor → Platform</h3><p>Three features left <code>editor-ui</code> as module packages; a modal registry replaced the shell's list.<span class="pr">#36679 · #36325 · #36147</span></p></div>
+    </div>
+  </section>
+
+  <!-- 4. GATEWAY CREDITS -->
+  <section class="slide">
+    <span class="eyebrow">Theme 1 · New feature</span>
+    <div class="two-col">
+      <div>
+        <h2>Gateway credits</h2>
+        <p class="sub">The AI Gateway wallet became a <b>visible, metered product surface</b> across the editor — 13 PRs, and a new name at the end of the window.</p>
+        <div class="tagrow">
+          <span class="tag">New this month</span><span class="tag">Top-up flow</span><span class="tag">Credential picker</span><span class="tag">Cached balance</span>
+        </div>
+      </div>
+      <ul class="feat">
+        <li><span class="dot"></span><div><b>A new name</b> — "n8n credits" and "n8n Connect" copy became <b>Gateway credits</b> across the UI, and the free AI credits callout texts were adjusted. <span class="pr">#37267 · #35668</span></div></li>
+        <li><span class="dot"></span><div><b>Top up, if you may</b> — a role-aware top-up flow lets eligible users add credits; the credits pill switches state after a top-up or when the allowance runs out; the settings link is back. <span class="pr">#35873 · #36239 · #36435</span></div></li>
+        <li><span class="dot"></span><div><b>Credits where you need them</b> — the node credential picker shows and offers Gateway credits, and the agent tools modal gained an n8n credits section. <span class="pr">#35758 · #36183</span></div></li>
+        <li><span class="dot"></span><div><b>Credits that stick</b> — copying a workflow keeps its credits; an Assistant-built workflow keeps its managed credits; the credit banner is its own card above detached chat inputs. <span class="pr">#37253 · #37198 · #37082</span></div></li>
+        <li><span class="dot"></span><div><b>Fewer wallet requests</b> — the balance is cached; n8n Connect usage is hidden when <code>aiGatewayCloudUbb</code> is on; balance clicks are tracked. <span class="pr">#36725 · #35978 · #36194</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5. AGENT BUILDER -->
+  <section class="slide">
+    <span class="eyebrow">Theme 2 · Product</span>
+    <div class="two-col">
+      <div>
+        <h2>Agent Builder</h2>
+        <p class="sub"><code>features/agents</code> was the <b>largest thread in the window</b> — 92 commits. The builder gained test runs, workflow tools and schedules.</p>
+        <div class="tagrow">
+          <span class="tag b">Test runs</span><span class="tag b">Workflow tools</span><span class="tag b">Schedules</span><span class="tag b">New providers</span>
+        </div>
+      </div>
+      <ul class="feat b">
+        <li><span class="dot"></span><div><b>Test runs, with humans in them</b> — the builder gained test runs with HITL inside them, and agent test execution is exposed through MCP. <span class="pr">#35716 · #35731 · #35744</span></div></li>
+        <li><span class="dot"></span><div><b>The builder builds tools</b> — it can create workflow tools and configure their inputs, inspect and update schedules, and allow MCP servers as tools inside skills. <span class="pr">#36460 · #36587 · #36449 · #35969</span></div></li>
+        <li><span class="dot"></span><div><b>Which workflows can run</b> — tool selection explains why unsupported workflows cannot run inside agents; Wait-node workflows work as tools; sub-agents resolve by run type. <span class="pr">#36519 · #36692 · #37117</span></div></li>
+        <li><span class="dot"></span><div><b>Models, sorted</b> — Moonshot, MiniMax and Qwen Cloud joined the providers; a sensible default is auto-selected for new agents; picker order changed; builder model settings were removed. <span class="pr">#36751 · #36058 · #37143 · #36654</span></div></li>
+        <li><span class="dot"></span><div><b>Fewer sharp edges</b> — agents are created on first configuration, not on click; workflow tools stay linked after renames; tool schemas stay aligned with saved config. <span class="pr">#35429 · #35690 · #36329</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6. AGENT SESSIONS & CHANNELS -->
+  <section class="slide">
+    <span class="eyebrow">Theme 3 · Product</span>
+    <div class="two-col">
+      <div>
+        <h2>Sessions &amp; channels</h2>
+        <p class="sub">Agent runs became <b>inspectable</b> — and agents reached more places to talk.</p>
+        <div class="tagrow">
+          <span class="tag v">Session filters</span><span class="tag v">Trace timelines</span><span class="tag v">Slack</span><span class="tag v">Discord</span><span class="tag v">Telegram</span>
+        </div>
+      </div>
+      <ul class="feat v">
+        <li><span class="dot"></span><div><b>Sessions you can inspect</b> — sessions gained filters, timelines persist during execution, and tool hard and soft failures show in the trace timeline. <span class="pr">#36493 · #35490 · #36405</span></div></li>
+        <li><span class="dot"></span><div><b>Debug the run</b> — tool execution data displays with better feedback, a LangSmith debug export landed, and errors hand off to the Assistant with a single execution context. <span class="pr">#36346 · #36085 · #36309 · #36310</span></div></li>
+        <li><span class="dot"></span><div><b>A preview chat, docked</b> — a docked agent preview chat landed, and a preview chat was added to the SessionTimeline view. <span class="pr">#35773 · #36128</span></div></li>
+        <li><span class="dot"></span><div><b>Slack, Discord, Telegram</b> — a Slack integration landed with its own view, Discord became a chat channel, and the WhatsApp example was replaced with a Telegram one. <span class="pr">#35591 · #36352 · #35331 · #35341</span></div></li>
+        <li><span class="dot"></span><div><b>Channels that fail safely</b> — published channel add, replace and remove are failure-safe; channel setup is separate from publishing; oversized chat attachments are handled gracefully. <span class="pr">#36100 · #35468 · #36061</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7. AI ASSISTANT -->
+  <section class="slide">
+    <span class="eyebrow">Theme 4 · Product</span>
+    <div class="two-col">
+      <div>
+        <h2>AI Assistant</h2>
+        <p class="sub">79 commits touched <code>features/ai/instanceAi</code> — a self-hosted front door, dynamic models, and MCP wired into the chat.</p>
+        <div class="tagrow">
+          <span class="tag t">Self-hosted onboarding</span><span class="tag t">Dynamic models</span><span class="tag t">MCP in chat</span><span class="tag t">Project scoping</span>
+        </div>
+      </div>
+      <ul class="feat t">
+        <li><span class="dot"></span><div><b>A door for self-hosted</b> — self-hosted instances got their own onboarding; the setup screen and connect modal were polished; agent sandboxes can be enabled through Instance AI setup. <span class="pr">#35579 · #36795 · #36056</span></div></li>
+        <li><span class="dot"></span><div><b>Models, dynamically</b> — Instance AI models load dynamically instead of from a fixed list, and the Assistant refuses a prompt until a model is configured. <span class="pr">#35927 · #37226</span></div></li>
+        <li><span class="dot"></span><div><b>MCP in the chat</b> — an inline "Available tools" card connects MCP servers from the chat, registry search is exposed as a tool, and connections moved to a "+" in the text input. <span class="pr">#35332 · #35318 · #36585</span></div></li>
+        <li><span class="dot"></span><div><b>Context and progress</b> — canvas nodes are passed as context, the artifact panel shows build progress, an activity indicator shows while it works, narration stays in thinking blocks. <span class="pr">#36225 · #37562 · #37046 · #36808</span></div></li>
+        <li><span class="dot"></span><div><b>Honest about projects</b> — conversations start in the current project, credential setup cards are scoped to the thread's project, and workflow builds stay honest about theirs. <span class="pr">#37051 · #36425 · #37177</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8. WORKFLOW REVIEWS -->
+  <section class="slide">
+    <span class="eyebrow">Theme 5 · Product</span>
+    <div class="two-col">
+      <div>
+        <h2>Workflow Reviews</h2>
+        <p class="sub">August's brand-new gate grew an <b>activity feed, comments, a diff tab and reviewer rules</b> — 34 commits in <code>features/workflow-reviews</code>.</p>
+        <div class="tagrow">
+          <span class="tag a">Activity feed</span><span class="tag a">Comments</span><span class="tag a">Changes diff</span><span class="tag a">Reviewer rules</span>
+        </div>
+      </div>
+      <ul class="feat a">
+        <li><span class="dot"></span><div><b>An activity feed</b> — a review activity feed landed, then was completed with a decision note, and reviewers can comment on it. <span class="pr">#35791 · #36137 · #35792</span></div></li>
+        <li><span class="dot"></span><div><b>See the changes</b> — a Changes diff tab was added to the review detail pane, and closed review requests show their diff. <span class="pr">#35431 · #36539</span></div></li>
+        <li><span class="dot"></span><div><b>Who may decide</b> — decisions are restricted to assigned reviewers and authorized against every covered workflow; eligibility shows on the detail; a reviewer is required to open a request. <span class="pr">#36040 · #36985 · #35391 · #35932</span></div></li>
+        <li><span class="dot"></span><div><b>Describe the version</b> — a workflow version can be named and described when submitted for review; descriptions are editable; title and description inputs show character counters. <span class="pr">#35566 · #35640 · #36069 · #36177</span></div></li>
+        <li><span class="dot"></span><div><b>An inbox that works</b> — sections split, then better empty and loading states and a resizable sidebar; the route became <code>/reviews</code>; status shows as a badge on the workflows list. <span class="pr">#36216 · #36829 · #37196 · #36824 · #36476</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9. END-USER CREDENTIALS & AUTH -->
+  <section class="slide">
+    <span class="eyebrow">Theme 6 · Product</span>
+    <div class="two-col">
+      <div>
+        <h2>End-user credentials</h2>
+        <p class="sub"><b>n8n User Auth (OAuth2) reached GA</b> — and end-user credentials came to the Chat Trigger.</p>
+        <div class="tagrow">
+          <span class="tag g">OAuth2 GA</span><span class="tag g">Chat Trigger</span><span class="tag g">Consent screen</span><span class="tag g">Managed scopes</span>
+        </div>
+      </div>
+      <ul class="feat g">
+        <li><span class="dot"></span><div><b>GA for user auth</b> — n8n User Auth (OAuth2) reached general availability; Form trigger OAuth2 authentication reached GA, was reverted, then re-landed. <span class="pr">#35900 · #36451 · #36848 · #36950</span></div></li>
+        <li><span class="dot"></span><div><b>Credentials in the chat</b> — end-user credentials came to the Chat Trigger behind a flag, with a connect bar in the hosted shell, a status strip in <code>@n8n/chat</code>, and publish validation. <span class="pr">#36811 · #37550 · #37399 · #37231</span></div></li>
+        <li><span class="dot"></span><div><b>A consent screen that fits</b> — the shared OAuth consent screen was adapted for first-party clients and got chat branding; scopes show for managed OAuth credentials behind an env flag. <span class="pr">#36261 · #37430 · #36053</span></div></li>
+        <li><span class="dot"></span><div><b>Which credential, exactly</b> — explicit selection is preserved, the only generic auth credential is no longer auto-selected, stale credentials are removed on switch, non-project ones are hidden. <span class="pr">#36500 · #35963 · #34937 · #36715</span></div></li>
+        <li><span class="dot"></span><div><b>Sign-in that behaves</b> — the OAuth popup opens before network calls and blocked pop-ups are reported clearly; saved data survives connect-save; the provider account shows, not the n8n email. <span class="pr">#35948 · #35598 · #35553</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10. TRUST & SECURITY -->
+  <section class="slide">
+    <span class="eyebrow">Theme 7 · Trust &amp; Security</span>
+    <h2>Settings, permissions &amp; MCP</h2>
+    <p class="sub lead">A stricter shell, permissions split finer, and MCP as a governed surface.</p>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card b"><span class="accent"></span><h3>A stricter shell</h3><p>n8n now serves a <b>nonce-based Content-Security-Policy</b> on its HTML pages. Community packages that need an unsupported node API are skipped at startup instead of breaking it.<span class="pr">#36749 · #37449</span></p></div>
+      <div class="card v"><span class="accent"></span><h3>Permissions, split finer</h3><p>Instance Settings permissions became <b>granular custom-role options</b>; a <code>project:manageUsers</code> scope gates membership; a <code>nodeTypePolicy</code> RBAC scope landed; browser credential creation is gated; the UI warns about self-escalation.<span class="pr">#36802 · #36243 · #37538 · #36931 · #36458</span></p></div>
+      <div class="card a"><span class="accent"></span><h3>MCP, governed</h3><p>Auto-expose for new workflows is a <b>settings toggle</b> and MCP Access was reordered around it; MCP supports folder creation and workflow moves; the ChatGPT one-click connector is back; server usage goes to log streaming.<span class="pr">#35828 · #36706 · #35964 · #35396 · #33300</span></p></div>
+    </div>
+    <p class="sub" style="margin-top:22px;font-size:16px">Also: a <b>Git connections settings page</b> with a public API, a clear no-access message when SSO role mapping denies a login, configurable Azure Key Vault endpoints, the "Any workflow" caller policy deprecated, and screen-reader support for scope selector tool pills. <span class="pr" style="display:inline">#36991 · #36272 · #36407 · #35214 · #36350 · #37159</span></p>
+  </section>
+
+  <!-- 11. CANVAS-ONLY, EVALUATIONS + ALSO SHIPPED -->
+  <section class="slide">
+    <span class="eyebrow">Theme 8 · Product</span>
+    <h2>Canvas-only mode &amp; evaluations</h2>
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card g"><span class="accent"></span><h3>The embedded editor, trimmed</h3><p>In canvas-only mode the command bar and the save, publish, unpublish and create-new shortcuts are disabled; the NPS survey and two marketing links are hidden; node details links open in a new tab.<span class="pr">#35542 · #36001 · #36921 · #35998 · #35999 · #36446</span></p></div>
+      <div class="card g"><span class="accent"></span><h3>Evals in the agent panel</h3><p>An Evals tab shell was added to the agent config panel, then the <b>AI-drafted eval cases view</b> landed in it — followed by a review view with ratings and edit capture.<span class="pr">#35530 · #35748 · #35747</span></p></div>
+      <div class="card g"><span class="accent"></span><h3>Runs you can read</h3><p>Test case detail split into config and latest-run panes; evaluation runs no longer fail when the Evaluation Trigger feeds the entry node; the single run view gained padding.<span class="pr">#34371 · #36975 · #36929</span></p></div>
+    </div>
+    <h2 style="margin-top:30px;font-size:26px">…and also shipped</h2>
+    <div class="grid g4" style="margin-top:14px">
+      <div class="card b"><span class="accent"></span><h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg> A Markdown toolbar</h3><p>A floating toolbar and more options; placeholder only when empty; no doubled code-block box.<span class="pr">#37293 · #35630 · #36336 · #36844</span></p></div>
+      <div class="card b"><span class="accent"></span><h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Browser Use</h3><p>A simplified connect flow, a restyled view, setup gated on extension detection, remembered hosts.<span class="pr">#36316 · #36611 · #36235 · #36744</span></p></div>
+      <div class="card b"><span class="accent"></span><h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Autosave, hardened</h3><p>No retries on permanent errors, gated on document hydration, never on a read-only preview canvas.<span class="pr">#36967 · #36966 · #36023</span></p></div>
+      <div class="card b"><span class="accent"></span><h3><svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> Editor quality of life</h3><p>A stop-execution button in the NDV, grouped output-panel warnings, aligned headers, reduced motion respected.<span class="pr">#36444 · #36619 · #37315 · #36523</span></p></div>
+    </div>
+  </section>
+
+  <!-- 12. DESIGN SYSTEM & CODE HEALTH -->
+  <section class="slide">
+    <span class="eyebrow">Foundations · Quality</span>
+    <h2>Design system &amp; code health</h2>
+    <p class="sub lead">Less visible, but it's what keeps velocity high — <b>67 commits</b> touched the design system this window.</p>
+    <div class="grid g2" style="margin-top:22px">
+      <ul class="feat">
+        <li><span class="dot"></span><div><b>New components</b> — Combobox, CodeBlock and ChatMessage landed; RadioGroup and v2 Pagination were promoted out of <code>v2</code> into core. <span class="pr">#33622 · #34239 · #35461 · #36793</span></div></li>
+        <li><span class="dot"></span><div><b>Legacy retired</b> — <code>N8nInputNumber2</code> adoption completed and the legacy InputNumber removed; the welded <code>isNDVV2</code> gate retired and the unreachable legacy NDV deleted. <span class="pr">#36598 · #36522 · #35615</span></div></li>
+        <li><span class="dot"></span><div><b>Polish</b> — SegmentControl, TagsInput and pagination updated; <code>N8nResizeWrapper</code> gained a visible handle; ChatInput gained an adaptive layout; the icon picker got faster. <span class="pr">#34447 · #36714 · #37195 · #36939 · #35878</span></div></li>
+        <li><span class="dot"></span><div><b>A publishable package</b> — type declarations for all <b>159</b> components, publishing from <code>dist</code> with an exports map, an ESLint plugin, and every deep import migrated to root. <span class="pr">#35447 · #36305 · #34550 · #36439</span></div></li>
+      </ul>
+      <ul class="feat">
+        <li><span class="dot"></span><div><b>Style guide refreshed</b> — subtle button hover and active states now use <code>color-mix()</code>, and the colour, shadow and type style-guide pages were rebuilt. <span class="pr">#37504 · #31132</span></div></li>
+        <li><span class="dot"></span><div><b>Toolchain moved</b> — CI and repo configuration moved to <b>pnpm 11</b>, the PR pipeline runs on <b>Node 26</b>, and dependency duplication checks were added. <span class="pr">#36424 · #34032 · #34681</span></div></li>
+        <li><span class="dot"></span><div><b>A test-utils package</b> — frontend test helpers were extracted into <code>@n8n/frontend-test-utils</code>, and reusable setup moved into <code>@n8n/vitest-config</code>. <span class="pr">#37304 · #35637</span></div></li>
+        <li><span class="dot"></span><div><b>Faster where it counts</b> — design-system deps externalized and Lucide icon chunks pre-built; the PostHog flag refetch is skipped when flags are bootstrapped. <span class="pr">#35603 · #34805</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 13. ARCHITECTURE — THE EDITOR AS A PLATFORM -->
+  <section class="slide">
+    <span class="eyebrow">Theme 9 · Architecture</span>
+    <div class="two-col">
+      <div>
+        <h2>The editor as a platform</h2>
+        <p class="sub">August moved stores and composables into packages. This window <b>the module SDK became load-bearing</b>: three features left <code>editor-ui</code>, and a registry replaced the shell's modal list.</p>
+        <div class="tagrow">
+          <span class="tag">Module SDK</span><span class="tag">Modal registry</span><span class="tag">Frontend modules</span><span class="tag">Thinning shims</span>
+        </div>
+      </div>
+      <ul class="feat">
+        <li><span class="dot"></span><div><b>The SDK became load-bearing</b> — module SDK push and command registries are wired into the shell, and the Instance-AI credits push routes through it. <span class="pr">#34422 · #34436</span></div></li>
+        <li><span class="dot"></span><div><b>Features left the shell</b> — OpenTelemetry and the instance registry were extracted into module packages, with a route-name collision guard; registration stays silent after a re-login. <span class="pr">#36679 · #36645 · #36325 · #36398</span></div></li>
+        <li><span class="dot"></span><div><b>A modal registry</b> — two-phase registration and per-feature fragments landed, shell-held modals moved to their features, state derives from the registry, and unknown keys render closed instead of throwing. <span class="pr">#36147 · #36317 · #35859 · #35625</span></div></li>
+        <li><span class="dot"></span><div><b>Shims dropped</b> — <code>settings.store</code> and <code>users.store</code> importers were repointed to <code>@n8n/stores</code> and their shims deleted; <code>useStorage</code> consumers moved to <code>@n8n/composables</code>. <span class="pr">#35459 · #35330 · #35443</span></div></li>
+        <li><span class="dot"></span><div><b>One entry per feature</b> — insights got a single public entry, <code>formatBytes</code> and <code>toMb</code> were deduplicated into <code>@n8n/utils</code>, and the typed telemetry boundary was tightened. <span class="pr">#36821 · #36218 · #35350</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 14. CONTRIBUTORS -->
+  <section class="slide">
+    <span class="eyebrow">Credit where it's due</span>
+    <h2>72 people touched the frontend</h2>
+    <p class="sub lead">Top contributors by commits to <code>packages/frontend</code> this window — thank you all.</p>
+    <div class="pill-list">
+      <div><span class="n">47</span> Alex Grozav</div>
+      <div><span class="n">11</span> Sebastien Powell</div>
+      <div><span class="n">25</span> Rob Hough</div>
+      <div><span class="n">11</span> Jaakko Husso</div>
+      <div><span class="n">24</span> Robin Braumann</div>
+      <div><span class="n">9</span> oleg</div>
+      <div><span class="n">23</span> Kai</div>
+      <div><span class="n">9</span> Sandra Zollner</div>
+      <div><span class="n">19</span> Michael Drury</div>
+      <div><span class="n">9</span> Raúl Gómez Morales</div>
+      <div><span class="n">15</span> Anne Aguirre</div>
+      <div><span class="n">9</span> Benjamin Schroth</div>
+    </div>
+    <p class="sub" style="margin-top:26px">…plus 60 more across the team, design system, and core.</p>
+  </section>
+
+  <!-- 15. CLOSING -->
+  <section class="slide">
+    <span class="eyebrow">Wrap-up</span>
+    <div class="two-col" style="align-items:center">
+      <div><h1 style="font-size:52px">Credits went live,<br><span class="grad">agents got a workbench</span></h1></div>
+      <div>
+        <ul class="feat">
+          <li><span class="dot"></span><div><b>The wallet became a product</b> — Gateway credits: a new name, a top-up flow, credits in the credential picker. <span class="pr">#37267 · #35873 · #35758</span></div></li>
+          <li><span class="dot"></span><div><b>Agents became inspectable</b> — test runs with HITL, session filters, trace timelines, and three new chat channels. <span class="pr">#35716 · #36493 · #36405 · #35591</span></div></li>
+          <li><span class="dot"></span><div><b>Review grew into a workflow</b> — an activity feed, comments, a Changes diff and reviewer rules. <span class="pr">#35791 · #35792 · #35431 · #36040</span></div></li>
+          <li><span class="dot"></span><div><b>The shell got thinner</b> — features left <code>editor-ui</code> as module packages, and a registry replaced the hard-coded modal list. <span class="pr">#36325 · #36679 · #36147</span></div></li>
+        </ul>
+        <div class="tagrow" style="margin-top:26px"><span class="tag">Questions?</span><span class="tag b">Discussion</span></div>
+      </div>
+    </div>
+    <div class="footer"><span class="brand"><span class="logo"></span> n8n · Frontend Monthly</span><span>Aug 4 → Sep 2, 2026</span></div>
+  </section>
+  <div class="progress" id="progress"></div>
+  <div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>F</kbd> fullscreen</div>
+  <div class="pager" id="pager">01</div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const stage = document.getElementById('stage');
+  const progress = document.getElementById('progress');
+  const pager = document.getElementById('pager');
+  let i = 0;
+
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    progress.style.width = (i / (slides.length - 1) * 100) + '%';
+    pager.textContent = String(i + 1).padStart(2, '0');
+  }
+  const next = () => show(i + 1);
+  const prev = () => show(i - 1);
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+    else if (e.key.toLowerCase() === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+  document.body.addEventListener('click', (e) => {
+    if (e.clientX > window.innerWidth * 0.5) next(); else prev();
+  });
+
+  show(0);
+</script>
+</body>
+</html>
