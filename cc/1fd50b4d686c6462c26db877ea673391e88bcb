@@ -1,0 +1,30 @@
+scripts/instance-seeding/seedInstance.mjs
+  s_d6594e4cfdf1a3::t_a276b95fc1255b 29-54
+  s_d6594e4cfdf1a3::t_5e26ca8c626793 63,987,1130,1180,1189,1192,1218,1302,1309,1312,1333,1344,1377-1378,1386,1437,1457-1458,1486-1487
+  s_d6594e4cfdf1a3::t_327fd25955983b 376-393,401,405,411,416
+  s_d6594e4cfdf1a3::t_da3645c0e7339b 394-397
+  s_d6594e4cfdf1a3::t_aec041a8af4f49 803-927,934-938
+  s_d6594e4cfdf1a3::t_8d3b0e50b2433a 1049,1459
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 1191
+scripts/instance-seeding/checkPreferenceProfile.mjs
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 1-93
+scripts/instance-seeding/preference-profile.mjs
+  s_d6594e4cfdf1a3::t_f9554955faecec 1-56,105-124,160-193,198-360,368-379,390-422,428-450,456-486,489-510,521-527,538-548,555-564,570-575,587-590
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 57-104,125-159,194-197,361-367,380-389,423-427,451-455,487-488,511-520,528-537,549-554,565-569,576-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc1fd50b4d686c6462c26db877ea673391e88bcb",
+  "prompts": {},
+  "sessions": {
+    "s_d6594e4cfdf1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df11345-03b4-4c0a-b65a-4a0bf36e6cfa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
