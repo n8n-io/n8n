@@ -294,18 +294,8 @@ export class WorkflowToolService {
 			throw new NodeOperationError(context.getNode(), error as Error);
 		}
 
-		let response: IDataObject | INodeExecutionData[] | undefined;
-		if (this.returnAllItems) {
-			response = receivedData?.data?.[0]?.length ? receivedData.data[0] : undefined;
-		} else {
-			response = receivedData?.data?.[0]?.[0]?.json;
-		}
-		if (response === undefined) {
-			throw new NodeOperationError(
-				context.getNode(),
-				'There was an error: "The workflow did not return a response"',
-			);
-		}
+		const outputItems = receivedData.data?.[0] ?? [];
+		const response = this.returnAllItems ? outputItems : (outputItems[0]?.json ?? []);
 
 		return { response, subExecutionId: receivedData.executionId };
 	}

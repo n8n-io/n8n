@@ -601,6 +601,45 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
+	it.each([{ mockResult: [] }, { mockResult: [[]] }])(
+		'should return an empty array when execution returns $mockResult',
+		async ({ mockResult }) => {
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			await expect(handleToolInvocation(toolArgs)).resolves.toBe('[]');
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[{ json: { response: [] } }],
+			]);
+		},
+	);
+
+	it('should preserve an undefined execution result', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+		execute.mockResolvedValueOnce(undefined);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+		);
+
+		await expect(handleToolInvocation(toolArgs)).resolves.toBeUndefined();
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[{ json: { response: undefined } }],
+		]);
+	});
+
 	it('should handle binary data and return a warning message', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);

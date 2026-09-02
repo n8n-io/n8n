@@ -392,16 +392,28 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			);
 		});
 
-		it('should throw error when workflow returns no response', async () => {
-			const mockResponse: ExecuteWorkflowData = {
-				data: [],
-				executionId: 'test-execution',
-			};
+		it.each([{ data: [] }, { data: [[]] }])(
+			'should return an empty array when workflow data is $data',
+			async ({ data }) => {
+				const mockResponse: ExecuteWorkflowData = {
+					data,
+					executionId: 'test-execution',
+				};
+				const workflowProxyMock = {
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				} as unknown as IWorkflowDataProxyData;
 
-			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+				vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
-			await expect(service['executeSubWorkflow'](context, {}, [], {} as never)).rejects.toThrow();
-		});
+				await expect(
+					service['executeSubWorkflow'](context, {}, [], workflowProxyMock),
+				).resolves.toEqual({
+					response: [],
+					subExecutionId: 'test-execution',
+				});
+			},
+		);
 	});
 
 	describe('getSubWorkflowInfo', () => {

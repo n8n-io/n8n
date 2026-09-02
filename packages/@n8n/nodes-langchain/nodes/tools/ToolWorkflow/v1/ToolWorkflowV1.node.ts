@@ -138,10 +138,7 @@ export class ToolWorkflowV1 implements INodeType {
 				| string
 				| undefined;
 			if (response === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'There was an error: "The workflow did not return a response"',
-				);
+				return '[]';
 			}
 
 			return response;

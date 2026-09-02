@@ -195,7 +195,7 @@ function mapResult(result?: NodeOutput) {
 	let nodeHasMixedJsonAndBinaryData = false;
 	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 
-	if (result === undefined) {
+	if (result === undefined || result === null) {
 		response = undefined;
 	} else if (isEngineRequest(result)) {
 		// Tools running inside `makeHandleToolInvocation` cannot relay an
@@ -218,7 +218,7 @@ function mapResult(result?: NodeOutput) {
 		if (containsBinaryData(result)) {
 			nodeHasMixedJsonAndBinaryData = true;
 		}
-		response = result?.[0]?.flatMap((item) => item.json);
+		response = (result[0] ?? []).flatMap((item) => item.json);
 
 		// Chat node always returns single item with sendMessage property
 		// alongside json, this is used to send a bot message to the chat

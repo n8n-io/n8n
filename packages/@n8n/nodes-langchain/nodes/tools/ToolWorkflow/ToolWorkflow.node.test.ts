@@ -288,6 +288,26 @@ describe('ToolWorkflowV1', () => {
 		);
 	});
 
+	it('should return an empty array when the sub-workflow returns no items', async () => {
+		const { ctx, logAiEvent } = createContext();
+		const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+			data: [],
+			executionId: 'test-execution',
+		};
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+
+		await expect(tool.func('hello')).resolves.toBe('[]');
+		expect(logAiEvent).toHaveBeenCalledWith(
+			'ai-tool-called',
+			JSON.stringify({ query: 'hello', response: '[]' }),
+		);
+	});
+
 	it('should emit ai-tool-called when the sub-workflow fails', async () => {
 		const { ctx, logAiEvent } = createContext();
 		vi.spyOn(ctx, 'executeWorkflow').mockRejectedValueOnce(new Error('Workflow execution failed'));
