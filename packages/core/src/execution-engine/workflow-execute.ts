@@ -2237,6 +2237,7 @@ export class WorkflowExecute {
 					if (this.suspensionRequested) {
 						this.runExecutionData.waitTill = new Date();
 						this.runExecutionData.resumeInstruction = 'run-stack-head';
+						this.additionalData.setExecutionStatus?.('waiting');
 						return;
 					}
 

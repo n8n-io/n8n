@@ -26,6 +26,8 @@ describe('WorkflowExecute suspension', () => {
 	const runAndSuspend = async (suspendAfterNode: string) => {
 		const workflow = createWorkflow();
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+		const setExecutionStatus = vi.fn();
+		additionalData.setExecutionStatus = setExecutionStatus;
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 		additionalData.hooks!.addHandler('nodeExecuteAfter', function (nodeName) {
@@ -33,13 +35,14 @@ describe('WorkflowExecute suspension', () => {
 		});
 
 		const run = await workflowExecute.run({ workflow, startNode: trigger });
-		return { run, workflow };
+		return { run, workflow, setExecutionStatus };
 	};
 
 	test('suspend mid-run parks the execution as waiting with an intact stack', async () => {
-		const { run } = await runAndSuspend('node1');
+		const { run, setExecutionStatus } = await runAndSuspend('node1');
 
 		expect(run.status).toBe('waiting');
+		expect(setExecutionStatus).toHaveBeenCalledWith('waiting');
 		expect(run.waitTill).toBeInstanceOf(Date);
 		expect(run.finished).not.toBe(true);
 		expect(run.data.resumeInstruction).toBe('run-stack-head');
@@ -80,20 +83,20 @@ describe('WorkflowExecute suspension', () => {
 		const workflow = createWorkflow();
 		// A Wait-node-style parked state: the executed node pushed back onto the
 		// stack head, its run recorded, waitTill set, no resume instruction.
+		const stackHead = { node: { ...node1 }, data: { main: [[{ json: {} }]] }, source: null };
+		const preParkRun = toITaskData([{ data: {} }]);
 		const parked: IRunExecutionData = createRunExecutionData({
 			startData: {},
 			resultData: {
 				runData: {
 					trigger: [toITaskData([{ data: {} }])],
-					node1: [toITaskData([{ data: {} }])],
+					node1: [preParkRun],
 				},
 				lastNodeExecuted: 'node1',
 			},
 			executionData: {
 				contextData: {},
-				nodeExecutionStack: [
-					{ node: { ...node1 }, data: { main: [[{ json: {} }]] }, source: null },
-				],
+				nodeExecutionStack: [stackHead],
 				metadata: {},
 				waitingExecution: {},
 				waitingExecutionSource: {},
@@ -108,7 +111,8 @@ describe('WorkflowExecute suspension', () => {
 		expect(resumed.status).toBe('success');
 		// Skip-head: the pushed-back node was disabled to pass its input through,
 		// and its pre-park run entry was popped.
-		expect(parked.executionData!.nodeExecutionStack[0]?.node.disabled ?? true).toBe(true);
+		expect(stackHead.node.disabled).toBe(true);
+		expect(resumed.data.resultData.runData.node1).not.toContain(preParkRun);
 		expect(resumed.data.resultData.runData.node2).toHaveLength(1);
 	});
 
