@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { effectScope, ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -178,6 +178,21 @@ describe('useWorkflowSetupItems', () => {
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenLastCalledWith({
 			workflowId: WORKFLOW_ID,
 		});
+	});
+
+	// Pins that the subscription stays non-detached and registered synchronously
+	// in the composable body: that is what lets pinia unbind it on scope dispose,
+	// so a closed panel does not keep re-anchoring the shared usable slice.
+	it('stops refetching once its host scope is disposed', async () => {
+		const scope = effectScope();
+		scope.run(() => useWorkflowSetupItems(() => WORKFLOW_ID));
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+
+		scope.stop();
+		await credentialsStore.deleteCredential({ id: 'cred-1' });
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
 	});
 
 	it('pauses fetching while the agent edits, then refreshes once it settles', async () => {
