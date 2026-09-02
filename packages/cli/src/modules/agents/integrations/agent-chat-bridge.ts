@@ -471,9 +471,14 @@ export class AgentChatBridge {
 	 *   binding is still in place (or the reverse), running against the
 	 *   task's old memory either way.
 	 * - Unbind first: nothing here swallows its error, so a failed unbind
-	 *   aborts before the generation is ever touched — leaving a clean
-	 *   "nothing happened" instead of a half-applied reset — and propagates to
-	 *   the caller's existing catch instead of confirming success.
+	 *   aborts before the generation is touched, and propagates to the caller's
+	 *   existing catch instead of confirming success. The two stores are not
+	 *   atomic, so the opposite failure — a rotation that fails after the
+	 *   unbind landed — leaves the thread unbound but unrotated: a normal turn
+	 *   on the base session (the state `clearSessionBindings` also produces),
+	 *   never a redirect into the task's memory, and the error reply asks for a
+	 *   retry, which is idempotent. The reverse order fails worse, still
+	 *   redirecting into the task's old memory after reporting the error.
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);

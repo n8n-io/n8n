@@ -3,6 +3,7 @@ import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
@@ -176,6 +177,22 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 	}
 }
 
+/** Stands in for a platform with an allowlist (e.g. Telegram in Private mode). */
+class RestrictedTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-restricted';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Restricted';
+	readonly displayIcon = 'circle';
+	isUserAllowed(author: Author): boolean {
+		return author.userId === 'allowed-user';
+	}
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
 // TODO: use real Telegram integration for testing
 
 describe('AgentChatBridge — consumeStream', () => {
@@ -247,6 +264,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
+		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
@@ -909,6 +927,45 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
 		});
 
+		it('ignores a /new slash command from a user the platform allowlist rejects', async () => {
+			const cache = mockCache();
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'stranger', userName: 'stranger' },
+			});
+
+			// Nothing was reset and nothing was said back — a rejected user must not
+			// even learn that the command exists.
+			expect(cache.set).not.toHaveBeenCalled();
+			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+
+			// Same handler, allowed user: proves the gate is what rejected the
+			// command above, not a mis-wired fixture.
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'allowed-user', userName: 'insider' },
+			});
+
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
 		it('carries a /new reset over to the next message, even without an idle timeout configured', async () => {
 			mockCache();
 			const { bot, handlers } = makeBot();
@@ -1078,6 +1135,57 @@ describe('AgentChatBridge — consumeStream', () => {
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 					}),
+				}),
+			);
+		});
+
+		it('reports an error and stays on the unbound base session when the rotation write fails', async () => {
+			const cache = mockCache();
+			cache.set.mockRejectedValueOnce(new Error('cache unavailable'));
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			let bound = true;
+			messageContextStore.resolveSession.mockImplementation(async () =>
+				bound ? { threadId: 'task-1-uuid', resourceId: 'task:task-1' } : null,
+			);
+			messageContextStore.unbindSession.mockImplementation(async () => {
+				bound = false;
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+
+			// The two stores cannot be written atomically, so the unbind that
+			// already landed stays landed. That leaves the thread unbound but
+			// unrotated — the same state a server-side clearSessionBindings
+			// produces — so the next message runs a normal turn on the base
+			// session rather than being redirected into the task's memory. The
+			// error reply above asks the user to retry, and a retry is idempotent.
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: {
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+						resourceId: 'integration:test-streaming:u1',
+					},
 				}),
 			);
 		});
@@ -1416,6 +1524,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
 				expect.objectContaining({
 					fileName: 'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+				}),
+			);
+		});
+
+		it('runs a normal turn for a /new sent with an attachment instead of resetting the session', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			// Treating this as a reset would drop the attachment along with it —
+			// the reset command only counts when it arrives on its own.
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: '/new',
+					attachments: [expect.objectContaining({ id: 'att-1', fileName: 'photo.png' })],
 				}),
 			);
 		});
