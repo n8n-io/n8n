@@ -322,11 +322,11 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('deleteByOwner', () => {
+	describe('deleteByOwnerMember', () => {
 		it('deletes the owner member jobs and returns the affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 3, raw: [] });
 
-			const removed = await repository.deleteByOwner(entityManager, OWNER);
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
 			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, OWNER);
 			expect(removed).toBe(3);
@@ -335,7 +335,7 @@ describe('ScheduledJobRepository', () => {
 		it('returns 0 when the driver does not report an affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: null, raw: [] });
 
-			const removed = await repository.deleteByOwner(entityManager, OWNER);
+			const removed = await repository.deleteByOwnerMember(entityManager, OWNER);
 
 			expect(removed).toBe(0);
 		});

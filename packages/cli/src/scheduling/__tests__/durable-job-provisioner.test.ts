@@ -930,11 +930,11 @@ describe('DurableJobProvisioner', () => {
 
 	describe('deprovision', () => {
 		it('deletes one owner member inside a transaction and reports the count', async () => {
-			jobs.deleteByOwner.mockResolvedValue(3);
+			jobs.deleteByOwnerMember.mockResolvedValue(3);
 
 			const result = await provisioner.deprovisionOwnerMember(OWNER);
 
-			expect(jobs.deleteByOwner).toHaveBeenCalledWith(manager, OWNER);
+			expect(jobs.deleteByOwnerMember).toHaveBeenCalledWith(manager, OWNER);
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ removed: 3 });
 		});
@@ -945,7 +945,7 @@ describe('DurableJobProvisioner', () => {
 			const result = await provisioner.deprovisionOwner(OWNER_REF);
 
 			expect(jobs.deleteByOwnerRef).toHaveBeenCalledWith(manager, OWNER_REF);
-			expect(jobs.deleteByOwner).not.toHaveBeenCalled();
+			expect(jobs.deleteByOwnerMember).not.toHaveBeenCalled();
 			expect(result).toEqual({ removed: 7 });
 		});
 

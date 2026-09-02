@@ -237,7 +237,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * Delete all jobs owned by exactly this owner member; their tasks cascade away.
 	 * @returns how many jobs were deleted (0 when the driver can't report it).
 	 */
-	async deleteByOwner(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
+	async deleteByOwnerMember(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
 		const result = await manager.delete(ScheduledJob, ownerCriteria(owner));
 		return result.affected ?? 0;
 	}
