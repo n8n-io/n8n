@@ -222,9 +222,8 @@ export class ExecutionsPublicController {
 		res: Response,
 		@Body body: StopManyExecutionsPublicDto,
 	): Promise<StoppedExecutionsPublicDto | undefined> {
-		// This 400 body predates the standard one and carries an `example` field callers may read, so
-		// it is answered here rather than left to the request DTO. It is also answered before the
-		// shared-workflow lookup, so a caller with no workflows still sees it.
+		// Answered here, not by the request DTO: this 400 body predates the standard one and carries
+		// an `example` field callers may read. It also has to land before the shared-workflow lookup.
 		if (body.status.length === 0) {
 			res.status(400).json({
 				message:

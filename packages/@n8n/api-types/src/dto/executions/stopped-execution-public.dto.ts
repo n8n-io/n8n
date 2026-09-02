@@ -4,9 +4,8 @@ import { z } from 'zod';
 import { stoppedCountOpenApi, stoppedExecutionFieldDocs } from './stopped-execution-public.openapi';
 import { Z } from '../../zod-class';
 
-// Deliberately smaller than `ExecutionPublicDto`: the stop endpoint answers with the result of the
-// stop, which carries no `id`. `mode` and `status` stay `z.string()` because both are varchar
-// columns, and a value outside the documented enum must not turn a response into a 500.
+// `mode` and `status` stay `z.string()`: both are varchar columns, and a value outside the
+// documented enum must not turn a response into a 500.
 export const stoppedExecutionPublicSchema = z.object({
 	mode: z.string().openapi(stoppedExecutionFieldDocs.mode),
 	startedAt: z.string().openapi(stoppedExecutionFieldDocs.startedAt),
