@@ -49,6 +49,7 @@ import type {
 import {
 	LoggerProxy as Logger,
 	NodeHelpers,
+	WorkflowDataProxy,
 	NodeConnectionTypes,
 	ApplicationError,
 	BaseError,
@@ -3060,24 +3061,20 @@ export class WorkflowExecute {
 		const mainOutputTypes = outputTypes.filter((output) => output === NodeConnectionTypes.Main);
 
 		const errorItems: INodeExecutionData[] = [];
-		const closeFunctions: CloseFunction[] = [];
-		// Create a WorkflowDataProxy instance that we can get the data of the
-		// item which did error
-		const executeFunctions = new ExecuteContext(
+		// Resolves the input item an errored output item traces back to. This uses
+		// the host-side paired-item resolver, not the expression API.
+		const dataProxy = new WorkflowDataProxy(
 			workflow,
-			executionData.node,
-			this.additionalData,
-			this.mode,
 			this.runExecutionData,
 			runIndex,
+			0,
+			executionData.node.name,
 			[],
-			executionData.data,
+			{},
+			this.mode,
+			{},
 			executionData,
-			closeFunctions,
-			this.abortController.signal,
 		);
-
-		const dataProxy = executeFunctions.getWorkflowDataProxy(0);
 
 		// Loop over all outputs except the error output as it would not contain data by default
 		for (let outputIndex = 0; outputIndex < mainOutputTypes.length - 1; outputIndex++) {
@@ -3116,31 +3113,19 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						let pairedInputItem: INodeExecutionData | null = null;
-						try {
-							pairedInputItem = dataProxy.$getPairedItem(
-								sourceData!.previousNode,
-								sourceData,
-								pairedItemData,
-							);
-						} catch (error) {
-							Logger.debug('Could not resolve the input item of an error item', {
-								node: executionData.node.name,
-								error: error instanceof Error ? error.message : String(error),
-							});
-						}
+						const constPairedItem = dataProxy.resolvePairedItem(
+							sourceData!.previousNode,
+							sourceData,
+							pairedItemData,
+						);
 
-						if (!pairedInputItem) {
-							errorItems.push(item);
-						} else {
-							errorItems.push({
-								...item,
-								json: {
-									...pairedInputItem.json,
-									...item.json,
-								},
-							});
-						}
+						errorItems.push({
+							...item,
+							json: {
+								...constPairedItem.json,
+								...item.json,
+							},
+						});
 					}
 				} else {
 					successItems.push(item);
