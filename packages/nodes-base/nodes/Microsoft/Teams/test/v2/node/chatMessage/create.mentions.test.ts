@@ -18,9 +18,8 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 		.post('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages', (body) => {
 			// A predicate, not a deep-equal object: the footer href carries an instance-derived id
 			// that is not deterministic here. Everything except that href is still pinned exactly.
-			const { content, contentType } = (
-				body as { body: { content: string; contentType: string } }
-			).body;
+			const { content, contentType } = (body as { body: { content: string; contentType: string } })
+				.body;
 			const mentions = (body as { mentions?: Array<Record<string, unknown>> }).mentions ?? [];
 			return (
 				contentType === 'html' &&
