@@ -9,7 +9,7 @@ import { validateNodeConfig } from './node-parameter-schema/schema-validator';
 import { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-count';
 import { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
-import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
+import { nodeDeprecationMessage } from '../node-deprecation';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 import { toEngineConnections } from '../utils/workflow-json-engine-helpers';
@@ -469,6 +469,10 @@ function collectUnknownVersionWarnings(
  * informational: it never blocks a save or the CLI exit code. It only makes the
  * retirement visible, because a synthesized type definition reads like any
  * other one.
+ *
+ * The warning stands alone, so it carries the node's own `searchHint` when the
+ * node names a replacement. Most retired nodes name none, and those fall back
+ * to generic advice.
  */
 function collectDeprecatedNodeWarnings(
 	json: WorkflowJSON,
@@ -476,21 +480,24 @@ function collectDeprecatedNodeWarnings(
 	warnings: ValidationWarning[],
 ): void {
 	for (const node of json.nodes) {
-		let hidden = false;
+		let description: INodeType['description'] | undefined;
 		try {
-			hidden =
-				provider.getByNameAndVersion(node.type, resolveTypeVersion(node.typeVersion))?.description
-					?.hidden === true;
+			description = provider.getByNameAndVersion(
+				node.type,
+				resolveTypeVersion(node.typeVersion),
+			)?.description;
 		} catch {
 			// An unresolvable node type is reported by the checks that own it.
 			continue;
 		}
-		if (!hidden) continue;
+		if (description?.hidden !== true) continue;
+
+		const advice = nodeDeprecationMessage(description.builderHint?.searchHint);
 
 		warnings.push(
 			ValidationWarning.informational(
 				'DEPRECATED_NODE_TYPE',
-				`Node '${node.name}' uses the retired node type '${node.type}'. ${NODE_DEPRECATION_NOTICE}`,
+				`Node '${node.name}' uses the retired node type '${node.type}'. ${advice}`,
 				node.name,
 				undefined,
 				undefined,

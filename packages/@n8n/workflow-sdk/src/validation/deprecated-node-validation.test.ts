@@ -5,14 +5,22 @@ import { validateWorkflow } from '../validation';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../workflow-builder/node-builders/node-builder';
 
-// A provider where only `n8n-nodes-base.function` is retired.
+// Two retired nodes: `function` names no replacement, `toolHttpRequest` does.
+// Every other type is supported.
+const RETIRED: Record<string, { builderHint?: { searchHint: string } }> = {
+	'n8n-nodes-base.function': {},
+	'@n8n/n8n-nodes-langchain.toolHttpRequest': {
+		builderHint: { searchHint: 'Attach `n8n-nodes-base.httpRequestTool` instead.' },
+	},
+};
+
 const mockNodeTypesProvider: INodeTypes = {
 	getByNameAndVersion: (type: string): INodeType =>
 		({
 			description: {
 				inputs: ['main'],
 				outputs: ['main'],
-				...(type === 'n8n-nodes-base.function' ? { hidden: true } : {}),
+				...(type in RETIRED ? { hidden: true, ...RETIRED[type] } : {}),
 			},
 		}) as unknown as INodeType,
 	getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
@@ -40,6 +48,41 @@ describe('deprecated node type validation', () => {
 		// The node stays usable: a soft warning must not block a save.
 		expect(warning?.severity).toBe('informational');
 		expect(result.valid).toBe(true);
+	});
+
+	it('names the replacement when the retired node declares one', () => {
+		const myTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		const legacy = node({
+			type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+			version: 1.1,
+			config: { name: 'search_api' },
+		});
+
+		const wf = workflow('test-id', 'Test').add(myTrigger.to(legacy));
+
+		const result = validateWorkflow(wf, { nodeTypesProvider: mockNodeTypesProvider });
+
+		const warning = result.warnings.find((w) => w.code === 'DEPRECATED_NODE_TYPE');
+		expect(warning?.message).toContain('Attach `n8n-nodes-base.httpRequestTool` instead.');
+		expect(warning?.message).not.toContain('Search for a supported node');
+	});
+
+	it('gives generic advice when the retired node names no replacement', () => {
+		const myTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		const legacy = node({
+			type: 'n8n-nodes-base.function',
+			version: 1,
+			config: { name: 'Old Function' },
+		});
+
+		const wf = workflow('test-id', 'Test').add(myTrigger.to(legacy));
+
+		const result = validateWorkflow(wf, { nodeTypesProvider: mockNodeTypesProvider });
+
+		// Most retired nodes have no hint. The warning must still say what to do.
+		const warning = result.warnings.find((w) => w.code === 'DEPRECATED_NODE_TYPE');
+		expect(warning?.message).toContain('Search for a supported node that does the same work.');
+		expect(warning?.message).not.toContain('builder hint');
 	});
 
 	it('does not warn for a node type that is still supported', () => {
