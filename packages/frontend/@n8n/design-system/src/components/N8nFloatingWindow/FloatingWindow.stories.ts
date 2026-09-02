@@ -31,9 +31,6 @@ const meta: Meta<typeof N8nFloatingWindow> = {
 				iframeHeight: 500,
 			},
 		},
-		themePreview: {
-			minHeight: 520,
-		},
 	},
 	render: (args) => ({
 		components: {

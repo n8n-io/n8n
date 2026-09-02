@@ -12,6 +12,7 @@ beforeAll(async () => {
 		encryptionKey: INSTANCE_ENCRYPTION_KEY,
 		n8nFolder: '/tmp/n8n-test',
 		instanceType: 'main',
+		canSeedDeploymentState: true,
 	});
 	await testDb.init();
 });
@@ -59,5 +60,34 @@ describe('EncryptionBootstrapService (integration)', () => {
 		const gcmKeys = all.filter((k) => k.algorithm === 'aes-256-gcm' && k.status === 'active');
 		expect(cbcKeys).toHaveLength(1);
 		expect(gcmKeys).toHaveLength(1);
+	});
+
+	it('is race-safe — concurrent bootstraps never create duplicate keys (H7)', async () => {
+		const service = Container.get(EncryptionBootstrapService);
+
+		await Promise.all([...Array(5)].map(async () => await service.run()));
+
+		const all = await Container.get(DeploymentKeyRepository).find({
+			where: { type: 'data_encryption' },
+		});
+		const cbcKeys = all.filter((k) => k.algorithm === 'aes-256-cbc');
+		const gcmKeys = all.filter((k) => k.algorithm === 'aes-256-gcm' && k.status === 'active');
+		expect(cbcKeys).toHaveLength(1);
+		expect(gcmKeys).toHaveLength(1);
+	});
+
+	it('serializes concurrent seed calls in the repository critical section', async () => {
+		// Bypass the service-level fast-path check and hammer the repository
+		// directly: the DbLock critical section must let exactly one insert in.
+		const repository = Container.get(DeploymentKeyRepository);
+
+		await Promise.all(
+			[...Array(5)].map(async (_, i) => await repository.seedLegacyCbcKey(`value-${i}`)),
+		);
+
+		const rows = await repository.find({
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+		});
+		expect(rows).toHaveLength(1);
 	});
 });
