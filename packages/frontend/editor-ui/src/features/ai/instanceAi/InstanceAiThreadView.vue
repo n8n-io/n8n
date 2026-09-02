@@ -50,6 +50,7 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
@@ -656,6 +657,14 @@ watch(chatInputRef, (el) => {
 });
 
 watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		void nextTick(() => chatInputRef.value?.focus());
+	},
+);
+
+watch(
 	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
 	([input, draft, planEdit]) => {
 		if (!input || !draft || planEdit) return;
@@ -733,6 +742,8 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const draftAttachment = consumePendingDraftAttachment(props.threadId);
+	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -874,6 +885,11 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Clear the canvas selection only once the send succeeded — clearing it
+			// up front loses the selection on a failed send that the user retries.
+			if (submittedAttachments?.some((a) => a.type === 'nodes')) {
+				store.requestClearCanvasSelection();
 			}
 			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
 			const isCurrentDraft =
@@ -1330,7 +1346,6 @@ async function dismissComposerContextChip() {
 					:supported-directions="['left']"
 					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
@@ -1438,31 +1453,6 @@ async function dismissComposerContextChip() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {

@@ -32,7 +32,8 @@ export interface ReconciliationSummary {
 	skippedOwnerTypes: string[];
 	/**
 	 * Whether every settled owner was covered. `false` when the pass spent its
-	 * page budget, was cancelled, or lost an owner type to a resolver failure.
+	 * page budget, was cancelled, skipped an unclaimed owner type, or lost an
+	 * owner type to a resolver failure.
 	 */
 	drained: boolean;
 	/** Where the next pass should resume. Set whenever the walk stopped short. */
@@ -119,6 +120,7 @@ export async function reconcile(
 		const resolver = owners.resolverFor(ownerType);
 		if (resolver === undefined) {
 			summary.skippedOwnerTypes.push(ownerType);
+			summary.drained = false;
 			notify(() => hooks.onUnclaimedOwnerType?.(ownerType));
 			continue;
 		}
@@ -362,8 +364,10 @@ interface ReviveResult {
 }
 
 /**
- * Lift the quarantine on jobs whose owner exists after all, recomputing each
- * clock from the stored schedule so the job resumes at its next instant.
+ * Lift the quarantine on jobs whose owner exists after all, seeding each clock
+ * from the stored schedule as a fresh registration would. Quarantine cleared the
+ * clock, so nothing anchors the revived job to its old cadence: a recurring cron
+ * restarts its every-N count at its next cron instant.
  *
  * A resolver answers existence, not intent, so a job is restored exactly as it
  * was stored, including one the owner would no longer provision. Bringing the

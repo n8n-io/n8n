@@ -46,6 +46,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -60,10 +61,13 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowRepositoryMock: MockProxy<{
 			getManyAndCountWithSharingSubquery: Mock;
+			getWorkflowsAndFoldersWithCountWithSharingSubquery: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
+		let workflowPublicationStatusServiceMock: MockProxy<WorkflowPublicationStatusService>;
 
 		beforeEach(() => {
 			workflowRepositoryMock = mock();
@@ -81,6 +85,11 @@ describe('WorkflowService', () => {
 			// By default the requester can read the supplied parent workflow.
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			});
+			workflowPublicationStatusServiceMock = mock<WorkflowPublicationStatusService>();
+
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
@@ -95,7 +104,7 @@ describe('WorkflowService', () => {
 				mock(), // projectService
 				mock(), // executionPersistence
 				mock(), // eventService
-				mock(), // globalConfig
+				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
@@ -116,6 +125,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 			);
 		});
 
@@ -142,14 +152,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -169,14 +172,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:read', 'workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -196,14 +192,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const executeScope: Scope[] = ['workflow:execute'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				executeScope,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: executeScope });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', executeScope);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', executeScope);
@@ -321,6 +310,120 @@ describe('WorkflowService', () => {
 				);
 			});
 		});
+
+		describe('getMany publicationStatus enrichment', () => {
+			const user = mock<User>();
+
+			beforeEach(() => {
+				workflowRepositoryMock.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					workflows: [{ id: 'wf-1' }, { id: 'wf-2' }],
+					count: 2,
+				});
+			});
+
+			it('attaches publicationStatus when the caller opts in and the publication service flag is on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'partial']]),
+				);
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					publicationStatus: 'partial',
+				});
+				expect(workflows.find((w) => w.id === 'wf-2')).not.toHaveProperty('publicationStatus');
+			});
+
+			it('is a no-op when the flag is off', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = false;
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('is a no-op when the caller does not opt in, even with the flag on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+
+				const { workflows } = await workflowService.getMany(user, {});
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('returns the list unenriched when the status lookup fails', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockRejectedValue(
+					new Error('table is locked'),
+				);
+
+				const { workflows, count } = await workflowService.getMany(
+					user,
+					{},
+					{
+						includePublicationStatus: true,
+					},
+				);
+
+				expect(count).toBe(2);
+				expect(workflows).toHaveLength(2);
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('enriches the workflow row and leaves folder rows untouched on the folder list path', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery.mockResolvedValue(
+					[
+						[
+							{ id: 'folder-1', resource: 'folder' },
+							{ id: 'wf-1', resource: 'workflow' },
+						],
+						2,
+					],
+				);
+				// Only the workflow id has a settled status; the folder id never matches.
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'published']]),
+				);
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{
+						includeFolders: true,
+						includePublicationStatus: true,
+					},
+				);
+
+				// Folder ids are never fed to the aggregate query.
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).toHaveBeenCalledWith(['wf-1']);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					resource: 'workflow',
+					publicationStatus: 'published',
+				});
+
+				const folder = workflows.find((w) => w.id === 'folder-1');
+				expect(folder).toMatchObject({ resource: 'folder' });
+				expect(folder).not.toHaveProperty('publicationStatus');
+			});
+		});
 	});
 
 	describe('update() redactionPolicy scope enforcement', () => {
@@ -388,6 +491,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 
 			vi.clearAllMocks();
@@ -1168,6 +1272,7 @@ describe('WorkflowService', () => {
 				workflowPublishGuardMock, // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 
 			// Bypass validation internals
@@ -1875,6 +1980,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -1996,6 +2102,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2216,6 +2323,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2382,6 +2490,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2559,6 +2668,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2658,6 +2768,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
