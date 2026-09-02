@@ -113,6 +113,69 @@ describe('reconcile', () => {
 			expect(onQuarantined).toHaveBeenCalledWith({ ownerType: 'workflow', jobs: 1 });
 		});
 
+		it('asks the resolver again after a quarantine and lifts it in the same pass when the owner is back', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValueOnce(new Set())
+				.mockResolvedValueOnce(new Set(['wf-back']));
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-back', 'wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(2);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 7, ownerId: 'wf-back' }),
+			]);
+
+			const summary = await run();
+
+			expect(findExisting).toHaveBeenNthCalledWith(2, ['wf-back', 'wf-gone']);
+			expect(store.deleteQuarantinedByOwnerIds).toHaveBeenCalledWith(
+				'workflow',
+				['wf-gone'],
+				QUARANTINED_BEFORE,
+			);
+			expect(store.findQuarantinedByOwnerIds).toHaveBeenCalledWith(
+				'workflow',
+				['wf-back'],
+				BATCH_SIZE,
+			);
+			expect(store.liftQuarantine).toHaveBeenCalledWith(7, expect.any(Date) as Date);
+			expect(summary).toMatchObject({ quarantined: 2, revived: 1, drained: true });
+		});
+
+		it('does not ask the resolver again when nothing was quarantined', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValue(new Set());
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(0);
+
+			await run();
+
+			expect(findExisting).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the quarantine and abandons the walk when the second answer fails', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValueOnce(new Set())
+				.mockRejectedValueOnce(new Error('lookup failed'));
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-gone']);
+			store.quarantineByOwnerIds.mockResolvedValue(1);
+			const onResolverFailed = vi.fn();
+
+			const summary = await run({ onResolverFailed });
+
+			expect(store.deleteQuarantinedByOwnerIds).not.toHaveBeenCalled();
+			expect(store.liftQuarantine).not.toHaveBeenCalled();
+			expect(onResolverFailed).toHaveBeenCalledWith('workflow', expect.any(Error) as Error);
+			expect(summary).toMatchObject({ quarantined: 1, revived: 0, drained: false });
+		});
+
 		it('reports nothing quarantined when every job of a gone owner already was', async () => {
 			registry.register('workflow', {
 				findExisting: async () => await Promise.resolve(new Set()),

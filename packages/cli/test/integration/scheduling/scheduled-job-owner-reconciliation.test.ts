@@ -312,7 +312,7 @@ describe('scheduled job owner reconciliation', () => {
 	});
 
 	describe('a pass racing a concurrent provision', () => {
-		it('may re-quarantine jobs a provision revived on a stale answer, and the next pass lifts it', async () => {
+		it('lifts in the same pass a quarantine it wrote on an answer a concurrent provision made stale', async () => {
 			const workflow = await publishWorkflow();
 			const provisioner = Container.get(DurableJobProvisioner);
 			const nodeId = uuid();
@@ -338,30 +338,29 @@ describe('scheduled job owner reconciliation', () => {
 			await runReconciliation();
 			expect((await reload(jobId))?.orphanedAt).not.toBeNull();
 
-			// The pass reads its liveness answer, then stalls while the workflow
-			// publishes again and provisioning lifts the quarantine.
+			// The pass reads its first liveness answer, then stalls while the workflow
+			// publishes again and provisioning lifts the quarantine. Later answers
+			// come straight from the real resolver.
 			const real = Container.get(WorkflowScheduledJobOwner);
+			let answers = 0;
 			workflowResolver = {
 				findExisting: async (ownerIds) => {
 					const answer = await real.findExisting(ownerIds);
-					await publishedVersions.setPublishedVersion(workflow.id, workflow.versionId);
-					await provisionOnce();
-					expect(await reload(jobId)).toMatchObject({ enabled: true, orphanedAt: null });
+					answers += 1;
+					if (answers === 1) {
+						await publishedVersions.setPublishedVersion(workflow.id, workflow.versionId);
+						await provisionOnce();
+						expect(await reload(jobId)).toMatchObject({ enabled: true, orphanedAt: null });
+					}
 					return answer;
 				},
 			};
-			const stale = await runReconciliation();
+			const summary = await runReconciliation();
 
-			// The stale answer wins: the live jobs are quarantined again, but the fresh
-			// stamp keeps them a whole grace away from deletion.
-			expect(stale).toMatchObject({ quarantined: 1, deleted: 0 });
-			expect((await reload(jobId))?.orphanedAt).not.toBeNull();
-
-			// The next pass sees the owner alive and lifts it: the race is transient.
-			workflowResolver = real;
-			const next = await runReconciliation();
-
-			expect(next).toMatchObject({ revived: 1, deleted: 0 });
+			// The stale answer quarantined the live jobs again, and the second answer
+			// lifted that in the same pass.
+			expect(answers).toBe(2);
+			expect(summary).toMatchObject({ quarantined: 1, revived: 1, deleted: 0 });
 			const revived = await reload(jobId);
 			expect(revived).toMatchObject({ enabled: true, orphanedAt: null });
 			expect(revived?.nextRunAt).not.toBeNull();

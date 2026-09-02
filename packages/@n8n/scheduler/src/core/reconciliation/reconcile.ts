@@ -70,7 +70,8 @@ export interface ReconciliationHooks {
  * grace, and one whose owner is reported alive again gets a fresh clock (see
  * {@link revive}). No answer is never read as an answer: an unclaimed owner
  * type, a resolver that threw, and a job younger than the settle period are all
- * left untouched.
+ * left untouched. A quarantine written on an answer that went stale while it was
+ * being written is lifted in the same pass (see {@link sweepPage}).
  *
  * Safe to run concurrently across instances, since every step is an idempotent
  * owner-scoped statement. Reads at most `maxPagesPerPass` owner pages in a
@@ -266,18 +267,24 @@ async function sweepPage(sweep: Sweep, after?: string): Promise<PageResult> {
 		return { outcome: 'drained', totals: noTotals() };
 	}
 
-	let existing: Set<string>;
-	try {
-		existing = await sweep.resolver.findExisting(ownerIds);
-	} catch (error) {
-		notify(() => hooks.onResolverFailed?.(ownerType, ensureError(error)));
+	const liveness = await askLiveness(sweep, ownerIds);
+	if (liveness === undefined) {
 		return { outcome: 'failed', totals: noTotals() };
 	}
-
-	const missing = ownerIds.filter((ownerId) => !existing.has(ownerId));
-	const alive = ownerIds.filter((ownerId) => existing.has(ownerId));
+	let { alive, missing } = liveness;
 
 	const quarantined = await quarantine(store, ownerType, missing, clock, hooks);
+	if (quarantined > 0) {
+		const recheck = await askLiveness(sweep, missing);
+		if (recheck === undefined) {
+			return {
+				outcome: 'failed',
+				totals: { ownersChecked: ownerIds.length, quarantined, deleted: 0, revived: 0 },
+			};
+		}
+		alive = [...alive, ...recheck.alive];
+		missing = recheck.missing;
+	}
 	const deleted = await deleteExpired(store, ownerType, missing, clock.quarantinedBefore, hooks);
 	const revival = await revive(store, ownerType, alive, sweep.now, options, hooks, sweep.signal);
 
@@ -295,6 +302,29 @@ async function sweepPage(sweep: Sweep, after?: string): Promise<PageResult> {
 		return { outcome: 'drained', totals };
 	}
 	return { outcome: 'swept', totals, after: ownerIds[ownerIds.length - 1] };
+}
+
+/** Which of these owners the resolver finds, and which it does not. */
+interface Liveness {
+	alive: string[];
+	missing: string[];
+}
+
+/**
+ * Ask the resolver which of these owners still exist.
+ */
+async function askLiveness(sweep: Sweep, ownerIds: string[]): Promise<Liveness | undefined> {
+	let existing: Set<string>;
+	try {
+		existing = await sweep.resolver.findExisting(ownerIds);
+	} catch (error) {
+		notify(() => sweep.hooks.onResolverFailed?.(sweep.ownerType, ensureError(error)));
+		return undefined;
+	}
+	return {
+		alive: ownerIds.filter((ownerId) => existing.has(ownerId)),
+		missing: ownerIds.filter((ownerId) => !existing.has(ownerId)),
+	};
 }
 
 function noTotals(): SweepTotals {
