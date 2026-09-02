@@ -81,6 +81,9 @@ export class KeyManagerService {
 	/**
 	 * Seeds an inactive aes-256-cbc key from the instance encryption key if none exists.
 	 * The value is wrapped with the instance key via AES-256-GCM before storage.
+	 * Race-safe across concurrent mains: the repository runs the check-and-insert
+	 * inside a `DbLock` critical section. The check here is only a fast path to
+	 * skip the lock on every startup after the first.
 	 */
 	async bootstrapLegacyCbcKey(instanceEncryptionKey: string): Promise<void> {
 		const existing = await this.deploymentKeyRepository.findOne({
@@ -89,13 +92,7 @@ export class KeyManagerService {
 		if (existing) return;
 
 		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(instanceEncryptionKey);
-		const entity = this.deploymentKeyRepository.create({
-			type: 'data_encryption',
-			value: encryptedValue,
-			algorithm: 'aes-256-cbc',
-			status: 'inactive',
-		});
-		await this.deploymentKeyRepository.save(entity);
+		await this.deploymentKeyRepository.seedLegacyCbcKey(encryptedValue);
 	}
 
 	/**
