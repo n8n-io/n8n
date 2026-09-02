@@ -146,13 +146,21 @@ export function buildSubWorkflowOutputFromRunData(
 		}
 	}
 
-	const terminalNodesWithRuns = getTerminalNodeNames(workflow.nodes, workflow.connections).filter(
-		(nodeName) => getSortedNodeRuns(runData, nodeName).length > 0,
+	// Only count a terminal node as contributing when it has at least one run with actual
+	// `main` output items. This excludes AI subnodes (data keyed `ai_*`, not `main`) and
+	// nodes that ran but produced zero items (e.g. Split Out over an empty array), so the
+	// `lastNodeExecuted` fallback can still fire in those cases.
+	const terminalNodesWithMainOutput = getTerminalNodeNames(
+		workflow.nodes,
+		workflow.connections,
+	).filter((nodeName) =>
+		getSortedNodeRuns(runData, nodeName).some((run) =>
+			run.data?.main?.some((branch) => branch && branch.length > 0),
+		),
 	);
 
-	if (terminalNodesWithRuns.length > 0) {
-		const items = collectTerminalOutputItems(runData, terminalNodesWithRuns, lastRunOnly);
-
+	if (terminalNodesWithMainOutput.length > 0) {
+		const items = collectTerminalOutputItems(runData, terminalNodesWithMainOutput, lastRunOnly);
 		return items.length > 0 ? [items] : [null];
 	}
 

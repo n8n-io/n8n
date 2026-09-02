@@ -239,6 +239,92 @@ describe('buildSubWorkflowOutputFromRunData', () => {
 		expect(output).toEqual([[{ json: { id: 1 } }, { json: { id: 2 } }]]);
 	});
 
+	it('falls back to lastNodeExecuted when a terminal node ran but produced zero items (n8n-io/n8n#36393)', () => {
+		// Repro: trigger fans out to (a) Split Out over an empty array (terminal, 0 items) and
+		// (b) an always-false IF whose false output is unconnected.  Split Out satisfies the old
+		// `terminalNodesWithRuns` guard even though it has no items, so `lastNodeExecuted` never
+		// fired and the result was `[null]`.
+		const runData: IRunData = {
+			'Split Out': [
+				{ data: { main: [[]] } }, // ran, but no items
+			] as unknown as ITaskData[],
+			'Always-false IF': [
+				{
+					data: {
+						main: [[], [{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]],
+					},
+				},
+			] as unknown as ITaskData[],
+		};
+
+		const emptyTerminalWorkflow = {
+			nodes: [
+				mock<INode>({ name: 'Trigger', disabled: false }),
+				mock<INode>({ name: 'Split Out', disabled: false }),
+				mock<INode>({ name: 'Always-false IF', disabled: false }),
+			],
+			connections: {
+				Trigger: {
+					main: [
+						[
+							{ node: 'Split Out', type: 'main', index: 0 },
+							{ node: 'Always-false IF', type: 'main', index: 0 },
+						],
+					],
+				},
+				// Split Out has no outgoing connections → terminal
+				// Always-false IF: false branch unconnected, true branch unconnected → terminal
+			} as IConnections,
+		};
+
+		const output = buildSubWorkflowOutputFromRunData(
+			{ runData, lastNodeExecuted: 'Always-false IF' },
+			emptyTerminalWorkflow,
+			{ lastRunOnly: false, mode: 'integrated' },
+		);
+
+		expect(output).toEqual([[{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]]);
+	});
+
+	it('falls back to lastNodeExecuted when terminal nodes are AI subnodes with no main output (n8n-io/n8n#36393)', () => {
+		// AI subnodes have no outgoing `main` connections (connected via ai_tool etc.) so they
+		// appear as terminal nodes. Their run data is keyed `ai_tool` / `ai_memory` / etc., not
+		// `main`. The old guard treated them as contributing, producing `[null]` instead of
+		// falling back to `lastNodeExecuted`.
+		const runData: IRunData = {
+			'AI Tool': [
+				{
+					data: {
+						// AI subnodes store output under ai_* keys, not main
+						ai_tool: [[{ json: { result: 'tool ran' } }]],
+					},
+				},
+			] as unknown as ITaskData[],
+			'Chat Model': [{ data: { main: [[{ json: { text: 'hello' } }]] } }] as unknown as ITaskData[],
+		};
+
+		const aiSubnodeWorkflow = {
+			nodes: [
+				mock<INode>({ name: 'Chat Model', disabled: false }),
+				mock<INode>({ name: 'AI Tool', disabled: false }),
+			],
+			connections: {
+				// AI Tool connected via ai_tool, not main → appears terminal
+				'Chat Model': {
+					main: [[]], // no outgoing main → terminal
+				},
+			} as IConnections,
+		};
+
+		const output = buildSubWorkflowOutputFromRunData(
+			{ runData, lastNodeExecuted: 'Chat Model' },
+			aiSubnodeWorkflow,
+			{ lastRunOnly: false, mode: 'integrated' },
+		);
+
+		expect(output).toEqual([[{ json: { text: 'hello' } }]]);
+	});
+
 	it('falls back to lastNodeExecuted when no terminal node produced output', () => {
 		const runData: IRunData = {
 			'Last node executed': [
