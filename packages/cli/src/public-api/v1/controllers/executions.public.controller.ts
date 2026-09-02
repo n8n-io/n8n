@@ -1,11 +1,13 @@
 import {
 	DeletedExecutionPublicDto,
 	ExecutionPublicDto,
+	ExecutionTagsPublicDto,
 	GetExecutionQueryDto,
 	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
 	StopManyExecutionsPublicDto,
 	StoppedExecutionPublicDto,
 	StoppedExecutionsPublicDto,
+	TagIdsPublicDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
@@ -22,6 +24,7 @@ import {
 	Param,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -144,6 +147,68 @@ export class ExecutionsPublicController {
 		const execution = await this.executionService.deleteOne(executionId, sharedWorkflowsIds);
 
 		return toDeletedExecutionPublicDto(execution, executionId);
+	}
+
+	@Get('/:executionId/tags')
+	@ApiKeyScope('executionTags:list')
+	@ApiSummary('Get execution tags')
+	@ApiDescription('Get annotation tags for an execution.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, ExecutionTagsPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async getExecutionTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:read'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tags = await this.executionService.getExecutionTags(executionId, sharedWorkflowsIds);
+
+		return tags.map(toPublicTag);
+	}
+
+	@Put('/:executionId/tags')
+	@ApiKeyScope('executionTags:update')
+	@ApiSummary('Update tags of an execution')
+	@ApiDescription('Update annotation tags of an execution.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, ExecutionTagsPublicDto)
+	@ApiErrorResponse(404)
+	async updateExecutionTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+		@Body body: TagIdsPublicDto,
+	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:update'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tags = await this.executionService.updateExecutionTags(
+			executionId,
+			body.map((tag) => tag.id),
+			sharedWorkflowsIds,
+		);
+
+		return tags.map(toPublicTag);
 	}
 	@Post('/stop')
 	@ApiKeyScope('execution:stop')
@@ -287,6 +352,15 @@ function toDeletedExecutionPublicDto(
 	return {
 		id: Number(executionId),
 		...toBaseFields(execution),
+	};
+}
+
+function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt: Date }) {
+	return {
+		id: tag.id,
+		name: tag.name,
+		createdAt: tag.createdAt.toISOString(),
+		updatedAt: tag.updatedAt.toISOString(),
 	};
 }
 

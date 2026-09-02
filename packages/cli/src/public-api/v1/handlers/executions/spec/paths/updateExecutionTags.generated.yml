@@ -1,9 +1,9 @@
-operationId: updateWorkflowTags
+operationId: updateExecutionTags
 tags:
-  - Workflow
-summary: Update tags of a workflow
-description: Update tags of a workflow.
-x-required-scope: workflowTags:update
+  - Execution
+summary: Update tags of an execution
+description: Update annotation tags of an execution.
+x-required-scope: executionTags:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    name: workflowId
+    name: executionId
     in: path
 requestBody:
   required: true
@@ -34,7 +34,7 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/workflowTagsPublicDto.generated.yml
+          $ref: ../../../../shared/spec/schemas/executionTagsPublicDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

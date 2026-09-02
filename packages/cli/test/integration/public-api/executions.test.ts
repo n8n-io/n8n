@@ -95,12 +95,9 @@ describe('GET /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
 
-	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.get(`/executions/${executionId}`);
 
 			expect(response.statusCode).toBe(400);
@@ -273,8 +270,6 @@ describe('DELETE /executions/:id', () => {
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
 		async (executionId) => {
-			await createWorkflow({}, owner);
-
 			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
 
 			expect(response.statusCode).toBe(400);
@@ -962,6 +957,15 @@ describe('GET /executions/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.get(`/executions/${executionId}/tags`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should return empty array for execution with no tags', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -970,6 +974,26 @@ describe('GET /executions/:id/tags', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual([]);
+	});
+
+	test('should return the tags of an execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag] = await createAnnotationTags(['dataset']);
+
+		await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([{ id: tag.id }]);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual([
+			{
+				id: tag.id,
+				name: 'dataset',
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			},
+		]);
 	});
 
 	test('member should not get tags from execution in inaccessible workflow', async () => {
@@ -991,6 +1015,15 @@ describe('PUT /executions/:id/tags', () => {
 		const response = await authOwnerAgent.put('/executions/999/tags').send([]);
 		expect(response.statusCode).toBe(404);
 	});
+
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.put(`/executions/${executionId}/tags`).send([]);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
 
 	test('should set tags on execution', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -1050,6 +1083,20 @@ describe('PUT /executions/:id/tags', () => {
 
 		expect(response.statusCode).toBe(404);
 		expect(response.body.message).toBe('Some tags not found');
+	});
+
+	test.each([
+		['not an array', { id: 'tag-1' }],
+		['an item without an id', [{}]],
+		['an item with an unknown property', [{ id: 'tag-1', name: 'dataset' }]],
+		['an item with a non-string id', [{ id: 1 }]],
+	])('should return 400 when the body is %s', async (_label, body) => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent.put(`/executions/${execution.id}/tags`).send(body);
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('member should not update tags on execution in inaccessible workflow', async () => {
