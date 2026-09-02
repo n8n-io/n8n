@@ -733,8 +733,9 @@ describe('withPassThroughFloor', () => {
 	});
 
 	// An upstream node with no fixture of its own is looked up by name in the
-	// fixture map, so a name shared with a built-in object property has to miss
-	// rather than resolve to whatever that property holds.
+	// fixture map. When the name is one a plain object already carries, the
+	// lookup used to hand back that inherited method and the walk then treated
+	// it as an item list. `itemsForNode` covers the lookup contract itself.
 	it.each(['toString', 'valueOf'])(
 		'borrows the schema shape of an upstream node named %s',
 		(upstreamName) => {

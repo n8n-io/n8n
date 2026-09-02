@@ -189,6 +189,22 @@ describe('getPrunedVerificationPinData — node names that collide with object p
 		},
 	);
 
+	// Nothing was persisted for this node, so there is nothing to prune and the
+	// caller must not be handed a rewritten map.
+	test.each(['__proto__', 'constructor', 'toString'])(
+		'reports no change for a node named %s that was never persisted',
+		(nodeName) => {
+			const next = getPrunedVerificationPinData({
+				persistedPinData: {},
+				verificationPinData: sdkPinDataToRuntime({ [nodeName]: [{ ok: true }] }),
+				nonVerificationPinData: {},
+				reachedNodeNames: [],
+			});
+
+			expect(next).toBeUndefined();
+		},
+	);
+
 	test('keeps workflow pin data that the node had of its own', () => {
 		const nodeName = '__proto__';
 		const preserved = [{ json: { fromWorkflow: true } }];
