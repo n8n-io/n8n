@@ -198,14 +198,15 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Let the agent read node-type usage from the workflow dependency index — the `node-usage`
-	 * action and the `nodeTypes` filter on `workflows(action="list")`.
+	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
+	 * the `nodeTypes` filter on `workflows(action="list")`.
 	 *
-	 * Gated on its own rather than with any other context surface, so a measurement can tell which
-	 * one moved a result; a combined switch could not.
+	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
+	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
+	 * with any other context surface, so a measurement can tell which one moved a result.
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
-	nodeUsageEnabled: boolean = true;
+	nodeUsageEnabled: boolean = false;
 
 	/**
 	 * Activation-capped trial variant for n8n cloud experiment.

@@ -4,6 +4,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -370,6 +371,9 @@ export class InstanceAiAdapterService {
 			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
+			/** Per-user node-usage gate (via `isNodeUsageEnabled`). Falsy → neither the
+			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
+			nodeUsageEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -385,6 +389,7 @@ export class InstanceAiAdapterService {
 			agentId,
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			nodeUsageEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -403,7 +408,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			modelId,
-			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId, nodeUsageEnabled),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
@@ -486,6 +491,21 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/**
+	 * Gate for the node-usage context surface. PostHog owns cohort rollout;
+	 * `N8N_INSTANCE_AI_NODE_USAGE_ENABLED` force-enables because {@link PostHogClient}
+	 * layers that override on top of the resolved flags. Fails closed on any PostHog
+	 * error, so an outage never switches a context surface on by accident.
+	 */
+	async isNodeUsageEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			return flags?.[INSTANCE_AI_NODE_USAGE_FLAG] === true;
+		} catch {
+			return false;
+		}
 	}
 
 	/** Gate for MCP registry discovery tool. All three must hold:
@@ -652,6 +672,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
+		nodeUsageGateOpen = false,
 	): InstanceAiWorkflowService {
 		const {
 			workflowService,
@@ -671,10 +692,9 @@ export class InstanceAiAdapterService {
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
-		// The flag is read once, here: the tool registers the action from the method's presence, so
-		// nothing downstream has to know the flag exists.
-		const nodeUsageEnabled =
-			this.globalConfig.instanceAi.nodeUsageEnabled && workflowDependencyQueryService !== undefined;
+		// Resolved once per context, upstream in `createContext`: the tool registers the action from
+		// the method's presence, so nothing downstream has to know a rollout flag exists.
+		const nodeUsageEnabled = nodeUsageGateOpen && workflowDependencyQueryService !== undefined;
 
 		/**
 		 * Which project a read targets. An explicit `projectId` wins, otherwise the thread's own
