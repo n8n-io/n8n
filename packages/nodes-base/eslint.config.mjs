@@ -27,6 +27,7 @@ export default defineConfig(
 			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
 			'n8n-local-rules/no-dynamic-regexp': 'error',
+			'n8n-local-rules/require-escaped-query-values': 'warn',
 
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
@@ -198,6 +199,7 @@ export default defineConfig(
 			'import-x/no-extraneous-dependencies': 'off',
 			'n8n-nodes-base/node-filename-against-convention': 'off',
 			'n8n-local-rules/no-dynamic-regexp': 'off',
+			'n8n-local-rules/require-escaped-query-values': 'off',
 		},
 	},
 	...databricksUserAgentRestriction,
