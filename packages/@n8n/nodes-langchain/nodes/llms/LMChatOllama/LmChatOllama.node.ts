@@ -7,6 +7,7 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -59,6 +60,14 @@ export class LmChatOllama implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('ollamaApi');
+		const baseUrl = credentials.baseUrl as string;
+
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData: credentials,
+			url: baseUrl,
+			surface: 'Ollama',
+		});
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
@@ -68,12 +77,13 @@ export class LmChatOllama implements INodeType {
 				}
 			: undefined;
 
+		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch(input, init, {});
+			await proxyFetch({ input, init, lookup });
 
 		const model = new ChatOllama({
 			...options,
-			baseUrl: credentials.baseUrl as string,
+			baseUrl,
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
