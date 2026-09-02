@@ -47,7 +47,6 @@ export interface Telemetry {
 	reset(): void;
 	flushPageEvents(): void;
 	trackAskAI(event: string, ndvPushRef: string, properties?: IDataObject): void;
-	trackAiTransform(event: string, ndvPushRef: string, properties?: IDataObject): void;
 	trackNodeParametersValuesChange(nodeType: string, change: TelemetryNodeParameterChange): void;
 }
 

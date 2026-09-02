@@ -3,7 +3,6 @@ import { createTestingPinia } from '@pinia/testing';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
-	AI_TRANSFORM_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -16,7 +15,6 @@ import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
 
-const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
 	displayName: 'AI Agent V2',
@@ -54,7 +52,7 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
+		allLatestNodeTypes: [...otherNodes],
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},
@@ -77,9 +75,6 @@ describe('viewsData', () => {
 			(params) => `template-repository-url.n8n.io?${params.toString()}`,
 		);
 		getNodeType.mockImplementation((nodeName: string) => {
-			if (nodeName === AI_TRANSFORM_NODE_TYPE) {
-				return aiTransformNode;
-			}
 			if (nodeName === MESSAGE_AN_AGENT_NODE_TYPE) {
 				return messageAnAgentNode;
 			}
@@ -97,15 +92,8 @@ describe('viewsData', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should not include the deprecated AI Transform node', () => {
-			const result = AIView([]);
-
-			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
-		});
-
 		test('should include Message an Agent node before the agent node when agents module is active', () => {
 			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
 				(name: string) => name === 'agents',
 			);
@@ -123,7 +111,6 @@ describe('viewsData', () => {
 
 		test('should not include Message an Agent node when agents module is inactive', () => {
 			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
 
 			const result = AIView([]);

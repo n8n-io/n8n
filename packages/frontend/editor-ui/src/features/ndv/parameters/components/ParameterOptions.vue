@@ -9,7 +9,6 @@ import { isValueExpression } from '@/app/utils/nodeTypesUtils';
 import { computed, inject } from 'vue';
 import { ChatHubToolContextKey } from '@/app/constants';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
-import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -117,13 +116,7 @@ const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
 );
-const resetValueLabel = computed(() => {
-	if (activeNode.value && [AI_TRANSFORM_NODE_TYPE].includes(activeNode.value.type)) {
-		return i18n.baseText('parameterInput.clearContents');
-	}
-
-	return i18n.baseText('parameterInput.resetValue');
-});
+const resetValueLabel = computed(() => i18n.baseText('parameterInput.resetValue'));
 
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {

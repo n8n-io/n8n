@@ -55,7 +55,6 @@ import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUt
 import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
-	AI_TRANSFORM_NODE_TYPE,
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
@@ -803,8 +802,6 @@ const showDragnDropTip = computed(
 		(ndvStore.value?.isInputParentOfActiveNode ?? false) &&
 		!props.isForCredential,
 );
-
-const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
 const isMapperAvailable = computed(
 	() =>
@@ -1709,7 +1706,6 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							:posthog-capture="shouldCaptureForPosthog"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1838,7 +1834,6 @@ onUpdated(async () => {
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
-					:posthog-capture="shouldCaptureForPosthog"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>

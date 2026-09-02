@@ -13,7 +13,6 @@ function createTelemetry(): Telemetry {
 		reset: vi.fn(),
 		flushPageEvents: vi.fn(),
 		trackAskAI: vi.fn(),
-		trackAiTransform: vi.fn(),
 		trackNodeParametersValuesChange: vi.fn(),
 	};
 }

@@ -2,17 +2,11 @@ import { ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type router from 'vue-router';
-import {
-	AI_TRANSFORM_NODE_TYPE,
-	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
-	AI_TRANSFORM_JS_CODE,
-} from 'n8n-workflow';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
 import { useUIStore } from '@/app/stores/ui.store';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
-import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import type { INodeUi } from '@/Interface';
 import {
 	WEBHOOK_NODE_TYPE,
@@ -151,7 +145,6 @@ vi.mock('@/app/composables/useMessage', () => ({
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
-		trackAiTransform: vi.fn(),
 	}),
 }));
 
@@ -177,10 +170,6 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	needsAgentInput: vi.fn().mockReturnValue(false),
-}));
-
-vi.mock('@/features/ndv/parameters/utils/buttonParameter.utils', () => ({
-	generateCodeForAiTransform: vi.fn(),
 }));
 
 function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
@@ -236,7 +225,6 @@ describe('useNodeExecution', () => {
 		mockMessage.confirm.mockReset();
 
 		vi.mocked(needsAgentInput).mockReturnValue(false);
-		vi.mocked(generateCodeForAiTransform).mockReset();
 	});
 
 	describe('isTriggerNode', () => {
@@ -574,89 +562,6 @@ describe('useNodeExecution', () => {
 
 			expect(buttonIcon.value).toBeUndefined();
 		});
-
-		it('should return terminal when should generate code', () => {
-			const node = ref(
-				createTestNode({
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: { instructions: 'do something' },
-				}),
-			);
-
-			const { buttonIcon } = useNodeExecution(node);
-
-			expect(buttonIcon.value).toBe('terminal');
-		});
-	});
-
-	describe('shouldGenerateCode', () => {
-		it('should return false for non-AI transform nodes', () => {
-			const node = ref(createTestNode());
-
-			const { shouldGenerateCode } = useNodeExecution(node);
-
-			expect(shouldGenerateCode.value).toBe(false);
-		});
-
-		it('should return false when AI transform has no instructions', () => {
-			const node = ref(
-				createTestNode({
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: {},
-				}),
-			);
-
-			const { shouldGenerateCode } = useNodeExecution(node);
-
-			expect(shouldGenerateCode.value).toBe(false);
-		});
-
-		it('should return true when AI transform has instructions but no code', () => {
-			const node = ref(
-				createTestNode({
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: { instructions: 'do something' },
-				}),
-			);
-
-			const { shouldGenerateCode } = useNodeExecution(node);
-
-			expect(shouldGenerateCode.value).toBe(true);
-		});
-
-		it('should return false when AI transform has matching prompt and code', () => {
-			const node = ref(
-				createTestNode({
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: {
-						instructions: 'do something',
-						[AI_TRANSFORM_JS_CODE]: 'return items;',
-						[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'do something',
-					},
-				}),
-			);
-
-			const { shouldGenerateCode } = useNodeExecution(node);
-
-			expect(shouldGenerateCode.value).toBe(false);
-		});
-
-		it('should return true when AI transform instructions differ from generated prompt', () => {
-			const node = ref(
-				createTestNode({
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: {
-						instructions: 'do something new',
-						[AI_TRANSFORM_JS_CODE]: 'return items;',
-						[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'do something old',
-					},
-				}),
-			);
-
-			const { shouldGenerateCode } = useNodeExecution(node);
-
-			expect(shouldGenerateCode.value).toBe(true);
-		});
 	});
 
 	describe('execute', () => {
@@ -778,73 +683,6 @@ describe('useNodeExecution', () => {
 			mockPinnedData.hasData.value = true;
 			mockMessage.confirm.mockResolvedValue('cancel');
 			const node = ref(createTestNode({ name: 'Set Node' }));
-
-			const { execute } = useNodeExecution(node);
-			const result = await execute();
-
-			expect(result).toBe('cancelled');
-		});
-
-		it('should generate code before executing AI transform node', async () => {
-			vi.mocked(generateCodeForAiTransform).mockResolvedValue({
-				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
-				value: 'return items;',
-			});
-			mockWorkflowDocumentStore.updateNodeProperties.mockClear();
-			const node = ref(
-				createTestNode({
-					name: 'AI Transform',
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: { instructions: 'do something' },
-				}),
-			);
-
-			const { execute } = useNodeExecution(node);
-			const result = await execute();
-
-			expect(generateCodeForAiTransform).toHaveBeenCalled();
-			expect(mockWorkflowDocumentStore.updateNodeProperties).toHaveBeenCalled();
-			expect(result).toBe('executed');
-		});
-
-		it('should call onCodeGenerated callback when code is generated', async () => {
-			vi.mocked(generateCodeForAiTransform).mockResolvedValue({
-				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
-				value: 'return items;',
-			});
-			mockWorkflowDocumentStore.updateNodeProperties.mockClear();
-			const onCodeGenerated = vi.fn();
-			const node = ref(
-				createTestNode({
-					name: 'AI Transform',
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: { instructions: 'do something' },
-				}),
-			);
-
-			const { execute } = useNodeExecution(node, { onCodeGenerated });
-			await execute();
-
-			expect(onCodeGenerated).toHaveBeenCalledTimes(2);
-			expect(onCodeGenerated).toHaveBeenCalledWith({
-				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
-				value: 'return items;',
-			});
-			expect(onCodeGenerated).toHaveBeenCalledWith({
-				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
-				value: 'do something',
-			});
-		});
-
-		it('should return cancelled when code generation fails', async () => {
-			vi.mocked(generateCodeForAiTransform).mockResolvedValue(undefined as never);
-			const node = ref(
-				createTestNode({
-					name: 'AI Transform',
-					type: AI_TRANSFORM_NODE_TYPE,
-					parameters: { instructions: 'do something' },
-				}),
-			);
 
 			const { execute } = useNodeExecution(node);
 			const result = await execute();

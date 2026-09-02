@@ -4,17 +4,9 @@ import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
 import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@n8n/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
 vi.mock('@/features/ndv/shared/ndv.store');
-vi.mock('@/app/stores/workflows.store');
-vi.mock('@/app/stores/posthog.store');
-vi.mock('@n8n/stores/useRootStore');
-vi.mock('@/features/ai/assistant/assistant.api');
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	const { shallowRef } = await import('vue');
@@ -39,22 +31,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		}),
 	}),
 }));
-vi.mock('@n8n/composables/useToast');
-vi.mock('@/app/composables/useEditorContext', () => ({
-	useEditorContext: () => ({
-		aiAssistant: { value: true },
-		aiBuilder: { value: true },
-		askAi: { value: true },
-		readOnly: { value: false },
-	}),
-}));
-vi.mock('../../utils/buttonParameter.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('../../utils/buttonParameter.utils')>()),
-	generateCodeForAiTransform: vi.fn().mockResolvedValue({
-		name: 'testPath.targetParam',
-		value: 'generated code',
-	}),
-}));
 
 describe('ButtonParameter', () => {
 	const defaultProps: Props = {
@@ -66,11 +42,9 @@ describe('ButtonParameter', () => {
 			typeOptions: {
 				buttonConfig: {
 					label: 'Generate',
-					action: {
-						type: 'askAiCodeGeneration',
-						target: 'targetParam',
-					},
+					action: 'testAction',
 					hasInputField: true,
+					inputFieldMaxLength: 10,
 				},
 			},
 		} as INodeProperties,
@@ -95,25 +69,6 @@ describe('ButtonParameter', () => {
 				pushRef: 'testPushRef',
 			},
 		} as any);
-
-		vi.mocked(useWorkflowsStore).mockReturnValue({
-			workflowId: 'test-workflow-id',
-			getNodeByName: vi.fn().mockReturnValue({}),
-		} as any);
-
-		vi.mocked(usePostHog).mockReturnValue({
-			isAiEnabled: vi.fn().mockReturnValue(true),
-			getVariant: vi.fn().mockReturnValue('gpt-3.5-turbo-16k'),
-		} as any);
-
-		vi.mocked(useRootStore).mockReturnValue({
-			versionCli: '1.0.0',
-			pushRef: 'testPushRef',
-		} as any);
-
-		vi.mocked(useToast).mockReturnValue({
-			showMessage: vi.fn(),
-		} as any);
 	});
 
 	const mountComponent = (props: Partial<Props> = {}) => {
@@ -134,43 +89,33 @@ describe('ButtonParameter', () => {
 	it('emits valueChanged event on input', async () => {
 		const wrapper = mountComponent();
 		const input = wrapper.find('textarea');
-		await input.setValue('Test prompt');
+		await input.setValue('Test');
 		expect(wrapper.emitted('valueChanged')).toBeTruthy();
 		expect(wrapper.emitted('valueChanged')![0][0]).toEqual({
 			name: 'testPath.testParam',
-			value: 'Test prompt',
+			value: 'Test',
 		});
 	});
 
-	it('disables submit button when there is no execution data', async () => {
-		vi.mocked(useNDVStore).mockReturnValue({
-			ndvInputData: [],
-		} as any);
+	it('emits the current prompt when the button is clicked', async () => {
 		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
-	});
-
-	it('disables submit button when prompt is empty', async () => {
-		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
-	});
-
-	it('enables submit button when there is execution data and prompt', async () => {
-		const wrapper = mountComponent();
-		await wrapper.find('textarea').setValue('Test prompt');
-		expect(wrapper.find('button').attributes('disabled')).toBeUndefined();
-	});
-
-	it('calls onSubmit when button is clicked', async () => {
-		const wrapper = mountComponent();
-		await wrapper.find('textarea').setValue('Test prompt');
+		await wrapper.find('textarea').setValue('Test');
 
 		const submitButton = wrapper.find('button');
 		expect(submitButton.attributes('disabled')).toBeUndefined();
 
 		await submitButton.trigger('click');
 
-		expect(useToast().showMessage).toHaveBeenCalled();
+		expect(wrapper.emitted('valueChanged')!.at(-1)![0]).toEqual({
+			name: 'testPath.testParam',
+			value: 'Test',
+		});
+	});
+
+	it('disables submit button when the prompt exceeds the max length', async () => {
+		const wrapper = mountComponent();
+		await wrapper.find('textarea').setValue('This prompt is far too long');
+		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
 	});
 
 	it('disables input and button when in read only mode', async () => {

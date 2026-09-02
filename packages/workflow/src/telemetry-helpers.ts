@@ -1,7 +1,6 @@
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
-	AI_TRANSFORM_NODE_TYPE,
 	AI_VENDOR_NODE_TYPES,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
@@ -400,9 +399,7 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
-			nodeItem.prompts = { instructions: node.parameters.instructions as string };
-		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
 
 			if (node.typeVersion >= 2.1) {

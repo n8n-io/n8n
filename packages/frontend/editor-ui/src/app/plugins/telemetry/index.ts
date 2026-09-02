@@ -202,20 +202,6 @@ export class TelemetryService implements Telemetry {
 		}
 	}
 
-	trackAiTransform(event: string, ndvPushRef: string, properties: IDataObject = {}) {
-		if (this.rudderStack) {
-			properties.session_id = useRootStore().pushRef;
-			properties.ndv_session_id = ndvPushRef;
-
-			switch (event) {
-				case 'generationFinished':
-					this.track('Ai Transform code generation finished', properties);
-				default:
-					break;
-			}
-		}
-	}
-
 	// We currently do not support tracking directly from within node implementation
 	// so we are using this method as centralized way to track node parameters changes
 	trackNodeParametersValuesChange(nodeType: string, change: IUpdateInformation) {
