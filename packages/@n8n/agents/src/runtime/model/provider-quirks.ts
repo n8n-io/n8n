@@ -175,13 +175,36 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// not translate `reasoningEffort` the way `@ai-sdk/openai-compatible`
 		// does — so the effort has to use OpenRouter's unified `reasoning.effort`
 		// parameter or it is silently dropped upstream.
-		thinkingToProviderOptions: (thinking): Record<string, Record<string, unknown>> => {
+		thinkingToProviderOptions: (thinking, modelId): Record<string, Record<string, unknown>> => {
 			const cfg = thinking as OpenAIThinkingConfig;
 			if (cfg.reasoningEffort === undefined) return {};
-			return { openrouter: { reasoning: { effort: cfg.reasoningEffort } } };
+			const verbosity = openRouterAnthropicVerbosity(modelId, cfg.reasoningEffort);
+			return {
+				openrouter: {
+					reasoning: { effort: cfg.reasoningEffort },
+					...(verbosity !== undefined ? { verbosity } : {}),
+				},
+			};
 		},
 	},
 };
+
+/**
+ * OpenRouter only started mapping `reasoning.effort` onto Anthropic's
+ * `output_config.effort` for Claude 4.6+ on 2026-06-22; `verbosity` has
+ * always mapped there and wins when both are sent. Emit it alongside so the
+ * effort reaches adaptive-thinking Claude models regardless of which path
+ * OpenRouter's model table has enabled. Vendor-scoped because `verbosity`
+ * means output length, not effort, for non-Anthropic models.
+ */
+function openRouterAnthropicVerbosity(
+	modelId: string,
+	effort: OpenAIReasoningEffort,
+): Exclude<OpenAIReasoningEffort, 'none' | 'minimal'> | undefined {
+	if (!modelId.startsWith('openrouter/anthropic/')) return undefined;
+	if (effort === 'none') return undefined;
+	return effort === 'minimal' ? 'low' : effort;
+}
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};

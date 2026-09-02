@@ -48,10 +48,13 @@ describe('openrouter reasoning effort on the wire', () => {
 		}
 	}
 
-	function thinkingOptions(reasoningEffort?: 'low'): ProviderOptions | undefined {
+	function thinkingOptions(
+		reasoningEffort?: 'low',
+		modelId: string = MODEL_ID,
+	): ProviderOptions | undefined {
 		return getProviderQuirks('openrouter').thinkingToProviderOptions?.(
 			reasoningEffort ? { reasoningEffort } : {},
-			MODEL_ID,
+			modelId,
 		) as ProviderOptions | undefined;
 	}
 
@@ -68,6 +71,33 @@ describe('openrouter reasoning effort on the wire', () => {
 		expect(body.reasoning).toEqual({ effort: 'low' });
 		expect(body).not.toHaveProperty('reasoningEffort');
 		expect(body).not.toHaveProperty('reasoning_effort');
+	});
+
+	it('also sends `verbosity` for Anthropic models, and only for them', async () => {
+		const anthropicFetch = fakeFetch();
+		await generateText({
+			model: createModel(
+				{ id: MODEL_ID, apiKey: 'or-test' },
+				anthropicFetch as unknown as typeof globalThis.fetch,
+			),
+			prompt: 'hi',
+			providerOptions: thinkingOptions('low'),
+		});
+		expect(sentBody(anthropicFetch).verbosity).toBe('low');
+
+		const glmId = 'openrouter/z-ai/glm-5.3:nitro';
+		const glmFetch = fakeFetch();
+		await generateText({
+			model: createModel(
+				{ id: glmId, apiKey: 'or-test' },
+				glmFetch as unknown as typeof globalThis.fetch,
+			),
+			prompt: 'hi',
+			providerOptions: thinkingOptions('low', glmId),
+		});
+		const glmBody = sentBody(glmFetch);
+		expect(glmBody.reasoning).toEqual({ effort: 'low' });
+		expect(glmBody).not.toHaveProperty('verbosity');
 	});
 
 	it('sends no reasoning parameter when effort is unset', async () => {

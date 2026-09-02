@@ -240,10 +240,53 @@ describe('thinkingToProviderOptions', () => {
 				{
 					reasoningEffort: 'max',
 				},
-				'openrouter/anthropic/claude-fable-5.1',
+				'openrouter/z-ai/glm-5.3:nitro',
 			),
 		).toEqual({
 			openrouter: { reasoning: { effort: 'max' } },
+		});
+	});
+
+	it('openrouter: also sends verbosity for Anthropic models so effort reaches output_config', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'low',
+				},
+				'openrouter/anthropic/claude-fable-5.1',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'low' }, verbosity: 'low' },
+		});
+	});
+
+	it('openrouter: maps minimal to the lowest Anthropic verbosity and omits it for none', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'minimal' },
+				'openrouter/anthropic/claude-opus-4.8',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'minimal' }, verbosity: 'low' },
+		});
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'none' },
+				'openrouter/anthropic/claude-opus-4.8',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'none' } },
+		});
+	});
+
+	it('openrouter: does not send verbosity for non-Anthropic models', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'high' },
+				'openrouter/google/gemini-3.7-flash:nitro',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'high' } },
 		});
 	});
 
