@@ -313,4 +313,43 @@ describe('Git connections in Public API', () => {
 			).toBeNull();
 		});
 	});
+	async function createConnection(agent: ReturnType<typeof testServer.publicApiAgentFor>) {
+		const response = await agent.post('/git-connections').send({
+			name: 'Deployments',
+			repositoryUrl: 'https://example.com/org/repo.git',
+			branchName: 'main',
+			connectionType: 'https',
+			username: 'git-user',
+			password: 'secret',
+		});
+		return response.body.id as string;
+	}
+
+	it('rejects a push with a clear error when the repository is not cloned', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const id = await createConnection(agent);
+
+		const response = await agent
+			.post(`/git-connections/${id}/push`)
+			.send({ commitMessage: 'sync projects' });
+		expect(response.status).toBe(400);
+		expect(response.body.message).toContain('not cloned');
+	});
+
+	it('rejects a pull with a clear error when the repository is not cloned', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const id = await createConnection(agent);
+
+		const response = await agent.post(`/git-connections/${id}/pull`);
+		expect(response.status).toBe(400);
+		expect(response.body.message).toContain('not cloned');
+	});
+
+	it('rejects a pull from a key without the gitConnection:pull scope', async () => {
+		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
+		const response = await testServer
+			.publicApiAgentFor(unscopedOwner)
+			.post('/git-connections/some-id/pull');
+		expect(response.status).toBe(403);
+	});
 });

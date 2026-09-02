@@ -1,7 +1,13 @@
 import { UnexpectedError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import { brand } from './policy-brand';
-import type { EnforcementPoint, PolicyDecision, PolicyVersionRef } from './policy-check';
+import type {
+	EnforcementPoint,
+	PolicedWorkflow,
+	PolicyDecision,
+	PolicyVersionRef,
+} from './policy-check';
 
 /**
  * What kind of thing was policed. Closed, so a typo is a compile error rather than a binding
@@ -14,9 +20,37 @@ export type PolicySubjectType = 'workflow' | 'credential';
 export type PolicySubject = {
 	readonly type: PolicySubjectType;
 
-	/** Stable id, or a content hash where there is none yet — a workflow being created. */
+	/** A committed row's id, or a content hash when it has none yet — a workflow being created. */
 	readonly id: string;
 };
+
+/**
+ * A workflow being created binds to its content, not an id.
+ *
+ * A create has no committed identity — the row's id is generated on insert, and a
+ * client-supplied id is no proof of anything checked. Binding to the node hash makes the
+ * clearance cover the content policy actually saw, so nothing may mutate `nodes` between the
+ * check and the write.
+ */
+export function workflowContentSubject(workflow: Pick<PolicedWorkflow, 'nodes'>): PolicySubject {
+	// Same object within one request, so key order is stable.
+	const hash = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
+
+	return { type: 'workflow', id: hash };
+}
+
+/**
+ * An existing workflow binds to its id; one with none yet binds to its content.
+ *
+ * Truthiness, not `!== null`: a create's id is absent as `undefined`, and treating that as
+ * present would bind every create to the same `undefined` subject — a token for one create
+ * would then clear any other.
+ */
+export function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
+	if (workflow.id) return { type: 'workflow', id: workflow.id };
+
+	return workflowContentSubject(workflow);
+}
 
 /**
  * Proof that policy enforcement cleared one specific action, returned by every `enforce*`

@@ -8,16 +8,25 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialTypeName,
+	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
+	MCP_REGISTRY_PACKAGE_NAME,
+	resolveMcpRegistryConnection,
+} from './mcp-registry-connection';
+import {
 	mcpRegistryExtendsCredentialSchema,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
 } from './registry/mcp-registry.types';
 
-export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
-export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
-export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
-export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+export {
+	LANGCHAIN_PACKAGE_NAME,
+	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
+	MCP_REGISTRY_BASE_NODE_NAME,
+	MCP_REGISTRY_PACKAGE_NAME,
+} from './mcp-registry-connection';
+export { getMcpRegistryCredentialTypeName } from './mcp-registry-connection';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -29,14 +38,6 @@ export type IsKnownCredentialType = (name: string) => boolean;
  */
 function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 	return camelCase(server.slug);
-}
-
-/**
- * Get credentials type name based on server's slug and auth type
- */
-export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
-	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
-	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
 /**
@@ -58,13 +59,10 @@ function getMcpRegistryCredentialHeader(
 function resolveCredentialRemote(
 	server: McpRegistryServer,
 ): { endpointUrl: string; hostname: string } | null {
-	const remote = pickRemote(server);
-	if (!remote) return null;
-	try {
-		return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
-	} catch {
-		return null;
-	}
+	const connection = resolveMcpRegistryConnection(server);
+	return connection
+		? { endpointUrl: connection.endpointUrl, hostname: connection.endpointHostname }
+		: null;
 }
 
 /**
@@ -195,22 +193,6 @@ function getNodeDescriptionCredentials(
 	}
 }
 
-/**
- * Pick the connection details from a registry server. Only `streamable-http`
- * and `sse` are supported; `streamable-http` is preferred.
- */
-function pickRemote(
-	server: McpRegistryServer,
-): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
-	const streamable = server.remotes.find((r) => r.type === 'streamable-http');
-	if (streamable) return { transport: 'httpStreamable', endpointUrl: streamable.url };
-
-	const sse = server.remotes.find((r) => r.type === 'sse');
-	if (sse) return { transport: 'sse', endpointUrl: sse.url };
-
-	return null;
-}
-
 const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
 	'image/svg+xml',
 	'image/webp',
@@ -286,8 +268,8 @@ export function serverToNodeDescription(
 ): INodeTypeDescription | null {
 	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
 
-	const remote = pickRemote(server);
-	if (!remote) return null;
+	const connection = resolveMcpRegistryConnection(server);
+	if (!connection) return null;
 
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
@@ -311,8 +293,8 @@ export function serverToNodeDescription(
 	}
 	description.properties = withRemoteDefaults(
 		description.properties,
-		remote.transport,
-		remote.endpointUrl,
+		connection.transport,
+		connection.endpointUrl,
 	);
 	description.builderHint = {
 		...description.builderHint,

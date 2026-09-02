@@ -14,6 +14,9 @@ compatibility:
 
 Create a Linear ticket or GitHub issue for: **$ARGUMENTS**
 
+Write all titles and descriptions in ASD-STE100 Simplified Technical English:
+use short sentences, the active voice, and one instruction for each sentence.
+
 ## Determine Target
 
 Decide where the issue should be created based on user input:

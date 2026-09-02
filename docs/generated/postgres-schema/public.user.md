@@ -266,6 +266,7 @@ erDiagram
   varchar clientId FK
   timestamp_3__with_time_zone createdAt
   bigint expiresAt
+  varchar resource
   json scope
   varchar_255_ token
   timestamp_3__with_time_zone updatedAt

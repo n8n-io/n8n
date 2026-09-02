@@ -15,6 +15,9 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { NodeTypes } from '@/node-types';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
@@ -32,6 +35,9 @@ describe('WorkflowPublicationApplier', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowService = mock<WorkflowService>();
 	const telemetry = mock<Telemetry>();
+	// Clears by default, which is what the real service does with no policy backend.
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const ownershipService = mock<OwnershipService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -43,6 +49,8 @@ describe('WorkflowPublicationApplier', () => {
 		nodeTypes,
 		workflowService,
 		telemetry,
+		policyEnforcementService,
+		ownershipService,
 	);
 
 	function makeRecord(
@@ -129,6 +137,10 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
 			(nodes) => new Map(nodes.map((node) => [node.id, 'in-memory'])),
 		);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'project-1' }));
+		// `clearAllMocks` keeps implementations, so restore the clearing default.
+		policyEnforcementService.hasChecksFor.mockReturnValue(true);
+		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
 	});
 
 	test('skips with workflow-not-found when the workflow is gone', async () => {
@@ -239,6 +251,127 @@ describe('WorkflowPublicationApplier', () => {
 
 			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('teardown boom');
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('policy enforcement', () => {
+		const violation = () =>
+			new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+			]);
+
+		test('enforces with the version being published and the owning project', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ activeVersionId: 'v-1', name: 'My workflow' }),
+			);
+			const versionWithNodes = {
+				...makeVersion('v-2'),
+				nodes: [triggerNode('a')],
+			} as WorkflowHistory;
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWithNodes);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
+				workflow: {
+					id: 'wf-1',
+					name: 'My workflow',
+					nodes: versionWithNodes.nodes,
+				},
+				projectId: 'project-1',
+			});
+		});
+
+		// The no-change branch still advances the published version, which running
+		// triggers re-read on their next fire.
+		test('enforces even when the trigger diff is empty', async () => {
+			const trigger = triggerNode('a');
+			setTriggerSets([trigger], [{ ...trigger }]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledTimes(1);
+		});
+
+		test('fails the record without advancing or touching triggers when policy blocks', async () => {
+			policyEnforcementService.enforceWorkflowPublish.mockRejectedValue(violation());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed' });
+			expect((result as { error: Error }).error).toBeInstanceOf(PolicyViolationError);
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+		});
+
+		// Left as `activated`, these rows read as drift and get re-enqueued forever.
+		test('reports every desired trigger as failed so no activated rows survive', async () => {
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([
+				triggerNode('a'),
+				triggerNode('b'),
+			]);
+			policyEnforcementService.enforceWorkflowPublish.mockRejectedValue(violation());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerStatuses: [
+					{
+						nodeId: 'a',
+						nodeName: 'a',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'Blocked by policy',
+					},
+					{
+						nodeId: 'b',
+						nodeName: 'b',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'Blocked by policy',
+					},
+				],
+			});
+		});
+
+		// An unevaluated project rule is not a passed one, so the lookup is unguarded.
+		test('propagates a failed ownership lookup instead of policing a null scope', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no owner row'));
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('no owner row');
+
+			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
+		});
+
+		// A feature that is merely absent must not cost a lookup on every publication.
+		test('does not resolve ownership when no check is registered', async () => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(false);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
+		});
+
+		test('does not enforce while unpublishing', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ active: true, activeVersionId: null }),
+			);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
+		});
+
+		// Only a violation is a verdict; a broken check must not read as "blocked".
+		test('propagates a non-violation error instead of failing the record', async () => {
+			policyEnforcementService.enforceWorkflowPublish.mockRejectedValue(new Error('boom'));
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('boom');
 		});
 	});
 
