@@ -28,6 +28,12 @@ const MENTION_TEXT_ESCAPES: Record<string, string> = {
  * Escapes the `<at>` inner text. A B2B guest's display name is set in their home tenant, so it is
  * third-party input, and an unescaped angle bracket breaks the token, which Graph answers with a
  * 400 or a silently stripped mention. NOT `escapeHtml` from `utils/utilities.ts`: that one decodes.
+ *
+ * Known Microsoft-side ceiling: a display name containing `&` makes Teams echo a stray `/at&gt;`
+ * after the token. Verified on a live tenant 2026-09-02 to be identical whether we send `&` raw
+ * or as `&amp;`, and absent for the same endpoint and a name without `&`, so it is a Teams
+ * defect we cannot influence from here. The mention still resolves and notifies (`tenantId` is
+ * present in the echo). Escaping stays because it is correct HTML and costs nothing.
  */
 function escapeMentionText(text: string): string {
 	return text.replace(/[&<>]/g, (char) => MENTION_TEXT_ESCAPES[char]);
