@@ -6,6 +6,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { TOKEN_REQUEST_TIMEOUT } from '../common/token-request';
 import {
@@ -19,14 +20,11 @@ describe('AtlassianServiceAccountApi Credential', () => {
 	const requestMock = vi.fn();
 	const requestsMock = vi.fn(() => ({ request: requestMock }));
 
-	// `this` for preAuthentication is unused (the token POST goes through the shared
-	// HTTP client), but the signature still requires the helper context.
 	const helpers = { helpers: {} } as unknown as IHttpRequestHelper;
 
 	const baseCredentials = {
 		clientId: 'client-id',
 		clientSecret: 'client-secret',
-		domain: 'https://example.atlassian.net',
 	};
 
 	const callPreAuthentication = async (credentials: ICredentialDataDecryptedObject) =>
@@ -37,9 +35,6 @@ describe('AtlassianServiceAccountApi Credential', () => {
 		requestMock.mockResolvedValue({ access_token: 'abc', token_type: 'Bearer', expires_in: 3600 });
 		requestsMock.mockClear();
 
-		// Stub ONLY OutboundHttp. `getTokenRequestClient` resolves nothing else from
-		// the container, so reaching any other DI token signals a regression and
-		// must fail loudly.
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === OutboundHttp) return { requests: requestsMock };
 			throw new Error('unexpected DI token');
@@ -67,11 +62,7 @@ describe('AtlassianServiceAccountApi Credential', () => {
 		);
 		expect(clientSecret?.typeOptions?.password).toBe(true);
 		expect(clientSecret?.required).toBe(true);
-
-		const domain = credential.properties.find(
-			(property: INodeProperties) => property.name === 'domain',
-		);
-		expect(domain?.required).toBe(true);
+		expect(credential.properties.map((property) => property.name)).not.toContain('domain');
 	});
 
 	it('tests the credential against the accessible-resources endpoint', () => {
@@ -96,11 +87,7 @@ describe('AtlassianServiceAccountApi Credential', () => {
 			expect(body.get('grant_type')).toBe('client_credentials');
 			expect(body.get('client_id')).toBe('client-id');
 			expect(body.get('client_secret')).toBe('client-secret');
-			// Atlassian rejects any scope value with `invalid_scope`; the request must not send one.
 			expect(body.has('scope')).toBe(false);
-
-			// The token URL is a fixed Atlassian host, so the deliberate choice is the
-			// SSRF-exempt fixed-vendor client; a policy flip must fail this test.
 			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
@@ -118,9 +105,10 @@ describe('AtlassianServiceAccountApi Credential', () => {
 			['clientSecret', { ...baseCredentials, clientSecret: '   ' }],
 			['clientId (non-string)', { ...baseCredentials, clientId: 12345 }],
 		])('rejects incomplete credentials (%s) before any request', async (_label, credentials) => {
-			await expect(getAccessToken(credentials)).rejects.toThrow(
-				'Atlassian service account credentials are incomplete',
-			);
+			const promise = getAccessToken(credentials);
+
+			await expect(promise).rejects.toBeInstanceOf(UserError);
+			await expect(promise).rejects.toThrow('Atlassian service account credentials are incomplete');
 			expect(requestMock).not.toHaveBeenCalled();
 		});
 
@@ -131,8 +119,11 @@ describe('AtlassianServiceAccountApi Credential', () => {
 					Object.assign(new Error('Request failed'), { response: { status } }),
 				);
 
-				await expect(getAccessToken(baseCredentials)).rejects.toThrow(
-					'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
+				const promise = getAccessToken(baseCredentials);
+
+				await expect(promise).rejects.toBeInstanceOf(UserError);
+				await expect(promise).rejects.toThrow(
+					'Atlassian rejected the service account credentials. Check the Client ID and Client Secret.',
 				);
 			},
 		);
@@ -147,8 +138,10 @@ describe('AtlassianServiceAccountApi Credential', () => {
 
 		it('throws a static error when the response carries no access token', async () => {
 			requestMock.mockResolvedValue({ token_type: 'Bearer' });
+			const promise = getAccessToken(baseCredentials);
 
-			await expect(getAccessToken(baseCredentials)).rejects.toThrow(
+			await expect(promise).rejects.toBeInstanceOf(OperationalError);
+			await expect(promise).rejects.toThrow(
 				'Atlassian authentication did not return an access token',
 			);
 		});

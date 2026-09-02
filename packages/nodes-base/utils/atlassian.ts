@@ -2,6 +2,7 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	IPollFunctions,
 	IWebhookFunctions,
@@ -96,6 +97,50 @@ export async function fetchAtlassianAccessibleResources(
 	{ bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<AccessibleResource[]> {
 	return (await loadAccessibleResources.call(this, credentialType, bypassCache)).resources;
+}
+
+export async function searchAtlassianSites(
+	this: ILoadOptionsFunctions,
+	credentialType: string,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const filterLower = (filter ?? '').trim().toLowerCase();
+
+	// Filtering is local, so only the unfiltered first load refreshes the cache
+	const resources = await fetchAtlassianAccessibleResources.call(this, credentialType, {
+		bypassCache: filterLower === '',
+	});
+
+	const results = resources
+		.filter(hasSiteId)
+		.map((site) => {
+			const url = typeof site.url === 'string' && site.url !== '' ? site.url : undefined;
+			const name = typeof site.name === 'string' && site.name !== '' ? site.name : (url ?? site.id);
+			return { name, value: site.id, url };
+		})
+		.filter(
+			(item) =>
+				filterLower === '' ||
+				item.name.toLowerCase().includes(filterLower) ||
+				(item.url ?? '').toLowerCase().includes(filterLower),
+		)
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return { results };
+}
+
+const isResourceLocator = (value: unknown): value is INodeParameterResourceLocator =>
+	typeof value === 'object' && value !== null && 'value' in value;
+
+export function getAtlassianSiteParameter(
+	ctx: AtlassianContext,
+): INodeParameterResourceLocator | undefined {
+	const raw =
+		'getCurrentNodeParameter' in ctx
+			? ctx.getCurrentNodeParameter('site')
+			: ctx.getNodeParameter('site', 0);
+
+	return isResourceLocator(raw) ? raw : undefined;
 }
 
 /** The cache lives for the life of the process, so a cached list that can't answer

@@ -13,6 +13,8 @@ import type {
 import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { searchAtlassianSites } from '@utils/atlassian';
+
 import {
 	filterSortSearchListItems,
 	getUsers,
@@ -125,6 +127,36 @@ export class Jira implements INodeType {
 				default: 'cloud',
 			},
 			{
+				displayName: 'Site',
+				name: 'site',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				description:
+					'The Jira site to use. Can be left empty when the service account has access to exactly one site.',
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudServiceAccount'],
+					},
+				},
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'getSites',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://your-site.atlassian.net',
+					},
+				],
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -167,6 +199,9 @@ export class Jira implements INodeType {
 
 	methods = {
 		listSearch: {
+			async getSites(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				return await searchAtlassianSites.call(this, 'atlassianServiceAccountApi', filter);
+			},
 			// Get all the projects to display them to user so that they can
 			// select them easily
 			async getProjects(
@@ -1326,9 +1361,6 @@ export class Jira implements INodeType {
 								{},
 								{},
 								attachment?.json.content as string,
-								// The download 303s to the Atlassian media host, which authenticates
-								// the hop via its own signed token in the redirect URL; the credential
-								// header must not follow cross-origin.
 								{
 									json: false,
 									encoding: null,
@@ -1405,7 +1437,6 @@ export class Jira implements INodeType {
 								{},
 								{},
 								attachment.json.content as string,
-								// Same signed-redirect rule as the single-attachment download above.
 								{
 									json: false,
 									encoding: null,

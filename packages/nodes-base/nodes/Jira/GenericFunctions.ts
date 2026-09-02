@@ -12,7 +12,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
+import {
+	getAtlassianApiBaseUrl,
+	getAtlassianCloudId,
+	getAtlassianSiteParameter,
+	resolveAtlassianCloudId,
+} from '@utils/atlassian';
 
 import type { JiraServerInfo, JiraWebhook } from './types';
 
@@ -36,9 +41,8 @@ export async function jiraSoftwareCloudApiRequest(
 	} else if (jiraVersion === 'serverPat') {
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
-	} else if (jiraVersion === 'cloudOAuth2' || jiraVersion === 'cloudServiceAccount') {
-		credentialType =
-			jiraVersion === 'cloudOAuth2' ? 'jiraSoftwareCloudOAuth2Api' : 'atlassianServiceAccountApi';
+	} else if (jiraVersion === 'cloudOAuth2') {
+		credentialType = 'jiraSoftwareCloudOAuth2Api';
 		const rawDomain = (await this.getCredentials(credentialType)).domain;
 		if (typeof rawDomain !== 'string' || rawDomain === '') {
 			throw new NodeOperationError(
@@ -47,6 +51,15 @@ export async function jiraSoftwareCloudApiRequest(
 			);
 		}
 		const cloudId = await getAtlassianCloudId.call(this, credentialType, rawDomain, 'jira');
+		domain = getAtlassianApiBaseUrl('jira', cloudId);
+	} else if (jiraVersion === 'cloudServiceAccount') {
+		credentialType = 'atlassianServiceAccountApi';
+		const cloudId = await resolveAtlassianCloudId.call(
+			this,
+			credentialType,
+			getAtlassianSiteParameter(this),
+			'jira',
+		);
 		domain = getAtlassianApiBaseUrl('jira', cloudId);
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;

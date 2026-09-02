@@ -37,8 +37,6 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
-	// A single-use body only counts as consumed once a send was actually attempted;
-	// a failure in preAuthentication/authenticate leaves it intact and replayable.
 	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing
@@ -136,10 +134,6 @@ export async function httpRequestWithAuthentication(
 					Object.assign(credentialsDecrypted, data);
 				}
 
-				// A stream/form-data body is drained by the first attempt; replaying it
-				// would send a request that advertises a body it never delivers and hang
-				// until timeout. Keep the refreshed credential for the next run, but
-				// surface the original error (same rule as requestOAuth2).
 				if (requestSent && hasSingleUseBody(requestOptions)) {
 					this.logger.warn(
 						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
@@ -178,8 +172,6 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
-	// A single-use body only counts as consumed once a send was actually attempted;
-	// a failure in preAuthentication/authenticate leaves it intact and replayable.
 	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
@@ -268,10 +260,6 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
-					// A stream/form-data body is drained by the first attempt; replaying it
-					// would send a request that advertises a body it never delivers and hang
-					// until timeout. Keep the refreshed credential for the next run, but
-					// surface the original error (same rule as requestOAuth2).
 					if (requestSent && hasSingleUseBody(requestOptions)) {
 						this.logger.warn(
 							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,

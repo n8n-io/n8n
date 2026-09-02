@@ -8,60 +8,35 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
-import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
+import {
+	getTokenRequestClient,
+	hasAccessToken,
+	TOKEN_REQUEST_TIMEOUT,
+} from './common/token-request';
 
 const TOKEN_URL = 'https://auth.atlassian.com/oauth/token';
 
-interface TokenResponse {
-	access_token?: string;
-	token_type?: string;
-	expires_in?: number;
-}
-
-function hasAccessToken(response: unknown): response is TokenResponse & { access_token: string } {
-	return (
-		typeof response === 'object' &&
-		response !== null &&
-		typeof (response as { access_token?: unknown }).access_token === 'string' &&
-		(response as { access_token: string }).access_token.length > 0
-	);
-}
-
-/**
- * Exchanges the service account's OAuth 2.0 credential for an access token via the
- * `client_credentials` grant and returns the raw `access_token`.
- *
- * Exported for unit testing. Validation runs before any network call.
- */
 export async function getAccessToken(credentials: ICredentialDataDecryptedObject): Promise<string> {
 	const stringOrEmpty = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 	const clientId = stringOrEmpty(credentials.clientId);
 	const clientSecret = stringOrEmpty(credentials.clientSecret);
 
-	// Defense beyond the `required: true` UI gate — a programmatically-set credential
-	// could omit these and send a malformed token request.
 	if (!clientId || !clientSecret) {
-		throw new OperationalError('Atlassian service account credentials are incomplete');
+		throw new UserError('Atlassian service account credentials are incomplete');
 	}
 
-	// No `scope` parameter, ever: Atlassian rejects any value with `invalid_scope`.
-	// The credential's scopes are fixed when the admin creates it in Atlassian
-	// administration and cannot be changed afterwards.
+	// Atlassian rejects any `scope` value with invalid_scope
 	const body = new URLSearchParams({
 		grant_type: 'client_credentials',
 		client_id: clientId,
 		client_secret: clientSecret,
 	});
 
-	// The token URL is a fixed Atlassian host, so the origin is not user-controlled —
-	// `fixed-vendor` keeps the SSRF guard off.
-	const http = getTokenRequestClient('fixed-vendor');
-
 	let response: unknown;
 	try {
-		response = await http.request({
+		response = await getTokenRequestClient('fixed-vendor').request({
 			url: TOKEN_URL,
 			method: 'POST',
 			body: body.toString(),
@@ -72,13 +47,11 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 			timeout: TOKEN_REQUEST_TIMEOUT,
 		});
 	} catch (error) {
-		// Static message only — never interpolate or log the response body or credentials.
-		// 400 included: the token endpoint reports an unknown client as `invalid_client`
-		// with HTTP 400, which is a credential problem, not a malformed request.
+		// 400 is invalid_client for an unknown client; the message stays static so no response data leaks
 		const status = httpStatusFromError(error);
 		if (status === 400 || status === 401 || status === 403) {
-			throw new OperationalError(
-				'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
+			throw new UserError(
+				'Atlassian rejected the service account credentials. Check the Client ID and Client Secret.',
 			);
 		}
 		throw error;
@@ -138,28 +111,13 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 			description:
 				"The Client Secret of the service account's OAuth 2.0 credential from Atlassian administration",
 		},
-		{
-			displayName: 'Site URL',
-			name: 'domain',
-			type: 'string',
-			default: '',
-			required: true,
-			placeholder: 'https://your-site.atlassian.net',
-			description:
-				'The URL of your Atlassian site, e.g. https://your-site.atlassian.net. The scheme and any path (like /wiki) are ignored.',
-		},
 	];
 
-	// Only called when "accessToken" (the expirable property) is empty, on an auth-failure
-	// retry, or during a credential test. Core drives expiry refresh through its retry path,
-	// so we deliberately do not persist `expires_in` or run a credential-side TTL.
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const accessToken = await getAccessToken(credentials);
 		return { accessToken };
 	}
 
-	// Pure mapper: attach the cached bearer token only. The per-site base URL is resolved
-	// by the consuming node (cloudId discovery), so no baseURL is set here.
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -172,8 +130,6 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 		return requestOptions;
 	}
 
-	// Lists the sites the token can reach — valid for any service account regardless of
-	// granted scopes, and the same endpoint the nodes use for cloudId discovery.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.atlassian.com',

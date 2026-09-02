@@ -156,9 +156,7 @@ describe('httpRequestWithAuthentication', () => {
 			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
 		);
 
-		// Exactly one send: the drained body must not be replayed…
 		expect(request).toHaveBeenCalledTimes(1);
-		// …but the credential is still refreshed so the next run starts valid.
 		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
 			{ helpers: mockThis.helpers },
 			expect.anything(),
@@ -171,8 +169,6 @@ describe('httpRequestWithAuthentication', () => {
 	test('still retries a form-data body when the 401 happened before any send', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
-		// The initial token mint 401s before the request goes out; the body was never
-		// sent, so the retry may (and must) send it.
 		const error401 = Object.assign(new Error('401 - mint rejected'), {
 			response: { status: 401 },
 		});
@@ -206,7 +202,6 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 	const mockWorkflow = mock<Workflow>();
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
-	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 	mockAdditionalData.evalLlmMockHandler = undefined;
 
 	const proxyRequestToAxiosMock = vi.mocked(proxyRequestToAxios);
@@ -266,9 +261,7 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === requestError,
 		);
 
-		// Exactly one send: the drained body must not be replayed…
 		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
-		// …but the credential is still refreshed so the next run starts valid.
 		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
 			{ helpers: mockThis.helpers },
 			expect.anything(),
@@ -279,8 +272,6 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 	});
 
 	test('still retries a stream body when the failure happened before any send', async () => {
-		// preAuthentication fails on the first pass; the body was never sent, so the
-		// retry may (and must) send it.
 		mockAdditionalData.credentialsHelper.preAuthentication
 			.mockRejectedValueOnce(new Error('token endpoint hiccup'))
 			.mockResolvedValueOnce({ accessToken: 'fresh' });
