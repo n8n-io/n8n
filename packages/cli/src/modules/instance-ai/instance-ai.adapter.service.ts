@@ -484,10 +484,10 @@ export class InstanceAiAdapterService {
 	}
 
 	/**
-	 * All per-user experiment gates from ONE PostHog fetch — the client dedupes
-	 * per-user only after a fetch resolves, so per-flag calls fire concurrent
-	 * identical requests on a cold cache. Fails closed: `getFeatureFlags`
-	 * returns `{}` on a PostHog outage.
+	 * Every experiment gate from one PostHog fetch, so a caller wires its context
+	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
+	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
+	 * outage.
 	 */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */

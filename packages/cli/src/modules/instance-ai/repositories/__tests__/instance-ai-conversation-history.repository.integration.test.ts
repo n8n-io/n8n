@@ -11,6 +11,7 @@ import {
 	toolRowContent,
 	userContent,
 } from '../../__tests__/conversation-history-content.fixtures';
+import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import { InstanceAiConversationHistoryRepository } from '../instance-ai-conversation-history.repository';
 import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
@@ -513,7 +514,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				before: 2,
 				after: 0,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
@@ -526,7 +527,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				before: 0,
 				after: 2,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.a, messageIds.b]);
@@ -539,7 +540,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				before: 5,
 				after: 0,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([
@@ -559,7 +560,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				anchor: { createdAt: at(2000), id: messageIds.c },
 				before: 1,
 				after: 1,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.b, messageIds.c, messageIds.d]);
@@ -573,7 +574,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				anchor: { createdAt: at(0), id: messageIds.a },
 				before: 2,
 				after: 1,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 			expect(fromStart.rows.map((row) => row.id)).toEqual([messageIds.a, messageIds.b]);
 			expect(fromStart.hasMoreBefore).toBe(false);
@@ -584,7 +585,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				anchor: { createdAt: at(4000), id: messageIds.e },
 				before: 1,
 				after: 2,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 			expect(fromEnd.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
 			expect(fromEnd.hasMoreBefore).toBe(true);
@@ -611,7 +612,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				before: 2,
 				after: 0,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
@@ -630,7 +631,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				before: 2,
 				after: 0,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.e, askUserId]);
@@ -658,7 +659,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId: sameTimestampThread,
 				before: 1,
 				after: 0,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 			expect(tail.rows.map((row) => row.id)).toEqual(['msg-bbb']);
 			expect(tail.hasMoreBefore).toBe(true);
@@ -668,21 +669,22 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				anchor: { createdAt: sameMoment, id: 'msg-bbb' },
 				before: 1,
 				after: 1,
-				isVisibleRow: () => true,
+				project: (row) => row,
 			});
 			expect(around.rows.map((row) => row.id)).toEqual(['msg-aaa', 'msg-bbb']);
 			expect(around.hasMoreBefore).toBe(false);
 			expect(around.hasMoreAfter).toBe(false);
 		});
 
-		it("spends window slots only on rows the caller's predicate accepts", async () => {
+		it("spends window slots only on rows the caller's projector keeps", async () => {
 			// The SQL filter cannot tell an internal auto-follow-up from a real user
-			// message, so the caller's predicate decides what a slot is spent on.
+			// message, so the caller's projector decides what a slot is spent on.
 			const mixedThread = await createThread({
 				title: 'Auto follow-ups',
 				withOpeningMessage: false,
 			});
-			const isVisibleRow = (row: { content: string }) => !row.content.includes('(continue)');
+			const project = (row: InstanceAiMessage) =>
+				row.content.includes('(continue)') ? undefined : row;
 
 			await createMessage({
 				threadId: mixedThread,
@@ -731,7 +733,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId: mixedThread,
 				before: 2,
 				after: 0,
-				isVisibleRow,
+				project,
 			});
 			expect(partial.rows.map((row) => row.id)).toEqual([realTwo, realThree]);
 			expect(partial.hasMoreBefore).toBe(true);
@@ -742,7 +744,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId: mixedThread,
 				before: 3,
 				after: 0,
-				isVisibleRow,
+				project,
 			});
 			expect(whole.rows.map((row) => row.id)).toEqual([realOne, realTwo, realThree]);
 			expect(whole.hasMoreBefore).toBe(false);

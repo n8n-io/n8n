@@ -83,6 +83,20 @@ function messageRow(overrides: {
 	});
 }
 
+/** The repository applies the projector to each row, so the mock must too. */
+function givenWindow(
+	repository: MockProxy<InstanceAiConversationHistoryRepository>,
+	window: { rows: InstanceAiMessage[]; hasMoreBefore: boolean; hasMoreAfter: boolean },
+) {
+	repository.getConversationWindow.mockImplementation(async ({ project }) => ({
+		...window,
+		rows: window.rows.flatMap((row) => {
+			const item = project(row);
+			return item === undefined ? [] : [item];
+		}),
+	}));
+}
+
 /** A thread row plus its candidate message rows, as the repository returns them. */
 function givenSearchHit(
 	repos: { repository: MockProxy<InstanceAiConversationHistoryRepository> },
@@ -554,7 +568,7 @@ describe('InstanceAiConversationHistoryService', () => {
 				anchor: undefined,
 				before: 5,
 				after: 0,
-				isVisibleRow: expect.any(Function),
+				project: expect.any(Function),
 			});
 		});
 
@@ -573,7 +587,7 @@ describe('InstanceAiConversationHistoryService', () => {
 				anchor: { id: 'anchor-1', createdAt: anchorRow.createdAt },
 				before: 5,
 				after: 5,
-				isVisibleRow: expect.any(Function),
+				project: expect.any(Function),
 			});
 		});
 
@@ -607,21 +621,21 @@ describe('InstanceAiConversationHistoryService', () => {
 			);
 		});
 
-		// The window spends its slots on rows this predicate accepts, so it has to
-		// be the same check that decides what the reader gets back.
-		it('hands the window the visibility check the returned messages use', async () => {
+		// The window spends its slots on rows this projector keeps, so it is the
+		// same function that shapes what the reader gets back.
+		it('hands the window the projector that builds the returned messages', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
 
 			await history.getMessages({ threadId: PAST_THREAD_ID });
 
 			const [params] = repository.getConversationWindow.mock.calls[0];
-			expect(params.isVisibleRow(messageRow({ role: 'user', content: userContent('hello') }))).toBe(
-				true,
-			);
 			expect(
-				params.isVisibleRow(messageRow({ role: 'user', content: userContent('(continue)') })),
-			).toBe(false);
+				params.project(messageRow({ role: 'user', content: userContent('hello') })),
+			).toBeDefined();
+			expect(
+				params.project(messageRow({ role: 'user', content: userContent('(continue)') })),
+			).toBeUndefined();
 		});
 
 		it('rejects an anchor that is not in the thread', async () => {
@@ -638,7 +652,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('returns the window with the thread title and the more-flags', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({ id: 'm-1', role: 'user', content: userContent('do the thing') }),
 					messageRow({
@@ -679,7 +693,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('returns user text as the user saw it and hides internal auto-follow-ups', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({
 						id: 'm-enriched',
@@ -709,7 +723,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('drops a user row with no visible text', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({
 						id: 'm-handoff',
@@ -732,7 +746,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('renders ask-user answers, including custom text and skips', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({
 						id: 'm-answers',
@@ -762,7 +776,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('drops mid-turn narration and pure tool-call rows — only the final reply remains', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({
 						id: 'm-tools-only',
@@ -788,7 +802,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('truncates user text harder for assistant rows', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({ id: 'm-user', role: 'user', content: userContent('u'.repeat(2000)) }),
 					messageRow({
@@ -812,7 +826,7 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('drops rows whose content is not readable JSON', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
-			repository.getConversationWindow.mockResolvedValue({
+			givenWindow(repository, {
 				rows: [
 					messageRow({ id: 'broken', role: 'user', content: 'not json at all' }),
 					messageRow({ id: 'intact', role: 'user', content: userContent('still here') }),

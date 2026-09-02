@@ -465,16 +465,13 @@ export class InstanceAiConversationHistoryService {
 			anchor: anchorRow ? { createdAt: anchorRow.createdAt, id: anchorRow.id } : undefined,
 			before,
 			after,
-			isVisibleRow: (row) => toHistoryMessage(row) !== undefined,
+			project: toHistoryMessage,
 		});
 
 		return {
 			threadId: thread.id,
 			title: thread.title,
-			messages: window.rows.flatMap((row) => {
-				const message = toHistoryMessage(row);
-				return message ? [message] : [];
-			}),
+			messages: window.rows,
 			hasMoreBefore: window.hasMoreBefore,
 			hasMoreAfter: window.hasMoreAfter,
 		};
@@ -538,7 +535,7 @@ function buildHit(
  * turn's final text-only reply. Dropped: unreadable content, internal
  * auto-follow-ups, rows with nothing to read, and mid-turn assistant rows (the
  * loop only continues on tool calls, so a row carrying them is narration, not
- * the reply). Also the window's `isVisibleRow` predicate.
+ * the reply). Also the window's projector, so each row is parsed once.
  */
 function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | undefined {
 	if (row.role !== 'user' && row.role !== 'assistant') return undefined;

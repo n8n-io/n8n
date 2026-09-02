@@ -716,6 +716,7 @@ export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
+export { ASK_USER_TOOL_ID } from './tools/tool-ids';
 export type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunHandoffState,

@@ -43,19 +43,22 @@ export interface ConversationWindowAnchor {
 	id: string;
 }
 
-export interface ConversationWindowParams {
+export interface ConversationWindowParams<T> {
 	threadId: string;
 	/** Absent for a head/tail read. */
 	anchor?: ConversationWindowAnchor;
 	before: number;
 	after: number;
-	/** The caller's real visibility check; the SQL filter is only a coarse pre-filter. */
-	isVisibleRow: (row: InstanceAiMessage) => boolean;
+	/**
+	 * Maps a fetched row to what the window returns, or `undefined` to drop it.
+	 * The SQL filter is only a coarse pre-filter.
+	 */
+	project: (row: InstanceAiMessage) => T | undefined;
 }
 
-export interface ConversationWindow {
+export interface ConversationWindow<T> {
 	/** Oldest-first, including the anchor row when anchored. */
-	rows: InstanceAiMessage[];
+	rows: T[];
 	hasMoreBefore: boolean;
 	hasMoreAfter: boolean;
 }
@@ -108,62 +111,49 @@ export class InstanceAiConversationHistoryRepository {
 	 * One capped query per thread, so no thread can crowd another out of its
 	 * candidate budget. The thread count is bounded by the tool's search limit,
 	 * so this is at most a handful of small indexed queries, each stopping at
-	 * `maxRowsPerThread` matches.
+	 * `maxRowsPerThread` matches. They run one at a time: the default Postgres
+	 * pool holds two connections, and a concurrent burst would occupy both.
 	 */
 	async findSearchMatchRows(
 		threadIds: string[],
 		query: string,
 		maxRowsPerThread: number,
 	): Promise<Map<string, InstanceAiMessage[]>> {
-		if (threadIds.length === 0 || maxRowsPerThread <= 0) return new Map();
+		const byThread = new Map<string, InstanceAiMessage[]>();
+		if (maxRowsPerThread <= 0) return byThread;
 
-		const buckets = await Promise.all(
-			threadIds.map(async (threadId) => {
-				const rows = await this.messages()
-					.where('m.threadId = :threadId', { threadId })
-					.andWhere(buildMessageMatchCondition('m'), {
-						pattern: buildSearchLikePattern(query),
-						askUserMarker: ASK_USER_CONTENT_MARKER,
-					})
-					.orderBy('m.createdAt', 'DESC')
-					.addOrderBy('m.id', 'DESC')
-					.take(maxRowsPerThread)
-					.getMany();
-				return [threadId, rows] as const;
-			}),
-		);
-
-		return new Map(buckets);
+		for (const threadId of threadIds) {
+			const rows = await this.messages()
+				.where('m.threadId = :threadId', { threadId })
+				.andWhere(buildMessageMatchCondition('m'), {
+					pattern: buildSearchLikePattern(query),
+					askUserMarker: ASK_USER_CONTENT_MARKER,
+				})
+				.orderBy('m.createdAt', 'DESC')
+				.addOrderBy('m.id', 'DESC')
+				.take(maxRowsPerThread)
+				.getMany();
+			byThread.set(threadId, rows);
+		}
+		return byThread;
 	}
 
 	/**
-	 * The opening user message of each thread. A correlated `MIN(createdAt)`
-	 * subquery stays within what the query builder can express (window functions
-	 * are not); rows tied on `createdAt` are broken by lowest id afterwards,
-	 * mirroring the `(createdAt, id)` ordering the per-thread reads use.
+	 * The opening user message of each thread, by the `(createdAt, id)` order the
+	 * per-thread reads use. One `take(1)` query per thread, sequential like
+	 * {@link findSearchMatchRows}: a correlated `MIN` goes quadratic on long threads.
 	 */
 	async findFirstUserMessages(threadIds: string[]): Promise<Map<string, InstanceAiMessage>> {
-		if (threadIds.length === 0) return new Map();
-
-		const messages = this.messages();
-		const firstAt = messages
-			.subQuery()
-			.select('MIN(f.createdAt)')
-			.from(InstanceAiMessage, 'f')
-			.where('f.threadId = m.threadId')
-			.andWhere("f.role = 'user'")
-			.getQuery();
-
-		const rows = await messages
-			.where('m.threadId IN (:...threadIds)', { threadIds })
-			.andWhere("m.role = 'user'")
-			.andWhere(`m.createdAt = ${firstAt}`)
-			.getMany();
-
 		const byThread = new Map<string, InstanceAiMessage>();
-		for (const row of rows) {
-			const current = byThread.get(row.threadId);
-			if (!current || row.id < current.id) byThread.set(row.threadId, row);
+		for (const threadId of threadIds) {
+			const row = await this.messages()
+				.where('m.threadId = :threadId', { threadId })
+				.andWhere("m.role = 'user'")
+				.orderBy('m.createdAt', 'ASC')
+				.addOrderBy('m.id', 'ASC')
+				.take(1)
+				.getOne();
+			if (row) byThread.set(threadId, row);
 		}
 		return byThread;
 	}
@@ -189,30 +179,32 @@ export class InstanceAiConversationHistoryRepository {
 	 * `after` is asked for, a head read. With an anchor it is the anchor row plus
 	 * up to `before` older and `after` newer rows.
 	 */
-	async getConversationWindow(params: ConversationWindowParams): Promise<ConversationWindow> {
-		const { threadId, anchor, before, after, isVisibleRow } = params;
+	async getConversationWindow<T>(
+		params: ConversationWindowParams<T>,
+	): Promise<ConversationWindow<T>> {
+		const { threadId, anchor, before, after, project } = params;
 
 		if (!anchor) {
 			// The tool rejects `before` + `after` without an anchor, so a tail read
 			// wins here if both ever arrive together.
 			if (before > 0) {
-				const tail = await this.fetchWindowSide(threadId, 'older', before, isVisibleRow);
+				const tail = await this.fetchWindowSide(threadId, 'older', before, project);
 				return { rows: tail.rows, hasMoreBefore: tail.hasMore, hasMoreAfter: false };
 			}
 
-			const head = await this.fetchWindowSide(threadId, 'newer', after, isVisibleRow);
+			const head = await this.fetchWindowSide(threadId, 'newer', after, project);
 			return { rows: head.rows, hasMoreBefore: false, hasMoreAfter: head.hasMore };
 		}
 
 		// The older half also carries the anchor row itself (hence `before + 1`),
 		// so the anchor is fetched with the same visibility filter as the rest. An
-		// anchor the predicate rejects simply frees its slot for one more older row.
+		// anchor the projector drops simply frees its slot for one more older row.
 		const [anchorAndOlder, newer] = await Promise.all([
-			this.fetchWindowSide(threadId, 'older', before + 1, isVisibleRow, {
+			this.fetchWindowSide(threadId, 'older', before + 1, project, {
 				anchor,
 				includeAnchor: true,
 			}),
-			this.fetchWindowSide(threadId, 'newer', after, isVisibleRow, { anchor }),
+			this.fetchWindowSide(threadId, 'newer', after, project, { anchor }),
 		]);
 
 		return {
@@ -295,16 +287,16 @@ export class InstanceAiConversationHistoryRepository {
 	 * Ordering mirrors the paging read in `TypeORMAgentMemory.listMessages`:
 	 * (createdAt, id), so rows written in the same millisecond keep a stable
 	 * order. The fetch is over-sized (see {@link WINDOW_OVERFETCH_FACTOR}) so
-	 * rows the caller's predicate rejects do not eat window slots, and the extra
-	 * row past the cap resolves `hasMore` without a second query.
+	 * rows the projector drops do not eat window slots, and the extra row past
+	 * the cap resolves `hasMore` without a second query.
 	 */
-	private async fetchWindowSide(
+	private async fetchWindowSide<T>(
 		threadId: string,
 		direction: 'older' | 'newer',
 		limit: number,
-		isVisibleRow: (row: InstanceAiMessage) => boolean,
+		project: (row: InstanceAiMessage) => T | undefined,
 		boundary?: { anchor: ConversationWindowAnchor; includeAnchor?: boolean },
-	): Promise<{ rows: InstanceAiMessage[]; hasMore: boolean }> {
+	): Promise<{ rows: T[]; hasMore: boolean }> {
 		const qb = this.conversationRows(threadId);
 		if (boundary) {
 			const timeOp = direction === 'older' ? '<' : '>';
@@ -323,11 +315,12 @@ export class InstanceAiConversationHistoryRepository {
 			.take(fetchLimit)
 			.getMany();
 
-		const rows: InstanceAiMessage[] = [];
+		const rows: T[] = [];
 		let moreVisibleFetched = false;
 		for (const row of fetched) {
-			if (!isVisibleRow(row)) continue;
-			if (rows.length < limit) rows.push(row);
+			const item = project(row);
+			if (item === undefined) continue;
+			if (rows.length < limit) rows.push(item);
 			else {
 				moreVisibleFetched = true;
 				break;
