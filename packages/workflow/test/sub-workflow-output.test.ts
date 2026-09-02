@@ -240,89 +240,121 @@ describe('buildSubWorkflowOutputFromRunData', () => {
 	});
 
 	it('falls back to lastNodeExecuted when a terminal node ran but produced zero items (n8n-io/n8n#36393)', () => {
-		// Repro: trigger fans out to (a) Split Out over an empty array (terminal, 0 items) and
-		// (b) an always-false IF whose false output is unconnected.  Split Out satisfies the old
-		// `terminalNodesWithRuns` guard even though it has no items, so `lastNodeExecuted` never
-		// fired and the result was `[null]`.
+		// 'Split Out' is the only terminal node; it ran but emitted 0 items.
+		// 'IF' is lastNodeExecuted but has an outgoing connection to 'Next' (not executed),
+		// so it is NOT terminal and cannot be reached via terminalNodesWithMainOutput.
+		// The filter must exclude 'Split Out' so the fallback fires and returns IF's items.
 		const runData: IRunData = {
-			'Split Out': [
-				{ data: { main: [[]] } }, // ran, but no items
-			] as unknown as ITaskData[],
-			'Always-false IF': [
+			'Split Out': [{ data: { main: [[]] } }] as unknown as ITaskData[], // terminal, 0 items
+			IF: [
 				{
 					data: {
 						main: [[], [{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]],
 					},
 				},
-			] as unknown as ITaskData[],
+			] as unknown as ITaskData[], // non-terminal (connected to Next)
 		};
 
-		const emptyTerminalWorkflow = {
+		const workflow = {
 			nodes: [
 				mock<INode>({ name: 'Trigger', disabled: false }),
 				mock<INode>({ name: 'Split Out', disabled: false }),
-				mock<INode>({ name: 'Always-false IF', disabled: false }),
+				mock<INode>({ name: 'IF', disabled: false }),
+				mock<INode>({ name: 'Next', disabled: false }),
 			],
 			connections: {
 				Trigger: {
 					main: [
 						[
 							{ node: 'Split Out', type: 'main', index: 0 },
-							{ node: 'Always-false IF', type: 'main', index: 0 },
+							{ node: 'IF', type: 'main', index: 0 },
 						],
 					],
 				},
-				// Split Out has no outgoing connections → terminal
-				// Always-false IF: false branch unconnected, true branch unconnected → terminal
+				// Split Out: no outgoing connections → terminal
+				IF: { main: [[{ node: 'Next', type: 'main', index: 0 }]] }, // non-terminal
 			} as IConnections,
 		};
 
 		const output = buildSubWorkflowOutputFromRunData(
-			{ runData, lastNodeExecuted: 'Always-false IF' },
-			emptyTerminalWorkflow,
+			{ runData, lastNodeExecuted: 'IF' },
+			workflow,
 			{ lastRunOnly: false, mode: 'integrated' },
 		);
 
+		// terminalNodesWithMainOutput = [] (Split Out has 0 items → filtered out)
+		// → falls back to lastNodeExecuted = 'IF'
 		expect(output).toEqual([[{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]]);
 	});
 
 	it('falls back to lastNodeExecuted when terminal nodes are AI subnodes with no main output (n8n-io/n8n#36393)', () => {
-		// AI subnodes have no outgoing `main` connections (connected via ai_tool etc.) so they
-		// appear as terminal nodes. Their run data is keyed `ai_tool` / `ai_memory` / etc., not
-		// `main`. The old guard treated them as contributing, producing `[null]` instead of
-		// falling back to `lastNodeExecuted`.
+		// 'AI Tool' is the only terminal node; it ran but stores data under 'ai_tool', not 'main'.
+		// 'AI Agent' is lastNodeExecuted and has an outgoing main connection to 'Set' (not executed),
+		// so it is NOT terminal and cannot be reached via terminalNodesWithMainOutput.
+		// The filter must exclude 'AI Tool' so the fallback fires and returns AI Agent's items.
 		const runData: IRunData = {
 			'AI Tool': [
-				{
-					data: {
-						// AI subnodes store output under ai_* keys, not main
-						ai_tool: [[{ json: { result: 'tool ran' } }]],
-					},
-				},
-			] as unknown as ITaskData[],
-			'Chat Model': [{ data: { main: [[{ json: { text: 'hello' } }]] } }] as unknown as ITaskData[],
+				{ data: { ai_tool: [[{ json: { result: 'tool ran' } }]] } },
+			] as unknown as ITaskData[], // terminal, no main data
+			'AI Agent': [{ data: { main: [[{ json: { text: 'hello' } }]] } }] as unknown as ITaskData[], // non-terminal (connected to Set)
 		};
 
 		const aiSubnodeWorkflow = {
 			nodes: [
-				mock<INode>({ name: 'Chat Model', disabled: false }),
+				mock<INode>({ name: 'AI Agent', disabled: false }),
 				mock<INode>({ name: 'AI Tool', disabled: false }),
+				mock<INode>({ name: 'Set', disabled: false }),
 			],
 			connections: {
-				// AI Tool connected via ai_tool, not main → appears terminal
-				'Chat Model': {
-					main: [[]], // no outgoing main → terminal
-				},
+				// AI Tool: no outgoing main connections → terminal (connected via ai_tool category)
+				'AI Agent': { main: [[{ node: 'Set', type: 'main', index: 0 }]] }, // non-terminal
 			} as IConnections,
 		};
 
 		const output = buildSubWorkflowOutputFromRunData(
-			{ runData, lastNodeExecuted: 'Chat Model' },
+			{ runData, lastNodeExecuted: 'AI Agent' },
 			aiSubnodeWorkflow,
 			{ lastRunOnly: false, mode: 'integrated' },
 		);
 
+		// terminalNodesWithMainOutput = [] (AI Tool has no main items → filtered out)
+		// → falls back to lastNodeExecuted = 'AI Agent'
 		expect(output).toEqual([[{ json: { text: 'hello' } }]]);
+	});
+
+	it('falls back to lastNodeExecuted when lastRunOnly=true and the final terminal run is empty', () => {
+		// Terminal node has two runs: run[0] has items, run[1] is empty.
+		// With lastRunOnly=true, only run[1] is collected → 0 items.
+		// The predicate must apply the same lastRunOnly selection; otherwise it passes on
+		// run[0]'s items and terminalNodesWithMainOutput.length > 0, blocking the fallback.
+		const runData: IRunData = {
+			Terminal: [
+				{ executionIndex: 0, data: { main: [[{ json: { id: 1 } }]] } }, // has items
+				{ executionIndex: 1, data: { main: [[]] } }, // empty — the last run
+			] as unknown as ITaskData[],
+			Source: [{ data: { main: [[{ json: { id: 99 } }]] } }] as unknown as ITaskData[],
+		};
+
+		const workflow = {
+			nodes: [
+				mock<INode>({ name: 'Source', disabled: false }),
+				mock<INode>({ name: 'Terminal', disabled: false }),
+			],
+			connections: {
+				Source: { main: [[{ node: 'Terminal', type: 'main', index: 0 }]] },
+				// Terminal: no outgoing connections → terminal
+			} as IConnections,
+		};
+
+		const output = buildSubWorkflowOutputFromRunData(
+			{ runData, lastNodeExecuted: 'Source' },
+			workflow,
+			{ lastRunOnly: true },
+		);
+
+		// With lastRunOnly=true: Terminal's last run is empty → filtered out of
+		// terminalNodesWithMainOutput → falls back to lastNodeExecuted = 'Source'
+		expect(output).toEqual([[{ json: { id: 99 } }]]);
 	});
 
 	it('falls back to lastNodeExecuted when no terminal node produced output', () => {

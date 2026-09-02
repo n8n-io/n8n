@@ -146,18 +146,23 @@ export function buildSubWorkflowOutputFromRunData(
 		}
 	}
 
-	// Only count a terminal node as contributing when it has at least one run with actual
-	// `main` output items. This excludes AI subnodes (data keyed `ai_*`, not `main`) and
-	// nodes that ran but produced zero items (e.g. Split Out over an empty array), so the
-	// `lastNodeExecuted` fallback can still fire in those cases.
+	// Only count a terminal node as contributing when the run(s) that will actually be
+	// collected have at least one `main` item. This mirrors the selection in
+	// `collectTerminalOutputItems` (all runs vs. last run only) so the guard and the
+	// collector stay in sync. It excludes:
+	//  - AI subnodes (data keyed `ai_*`, not `main`), and
+	//  - nodes that ran but produced zero items (e.g. Split Out over an empty array),
+	// allowing the `lastNodeExecuted` fallback to fire in those cases.
 	const terminalNodesWithMainOutput = getTerminalNodeNames(
 		workflow.nodes,
 		workflow.connections,
-	).filter((nodeName) =>
-		getSortedNodeRuns(runData, nodeName).some((run) =>
+	).filter((nodeName) => {
+		const runs = getSortedNodeRuns(runData, nodeName);
+		const selectedRuns = lastRunOnly && runs.length > 0 ? [runs[runs.length - 1]] : runs;
+		return selectedRuns.some((run) =>
 			run.data?.main?.some((branch) => branch && branch.length > 0),
-		),
-	);
+		);
+	});
 
 	if (terminalNodesWithMainOutput.length > 0) {
 		const items = collectTerminalOutputItems(runData, terminalNodesWithMainOutput, lastRunOnly);
