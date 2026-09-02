@@ -478,7 +478,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 
-		it('should return existing items when the sub-workflow is waiting with a payload', async () => {
+		it('should ignore the passthrough payload and return the waiting placeholder when waiting', async () => {
 			const workflowInfo = { id: 'test-workflow' };
 			const items: INodeExecutionData[] = [];
 			const workflowProxyMock = {
@@ -486,10 +486,9 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				$workflow: { id: 'workflow-id' },
 			} as unknown as IWorkflowDataProxyData;
 
-			const TEST_RESPONSE = { msg: 'test response' };
-
+			// Wait / Send-and-Wait nodes park with their input passed through as run data.
 			const mockResponse: ExecuteWorkflowData = {
-				data: [[{ json: TEST_RESPONSE }]],
+				data: [[{ json: { query: 'hello' } }]],
 				executionId: 'test-execution',
 				waitTill: new Date('3000-01-01'),
 			};
@@ -503,7 +502,35 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				workflowProxyMock,
 			);
 
-			expect(result.response).toBe(TEST_RESPONSE);
+			expect(result.response).toEqual(SUB_WORKFLOW_WAITING_PLACEHOLDER);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should ignore the passthrough payload and return the placeholder item when waiting with returnAllItems', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: { query: 'hello' } }]],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual([{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]);
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 	});

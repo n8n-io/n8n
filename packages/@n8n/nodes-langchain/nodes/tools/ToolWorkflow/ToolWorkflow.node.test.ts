@@ -327,10 +327,11 @@ describe('ToolWorkflowV1', () => {
 		expect(result).not.toContain('The workflow did not return a response');
 	});
 
-	it('should return the payload when the sub-workflow is waiting with items', async () => {
+	it('should ignore the passthrough payload and return the placeholder when the sub-workflow is waiting', async () => {
 		const { ctx } = createContext();
+		// Wait / Send-and-Wait nodes park with their input passed through as run data.
 		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
-			data: [[{ json: { msg: 'approved' } }]],
+			data: [[{ json: { query: 'hello' } }]],
 			executionId: 'test-execution',
 			waitTill: new Date('3000-01-01'),
 		});
@@ -341,8 +342,7 @@ describe('ToolWorkflowV1', () => {
 		const tool = supplyDataResult.response as DynamicTool;
 		const result = await tool.func('hello');
 
-		expect(result).toBe(JSON.stringify({ msg: 'approved' }, null, 2));
-		expect(result).not.toContain('The workflow did not return a response');
+		expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
 	});
 
 	it('should return the missing-response error when the sub-workflow is not waiting', async () => {

@@ -296,7 +296,15 @@ export class WorkflowToolService {
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), error as Error);
 		}
-		const waiting = Boolean(receivedData.waitTill);
+		if (receivedData.waitTill) {
+			// A parked child has no final output yet: Wait / Send-and-Wait nodes pass their input
+			// through, so `data` is the HITL node's input, not a result. The parent is already parked
+			// via BaseExecuteContext.executeWorkflow and gets the real output on resume.
+			const response = this.returnAllItems
+				? [{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]
+				: SUB_WORKFLOW_WAITING_PLACEHOLDER;
+			return { response, subExecutionId: receivedData.executionId };
+		}
 
 		let response: IDataObject | INodeExecutionData[] | undefined;
 		if (this.returnAllItems) {
@@ -305,17 +313,10 @@ export class WorkflowToolService {
 			response = receivedData?.data?.[0]?.[0]?.json;
 		}
 		if (response === undefined) {
-			if (waiting) {
-				// Parent is already waiting via BaseExecuteContext.executeWorkflow.
-				response = this.returnAllItems
-					? [{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]
-					: SUB_WORKFLOW_WAITING_PLACEHOLDER;
-			} else {
-				throw new NodeOperationError(
-					context.getNode(),
-					'There was an error: "The workflow did not return a response"',
-				);
-			}
+			throw new NodeOperationError(
+				context.getNode(),
+				'There was an error: "The workflow did not return a response"',
+			);
 		}
 
 		return { response, subExecutionId: receivedData.executionId };
