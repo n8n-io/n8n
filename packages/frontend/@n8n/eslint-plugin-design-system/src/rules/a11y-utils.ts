@@ -1,6 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
-import type { VAttribute, VDirective, VElement } from 'vue-eslint-parser/ast/nodes';
+import type { Node, VAttribute, VDirective, VElement } from 'vue-eslint-parser/ast/nodes';
 
 export interface TemplateVisitor {
 	[selector: string]: {
@@ -184,7 +184,36 @@ export function getRole(node: VElement): string | undefined {
 }
 
 export function isCustomElement(node: VElement): boolean {
-	return node.rawName.includes('-') || /^[A-Z]/.test(node.rawName);
+	return (
+		node.rawName.toLowerCase() === 'component' ||
+		node.rawName.includes('-') ||
+		/^[A-Z]/.test(node.rawName)
+	);
+}
+
+export function isStaticBooleanAttributePresent(
+	attribute: VAttribute | VDirective | undefined,
+): boolean {
+	if (!attribute) return false;
+	if (!attribute.directive) return true;
+	return (
+		attribute.value?.expression?.type === 'Literal' && attribute.value.expression.value === true
+	);
+}
+
+function hasInertAncestor(node: VElement): boolean {
+	let current: Node | null | undefined = node;
+	while (current) {
+		if (
+			current.type === 'VElement' &&
+			current.rawName.toLowerCase() !== 'template' &&
+			isStaticBooleanAttributePresent(getAttribute(current, 'inert'))
+		) {
+			return true;
+		}
+		current = current.parent;
+	}
+	return false;
 }
 
 export function isNativeInteractiveElement(node: VElement): boolean {
@@ -197,20 +226,21 @@ export function isNativeInteractiveElement(node: VElement): boolean {
 
 export function isFocusableElement(node: VElement): boolean {
 	const name = node.rawName.toLowerCase();
-	if (getAttribute(node, 'hidden')) return false;
+	if (isStaticBooleanAttributePresent(getAttribute(node, 'hidden')) || hasInertAncestor(node)) {
+		return false;
+	}
 	if (
 		['button', 'input', 'option', 'select', 'textarea'].includes(name) &&
-		getAttribute(node, 'disabled')
+		isStaticBooleanAttributePresent(getAttribute(node, 'disabled'))
 	) {
 		return false;
 	}
-	if (name === 'input' && getStaticAttributeValue(getAttribute(node, 'type')) === 'hidden') {
-		return false;
-	}
-	const tabIndex = getStaticAttributeValue(getAttribute(node, 'tabindex'));
-	if (tabIndex !== undefined && Number.isFinite(Number(tabIndex))) return true;
+	const type = getStaticAttributeValue(getAttribute(node, 'type'))?.trim().toLowerCase();
+	if (name === 'input' && type === 'hidden') return false;
+	const tabIndex = getStaticAttributeValue(getAttribute(node, 'tabindex'))?.trim();
+	if (tabIndex !== undefined && /^[+-]?\d+$/.test(tabIndex)) return true;
 	const contentEditable = getAttribute(node, 'contenteditable');
-	const contentEditableValue = getStaticAttributeValue(contentEditable);
+	const contentEditableValue = getStaticAttributeValue(contentEditable)?.trim().toLowerCase();
 	if (contentEditable && contentEditableValue !== 'false') return true;
 	return isNativeInteractiveElement(node);
 }

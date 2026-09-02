@@ -13,8 +13,9 @@ const REQUIRED_PROPERTIES: Record<string, string[]> = {
 	radio: ['aria-checked'],
 	scrollbar: ['aria-controls', 'aria-valuenow'],
 	slider: ['aria-valuenow'],
+	spinbutton: ['aria-valuenow'],
 	switch: ['aria-checked'],
-	treeitem: ['aria-selected'],
+	tab: ['aria-selected'],
 };
 
 export const RoleHasRequiredAriaPropsRule = ESLintUtils.RuleCreator.withoutDocs({

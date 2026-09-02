@@ -20,6 +20,7 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		{ filename: 'Component.vue', code: vue('<div role="button" @click="save">Save</div>') },
 		{ filename: 'Component.vue', code: vue('<div :role="role" @keydown="handle" />') },
 		{ filename: 'Component.vue', code: vue('<Widget @click="save" />') },
+		{ filename: 'Component.vue', code: vue('<component :is="tag" @click="save" />') },
 	],
 	invalid: [
 		{

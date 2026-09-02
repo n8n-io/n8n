@@ -23,6 +23,10 @@ ruleTester.run('label-has-for', LabelHasForRule, {
 			code: vue('<input id="name" /><label :for="controlId">Name</label>'),
 		},
 		{ filename: 'Component.vue', code: vue('<FormLabel>Label</FormLabel>') },
+		{
+			filename: 'Component.vue',
+			code: vue('<label for="name">Name</label><N8nInput id="name" />'),
+		},
 	],
 	invalid: [
 		{
@@ -38,6 +42,11 @@ ruleTester.run('label-has-for', LabelHasForRule, {
 		{
 			filename: 'Component.vue',
 			code: vue('<label><span>Name</span></label>'),
+			errors: [{ messageId: 'labelHasFor' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<label for="secret">Secret</label><input id="secret" type="HIDDEN" />'),
 			errors: [{ messageId: 'labelHasFor' }],
 		},
 	],

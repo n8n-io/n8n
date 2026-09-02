@@ -9,16 +9,19 @@ import {
 	type VueParserServices,
 } from './a11y-utils.js';
 
-function findHiddenAttribute(node: VElement): VAttribute | VDirective | undefined {
+function findHiddenAttributes(node: VElement): Array<VAttribute | VDirective> {
+	const attributes: Array<VAttribute | VDirective> = [];
 	let current: Node | null | undefined = node;
 	while (current) {
-		if (current.type === 'VElement') {
+		if (current.type === 'VElement' && current.rawName.toLowerCase() !== 'template') {
 			const attribute = getAttribute(current, 'aria-hidden');
-			if (getStaticAttributeValue(attribute) === 'true') return attribute;
+			if (getStaticAttributeValue(attribute)?.trim().toLowerCase() === 'true' && attribute) {
+				attributes.push(attribute);
+			}
 		}
 		current = current.parent;
 	}
-	return undefined;
+	return attributes;
 }
 
 export const NoAriaHiddenOnFocusableRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -36,10 +39,11 @@ export const NoAriaHiddenOnFocusableRule = ESLintUtils.RuleCreator.withoutDocs({
 		return parserServices.defineTemplateBodyVisitor({
 			VElement(node) {
 				if (!isFocusableElement(node)) return;
-				const attribute = findHiddenAttribute(node);
-				if (!attribute || reported.has(attribute)) return;
-				reported.add(attribute);
-				context.report({ node: toESTreeNode(attribute), messageId: 'hiddenFocusable' });
+				for (const attribute of findHiddenAttributes(node)) {
+					if (reported.has(attribute)) continue;
+					reported.add(attribute);
+					context.report({ node: toESTreeNode(attribute), messageId: 'hiddenFocusable' });
+				}
 			},
 		});
 	},

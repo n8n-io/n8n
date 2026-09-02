@@ -63,6 +63,18 @@ ruleTester.run('prefers-reduced-motion', PrefersReducedMotionRule, {
 				}
 			`),
 		},
+		{
+			filename: 'Component.vue',
+			code: vue(`
+				.card {
+					// Keep this motion subtle
+					transition: opacity 100ms ease;
+				}
+				@media (prefers-reduced-motion: reduce) {
+					.card { transition: none; }
+				}
+			`),
+		},
 	],
 	invalid: [
 		{
@@ -86,6 +98,36 @@ ruleTester.run('prefers-reduced-motion', PrefersReducedMotionRule, {
 					data: { property: 'scroll-behavior', selector: '.card' },
 				},
 			],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue(`
+				.card { animation: enter 200ms ease-out; }
+				@media not (prefers-reduced-motion: reduce) {
+					.card { animation: none; }
+				}
+			`),
+			errors: [{ messageId: 'missingReducedMotion' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue(`
+				.card { transition: opacity 200ms ease; }
+				@media (prefers-reduced-motion: reduce) and (min-width: 1000px) {
+					.card { transition: none; }
+				}
+			`),
+			errors: [{ messageId: 'missingReducedMotion' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue(`
+				.card { animation: enter 200ms ease-out; }
+				@media (prefers-reduced-motion: reduce), (min-width: 1000px) {
+					.card { animation: none; }
+				}
+			`),
+			errors: [{ messageId: 'missingReducedMotion' }],
 		},
 		{
 			filename: 'Component.vue',

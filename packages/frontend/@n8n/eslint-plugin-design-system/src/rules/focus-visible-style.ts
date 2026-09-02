@@ -9,17 +9,26 @@ import {
 	type VueParserServices,
 } from './a11y-utils.js';
 
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const FOCUS_PSEUDO_CLASS = /:focus(?:-visible)?(?![-\w])/;
 
 function getFocusSelectors(source: string): string[] {
 	const styles = Array.from(source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi));
 	const selectors: string[] = [];
 	for (const style of styles) {
-		for (const match of style[1]?.matchAll(/([^{}]+)\{/g) ?? []) {
+		const content = style[1] ?? '';
+		for (const nested of content.matchAll(/([^{}]+)\{[^{}]*?(&[^{}]+)\{/g)) {
+			const parents = nested[1]?.split(',') ?? [];
+			const children = nested[2]?.split(',') ?? [];
+			for (const parent of parents) {
+				for (const child of children) {
+					const selector = child.replaceAll('&', parent.trim()).trim();
+					if (FOCUS_PSEUDO_CLASS.test(selector)) selectors.push(selector);
+				}
+			}
+		}
+		for (const match of content.matchAll(/([^{}]+)\{/g)) {
 			for (const selector of match[1]?.split(',') ?? []) {
-				if (/:focus(?:-visible)?\b/.test(selector)) selectors.push(selector.trim());
+				if (FOCUS_PSEUDO_CLASS.test(selector)) selectors.push(selector.trim());
 			}
 		}
 	}
@@ -27,27 +36,29 @@ function getFocusSelectors(source: string): string[] {
 }
 
 function selectorMatchesElement(selector: string, node: VElement): boolean {
-	const focusPosition = selector.search(/:focus(?:-visible)?\b/);
+	const focusPosition = selector.search(FOCUS_PSEUDO_CLASS);
 	if (focusPosition < 0) return false;
-	const subject = selector.slice(0, focusPosition);
-	if (subject.trim() === '') return true;
-	if (/(?:^|[\s>+~])\*[^\s>+~]*$/.test(subject)) return true;
-	const tag = escapeRegExp(node.rawName.toLowerCase());
-	if (new RegExp(`(?:^|[\\s>+~])${tag}(?:[.#[:][^\\s>+~]*)?$`, 'i').test(subject)) return true;
+	const subject = selector.slice(0, focusPosition).trim();
+	if (subject === '' || subject === '*') return true;
+	if (/[\s>+~&:]/.test(subject)) return false;
+
+	const tag = subject.match(/^[a-z][\w-]*/i)?.[0];
+	if (tag && tag.toLowerCase() !== node.rawName.toLowerCase()) return false;
+
 	const id = getStaticAttributeValue(getAttribute(node, 'id'));
-	if (id && new RegExp(`#${escapeRegExp(id)}(?:[^\\s>+~]*)$`).test(subject)) return true;
-	const classes = getStaticAttributeValue(getAttribute(node, 'class'))?.split(/\s+/) ?? [];
-	if (
-		classes.some(function classMatches(name) {
-			return name.length > 0 && new RegExp(`\\.${escapeRegExp(name)}(?:[^\\s>+~]*)$`).test(subject);
-		})
-	)
-		return true;
-	if (getAttribute(node, 'tabindex') && /\[tabindex(?:[\^$*~|]?=[^\]]+)?\][^\s>+~]*$/.test(subject))
-		return true;
-	if (getAttribute(node, 'href') && /\[href(?:[\^$*~|]?=[^\]]+)?\][^\s>+~]*$/.test(subject))
-		return true;
-	return false;
+	for (const match of subject.matchAll(/#([\w-]+)/g)) {
+		if (match[1] !== id) return false;
+	}
+	const classes = new Set(getStaticAttributeValue(getAttribute(node, 'class'))?.split(/\s+/) ?? []);
+	for (const match of subject.matchAll(/\.([\w-]+)/g)) {
+		if (!match[1] || !classes.has(match[1])) return false;
+	}
+	for (const match of subject.matchAll(/\[([\w-]+)(?:=['"]?([^'"\]]+)['"]?)?\]/g)) {
+		const attribute = getAttribute(node, match[1] ?? '');
+		if (!attribute) return false;
+		if (match[2] !== undefined && getStaticAttributeValue(attribute) !== match[2]) return false;
+	}
+	return /^(?:[a-z][\w-]*)?(?:[.#][\w-]+|\[[^\]]+\])+$|^[a-z][\w-]*$/i.test(subject);
 }
 
 export const FocusVisibleStyleRule = ESLintUtils.RuleCreator.withoutDocs({
