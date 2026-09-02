@@ -65,7 +65,7 @@ Escalate to a human when:
 When a workflow error is provided, identify the failing node, summarize the likely cause, and suggest the smallest next diagnostic step.`;
 
 const meta: Meta<typeof N8nMarkdownEditor> = {
-	title: 'Core/Markdown Editor',
+	title: 'Core/MarkdownEditor',
 	component: N8nMarkdownEditor,
 	argTypes: {
 		variant: {
@@ -149,6 +149,23 @@ export const Default: Story = {
 		disabled: false,
 		readonly: false,
 	},
+};
+
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nMarkdownEditor },
+		setup() {
+			const contained = ref(defaultMarkdown);
+			const ghost = ref(defaultMarkdown);
+			return { contained, ghost };
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 24px; max-width: 760px;">
+				<n8n-markdown-editor v-model="contained" variant="contained" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
+				<n8n-markdown-editor v-model="ghost" variant="ghost" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
+			</div>
+		`,
+	}),
 };
 
 export const Contained: Story = {

@@ -32,6 +32,7 @@ import { RequirePublicApiControllerRule } from './require-public-api-controller.
 import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
 import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -67,4 +68,5 @@ export const rules = {
 	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
 	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 } satisfies Record<string, AnyRuleModule>;
