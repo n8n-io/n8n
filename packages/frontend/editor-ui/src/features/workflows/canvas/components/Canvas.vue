@@ -5,14 +5,17 @@ import { useContextMenu } from '@/features/shared/contextMenu/composables/useCon
 import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
+import { useCanvasSelectionTelemetry } from '../composables/useCanvasSelectionTelemetry';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import {
 	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
 	CanvasKey,
+	DEBOUNCE_TIME,
 	MODAL_CONFIRM,
 } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
@@ -60,7 +63,7 @@ import type {
 } from '@vue-flow/core';
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useDebounceFn, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
@@ -463,6 +466,7 @@ const soleSelectedGroupId = computed<string | null>(() => {
 });
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
+const selectionTelemetry = useCanvasSelectionTelemetry();
 
 function handleGroupCreated(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
 	autofocusGroupTitleId.value = group.id;
@@ -702,6 +706,19 @@ const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } 
 		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
 	});
+
+// Debounced, edge-triggered: one event per multi-select gesture.
+const trackMultiSelection = useDebounceFn(() => {
+	if (selectedElementCount.value > 1) {
+		selectionTelemetry.trackMultipleNodesSelected(selectedNodeIdsWithGroupMembers.value);
+	}
+}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+
+watch(selectedElementCount, (count, previousCount) => {
+	if (count > 1 && (previousCount ?? 0) <= 1) {
+		trackMultiSelection();
+	}
+});
 
 // VueFlow sizes its selection box to the selected VueFlow nodes, but a group
 // node is only the title bar — its expanded frame overflows the box. Feed the
