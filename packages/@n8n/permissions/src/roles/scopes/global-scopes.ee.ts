@@ -52,6 +52,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'ldap:sync',
 	'license:manage',
 	'logStreaming:manage',
+	'nodeTypePolicy:manage',
 	'orchestration:read',
 	'saml:manage',
 	'securityAudit:generate',

@@ -104,9 +104,10 @@ reviews:
     - name: Security
       file_paths:
         - .agents/review-rules/security/code-execution-and-sandboxing.md
-        - .agents/review-rules/security/credentials-and-secrets.md
+        - .agents/review-rules/security/outbound-requests.md
         - .agents/review-rules/security/auth-and-access-control.md
-        - .agents/review-rules/security/data-and-infrastructure.md
+        - .agents/review-rules/security/rendering-untrusted-content.md
+        - .agents/review-rules/security/credentials-and-secrets.md
         - .agents/review-rules/security/node-input-safety.md
       include:
         - packages/cli/**
@@ -115,17 +116,17 @@ reviews:
         - packages/workflow/**
         - packages/nodes-base/**
         - packages/@n8n/nodes-langchain/**
+        - packages/frontend/**
       exclude:
         - '**/__tests__/**'
         - '**/*.test.ts'
         - '**/*.spec.ts'
+        - '**/*.stories.ts'
         - '**/test/**'
       description: |-
-        Flag security defects introduced by this PR, using the linked rules.
-
-        Higher scrutiny for the expression engine, credential handling, code
-        execution nodes, license enforcement, and SSO integrations. Community
-        and custom nodes carry a higher risk profile than official ones.
+        Flag security defects introduced by this PR, using the linked rules,
+        ordered by how often each class shows up. Community and custom nodes
+        carry a higher risk profile than official ones.
     - name: Backend
       file_paths:
         - .agents/review-rules/backend/controller-request-validation.md
@@ -133,6 +134,7 @@ reviews:
         - .agents/review-rules/backend/explicit-any.md
         - .agents/review-rules/backend/lazy-load-heavy-modules.md
         - .agents/review-rules/backend/hand-rolled-delays.md
+        - .agents/review-rules/backend/license-enforcement.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/cli/**
