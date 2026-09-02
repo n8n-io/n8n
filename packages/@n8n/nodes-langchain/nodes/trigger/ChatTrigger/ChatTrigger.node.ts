@@ -958,6 +958,7 @@ export class ChatTrigger extends Node {
 						try {
 							credentialStatus = await ctx.checkTriggerCredentialStatus();
 						} catch {
+							// No error object: may carry decrypted credential context.
 							ctx.logger.error('Chat trigger credential readiness check failed');
 							// `send` ends the response itself.
 							res.status(503).send('Chat is unavailable right now. Please try again later.');
@@ -977,6 +978,7 @@ export class ChatTrigger extends Node {
 							testMode: mode === 'test',
 							visitorEmail: outerIdentity.visitor.email,
 							hasCredentials: !!connect,
+							// Not forced in test mode: the send gate refuses builders too.
 							ready: connect ? connect.connectedCount >= connect.total : false,
 							barText: connect ? connectBarText(connect, mode === 'test') : '',
 							...connect,
@@ -1048,6 +1050,7 @@ export class ChatTrigger extends Node {
 			try {
 				readiness = await ctx.checkTriggerCredentialStatus();
 			} catch {
+				// No error object: may carry decrypted credential context.
 				ctx.logger.error('Chat trigger credential readiness check failed');
 				res.status(503).json({ status: 'credential_readiness_check_failed' });
 				return { noWebhookResponse: true };
