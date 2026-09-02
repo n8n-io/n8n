@@ -4,6 +4,7 @@ import type {
 	Project,
 	ProjectExecutionQuota,
 	ProjectExecutionQuotaPeriodUnit,
+	ProjectExecutionQuotaRow,
 	ProjectExecutionQuotaSpike,
 	ProjectListItem,
 	ProjectsCount,
@@ -116,6 +117,12 @@ export const deleteProjectMember = async (
 	userId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
+};
+
+export const getAllProjectsExecutionQuota = async (
+	context: IRestApiContext,
+): Promise<ProjectExecutionQuotaRow[]> => {
+	return await makeRestApiRequest(context, 'GET', '/projects/execution-quota');
 };
 
 export const getExecutionQuota = async (

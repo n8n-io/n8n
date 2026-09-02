@@ -51,6 +51,11 @@ export type ProjectExecutionQuota = {
 	resetsAt: string;
 };
 
+export type ProjectExecutionQuotaRow = ProjectExecutionQuota & {
+	projectId: string;
+	projectName: string;
+};
+
 export type ProjectExecutionQuotaSpike = {
 	workflowId: string;
 	todayCount: number;
