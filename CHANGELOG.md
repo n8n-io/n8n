@@ -1,3 +1,11 @@
+## [1.123.76](https://github.com/n8n-io/n8n/compare/n8n@1.123.75...n8n@1.123.76) (2026-09-02)
+
+
+### Bug Fixes
+
+* **core:** Bump browserslist to 4.28.7 to clear CVE-2026-73088/73089 ([9de4cce](https://github.com/n8n-io/n8n/commit/9de4ccefcf623a1a3917532fa155a2410019204c))
+
+
 ## [1.123.75](https://github.com/n8n-io/n8n/compare/n8n@1.123.74...n8n@1.123.75) (2026-08-21)
 
 
