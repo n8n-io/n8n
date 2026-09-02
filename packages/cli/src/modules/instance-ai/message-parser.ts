@@ -1,12 +1,10 @@
-import { getRenderHint, normalizeAgentTree } from '@n8n/api-types';
+import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
-	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
-import { orchestratorAgentId } from '@n8n/instance-ai';
-import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
+import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {
@@ -17,43 +15,12 @@ import {
 
 type RunSnapshots = AgentTreeSnapshot[];
 
-const toolCallContentPartSchema = z.object({
-	type: z.literal('tool-call'),
-	toolCallId: z.string(),
-	toolName: z.string(),
-	input: z.unknown().optional(),
-	state: z.enum(['pending', 'resolved', 'rejected']).optional(),
-	output: z.unknown().optional(),
-	error: z.string().optional(),
-});
-
 const textContentPartSchema = z.object({ type: z.literal('text'), text: z.string() });
 const reasoningContentPartSchema = z.object({ type: z.literal('reasoning'), text: z.string() });
-const opaqueContentPartSchema = z
-	.object({ type: z.enum(['invalid-tool-call', 'file', 'citation', 'provider']) })
-	.passthrough();
-
-const contentPartSchema = z.union([
-	textContentPartSchema,
-	reasoningContentPartSchema,
-	toolCallContentPartSchema,
-	opaqueContentPartSchema,
-]);
 
 // ---------------------------------------------------------------------------
 // Persisted message shapes
 // ---------------------------------------------------------------------------
-
-interface StoredToolInvocation {
-	state: 'result' | 'call' | 'partial-call';
-	toolCallId: string;
-	toolName: string;
-	args: Record<string, unknown>;
-	result?: unknown;
-	error?: string;
-}
-
-type StoredContentPart = MessageContent;
 
 export interface StoredAgentMessage {
 	id: string;
@@ -104,187 +71,10 @@ function extractReasoningFromParts(parts: unknown[]): string {
 		.join('');
 }
 
-function extractParts(content: unknown): StoredContentPart[] | undefined {
-	if (Array.isArray(content)) return content.filter(isStoredContentPart);
-	return undefined;
-}
-
-function isStoredContentPart(value: unknown): value is StoredContentPart {
-	return contentPartSchema.safeParse(value).success;
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: {};
-}
-
-function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocation | undefined {
-	if (part.type !== 'tool-call') return undefined;
-
-	const parsed = toolCallContentPartSchema.safeParse(part);
-	if (!parsed.success) return undefined;
-	const toolCall = parsed.data;
-
-	const args = toRecord(toolCall.input);
-	if (toolCall.state === 'resolved') {
-		return {
-			state: 'result',
-			toolCallId: toolCall.toolCallId,
-			toolName: toolCall.toolName,
-			args,
-			result: toolCall.output,
-		};
-	}
-	if (toolCall.state === 'rejected') {
-		return {
-			state: 'result',
-			toolCallId: toolCall.toolCallId,
-			toolName: toolCall.toolName,
-			args,
-			error: toolCall.error,
-		};
-	}
-	return {
-		state: 'call',
-		toolCallId: toolCall.toolCallId,
-		toolName: toolCall.toolName,
-		args,
-	};
-}
-
-function extractToolInvocations(content: unknown): StoredToolInvocation[] {
-	if (typeof content === 'string') return [];
-	if (Array.isArray(content))
-		return content.filter(isStoredContentPart).flatMap((part) => {
-			const invocation = nativeToolPartToInvocation(part);
-			return invocation ? [invocation] : [];
-		});
-	return [];
-}
-
-/**
- * Coarse per-row timing for reconstructed tool calls: the interval from the
- * previous stored message to this one brackets everything the response did.
- * Real per-call timestamps only exist in run snapshots; this approximation
- * lets a snapshot-less reload still show "Thought for Xs" (derived from
- * min-start/max-end across a thinking block) instead of a bare fallback.
- * Known coarseness: every call in a row shares the bracket, and an HITL pause
- * between rows counts as thinking time.
- */
-interface RowTiming {
-	startedAt: string;
-	completedAt: string;
-}
-
-function buildToolCallState(
-	invocation: StoredToolInvocation,
-	timing?: RowTiming,
-): InstanceAiToolCallState {
-	const isCompleted = invocation.state === 'result';
-	return {
-		toolCallId: invocation.toolCallId,
-		toolName: invocation.toolName,
-		args: invocation.args,
-		result: isCompleted ? invocation.result : undefined,
-		error: isCompleted ? invocation.error : undefined,
-		isLoading: !isCompleted,
-		renderHint: getRenderHint(invocation.toolName),
-		...(timing ? { startedAt: timing.startedAt } : {}),
-		...(timing && isCompleted ? { completedAt: timing.completedAt } : {}),
-	};
-}
-
-/**
- * Build a chronological timeline from native parts (preserves reasoning vs
- * tool-call vs text ordering). Falls back to a reasoning-first,
- * tool-calls-next heuristic when parts aren't available.
- *
- * `responseId` is a synthetic per-message id: each stored assistant row is one
- * LLM response, and the frontend needs response grouping to tell intermediate
- * narration (trace content follows in the same response) from final answers.
- * Without it, a reconstructed timeline renders every narration text outside
- * the thinking blocks, splitting them.
- */
-function buildTimeline(
-	textContent: string,
-	reasoning: string,
-	toolCalls: InstanceAiToolCallState[],
-	parts?: StoredContentPart[],
-	responseId?: string,
-): InstanceAiTimelineEntry[] {
-	const responseRef = responseId ? { responseId } : {};
-
-	// If parts are available, use their ordering (chronologically accurate)
-	if (parts?.length) {
-		const timeline: InstanceAiTimelineEntry[] = [];
-		for (const part of parts) {
-			if (part.type === 'text' && part.text) {
-				timeline.push({ type: 'text', content: part.text, ...responseRef });
-			} else if (part.type === 'reasoning' && part.text) {
-				timeline.push({ type: 'reasoning', content: part.text, ...responseRef });
-			} else if (part.type === 'tool-call' && part.toolCallId) {
-				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId, ...responseRef });
-			}
-		}
-		return timeline;
-	}
-
-	// No parts — heuristic: reasoning first, then tool calls, then text
-	// (most common agent pattern)
-	const timeline: InstanceAiTimelineEntry[] = [];
-	if (reasoning) {
-		timeline.push({ type: 'reasoning', content: reasoning, ...responseRef });
-	}
-	for (const tc of toolCalls) {
-		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId, ...responseRef });
-	}
-	if (textContent) {
-		timeline.push({ type: 'text', content: textContent, ...responseRef });
-	}
-	return timeline;
-}
-
-/**
- * Build a flat agent tree (orchestrator only) from tool invocations.
- * Used when no snapshot is available, or when falling back from a degenerate one.
- * `status` is inherited from the snapshot so a `cancelled` run still reads as cancelled.
- *
- * A reconstructed tree is always historical — there is no live stream feeding it — so a
- * non-terminal status is normalized to `completed` (a mid-run snapshot must not render as
- * busy forever), and any tool call left loading on a stopped run is settled, mirroring the
- * live `run-finish` reducer so a cancelled bubble doesn't show a spinner that never resolves.
- */
-function buildFlatAgentTree(
-	runId: string,
-	textContent: string,
-	reasoning: string,
-	toolCalls: InstanceAiToolCallState[],
-	parts?: StoredContentPart[],
-	status: InstanceAiAgentNode['status'] = 'completed',
-	responseId?: string,
-): InstanceAiAgentNode {
-	const resolvedStatus = status === 'active' ? 'completed' : status;
-	const settledToolCalls =
-		resolvedStatus === 'cancelled' || resolvedStatus === 'error'
-			? toolCalls.map((tc) => (tc.isLoading ? { ...tc, isLoading: false } : tc))
-			: toolCalls;
-	return {
-		agentId: orchestratorAgentId(runId),
-		role: 'orchestrator',
-		status: resolvedStatus,
-		textContent,
-		reasoning,
-		toolCalls: settledToolCalls,
-		children: [],
-		timeline: buildTimeline(textContent, reasoning, settledToolCalls, parts, responseId),
-	};
-}
-
 /**
  * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
  * e.g. a `cancelled` run whose events were lost before the
- * snapshot was built — has none of these, so the message-derived flat tree is preferred.
+ * snapshot was built — has none of these, so the message renders without a tree.
  */
 function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 	return (
@@ -295,29 +85,11 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.reasoning.length > 0 ||
 		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
+		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
 		!!tree.result ||
 		!!tree.error
 	);
-}
-
-/**
- * Merge an earlier flat orchestrator tree into a later one (earlier content first).
- * Aggregates the assistant rows of a turn whose snapshot is empty so the whole turn's
- * orchestrator activity renders as one bubble after the dedup collapse, instead of
- * keeping only the last row.
- */
-function mergeFlatAgentTrees(
-	earlier: InstanceAiAgentNode,
-	later: InstanceAiAgentNode,
-): InstanceAiAgentNode {
-	return {
-		...later,
-		textContent: [earlier.textContent, later.textContent].filter(Boolean).join('\n\n'),
-		reasoning: [earlier.reasoning, later.reasoning].filter(Boolean).join('\n\n'),
-		toolCalls: [...earlier.toolCalls, ...later.toolCalls],
-		timeline: [...earlier.timeline, ...later.timeline],
-	};
 }
 
 function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
@@ -364,15 +136,10 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 // ---------------------------------------------------------------------------
 
 /**
- * Durable-log instrumentation: counts assistant messages that rendered from
- * the message-derived fallback ladder instead of a renderable snapshot tree.
- * Forwarded to the metrics pipeline via DurableLogMetrics.notifyParserFallbacks.
- */
-export const messageParserStats = { fallbackActivations: 0 };
-
-/**
  * Converts persisted native agent messages into rich InstanceAiMessage objects
- * with agent trees (from snapshots or reconstructed flat trees).
+ * with agent trees folded from the durable event log. A message whose run left
+ * no log rows (eval-seeded threads, pre-log dev instances) renders from its
+ * `content`/`reasoning` fields without a tree.
  */
 export function parseStoredMessages(
 	storedMessages: Array<AgentDbMessage | StoredAgentMessage>,
@@ -389,18 +156,16 @@ export function parseStoredMessages(
 	// orphan snapshots before, between, or after assistant rows.
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
-	// Messages whose `agentTree` originated from a snapshot (as opposed to
-	// being synthesized by `buildFlatAgentTree`). Used by the dedupe pass to
-	// prefer transferring snapshot trees forward in the in-flight HITL case.
+	// Messages whose `agentTree` is a renderable snapshot tree. Used by the
+	// dedupe pass to transfer snapshot trees forward in the in-flight HITL case.
 	const messagesWithSnapshotTree = new Set<InstanceAiMessage>();
 
 	let lastUserMessageId: string | undefined;
 
 	function pushSnapshotMessage(snapshot: AgentTreeSnapshot): void {
 		const built = buildSnapshotMessage(snapshot);
-		// A degenerate (empty) orphan snapshot must not count as authoritative: when the
-		// turn also has message rows, their reconstructed flat tree must win the dedup
-		// collapse instead of this empty tree clobbering it. Mirrors the paired-row guard.
+		// A degenerate (empty) orphan snapshot must not count as authoritative in
+		// the dedup collapse. Mirrors the paired-row guard.
 		if (isRenderableTree(snapshot.tree)) messagesWithSnapshotTree.add(built);
 		messages.push(built);
 	}
@@ -475,52 +240,17 @@ export function parseStoredMessages(
 
 		if (msg.role === 'assistant') {
 			const reasoning = extractReasoningFromContent(msg.content);
-			const invocations = extractToolInvocations(msg.content);
-			const prevMessage = messageIndex > 0 ? conversationMessages[messageIndex - 1] : undefined;
-			const timing: RowTiming | undefined = prevMessage
-				? {
-						startedAt: prevMessage.createdAt.toISOString(),
-						completedAt: msg.createdAt.toISOString(),
-					}
-				: undefined;
-			const toolCalls = invocations.map((invocation) => buildToolCallState(invocation, timing));
-			const parts = extractParts(msg.content);
 
 			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
 
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
-			// The message id doubles as the synthetic responseId: one stored
-			// assistant row = one LLM response, and unlike `runId` (which falls
-			// back to the user-message id shared by the whole turn) it is unique
-			// per row, so response grouping survives the flat-tree merge.
-			const messageFlatTree =
-				toolCalls.length > 0 || text || reasoning
-					? buildFlatAgentTree(
-							runId,
-							text,
-							reasoning,
-							toolCalls,
-							parts,
-							snapshot?.tree.status,
-							msg.id,
-						)
-					: undefined;
-			// Carry the cancellation cause onto the fallback tree so a stopped run is
-			// still attributable (user/timeout/shutdown) after the snapshot was lost.
-			if (messageFlatTree && snapshot?.tree.cancellationReason) {
-				messageFlatTree.cancellationReason = snapshot.tree.cancellationReason;
-			}
-			// Prefer the snapshot tree, but when it carries no renderable content (e.g. an
-			// empty `cancelled` tree from a run whose events were lost before the snapshot
-			// was built) fall back to the message-derived flat tree so the turn's work still
-			// renders on reload. A non-renderable snapshot is never authoritative — if there
-			// is no flat tree either, leave the tree undefined rather than re-admitting the
-			// empty one.
+			// A non-renderable tree (e.g. an empty `cancelled` tree from a run whose
+			// events were lost) is never authoritative — leave the tree undefined and
+			// let the message render from its own content instead.
 			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
-			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
-			if (!snapshotIsRenderable && messageFlatTree) messageParserStats.fallbackActivations++;
+			const agentTree = snapshotIsRenderable ? snapshot.tree : undefined;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
@@ -569,10 +299,9 @@ export function parseStoredMessages(
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).
 	//
-	// In-flight HITL turns are different: the snapshot is paired with a
-	// *middle* checkpoint message via timestamp matching, and the latest
-	// message in the turn has only an auto-generated flat tree from
-	// `buildFlatAgentTree`. Keeping just the latest would drop the
+	// In-flight HITL turns are different: the snapshot can pair with a
+	// *middle* row of the turn via timestamp matching, leaving the latest
+	// message without a tree. Keeping just the latest would drop the
 	// snapshot's tree (including its live confirmation cards), so transfer
 	// the snapshot's `agentTree` + `runIds` onto the kept message when the
 	// kept one's tree didn't come from a snapshot.
@@ -588,19 +317,10 @@ export function parseStoredMessages(
 		}
 		const kept = messages[keptIdx];
 		const candidate = messages[i];
-		if (!messagesWithSnapshotTree.has(kept)) {
-			if (messagesWithSnapshotTree.has(candidate)) {
-				kept.agentTree = candidate.agentTree;
-				kept.runIds = candidate.runIds;
-				messagesWithSnapshotTree.add(kept);
-			} else if (candidate.agentTree) {
-				// Neither row is snapshot-backed (degenerate-snapshot turn): aggregate the
-				// earlier row's flat-tree activity into the kept bubble so the whole turn's
-				// orchestrator work survives the collapse instead of just the last row.
-				kept.agentTree = kept.agentTree
-					? mergeFlatAgentTrees(candidate.agentTree, kept.agentTree)
-					: candidate.agentTree;
-			}
+		if (!messagesWithSnapshotTree.has(kept) && messagesWithSnapshotTree.has(candidate)) {
+			kept.agentTree = candidate.agentTree;
+			kept.runIds = candidate.runIds;
+			messagesWithSnapshotTree.add(kept);
 		}
 		toRemove.add(i);
 	}

@@ -29,7 +29,9 @@ import {
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
@@ -38,6 +40,7 @@ export class RoleController {
 	constructor(
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	@Get('/')
@@ -67,6 +70,17 @@ export class RoleController {
 			roleType: role.roleType,
 			user: req.user,
 		});
+
+		// Managing a role is an instance-wide capability, but the identities of a project's
+		// members are project data. Gate them on the same `project:list` check the sibling
+		// user and project routes use, so a role manager only sees projects it can already see.
+		const project = await this.projectService.getProjectWithScope(req.user, projectId, [
+			'project:list',
+		]);
+		if (!project) {
+			throw new NotFoundError('Project not found');
+		}
+
 		const result = await this.roleService.getRoleProjectMembers(slug, projectId);
 		return RoleProjectMembersResponseDto.parse(result);
 	}
@@ -83,7 +97,27 @@ export class RoleController {
 			user: req.user,
 		});
 		const result = await this.roleService.getRoleAssignments(slug);
-		return RoleAssignmentsResponseDto.parse(result);
+
+		if (result.projects.length === 0) {
+			return RoleAssignmentsResponseDto.parse(result);
+		}
+
+		// `projects` only names the projects the caller can already see. `totalProjects` stays
+		// the instance-wide count so the assignments tab can say "showing 1 of 3" rather than
+		// claim the role is unassigned; a bare number names no project and no member. The
+		// delete-impact warning is a different field — `usedByProjects`, served by `getRole`.
+		const visibleProjectIds = new Set(
+			await this.projectService.getProjectIdsWithScope(
+				req.user,
+				['project:list'],
+				result.projects.map((project) => project.projectId),
+			),
+		);
+
+		return RoleAssignmentsResponseDto.parse({
+			...result,
+			projects: result.projects.filter((project) => visibleProjectIds.has(project.projectId)),
+		});
 	}
 
 	@Get('/:slug/members')

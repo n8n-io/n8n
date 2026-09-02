@@ -17,6 +17,7 @@ import { UrlService } from '@/services/url.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuth2FlowService } from '../oauth-flow.service';
 import { OAuthServerService } from '../oauth-server.service';
@@ -188,6 +189,22 @@ describe('complete', () => {
 		}
 	});
 
+	// The AS already mints and persists these; a caller that never sees them can only
+	// restart the whole flow when the access token expires.
+	test('returns the refresh token and the access token lifetime', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		const { code, state } = await authorizeAndMintCode(resourceUrl, owner.id);
+
+		const result = await flow.complete(code, state);
+
+		expect(result.valid).toBe(true);
+		if (result.valid) {
+			expect(result.refreshToken).toEqual(expect.any(String));
+			expect(result.refreshToken).not.toBe(result.token);
+			expect(result.expiresIn).toBeGreaterThan(0);
+		}
+	});
+
 	test('returns metadata stashed at begin, and undefined when none was stashed', async () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 
@@ -272,6 +289,115 @@ describe('complete', () => {
 		const result = await flow.complete(code, state);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
+	});
+});
+
+describe('refresh', () => {
+	/** Complete a flow and hand back the refresh token it issued. */
+	const grantFor = async (resourceUrl: string, userId = owner.id) => {
+		const { code, state } = await authorizeAndMintCode(resourceUrl, userId);
+		const result = await flow.complete(code, state);
+		if (!result.valid) throw new Error(`expected a valid flow, got ${result.reason}`);
+		return result;
+	};
+
+	test('rotates into a fresh pair bound to the same grant', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		const granted = await grantFor(resourceUrl);
+
+		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+
+		expect(refreshed.valid).toBe(true);
+		if (refreshed.valid) {
+			expect(refreshed.token).not.toBe(granted.token);
+			expect(refreshed.refreshToken).not.toBe(granted.refreshToken);
+			expect(refreshed.expiresIn).toBeGreaterThan(0);
+			expect(decodeJwtPayload(refreshed.token).sub).toBe(owner.id);
+			expect(decodeJwtPayload(refreshed.token).aud).toBe(resourceUrl);
+		}
+	});
+
+	// Rotation deletes only the refresh row, so a message already in flight with the
+	// previous access token must still be accepted.
+	test('leaves the previous access token usable', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		const granted = await grantFor(resourceUrl);
+
+		await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+
+		await expect(
+			tokenService.verifyOAuthAccessToken(granted.token, resourceUrl),
+		).resolves.toMatchObject({ user: { id: owner.id } });
+	});
+
+	// The loser of a concurrent rotation presents a token `deleteValidByToken` already
+	// consumed. It must surface on the union, never as a silent reuse.
+	test('refuses a refresh token that was already consumed', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		const granted = await grantFor(resourceUrl);
+
+		const first = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+		expect(first.valid).toBe(true);
+
+		const replay = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+
+		expect(replay).toEqual({ valid: false, reason: 'invalid_grant' });
+	});
+
+	test('refuses an unknown refresh token', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		await grantFor(resourceUrl);
+
+		const result = await flow.refreshVirtualClientToken('not-a-refresh-token', resourceUrl);
+
+		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
+	});
+
+	// The grant's own resource bounds every later token request on it (RFC 8707 §2.2).
+	test('refuses a refresh token presented against another resource', async () => {
+		const resourceUrlA = await createProtectedFormWorkflow();
+		const resourceUrlB = await createProtectedFormWorkflow();
+		const granted = await grantFor(resourceUrlA);
+
+		const result = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrlB);
+
+		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
+	});
+
+	test('refuses a resource URL that is not a first-party protected resource', async () => {
+		await expect(
+			flow.refreshVirtualClientToken('any-token', resourceUrlFor(randomUUID())),
+		).rejects.toThrow(UserError);
+	});
+
+	test('rotates a chat grant the same way', async () => {
+		const chatResourceUrl = await createProtectedChatWorkflow();
+		const granted = await grantFor(chatResourceUrl, member.id);
+
+		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, chatResourceUrl);
+
+		expect(refreshed.valid).toBe(true);
+		if (refreshed.valid) {
+			expect(decodeJwtPayload(refreshed.token).sub).toBe(member.id);
+			expect(decodeJwtPayload(refreshed.token).aud).toBe(chatResourceUrl);
+		}
+	});
+
+	// A page that refreshes for hours must not accumulate live refresh rows: the AS
+	// deletes the one it consumes, so the grant always holds exactly one.
+	test('keeps exactly one refresh row across repeated rotations', async () => {
+		const resourceUrl = await createProtectedChatWorkflow();
+		let current = (await grantFor(resourceUrl)).refreshToken;
+
+		for (let i = 0; i < 3; i++) {
+			const refreshed = await flow.refreshVirtualClientToken(current, resourceUrl);
+			if (!refreshed.valid) throw new Error(`rotation ${i} failed: ${refreshed.reason}`);
+			current = refreshed.refreshToken;
+		}
+
+		await expect(
+			Container.get(RefreshTokenRepository).countBy({ clientId: resourceUrl }),
+		).resolves.toBe(1);
 	});
 });
 
