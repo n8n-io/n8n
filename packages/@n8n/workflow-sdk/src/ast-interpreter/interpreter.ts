@@ -9,6 +9,7 @@ import {
 	UnsupportedNodeError,
 	UnknownIdentifierError,
 	SecurityError,
+	ResourceLimitError,
 } from './errors';
 import { parseSDKCode } from './parser';
 import {
@@ -37,17 +38,32 @@ export type SDKFunctions = Record<string, (...args: any[]) => unknown>;
  */
 class SDKInterpreter {
 	private static readonly MAX_EVAL_DEPTH = 500;
+	private static readonly MAX_STATEMENT_COUNT = 5_000;
+	/** Smallest data budget any program gets, however short it is. */
+	private static readonly MIN_ALLOCATED_UNITS = 200_000;
+	/** Extra data budget per character of source, on top of that MIN_ALLOCATED_UNITS minimum. */
+	private static readonly ALLOCATION_AMPLIFICATION = 20;
 
 	private sdkFunctions: Map<string, (...args: unknown[]) => unknown>;
 	private variables: Map<string, unknown>;
 	private renamedVariables: Map<string, string> = new Map();
 	private sourceCode: string;
 	private evalDepth = 0;
+	/** Ceiling on the data this program may produce, derived in constructor from the input program length. */
+	private readonly maxAllocatedUnits: number;
+	/** How much of that ceiling has been used so far. */
+	private allocatedUnits = 0;
+	/** What each array/object holds, so referencing one can be sized without walking it again. */
+	private valueWeights = new WeakMap<object, number>();
 
 	constructor(sdkFunctions: SDKFunctions, sourceCode: string) {
 		this.sdkFunctions = new Map(Object.entries(sdkFunctions));
 		this.variables = new Map();
 		this.sourceCode = sourceCode;
+		this.maxAllocatedUnits = Math.max(
+			SDKInterpreter.MIN_ALLOCATED_UNITS,
+			sourceCode.length * SDKInterpreter.ALLOCATION_AMPLIFICATION,
+		);
 	}
 
 	private generateSafeName(name: string): string {
@@ -65,6 +81,8 @@ class SDKInterpreter {
 	 * Interpret the AST program and return the result.
 	 */
 	interpret(ast: ESTree.Program): unknown {
+		this.assertAstBodyLengthWithinLimits(ast);
+
 		let result: unknown;
 
 		for (const stmt of ast.body) {
@@ -85,6 +103,24 @@ class SDKInterpreter {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Assert that the AST body length is within the allowed limits.
+	 * Throws a ResourceLimitError if the limit is exceeded.
+	 * @param ast
+	 */
+	private assertAstBodyLengthWithinLimits(ast: ESTree.Program): void {
+		if (ast.body.length <= SDKInterpreter.MAX_STATEMENT_COUNT) {
+			return;
+		}
+
+		throw new ResourceLimitError(
+			'statement-count',
+			ast.loc ?? undefined,
+			this.sourceCode,
+			`Program has ${ast.body.length} top-level statements; the limit is ${SDKInterpreter.MAX_STATEMENT_COUNT}.`,
+		);
 	}
 
 	/**
@@ -140,15 +176,11 @@ class SDKInterpreter {
 	 * Evaluate an expression and return its value.
 	 */
 	private evaluate(node: ESTree.Expression | ESTree.SpreadElement | null): unknown {
-		if (node === null) return undefined;
-
-		if (this.evalDepth >= SDKInterpreter.MAX_EVAL_DEPTH) {
-			throw new InterpreterError(
-				'Expression nesting too deep (possible cycle in method chain)',
-				node.loc ?? undefined,
-				this.sourceCode,
-			);
+		if (node === null) {
+			return undefined;
 		}
+
+		this.assertDepthWithinLimits(node);
 
 		this.evalDepth++;
 		try {
@@ -156,6 +188,142 @@ class SDKInterpreter {
 		} finally {
 			this.evalDepth--;
 		}
+	}
+
+	/**
+	 * Run a recursive helper under the same nesting-depth guard as `evaluate()`,
+	 * for helpers that walk the AST directly instead of calling `evaluate()`.
+	 */
+	private withDepthGuard<T>(node: { loc?: ESTree.SourceLocation | null }, fn: () => T): T {
+		// Assert the depth on every node visit, not just on the initial evaluate() call, to catch cycles in method chains.
+		this.assertDepthWithinLimits(node);
+
+		this.evalDepth++;
+		try {
+			return fn();
+		} finally {
+			this.evalDepth--;
+		}
+	}
+
+	/**
+	 * Assert that the current evaluation depth is within the allowed limits.
+	 * Throws a ResourceLimitError if the limit is exceeded.
+	 * @param node
+	 */
+	private assertDepthWithinLimits(node: { loc?: ESTree.SourceLocation | null }): void {
+		if (this.evalDepth < SDKInterpreter.MAX_EVAL_DEPTH) {
+			return;
+		}
+
+		throw new ResourceLimitError(
+			'nesting-depth',
+			node.loc ?? undefined,
+			this.sourceCode,
+			'Expression nesting too deep (possible cycle in method chain)',
+		);
+	}
+
+	private chargeBudget(units: number, location?: ESTree.SourceLocation): void {
+		if (units <= 0) {
+			return;
+		}
+
+		if (this.allocatedUnits + units <= this.maxAllocatedUnits) {
+			this.allocatedUnits += units;
+			return;
+		}
+
+		throw new ResourceLimitError(
+			'allocation-budget',
+			location,
+			this.sourceCode,
+			'SDK code produced or traversed too much data. Limit is ' +
+				`${this.maxAllocatedUnits} total elements/characters.`,
+		);
+	}
+
+	/** How much data a value holds: a string's length, an array/object's tracked total, otherwise 1. */
+	private sizeOf(value: unknown): number {
+		if (value !== null && typeof value === 'object') {
+			return Math.max(this.valueWeights.get(value) ?? 1, 1);
+		}
+
+		if (typeof value === 'string') {
+			return Math.max(value.length, 1);
+		}
+
+		return 1;
+	}
+
+	private assertValueSizeWithinLimits(size: number, location?: ESTree.SourceLocation): void {
+		if (size <= this.maxAllocatedUnits) {
+			return;
+		}
+
+		throw new ResourceLimitError(
+			'allocation-budget',
+			location,
+			this.sourceCode,
+			`A single value grew to ${size} elements/characters; the limit is ${this.maxAllocatedUnits}.`,
+		);
+	}
+
+	/**
+	 * Spaces JSON.stringify adds per level of nesting, which it never passes to
+	 * the replacer. It caps both forms at ten, so charging has to cap them too.
+	 */
+	private calculateIndentationWidth(space: unknown): number {
+		const maxCap = 10;
+		if (typeof space === 'number') {
+			return Math.max(Math.min(Math.trunc(space), maxCap), 0);
+		}
+
+		if (typeof space === 'string') {
+			return Math.min(space.length, maxCap);
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Serializing a POJO into JSON writes every repeated reference out in full, so the output can
+	 * be much bigger than its input.
+	 */
+	private safeJSONStringify(
+		value: unknown,
+		space: unknown,
+		location?: ESTree.SourceLocation,
+	): string | undefined {
+		this.assertValueSizeWithinLimits(this.sizeOf(value), location);
+
+		const indentWidth = this.calculateIndentationWidth(space);
+		const depths = new WeakMap<object, number>();
+		const charge = (units: number) => this.chargeBudget(units, location);
+
+		/**
+		 * The replacer is the only hook into the walk, so it is where an oversized value
+		 * can be stopped before the whole string exists.
+		 */
+		const replacer = function (this: unknown, key: string, val: unknown) {
+			// `this` is the array or object holding this node, and a holder is always
+			// reached before its members, so its depth is already recorded.
+			const depth = key === '' ? 0 : (depths.get(this as object) ?? 0) + 1;
+			if (val !== null && typeof val === 'object') {
+				depths.set(val, depth);
+			}
+
+			charge(key.length + depth * indentWidth + (typeof val === 'string' ? val.length : 1));
+			return val;
+		};
+
+		const result = JSON.stringify(value, replacer, space as string | number | undefined);
+
+		if (typeof result === 'string') {
+			this.chargeBudget(result.length, location);
+		}
+
+		return result;
 	}
 
 	private evaluateNode(node: ESTree.Expression | ESTree.SpreadElement): unknown {
@@ -255,6 +423,17 @@ class SDKInterpreter {
 				const safeMethod = getSafeJSONMethod(memberExpr.object.name, methodName);
 				if (safeMethod) {
 					const args = node.arguments.map((arg) => this.evaluate(arg));
+					if (methodName === 'stringify') {
+						// The replacer slot is reserved for the size guard below.
+						if (args[1] !== undefined && args[1] !== null) {
+							throw new UnsupportedNodeError(
+								'JSON.stringify replacer',
+								node.loc ?? undefined,
+								this.sourceCode,
+							);
+						}
+						return this.safeJSONStringify(args[0], args[2], node.loc ?? undefined);
+					}
 					return safeMethod(...args);
 				}
 			}
@@ -265,6 +444,13 @@ class SDKInterpreter {
 			const safeStringMethod = getSafeStringMethod(thisArg, methodName);
 			if (safeStringMethod) {
 				const args = node.arguments.map((arg) => this.evaluate(arg));
+				if (methodName === 'repeat' && typeof thisArg === 'string') {
+					// Coerce like native String.prototype.repeat does, so a numeric
+					// string (e.g. "1e9") can't dodge the charge below.
+					const coercedCount = Number(args[0]);
+					const count = Number.isFinite(coercedCount) && coercedCount > 0 ? coercedCount : 0;
+					this.chargeBudget(thisArg.length * count, node.loc ?? undefined);
+				}
 				return safeStringMethod(...args);
 			}
 
@@ -354,13 +540,20 @@ class SDKInterpreter {
 	 */
 	private visitObjectExpression(node: ESTree.ObjectExpression): Record<string, unknown> {
 		const result: Record<string, unknown> = {};
+		let weight = 0;
 
 		for (const prop of node.properties) {
 			if (prop.type === 'SpreadElement') {
 				// Handle spread: { ...obj }
 				const spreadValue = this.evaluate(prop.argument);
 				if (spreadValue && typeof spreadValue === 'object') {
-					Object.assign(result, spreadValue);
+					for (const key of Object.keys(spreadValue)) {
+						const value = (spreadValue as Record<string, unknown>)[key];
+						this.chargeBudget(1, prop.loc ?? undefined);
+						result[key] = value;
+
+						weight += this.sizeOf(value);
+					}
 				}
 			} else if (prop.type === 'Property') {
 				// Get key
@@ -381,10 +574,14 @@ class SDKInterpreter {
 
 				// Get value (handle shorthand: { name } === { name: name })
 				const value = this.evaluate(prop.value as ESTree.Expression);
+				this.chargeBudget(1, prop.loc ?? undefined);
 				result[key] = value;
+				weight += this.sizeOf(value);
 			}
 		}
 
+		this.assertValueSizeWithinLimits(weight, node.loc ?? undefined);
+		this.valueWeights.set(result, weight);
 		return result;
 	}
 
@@ -393,22 +590,31 @@ class SDKInterpreter {
 	 */
 	private visitArrayExpression(node: ESTree.ArrayExpression): unknown[] {
 		const result: unknown[] = [];
+		let weight = 0;
 
 		for (const element of node.elements) {
 			if (element === null) {
 				result.push(undefined);
+				weight += 1;
 			} else if (element.type === 'SpreadElement') {
 				const spreadValue = this.evaluate(element.argument);
 				if (Array.isArray(spreadValue)) {
 					for (const item of spreadValue) {
+						this.chargeBudget(1, element.loc ?? undefined);
 						result.push(item);
+						weight += this.sizeOf(item);
 					}
 				}
 			} else {
-				result.push(this.evaluate(element));
+				const value = this.evaluate(element);
+				this.chargeBudget(1, element.loc ?? undefined);
+				result.push(value);
+				weight += this.sizeOf(value);
 			}
 		}
 
+		this.assertValueSizeWithinLimits(weight, node.loc ?? undefined);
+		this.valueWeights.set(result, weight);
 		return result;
 	}
 
@@ -461,6 +667,8 @@ class SDKInterpreter {
 			if (i < node.expressions.length) {
 				const expr = node.expressions[i];
 				const value = this.evaluateTemplateExpression(expr);
+				// charge 1 unit to the budget for each character in the evaluated expression to avoid huge template literal output
+				this.chargeBudget(value.length, expr.loc ?? undefined);
 				result += value;
 			}
 		}
@@ -490,21 +698,27 @@ class SDKInterpreter {
 	 * These start with $ like $json, $today, $input, etc.
 	 */
 	private isN8nRuntimeVariable(expr: ESTree.Expression): boolean {
-		if (expr.type === 'Identifier') {
-			return expr.name.startsWith('$');
-		}
-		if (expr.type === 'MemberExpression') {
-			return this.isN8nRuntimeVariable(expr.object as ESTree.Expression);
-		}
-		if (expr.type === 'CallExpression') {
-			if (expr.callee.type === 'Identifier') {
-				return expr.callee.name.startsWith('$');
+		return this.withDepthGuard(expr, () => {
+			if (expr.type === 'Identifier') {
+				return expr.name.startsWith('$');
 			}
-			if (expr.callee.type === 'MemberExpression') {
-				return this.isN8nRuntimeVariable(expr.callee.object as ESTree.Expression);
+
+			if (expr.type === 'MemberExpression') {
+				return this.isN8nRuntimeVariable(expr.object as ESTree.Expression);
 			}
-		}
-		return false;
+
+			if (expr.type === 'CallExpression') {
+				if (expr.callee.type === 'Identifier') {
+					return expr.callee.name.startsWith('$');
+				}
+
+				if (expr.callee.type === 'MemberExpression') {
+					return this.isN8nRuntimeVariable(expr.callee.object as ESTree.Expression);
+				}
+			}
+
+			return false;
+		});
 	}
 
 	/**
@@ -512,67 +726,81 @@ class SDKInterpreter {
 	 * Used for preserving n8n runtime variables in template literals.
 	 */
 	private expressionToString(expr: ESTree.Expression): string {
-		if (expr.type === 'Identifier') {
-			return expr.name;
-		}
-		if (expr.type === 'MemberExpression') {
-			const obj = this.expressionToString(expr.object as ESTree.Expression);
-			if (expr.computed) {
-				if (expr.property.type === 'Literal') {
-					return `${obj}[${JSON.stringify(expr.property.value)}]`;
-				}
-				return `${obj}[${this.expressionToString(expr.property as ESTree.Expression)}]`;
+		return this.withDepthGuard(expr, () => {
+			if (expr.type === 'Identifier') {
+				return expr.name;
 			}
-			const prop = expr.property.type === 'Identifier' ? expr.property.name : '';
-			return `${obj}.${prop}`;
-		}
-		if (expr.type === 'CallExpression') {
-			const callee = this.expressionToString(expr.callee as ESTree.Expression);
-			const args = expr.arguments
-				.map((arg) => {
-					if (arg.type === 'SpreadElement') {
-						return '...' + this.expressionToString(arg.argument);
+
+			if (expr.type === 'MemberExpression') {
+				const obj = this.expressionToString(expr.object as ESTree.Expression);
+
+				if (expr.computed) {
+					if (expr.property.type === 'Literal') {
+						return `${obj}[${JSON.stringify(expr.property.value)}]`;
 					}
-					return this.expressionToString(arg);
-				})
-				.join(', ');
-			return `${callee}(${args})`;
-		}
-		if (expr.type === 'Literal') {
-			if (typeof expr.value === 'string') {
-				return JSON.stringify(expr.value);
+					return `${obj}[${this.expressionToString(expr.property as ESTree.Expression)}]`;
+				}
+
+				const prop = expr.property.type === 'Identifier' ? expr.property.name : '';
+				return `${obj}.${prop}`;
 			}
-			return String(expr.value);
-		}
-		if (expr.type === 'BinaryExpression' || expr.type === 'LogicalExpression') {
-			const left = this.expressionToString(expr.left as ESTree.Expression);
-			const right = this.expressionToString(expr.right);
-			return `${left} ${expr.operator} ${right}`;
-		}
-		if (expr.type === 'ConditionalExpression') {
-			const test = this.expressionToString(expr.test);
-			const consequent = this.expressionToString(expr.consequent);
-			const alternate = this.expressionToString(expr.alternate);
-			return `${test} ? ${consequent} : ${alternate}`;
-		}
-		if (expr.type === 'UnaryExpression') {
-			const unary = expr;
-			const arg = this.expressionToString(unary.argument);
-			return unary.prefix ? `${unary.operator}${arg}` : `${arg}${unary.operator}`;
-		}
 
-		// Fallback: extract from source code if we have location info
-		if (expr.loc && this.sourceCode) {
-			const lines = this.sourceCode.split('\n');
-			const startLine = expr.loc.start.line - 1;
-			const endLine = expr.loc.end.line - 1;
+			if (expr.type === 'CallExpression') {
+				const callee = this.expressionToString(expr.callee as ESTree.Expression);
+				const args = expr.arguments
+					.map((arg) => {
+						if (arg.type === 'SpreadElement') {
+							return '...' + this.expressionToString(arg.argument);
+						}
+						return this.expressionToString(arg);
+					})
+					.join(', ');
 
-			if (startLine === endLine) {
-				return lines[startLine].slice(expr.loc.start.column, expr.loc.end.column);
+				return `${callee}(${args})`;
 			}
-		}
 
-		return '';
+			if (expr.type === 'Literal') {
+				if (typeof expr.value === 'string') {
+					return JSON.stringify(expr.value);
+				}
+				return String(expr.value);
+			}
+
+			if (expr.type === 'BinaryExpression' || expr.type === 'LogicalExpression') {
+				const left = this.expressionToString(expr.left as ESTree.Expression);
+				const right = this.expressionToString(expr.right);
+
+				return `${left} ${expr.operator} ${right}`;
+			}
+
+			if (expr.type === 'ConditionalExpression') {
+				const test = this.expressionToString(expr.test);
+				const consequent = this.expressionToString(expr.consequent);
+				const alternate = this.expressionToString(expr.alternate);
+
+				return `${test} ? ${consequent} : ${alternate}`;
+			}
+
+			if (expr.type === 'UnaryExpression') {
+				const unary = expr;
+				const arg = this.expressionToString(unary.argument);
+
+				return unary.prefix ? `${unary.operator}${arg}` : `${arg}${unary.operator}`;
+			}
+
+			// Fallback: extract from source code if we have location info
+			if (expr.loc && this.sourceCode) {
+				const lines = this.sourceCode.split('\n');
+				const startLine = expr.loc.start.line - 1;
+				const endLine = expr.loc.end.line - 1;
+
+				if (startLine === endLine) {
+					return lines[startLine].slice(expr.loc.start.column, expr.loc.end.column);
+				}
+			}
+
+			return '';
+		});
 	}
 
 	/**
@@ -618,6 +846,9 @@ class SDKInterpreter {
 		switch (node.operator) {
 			case '+':
 				if (typeof left === 'string' || typeof right === 'string') {
+					// Only the appended part is new; charging the whole result would
+					// make an n-piece chain cost O(n^2) for linear output.
+					this.chargeBudget(String(right).length, node.loc ?? undefined);
 					return String(left) + String(right);
 				}
 				return (left as number) + (right as number);
@@ -744,7 +975,16 @@ class SDKInterpreter {
 		}
 
 		const value = this.evaluate(node.right);
+		this.chargeBudget(1, node.loc ?? undefined);
 		(obj as Record<string | number, unknown>)[propName] = value;
+
+		// Assigning grows the target, so its recorded size has to grow with it or
+		// every later check reads the size it had when it was built. An overwrite
+		// is counted as an addition, which overstates it in the safe direction.
+		const grown = this.sizeOf(obj) + this.sizeOf(value);
+		this.assertValueSizeWithinLimits(grown, node.loc ?? undefined);
+		this.valueWeights.set(obj as object, grown);
+
 		return value;
 	}
 

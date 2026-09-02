@@ -248,7 +248,7 @@ catalog:
   qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  sanitize-html: 2.17.5
+  sanitize-html: 2.17.7
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
@@ -361,7 +361,7 @@ overrides:
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: 'catalog:'
-  multer: ^2.2.0
+  multer: ^2.3.0
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: 'catalog:'

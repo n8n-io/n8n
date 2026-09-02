@@ -1,11 +1,28 @@
 import sanitizeHtml from 'sanitize-html';
 
-import { CHAT_FRAME_SANDBOX } from './shell';
 import type {
 	AuthenticationChatOption,
 	ChatFrameIdentity,
 	LoadPreviousSessionChatOption,
 } from './types';
+
+// Escapes what would let a value break out of an inline <script> block: `<`/`>`
+// to prevent `</script>` breakout, and U+2028/U+2029, which are valid in a JS
+// string but were statement terminators to older engines.
+const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
+	'<': '\\u003c',
+	'>': '\\u003e',
+	'&': '\\u0026',
+	'\u2028': '\\u2028',
+	'\u2029': '\\u2029',
+};
+
+// Returns a JSON literal safe to embed inside an inline <script> block. For string
+// inputs the returned literal includes surrounding double quotes — do not add
+// quotes at the call site.
+export function escapeForScriptContext(value: string | object): string {
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
+}
 
 function sanitizeUserInput(input: unknown): string {
 	// Only strings and numbers are meaningful display values; sanitize-html
@@ -32,35 +49,6 @@ export function getSanitizedInitialMessages(initialMessages: string): string[] {
 		.filter((line) => line !== '');
 }
 
-const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
-	'<': '\\u003c',
-	'>': '\\u003e',
-	'&': '\\u0026',
-	'\u2028': '\\u2028',
-	'\u2029': '\\u2029',
-};
-
-// Returns a JSON literal safe to embed inside an inline <script> block. Escapes
-// `<`/`>` to prevent </script> breakout and U+2028/U+2029 for legacy JS engines.
-// For string inputs the returned literal includes surrounding double quotes \u2014
-// do not add quotes at the call site.
-export function escapeForScriptContext(value: string | object): string {
-	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
-}
-
-const HTML_ATTRIBUTE_ESCAPES: Record<string, string> = {
-	'&': '&amp;',
-	'"': '&quot;',
-	"'": '&#39;',
-	'<': '&lt;',
-	'>': '&gt;',
-};
-
-// For use inside a double-quoted HTML attribute.
-export function escapeForHtmlAttribute(value: string): string {
-	return value.replace(/[&"'<>]/g, (c) => HTML_ATTRIBUTE_ESCAPES[c]);
-}
-
 export function getSanitizedI18nConfig(config: Record<string, string>): Record<string, string> {
 	const sanitized: Record<string, string> = {};
 
@@ -81,14 +69,17 @@ export function getSanitizedCustomCss(customCss: string): string {
  * `localStorageSessionIdKey` in `@n8n/chat/src/constants/localStorage.ts`. Seeding the
  * shim under it keeps continuity working against a widget build predating the
  * `sessionId` option — the bundle comes from an unpinned CDN URL, not the instance.
+ * The shell that passes the id in the fragment is `chat-shell.handlebars`.
  */
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
 
 /**
- * Runs before the widget's module script (classic inline scripts aren't deferred). Both
- * jobs follow from the frame having no origin: stand in for `localStorage`, which the
- * widget touches at startup and which throws here, and read the session id the shell
- * passes in the fragment.
+ * Runs before the widget's module script (classic inline scripts aren't deferred). The
+ * first two jobs follow from the frame having no origin: stand in for `localStorage`,
+ * which the widget touches at startup and which throws here, and read the session id the
+ * shell passes in the fragment. The third is the auth channel — this document opens the
+ * `MessagePort` the shell delivers rotated tokens down, so the channel belongs to this
+ * document and no later one can inherit it.
  */
 const innerBootstrapScript = `
 			<script>
@@ -114,54 +105,34 @@ const innerBootstrapScript = `
 					if (window.__n8nChatSessionId) {
 						shim.setItem(${escapeForScriptContext(WIDGET_SESSION_ID_KEY)}, window.__n8nChatSessionId);
 					}
+
+					// The widget reads this same object on every send, so writing the rotated
+					// token into it in place is all a refresh has to do. Created here, before
+					// the module script, so a token that lands early is never dropped.
+					window.__n8nChatAuthHeaders = {};
+
+					// A private channel rather than a window listener: the port is an object in
+					// this document's realm, so it dies with this document. If author script
+					// navigates the frame away, the replacement can't obtain the port and the
+					// shell's next token reaches nothing.
+					try {
+						var channel = new MessageChannel();
+						// Assigning onmessage implicitly starts the port. No sender check is needed
+						// or possible: a port has one peer, and only the shell holds it.
+						channel.port1.onmessage = function (event) {
+							var data = event.data;
+							if (!data || data.type !== 'n8n-chat-auth-token') return;
+							if (typeof data.token !== 'string' || !data.token) return;
+							window.__n8nChatAuthHeaders['x-auth-token'] = data.token;
+						};
+						window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);
+					} catch (error) {
+						// Announce anyway, with no port: that closes the shell's latch, so a document
+						// loaded here later cannot claim the channel we failed to open.
+						try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}
+					}
 				})();
 			</script>`;
-
-/**
- * The trusted shell: an n8n-controlled document on the real origin holding nothing but
- * the frame. Everything the author can shape lives in that frame, which has no origin
- * and so can't reach this document's cookies or the OAuth `BroadcastChannel`.
- */
-export function createShellPage({ iframeSrc }: { iframeSrc: string }) {
-	return `<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Chat</title>
-		<style>
-			html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
-			#n8n-chat-frame { display: block; width: 100%; height: 100%; border: 0; }
-		</style>
-	</head>
-	<body>
-		<iframe
-			id="n8n-chat-frame"
-			title="Chat"
-			sandbox="${CHAT_FRAME_SANDBOX}"
-			data-src="${escapeForHtmlAttribute(iframeSrc)}"
-		></iframe>
-		<script>
-			(function () {
-				// Held here, not in the frame, whose storage dies with its opaque origin on
-				// every reload. Keyed by path so two chats don't share a conversation.
-				var key = 'n8n-chat-shell/sessionId' + window.location.pathname;
-				var sessionId = '';
-				try { sessionId = window.localStorage.getItem(key) || ''; } catch (error) {}
-				if (!sessionId) {
-					sessionId =
-						window.crypto && window.crypto.randomUUID
-							? window.crypto.randomUUID()
-							: String(Date.now()) + Math.random().toString(16).slice(2);
-					try { window.localStorage.setItem(key, sessionId); } catch (error) {}
-				}
-				var frame = document.getElementById('n8n-chat-frame');
-				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
-			})();
-		</script>
-	</body>
-</html>`;
-}
 
 export function createPage({
 	instanceId,
@@ -273,6 +244,26 @@ export function createPage({
 				email: frameIdentity.visitor.email,
 			})} };`;
 
+	// In the frame, the header object is hoisted out of the `createChat` literal so a
+	// reference to it survives the call: `createChat` keeps this object's identity and
+	// the widget reads it on every send, so the shell's refresh writes the rotated token
+	// into it in place and nothing re-enters this code. The `if` covers the narrow race
+	// where a refresh lands before this module script runs. The unsplit render keeps the
+	// literal inline so its page stays byte-for-byte what it was.
+	const headersBootstrap = frameIdentity
+		? `const headers = window.__n8nChatAuthHeaders || {};
+					headers['X-Instance-Id'] = '${instanceId}';
+					if (!headers['x-auth-token']) headers['x-auth-token'] = ${escapeForScriptContext(frameIdentity.authToken)};
+
+					`
+		: '';
+	const webhookConfigHeaders = frameIdentity
+		? 'headers: headers'
+		: `headers: {
+								'X-Instance-Id': '${instanceId}',
+								
+							}`;
+
 	return `<!doctype html>
 	<html lang="en">
 		<head>
@@ -298,7 +289,7 @@ export function createPage({
 				(async function () {
 					${identityBootstrap}
 
-					createChat({
+					${headersBootstrap}createChat({
 						mode: 'fullscreen',
 						webhookUrl: ${escapeForScriptContext(webhookUrl ?? '')},
 						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
@@ -306,10 +297,7 @@ export function createPage({
 						metadata: metadata,
 						${shellInner ? 'sessionId: window.__n8nChatSessionId || undefined,' : ''}
 						webhookConfig: {
-							headers: {
-								'X-Instance-Id': '${instanceId}',
-								${frameIdentity ? `'x-auth-token': ${escapeForScriptContext(frameIdentity.authToken)},` : ''}
-							}
+							${webhookConfigHeaders}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
 						allowedFilesMimeTypes: ${escapeForScriptContext(sanitizedAllowedFilesMimeTypes)},

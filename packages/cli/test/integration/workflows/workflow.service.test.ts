@@ -632,8 +632,9 @@ describe('activateWorkflow()', () => {
 
 		const workflow = await createWorkflowWithHistory({}, project);
 
+		// Resolvable through the member's update scope, so the refusal is about publishing, not access.
 		await expect(workflowService.activateWorkflow(member, workflow.id)).rejects.toThrow(
-			'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
 		);
 
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
