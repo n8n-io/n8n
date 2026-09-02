@@ -503,8 +503,6 @@ describe('ChatTrigger Node', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith({
 				status: 'credential_readiness_check_failed',
 			});
-			// The error itself is deliberately not logged: it can carry decrypted
-			// credential context and resolver detail.
 			expect(mockContext.logger.error).toHaveBeenCalledWith(
 				'Chat trigger credential readiness check failed',
 			);
@@ -555,9 +553,6 @@ describe('ChatTrigger Node', () => {
 
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
-		// The shell is `chat-shell.handlebars`, so what the node controls is the view
-		// model it hands to `res.render` — that is what these assert, the way the form
-		// shell's own tests do.
 		const renderedView = () =>
 			(vi.mocked(mockResponse.render).mock.calls.at(-1)?.[1] ?? {}) as Record<string, unknown>;
 		const renderedTemplate = () => vi.mocked(mockResponse.render).mock.calls.at(-1)?.[0];

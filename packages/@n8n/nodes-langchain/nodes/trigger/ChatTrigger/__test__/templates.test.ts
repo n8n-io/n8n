@@ -637,8 +637,6 @@ describe('createPage inside the shell frame', () => {
 		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
 	});
 
-	// The connect experience lives on the shell, so the frame needs no unreleased
-	// widget code and the page can keep loading the published bundle.
 	it('loads the widget from the published CDN bundle', () => {
 		expect(inner).toContain('cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js');
 		expect(inner).not.toContain('/chat-widget/');

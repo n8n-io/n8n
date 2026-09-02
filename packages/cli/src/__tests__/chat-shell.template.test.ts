@@ -4,16 +4,6 @@ import request from 'supertest';
 import { TEMPLATES_DIR } from '@/constants';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
-/**
- * `chat-shell.handlebars` is the hosted chat's trusted page: it holds the sandboxed
- * frame, the credential status bar and the "Connect your accounts" dialog, and it is
- * the only side carrying real authorize/revoke links. Nothing lints a Handlebars
- * view, so these render it through the same engine `AbstractServer` configures.
- *
- * The view model comes from `buildChatShellViewModel` in the ChatTrigger node, which
- * cannot be imported here — a nodes package is not a dependency of the CLI — so the
- * shapes below mirror it.
- */
 const baseView = {
 	iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
 	sandbox: 'allow-scripts allow-forms allow-modals allow-popups',
@@ -58,16 +48,10 @@ describe('chat-shell.handlebars', () => {
 		const html = await renderView(withOneMissingAccount);
 
 		expect(html).not.toContain('{{');
-		// Guards against a view model that silently drops fields: an empty one also
-		// leaves no placeholders behind. Handlebars escapes `=` in the attribute, which
-		// the browser decodes on read, so the frame still requests the intended URL.
 		expect(html).toContain("data-src='/webhook/abc/chat?n8nShellInner&#x3D;1'");
 		expect(html).toContain('1 account needed to start this chat');
 	});
 
-	// The frame's own storage dies with its opaque origin on every reload, so the
-	// shell owns the session id and passes it in the fragment. This logic used to be
-	// covered in `templates.test.ts`; it moved here with the markup.
 	it('owns the session id so a frame reload continues the conversation', async () => {
 		const html = await renderView(withOneMissingAccount);
 
@@ -77,8 +61,6 @@ describe('chat-shell.handlebars', () => {
 		expect(html).toContain('window.location.pathname');
 	});
 
-	// The trusted document carries no author-shaped content: the widget, its
-	// stylesheet and the author's CSS all belong to the sandboxed frame.
 	it('carries no widget or author code of its own', async () => {
 		const html = await renderView(withOneMissingAccount);
 
@@ -92,9 +74,6 @@ describe('chat-shell.handlebars', () => {
 
 			expect(html).toContain("sandbox='allow-scripts allow-forms allow-modals allow-popups'");
 			expect(html).not.toContain('allow-same-origin');
-			// Bot replies use target="_blank", so the frame needs allow-popups — but not
-			// the escape flag, which would let author script put a real-origin document
-			// in front of the visitor.
 			expect(html).not.toContain('allow-popups-to-escape-sandbox');
 		});
 
@@ -109,8 +88,6 @@ describe('chat-shell.handlebars', () => {
 		});
 	});
 
-	// Every value here reaches the page from a credential name, a request URL or an
-	// OAuth link, so none of it may close an attribute and add markup of its own.
 	describe('escaping', () => {
 		it.each([
 			['the frame src', { iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' }, '<img src=x'],
@@ -134,8 +111,6 @@ describe('chat-shell.handlebars', () => {
 			const html = await renderView({ ...withOneMissingAccount, ...override });
 
 			expect(html).not.toContain(breakout);
-			// Asserted positively too: absence alone would also hold if the value were
-			// dropped from the template alrogether.
 			expect(html).toContain('&quot;&gt;');
 		});
 	});
@@ -175,10 +150,6 @@ describe('chat-shell.handlebars', () => {
 			expect(html).toContain('Connected as visitor@example.com');
 		});
 
-		// Test mode establishes identity from the builder's own credentials, so there is
-		// nothing for them to connect.
-		// Test mode resolves identity from the builder's own accounts, but the send gate
-		// still refuses them when outstanding — so the control has to be there.
 		it('keeps the control in test mode while accounts are outstanding', async () => {
 			const html = await renderView({
 				...withOneMissingAccount,
@@ -228,30 +199,18 @@ describe('chat-shell.handlebars', () => {
 		});
 	});
 
-	// This page sets its own `Content-Security-Policy: frame-ancestors 'none'`, which
-	// makes `hasOwnPolicy` short-circuit the instance's `script-src <nonce>` policy —
-	// so its inline scripts carry no nonce, exactly as the form shell's do. Keeping it
-	// free of inline handlers means adopting a nonce later needs no rewrite.
 	it('uses no inline event handlers', async () => {
 		const html = await renderView(withOneMissingAccount);
 
 		expect(html).not.toMatch(/\son\w+=['"]/);
 	});
 
-	/**
-	 * Presence pins, not behaviour tests. Each guard below was added after a real
-	 * defect, and each is a security property of a visitor-facing page, so the case
-	 * worth catching is a future change quietly dropping one.
-	 */
 	describe('the inline script keeps its security gates', () => {
 		const script = async () => {
 			const html = await renderView(withOneMissingAccount);
 			return html.slice(html.lastIndexOf('<script>'));
 		};
 
-		// A sandboxed frame can nest another frame, whose `source` is neither the frame
-		// nor the popup, so excluding only the frame let author content fake a connect
-		// and un-gate the visitor's input.
 		it('trusts a connect signal only from the popup it opened', async () => {
 			expect(await script()).toContain('event.source !== pendingPopup');
 		});
@@ -260,8 +219,6 @@ describe('chat-shell.handlebars', () => {
 			expect(await script()).toContain('/^https?:\\/\\//i.test(url)');
 		});
 
-		// Forcing readiness in test mode un-gated an input whose first send the server
-		// rejects with 428.
 		it('never forces readiness in test mode', async () => {
 			const src = await script();
 
@@ -269,8 +226,6 @@ describe('chat-shell.handlebars', () => {
 			expect(src).not.toContain('TEST_MODE || total <= count');
 		});
 
-		// The acceptance criteria require a visible error, never a silent revert to
-		// Connect - including when a popup closes with no signal at all.
 		it('surfaces a failed or cancelled attempt', async () => {
 			const src = await script();
 
