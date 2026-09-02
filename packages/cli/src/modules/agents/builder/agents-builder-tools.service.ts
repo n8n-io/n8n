@@ -34,10 +34,10 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -70,6 +70,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -292,8 +293,6 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -328,11 +327,19 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			json: this.getJsonTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+				telemetryContext,
+			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
@@ -341,6 +348,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
@@ -601,9 +609,9 @@ export class AgentsBuilderToolsService {
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
 			.description(
-				'List published agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+				'List agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
+					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
 					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
@@ -611,7 +619,7 @@ export class AgentsBuilderToolsService {
 				const agents = await this.agentsService.findByProjectId(projectId);
 				return {
 					agents: agents
-						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.filter((agent) => agent.id !== agentId)
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
@@ -818,11 +826,10 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)
@@ -875,7 +882,7 @@ export class AgentsBuilderToolsService {
 				},
 			}),
 			buildAskCredentialTool({
-				credentialProvider,
+				credentialService,
 				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
@@ -887,7 +894,7 @@ export class AgentsBuilderToolsService {
 				track,
 			}),
 			buildAskEmbeddingCredentialTool({
-				credentialProvider,
+				credentialService,
 				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
@@ -908,7 +915,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				buildFinishSetupTool({
-					credentialProvider,
+					credentialService,
 					agentId,
 					projectId,
 					track,
@@ -936,11 +943,9 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
 					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),

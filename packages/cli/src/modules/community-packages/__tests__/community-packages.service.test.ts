@@ -126,6 +126,25 @@ describe('CommunityPackagesService', () => {
 			},
 		);
 
+		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
+			'should reject reserved package name %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test.each(['n8n-nodes-base@1.2.3', '@n8n/n8n-nodes-langchain@1.2.3'])(
+			'should reject reserved package name with version specifier %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test('should accept a package name that merely starts with a reserved name', () => {
+			const parsed = communityPackagesService.parseNpmPackageName('n8n-nodes-base-extended');
+			expect(parsed.packageName).toBe('n8n-nodes-base-extended');
+		});
+
 		test.each(['beta', 'next', 'latest', 'canary', 'rc-1'])(
 			'should accept npm dist-tag as version',
 			(tag) => {

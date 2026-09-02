@@ -135,7 +135,27 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('more than one edge');
 	});
 
-	it('rejects a graph with a back-edge as unimplemented', () => {
+	it('accepts a well-formed loop', () => {
+		// trigger -> B, B loop slot -> x, x returns to B, B done slot -> d
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'T', type: 'trigger' },
+				{ id: 'B', name: 'B', type: 'batch', config: { batchSize: 1 } },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+				{ id: 'd', name: 'D', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'B', outputIndex: 0, inputIndex: 0 },
+				{ from: 'B', to: 'x', outputIndex: 1, inputIndex: 0 },
+				{ from: 'x', to: 'B', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'B', to: 'd', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
+	it('applies the loop rules, so a back-edge to a plain node is rejected', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
 			edges: [
@@ -145,6 +165,7 @@ describe('validateExecutableGraph', () => {
 			],
 		};
 
-		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow(/not a batch node/);
 	});
 });

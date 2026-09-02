@@ -308,6 +308,35 @@ progress indicator from this data.
 }
 ```
 
+### `setup-items`
+
+The setup panel checklist for a workflow (service-keyed items, kinds
+`credential | parameters`). Each event carries the FULL current list for its
+`workflowId` and replaces the previous snapshot — removal is implicit, an
+empty `items` list clears the workflow's checklist. Items carry no status:
+done-ness is always derived client-side. Durable; the reducer folds the
+latest snapshot per `workflowId` onto the ROOT agent node regardless of the
+emitting agent, so it survives refresh via `GET /messages`.
+
+```json
+{
+  "type": "setup-items",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "workflowId": "wf-1",
+    "items": [
+      {
+        "id": "wf-1:credential:slackApi",
+        "kind": "credential",
+        "credentialType": "slackApi",
+        "nodeBindings": [{"nodeName": "Send message"}]
+      }
+    ]
+  }
+}
+```
+
 ### `status`
 
 A transient status message. Empty string clears the indicator.
@@ -421,14 +450,20 @@ graph LR
         S2[Sub-Agent B] -->|publish| Bus
     end
 
-    Bus --> Store[Replay Storage]
+    Bus -->|enqueue| Log[Durable Event Log]
+    Log -->|"drained (seq assigned)"| Bus
+    Log --> DB[(instance_ai_events)]
     Bus --> SSE[SSE Endpoint]
+    Bus -->|relay| Siblings[Sibling mains]
     SSE --> FE[Frontend]
 ```
 
-All events are published to a per-thread channel on the event bus and delivered
-to connected SSE clients. The durable log persists replayable facts. Ephemeral
-transport events remain live-only.
+All events are published to a per-thread channel on the event bus, which
+enqueues them into the durable event log. The log assigns each durable fact a
+per-thread `seq`, persists it, and hands the event back to the bus for
+delivery to connected SSE clients and — in multi-main — to sibling mains.
+Ephemeral transport events remain live-only, and the bus itself retains
+nothing.
 
 ### Implementations
 
@@ -437,13 +472,10 @@ transport events remain live-only.
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. On (the default),
-the durable event log (`instance_ai_events`) is the replay source: coalesced
-step-level facts are appended with a per-thread `seq` assigned by the
-writer's drain, so cursors stay valid across restarts and across mains
-sharing one database. Off (the rollback switch until Gate B), replay serves
-from a bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted;
-ids reset on restart).
+The durable event log (`instance_ai_events`) is the only replay source:
+coalesced step-level facts are appended with a per-thread `seq` assigned by
+the writer's drain, so cursors stay valid across restarts and across mains
+sharing one database.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -471,9 +503,8 @@ connection may occasionally deliver a lower id after a higher one. The
 frontend therefore tracks its reconnect cursor as the max id seen and drops
 already-seen ids on replay overlap.
 
-With the durable log enabled (`N8N_INSTANCE_AI_DURABLE_LOG`), ids are
-database-assigned sequence numbers and only DURABLE facts carry an `id:`
-line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
+Ids are database-assigned sequence numbers, and only DURABLE facts carry an
+`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
 `filesystem-request`) are live-only: their SSE frames have no `id:` line, so
 the browser's replay cursor never points at them (the same mechanism as the
 `run-sync` control frames). On replay, the deltas a client missed are covered
@@ -600,6 +631,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+	instanceAiReady: { value: true },
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
@@ -23,6 +24,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
+}));
+vi.mock('../composables/useInstanceAiAvailability', () => ({
+	useInstanceAiReady: () => mocks.instanceAiReady,
 }));
 vi.mock('../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
@@ -54,6 +58,7 @@ describe('useInstanceAiHandoff', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		localStorage.clear();
+		mocks.instanceAiReady.value = true;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -305,5 +310,55 @@ describe('useInstanceAiHandoff', () => {
 		expect(opened).toBe(false);
 		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
 		expect(mocks.routerPush).not.toHaveBeenCalled();
+	});
+
+	describe('before setup is finished', () => {
+		beforeEach(() => {
+			mocks.instanceAiReady.value = false;
+		});
+
+		it('routes startThread to the assistant instead of sending the opening turn', async () => {
+			const { startThread } = useInstanceAiHandoff();
+
+			await startThread('project-1', 'Fix my workflow', {
+				source: 'canvas_action_button',
+				origin: 'internal',
+			});
+
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openThreadWithContext to the assistant without minting a thread', async () => {
+			const { openThreadWithContext } = useInstanceAiHandoff();
+
+			const opened = await openThreadWithContext(
+				'project-1',
+				buildInstanceAiCredentialHandoffContext({
+					credentialType: 'gmailOAuth2',
+					displayName: 'Gmail OAuth2 API',
+				}),
+				{ source: 'credential_edit', origin: 'internal' },
+				{ newTab: true },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openAgentArtifactThread to the assistant without minting a thread', async () => {
+			const { openAgentArtifactThread } = useInstanceAiHandoff();
+
+			const opened = await openAgentArtifactThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_preview', origin: 'internal' },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
 	});
 });

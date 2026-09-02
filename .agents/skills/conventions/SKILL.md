@@ -40,6 +40,7 @@ throw new UnexpectedError('message', { extra: { context } });
 - Dependency injection via `@n8n/di`
 - Config via `@n8n/config`
 - Zod schemas for validation
+- Pagination args: use `offset` + `limit` in controllers and services; translate to TypeORM `skip`/`take` only inside repositories
 
 **Testing:**
 - Vitest (unit), Playwright (E2E)

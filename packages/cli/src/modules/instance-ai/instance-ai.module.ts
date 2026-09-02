@@ -36,31 +36,17 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Durable-log flag (resilience phase): startup sweep resolves runs the
-		// previous process left mid-flight by converting their in-flight tool
-		// calls into tool-interrupted facts and appending run-finish{interrupted}.
-		const { GlobalConfig } = await import('@n8n/config');
-		if (Container.get(GlobalConfig).instanceAi.durableLog) {
-			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
-			const { InstanceAiService } = await import('./instance-ai.service.js');
-			const logger = Container.get(Logger).scoped('instance-ai');
-			const sweeper = Container.get(InterruptedRunSweeper);
-			sweeper.setResumeHost(Container.get(InstanceAiService));
-			void sweeper.sweep().catch((error: unknown) => {
-				logger.error('Interrupted-run sweep failed on startup', { error });
-			});
-		} else {
-			// Surfaced at boot because the off switch changes this main's resource
-			// profile, not just where events are read from: the legacy buffer is
-			// held per thread until that thread is deleted or expires, so memory
-			// grows with the threads this main serves. Fixed only for the
-			// durable-log path; the legacy one sunsets with the flag at Gate B.
-			Container.get(Logger)
-				.scoped('instance-ai')
-				.warn(
-					'N8N_INSTANCE_AI_DURABLE_LOG is off: Instance AI events are held in a per-thread in-memory buffer (500 events / 2MB each) instead of the durable log. Memory scales with the number of threads this main has served, and replay does not survive a restart. Intended as a temporary rollback switch.',
-				);
-		}
+		// Startup sweep resolves runs the previous process left mid-flight by
+		// converting their in-flight tool calls into tool-interrupted facts and
+		// appending run-finish{interrupted}.
+		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const sweepLogger = Container.get(Logger).scoped('instance-ai');
+		const sweeper = Container.get(InterruptedRunSweeper);
+		sweeper.setResumeHost(Container.get(InstanceAiService));
+		void sweeper.sweep().catch((error: unknown) => {
+			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
+		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
@@ -91,6 +77,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
+			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 

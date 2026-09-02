@@ -347,10 +347,13 @@ this tool with `filePath`.
 |-------|------|----------|-------------|
 | `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
 | `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
-| `projectId` | string | no | Project ID to create the workflow in |
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
+
+There is deliberately **no `projectId`**: a build writes to the project the
+conversation is bound to, and nothing can redirect it. The field used to exist and
+the adapter ignored it, so a build could report a project it had not written to.
 
 **Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 
@@ -614,7 +617,7 @@ List credentials accessible to the current user. Never exposes secrets.
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
 **Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-An n8n Connect managed entry can have `id: null` and
+A Gateway credits managed entry can have `id: null` and
 `__aiGatewayManaged: true`.
 
 ### `credentials(action="get")`
@@ -645,11 +648,11 @@ Search available credential types by name or description.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Search query. Required unless `n8nConnectOnly` is true |
-| `n8nConnectOnly` | boolean | no | Return credential types supported by n8n credits |
+| `query` | string | no | Search query. Required unless `gatewayCreditsOnly` is true |
+| `gatewayCreditsOnly` | boolean | no | Return credential types supported by Gateway credits |
 
-**Returns**: `{ results: [...] }`. n8n Connect-only results have
-`{ type, n8nConnect: true }`.
+**Returns**: `{ results: [...] }`. Gateway-credits-only results have
+`{ type, gatewayCredits: true }`.
 
 ### `credentials(action="setup")`
 
@@ -705,7 +708,7 @@ List available node types in the n8n instance.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Filter by name or description |
-| `n8nConnectOnly` | boolean | no | Return only nodes supported by n8n credits |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 

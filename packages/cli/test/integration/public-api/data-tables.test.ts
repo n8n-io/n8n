@@ -387,6 +387,21 @@ describe('POST /data-tables', () => {
 		expect(response.body).toHaveProperty('message');
 	});
 
+	test('should fail when the project does not exist', async () => {
+		const missingProjectId = 'non-existent-project-id';
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'my-table',
+			projectId: missingProjectId,
+			columns: [{ name: 'email', type: 'string' }],
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Project with ID "${missingProjectId}" not found`,
+		);
+	});
+
 	test('should reject unsupported column type (json)', async () => {
 		const response = await authOwnerAgent.post('/data-tables').send({
 			name: 'test-table',
@@ -1729,6 +1744,7 @@ describe('POST /data-tables with projectId', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
 	});
 });
 
