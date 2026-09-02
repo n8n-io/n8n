@@ -13,7 +13,6 @@ import { OperationalError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	FailedTriggerPublicationStatus,
@@ -21,6 +20,7 @@ import type {
 	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
@@ -42,9 +42,9 @@ export class PublicationStatusReporter {
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly push: Push,
 		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -54,7 +54,7 @@ export class PublicationStatusReporter {
 			case 'completed': {
 				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
 				await this.complete(record, this.toRows(record, result.triggerStatuses), warningMessage);
-				this.pushStatus({
+				await this.pushStatus({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
 				});
@@ -64,7 +64,7 @@ export class PublicationStatusReporter {
 			case 'unpublished': {
 				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
 				await this.complete(record, /*triggerStatuses=*/ [], warningMessage);
-				this.pushStatus({
+				await this.pushStatus({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
 				});
@@ -85,7 +85,7 @@ export class PublicationStatusReporter {
 					outboxId: record.id,
 				});
 				await this.outboxRepository.markFailed(record.id, errorMessage);
-				this.pushFailedToActivate(record.workflowId, errorMessage);
+				await this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
 
@@ -109,7 +109,7 @@ export class PublicationStatusReporter {
 				if (!isPolicyRefusal(result.error)) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				this.pushFailedToActivate(record.workflowId, result.error.message);
+				await this.pushFailedToActivate(record.workflowId, result.error.message);
 				return;
 			}
 
@@ -152,7 +152,7 @@ export class PublicationStatusReporter {
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
 		});
 
-		this.pushStatus({
+		await this.pushStatus({
 			type: 'workflowPartiallyActivated',
 			data: {
 				workflowId: record.workflowId,
@@ -191,8 +191,8 @@ export class PublicationStatusReporter {
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private pushFailedToActivate(workflowId: string, errorMessage: string): void {
-		this.pushStatus({
+	private async pushFailedToActivate(workflowId: string, errorMessage: string): Promise<void> {
+		await this.pushStatus({
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage },
 		});
@@ -205,17 +205,22 @@ export class PublicationStatusReporter {
 	 * is leader-only), but clients may be connected to a follower. The relay is
 	 * fire-and-forget so a pubsub failure never fails the terminal-status report.
 	 */
-	private pushStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	private async pushStatus(pushMsg: WorkflowPublicationStatusMessage): Promise<void> {
+		// Relayed before the lookup, so a recipient-lookup failure only drops
+		// the local push, not the relay.
 		void this.publisher
 			.publishCommand({ command: 'display-workflow-publication-status', payload: pushMsg })
 			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
 	}
 
 	/** Displays a publication status relayed by the leader (see {@link pushStatus}). */
 	@OnPubSubEvent('display-workflow-publication-status', { instanceType: 'main' })
-	handleDisplayWorkflowPublicationStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	async handleDisplayWorkflowPublicationStatus(
+		pushMsg: WorkflowPublicationStatusMessage,
+	): Promise<void> {
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
 	}
 
 	/**

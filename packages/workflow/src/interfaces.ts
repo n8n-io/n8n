@@ -1006,10 +1006,10 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport, or `undefined` when egress filtering is not configured (callers
-	 * then use the default transport).
+	 * transport. When egress filtering is not configured, this is a passthrough
+	 * implementation, so callers can always use the returned filter unguarded.
 	 */
-	getSecureEgressFilter(): NodeEgressFilter | undefined;
+	getSecureEgressFilter(): NodeEgressFilter;
 }
 
 export type SSHCredentials = {

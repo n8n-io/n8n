@@ -168,11 +168,11 @@ export async function connectMcpClient({
 	 */
 	allowedDomains?: string;
 	/**
-	 * Instance egress filter. When set, every request (including redirect hops)
-	 * is validated against the configured egress policy, and the connection is
+	 * Instance egress filter. Every request (including redirect hops) is
+	 * validated against the configured egress policy, and the connection is
 	 * pinned to the validated address.
 	 */
-	secureEgressFilter?: NodeEgressFilter;
+	secureEgressFilter: NodeEgressFilter;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -180,7 +180,7 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains, secureEgressFilter);
+	const authFetch = createAuthFetch(headers, secureEgressFilter, onUnauthorized, allowedDomains);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -303,13 +303,13 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
+	secureEgressFilter: NodeEgressFilter,
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
-	secureEgressFilter?: NodeEgressFilter,
 ): typeof fetch {
-	const secureLookup = secureEgressFilter?.createSecureLookup();
+	const secureLookup = secureEgressFilter.createSecureLookup();
 	return createRefreshingAuthFetch({
-		baseFetch: async (input, init) => await proxyFetch(input, init, undefined, secureLookup),
+		baseFetch: async (input, init) => await proxyFetch({ input, init, lookup: secureLookup }),
 		initialHeaders,
 		...(onUnauthorized
 			? {
@@ -319,10 +319,8 @@ function createAuthFetch(
 			: {}),
 		assertAllowedUrl: async (hopUrl) => {
 			assertUrlAllowed({ url: hopUrl, allowedDomains });
-			if (secureEgressFilter) {
-				const result = await secureEgressFilter.validateUrl(hopUrl);
-				if (!result.ok) throw result.error;
-			}
+			const result = await secureEgressFilter.validateUrl(hopUrl);
+			if (!result.ok) throw result.error;
 		},
 	});
 }
@@ -484,7 +482,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl,
 		headers: authHeaders,
 		allowedDomains,
-		secureEgressFilter: ctx.helpers.getSecureEgressFilter?.(),
+		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
