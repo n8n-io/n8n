@@ -104,7 +104,9 @@ function writeOverrides(overrides: Record<string, StoredFlagOverride>) {
 	window.localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
 }
 
-function getOverrideValue(override: StoredFlagOverride | undefined): FlagValue | undefined {
+function getOverrideValue(override: StoredFlagOverride | null | undefined): FlagValue | undefined {
+	if (override === null) return undefined;
+
 	return typeof override === 'object' ? override.value : override;
 }
 
