@@ -114,9 +114,7 @@ export class CredentialsPublicController {
 		_res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<CredentialPublicDto> {
-		const credential = await this.credentialsFinderService.findById(credentialId, {
-			includeSharedProject: true,
-		});
+		const credential = await this.credentialsFinderService.findById(credentialId);
 		if (!credential) {
 			throw new NotFoundError('Credential not found');
 		}
