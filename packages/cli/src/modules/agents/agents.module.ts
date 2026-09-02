@@ -114,6 +114,9 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			// Loaded for its pubsub decorator
+			await import('./background/agent-background-job.service.js');
+
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
@@ -131,6 +134,7 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
+
 		// Workers never receive inbound platform events: no webhook route, no polling
 		// loop. Holding channels there would connect adapters nothing reads and, now
 		// that startups are reported, publish status rows for a process that cannot
@@ -139,6 +143,9 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.instanceType !== 'worker') {
 			channelReconciler.init();
 		}
+
+		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
+		// TODO: migrate to the durable scheduler
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -183,6 +190,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -220,6 +228,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentTask,

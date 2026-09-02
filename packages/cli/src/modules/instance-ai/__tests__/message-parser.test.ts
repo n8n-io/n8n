@@ -653,7 +653,6 @@ describe('parseStoredMessages', () => {
 					['wf-1']: [
 						{
 							id: 'wf-1:credential:slackApi',
-							workflowId: 'wf-1',
 							kind: 'credential',
 							credentialType: 'slackApi',
 						},

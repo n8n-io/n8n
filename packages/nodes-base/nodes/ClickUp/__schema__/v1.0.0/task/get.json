@@ -281,6 +281,9 @@
                             "new_drop_down": {
                                 "type": "boolean"
                             },
+                            "number_format": {
+                                "type": "string"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
@@ -330,7 +333,7 @@
                 "type": "object",
                 "properties": {
                     "chain_id": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "date_created": {
                         "type": "string"
@@ -583,5 +586,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -150,7 +150,6 @@ export function useWorkflowSetupItems(
 				for (const binding of nodeBindings) {
 					items.push({
 						id: `${id}:credential:${credentialType}:${binding.nodeName}`,
-						workflowId: id,
 						kind: 'credential',
 						credentialType,
 						appDisplayName,
@@ -161,7 +160,6 @@ export function useWorkflowSetupItems(
 			}
 			items.push({
 				id: `${id}:credential:${credentialType}`,
-				workflowId: id,
 				kind: 'credential',
 				credentialType,
 				appDisplayName,
@@ -174,7 +172,6 @@ export function useWorkflowSetupItems(
 			if (parameterNames.length === 0) continue;
 			const item = {
 				id: `${id}:parameters:${node.name}`,
-				workflowId: id,
 				kind: 'parameters' as const,
 				nodeName: node.name,
 				parameterNames,
@@ -186,8 +183,8 @@ export function useWorkflowSetupItems(
 		}
 		// Re-list once-required parameter rows whose issues resolved (they now
 		// render as done). Rows whose node is gone or disabled no longer apply.
+		// The map only holds the current workflow's rows: it is cleared on id change.
 		for (const item of settledParameterItems.values()) {
-			if (item.workflowId !== id) continue;
 			if (items.some((existing) => existing.id === item.id)) continue;
 			const node = nodesByName.value.get(item.nodeName);
 			if (!node || node.disabled) continue;

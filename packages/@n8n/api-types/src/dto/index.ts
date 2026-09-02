@@ -108,6 +108,7 @@ export {
 	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,
 	gitKeyGeneratorTypeSchema,
@@ -343,6 +344,10 @@ export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
+export {
+	WorkflowVersionPublicDto,
+	workflowVersionPublicSchema,
+} from './workflow-history/workflow-version-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -357,6 +362,13 @@ export {
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
+export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export {
+	ExecutionPublicDto,
+	DeletedExecutionPublicDto,
+	executionPublicSchema,
+	deletedExecutionPublicSchema,
+} from './executions/execution-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';

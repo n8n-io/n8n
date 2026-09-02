@@ -250,6 +250,8 @@ export {
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,
+	WorkflowListPublicationStatusSchema,
+	type WorkflowListPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
@@ -304,6 +306,7 @@ export {
 export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -367,6 +370,8 @@ export {
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	credentialDestinationSchema,
+	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
@@ -536,6 +541,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialDestination,
+	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,

@@ -1277,8 +1277,8 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isSetupPanelEnabled(): boolean {
-		return this.config.setupPanelEnabled;
+	isInstanceAiSetupPanelEnabled(): boolean {
+		return this.config.instanceAiSetupPanelEnabled;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */

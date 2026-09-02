@@ -19,14 +19,12 @@ const WORKFLOW_ID = 'wf-1';
 
 const eventItem: InstanceAiSetupItem = {
 	id: `${WORKFLOW_ID}:credential:slackApi`,
-	workflowId: WORKFLOW_ID,
 	kind: 'credential',
 	credentialType: 'slackApi',
 };
 
 const derivedItem: InstanceAiSetupItem = {
 	id: `${WORKFLOW_ID}:parameters:Sheets`,
-	workflowId: WORKFLOW_ID,
 	kind: 'parameters',
 	nodeName: 'Sheets',
 	parameterNames: ['documentId'],
@@ -139,14 +137,12 @@ describe('useSetupPanelState', () => {
 	it('keeps settled event parameter rows visible in derived mode', () => {
 		const settledParameters: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:parameters:Old Sheets`,
-			workflowId: WORKFLOW_ID,
 			kind: 'parameters',
 			nodeName: 'Old Sheets',
 			parameterNames: ['documentId'],
 		};
 		const unresolvedParameters: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:parameters:Ghost`,
-			workflowId: WORKFLOW_ID,
 			kind: 'parameters',
 			nodeName: 'Ghost',
 			parameterNames: ['url'],

@@ -42,7 +42,6 @@ function credentialItem(
 ): InstanceAiSetupItem {
 	return {
 		id: `${WORKFLOW_ID}:credential:slackApi`,
-		workflowId: WORKFLOW_ID,
 		kind: 'credential',
 		credentialType: 'slackApi',
 		nodeBindings: [{ nodeName: 'Slack' }],
@@ -98,7 +97,6 @@ describe('useWorkflowSetupItems', () => {
 		expect(derivedItems.value).toEqual([
 			{
 				id: 'wf-1:credential:slackApi',
-				workflowId: WORKFLOW_ID,
 				kind: 'credential',
 				credentialType: 'slackApi',
 				appDisplayName: 'Slack API',
@@ -106,7 +104,6 @@ describe('useWorkflowSetupItems', () => {
 			},
 			{
 				id: 'wf-1:credential:googleSheetsOAuth2Api',
-				workflowId: WORKFLOW_ID,
 				kind: 'credential',
 				credentialType: 'googleSheetsOAuth2Api',
 				appDisplayName: undefined,
@@ -114,7 +111,6 @@ describe('useWorkflowSetupItems', () => {
 			},
 			{
 				id: 'wf-1:parameters:Sheets',
-				workflowId: WORKFLOW_ID,
 				kind: 'parameters',
 				nodeName: 'Sheets',
 				parameterNames: ['documentId'],
@@ -257,7 +253,6 @@ describe('useWorkflowSetupItems', () => {
 		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
 		const item: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:parameters:Sheets`,
-			workflowId: WORKFLOW_ID,
 			kind: 'parameters',
 			nodeName: 'Sheets',
 			parameterNames: ['documentId'],
@@ -298,7 +293,6 @@ describe('useWorkflowSetupItems', () => {
 		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
 		const item: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:parameters:Sheets`,
-			workflowId: WORKFLOW_ID,
 			kind: 'parameters',
 			nodeName: 'Sheets',
 			parameterNames: ['constructor'],

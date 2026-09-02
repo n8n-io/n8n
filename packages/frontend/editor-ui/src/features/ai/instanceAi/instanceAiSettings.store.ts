@@ -108,9 +108,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
-	/** Setup panel v2 gate — the single FE accessor; the backing mechanism (env var today) stays swappable. */
-	const isSetupPanelEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.setupPanelEnabled === true,
+	/**
+	 * Setup panel v2 gate — the single FE accessor; the backing mechanism (env var
+	 * today) stays swappable. Named with the instanceAi prefix because the canvas
+	 * Focus sidebar has its own unrelated `isSetupPanelEnabled` (setupPanel store).
+	 */
+	const isInstanceAiSetupPanelEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.instanceAiSetupPanelEnabled === true,
 	);
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
@@ -138,6 +142,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
+			instanceAiSetupPanelEnabled: prev?.instanceAiSetupPanelEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -643,7 +648,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
-		isSetupPanelEnabled,
+		isInstanceAiSetupPanelEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,

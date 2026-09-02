@@ -128,6 +128,7 @@ import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instan
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -833,6 +834,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly push: Push,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -6965,6 +6967,7 @@ export class InstanceAiService {
 	}): void {
 		const serverSlug = server.metadata?.serverSlug;
 		const userId = server.metadata?.userId;
+		const connectionId = server.metadata?.connectionId;
 		if (serverSlug && userId) {
 			this.telemetry.track('Instance AI mcp tool called', {
 				user_id: userId,
@@ -6972,6 +6975,12 @@ export class InstanceAiService {
 				tool_name: toolName,
 				success,
 			});
+		}
+
+		if (!success && connectionId && userId) {
+			this.push.sendToUsers({ type: 'instanceAiMcpToolCallFailed', data: { connectionId } }, [
+				userId,
+			]);
 		}
 	}
 }

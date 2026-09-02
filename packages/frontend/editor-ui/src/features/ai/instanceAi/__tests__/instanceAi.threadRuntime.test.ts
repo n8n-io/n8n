@@ -7,7 +7,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
+import {
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiCredentialDestination,
+	type InstanceAiTargetApproval,
+} from '@n8n/api-types';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -325,7 +329,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					items: [
 						{
 							id: 'wf-1:credential:slackApi',
-							workflowId: 'wf-1',
 							kind: 'credential',
 							credentialType: 'slackApi',
 						},
@@ -343,7 +346,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					items: [
 						{
 							id: 'wf-1:credential:notionApi',
-							workflowId: 'wf-1',
 							kind: 'credential',
 							credentialType: 'notionApi',
 						},
@@ -354,7 +356,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
 		expect(items).toHaveLength(1);
-		expect(items[0].credentialType).toBe('notionApi');
+		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
@@ -382,7 +384,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 							'wf-1': [
 								{
 									id: 'wf-1:credential:slackApi',
-									workflowId: 'wf-1',
 									kind: 'credential',
 									credentialType: 'slackApi',
 								},
@@ -398,7 +399,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		await runtime.loadHistoricalMessages();
 
 		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
-		expect(runtime.setupItemsByWorkflowId['wf-1'][0].credentialType).toBe('slackApi');
+		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
@@ -1884,6 +1885,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			channelConfig?: { integrationType: string; agentId: string };
 			credentialFlow?: { stage: 'generic' | 'finalize' };
 			targetApproval?: InstanceAiTargetApproval;
+			credentialDestination?: InstanceAiCredentialDestination;
 			workflowId?: string;
 		},
 	): void {
@@ -1916,6 +1918,9 @@ describe('createThreadRuntime - session always-allow', () => {
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 							...(opts.credentialFlow ? { credentialFlow: opts.credentialFlow } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
+							...(opts.credentialDestination
+								? { credentialDestination: opts.credentialDestination }
+								: {}),
 							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
 					},
@@ -2011,6 +2016,26 @@ describe('createThreadRuntime - session always-allow', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-target-approval')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('does not auto-approve credential destinations with a generic setup grant', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destination',
+			requestId: 'req-destination',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'workflow-1' },
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destination')).toBe(false);
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
