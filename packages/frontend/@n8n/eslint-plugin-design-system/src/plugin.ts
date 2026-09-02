@@ -20,7 +20,6 @@ const configs = {
 			'@n8n/design-system': plugin,
 		},
 		rules: {
-			'@n8n/design-system/focus-visible-style': 'error',
 			'@n8n/design-system/label-has-for': 'error',
 			'@n8n/design-system/no-access-key': 'error',
 			'@n8n/design-system/no-aria-hidden-on-focusable': 'error',
