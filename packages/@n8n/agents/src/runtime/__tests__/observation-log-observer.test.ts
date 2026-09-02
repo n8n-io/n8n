@@ -437,31 +437,6 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
-	it('waits until the unobserved transcript reaches the token threshold', async () => {
-		const store = new InMemoryMemory();
-		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
-		await store.saveMessages({
-			threadId: 'thread-1',
-			resourceId: 'user-1',
-			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
-		});
-
-		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
-
-		const result = await runObservationLogObserver({
-			memory: store,
-			observationScopeId: 'thread-1',
-			observerThresholdTokens: 999,
-			observationLogTailLimit: 20,
-			tokenCounter: () => 1,
-			observe,
-		});
-
-		expect(result).toEqual({ status: 'skipped', reason: 'below-threshold', tokenCount: 1 });
-		expect(observe).not.toHaveBeenCalled();
-		expect(await store.getCursor('thread-1')).toBeNull();
-	});
-
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';
@@ -479,7 +454,6 @@ describe('runObservationLogObserver', () => {
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter,
 			now,
@@ -528,7 +502,6 @@ describe('runObservationLogObserver', () => {
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
 			now: new Date(2026, 4, 12, 14, 31),
@@ -579,7 +552,6 @@ describe('runObservationLogObserver', () => {
 			await runObservationLogObserver({
 				memory: store,
 				observationScopeId: 'thread-1',
-				observerThresholdTokens: 1,
 				observationLogTailLimit: 20,
 				tokenCounter: () => 10,
 				now: new Date(2026, 4, 12, 14, 40),
@@ -635,7 +607,6 @@ describe('runObservationLogObserver', () => {
 		await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
 			now: new Date(2026, 4, 12, 14, 31),

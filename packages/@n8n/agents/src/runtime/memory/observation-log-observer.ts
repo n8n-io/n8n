@@ -71,7 +71,6 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
 	observationScopeId: string;
-	observerThresholdTokens: number;
 	observationLogTailLimit: number;
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
@@ -83,7 +82,6 @@ export interface RunObservationLogObserverOpts {
 
 export type RunObservationLogObserverResult =
 	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
-	| { status: 'skipped'; reason: 'below-threshold'; tokenCount: number }
 	| {
 			status: 'ran';
 			observationsWritten: number;
@@ -204,9 +202,6 @@ export async function runObservationLogObserver(
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(observable);
 	const tokenCount = await tokenCounter(transcript);
-	if (tokenCount < opts.observerThresholdTokens) {
-		return { status: 'skipped', reason: 'below-threshold', tokenCount };
-	}
 
 	const observationLogTail = (
 		await memory.getActiveObservationLog({
@@ -355,8 +350,6 @@ function isSensitiveKey(key: string): boolean {
 	return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-// Respects the caller's string cap so callers that lift truncation for
-// budget estimation (maxStringChars: Infinity) also count blob-like payloads.
 function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
 	if (typeof value !== 'string') return false;
 	if (value.length <= maxStringChars) return false;
