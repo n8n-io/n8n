@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_9f65c408b606c2::t_f77b80480d0115 480-508
+  s_9f65c408b606c2::t_62889612dd8c05 121-129
+  s_9f65c408b606c2::t_7137e2c7c2aa5a 634-638,645-647
+  s_9f65c408b606c2::t_91df8b0cb14bdc 287
+  s_9f65c408b606c2::t_ef9f786e4e489b 187-192
+  s_9f65c408b606c2::t_fa7c7ce80b4ed9 554
+  s_9f65c408b606c2::t_f3d8ec8b22718e 584-589,591-592,596-599,602,606-626
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_9f65c408b606c2::t_bd0d933122d313 1220-1286
+  s_9f65c408b606c2::t_73ffe35102dd52 12,54-58,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7d233665fce72099c9b412083adee565158725e",
+  "prompts": {},
+  "sessions": {
+    "s_9f65c408b606c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f1894cb-8dab-4efe-b27f-554ce8deaa59",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

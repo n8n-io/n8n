@@ -1,0 +1,9 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  ai_agent 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "afc0752910ca4b55e6b1f5180a30bea0e3b54b2b",
+  "prompts": {}
+}
