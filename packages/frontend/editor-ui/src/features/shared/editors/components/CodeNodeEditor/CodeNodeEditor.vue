@@ -17,7 +17,6 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
@@ -65,7 +64,6 @@ const hasManualChanges = ref(false);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const settingsStore = useSettingsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const linter = useLinter(
@@ -111,9 +109,10 @@ onBeforeUnmount(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
-const askAiEnabled = computed(() => {
-	return !props.disableAskAi && settingsStore.isAskAiEnabled && props.language === 'javaScript';
-});
+// Deprecated: the "Ask AI" tab is no longer offered, so the editor always
+// renders without tabs. The tab markup and `AskAI.vue` stay until v3 removes
+// them, along with the `askAi` setting and the `/ai/ask-ai` endpoint.
+const askAiEnabled = computed(() => false);
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
 	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {

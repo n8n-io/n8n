@@ -118,7 +118,26 @@ return []
 			});
 
 		test.describe('Ask AI', () => {
-			test.describe('Enabled', () => {
+			// Pins `askAi` on, so this fails if the tab is still gated on the
+			// setting instead of being hidden outright.
+			test('tab should not be offered even when the setting is on', async ({
+				setupRequirements,
+				n8n,
+			}) => {
+				await setupRequirements({ config: { settings: { askAi: { enabled: true } } } });
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
+
+				// No tab bar at all: neither the Ask AI tab nor its sibling Code tab.
+				await expect(n8n.ndv.getAskAiTabPanel()).toHaveCount(0);
+				await expect(n8n.ndv.getCodeTab()).toHaveCount(0);
+				await expect(n8n.ndv.getCodeEditor()).toBeVisible();
+			});
+
+			// Skipped, not deleted: the tab is hidden but `AskAI.vue` and
+			// `/ai/ask-ai` still work. v3 removes both, and these tests with them.
+			test.describe.skip('Enabled', () => {
 				test.beforeEach(async ({ api, n8n }) => {
 					await api.enableFeature('askAi');
 					await n8n.start.fromBlankCanvas();
