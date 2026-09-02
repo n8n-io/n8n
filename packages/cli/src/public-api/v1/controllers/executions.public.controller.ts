@@ -28,10 +28,11 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-import { replaceCircularReferences } from 'n8n-workflow';
+import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
@@ -273,6 +274,7 @@ export class ExecutionsPublicController {
 	@ApiResponse(200, StoppedExecutionPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	async stopExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -297,6 +299,12 @@ export class ExecutionsPublicController {
 			// A `UserError` would otherwise surface as a 400.
 			if (error instanceof MissingExecutionStopError) {
 				throw new NotFoundError(error.message);
+			}
+
+			// `assertStoppable` is the only source in this path, and it is not an `HttpError`, so
+			// without this the caller sees a 500 for an execution that has already finished.
+			if (error instanceof WorkflowOperationError) {
+				throw new ConflictError(error.message);
 			}
 
 			throw error;

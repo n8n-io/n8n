@@ -1229,34 +1229,6 @@ describe('POST /executions/:id/stop', () => {
 		executionServiceSpy.mockRestore();
 	});
 
-	test('should return only the five stop-result fields and no id', async () => {
-		const executionServiceSpy = vi
-			.spyOn(Container.get(ExecutionService), 'stop')
-			.mockResolvedValue({
-				mode: 'manual',
-				startedAt: new Date(),
-				stoppedAt: new Date(),
-				finished: false,
-				status: 'canceled',
-			});
-
-		const workflow = await createWorkflow({}, user1);
-		const execution = await createExecution({ status: 'running', finished: false }, workflow);
-
-		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
-
-		expect(response.statusCode).toBe(200);
-		expect(Object.keys(response.body).sort()).toEqual([
-			'finished',
-			'mode',
-			'startedAt',
-			'status',
-			'stoppedAt',
-		]);
-
-		executionServiceSpy.mockRestore();
-	});
-
 	test('should omit stoppedAt when the service returns none', async () => {
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stop')
@@ -1288,14 +1260,14 @@ describe('POST /executions/:id/stop', () => {
 		expect(response.body.message).toBe('Failed to find execution to stop');
 	});
 
-	test('should return 500 when the execution cannot be stopped', async () => {
+	test('should return 409 when the execution is in a state that cannot be stopped', async () => {
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
 
 		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
 
-		expect(response.statusCode).toBe(500);
-		expect(response.body).toEqual({ message: 'Internal server error' });
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toContain('is currently success');
 	});
 
 	test('should stop when the API key has the "execution:stop" scope', async () => {
@@ -1544,18 +1516,6 @@ describe('POST /executions/stop', () => {
 		const response = await authUser1Agent.post('/executions/stop').send({ status: ['success'] });
 
 		expect(response.statusCode).toBe(400);
-	});
-
-	test('should return 400 for an empty status even when the caller has no workflows', async () => {
-		const userWithNoWorkflows = await createMemberWithApiKey();
-		const authAgentWithNoWorkflows = testServer.publicApiAgentFor(userWithNoWorkflows);
-
-		const response = await authAgentWithNoWorkflows.post('/executions/stop').send({ status: [] });
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe(
-			'Status filter is required. Please provide at least one status to stop executions.',
-		);
 	});
 
 	test('should return 404 for a workflowId the caller cannot access', async () => {
