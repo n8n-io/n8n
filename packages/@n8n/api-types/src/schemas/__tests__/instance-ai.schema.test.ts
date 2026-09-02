@@ -10,6 +10,7 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -239,6 +240,30 @@ describe('confirmationRequestPayloadSchema', () => {
 		const payload = makeConfirmation({ requireUserSelection: true });
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -472,6 +497,14 @@ describe('data-tables session grant keys', () => {
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
 	});
 });
 

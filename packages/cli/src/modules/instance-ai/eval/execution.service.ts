@@ -431,7 +431,12 @@ export class EvalExecutionService {
 		/** Caller's budget; unbounded when omitted. See awaitRunWithinBudget. */
 		budget?: RunBudget,
 	): Promise<InstanceAiEvalExecutionResult> {
-		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
+		// Null-prototype map: node names are the keys here and come from workflow
+		// input, so a reserved name (`__proto__`, `constructor`, ...) must land as an
+		// own key instead of resolving up the prototype chain. Without this, the
+		// `nodeResults[name] ??= {}` + nested-write sinks below would assign onto
+		// `Object.prototype`.
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
 
 		// Fill setup-pending resource locators BEFORE the first normalization pass:
 		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
