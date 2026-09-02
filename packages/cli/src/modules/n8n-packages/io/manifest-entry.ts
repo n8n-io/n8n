@@ -1,5 +1,6 @@
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
+import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -35,6 +36,9 @@ const FILE_NAMES = {
 	variables: 'variable.json',
 	tags: 'tag.json',
 } as const satisfies Record<ManifestEntityCollection, string>;
+
+/** Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so no `/` and no dots. */
+const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
 const FALLBACK_SLUGS = {
@@ -77,6 +81,15 @@ export function createManifestEntry(
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
+	if (!SAFE_ID.test(entity.id)) {
+		throw new PackageExportBlockedError(
+			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
+			{
+				description: `Id "${entity.id}" may contain only letters, digits, hyphens, and underscores.`,
+			},
+		);
+	}
+
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
 	return { id: entity.id, name: entity.name, target: `${baseDir}/${slug}-${entity.id}` };
 }
