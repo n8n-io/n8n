@@ -42,7 +42,7 @@ const NODE_COMMENT =
  * row backfills its owner id from `name`, and truncating would merge two names
  * into one owner.
  */
-export class GeneralizeScheduledJobOwner1788257499477 implements ReversibleMigration {
+export class GeneralizeScheduledJobOwner1788359043381 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.refreshTableMetadata(context);
 		await this.addOwnerColumns(context);

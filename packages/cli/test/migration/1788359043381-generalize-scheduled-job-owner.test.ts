@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'GeneralizeScheduledJobOwner1788257499477';
+const MIGRATION_NAME = 'GeneralizeScheduledJobOwner1788359043381';
 
 const WORKFLOW_ID = '11111111-1111-1111-1111-111111111111';
 const OTHER_WORKFLOW_ID = '22222222-2222-2222-2222-222222222222';
