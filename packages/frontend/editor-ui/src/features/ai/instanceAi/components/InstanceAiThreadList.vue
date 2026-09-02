@@ -2,21 +2,42 @@
 import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import {
 	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
 	N8nIconButton,
+	N8nInput,
 	N8nText,
 	N8nScrollArea,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 
-const emit = defineEmits<{ collapse: [] }>();
+const props = withDefaults(
+	defineProps<{
+		maxHeight?: string;
+		maxThreads?: number;
+		showActions?: boolean;
+		showHeader?: boolean;
+		showSearch?: boolean;
+	}>(),
+	{
+		maxHeight: undefined,
+		maxThreads: undefined,
+		showActions: true,
+		showHeader: true,
+		showSearch: true,
+	},
+);
+
+const emit = defineEmits<{
+	close: [];
+	select: [threadId: string];
+}>();
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -25,6 +46,7 @@ const route = useRoute();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const searchQuery = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
@@ -52,6 +74,15 @@ const dateGroupI18nMap: Record<string, string> = {
 
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 
+const visibleThreads = computed(() => {
+	const query = searchQuery.value.trim().toLocaleLowerCase();
+	const matches = query
+		? store.threads.filter((thread) => thread.title.toLocaleLowerCase().includes(query))
+		: store.threads;
+
+	return props.maxThreads === undefined ? matches : matches.slice(0, props.maxThreads);
+});
+
 const groupedThreads = computed(() => {
 	const now = new Date();
 	const groups = new Map<string, typeof store.threads>();
@@ -60,7 +91,7 @@ const groupedThreads = computed(() => {
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of store.threads) {
+	for (const thread of visibleThreads.value) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -92,6 +123,15 @@ async function handleDeleteThread(threadId: string) {
 			void router.push({ name: INSTANCE_AI_VIEW });
 		}
 	}
+}
+
+function handleThreadSelect(threadId: string) {
+	emit('select', threadId);
+}
+
+function openAllThreads() {
+	emit('close');
+	void router.push({ name: INSTANCE_AI_THREADS_VIEW });
 }
 
 function startRename(threadId: string, currentTitle: string) {
@@ -132,50 +172,42 @@ function handleThreadAction(action: string, threadId: string) {
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<!-- Sidebar header -->
-		<div :class="$style.header">
+		<div v-if="props.showHeader" :class="$style.header">
 			<N8nText :class="$style.title" tag="div" size="medium" bold>
 				{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 			</N8nText>
-			<div :class="$style.headerActions">
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.sidebar.collapse')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						icon="chevrons-left"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.sidebar.collapse')"
-						data-test-id="instance-ai-sidebar-collapse"
-						@click="emit('collapse')"
-					/>
-				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.thread.new')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
-						<N8nIconButton
-							:href="href"
-							icon="plus"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('instanceAi.thread.new')"
-							data-test-id="instance-ai-new-thread-button"
-							@click="navigate"
-						/>
-					</RouterLink>
-				</N8nTooltip>
-			</div>
+			<N8nButton
+				variant="ghost"
+				size="xsmall"
+				:class="$style.viewAll"
+				data-test-id="instance-ai-view-all-threads"
+				@click="openAllThreads"
+			>
+				{{ i18n.baseText('instanceAi.threads.viewAll') }}
+			</N8nButton>
 		</div>
+		<form v-if="props.showSearch" :class="$style.search" role="search" @submit.prevent>
+			<N8nInput
+				v-model="searchQuery"
+				type="text"
+				size="small"
+				autofocus
+				clearable
+				autocomplete="off"
+				:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
+				data-test-id="instance-ai-thread-search"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" size="small" />
+				</template>
+			</N8nInput>
+		</form>
 
-		<!-- Thread list -->
-		<N8nScrollArea :class="$style.threadList">
+		<N8nScrollArea
+			:class="$style.threadList"
+			:max-height="props.maxHeight"
+			:enable-vertical-scroll="false"
+		>
 			<template v-if="groupedThreads.length > 0">
 				<div v-for="group in groupedThreads" :key="group.label" :class="$style.group">
 					<N8nText :class="$style.groupLabel" tag="div" size="small" color="text-light">
@@ -194,6 +226,7 @@ function handleThreadAction(action: string, threadId: string) {
 								v-model="editingTitle"
 								:class="$style.renameInput"
 								type="text"
+								:aria-label="i18n.baseText('instanceAi.threads.rename')"
 								@keydown.enter="confirmRename(thread.id)"
 								@keydown.escape="cancelRename"
 								@blur="confirmRename(thread.id)"
@@ -206,11 +239,13 @@ function handleThreadAction(action: string, threadId: string) {
 								:class="$style.threadLink"
 								:title="thread.title"
 								:active-class="$style.threadLinkActive"
+								@click="handleThreadSelect(thread.id)"
 								@dblclick.prevent="startRename(thread.id, thread.title)"
 							>
 								<span :class="$style.threadTitle">{{ thread.title }}</span>
 							</RouterLink>
 							<N8nActionDropdown
+								v-if="props.showActions"
 								:items="threadActions"
 								:class="$style.actionDropdown"
 								placement="bottom-start"
@@ -222,6 +257,7 @@ function handleThreadAction(action: string, threadId: string) {
 										variant="ghost"
 										icon="ellipsis-vertical"
 										:class="$style.actionTrigger"
+										:aria-label="i18n.baseText('instanceAi.threads.actions')"
 									/>
 								</template>
 							</N8nActionDropdown>
@@ -231,7 +267,11 @@ function handleThreadAction(action: string, threadId: string) {
 			</template>
 			<div v-else :class="$style.empty">
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('instanceAi.sidebar.noThreads') }}
+					{{
+						i18n.baseText(
+							searchQuery ? 'instanceAi.threads.noSearchResults' : 'instanceAi.sidebar.noThreads',
+						)
+					}}
 				</N8nText>
 			</div>
 		</N8nScrollArea>
@@ -244,6 +284,7 @@ function handleThreadAction(action: string, threadId: string) {
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
+	width: 100%;
 }
 
 .header {
@@ -251,7 +292,7 @@ function handleThreadAction(action: string, threadId: string) {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs) var(--spacing--sm);
-	min-height: 40px;
+	min-height: var(--height--xl);
 }
 
 .title {
@@ -260,13 +301,17 @@ function handleThreadAction(action: string, threadId: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
+.viewAll {
+	--button--color: var(--text-color--subtle);
+
+	font-weight: var(--font-weight--regular);
+}
+
+.search {
+	padding: 0 var(--spacing--sm) var(--spacing--2xs);
 }
 
 .threadList {
@@ -292,24 +337,23 @@ function handleThreadAction(action: string, threadId: string) {
 .threadItem {
 	display: flex;
 	align-items: center;
-	height: 32px;
+	height: var(--height--md);
 	border-radius: var(--radius);
-	transition: background-color 0.1s ease;
 
 	&:focus-within,
 	&:has([aria-expanded='true']) {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 	}
 
 	// Gate hover to hover-capable devices so touch doesn't need a first tap to clear sticky hover
 	@media (hover: hover) {
 		&:hover {
-			background-color: var(--color--background--light-1);
+			background-color: var(--background--hover);
 		}
 	}
 
 	&.active {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 	}
 }
 
@@ -321,7 +365,7 @@ function handleThreadAction(action: string, threadId: string) {
 	min-width: 0;
 	height: 100%;
 	padding: 0 var(--spacing--xs);
-	color: var(--color--text) !important;
+	color: var(--text-color) !important;
 	text-decoration: none !important;
 	outline: none;
 	cursor: pointer;
@@ -329,12 +373,12 @@ function handleThreadAction(action: string, threadId: string) {
 	&:hover,
 	&:focus,
 	&:visited {
-		color: var(--color--text) !important;
+		color: var(--text-color) !important;
 		text-decoration: none !important;
 	}
 
 	&:active {
-		color: var(--color--text--shade-1) !important;
+		color: var(--text-color) !important;
 		text-decoration: none !important;
 	}
 }
@@ -345,7 +389,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .threadTitle {
@@ -354,7 +398,7 @@ function handleThreadAction(action: string, threadId: string) {
 	white-space: nowrap;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 }
 
 .actionDropdown {
@@ -388,15 +432,15 @@ function handleThreadAction(action: string, threadId: string) {
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
-	background: var(--color--background--light-2);
+	color: var(--text-color);
+	background: var(--background--surface);
 	border: var(--border);
-	border-color: var(--color--primary);
+	border-color: var(--border-color--strong);
 	border-radius: var(--radius);
 	outline: none;
 
 	&:focus {
-		border-color: var(--color--primary);
+		border-color: var(--border-color--strong);
 	}
 }
 

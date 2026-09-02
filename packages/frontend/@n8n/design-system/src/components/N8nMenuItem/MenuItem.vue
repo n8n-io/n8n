@@ -19,6 +19,7 @@ const props = defineProps<{
 	level?: number;
 	open?: boolean;
 	ariaLabel?: string;
+	disableTooltip?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -70,7 +71,9 @@ const iconColor = computed(() => {
 });
 
 const tooltipDisabled = computed(() => {
-	return !props.compact && !(props.item.disabled && props.item.disabledReason);
+	return (
+		props.disableTooltip || (!props.compact && !(props.item.disabled && props.item.disabledReason))
+	);
 });
 
 const tooltipContent = computed(() => {

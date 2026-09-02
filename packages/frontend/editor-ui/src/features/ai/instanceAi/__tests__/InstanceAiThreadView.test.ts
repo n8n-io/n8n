@@ -728,6 +728,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('clears the generated draft when pending context is dismissed from the artifacts panel', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
@@ -750,6 +751,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('preserves edited text and attachments when artifacts-panel context is dismissed', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 

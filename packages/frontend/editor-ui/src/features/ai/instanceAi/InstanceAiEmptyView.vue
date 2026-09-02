@@ -161,7 +161,8 @@ watch(
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-const splitWriting = ref(false);
+const composerHasContent = ref(false);
+const hasSubmittedFirstPrompt = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -477,6 +478,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
 
 	const threadId = uuidv4();
+	hasSubmittedFirstPrompt.value = true;
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
@@ -488,6 +490,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 			origin: 'internal',
 		});
 	} catch {
+		hasSubmittedFirstPrompt.value = false;
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
@@ -523,7 +526,10 @@ function handleShelfSuggestionInsert(payload: {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader
+			v-if="!isSplitLayoutActive"
+			:show-thread-history-label="!hasSubmittedFirstPrompt"
+		/>
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -546,8 +552,9 @@ function handleShelfSuggestionInsert(payload: {
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -559,13 +566,13 @@ function handleShelfSuggestionInsert(payload: {
 				v-else-if="isSplitVariantEnabled"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="splitWriting"
+				:writing="composerHasContent"
 				@submit-suggestion="handleShelfSuggestionSubmit"
 				@insert-suggestion="handleShelfSuggestionInsert"
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader />
+					<InstanceAiViewHeader :show-thread-history-label="!hasSubmittedFirstPrompt" />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">
@@ -583,13 +590,13 @@ function handleShelfSuggestionInsert(payload: {
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
 							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
-							@content-change="splitWriting = $event"
+							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
@@ -633,8 +640,9 @@ function handleShelfSuggestionInsert(payload: {
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>

@@ -480,6 +480,7 @@ export class TypeORMAgentMemory
 		});
 
 		await this.messageRepo.save(entities);
+		await this.threadRepo.update(args.threadId, { updatedAt: new Date() });
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
