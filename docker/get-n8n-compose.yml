@@ -10,7 +10,6 @@ volumes:
 
 services:
   sandbox-certs:
-    # Pinned: 1.3.0 rejects a non-https SANDBOX_RUNNER_HTTP_BASE_URL, which this stack uses.
     image: ghcr.io/n8n-io/n8n-sandbox-service-api:1.2.0
     user: '0:0'
     entrypoint: ['sh', '-c']
