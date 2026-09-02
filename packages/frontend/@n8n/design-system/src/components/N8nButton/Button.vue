@@ -440,4 +440,11 @@ const handleClick = (event: MouseEvent) => {
 		filter: none;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	:global(.n8n-button-fade-enter-active),
+	:global(.n8n-button-fade-leave-active) {
+		transition: none;
+	}
+}
 </style>

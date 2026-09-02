@@ -71,7 +71,11 @@ function itemComparator(a: Item, b: Item) {
 				:key="item.name"
 				:class="$style.selectableCell"
 				:data-test-id="`selectable-list-selectable-${item.name}`"
+				role="button"
+				tabindex="0"
 				@click="!props.disabled && addToSelectedItems(item.name)"
+				@keydown.enter="!props.disabled && addToSelectedItems(item.name)"
+				@keydown.space.prevent="!props.disabled && addToSelectedItems(item.name)"
 			>
 				<slot name="addItem" v-bind="item">
 					<div :class="$style.selectableTextSize">

@@ -32,8 +32,8 @@ const props = withDefaults(defineProps<InfoAccordionProps>(), {
 	eventBus: () => createEventBus(),
 });
 const emit = defineEmits<{
-	'click:body': [e: MouseEvent];
-	tooltipClick: [item: string, e: MouseEvent];
+	'click:body': [e: MouseEvent | KeyboardEvent];
+	tooltipClick: [item: string, e: MouseEvent | KeyboardEvent];
 }>();
 
 const expanded = ref(false);
@@ -48,31 +48,48 @@ const toggle = () => {
 	expanded.value = !expanded.value;
 };
 
-const onClick = (e: MouseEvent) => emit('click:body', e);
+const onClick = (e: MouseEvent | KeyboardEvent) => emit('click:body', e);
 
-const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick', item, event);
+const onTooltipClick = (item: string, event: MouseEvent | KeyboardEvent) =>
+	emit('tooltipClick', item, event);
 </script>
 
 <template>
 	<div :class="['accordion', $style.container]">
-		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
+		<button
+			type="button"
+			:class="{ [$style.header]: true, [$style.expanded]: expanded }"
+			:aria-expanded="expanded"
+			@click="toggle"
+		>
 			<N8nIcon v-if="headerIcon" :icon="headerIcon.icon" :color="headerIcon.color" size="small" />
 			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
 				title
 			}}</N8nText>
 			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
-		</div>
+		</button>
 		<div
 			v-if="expanded"
 			:class="{ [$style.description]: true, [$style.collapsed]: !expanded }"
+			role="button"
+			tabindex="0"
 			@click="onClick"
+			@keydown.enter="onClick"
+			@keydown.space.prevent="onClick"
 		>
 			<!-- Info accordion can display list of items with icons or just a HTML description -->
 			<div v-if="items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<N8nTooltip :disabled="!item.tooltip">
 						<template #content>
-							<div v-n8n-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+							<div
+								v-n8n-html="item.tooltip"
+								role="button"
+								tabindex="0"
+								@click="onTooltipClick(item.id, $event)"
+								@keydown.enter="onTooltipClick(item.id, $event)"
+								@keydown.space.prevent="onTooltipClick(item.id, $event)"
+							></div>
 						</template>
 						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</N8nTooltip>
@@ -95,7 +112,11 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 .header {
 	cursor: pointer;
 	display: flex;
+	width: 100%;
 	padding: var(--spacing--sm);
+	border: 0;
+	background: transparent;
+	font: inherit;
 	align-items: center;
 	justify-content: flex-start;
 	gap: var(--spacing--3xs);

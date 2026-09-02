@@ -163,10 +163,6 @@ const actionStyle = computed(() => {
 	return { maxWidth: props.actionMaxWidth };
 });
 
-const interactiveAttrs = computed(() =>
-	props.clickable ? { role: 'button', tabindex: 0, 'aria-label': props.title || undefined } : {},
-);
-
 // A clickable row must not hijack activations meant for a nested interactive control (a button,
 // link, or input placed in a slot): those would otherwise bubble to the row's handlers and fire
 // the row click on top of the control's own action. Clicks on the row's non-interactive content
@@ -213,7 +209,9 @@ function onKeydown(event: KeyboardEvent) {
 			},
 		]"
 		:data-layout="layout"
-		v-bind="interactiveAttrs"
+		:role="clickable ? 'button' : undefined"
+		:tabindex="clickable ? 0 : undefined"
+		:aria-label="clickable ? title || undefined : undefined"
 		@click="onActivate"
 		@keydown="onKeydown"
 	>
@@ -265,6 +263,7 @@ function onKeydown(event: KeyboardEvent) {
 					},
 				]"
 				:style="actionStyle"
+				:role="revealActionsOnHover ? 'presentation' : undefined"
 				@click="revealActionsOnHover ? $event.stopPropagation() : undefined"
 			>
 				<slot name="action" />
@@ -571,5 +570,14 @@ $expand-easing: motion.$blur-motion-easing;
 	right: var(--spacing--sm);
 	height: 1px;
 	background: var(--border-color--subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.hoverable,
+	.clickable,
+	.revealActions,
+	.expandRegion {
+		transition: none;
+	}
 }
 </style>

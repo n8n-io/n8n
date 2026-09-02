@@ -228,4 +228,12 @@ const isOpen = computed({
 .noAnimation {
 	--animation--collapsible-slide--duration: 0s;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.collapsiblePanel .chevron,
+	.title,
+	.actions {
+		transition: none;
+	}
+}
 </style>
