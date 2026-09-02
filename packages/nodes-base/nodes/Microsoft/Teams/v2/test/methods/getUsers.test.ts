@@ -55,7 +55,9 @@ describe('Microsoft Teams v2, getUsers', () => {
 			HEADERS,
 		);
 		expect(result).toEqual({
-			results: [{ name: 'Jane Smith', value: 'guid-1', description: 'jane@example.com' }],
+			results: [
+				{ name: 'Jane Smith (jane@example.com)', value: 'guid-1', description: 'jane@example.com' },
+			],
 			paginationToken: undefined,
 		});
 	});
@@ -174,7 +176,10 @@ describe('Microsoft Teams v2, getUsers', () => {
 
 		// Zoe Quinn only matches server-side through her UPN, so appending
 		// `filterSortSearchListItems` would drop her; its sort would also flip the pair.
-		expect(results.map((r) => r.name)).toEqual(['Zoe Quinn', 'Ackerman, Janet']);
+		expect(results.map((r) => r.name)).toEqual([
+			'Zoe Quinn (jan.smith@example.com)',
+			'Ackerman, Janet (janet@example.com)',
+		]);
 	});
 });
 
