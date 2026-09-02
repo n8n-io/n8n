@@ -54,6 +54,19 @@ export class MicrosoftSql implements ICredentialType {
 			default: true,
 		},
 		{
+			displayName: 'TLS Server Name',
+			name: 'serverName',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					tls: [true],
+				},
+			},
+			description:
+				'The TLS Server Name (SNI) to send during handshake. Useful when connecting via IP address with TLS enabled, even if certificate verification is skipped.',
+		},
+		{
 			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',

@@ -5,6 +5,7 @@ import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { MicrosoftSql } from '../MicrosoftSql.node';
+import { configurePool } from '../GenericFunctions';
 import type { MockedClass } from 'vitest';
 
 vi.mock('mssql');
@@ -224,6 +225,93 @@ describe('MicrosoftSql Node', () => {
 			}
 
 			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
+		});
+	});
+
+	describe('configurePool', () => {
+		beforeEach(() => {
+			mockedConnectionPool.mockClear();
+		});
+
+		it('should pass serverName to pool options when provided in credentials', () => {
+			const credentials = {
+				server: '10.0.0.5',
+				database: 'testdb',
+				user: 'testuser',
+				password: 'testpass',
+				port: 1433,
+				tls: true,
+				serverName: 'db.example.com',
+				allowUnauthorizedCerts: false,
+				tdsVersion: '7_4',
+				connectTimeout: 15000,
+				requestTimeout: 15000,
+			};
+
+			configurePool(credentials);
+
+			expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					server: '10.0.0.5',
+					options: expect.objectContaining({
+						encrypt: true,
+						serverName: 'db.example.com',
+					}),
+				}),
+			);
+		});
+
+		it('should not include serverName in options when not provided', () => {
+			const credentials = {
+				server: 'localhost',
+				database: 'testdb',
+				user: 'testuser',
+				password: 'testpass',
+				port: 1433,
+				tls: true,
+				allowUnauthorizedCerts: false,
+				tdsVersion: '7_4',
+				connectTimeout: 15000,
+				requestTimeout: 15000,
+			};
+
+			configurePool(credentials);
+
+			expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					server: 'localhost',
+					options: expect.not.objectContaining({
+						serverName: expect.anything(),
+					}),
+				}),
+			);
+		});
+
+		it('should not include serverName in options when empty string (UI default) or whitespace', () => {
+			const credentials = {
+				server: 'localhost',
+				database: 'testdb',
+				user: 'testuser',
+				password: 'testpass',
+				port: 1433,
+				tls: true,
+				serverName: '',
+				allowUnauthorizedCerts: false,
+				tdsVersion: '7_4',
+				connectTimeout: 15000,
+				requestTimeout: 15000,
+			};
+
+			configurePool(credentials);
+
+			expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					server: 'localhost',
+					options: expect.not.objectContaining({
+						serverName: expect.anything(),
+					}),
+				}),
+			);
 		});
 	});
 });
