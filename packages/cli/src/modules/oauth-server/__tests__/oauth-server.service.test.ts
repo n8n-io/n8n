@@ -223,7 +223,9 @@ describe('OAuthServerService', () => {
 						id: FIRST_PARTY_URL,
 						name: 'My Form',
 						redirectUris: [FIRST_PARTY_URL],
-						grantTypes: ['authorization_code'],
+						// `refresh_token` too: the AS issues one on every code exchange, and a
+						// long-lived trigger page rotates it instead of redirecting again.
+						grantTypes: ['authorization_code', 'refresh_token'],
 						tokenEndpointAuthMethod: 'none',
 						clientSecret: null,
 						clientSecretExpiresAt: null,
@@ -235,7 +237,7 @@ describe('OAuthServerService', () => {
 					client_id: FIRST_PARTY_URL,
 					client_name: 'My Form',
 					redirect_uris: [FIRST_PARTY_URL],
-					grant_types: ['authorization_code'],
+					grant_types: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
 					logo_uri: undefined,
@@ -253,7 +255,7 @@ describe('OAuthServerService', () => {
 						id: CHAT_FIRST_PARTY_URL,
 						name: 'My Chat',
 						redirectUris: [CHAT_FIRST_PARTY_URL],
-						grantTypes: ['authorization_code'],
+						grantTypes: ['authorization_code', 'refresh_token'],
 						tokenEndpointAuthMethod: 'none',
 						clientSecret: null,
 						clientSecretExpiresAt: null,

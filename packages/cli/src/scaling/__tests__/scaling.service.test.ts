@@ -258,6 +258,22 @@ describe('ScalingService', () => {
 				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
+
+			it('should log the execution IDs it is waiting for while draining', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
+				jobProcessor.getRunningJobsSummary.mockReturnValue([mock({ executionId: 'exec-1' })]);
+
+				await scalingService.stop();
+
+				// @ts-expect-error private property
+				expect(scalingService.logger.info).toHaveBeenCalledWith(
+					'Waiting for 1 active executions to finish... (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
 		});
 	});
 
