@@ -135,15 +135,17 @@ export class ToolWorkflowV1 implements INodeType {
 				// not show up in the frontend
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
-			const waiting = Boolean(receivedData.waitTill);
+			if (receivedData.waitTill) {
+				// A parked child has no final output yet; its `data` is the HITL node's passthrough
+				// input. The parent is already parked via BaseExecuteContext.executeWorkflow and
+				// gets the real output on resume.
+				return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
+			}
+
 			const response: string | undefined = get(receivedData, 'data[0][0].json') as
 				| string
 				| undefined;
 			if (response === undefined) {
-				if (waiting) {
-					// Parent is already waiting via BaseExecuteContext.executeWorkflow.
-					return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
-				}
 				throw new NodeOperationError(
 					this.getNode(),
 					'There was an error: "The workflow did not return a response"',
