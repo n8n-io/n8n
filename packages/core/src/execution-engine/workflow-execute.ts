@@ -120,6 +120,19 @@ export class WorkflowExecute {
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
 
+	private suspensionRequested = false;
+
+	/**
+	 * Ask the engine to stop at the next node boundary and park the execution as
+	 * 'waiting', so another process can resume it from the persisted state. The
+	 * node currently executing runs to completion. Safe to call at any time;
+	 * no-ops if the run finishes, waits, or is canceled first.
+	 */
+	suspend(): void {
+		if (this.status !== 'running') return;
+		this.suspensionRequested = true;
+	}
+
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
@@ -1468,6 +1481,13 @@ export class WorkflowExecute {
 				this.mode,
 			);
 
+			if (this.runExecutionData.resumeInstruction === 'run-stack-head') {
+				// The engine was suspended at a node boundary, so the stack head has
+				// not executed yet: run it normally instead of passing it through.
+				this.runExecutionData.resumeInstruction = undefined;
+				return;
+			}
+
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
 			// Error reporting itself does not depend on this: `runNode` checks
 			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
@@ -2211,6 +2231,15 @@ export class WorkflowExecute {
 						return;
 					}
 
+					// Suspension exits before popping, so the stack head is the next
+					// not-yet-executed node and the persisted state resumes by running it.
+					// The cancel check above must win over suspension.
+					if (this.suspensionRequested) {
+						this.runExecutionData.waitTill = new Date();
+						this.runExecutionData.resumeInstruction = 'run-stack-head';
+						return;
+					}
+
 					subNodeExecutionResults = makeEngineResponse();
 
 					let nodeSuccessData: INodeExecutionData[][] | null | undefined = null;
@@ -2848,6 +2877,13 @@ export class WorkflowExecute {
 	): Promise<IRun> {
 		// Set status before creating fullRunData
 		if (executionError !== undefined) {
+			// A cancel or error can land after a suspension already stamped the run
+			// data; clear the markers so the persisted state is not treated as
+			// resumable. A genuine Wait-node waitTill is never cleared here.
+			if (this.suspensionRequested) {
+				this.runExecutionData.waitTill = undefined;
+				this.runExecutionData.resumeInstruction = undefined;
+			}
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
