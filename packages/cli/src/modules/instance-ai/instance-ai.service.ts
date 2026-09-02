@@ -134,6 +134,7 @@ import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-opt
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -263,10 +264,12 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 				? `Node "${names[0]}"`
 				: `A chain of connected nodes: ${names.join(' → ')}`;
 
-		const input = set.inputNode ? `, preceded by "${set.inputNode.name ?? set.inputNode.id}"` : '';
+		const input = set.inputNode
+			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
+			: '';
 
 		const output = set.outputNode
-			? `, followed by "${set.outputNode.name ?? set.outputNode.id}"`
+			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
 			: '';
 
 		const group = set.canvasGroupName
@@ -278,7 +281,12 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		return `  - ${label}${input}${output}${group}.`;
 	});
 
-	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}`;
+	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
+	const boundaryNote = hasBoundary
+		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
+		: '';
+
+	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
 export function buildContextResourcesBlock(
@@ -841,6 +849,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly push: Push,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -6977,6 +6986,7 @@ export class InstanceAiService {
 	}): void {
 		const serverSlug = server.metadata?.serverSlug;
 		const userId = server.metadata?.userId;
+		const connectionId = server.metadata?.connectionId;
 		if (serverSlug && userId) {
 			this.telemetry.track('Instance AI mcp tool called', {
 				user_id: userId,
@@ -6984,6 +6994,12 @@ export class InstanceAiService {
 				tool_name: toolName,
 				success,
 			});
+		}
+
+		if (!success && connectionId && userId) {
+			this.push.sendToUsers({ type: 'instanceAiMcpToolCallFailed', data: { connectionId } }, [
+				userId,
+			]);
 		}
 	}
 }

@@ -99,6 +99,10 @@ export class DurableScheduler implements Scheduler {
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
 	}
 
+	isActive(): boolean {
+		return this.scheduler !== undefined;
+	}
+
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {
 		if (this.scheduler === undefined) {
 			this.logger.debug(

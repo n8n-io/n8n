@@ -64,7 +64,6 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
 
 import {
 	attempt,
@@ -74,6 +73,7 @@ import {
 	mergeTree,
 	runGit,
 } from './branch-replay.mjs';
+import { writeGithubOutput } from './github-helpers.mjs';
 import { conflictedFiles, gatherAttribution, buildOutputs } from './sync-conflict-owners.mjs';
 
 // Re-exported so this module stays the single entry point for the master→3.x flow, tests
@@ -311,16 +311,6 @@ export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log
 	log('Folding a lockfile reconciliation into the tip commit.');
 	git(['add', '--', LOCKFILE]);
 	git(['commit', '--amend', '--no-edit', '--no-verify']);
-}
-
-// Append key=value lines to $GITHUB_OUTPUT (no-op when running outside Actions).
-export function writeGithubOutput(obj, env = process.env) {
-	const path = env.GITHUB_OUTPUT;
-	if (!path) return;
-	const lines = Object.entries(obj)
-		.map(([k, v]) => `${k}=${v ?? ''}`)
-		.join('\n');
-	appendFileSync(path, lines + '\n', 'utf8');
 }
 
 /**
