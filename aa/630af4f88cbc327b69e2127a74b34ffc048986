@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/ssrf/passthrough-egress-filter.ts
+  s_c3f63bfec03d56::t_cb1cae984c1ba5 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa630af4f88cbc327b69e2127a74b34ffc048986",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
