@@ -365,7 +365,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, run snapshots, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.

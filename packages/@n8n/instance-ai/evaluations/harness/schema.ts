@@ -64,10 +64,15 @@ const ExecutionScenarioSchema = z.object({
  *  shorthand, expanded BEFORE validation so the envelope rules apply to the
  *  expansion and error paths stay per-message (`seed.messages.2.createdAt`).
  *  Timestamps are normalized after expansion, so seeded history always presents
- *  in array order and never sorts after the live turn. */
+ *  in array order and never sorts after the live turn.
+ *
+ *  No `min(1)`: a fixture-only seed (a seeded project, no history) is legitimate, and
+ *  the case-level refine is the single arbiter of a seed that carries nothing. A
+ *  min here would also defeat the `.default([])` below — zod validates a substituted
+ *  default like any other value. */
 const inlineSeedMessagesSchema = z.preprocess(
 	(raw) => (Array.isArray(raw) ? normalizeSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
-	z.array(SeedMessageSchema).min(1),
+	z.array(SeedMessageSchema),
 );
 
 /**
@@ -91,9 +96,15 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	 *  body. Synthetic fixtures only — a real conversation belongs in `replay`,
 	 *  which keeps its content out of the repo. Pairs with `conversation`, which
 	 *  supplies the live turn. */
+	/** `messages` defaults to empty so a seed can carry ONLY instance fixtures (the
+	 *  project-scope shape: a seeded project exists, but the conversation under test
+	 *  starts from scratch). Defaulted rather than optional so the inferred type
+	 *  stays `SeedMessage[]` and every consumer keeps reading `.length`. The arm
+	 *  stays a plain object — `discriminatedUnion` rejects a refined one — so the
+	 *  "carries something" rule lives in the case-level refine below. */
 	ConversationSeedSchema.extend({
 		mode: z.literal('inline'),
-		messages: inlineSeedMessagesSchema,
+		messages: inlineSeedMessagesSchema.default([]),
 	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
@@ -171,6 +182,7 @@ const evalTestCaseObjectSchema = z
 						}),
 					name: z.string().min(1).optional(),
 					valid: z.boolean().optional(),
+					blank: z.boolean().optional(),
 				}),
 			)
 			.optional(),
@@ -219,6 +231,23 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		message:
 			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
 	})
+	// An inline seed that carries nothing restores nothing, and the case then grades
+	// as an unseeded build — green for the wrong reason. `messages` is optional (a
+	// fixture-only seed is legitimate), so emptiness is only wrong when EVERY slot
+	// is empty.
+	.refine(
+		(c) =>
+			c.seed?.mode !== 'inline' ||
+			c.seed.messages.length > 0 ||
+			c.seed.workflows.length > 0 ||
+			c.seed.dataTables.length > 0 ||
+			c.seed.agents.length > 0 ||
+			c.seed.projects.length > 0,
+		{
+			message:
+				'an inline seed must carry something — messages, workflows, dataTables, agents, or projects',
+		},
+	)
 	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
 	// do nothing.
 	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {

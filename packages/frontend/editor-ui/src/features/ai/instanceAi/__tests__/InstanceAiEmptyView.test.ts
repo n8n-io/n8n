@@ -668,6 +668,17 @@ describe('InstanceAiEmptyView', () => {
 		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
 	});
 
+	// The split layout's input is detached and fully rounded, so a banner styled to
+	// fuse onto a sidebar input reads as a stray inset box floating above it.
+	it('renders the credit banner as a self-contained card in the split layout', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		store.showCreditWarning = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('credit-warning-banner')).toHaveClass('standalone');
+	});
+
 	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
 		experimentMocks.splitBelowInputVariant.value = true;
 

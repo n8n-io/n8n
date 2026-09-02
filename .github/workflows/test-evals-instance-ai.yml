@@ -227,9 +227,29 @@ jobs:
           done' > /dev/null 2>&1 &
           echo $! > eval-diag/sampler.pid
 
+      # Only needed when there's no usable hosted deployment to point at. The guard
+      # lives in the script because the `secrets` context isn't available to
+      # `step.if`. `SANDBOX_HOSTED_OK` carries the decision to the next step, so a
+      # deployment that fails the preflight is never handed to n8n.
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
+        env:
+          HOSTED_SANDBOX_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
+          HOSTED_SANDBOX_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
+        run: |
+          if [ -n "$HOSTED_SANDBOX_URL" ]; then
+            # Authenticated so a revoked key fails here rather than mid-eval;
+            # /healthz is unauthenticated and would pass with a bad key.
+            if curl -fsS -m 10 -o /dev/null \
+              -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
+              "${HOSTED_SANDBOX_URL%/}/sandboxes"; then
+              echo "Hosted sandbox service healthy — skipping the local stack."
+              echo "SANDBOX_HOSTED_OK=true" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "::warning::Hosted sandbox service is not usable — falling back to the local sandbox stack."
+          fi
+          pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
 
       - name: Start n8n containers
         env:
@@ -252,6 +272,8 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          HOSTED_SANDBOX_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
+          HOSTED_SANDBOX_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
           # LangSmith creds for backend thread traces, routed to the same
           # dedicated project as the eval CLI to keep the 'instance-ai' corpus clean.
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
@@ -267,6 +289,7 @@ jobs:
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
+          USE_LOCAL_SANDBOX=false
           if [ "$SANDBOX_PROVIDER" = "daytona" ]; then
             SANDBOX_ARGS+=(
               -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
@@ -274,7 +297,14 @@ jobs:
               -e DAYTONA_API_URL=https://app.daytona.io/api
               -e DAYTONA_API_KEY="$DAYTONA_API_KEY"
             )
+          elif [ "$SANDBOX_HOSTED_OK" = "true" ]; then
+            SANDBOX_ARGS+=(
+              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
+              -e N8N_SANDBOX_SERVICE_URL="$HOSTED_SANDBOX_URL"
+              -e N8N_SANDBOX_SERVICE_API_KEY="$HOSTED_SANDBOX_API_KEY"
+            )
           else
+            USE_LOCAL_SANDBOX=true
             SANDBOX_ARGS+=(
               -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
               -e N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
@@ -282,9 +312,11 @@ jobs:
             )
           fi
 
-          # Use the eval network when sandbox service is running
+          # Only the local sandbox stack needs the shared network — a hosted
+          # deployment is reached over the default bridge, and the network is
+          # never created when the start step short-circuits.
           NETWORK_ARGS=()
-          if [ "$SANDBOX_PROVIDER" == "n8n-sandbox" ]; then
+          if [ "$USE_LOCAL_SANDBOX" = true ]; then
             NETWORK_ARGS+=(--network n8n-eval-net)
           fi
 

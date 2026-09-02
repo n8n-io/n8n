@@ -192,6 +192,14 @@ describe('OtelService', () => {
 		it('does not throw when called before init', async () => {
 			await expect(service.shutdown()).resolves.not.toThrow();
 		});
+
+		it('does not throw when the SDK shutdown rejects (e.g. exporter flush failure)', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			await service.init();
+			shutdown.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:9'));
+
+			await expect(service.shutdown()).resolves.not.toThrow();
+		});
 	});
 
 	describe('diagnostics logger', () => {

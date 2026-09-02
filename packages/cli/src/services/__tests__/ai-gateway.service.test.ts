@@ -221,7 +221,7 @@ describe('AiGatewayService', () => {
 			const service = makeService({ aiGatewayEnabled: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
-			).rejects.toThrow('n8n Connect is not enabled on this instance.');
+			).rejects.toThrow('Gateway credits are not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -449,7 +449,7 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for n8n credits attribution.');
+			).rejects.toThrow('Failed to resolve user for Gateway credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {

@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
-import type { ModalState } from '@/Interface';
+import type { ModalState, NewCredentialsModal } from '@/Interface';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -281,6 +281,68 @@ describe('UI Store', () => {
 				setActivePinia(createPinia());
 				expect(useUIStore().modalsById[IMPORT_CURL_MODAL_KEY].open).toBe(false);
 			});
+		});
+	});
+
+	describe('openNewCredential / openExistingCredential', () => {
+		beforeEach(() => {
+			modalRegistry.register({
+				key: CREDENTIAL_EDIT_MODAL_KEY,
+				component: {},
+				initialState: { open: false },
+			});
+		});
+
+		const credentialModalState = () =>
+			useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY] as NewCredentialsModal;
+
+		it('should store the workflowId option in the modal state', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+
+			expect(credentialModalState().workflowId).toBe('wf-1');
+		});
+
+		it('should clear a stale workflowId when reopened without one', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+			uiStore.openNewCredential('slackApi');
+
+			expect(credentialModalState().workflowId).toBeUndefined();
+		});
+
+		it('should carry and clear workflowId through openExistingCredential', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1' });
+			expect(credentialModalState().workflowId).toBe('wf-1');
+
+			uiStore.openExistingCredential('cred-1');
+			expect(credentialModalState().workflowId).toBeUndefined();
 		});
 	});
 

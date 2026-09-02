@@ -2,8 +2,9 @@ import {
 	Tool,
 	type AgentMessage,
 	type BuiltTool,
-	type ContentFile,
-	type ContentText,
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
 } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
@@ -46,10 +47,6 @@ import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 
 type McpContentBlock = McpToolCallResult['content'][number];
-type ModelContentPart =
-	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string }
-	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -152,58 +149,6 @@ function tryParseGatewayConfirmationRequired(
 	}
 }
 
-function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFile | undefined {
-	if (block.type === 'text' && block.text) {
-		return { type: 'text', text: block.text };
-	}
-
-	if (block.type === 'image' && block.data) {
-		return {
-			type: 'file',
-			data: block.data,
-			mediaType: block.mimeType || 'image/png',
-		};
-	}
-
-	if (block.type === 'resource' && block.resource.blob) {
-		return {
-			type: 'file',
-			data: block.resource.blob,
-			mediaType: block.resource.mimeType ?? 'application/octet-stream',
-		};
-	}
-
-	return undefined;
-}
-
-function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | undefined {
-	if (block.type === 'text' && block.text) {
-		return { type: 'text', text: block.text };
-	}
-
-	if (block.type === 'image' && block.data) {
-		return {
-			type: 'image-data',
-			data: block.data,
-			mediaType: block.mimeType || 'image/png',
-		};
-	}
-
-	if (block.type === 'resource' && block.resource.blob) {
-		return {
-			type: 'file-data',
-			data: block.resource.blob,
-			mediaType: block.resource.mimeType ?? 'application/octet-stream',
-		};
-	}
-
-	return undefined;
-}
-
-function isMcpMediaBlock(block: McpContentBlock): boolean {
-	return block.type === 'image' || block.type === 'resource';
-}
-
 export type BrowserCredentialCreateOutcome = { ok: true } | { ok: false; errorCode: string };
 
 /**
@@ -229,11 +174,9 @@ function classifyCredentialCreateError(result: McpToolCallResult): string {
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
+	if (!raw || !hasMcpMediaContent(raw.content)) return undefined;
 
-	const content = raw.content
-		.map(mcpBlockToMessagePart)
-		.filter((part): part is ContentText | ContentFile => part !== undefined);
+	const content = mcpContentToMessageParts(raw.content);
 	if (content.length === 0) return undefined;
 
 	return { role: 'assistant', content };
@@ -447,7 +390,7 @@ export function createToolsFromLocalMcpServer({
 					return { type: 'text', value: JSON.stringify(result) };
 				}
 
-				const hasMedia = raw.content.some((item) => item.type === 'image');
+				const hasMedia = hasMcpMediaContent(raw.content);
 
 				// When we have structuredContent and no media, prefer it as compact text
 				if (raw.structuredContent && !hasMedia) {
@@ -457,9 +400,7 @@ export function createToolsFromLocalMcpServer({
 					};
 				}
 
-				const value = raw.content
-					.map(mcpBlockToModelContentPart)
-					.filter((part): part is ModelContentPart => part !== undefined);
+				const value = mcpContentToModelParts(raw.content);
 				return { type: 'content', value };
 			})
 			.build();

@@ -16,6 +16,9 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
+
 const props = withDefaults(
 	defineProps<{
 		tabs: ArtifactTab[];
@@ -103,6 +106,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
 	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
+	}
 	return undefined;
 }
 
@@ -145,7 +151,14 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
 					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
-						<N8nIcon :icon="tab.icon" size="large" />
+						<N8nIcon
+							v-if="tab.building"
+							icon="spinner"
+							size="large"
+							spin
+							data-test-id="instance-ai-tab-building-spinner"
+						/>
+						<N8nIcon v-else :icon="tab.icon" size="large" />
 						<span :class="$style.label">{{ tab.name }}</span>
 					</TabsTrigger>
 				</ContextMenuTrigger>
@@ -163,6 +176,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"

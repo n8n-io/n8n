@@ -3,6 +3,8 @@ import {
 	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
+	withProjectContext,
+	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
@@ -244,5 +246,53 @@ describe('extractAgentPreviewHandoffContext', () => {
 	it('returns undefined when the marker JSON is invalid', () => {
 		const stored = '<agent-preview-context>\nnot json\n\nprose\n</agent-preview-context>';
 		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
+	});
+});
+
+describe('withProjectContext', () => {
+	const section = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('names the project and its type', () => {
+		expect(section).toContain('Marketing');
+		expect(section).toContain('team');
+	});
+
+	it('appends the block after the user text', () => {
+		const message = withProjectContext('Build me a digest', section);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message).toContain('<project-context>');
+		expect(message).toContain('</project-context>');
+	});
+
+	// A leak here shows internal text as if the user had typed it.
+	it('is stripped from the stored message before display', () => {
+		const stored = withProjectContext('Build me a digest', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	// The real composition: project block, then the clock outermost. Both anchor to
+	// end-of-string, so the inner one only becomes strippable once the outer is gone.
+	it('is stripped alongside the clock, in either order', () => {
+		const projectThenClock = withCurrentDateTime(
+			withProjectContext('Build me a digest', section),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(projectThenClock)).toBe('Build me a digest');
+
+		const clockThenProject = withProjectContext(
+			withCurrentDateTime('Build me a digest', 'Monday 1 January 2026'),
+			section,
+		);
+		expect(cleanStoredUserMessage(clockThenProject)).toBe('Build me a digest');
+	});
+
+	// Same rule the clock block follows: only the trailing block is internal, so a
+	// user who types the tag keeps their text.
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withProjectContext('why does <project-context> show up in my logs?', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
 	});
 });

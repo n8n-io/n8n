@@ -154,6 +154,28 @@ describe('buildWorkflow declared credentials', () => {
 		);
 	});
 
+	it('creates a blank credential with no field values and keeps it off the bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi.fn().mockResolvedValue({ id: 'cred-blank' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'httpHeaderAuth', blank: true }],
+		});
+
+		expect(build.success).toBe(true);
+		// A blank credential models one the user saved without filling anything in,
+		// so it is seeded with no data and must never resolve a test as passing.
+		expect(createCredential).toHaveBeenCalledWith(expect.any(String), 'httpHeaderAuth', {});
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-blank'],
+			[],
+		);
+	});
+
 	it('filters an already-broken credential out of the connection-test bypass list', async () => {
 		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
 		const createCredential = vi

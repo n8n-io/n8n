@@ -9,9 +9,10 @@ import {
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { Push } from '@/push';
+import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	FailedTriggerPublicationStatus,
@@ -19,6 +20,8 @@ import type {
 	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -39,9 +42,9 @@ export class PublicationStatusReporter {
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly push: Push,
 		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -49,8 +52,9 @@ export class PublicationStatusReporter {
 	async report(record: WorkflowPublicationOutbox, result: PublicationResult): Promise<void> {
 		switch (result.type) {
 			case 'completed': {
-				await this.complete(record, this.toRows(record, result.triggerStatuses));
-				this.pushStatus({
+				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
+				await this.complete(record, this.toRows(record, result.triggerStatuses), warningMessage);
+				await this.pushStatus({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
 				});
@@ -58,8 +62,9 @@ export class PublicationStatusReporter {
 			}
 
 			case 'unpublished': {
-				await this.complete(record, /*triggerStatuses=*/ []);
-				this.pushStatus({
+				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
+				await this.complete(record, /*triggerStatuses=*/ [], warningMessage);
+				await this.pushStatus({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
 				});
@@ -80,11 +85,14 @@ export class PublicationStatusReporter {
 					outboxId: record.id,
 				});
 				await this.outboxRepository.markFailed(record.id, errorMessage);
-				this.pushFailedToActivate(record.workflowId, errorMessage);
+				await this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
 
 			case 'failed': {
+				// The record's failure stays the activation error; the abandoned
+				// deregistrations (whose teardown already ran) get their own report.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				const { triggerStatuses } = result;
 				await this.outboxRepository.manager.transaction(async (trx) => {
 					if (triggerStatuses) {
@@ -96,12 +104,18 @@ export class PublicationStatusReporter {
 					}
 					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
 				});
-				this.errorReporter.error(result.error, { shouldBeLogged: true });
-				this.pushFailedToActivate(record.workflowId, result.error.message);
+				// An expected denial, already logged as a warning by the applier — the
+				// terminal state and the UI push stand, the fault report does not.
+				if (!isPolicyRefusal(result.error)) {
+					this.errorReporter.error(result.error, { shouldBeLogged: true });
+				}
+				await this.pushFailedToActivate(record.workflowId, result.error.message);
 				return;
 			}
 
 			case 'partial': {
+				// As on 'failed': the stored/pushed message stays about activation.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				await this.reportPartial(record, result.triggerStatuses);
 				return;
 			}
@@ -138,7 +152,7 @@ export class PublicationStatusReporter {
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
 		});
 
-		this.pushStatus({
+		await this.pushStatus({
 			type: 'workflowPartiallyActivated',
 			data: {
 				workflowId: record.workflowId,
@@ -177,8 +191,8 @@ export class PublicationStatusReporter {
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private pushFailedToActivate(workflowId: string, errorMessage: string): void {
-		this.pushStatus({
+	private async pushFailedToActivate(workflowId: string, errorMessage: string): Promise<void> {
+		await this.pushStatus({
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage },
 		});
@@ -191,17 +205,48 @@ export class PublicationStatusReporter {
 	 * is leader-only), but clients may be connected to a follower. The relay is
 	 * fire-and-forget so a pubsub failure never fails the terminal-status report.
 	 */
-	private pushStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	private async pushStatus(pushMsg: WorkflowPublicationStatusMessage): Promise<void> {
+		// Relayed before the lookup, so a recipient-lookup failure only drops
+		// the local push, not the relay.
 		void this.publisher
 			.publishCommand({ command: 'display-workflow-publication-status', payload: pushMsg })
 			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
 	}
 
 	/** Displays a publication status relayed by the leader (see {@link pushStatus}). */
 	@OnPubSubEvent('display-workflow-publication-status', { instanceType: 'main' })
-	handleDisplayWorkflowPublicationStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	async handleDisplayWorkflowPublicationStatus(
+		pushMsg: WorkflowPublicationStatusMessage,
+	): Promise<void> {
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
+	}
+
+	/**
+	 * Surfaces abandoned external webhook deregistrations carried on a
+	 * successful result: the publication itself succeeded (local routing has
+	 * stopped), but a third-party subscription may remain. Reports once at
+	 * error level — explicit, since `OperationalError` defaults to `warning`,
+	 * which the error reporter filters from Sentry — and returns the message
+	 * to store on the completed record for diagnostics.
+	 */
+	private surfaceTeardownFailures(
+		teardownFailures: TriggerTeardownFailure[] | undefined,
+	): string | undefined {
+		if (!teardownFailures?.length) return undefined;
+
+		const detail = teardownFailures
+			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
+			.join('; ');
+		const message = `External webhook deregistration failed for: ${detail}`;
+
+		this.errorReporter.error(
+			new OperationalError(message, { level: 'error', cause: teardownFailures[0].error }),
+			{ shouldBeLogged: true },
+		);
+
+		return message;
 	}
 
 	/**
@@ -211,6 +256,7 @@ export class PublicationStatusReporter {
 	private async complete(
 		record: WorkflowPublicationOutbox,
 		triggerStatuses?: TriggerStatusRow[],
+		warningMessage?: string,
 	): Promise<void> {
 		await this.outboxRepository.manager.transaction(async (trx) => {
 			if (triggerStatuses !== undefined) {
@@ -220,7 +266,7 @@ export class PublicationStatusReporter {
 					trx,
 				);
 			}
-			await this.outboxRepository.markCompleted(record.id, trx);
+			await this.outboxRepository.markCompleted(record.id, trx, warningMessage);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);
 	}

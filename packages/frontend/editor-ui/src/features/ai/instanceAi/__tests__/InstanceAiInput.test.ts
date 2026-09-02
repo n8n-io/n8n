@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -57,13 +58,6 @@ function emittedArgument(args: unknown, index: number): unknown {
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
-}));
-
-vi.mock('../instanceAi.store', () => ({
-	useInstanceAiStore: vi.fn(() => ({
-		progressiveMode: false,
-		setProgressiveMode: vi.fn(),
-	})),
 }));
 
 const CustomInsertSuggestionsComponent = defineComponent({
@@ -232,6 +226,7 @@ const renderComponent = createComponentRenderer(InstanceAiInput, {
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
 	});

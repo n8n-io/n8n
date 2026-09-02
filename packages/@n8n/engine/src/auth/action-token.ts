@@ -7,11 +7,10 @@ import {
 } from './shared-secret-token';
 
 /**
- * What an action token authorizes. Scoped rather than blanket: the data plane
- * reports status and nothing else today, so a leaked token buys nothing more
- * than that, and the next surface it reaches for gets its own scope.
+ * What an action token authorizes. Scoped, so a leaked token buys only what the
+ * data plane can already do: report lifecycle events.
  */
-export type ActionScope = 'status:write';
+export type ActionScope = 'lifecycle-events:write';
 
 /**
  * Deliberately the mirror image of the identity token's spec. The swapped
@@ -27,7 +26,7 @@ export const ACTION_TOKEN: SharedSecretTokenSpec = Object.freeze({
 });
 
 const actionClaimsSchema = z.object({
-	scope: z.enum(['status:write']),
+	scope: z.enum(['lifecycle-events:write']),
 	iat: z.number().int(),
 	exp: z.number().int(),
 });

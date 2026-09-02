@@ -116,7 +116,15 @@ export type BuildArgs = Pick<
 	// callback's parameter type, so tsc cannot catch a dropped field here; the
 	// orchestrator test pins it.
 	| 'credentialFixture'
-> & { timeoutMs: number };
+> & {
+	timeoutMs: number;
+	/** Which case this build is, and which repeat of it. Not used by the build
+	 *  itself — it rides to `ensureThread` as sourceContext so the LangSmith
+	 *  trace carries `source_context.evalCase` / `evalIteration`. Without it
+	 *  every build in a traced project is an anonymous conversation. */
+	fileSlug: string;
+	iteration: number;
+};
 
 /** A lane plus the allocator-managed counters and the caller-provided (traced)
  *  build/execute wrappers. `runner` is the underlying Lane (n8n client,
@@ -626,6 +634,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						outcomeExpectations: entry.outcomeExpectations,
 						credentialFixture: entry.credentialFixture,
 						timeoutMs,
+						fileSlug,
+						iteration,
 					});
 				} finally {
 					allocator.release(lane, fileSlug);

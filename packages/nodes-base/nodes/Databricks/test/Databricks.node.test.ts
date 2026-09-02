@@ -1,5 +1,18 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import nock from 'nock';
+import { mockDeep } from 'vitest-mock-extended';
+
+import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
+import { makePermissionErrorLegible } from '../actions/helpers';
+import { getCatalogs, getSchemas } from '../methods/listSearch';
 
 // Mock sleep from @n8n/utils so polling tests run without real delays
 vi.mock('@n8n/utils/sleep', () => ({
@@ -7,6 +20,37 @@ vi.mock('@n8n/utils/sleep', () => ({
 }));
 
 const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
+
+const PERMISSION_MESSAGE = "User does not have USE CATALOG on Catalog 'main'.";
+
+const node: INode = {
+	id: '1',
+	name: 'Databricks',
+	type: 'n8n-nodes-base.databricks',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
+// Mirrors what core's httpRequest throws and authentication.ts wraps: an axios
+// error with the response body under `response.data`
+class AxiosError extends Error {
+	constructor(
+		message: string,
+		readonly response: { status: number; data: unknown },
+	) {
+		super(message);
+	}
+}
+
+const apiErrorFromBody = (status: number, data: unknown) =>
+	new NodeApiError(
+		node,
+		new AxiosError(`Request failed with status code ${status}`, {
+			status,
+			data,
+		}) as unknown as JsonObject,
+	);
 
 describe('Databricks', () => {
 	const credentials = {
@@ -25,6 +69,10 @@ describe('Databricks', () => {
 					wait_timeout: '50s',
 					on_wait_timeout: 'CONTINUE',
 				})
+				// Proves the UA comes from the node helper: the harness only invokes a
+				// function-style `authenticate`, and this credential's is a generic object,
+				// so the credential contributes no headers here.
+				.matchHeader('user-agent', 'n8n_DatabricksNode/1.0')
 				.reply(200, {
 					statement_id: 'stmt-abc123',
 					status: { state: 'SUCCEEDED' },
@@ -142,6 +190,29 @@ describe('Databricks', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['files.workflow.json'],
+		});
+	});
+
+	describe('Files -> Download File', () => {
+		// Guards the one call site whose options must survive the shared request helper
+		// intact: dropping `encoding: 'arraybuffer'` or `returnFullResponse` still
+		// compiles (the helper returns `any`) but breaks at runtime. The reply bytes are
+		// deliberately not valid UTF-8, so a string round-trip would change the output.
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.0/fs/files/Volumes/main/default/my_volume/data/logo.png')
+				.matchHeader('user-agent', 'n8n_DatabricksNode/1.0')
+				.reply(200, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe]), {
+					'content-type': 'application/octet-stream',
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['files-download.workflow.json'],
+			assertBinaryData: true,
 		});
 	});
 
@@ -591,5 +662,194 @@ describe('Databricks', () => {
 			credentials,
 			workflowFiles: ['vector-search.workflow.json'],
 		});
+	});
+
+	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
+		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
+		// instead of the generic "Forbidden - perhaps check your credentials?" —
+		// deleting the makePermissionErrorLegible call in the router must fail this
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.1/unity-catalog/catalogs')
+				.reply(403, { error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE });
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		const harness = new NodeTestHarness();
+		const testData: WorkflowTestData = {
+			description: 'permission-denied.workflow',
+			input: { workflowData: harness.readWorkflowJSON('permission-denied.workflow.json') },
+			output: { nodeData: {}, error: PERMISSION_MESSAGE },
+			credentials,
+		};
+		harness.setupTest(testData, { credentials });
+	});
+});
+
+describe('makePermissionErrorLegible', () => {
+	it('should promote the PERMISSION_DENIED body message and add a remediation description', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: PERMISSION_MESSAGE,
+		});
+		// Without the helper the user sees a generic status-code message instead
+		expect(error.message).not.toBe(PERMISSION_MESSAGE);
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(PERMISSION_MESSAGE);
+		expect(error.description).toBe(
+			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should strip control characters and truncate the promoted message to 500 characters', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: `bad\x00\x1f\x7fmessage${'x'.repeat(600)}`,
+		});
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(`bad message${'x'.repeat(600)}`.slice(0, 500));
+	});
+
+	// encoding: 'arraybuffer' requests (file downloads) get their 403 JSON body
+	// as raw bytes — the helper must parse it before reading error_code
+	it('should parse a Buffer body from arraybuffer requests', () => {
+		const error = apiErrorFromBody(
+			403,
+			Buffer.from(JSON.stringify({ error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE })),
+		);
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(PERMISSION_MESSAGE);
+	});
+
+	it('should leave errors with a non-JSON Buffer body untouched', () => {
+		const error = apiErrorFromBody(403, Buffer.from('not json'));
+		const messageBefore = error.message;
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(messageBefore);
+	});
+
+	it('should leave non-PERMISSION_DENIED errors untouched', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'IP_ACCESS_DENIED',
+			message: 'Source IP is blocked',
+		});
+		const messageBefore = error.message;
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(messageBefore);
+	});
+
+	it.each([
+		['missing', { error_code: 'PERMISSION_DENIED' }],
+		['non-string', { error_code: 'PERMISSION_DENIED', message: 123 }],
+	])('should leave PERMISSION_DENIED errors with a %s body message untouched', (_case, body) => {
+		const error = apiErrorFromBody(403, body);
+		const messageBefore = error.message;
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(messageBefore);
+	});
+});
+
+describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () => {
+	// One dropdown suffices: all five listSearch call sites share the listRequest
+	// wrapper this exercises
+	it('should reject with the legible message from getCatalogs', async () => {
+		const context = mockDeep<ILoadOptionsFunctions>();
+		context.getNodeParameter.mockReturnValue('accessToken');
+		context.getCredentials.mockResolvedValue({ host: HOST });
+		context.helpers.httpRequestWithAuthentication.mockRejectedValue(
+			apiErrorFromBody(403, { error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE }),
+		);
+
+		await expect(getCatalogs.call(context)).rejects.toMatchObject({
+			message: PERMISSION_MESSAGE,
+		});
+	});
+
+	// getSchemas swallows the error into a placeholder row instead of throwing —
+	// the legible message must still be wired into that row
+	it('should append the legible message to the placeholder row from getSchemas', async () => {
+		const context = mockDeep<ILoadOptionsFunctions>();
+		context.getNodeParameter.mockReturnValue('accessToken');
+		context.getCredentials.mockResolvedValue({ host: HOST });
+		context.getCurrentNodeParameter.mockReturnValue('main');
+		context.helpers.httpRequestWithAuthentication.mockRejectedValue(
+			apiErrorFromBody(403, { error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE }),
+		);
+
+		const { results } = await getSchemas.call(context);
+
+		expect(results[0].name).toContain(PERMISSION_MESSAGE);
+	});
+});
+
+describe('Databricks SQL -> Execute Query (FAILED/CANCELED statement)', () => {
+	const setupContext = (status: unknown) => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNode.mockReturnValue(node);
+		context.getNodeParameter.mockImplementation((name) => {
+			if (name === 'warehouseId') return 'warehouse123';
+			if (name === 'query') return 'SELECT * FROM x';
+			return [];
+		});
+		context.getCredentials.mockResolvedValue({ host: HOST });
+		context.helpers.httpRequestWithAuthentication.mockResolvedValue({
+			statement_id: 'stmt-403',
+			status,
+		});
+		return context;
+	};
+
+	it.each(['FAILED', 'CANCELED'])(
+		'should surface the in-band error message of a %s statement',
+		async (state) => {
+			// SQL permission failures arrive on an HTTP 200 with the legible text in
+			// status.error.message — the raw JSON blob must not be the whole story
+			const context = setupContext({
+				state,
+				error: {
+					error_code: 'PERMISSION_DENIED',
+					message: "User does not have SELECT on Table 'x'.",
+				},
+			});
+
+			await expect(executeQuery.call(context, 0)).rejects.toThrow(
+				`Query ${state.toLowerCase()}: User does not have SELECT on Table 'x'.`,
+			);
+		},
+	);
+
+	it('should strip control characters and truncate the in-band error message', async () => {
+		const context = setupContext({
+			state: 'FAILED',
+			error: {
+				error_code: 'PERMISSION_DENIED',
+				message: `bad\x00\x1f\x7fmessage${'x'.repeat(600)}`,
+			},
+		});
+
+		await expect(executeQuery.call(context, 0)).rejects.toThrow(
+			`Query failed: ${`bad message${'x'.repeat(600)}`.slice(0, 500)}`,
+		);
+	});
+
+	it('should fall back to the stringified status when no error message is present', async () => {
+		const context = setupContext({ state: 'FAILED' });
+
+		await expect(executeQuery.call(context, 0)).rejects.toThrow(
+			`Query failed: ${JSON.stringify({ state: 'FAILED' })}`,
+		);
 	});
 });

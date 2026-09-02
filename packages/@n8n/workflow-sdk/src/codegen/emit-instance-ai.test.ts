@@ -257,6 +257,9 @@ describe('emit-instance-ai', () => {
 			'isInformationalIssue',
 			'partitionValidationIssues',
 			'validateWorkflowBuilder',
+			// Code-node source lint — the host re-runs it with the executing runner's
+			// real import policy. Never called from a workflow body.
+			'lintPythonCode',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',

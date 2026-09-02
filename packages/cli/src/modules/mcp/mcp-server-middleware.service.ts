@@ -138,6 +138,8 @@ export class McpServerMiddlewareService {
 		const payload = {
 			mcp_connection_status: 'error',
 			error: UNAUTHORIZED_ERROR_MESSAGE,
+			// Literal, not res.statusCode: tracked before the 401 is written.
+			http_status: 401,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),

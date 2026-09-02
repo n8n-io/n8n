@@ -64,7 +64,6 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
 
 import {
 	attempt,
@@ -74,6 +73,7 @@ import {
 	mergeTree,
 	runGit,
 } from './branch-replay.mjs';
+import { writeGithubOutput } from './github-helpers.mjs';
 import { conflictedFiles, gatherAttribution, buildOutputs } from './sync-conflict-owners.mjs';
 
 // Re-exported so this module stays the single entry point for the master→3.x flow, tests
@@ -313,16 +313,6 @@ export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log
 	git(['commit', '--amend', '--no-edit', '--no-verify']);
 }
 
-// Append key=value lines to $GITHUB_OUTPUT (no-op when running outside Actions).
-export function writeGithubOutput(obj, env = process.env) {
-	const path = env.GITHUB_OUTPUT;
-	if (!path) return;
-	const lines = Object.entries(obj)
-		.map(([k, v]) => `${k}=${v ?? ''}`)
-		.join('\n');
-	appendFileSync(path, lines + '\n', 'utf8');
-}
-
 /**
  * Build the conflict branch: master merged into 3.x with the conflict markers committed as
  * they are — except mechanical files, which are pre-resolved so the resolver only deals
@@ -410,29 +400,6 @@ export function buildConflictBranch({
 	};
 }
 
-// Conflict PRs that were recently closed WITHOUT being merged — closing resolves nothing,
-// so the same conflict is about to come back; the new PR and Slack message call it out.
-export function recentAbandonedConflictPrs(
-	gh,
-	{ label = CONFLICT_LABEL, sinceDays = 14, now = Date.now() } = {},
-) {
-	const out = gh([
-		'pr',
-		'list',
-		'--state',
-		'closed',
-		'--label',
-		label,
-		'--json',
-		'number,url,mergedAt,closedAt',
-		'--limit',
-		'10',
-	]);
-	return JSON.parse(out || '[]').filter(
-		(pr) => !pr.mergedAt && pr.closedAt && now - Date.parse(pr.closedAt) < sinceDays * 86_400_000,
-	);
-}
-
 /**
  * Push the marker-carrying conflict branch and open a draft PR naming both ends of the
  * conflict: the authors of the breaking commits behind the conflicted files, and the master
@@ -469,13 +436,6 @@ export async function openConflictPr({
 		log,
 	});
 
-	let abandoned = [];
-	try {
-		abandoned = recentAbandonedConflictPrs(gh);
-	} catch (error) {
-		log(`warning: could not check for abandoned conflict PRs: ${error.message}`);
-	}
-
 	const { slack, body } = buildOutputs({
 		syncBranch: SYNC_BRANCH,
 		targetBranch: target,
@@ -485,7 +445,6 @@ export async function openConflictPr({
 		masterCommits,
 		preResolved,
 		lockfileDeferred,
-		abandoned,
 	});
 
 	git(['push', '--force', pushUrl, `HEAD:refs/heads/${SYNC_BRANCH}`]);

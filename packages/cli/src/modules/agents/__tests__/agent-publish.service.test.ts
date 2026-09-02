@@ -26,7 +26,6 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -113,7 +112,6 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const taskService = mock<AgentTaskService>();
-	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
 	const telemetry = mock<Telemetry>();
@@ -134,7 +132,6 @@ function makeService() {
 	chatIntegrationService.disconnect.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	taskService.requestReconcile.mockResolvedValue();
-	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -155,7 +152,6 @@ function makeService() {
 		agentTaskRepository,
 		customToolsService,
 		runtimeCacheService,
-		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
 		telemetry,
@@ -174,7 +170,6 @@ function makeService() {
 		runtimeCacheService,
 		chatIntegrationService,
 		taskService,
-		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
 		telemetry,
@@ -511,7 +506,6 @@ describe('AgentPublishService', () => {
 			agentHistoryRepository,
 			agentValidationService,
 			chatIntegrationService,
-			subAgentCleanupService,
 			telemetry,
 		} = makeService();
 		const agent = makeAgent({
@@ -534,10 +528,6 @@ describe('AgentPublishService', () => {
 		await service.unpublishAgent(agentId, projectId, user, 'user');
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).not.toBe('v1');
-		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
-			agentId,
-			projectId,
-		);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
 			agentId,
 			{
@@ -926,7 +916,7 @@ describe('AgentPublishService', () => {
 	});
 
 	it('unpublish conflicts on a stale revision and skips telemetry', async () => {
-		const { service, agentRepository, telemetry, subAgentCleanupService } = makeService();
+		const { service, agentRepository, telemetry } = makeService();
 		const agent = makeAgent({ activeVersionId: 'v1', revision: 3 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
@@ -938,7 +928,6 @@ describe('AgentPublishService', () => {
 		// Losing the fence means the active version is left untouched and no
 		// unpublish side effects or telemetry run.
 		expect(telemetry.track).not.toHaveBeenCalled();
-		expect(subAgentCleanupService.removeSubAgentFromParents).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBe('v1');
 	});
 

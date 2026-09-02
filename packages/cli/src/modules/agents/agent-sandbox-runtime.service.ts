@@ -5,6 +5,7 @@ import {
 	getPromptWorkspaceRoot,
 	type CommandResult,
 	type DaytonaSandboxConfig,
+	type FilesystemLifecycleHook,
 	type N8nSandboxConfig,
 	type SandboxProvider,
 	type WorkspaceFilesystem,
@@ -41,6 +42,8 @@ const LABEL_PRINCIPAL_HASH = 'n8n-agent-principal-hash';
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const WORKSPACE_AUTO_STOP_INTERVAL_MINUTES = 5;
+const WORKSPACE_AUTO_ARCHIVE_INTERVAL_MINUTES = 60;
+const WORKSPACE_AUTO_DELETE_INTERVAL_MINUTES = 24 * 60;
 const KNOWLEDGE_AUTO_STOP_INTERVAL_MINUTES = 15;
 const KNOWLEDGE_AUTO_ARCHIVE_INTERVAL_MINUTES = 60;
 const KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES = 7 * 24 * 60;
@@ -49,6 +52,12 @@ type DaytonaSandboxLifecycle = Pick<
 	DaytonaSandboxConfig,
 	'ephemeral' | 'autoStopInterval' | 'autoArchiveInterval' | 'autoDeleteInterval'
 >;
+
+interface SandboxStartOptions {
+	/** When false, skip the eager network boot — the sandbox self-starts on first I/O. */
+	eagerStart: boolean;
+	onFilesystemInit?: FilesystemLifecycleHook;
+}
 
 export interface AgentSandboxRuntime {
 	provider: SandboxProvider;
@@ -170,6 +179,7 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		agentId: string,
 		principalHash: AgentSandboxPrincipalHash,
+		options?: { onFilesystemInit?: FilesystemLifecycleHook },
 	): Promise<AgentSandboxRuntime> {
 		const provider = this.sandboxSettingsService.getProvider();
 		const sandboxId = buildWorkspaceSandboxId({
@@ -187,8 +197,16 @@ export class AgentSandboxRuntimeService {
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 			`${provider}:workspace:${sandboxId}`,
 			{
-				ephemeral: true,
+				// Persistent scratch space: archived after 1h idle, deleted after 24h.
+				ephemeral: false,
 				autoStopInterval: WORKSPACE_AUTO_STOP_INTERVAL_MINUTES,
+				autoArchiveInterval: WORKSPACE_AUTO_ARCHIVE_INTERVAL_MINUTES,
+				autoDeleteInterval: WORKSPACE_AUTO_DELETE_INTERVAL_MINUTES,
+			},
+			// Workspace sandboxes boot lazily on first filesystem/command use.
+			{
+				eagerStart: false,
+				...(options?.onFilesystemInit ? { onFilesystemInit: options.onFilesystemInit } : {}),
 			},
 		);
 	}
@@ -216,6 +234,8 @@ export class AgentSandboxRuntimeService {
 					? {}
 					: { autoDeleteInterval: KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES }),
 			},
+			// Knowledge sandboxes keep booting eagerly: warmup and mirror sync need a live sandbox.
+			{ eagerStart: true },
 		);
 	}
 
@@ -228,6 +248,7 @@ export class AgentSandboxRuntimeService {
 		labels: Record<string, string>,
 		cacheKey: string,
 		daytonaLifecycle: DaytonaSandboxLifecycle,
+		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
@@ -241,6 +262,7 @@ export class AgentSandboxRuntimeService {
 				labels,
 				cacheKey,
 				daytonaLifecycle,
+				startOptions,
 			).finally(() => {
 				this.pendingSandboxAcquisitions.delete(cacheKey);
 			});
@@ -328,6 +350,7 @@ export class AgentSandboxRuntimeService {
 		labels: Record<string, string>,
 		cacheKey: string,
 		daytonaLifecycle: DaytonaSandboxLifecycle,
+		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -338,7 +361,7 @@ export class AgentSandboxRuntimeService {
 			provider === 'daytona'
 				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, daytonaLifecycle)
 				: await this.resolveN8nSandboxConfig(n8nSandboxId);
-		return await this.startSandbox(config, projectId, agentId, cacheKey);
+		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
 	private async startSandbox(
@@ -346,20 +369,27 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		agentId: string,
 		cacheKey: string,
+		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		const { provider } = config;
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox?._start) {
 			throw new OperationalError('Agent knowledge sandbox does not support lifecycle start');
 		}
-		await sandbox._start();
-		const filesystem = createFilesystem(sandbox);
+		if (startOptions.eagerStart) {
+			await sandbox._start();
+		}
+		const filesystem = createFilesystem(
+			sandbox,
+			startOptions.onFilesystemInit ? { onInit: startOptions.onFilesystemInit } : undefined,
+		);
 		const workspaceRoot = getPromptWorkspaceRoot(provider);
-		this.logger.debug('Acquired agent knowledge sandbox', {
+		this.logger.debug('Acquired agent sandbox', {
 			projectId,
 			agentId,
 			provider,
 			sandboxId: sandbox.id,
+			started: startOptions.eagerStart,
 		});
 		return {
 			provider,
