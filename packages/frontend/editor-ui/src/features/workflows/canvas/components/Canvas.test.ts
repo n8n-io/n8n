@@ -1972,4 +1972,64 @@ describe('Canvas', () => {
 			);
 		});
 	});
+
+	describe('multi-selection telemetry', () => {
+		const MULTI_SELECT_DEBOUNCE = 500;
+
+		it('tracks the settled multi-selection once the debounce elapses', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2, push_ref: expect.any(String) }),
+			);
+		});
+
+		it('reports again when one settled multi-selection is replaced with another of the same size', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasNodeElement({ id: 'node-3' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, removeSelectedElements, findNode } = useVueFlow({ id: canvasId });
+
+			addSelectedNodes([findNode('node-1')!, findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			trackSpy.mockClear();
+
+			// Swap to a different two-node selection — same count, different ids.
+			removeSelectedElements();
+			addSelectedNodes([findNode('node-2')!, findNode('node-3')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
+			);
+		});
+	});
 });

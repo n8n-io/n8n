@@ -671,13 +671,16 @@ watch(selectedNodes, (nodes) => {
 });
 
 // Report multi-selection once it settles, so rubber-band drag doesn't emit per intermediate state.
+// Watch the selection identity (not just the count) so replacing one settled multi-selection with a
+// different one of the same size still reports.
 watchDebounced(
-	() => selectedNodes.value.length,
-	(count) => {
-		if (count >= 2) {
+	() => selectedNodeIds.value.join(','),
+	() => {
+		const nodeCount = selectedNodeIds.value.length;
+		if (nodeCount >= 2) {
 			telemetry.track(TELEMETRY_EVENT.WORKFLOW.MULTIPLE_NODES_SELECTED, {
 				workflow_id: workflowDocumentStore.value.workflowId,
-				node_count: count,
+				node_count: nodeCount,
 				push_ref: rootStore.pushRef,
 			});
 		}

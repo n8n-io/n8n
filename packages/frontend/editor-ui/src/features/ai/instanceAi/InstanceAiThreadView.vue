@@ -880,11 +880,6 @@ function handleSubmit(
 		: attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
-	if (nodeCount > 0) {
-		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
-			node_count: nodeCount,
-		});
-	}
 
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
@@ -894,6 +889,13 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Track message-with-nodes only after a successful send, so failed
+			// sends and retries don't inflate the node-count metric.
+			if (nodeCount > 0) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+					node_count: nodeCount,
+				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
 			// up front loses the selection on a failed send that the user retries.
