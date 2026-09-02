@@ -66,19 +66,20 @@ function itemComparator(a: Item, b: Item) {
 <template>
 	<div>
 		<div v-if="!disabled" :class="$style.selectableContainer">
-			<span
+			<button
 				v-for="item in visibleSelectables"
 				:key="item.name"
+				type="button"
 				:class="$style.selectableCell"
 				:data-test-id="`selectable-list-selectable-${item.name}`"
-				@click="!props.disabled && addToSelectedItems(item.name)"
+				@click="addToSelectedItems(item.name)"
 			>
 				<slot name="addItem" v-bind="item">
 					<div :class="$style.selectableTextSize">
 						{{ t('selectableList.addDefault') }} {{ item.name }}
 					</div>
 				</slot>
-			</span>
+			</button>
 		</div>
 		<div
 			v-for="item in sortedSelectedItems"
@@ -123,7 +124,11 @@ function itemComparator(a: Item, b: Item) {
 	margin-right: var(--spacing--3xs);
 
 	min-width: max-content;
+	border: 0;
 	border-radius: var(--radius);
+	background: transparent;
+	padding: 0;
+	font: inherit;
 	font-size: small;
 	color: var(--color--text--shade-1);
 

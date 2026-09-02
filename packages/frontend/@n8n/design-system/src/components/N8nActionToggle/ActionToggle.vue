@@ -77,12 +77,7 @@ defineExpose({
 </script>
 
 <template>
-	<span
-		class="action-toggle"
-		:class="$style.container"
-		data-test-id="action-toggle"
-		@click.stop.prevent
-	>
+	<span class="action-toggle" :class="$style.container" data-test-id="action-toggle" @click.stop>
 		<N8nDropdownMenu
 			:id="dropdownId"
 			ref="dropdownRef"

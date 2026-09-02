@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, useId } from 'vue';
 
 import type { IconColor } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
@@ -37,6 +37,8 @@ const emit = defineEmits<{
 }>();
 
 const expanded = ref(false);
+const headerId = `info-accordion-header-${useId()}`;
+
 onMounted(() => {
 	props.eventBus.on('expand', () => {
 		expanded.value = true;
@@ -55,16 +57,23 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 
 <template>
 	<div :class="['accordion', $style.container]">
-		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
+		<button
+			:id="headerId"
+			type="button"
+			:class="{ [$style.header]: true, [$style.expanded]: expanded }"
+			:aria-expanded="expanded"
+			@click="toggle"
+		>
 			<N8nIcon v-if="headerIcon" :icon="headerIcon.icon" :color="headerIcon.color" size="small" />
 			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
 				title
 			}}</N8nText>
 			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
-		</div>
-		<div
+		</button>
+		<section
 			v-if="expanded"
 			:class="{ [$style.description]: true, [$style.collapsed]: !expanded }"
+			:aria-labelledby="headerId"
 			@click="onClick"
 		>
 			<!-- Info accordion can display list of items with icons or just a HTML description -->
@@ -72,7 +81,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<N8nTooltip :disabled="!item.tooltip">
 						<template #content>
-							<div v-n8n-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+							<small v-n8n-html="item.tooltip" @click="onTooltipClick(item.id, $event)" />
 						</template>
 						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</N8nTooltip>
@@ -83,7 +92,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 				<span v-n8n-html="description"></span>
 			</N8nText>
 			<slot name="customContent"></slot>
-		</div>
+		</section>
 	</div>
 </template>
 
@@ -95,6 +104,10 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 .header {
 	cursor: pointer;
 	display: flex;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	font: inherit;
 	padding: var(--spacing--sm);
 	align-items: center;
 	justify-content: flex-start;

@@ -60,6 +60,7 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 		<img
 			v-if="type === 'file'"
 			:src="src"
+			alt=""
 			referrerpolicy="no-referrer"
 			:class="$style.nodeIconImage"
 		/>

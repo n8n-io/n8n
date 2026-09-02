@@ -29,6 +29,15 @@ withDefaults(defineProps<EmptyStateProps>(), {
 	calloutTheme: 'info',
 	buttonIcon: undefined,
 });
+
+const emit = defineEmits<{
+	descriptionClick: [event: MouseEvent | KeyboardEvent];
+	'click:button': [event: MouseEvent];
+}>();
+
+function onDescriptionKeydown(event: KeyboardEvent) {
+	emit('descriptionClick', event);
+}
 </script>
 
 <template>
@@ -58,7 +67,11 @@ withDefaults(defineProps<EmptyStateProps>(), {
 			<div
 				v-if="description"
 				:class="$style.description"
-				@click="$emit('descriptionClick', $event)"
+				role="button"
+				tabindex="0"
+				@click="emit('descriptionClick', $event)"
+				@keydown.enter.prevent="onDescriptionKeydown"
+				@keydown.space.prevent="onDescriptionKeydown"
 			>
 				<N8nText color="text-base">
 					<slot name="description">
@@ -78,7 +91,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 				:icon="buttonIcon"
 				size="large"
 				role="button"
-				@click="$emit('click:button', $event)"
+				@click="emit('click:button', $event)"
 			/>
 		</N8nTooltip>
 		<div v-if="$slots.additionalContent" :class="$style['additional-content']">

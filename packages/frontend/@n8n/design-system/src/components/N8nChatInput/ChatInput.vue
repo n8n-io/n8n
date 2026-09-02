@@ -320,7 +320,7 @@ defineExpose({
 <template>
 	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
 		<div v-bind="$attrs" :class="$style.wrapper">
-			<div
+			<section
 				:class="[
 					$style.container,
 					{
@@ -331,6 +331,7 @@ defineExpose({
 					},
 				]"
 				:style="containerStyle()"
+				:aria-label="t('chatInput.composer')"
 				@click.self="handleContainerClick"
 			>
 				<slot name="leading" />
@@ -361,7 +362,7 @@ defineExpose({
 					@input="isAutosizeEnabled ? adjustHeight : undefined"
 					@click="handleFocusableRegionClick"
 				/>
-				<div
+				<menu
 					:class="[
 						$style.bottomActions,
 						{
@@ -369,9 +370,10 @@ defineExpose({
 							[$style.adaptiveActions]: effectiveLayout() === 'adaptive',
 						},
 					]"
+					:aria-label="t('chatInput.actions')"
 					@click="handleFocusableRegionClick"
 				>
-					<div
+					<li
 						v-if="$slots['left-actions'] || $slots.actions || $slots['extra-actions']"
 						:class="$style.leftActions"
 						@click.stop
@@ -381,8 +383,8 @@ defineExpose({
 								<slot name="extra-actions" />
 							</slot>
 						</slot>
-					</div>
-					<div :class="$style.rightActions">
+					</li>
+					<li :class="$style.rightActions">
 						<div v-if="$slots['right-actions']" :class="$style.actionsContent" @click.stop>
 							<slot name="right-actions" />
 						</div>
@@ -397,9 +399,9 @@ defineExpose({
 								@stop="handleStop"
 							/>
 						</div>
-					</div>
-				</div>
-			</div>
+					</li>
+				</menu>
+			</section>
 			<div v-if="$slots.trailing && effectiveLayout() !== 'single-line'" :class="$style.trailing">
 				<slot name="trailing" />
 			</div>
@@ -495,10 +497,12 @@ defineExpose({
 
 .bottomActions {
 	display: flex;
+	padding: 0;
+	list-style: none;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	margin-top: auto;
+	margin: auto 0 0;
 }
 
 .leftActions,

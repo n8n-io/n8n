@@ -195,61 +195,63 @@ defineExpose({ focus, blur, select });
 		</span>
 
 		<!-- Input wrapper (holds border, contains prefix/input/suffix) -->
-		<div :class="inputWrapperClasses" @click="focus">
-			<!-- Prefix slot -->
-			<span v-if="$slots.prefix" :class="$style.prefix">
-				<slot name="prefix" />
-			</span>
+		<div :class="inputWrapperClasses">
+			<label :class="$style.inputLabel">
+				<!-- Prefix slot -->
+				<span v-if="$slots.prefix" :class="$style.prefix">
+					<slot name="prefix" />
+				</span>
 
-			<!-- Input element -->
-			<input
-				v-if="type !== 'textarea'"
-				ref="inputRef"
-				:type="type"
-				:value="modelValue ?? ''"
-				:class="$style.input"
-				:placeholder="placeholder"
-				:disabled="disabled"
-				:readonly="readonly"
-				:required="required"
-				:maxlength="maxlength"
-				:autocomplete="autocomplete"
-				:name="name"
-				v-bind="inputAttrs"
-				@input="onInput"
-				@blur="onBlur"
-				@focus="onFocus"
-				@keydown="onKeydown"
-				@mousedown="onMousedown"
-			/>
+				<!-- Input element -->
+				<input
+					v-if="type !== 'textarea'"
+					ref="inputRef"
+					:type="type"
+					:value="modelValue ?? ''"
+					:class="$style.input"
+					:placeholder="placeholder"
+					:disabled="disabled"
+					:readonly="readonly"
+					:required="required"
+					:maxlength="maxlength"
+					:autocomplete="autocomplete"
+					:name="name"
+					v-bind="inputAttrs"
+					@input="onInput"
+					@blur="onBlur"
+					@focus="onFocus"
+					@keydown="onKeydown"
+					@mousedown="onMousedown"
+				/>
 
-			<!-- Textarea element -->
-			<textarea
-				v-else
-				ref="inputRef"
-				:value="modelValue ?? ''"
-				:class="[$style.input, $style.textarea, { [$style.masked]: masked }]"
-				:placeholder="placeholder"
-				:disabled="disabled"
-				:readonly="readonly"
-				:required="required"
-				:rows="autosize ? undefined : rows"
-				:maxlength="maxlength"
-				:autocomplete="autocomplete"
-				:name="name"
-				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'auto' } : undefined"
-				v-bind="inputAttrs"
-				@input="onInput"
-				@blur="onBlur"
-				@focus="onFocus"
-				@keydown="onKeydown"
-				@mousedown="onMousedown"
-			/>
+				<!-- Textarea element -->
+				<textarea
+					v-else
+					ref="inputRef"
+					:value="modelValue ?? ''"
+					:class="[$style.input, $style.textarea, { [$style.masked]: masked }]"
+					:placeholder="placeholder"
+					:disabled="disabled"
+					:readonly="readonly"
+					:required="required"
+					:rows="autosize ? undefined : rows"
+					:maxlength="maxlength"
+					:autocomplete="autocomplete"
+					:name="name"
+					:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'auto' } : undefined"
+					v-bind="inputAttrs"
+					@input="onInput"
+					@blur="onBlur"
+					@focus="onFocus"
+					@keydown="onKeydown"
+					@mousedown="onMousedown"
+				/>
 
-			<!-- Suffix slot -->
-			<span v-if="$slots.suffix" :class="$style.suffix">
-				<slot name="suffix" />
-			</span>
+				<!-- Suffix slot -->
+				<span v-if="$slots.suffix" :class="$style.suffix">
+					<slot name="suffix" />
+				</span>
+			</label>
 
 			<!-- Clear button -->
 			<button
@@ -323,7 +325,7 @@ defineExpose({ focus, blur, select });
 		inset var(--input--border--shadow);
 
 	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
-	> input {
+	.inputLabel > input {
 		padding: 0 var(--input--padding);
 		margin-inline: calc(var(--input--padding) * -1);
 		border-radius: inherit;
@@ -352,6 +354,19 @@ defineExpose({ focus, blur, select });
 .isTextarea {
 	align-items: flex-start;
 	padding-inline: 0;
+}
+
+.inputLabel {
+	display: flex;
+	align-items: center;
+	align-self: stretch;
+	flex: 1;
+	min-width: 0;
+	gap: var(--input--padding);
+}
+
+.isTextarea .inputLabel {
+	align-items: flex-start;
 }
 
 .disabled {

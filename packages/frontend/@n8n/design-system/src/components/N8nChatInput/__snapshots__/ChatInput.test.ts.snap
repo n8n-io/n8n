@@ -6,7 +6,8 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
   <div
     class="wrapper"
   >
-    <div
+    <section
+      aria-label="Message composer"
       class="container"
       style="min-height: 80px;"
     >
@@ -19,11 +20,12 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
         maxlength="5000"
         placeholder=""
       />
-      <div
+      <menu
+        aria-label="Message actions"
         class="bottomActions"
       >
         <!--v-if-->
-        <div
+        <li
           class="rightActions"
         >
           <!--v-if-->
@@ -78,9 +80,9 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
               </div>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+        </li>
+      </menu>
+    </section>
     <!--v-if-->
   </div>
   
@@ -93,7 +95,8 @@ exports[`N8nChatInput > rendering > should render streaming state without disabl
   <div
     class="wrapper"
   >
-    <div
+    <section
+      aria-label="Message composer"
       class="container"
       style="min-height: 80px;"
     >
@@ -106,11 +109,12 @@ exports[`N8nChatInput > rendering > should render streaming state without disabl
         maxlength="5000"
         placeholder=""
       />
-      <div
+      <menu
+        aria-label="Message actions"
         class="bottomActions"
       >
         <!--v-if-->
-        <div
+        <li
           class="rightActions"
         >
           <!--v-if-->
@@ -163,9 +167,9 @@ exports[`N8nChatInput > rendering > should render streaming state without disabl
               </div>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+        </li>
+      </menu>
+    </section>
     <!--v-if-->
   </div>
   

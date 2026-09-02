@@ -2,12 +2,15 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import type { TabsProps } from './Tabs.types';
+import { useI18n } from '../../composables/useI18n';
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
-import type { TabsProps } from './Tabs.types';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
 import PreviewTag from '../PreviewTag/PreviewTag.vue';
+
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -90,12 +93,24 @@ const scrollRight = () => scroll(50);
 			justified ? $style.justified : '',
 		]"
 	>
-		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+		<button
+			v-if="scrollPosition > 0"
+			type="button"
+			:class="$style.back"
+			:aria-label="t('tabs.scrollLeft')"
+			@click="scrollLeft"
+		>
 			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
-		</div>
-		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+		</button>
+		<button
+			v-if="canScrollRight"
+			type="button"
+			:class="$style.next"
+			:aria-label="t('tabs.scrollRight')"
+			@click="scrollRight"
+		>
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
-		</div>
+		</button>
 		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
@@ -106,7 +121,7 @@ const scrollRight = () => scroll(50);
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
 					<template #content>
-						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+						<small v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
 					<!-- Disabled link/router tabs fall through to the inert plain-tab branch
 					     below so they can't navigate and get consistent disabled styling. -->

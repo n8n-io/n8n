@@ -69,7 +69,7 @@ const onClick = (event: MouseEvent) => {
 </script>
 
 <template>
-	<div :id="id" :class="classes" role="alert" @click="onClick">
+	<aside :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
 			<N8nText size="small" :compact="compact">
 				<slot>
@@ -82,7 +82,7 @@ const onClick = (event: MouseEvent) => {
 				</slot>
 			</N8nText>
 		</div>
-	</div>
+	</aside>
 </template>
 
 <style lang="scss" module>

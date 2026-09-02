@@ -271,7 +271,7 @@ const onCheckboxChange = (index: number) => {
 	<div class="n8n-markdown">
 		<!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
 		<!-- eslint-disable vue/no-v-html -->
-		<div
+		<article
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]"
