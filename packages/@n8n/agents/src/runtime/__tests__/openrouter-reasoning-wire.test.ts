@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { generateText } from 'ai';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,51 +12,57 @@ import { getProviderQuirks } from '../model/provider-quirks';
  * request body, so a wrongly named key is dropped upstream without any error.
  */
 describe('openrouter reasoning effort on the wire', () => {
+	const MODEL_ID = 'openrouter/anthropic/claude-fable-5.1';
+
 	function fakeFetch() {
+		const completion = JSON.stringify({
+			id: 'gen-1',
+			model: 'anthropic/claude-fable-5.1',
+			choices: [
+				{
+					index: 0,
+					message: { role: 'assistant', content: 'ok' },
+					finish_reason: 'stop',
+				},
+			],
+			usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+		});
 		const fetch = vi.fn(
 			async () =>
-				new Response(
-					JSON.stringify({
-						id: 'gen-1',
-						model: 'anthropic/claude-fable-5.1',
-						choices: [
-							{
-								index: 0,
-								message: { role: 'assistant', content: 'ok' },
-								finish_reason: 'stop',
-							},
-						],
-						usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+				await Promise.resolve(
+					new Response(completion, {
+						status: 200,
+						headers: { 'content-type': 'application/json' },
 					}),
-					{ status: 200, headers: { 'content-type': 'application/json' } },
 				),
 		);
-		return fetch as unknown as typeof globalThis.fetch;
+		return fetch;
 	}
 
-	function sentBody(fetch: typeof globalThis.fetch): Record<string, unknown> {
-		const call = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
-			unknown,
-			{ body: string },
-		];
-		return JSON.parse(call[1].body) as Record<string, unknown>;
+	function sentBody(fetch: ReturnType<typeof fakeFetch>): Record<string, unknown> {
+		const [, init] = fetch.mock.calls[0] as unknown as [unknown, { body: string }];
+		try {
+			return JSON.parse(init.body) as Record<string, unknown>;
+		} catch (error) {
+			throw new Error(`request body was not JSON: ${String(error)}`);
+		}
+	}
+
+	function thinkingOptions(reasoningEffort?: 'low'): ProviderOptions | undefined {
+		return getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+			reasoningEffort ? { reasoningEffort } : {},
+			MODEL_ID,
+		) as ProviderOptions | undefined;
 	}
 
 	it("sends the effort as OpenRouter's unified `reasoning.effort` parameter", async () => {
 		const fetch = fakeFetch();
 		const model = createModel(
-			{ id: 'openrouter/anthropic/claude-fable-5.1', apiKey: 'or-test' },
-			fetch,
+			{ id: MODEL_ID, apiKey: 'or-test' },
+			fetch as unknown as typeof globalThis.fetch,
 		);
 
-		await generateText({
-			model,
-			prompt: 'hi',
-			providerOptions: getProviderQuirks('openrouter').thinkingToProviderOptions?.(
-				{ reasoningEffort: 'low' },
-				'openrouter/anthropic/claude-fable-5.1',
-			),
-		});
+		await generateText({ model, prompt: 'hi', providerOptions: thinkingOptions('low') });
 
 		const body = sentBody(fetch);
 		expect(body.reasoning).toEqual({ effort: 'low' });
@@ -66,18 +73,11 @@ describe('openrouter reasoning effort on the wire', () => {
 	it('sends no reasoning parameter when effort is unset', async () => {
 		const fetch = fakeFetch();
 		const model = createModel(
-			{ id: 'openrouter/anthropic/claude-fable-5.1', apiKey: 'or-test' },
-			fetch,
+			{ id: MODEL_ID, apiKey: 'or-test' },
+			fetch as unknown as typeof globalThis.fetch,
 		);
 
-		await generateText({
-			model,
-			prompt: 'hi',
-			providerOptions: getProviderQuirks('openrouter').thinkingToProviderOptions?.(
-				{},
-				'openrouter/anthropic/claude-fable-5.1',
-			),
-		});
+		await generateText({ model, prompt: 'hi', providerOptions: thinkingOptions() });
 
 		expect(sentBody(fetch)).not.toHaveProperty('reasoning');
 	});
