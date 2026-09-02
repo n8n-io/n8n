@@ -20,7 +20,6 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	AI_CATEGORY_MCP_NODES,
 	REQUEST_NODE_FORM_URL,
-	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -42,6 +41,7 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 
@@ -51,7 +51,6 @@ import { useActions } from '../../composables/useActions';
 import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -75,14 +74,6 @@ const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
-const posthogStore = usePostHog();
-const suggestionUrl = computed(() => {
-	if (!isMcpCategory.value) return REQUEST_NODE_FORM_URL;
-
-	const payload = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
-	return typeof payload === 'string' ? payload : undefined;
-});
-
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -425,22 +416,18 @@ registerKeyHook('MainViewArrowLeft', {
 		>
 		</CategorizedItemsRenderer>
 
+		<McpRegistrySuggestionFooter
+			v-if="isMcpCategory"
+			:prompt="i18n.baseText('nodeCreator.noResults.needAnotherCapability')"
+			:action="i18n.baseText('nodeCreator.noResults.suggestTool')"
+			:class="$style.suggestionFooter"
+		/>
 		<SuggestionFooter
-			v-if="showSuggestionFooter"
-			:prompt="
-				i18n.baseText(
-					isMcpCategory
-						? 'nodeCreator.noResults.needAnotherCapability'
-						: 'nodeCreator.noResults.needNativeIntegration',
-				)
-			"
-			:action="
-				i18n.baseText(
-					isMcpCategory ? 'nodeCreator.noResults.suggestTool' : 'nodeCreator.noResults.suggestNode',
-				)
-			"
-			:url="suggestionUrl"
-			:class="[$style.suggestionFooter, { [$style.insetSuggestionFooter]: !isMcpCategory }]"
+			v-else-if="showSuggestionFooter"
+			:prompt="i18n.baseText('nodeCreator.noResults.needNativeIntegration')"
+			:action="i18n.baseText('nodeCreator.noResults.suggestNode')"
+			:url="REQUEST_NODE_FORM_URL"
+			:class="[$style.suggestionFooter, $style.insetSuggestionFooter]"
 		/>
 	</span>
 </template>

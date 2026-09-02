@@ -99,12 +99,12 @@ function renderWith(
 			open: true,
 			items: props.items ?? realisticItems,
 			categories: props.categories ?? ALL_CATEGORIES,
-			suggestionPrompt: 'Need another capability?',
-			suggestionAction: 'Suggest a tool',
-			suggestionUrl: 'https://example.com/suggest',
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			allowWorkflowCreation: props.allowWorkflowCreation,
+		},
+		slots: {
+			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
 		},
 		pinia: createTestingPinia(),
 	});
@@ -119,9 +119,6 @@ function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
 				:open="true"
 				:items="[]"
 				:categories="[]"
-				suggestion-prompt="Need another capability?"
-				suggestion-action="Suggest a tool"
-				suggestion-url="https://example.com/suggest"
 				:detail-item="detailItem"
 				detail-mode="settings"
 			>

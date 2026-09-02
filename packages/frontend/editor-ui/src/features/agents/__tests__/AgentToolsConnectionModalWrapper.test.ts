@@ -27,14 +27,7 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
-const getFeatureFlagPayloadMock = vi.hoisted(() =>
-	vi.fn(() => 'https://example.com/suggest-service'),
-);
 const routerResolveMock = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/new-workflow-id' })));
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ getFeatureFlagPayload: getFeatureFlagPayloadMock }),
-}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
@@ -142,7 +135,14 @@ const ToolsConnectionModalStub = defineComponent({
 		modalAttrs = attrs;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function getItems(): ToolConnectionItem[] {
@@ -180,6 +180,7 @@ const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -276,12 +277,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	}
 
 	it('configures the suggestion footer copy', () => {
-		render();
+		const { getByText } = render();
 
-		expect(modalAttrs['suggestion-prompt']).toBe('Need another capability?');
-		expect(modalAttrs['suggestion-action']).toBe('Suggest a tool');
-		expect(modalAttrs['suggestion-url']).toBe('https://example.com/suggest-service');
-		expect(getFeatureFlagPayloadMock).toHaveBeenCalledWith('config_suggest_service_form_url');
+		expect(getByText('Need another capability?')).toBeInTheDocument();
+		expect(getByText('Suggest a tool')).toBeInTheDocument();
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the

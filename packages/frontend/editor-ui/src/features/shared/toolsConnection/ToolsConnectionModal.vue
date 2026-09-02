@@ -13,7 +13,6 @@ import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
@@ -42,9 +41,6 @@ const props = withDefaults(
 		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
-		suggestionPrompt: string;
-		suggestionAction: string;
-		suggestionUrl?: string;
 	}>(),
 	{
 		open: false,
@@ -395,13 +391,9 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 						</div>
-						<SuggestionFooter
-							v-if="isMcpCategory"
-							:class="$style.suggestionRow"
-							:prompt="suggestionPrompt"
-							:action="suggestionAction"
-							:url="suggestionUrl"
-						/>
+						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+							<slot name="suggestion-footer" />
+						</div>
 					</template>
 					<N8nRecycleScroller
 						v-else
@@ -425,13 +417,9 @@ function handleOpenChange(value: boolean) {
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
-							<SuggestionFooter
-								v-else
-								:class="$style.suggestionRow"
-								:prompt="suggestionPrompt"
-								:action="suggestionAction"
-								:url="suggestionUrl"
-							/>
+							<div v-else :class="$style.suggestionRow">
+								<slot name="suggestion-footer" />
+							</div>
 						</template>
 					</N8nRecycleScroller>
 				</div>

@@ -10,8 +10,7 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import { SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -62,7 +61,6 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
-const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
@@ -83,11 +81,6 @@ const isComputerUseEnabled = computed(
 const isBrowserUseEnabled = computed(
 	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
 );
-const suggestionUrl = computed(() => {
-	const payload = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
-	return typeof payload === 'string' ? payload : undefined;
-});
-
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
 	const value = (data as Record<string, unknown>).connectionId;
@@ -423,9 +416,6 @@ async function handleConnect(item: ToolConnectionItem) {
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
-		:suggestion-prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
-		:suggestion-action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
-		:suggestion-url="suggestionUrl"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"
@@ -435,6 +425,12 @@ async function handleConnect(item: ToolConnectionItem) {
 		@save="handleSave"
 		@disconnect="handleDisconnect"
 	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
+				:action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
+			/>
+		</template>
 		<template #detail-body="{ item }">
 			<template v-if="item.kind === 'service' && activeServiceDefinition">
 				<component

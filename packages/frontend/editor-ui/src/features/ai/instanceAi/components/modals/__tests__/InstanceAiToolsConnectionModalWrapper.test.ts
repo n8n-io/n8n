@@ -12,13 +12,6 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
-const getFeatureFlagPayloadMock = vi.hoisted(() =>
-	vi.fn(() => 'https://example.com/suggest-service'),
-);
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ getFeatureFlagPayload: getFeatureFlagPayloadMock }),
-}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -209,21 +202,20 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: [
-		'open',
-		'detailItem',
-		'detailMode',
-		'items',
-		'suggestionPrompt',
-		'suggestionAction',
-		'suggestionUrl',
-	],
+	props: ['open', 'detailItem', 'detailMode', 'items'],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args): void {
@@ -260,6 +252,7 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -296,12 +289,10 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('configures the suggestion footer copy', () => {
-		renderComponent();
+		const { getByText } = renderComponent();
 
-		expect(modalProps.suggestionPrompt).toBe('instanceAi.connections.modal.suggestion.prompt');
-		expect(modalProps.suggestionAction).toBe('instanceAi.connections.modal.suggestion.action');
-		expect(modalProps.suggestionUrl).toBe('https://example.com/suggest-service');
-		expect(getFeatureFlagPayloadMock).toHaveBeenCalledWith('config_suggest_service_form_url');
+		expect(getByText('instanceAi.connections.modal.suggestion.prompt')).toBeInTheDocument();
+		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
 
 	it('keeps the modal open after saving settings opened from the tools list', async () => {
