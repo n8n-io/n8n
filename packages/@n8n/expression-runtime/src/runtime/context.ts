@@ -15,6 +15,7 @@ import { jmesPath } from './jmespath';
 import { assign, defineProperty } from './intrinsics';
 import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './removed-globals';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
@@ -50,50 +51,14 @@ const INPUT_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
-/**
- * Creates a check that returns true when a name is a valid IANA timezone.
- * The check remembers valid names, because luxon builds a new
- * `Intl.DateTimeFormat` for each validation.
- */
-function createTimezoneCheck(): (timezone: string) => boolean {
-	const validTimezones = new Set<string>();
-	return (timezone) => {
-		if (!validTimezones.has(timezone) && IANAZone.isValidZone(timezone)) {
-			validTimezones.add(timezone);
-		}
-		return validTimezones.has(timezone);
-	};
-}
-
-const isValidTimezone = createTimezoneCheck();
-
-/**
- * Defines a property whose value is created on the first read and then kept.
- * A write replaces the value, as with a plain data property.
- */
-function defineLazyValue(
-	target: Record<string, unknown>,
-	key: string,
-	create: () => unknown,
-): void {
-	let value: unknown;
-	let isCreated = false;
-	defineProperty(target, key, {
-		get: () => {
-			if (!isCreated) {
-				value = create();
-				isCreated = true;
-			}
-			return value;
-		},
-		set: (newValue: unknown) => {
-			value = newValue;
-			isCreated = true;
-		},
-		enumerable: true,
-		configurable: true,
-	});
-}
+const REMOVED_GLOBAL_THROWERS: ReadonlyArray<[string, () => never]> = (
+	Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<keyof typeof REMOVED_EXPRESSION_GLOBALS>
+).map((name) => [
+	name,
+	() => {
+		throw new ExpressionError(removedGlobalMessage(name));
+	},
+]);
 
 // ============================================================================
 // Build Context Function
@@ -400,23 +365,14 @@ export function buildContext(
 		return callHost({ type: 'evaluateExpression', expression, itemIndex });
 	};
 
-	// $getPairedItem — walks the paired-item ancestry chain back to the
-	// named upstream node. The host validates the structural shape of
-	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
-	// schema; bad input surfaces as a schema-parse error sentinel rather
-	// than a host throw, keeping the protocol surface tight.
-	target.$getPairedItem = (
-		destinationNodeName: string,
-		incomingSourceData: unknown,
-		initialPairedItem: unknown,
-	) => {
-		return callHost({
-			type: 'getPairedItem',
-			destinationNodeName,
-			incomingSourceData,
-			initialPairedItem,
-		});
-	};
+	// Globals removed in a major version. Bound to a thrower so a call fails
+	// with a message naming the replacement, instead of resolving to undefined
+	// and feeding that into the workflow's data. Thrown in-isolate: the message
+	// is static, so no host round-trip is needed. The throwers are created once
+	// at module scope; buildContext runs per evaluation and only assigns them.
+	for (const [name, thrower] of REMOVED_GLOBAL_THROWERS) {
+		target[name] = thrower;
+	}
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
