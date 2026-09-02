@@ -65,7 +65,7 @@ export class AiService {
 		return await client.applySuggestion(payload, { id: user.id });
 	}
 
-	/** @deprecated Serves `POST /ai/ask-ai`. Removed in v3. */
+	/** @deprecated Serves `POST /rest/ai/ask-ai`. Removed in v3. */
 	async askAi(payload: AiAskRequestDto, user: IUser) {
 		const client = await this.getClient();
 		return await client.askAi(payload, { id: user.id });
