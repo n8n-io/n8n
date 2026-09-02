@@ -645,28 +645,65 @@ const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 		'The file has edits that were never built, so it was left untouched. Build it with build-workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
 };
 
+/**
+ * The source and the concurrency token come from two reads. A save landing between
+ * them would bind older source to a newer checksum, and a later build could then
+ * overwrite that save. Re-read the checksum after generating and retry once when
+ * it moved; give up loudly instead of binding a torn snapshot.
+ */
+async function readConsistentWorkflowSnapshot(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<{ json: WorkflowJSON; saved: { versionId: string; checksum?: string } }> {
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const before = await context.workflowService.get(workflowId);
+		const json = await context.workflowService.getAsWorkflowJSON(workflowId);
+		const after = await context.workflowService.get(workflowId);
+		if (before.checksum === after.checksum && before.versionId === after.versionId) {
+			return { json, saved: { versionId: after.versionId, checksum: after.checksum } };
+		}
+	}
+	throw new Error(
+		`Workflow ${workflowId} changed while its source was being read. Call get-as-code again.`,
+	);
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	try {
-		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+	const toCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
 		// and carrying the ids through is what keeps node identity stable.
 		const body = generateWorkflowCode({ workflow: json, includeNodeIds: true });
 		// The file must build as-is, so it carries the import line codegen omits.
 		const importLine = buildImports(body);
-		const code = importLine ? `${importLine}\n\n${body}` : body;
-		const nodeCount = json.nodes?.length ?? 0;
-		const nodes = indexSourceNodes(json, code);
-		const base = { workflowId: input.workflowId, name: json.name, nodeCount, nodes };
-
+		return importLine ? `${importLine}\n\n${body}` : body;
+	};
+	try {
 		// Historical reads are not bound to a file and must not advance the
 		// optimistic-concurrency lock; they stay inline.
-		if (input.versionId) return { ...base, code };
+		if (input.versionId) {
+			const json = await context.workflowService.getAsWorkflowJSON(
+				input.workflowId,
+				input.versionId,
+			);
+			const code = toCode(json);
+			return {
+				workflowId: input.workflowId,
+				name: json.name,
+				nodeCount: json.nodes?.length ?? 0,
+				nodes: indexSourceNodes(json, code),
+				code,
+			};
+		}
 
-		const saved = await context.workflowService.get(input.workflowId);
+		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
+		const code = toCode(json);
+		const nodeCount = json.nodes?.length ?? 0;
+		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
+
 		// Without a workspace there is no file to write; the code stays inline and the
 		// conversation's view of the workflow still moves to the current version.
 		if (!context.workspace) {
@@ -674,7 +711,7 @@ async function handleGetAsCode(
 				versionId: saved.versionId,
 				checksum: saved.checksum,
 			});
-			return { ...base, code };
+			return { ...base, nodes: indexSourceNodes(json, code), code };
 		}
 
 		const materialized = await materializeWorkflowSource(context, {
@@ -692,6 +729,8 @@ async function handleGetAsCode(
 			...base,
 			filePath: materialized.filePath,
 			status: materialized.status,
+			// Index what is on disk: for `current` and `conflict` that is not the regenerated code.
+			nodes: indexSourceNodes(json, materialized.content),
 			note: SOURCE_FILE_NOTES[materialized.status],
 			...(materialized.status !== 'conflict' && code.length <= INLINE_SOURCE_LIMIT_CHARS
 				? { code }

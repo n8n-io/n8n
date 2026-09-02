@@ -3,6 +3,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	findWorkflowSourceFileBindingsForWorkflow,
 	hashWorkflowSource,
+	normalizeWorkflowSourceFilePath,
 	saveWorkflowSourceFileBinding,
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
@@ -25,7 +26,7 @@ export type MaterializedSourceStatus =
 	| 'refreshed'
 	/** The file already matches the saved workflow; nothing was written. */
 	| 'current'
-	/** The file has edits that were never built. It was left alone. */
+	/** The file has edits that were never built, or is not one this thread wrote. It was left alone. */
 	| 'conflict';
 
 export interface SourceNodeIndexEntry {
@@ -39,18 +40,26 @@ export interface MaterializedWorkflowSource {
 	filePath: string;
 	status: MaterializedSourceStatus;
 	sourceHash: string;
+	/** The source now on disk at filePath — what a node index must describe. */
+	content: string;
 }
 
-/** File name derived from the workflow name; falls back to the id for empty names. */
-export function workflowSourceFileSlug(name: string, workflowId: string): string {
-	const slug = name
+function slugify(value: string, maxLength: number): string {
+	return value
 		.toLowerCase()
 		.normalize('NFKD')
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '')
-		.slice(0, 60)
+		.slice(0, maxLength)
 		.replace(/-+$/g, '');
-	return slug.length > 0 ? slug : workflowId.toLowerCase();
+}
+
+/** File name derived from the workflow name; falls back to the id for empty names. */
+export function workflowSourceFileSlug(name: string, workflowId: string): string {
+	const slug = slugify(name, 60);
+	if (slug.length > 0) return slug;
+	const idSlug = slugify(workflowId, 60);
+	return idSlug.length > 0 ? idSlug : 'workflow';
 }
 
 /**
@@ -60,14 +69,28 @@ export function workflowSourceFileSlug(name: string, workflowId: string): string
  */
 export function indexSourceNodes(json: WorkflowJSON, code: string): SourceNodeIndexEntry[] {
 	const lines = code.split('\n');
-	const findLine = (needle: string): number => {
-		const index = lines.findIndex((line) => line.includes(needle));
-		return index + 1;
+	const findLine = (needle: string): number => lines.findIndex((line) => line.includes(needle)) + 1;
+	// A node's own `name:` sits at the node head, shallower than any `name:` key inside
+	// its parameters, so among several matches the least indented one is the node.
+	const findShallowestLine = (needle: string): number => {
+		let best = 0;
+		let bestIndent = Number.POSITIVE_INFINITY;
+		lines.forEach((line, index) => {
+			if (!line.includes(needle)) return;
+			const indent = line.length - line.trimStart().length;
+			if (indent < bestIndent) {
+				bestIndent = indent;
+				best = index + 1;
+			}
+		});
+		return best;
 	};
 	return (json.nodes ?? []).map((node) => {
 		const name = node.name ?? '';
+		// Codegen emits an id only for the first node that claims it, so an id match is
+		// unique; duplicates fall back to the (unique) node name.
 		const byId = node.id ? findLine(`id: '${escapeSingleQuotes(node.id)}'`) : 0;
-		const line = byId > 0 ? byId : findLine(`name: '${escapeSingleQuotes(name)}'`);
+		const line = byId > 0 ? byId : findShallowestLine(`name: '${escapeSingleQuotes(name)}'`);
 		return { name, type: node.type, line };
 	});
 }
@@ -87,11 +110,12 @@ async function resolveSourceFilePath(
 	const slug = workflowSourceFileSlug(name, workflowId);
 	const candidate = `${WORKFLOW_SOURCE_DIR}/${slug}.workflow.ts`;
 	const taken = await findWorkflowSourceFileBindingsForWorkflow(context, undefined, candidate);
-	if (taken.length === 0) return { filePath: candidate };
 	// Another workflow already owns this path; suffix with the id so both stay distinct.
-	return {
-		filePath: `${WORKFLOW_SOURCE_DIR}/${slug}-${workflowId.toLowerCase().slice(0, 6)}.workflow.ts`,
-	};
+	const filePath =
+		taken.length === 0
+			? candidate
+			: `${WORKFLOW_SOURCE_DIR}/${slug}-${slugify(workflowId, 8) || 'x'}.workflow.ts`;
+	return { filePath: normalizeWorkflowSourceFilePath(filePath) };
 }
 
 /**
@@ -129,17 +153,17 @@ export async function materializeWorkflowSource(
 	};
 
 	const existing = await readWorkspaceFile(workspace, filePath, fileOptions);
-	if (existing !== null && binding?.sourceHash !== undefined) {
+	if (existing !== null) {
 		const existingHash = hashWorkflowSource(existing);
-		if (existingHash !== binding.sourceHash) {
-			return { filePath, status: 'conflict', sourceHash: existingHash };
+		// A file this thread never recorded a hash for is someone else's work in
+		// progress — an agent-written source, or a binding whose metadata was lost.
+		if (binding?.sourceHash === undefined || existingHash !== binding.sourceHash) {
+			return { filePath, status: 'conflict', sourceHash: existingHash, content: existing };
 		}
-		const savedUnchanged =
-			saved.checksum !== undefined
-				? binding.workflowChecksum === saved.checksum
-				: binding.workflowVersionId === saved.versionId;
-		if (savedUnchanged) {
-			return { filePath, status: 'current', sourceHash: existingHash };
+		// The file is exactly what this thread last wrote. It is current only if the
+		// regenerated source is byte-identical; a codegen change also warrants a rewrite.
+		if (existingHash === sourceHash) {
+			return { filePath, status: 'current', sourceHash, content: existing };
 		}
 	}
 
@@ -154,7 +178,8 @@ export async function materializeWorkflowSource(
 
 	return {
 		filePath,
-		status: existing !== null && binding !== undefined ? 'refreshed' : 'written',
+		status: existing !== null ? 'refreshed' : 'written',
 		sourceHash,
+		content: code,
 	};
 }

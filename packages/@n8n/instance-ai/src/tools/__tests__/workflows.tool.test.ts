@@ -1083,6 +1083,124 @@ describe('workflows tool', () => {
 			expect(files.get(filePath)).toBe(edited);
 		});
 
+		it('regenerates the file when the saved workflow changed and the file has no local edits', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v2',
+				checksum: 'c2',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-02',
+				nodes: [],
+				connections: {},
+			});
+			const regenerated = GENERATED.replace("name: 'Start'", "name: 'Start (renamed)'");
+			vi.mocked(generateWorkflowCode).mockReturnValue(regenerated);
+
+			const result = await executeTool<{ status: string; nodes: Array<{ line: number }> }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.status).toBe('refreshed');
+			expect(files.get('src/workflows/test-wf.workflow.ts')).toContain(regenerated);
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toMatchObject({ workflowChecksum: 'c2', workflowVersionId: 'v2' });
+		});
+
+		it('indexes the file on disk, not the regenerated code, when it reports a conflict', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+			const filePath = 'src/workflows/test-wf.workflow.ts';
+			// Two lines prepended: the node head moves from line 6 to line 8 on disk.
+			files.set(filePath, `// note\n// note\n${files.get(filePath)}`);
+
+			const result = await executeTool<{ status: string; nodes: Array<{ line: number }> }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.status).toBe('conflict');
+			expect(result.nodes[0].line).toBe(8);
+		});
+
+		it('retries when the workflow changes between the source read and the checksum read', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const stable = { versionId: 'v2', checksum: 'c2' };
+			const detail = (v: { versionId: string; checksum: string }) => ({
+				id: 'wf1',
+				name: 'Test WF',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+				...v,
+			});
+			(context.workflowService.get as Mock)
+				.mockResolvedValueOnce(detail({ versionId: 'v1', checksum: 'c1' }))
+				.mockResolvedValueOnce(detail(stable))
+				.mockResolvedValue(detail(stable));
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ status: string; error?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.error).toBeUndefined();
+			expect(result.status).toBe('written');
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toMatchObject({ workflowChecksum: 'c2' });
+		});
+
+		it('fails instead of binding a torn snapshot when the workflow keeps changing', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			let n = 0;
+			(context.workflowService.get as Mock).mockImplementation(async () => {
+				n += 1;
+				return await Promise.resolve({
+					id: 'wf1',
+					name: 'Test WF',
+					versionId: `v${n}`,
+					checksum: `c${n}`,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+					nodes: [],
+					connections: {},
+				});
+			});
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ error?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.error).toContain('changed while its source was being read');
+			expect(files.size).toBe(0);
+		});
+
 		it('keeps historical reads inline and unbound', async () => {
 			const files = new Map<string, string>();
 			const context = createWorkspaceContext(files);

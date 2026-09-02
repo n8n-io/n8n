@@ -14,7 +14,7 @@ export const FULL_PAYLOAD_TOO_LARGE_NOTE =
 export const FULL_PAYLOAD_LIMIT_BYTES = 100_000;
 
 export function exceedsFullPayloadLimit(detail: unknown): boolean {
-	return JSON.stringify(detail).length > FULL_PAYLOAD_LIMIT_BYTES;
+	return Buffer.byteLength(JSON.stringify(detail), 'utf8') > FULL_PAYLOAD_LIMIT_BYTES;
 }
 
 // Below this, summarizing saves too little to be worth a possible second full fetch.

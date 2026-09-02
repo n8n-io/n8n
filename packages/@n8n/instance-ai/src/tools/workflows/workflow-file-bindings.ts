@@ -116,6 +116,10 @@ export async function saveWorkflowSourceFileBinding(
 		filePath: normalizeWorkflowSourceFilePath(binding.filePath),
 	};
 
+	// Always keep the run-local copy: a later thread-metadata read can fail, and the
+	// binding must still be found so an existing file is never treated as unbound.
+	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
+
 	if (context.threadMemory && context.threadId) {
 		try {
 			const updatedThread = await patchThread(context.threadMemory, {
@@ -135,7 +139,6 @@ export async function saveWorkflowSourceFileBinding(
 		}
 	}
 
-	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 	return normalizedBinding;
 }
 

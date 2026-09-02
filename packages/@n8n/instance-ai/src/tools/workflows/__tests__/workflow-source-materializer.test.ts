@@ -48,6 +48,11 @@ describe('workflowSourceFileSlug', () => {
 	it('falls back to the workflow id when the name has no usable characters', () => {
 		expect(workflowSourceFileSlug('🚀🚀', 'AbC123')).toBe('abc123');
 	});
+
+	it('sanitizes a path-shaped id used as the fallback', () => {
+		expect(workflowSourceFileSlug('', '../etc/passwd')).toBe('etc-passwd');
+		expect(workflowSourceFileSlug('', '///')).toBe('workflow');
+	});
 });
 
 describe('indexSourceNodes', () => {
@@ -88,6 +93,38 @@ describe('indexSourceNodes', () => {
 			{ name: 'Second', type: 'n8n-nodes-base.if', line: 6 },
 		]);
 	});
+
+	it('falls back to the shallowest name match when the id is not emitted', () => {
+		const json: WorkflowJSON = {
+			name: 'W',
+			nodes: [
+				{
+					id: 'dup',
+					name: 'carrier',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		// A parameter key named like the node appears deeper than the node head.
+		const code = [
+			'const other = node({',
+			"  config: { id: 'x', name: 'Other', parameters: {",
+			"      assignments: [{ name: 'carrier', value: 'dhl' }]",
+			'  } }',
+			'});',
+			'const carrier = node({',
+			"  config: { name: 'carrier' }",
+			'});',
+		].join('\n');
+
+		expect(indexSourceNodes(json, code)).toEqual([
+			{ name: 'carrier', type: 'n8n-nodes-base.set', line: 7 },
+		]);
+	});
 });
 
 describe('materializeWorkflowSource', () => {
@@ -106,6 +143,7 @@ describe('materializeWorkflowSource', () => {
 			filePath: 'src/workflows/order-dispatch.workflow.ts',
 			status: 'written',
 			sourceHash: hashWorkflowSource(CODE_V1),
+			content: CODE_V1,
 		});
 		expect(files.get('src/workflows/order-dispatch.workflow.ts')).toBe(CODE_V1);
 		await expect(
@@ -227,6 +265,46 @@ describe('materializeWorkflowSource', () => {
 			saved: { versionId: 'v1' },
 		});
 
-		expect(result.filePath).toBe('src/workflows/w-abcdef.workflow.ts');
+		expect(result.filePath).toBe('src/workflows/w-abcdefgh.workflow.ts');
+	});
+
+	it('does not overwrite a file at the slug path that this thread never bound', async () => {
+		const files = new Map<string, string>([
+			['src/workflows/w.workflow.ts', '// agent-written draft'],
+		]);
+		const context = createContext(files);
+
+		const result = await materializeWorkflowSource(context, {
+			workflowId: 'wf1',
+			name: 'W',
+			code: CODE_V1,
+			saved: { versionId: 'v1', checksum: 'c1' },
+		});
+
+		expect(result.status).toBe('conflict');
+		expect(result.content).toBe('// agent-written draft');
+		expect(files.get('src/workflows/w.workflow.ts')).toBe('// agent-written draft');
+	});
+
+	it('rewrites an unedited file when codegen output changed for the same saved workflow', async () => {
+		const files = new Map<string, string>();
+		const context = createContext(files);
+		const saved = { versionId: 'v1', checksum: 'c1' };
+		await materializeWorkflowSource(context, {
+			workflowId: 'wf1',
+			name: 'W',
+			code: CODE_V1,
+			saved,
+		});
+
+		const result = await materializeWorkflowSource(context, {
+			workflowId: 'wf1',
+			name: 'W',
+			code: CODE_V2,
+			saved,
+		});
+
+		expect(result.status).toBe('refreshed');
+		expect(files.get('src/workflows/w.workflow.ts')).toBe(CODE_V2);
 	});
 });

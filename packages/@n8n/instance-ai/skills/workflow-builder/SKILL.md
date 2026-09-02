@@ -276,10 +276,12 @@ Use the current turn's higher-priority instructions to decide who verifies:
   successful `build-workflow`. The checkpoint task owns verification.
 
 Build/save success is not workflow-quality evidence. When this turn is
-responsible for verification or repair, inspect the persisted workflow
-(`workflows(action="get-as-code", workflowId)`, which reports whether the bound
-workspace source file is still current and refreshes it when the saved workflow
-changed) before reporting a verdict, judging the saved graph against the user's
+responsible for verification or repair, inspect the persisted workflow before
+reporting a verdict: read the bound workspace source file you just built, or call
+`workflows(action="get-as-code", workflowId)` when the workflow may have changed
+outside this conversation (it reports whether the file is still current, refreshes
+it when the saved workflow changed, and returns `conflict` when the file holds
+unbuilt edits — build or discard those first). Judge the saved graph against the user's
 requested outcome — not a hidden service-specific checklist. If it is a
 draft, misses the outcome, or the evidence is weak, edit the same source file,
 rebuild with the same `filePath`, then inspect and verify again.
