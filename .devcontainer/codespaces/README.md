@@ -76,6 +76,10 @@ If the Slack API fails, the turn still completes through the n8n resume URL.
 The worker does not export its dequeue or Slack credentials to OpenCode.
 Interactive Claude Code sessions unset all worker-only credentials before they start.
 
+An idle worker starts with a 3-second poll interval. After each empty dequeue,
+it doubles the interval and limits it to 30 seconds. Work resets the interval
+to 3 seconds. Queued turns run without a delay between them.
+
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a
 required secret or `$GITHUB_USER` is missing.
