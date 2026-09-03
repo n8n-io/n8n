@@ -10,6 +10,7 @@ import {
 
 import type {
 	StepError,
+	StepResume,
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
@@ -52,6 +53,9 @@ export class WorkflowStepExecution {
 	/** Lifted out of `wait` so the sweep can index it; `suspendStep` writes both. */
 	@Column({ name: 'wait_till', type: 'timestamptz', precision: 3, nullable: true })
 	waitTill!: Date | null;
+
+	@Column('jsonb', { nullable: true })
+	resume!: StepResume | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

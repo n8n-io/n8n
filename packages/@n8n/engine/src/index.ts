@@ -89,6 +89,7 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	StepResume,
 	StepSlots,
 	StepStatus,
 	StepStore,
