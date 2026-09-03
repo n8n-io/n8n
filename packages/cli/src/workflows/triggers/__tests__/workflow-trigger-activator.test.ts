@@ -482,8 +482,16 @@ describe('WorkflowTriggerActivator', () => {
 
 		expect(deactivateSettled).toBe(true);
 		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledTimes(2);
-		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 'trigger-a');
-		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 'trigger-b');
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+			'wf-1',
+			'trigger-a',
+			expect.any(Function),
+		);
+		expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+			'wf-1',
+			'trigger-b',
+			expect.any(Function),
+		);
 	});
 
 	test('waits for both concurrent deactivation phases before surfacing a phase error', async () => {
@@ -893,7 +901,11 @@ describe('WorkflowTriggerActivator', () => {
 				abort,
 			);
 
-			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 't');
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+				'wf-1',
+				't',
+				expect.any(Function),
+			);
 		});
 	});
 
