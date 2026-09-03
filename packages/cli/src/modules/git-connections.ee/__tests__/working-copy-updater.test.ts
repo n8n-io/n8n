@@ -12,7 +12,7 @@ import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-con
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import type { BranchState } from '../manifest-merge';
+import type { BranchState } from '../branch-placement';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
 
@@ -194,7 +194,7 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('readBranchState', () => {
-		it('reads the entries and who uses a dependency from the directories', async () => {
+		it('reads one entry for each entity from the directories', async () => {
 			await writeTree(exportFolder, {
 				// The manifest states nothing: the files carry all of it.
 				'manifest.json': manifestFile(makeManifest()),
@@ -208,10 +208,16 @@ describe('WorkingCopyUpdater', () => {
 			expect(branch.projects).toEqual([alpha]);
 			expect(branch.workflows).toEqual([wf('w1')]);
 			expect(branch.credentials).toEqual([cred('c1')]);
-			expect(branch.requirements?.credentials).toEqual([credReq('c1', ['w1'])]);
-			expect(branch.requirements?.nodeTypes).toEqual([
-				{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] },
-			]);
+		});
+
+		it('rejects a workflow file that fails validation, before the push writes anything', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ name: 'no id' }),
+			});
+
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'Package holds a workflow file that failed validation at "projects/alpha/workflows/w1"',
+			);
 		});
 
 		it('keeps the variable ids the manifest knows, because the files omit them', async () => {
@@ -237,7 +243,6 @@ describe('WorkingCopyUpdater', () => {
 			const branch = await updater.readBranchState(exportFolder);
 
 			expect(branch.workflows).toEqual([wf('w1')]);
-			expect(branch.requirements).toBeUndefined();
 		});
 	});
 
@@ -308,7 +313,8 @@ describe('WorkingCopyUpdater', () => {
 			);
 			const manifest = await updater.readManifest(exportFolder);
 			expect(manifest.folders).toEqual([folder('f1', 'Sales', 'sales')]);
-			expect(manifest.workflows).toEqual([inFolder('w2', 'sales'), inFolder('w1', 'sales')]);
+			// Sorted by directory, because the manifest restates the tree.
+			expect(manifest.workflows).toEqual([inFolder('w1', 'sales'), inFolder('w2', 'sales')]);
 		});
 
 		it('keeps both folders where the branch has them when their names swap', async () => {
@@ -418,6 +424,11 @@ describe('WorkingCopyUpdater', () => {
 				credentialFile('c1'),
 			);
 			expect(merged.credentials).toEqual([cred('c1')]);
+			// The manifest states the tree the push produced, requirements included.
+			expect(merged.requirements?.credentials).toEqual([credReq('c1', ['w1'])]);
+			expect(merged.requirements?.nodeTypes).toEqual([
+				{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] },
+			]);
 		});
 	});
 

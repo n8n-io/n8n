@@ -562,6 +562,18 @@ describe('GitConnectionsService (credential state machine)', () => {
 			name,
 			target: `projects/alpha/workflows/${id}`,
 		});
+		// The push reads the tree it wrote, so a fixture must be a readable export.
+		const workflowFile = (id: string) =>
+			JSON.stringify({
+				id,
+				name: id.toUpperCase(),
+				nodes: [],
+				connections: {},
+				versionId: `version-${id}`,
+				parentFolderId: null,
+				isPublished: false,
+				isArchived: false,
+			});
 
 		beforeEach(async () => {
 			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-selective-'));
@@ -622,7 +634,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await mkdir(repositoryFolder, { recursive: true });
 			mockExport({
 				'manifest.json': buildManifest({ workflows: [wf('w1')], projects: [alpha] }),
-				'projects/alpha/workflows/w1/workflow.json': '{"id":"w1"}',
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
 			const result = await selectiveService.pushSelection(

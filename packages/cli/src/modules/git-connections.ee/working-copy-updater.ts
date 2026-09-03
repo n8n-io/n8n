@@ -9,14 +9,22 @@ import { z } from 'zod';
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
+import type { PackageContents } from '@/modules/n8n-packages/engine/package-contents';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerPlacement, mergeManifests, pinPath, staleTargets } from './manifest-merge';
-import type { BranchState, Placement } from './manifest-merge';
+import {
+	assertNoCollisions,
+	containerPlacement,
+	orphanedDependencies,
+	pinPath,
+	staleTargets,
+	variableIds,
+} from './branch-placement';
+import type { BranchState, Placement } from './branch-placement';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -82,28 +90,27 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * What the branch holds, read from the directories on disk: one entry for
-	 * each entity, and who uses which dependency. A manifest that drifted from
-	 * the tree cannot steer the push.
+	 * What the branch holds, read from the directories on disk. A manifest that
+	 * drifted from the tree cannot steer the push.
 	 *
-	 * The one thing still taken from the manifest is the variable ids, which
-	 * the package format leaves out of a variable file on purpose. They are
-	 * needed only to restate them in the manifest this push writes, so they go
-	 * away with that file.
+	 * Only the entries are read: the push places and removes directories, and
+	 * what a workflow needs is derived once, from the tree the push leaves
+	 * behind. The one thing still taken from the manifest is the variable ids,
+	 * which the package format leaves out of a variable file on purpose.
 	 */
 	async readBranchState(exportFolder: string): Promise<BranchState> {
 		// The same reader a pull uses, so a branch this push accepts is a branch
 		// an import can read: it rejects symbolic links and applies the package
 		// limits.
-		const contents = await this.packageContents.read(
+		const entries = await this.packageContents.readEntries(
 			new DirectoryPackageReader(exportFolder, this.packageImportConfig),
 		);
 		const manifest = await this.readManifestIfPresent(exportFolder);
 
 		const idByTarget = new Map((manifest?.variables ?? []).map((v) => [v.target, v.id]));
 		return {
-			...contents,
-			variables: contents.variables?.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
+			...entries,
+			variables: entries.variables.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
 		};
 	}
 
@@ -142,11 +149,16 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Merge the staging export into `exportFolder`: remove the directories the
-	 * selection replaces or drops, then overlay the staging files at the place
-	 * the branch keeps for them. `manifest.json` is rewritten last, to restate
-	 * the resulting directories. `staging` is the manifest the exporter just
-	 * wrote into `stagingFolder`.
+	 * Apply the staging export to `exportFolder`: remove the directories the
+	 * selection takes over or drops, then overlay the staging files at the
+	 * place the branch keeps for them. `staging` is the manifest the exporter
+	 * just wrote into `stagingFolder`.
+	 *
+	 * The result is then read back from the tree. A dependency that no
+	 * workflow uses any more leaves with its last user, and `manifest.json` is
+	 * written from what the directories now hold, so that file states the tree
+	 * instead of predicting it. The cost is one more walk; the alternative was
+	 * a second, hand-written model of the same merge.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -155,22 +167,75 @@ export class WorkingCopyUpdater {
 		existing: BranchState,
 		deletedWorkflowIds: Set<string>,
 	): Promise<PackageManifest> {
-		const merged = mergeManifests(existing, staging, deletedWorkflowIds);
+		const placement = containerPlacement(existing, staging);
+		// Before anything is written: a copy over a colliding directory cannot be
+		// found afterwards, because the tree then holds only the winner.
+		assertNoCollisions(existing, staging, placement, deletedWorkflowIds);
 
-		for (const target of staleTargets(existing, merged, staging)) {
+		for (const target of staleTargets(existing, staging, placement, deletedWorkflowIds)) {
 			await rm(await this.resolveContained(exportFolder, target), {
 				recursive: true,
 				force: true,
 			});
 		}
-		await this.overlayDirectory(stagingFolder, exportFolder, containerPlacement(existing, staging));
+		await this.overlayDirectory(stagingFolder, exportFolder, placement);
 
+		const contents = await this.packageContents.read(
+			new DirectoryPackageReader(exportFolder, this.packageImportConfig),
+		);
+		const orphaned = orphanedDependencies(contents);
+		for (const entry of orphaned) {
+			await rm(await this.resolveContained(exportFolder, entry.target), {
+				recursive: true,
+				force: true,
+			});
+		}
+
+		const manifest = this.stateManifest(
+			contents,
+			orphaned,
+			staging,
+			variableIds(existing, staging, placement),
+		);
 		await writeFile(
 			await this.resolveContained(exportFolder, MANIFEST_FILE),
-			JSON.stringify(merged, null, '\t'),
+			JSON.stringify(manifest, null, '\t'),
 		);
 
-		return merged;
+		return manifest;
+	}
+
+	/**
+	 * The manifest for the tree the push has produced: its entries and its
+	 * requirements, minus the dependencies just removed, with the metadata of
+	 * the export that caused it.
+	 */
+	private stateManifest(
+		contents: PackageContents,
+		orphaned: ManifestEntry[],
+		staging: PackageManifest,
+		ids: Map<string, string>,
+	): PackageManifest {
+		const removed = new Set(orphaned.map((entry) => entry.target));
+		const keep = (entries: ManifestEntry[]) => {
+			const kept = entries.filter((entry) => !removed.has(entry.target));
+			return kept.length > 0 ? kept : undefined;
+		};
+
+		return packageManifestSchema.parse({
+			packageFormatVersion: staging.packageFormatVersion,
+			exportedAt: staging.exportedAt,
+			sourceN8nVersion: staging.sourceN8nVersion,
+			sourceId: staging.sourceId,
+			projects: keep(contents.projects),
+			folders: keep(contents.folders),
+			workflows: keep(contents.workflows),
+			credentials: keep(contents.credentials),
+			dataTables: keep(contents.dataTables),
+			variables: keep(contents.variables.map((v) => ({ ...v, id: ids.get(v.target) ?? v.id }))),
+			tags: keep(contents.tags),
+			...(contents.requirements ? { requirements: contents.requirements } : {}),
+		});
 	}
 
 	/** Entities the push added to or removed from the branch, not the export size. */

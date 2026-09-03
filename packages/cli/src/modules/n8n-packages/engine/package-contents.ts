@@ -103,7 +103,24 @@ export class PackageContentsReader {
 		private readonly variableRequirements: VariableRequirementsExtractor,
 	) {}
 
+	/** What the package holds, and what its workflows need. */
 	async read(reader: PackageReader): Promise<PackageContents> {
+		const { entries, usages } = await this.scan(reader, true);
+		return { ...entries, ...this.foldRequirements(usages, entries) };
+	}
+
+	/**
+	 * One entry for each entity, without opening what a workflow needs. A
+	 * caller that only places or removes directories does not read a node.
+	 */
+	async readEntries(reader: PackageReader): Promise<PackageEntries> {
+		return (await this.scan(reader, false)).entries;
+	}
+
+	private async scan(
+		reader: PackageReader,
+		withUsage: boolean,
+	): Promise<{ entries: PackageEntries; usages: WorkflowUsage[] }> {
 		const entries: PackageEntries = {
 			projects: [],
 			folders: [],
@@ -127,9 +144,9 @@ export class PackageContentsReader {
 			});
 
 			if (kind === 'workflows') {
-				const { entry, usage } = this.readWorkflow(raw, target);
+				const { entry, usage } = this.readWorkflow(raw, target, withUsage);
 				entries.workflows.push(entry);
-				usages.push(usage);
+				if (usage) usages.push(usage);
 				return;
 			}
 
@@ -150,19 +167,23 @@ export class PackageContentsReader {
 		for (const kind of ENTITY_KINDS) entries[kind].sort(byTarget);
 		usages.sort(byTarget);
 
-		return { ...entries, ...this.foldRequirements(usages, entries) };
+		return { entries, usages };
 	}
 
 	/**
-	 * The entry and the usage of one workflow. The file itself is not kept: a
-	 * branch holds every workflow of the instance, and only what they need has
-	 * to survive the pass.
+	 * The entry of one workflow, and what it needs when the caller asked for
+	 * it. The file itself is not kept: a branch holds every workflow of the
+	 * instance, and only what they need has to survive the pass.
+	 *
+	 * The file is validated either way, so a branch this cannot read is
+	 * rejected before anything acts on the entries.
 	 */
 	private readWorkflow(
 		raw: unknown,
 		target: string,
-	): { entry: ManifestEntry; usage: WorkflowUsage } {
-		let entity: WorkflowEntity;
+		withUsage: boolean,
+	): { entry: ManifestEntry; usage?: WorkflowUsage } {
+		let entity: WorkflowEntity | undefined;
 		let tagIds: string[];
 		let name: string;
 		let id: string;
@@ -171,18 +192,23 @@ export class PackageContentsReader {
 			const wire = serializedWorkflowSchema.parse(raw);
 			({ id, name } = wire);
 			tagIds = wire.tagIds ?? [];
-			entity = Object.assign(new WorkflowEntity(), this.workflowSerializer.deserialize(wire), {
-				// `deserialize` drops the id, because an import gives a fresh one.
-				id: wire.id,
-			});
+			if (withUsage) {
+				entity = Object.assign(new WorkflowEntity(), this.workflowSerializer.deserialize(wire), {
+					// `deserialize` drops the id, because an import gives a fresh one.
+					id: wire.id,
+				});
+			}
 		} catch (cause) {
 			throw new UserError(`Package holds a workflow file that failed validation at "${target}".`, {
 				cause,
 			});
 		}
 
+		const entry = { id, name, target };
+		if (!entity) return { entry };
+
 		return {
-			entry: { id, name, target },
+			entry,
 			usage: {
 				id,
 				target,
