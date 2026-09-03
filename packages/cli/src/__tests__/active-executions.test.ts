@@ -587,6 +587,23 @@ describe('ActiveExecutions', () => {
 			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
 		});
 
+		test('Should not cancel a running execution with no workflow execution attached yet', async () => {
+			const attachedExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(attachedExecutionId, workflowExecution);
+			const attachedPostExecutePromise =
+				activeExecutions.getPostExecutePromise(attachedExecutionId);
+
+			const unattachedExecutionId = await addExecutionWithStatus('running');
+
+			expect(activeExecutions.cancelRunningExecutions()).toEqual([attachedExecutionId]);
+
+			await expect(attachedPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(activeExecutions.has(unattachedExecutionId)).toBe(true);
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([unattachedExecutionId]);
+		});
+
 		test('Should list and cancel nothing when no execution is running', async () => {
 			const waitingExecutionId = await addExecutionWithStatus('waiting');
 

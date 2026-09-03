@@ -421,6 +421,28 @@ describe('ScalingService', () => {
 				},
 			);
 
+			it('should cancel within the shutdown window when the window is short', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				// The budget is 800ms, which the force-exit timer at 1s must not beat.
+				globalConfig.generic.gracefulShutdownTimeout = 1;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockReturnValue(['exec-1']);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(800);
+
+				expect(hasStopped).toBe(true);
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+
+				await stopped;
+			});
+
 			it('should not drain or warn when the shutdown window is zero', async () => {
 				vi.useFakeTimers();
 				// @ts-expect-error readonly property

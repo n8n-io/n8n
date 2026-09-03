@@ -33,6 +33,8 @@ import type {
 } from './scaling.types';
 import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
 
+const DRAIN_POLL_INTERVAL_MS = 500;
+
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
@@ -203,7 +205,15 @@ export class ScalingService {
 		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {
 			if (count++ % 4 === 0) this.logExecutionsToDrain();
 
-			await sleep(500);
+			// A flat tick can overshoot the budget and leave no time to cancel before
+			// the force-exit timer fires, so cap the last sleep at what is left of it.
+			// While queued jobs drain, the wait is unbounded and the cadence stands.
+			const remainingBudgetMs = drainTimeoutMs - (Date.now() - start);
+			const sleepMs = hasQueuedJobsToDrain()
+				? DRAIN_POLL_INTERVAL_MS
+				: Math.max(1, Math.min(DRAIN_POLL_INTERVAL_MS, remainingBudgetMs));
+
+			await sleep(sleepMs);
 		}
 
 		// Cancel the stragglers instead of leaving them to run. The task runner shuts
