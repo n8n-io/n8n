@@ -1,9 +1,8 @@
-name: 'Docker: Cross-architecture Turbo cache canary'
+name: 'Docker: Shared app build architecture canary'
 
-# Proves that one architecture can restore package build outputs from the
-# other architecture without sharing the deployment closure or Docker layers.
-# Each target runner installs and deploys its own dependencies before it builds
-# and executes all published image variants.
+# Builds the application once on AMD64. Native AMD64 and ARM64 jobs then use
+# that same deployment closure as their Docker build context. This prevents
+# two application builds from writing competing Turbo cache entries.
 
 on:
   workflow_dispatch:
@@ -15,232 +14,64 @@ permissions:
   contents: read
 
 concurrency:
-  group: cross-arch-turbo-cache-${{ github.event.pull_request.number || github.ref }}
+  group: shared-app-build-canary-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   NODE_VERSION: '26.7.0'
 
 jobs:
-  prime-cache:
-    name: Prime Turbo cache (${{ matrix.source }})
+  build-app:
+    name: Install and build application
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - direction: amd64-to-arm64
-            source: amd64
-            runner: blacksmith-8vcpu-ubuntu-2204
-          - direction: arm64-to-amd64
-            source: arm64
-            runner: blacksmith-8vcpu-ubuntu-2204-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: blacksmith-8vcpu-ubuntu-2204
     timeout-minutes: 45
-    env:
-      CROSS_ARCH_CACHE_CANARY: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.direction }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
-      - name: Add the canary value to the Turbo cache key
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const path = 'turbo.json';
-          const config = fs.readFileSync(path, 'utf8');
-          const before = '"globalEnv": ["CI", "BUILD_WITH_COVERAGE"]';
-          const after = '"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "CROSS_ARCH_CACHE_CANARY"]';
-
-          if (!config.includes(before)) {
-            throw new Error('turbo.json no longer has the expected globalEnv value');
-          }
-
-          fs.writeFileSync(path, config.replace(before, after));
-          NODE
-
-      - name: Install and prime the Turbo cache
+      - name: Install and build
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ env.NODE_VERSION }}
           build-command: pnpm build:n8n
-          turbo-use-relative-cache-path: 'true'
 
-      - name: Verify the prime build used a fresh cache key
-        env:
-          EXPECTED_CACHE_STATUS: MISS
-        shell: bash
+      # Keep pnpm symlinks and executable modes intact across the job boundary.
+      - name: Package the shared Docker context
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-
-          const directory = '.turbo/runs';
-          const reports = fs
-            .readdirSync(directory)
-            .map((name) => ({ name, mtime: fs.statSync(path.join(directory, name)).mtimeMs }))
-            .sort((left, right) => right.mtime - left.mtime);
-          if (reports.length === 0) throw new Error('Turbo did not write a run summary');
-
-          const report = JSON.parse(fs.readFileSync(path.join(directory, reports[0].name), 'utf8'));
-          const tasks = report.tasks.filter((task) => task.task === 'build');
-          if (tasks.length === 0) throw new Error('The Turbo summary contains no build tasks');
-
-          const unexpected = tasks.filter((task) => task.cache.status !== process.env.EXPECTED_CACHE_STATUS);
-          const counts = Object.groupBy(tasks, (task) => `${task.cache.status}:${task.cache.source ?? 'NONE'}`);
-          const summary = Object.entries(counts)
-            .map(([key, entries]) => `${key}=${entries.length}`)
-            .join(', ');
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Prime cache\n\n${summary}\n`);
-
-          if (unexpected.length > 0) {
-            console.error(`Expected every build task to miss. Unexpected tasks: ${unexpected.map((task) => task.taskId).join(', ')}`);
-            process.exit(1);
-          }
-          NODE
-
-      - name: Upload the Turbo prime report
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: turbo-prime-${{ matrix.direction }}
-          path: .turbo/runs/*.json
-          if-no-files-found: warn
-          retention-days: 7
-
-  consume-cache:
-    name: Consume Turbo cache (${{ matrix.target }})
-    needs: prime-cache
-    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - direction: amd64-to-arm64
-            target: arm64
-            runner: blacksmith-8vcpu-ubuntu-2204-arm
-          - direction: arm64-to-amd64
-            target: amd64
-            runner: blacksmith-8vcpu-ubuntu-2204
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    env:
-      CROSS_ARCH_CACHE_CANARY: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.direction }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Add the canary value to the Turbo cache key
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const path = 'turbo.json';
-          const config = fs.readFileSync(path, 'utf8');
-          const before = '"globalEnv": ["CI", "BUILD_WITH_COVERAGE"]';
-          const after = '"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "CROSS_ARCH_CACHE_CANARY"]';
-
-          if (!config.includes(before)) {
-            throw new Error('turbo.json no longer has the expected globalEnv value');
-          }
-
-          fs.writeFileSync(path, config.replace(before, after));
-          NODE
-
-      - name: Install and consume the Turbo cache
-        uses: ./.github/actions/setup-nodejs
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          build-command: pnpm build:n8n
-          turbo-use-relative-cache-path: 'true'
-
-      - name: Verify cross-architecture remote cache hits
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-
-          const directory = '.turbo/runs';
-          const reports = fs
-            .readdirSync(directory)
-            .map((name) => ({ name, mtime: fs.statSync(path.join(directory, name)).mtimeMs }))
-            .sort((left, right) => right.mtime - left.mtime);
-          if (reports.length === 0) throw new Error('Turbo did not write a run summary');
-
-          const report = JSON.parse(fs.readFileSync(path.join(directory, reports[0].name), 'utf8'));
-          const tasks = report.tasks.filter((task) => task.task === 'build');
-          if (tasks.length === 0) throw new Error('The Turbo summary contains no build tasks');
-
-          const nonRemoteHits = tasks.filter(
-            (task) => task.cache.status !== 'HIT' || task.cache.source !== 'REMOTE',
-          );
-          const remoteHitCount = tasks.length - nonRemoteHits.length;
-          const counts = Object.groupBy(tasks, (task) => `${task.cache.status}:${task.cache.source ?? 'NONE'}`);
-          const summary = Object.entries(counts)
-            .map(([key, entries]) => `${key}=${entries.length}`)
-            .join(', ');
-          fs.appendFileSync(
-            process.env.GITHUB_STEP_SUMMARY,
-            `### Consume cache\n\n${summary}\n\nCross-architecture remote hits: ${remoteHitCount}/${tasks.length}\n`,
-          );
-
-          if (remoteHitCount === 0) {
-            console.error('No build task used the cross-architecture remote cache');
-            process.exit(1);
-          }
-          console.log(`${remoteHitCount}/${tasks.length} build tasks used the cross-architecture remote cache`);
-          NODE
-
-      - name: Upload the Turbo consumer report
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: turbo-consumer-${{ matrix.direction }}
-          path: .turbo/runs/*.json
-          if-no-files-found: error
-          retention-days: 7
-
-      # Keep symlinks and executable modes intact across the job boundary.
-      - name: Package the architecture-specific Docker context
-        run: |
-          tar -cf "$RUNNER_TEMP/build-context-${{ matrix.target }}.tar" \
+          tar -cf "$RUNNER_TEMP/build-context.tar" \
             compiled \
             dist/task-runner-javascript
 
-      - name: Upload the architecture-specific Docker context
+      - name: Upload the shared Docker context
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: build-context-${{ matrix.target }}
-          path: ${{ runner.temp }}/build-context-${{ matrix.target }}.tar
+          name: shared-build-context
+          path: ${{ runner.temp }}/build-context.tar
           if-no-files-found: error
           retention-days: 1
 
   build-images:
     name: Build and verify images (${{ matrix.target }})
-    needs: consume-cache
+    needs: build-app
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: arm64
-            runner: blacksmith-8vcpu-ubuntu-2204-arm
           - target: amd64
             runner: blacksmith-8vcpu-ubuntu-2204
+          - target: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     env:
       TARGET_PLATFORM: linux/${{ matrix.target }}
-      N8N_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}
-      N8N_PC_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}-pc
-      RUNNERS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}
-      RUNNERS_DISTROLESS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}-distroless
+      N8N_IMAGE: n8nio/n8n:shared-build-canary-${{ matrix.target }}
+      N8N_PC_IMAGE: n8nio/n8n:shared-build-canary-${{ matrix.target }}-pc
+      RUNNERS_IMAGE: n8nio/runners:shared-build-canary-${{ matrix.target }}
+      RUNNERS_DISTROLESS_IMAGE: n8nio/runners:shared-build-canary-${{ matrix.target }}-distroless
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -252,17 +83,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           build-command: ''
 
-      - name: Download the architecture-specific Docker context
+      - name: Download the shared Docker context
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: build-context-${{ matrix.target }}
+          name: shared-build-context
           path: ${{ runner.temp }}/build-context
 
-      - name: Restore the architecture-specific Docker context
-        run: tar -xf "$RUNNER_TEMP/build-context/build-context-${{ matrix.target }}.tar"
+      - name: Restore the shared Docker context
+        run: tar -xf "$RUNNER_TEMP/build-context/build-context.tar"
 
-      # Use a fresh builder. Docker caching must not hide a bad native build in
-      # a canary that is testing the host-side Turbo cache.
+      # Use a fresh builder. Docker caching must not hide a bad native build.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
@@ -308,9 +138,8 @@ jobs:
             docker run --rm --entrypoint node "$image" -e \
               "require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm'); require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3')"
 
-            # The published package expects its postinstall to set the executable
-            # bit. Run this compatibility check as root so it tests the binary,
-            # not the production closure's existing file-mode behavior.
+            # The package expects its postinstall to set the executable bit.
+            # Run as root so this check tests binary compatibility only.
             docker run --rm --user root --entrypoint sh "$image" -c '
               set -- $(find /usr/local/lib/node_modules/n8n -type f -path "*/agent-browser/bin/agent-browser.js")
               if [ "$#" -eq 0 ]; then
@@ -349,3 +178,14 @@ jobs:
               exit 1
             fi
           done
+
+  verify:
+    name: Verify architecture fan-out
+    needs: build-images
+    runs-on: ubuntu-slim
+    steps:
+      - name: Report success
+        run: |
+          echo '### Shared application build canary' >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo 'The AMD64 and ARM64 image builds passed all runtime checks.' >> "$GITHUB_STEP_SUMMARY"

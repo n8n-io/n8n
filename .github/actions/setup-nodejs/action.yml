@@ -30,11 +30,6 @@ inputs:
     description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
     required: false
     default: 'pnpm-lock.yaml'
-  turbo-use-relative-cache-path:
-    description: 'Use relative Turbo archive paths so cache versions can match across runners with different temporary directories.'
-    required: false
-    default: 'false'
-
 runs:
   using: 'composite'
   steps:
@@ -295,7 +290,6 @@ runs:
       uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7 # v2.5.1
       with:
         server-port: 0
-        use-relative-cache-path: ${{ inputs.turbo-use-relative-cache-path }}
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
