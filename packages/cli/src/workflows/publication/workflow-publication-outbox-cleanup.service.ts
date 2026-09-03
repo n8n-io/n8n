@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 
@@ -10,17 +10,16 @@ import { EventService } from '@/events/event.service';
 import type { PublicationOperationResult } from '@/events/maps/workflow-publication-metrics.event-map';
 
 /**
- * Periodically deletes terminal workflow publication outbox records on the leader
- * so the table doesn't grow unbounded (one terminal row per publish/unpublish, plus
- * one per active workflow on every leader startup). Terminal rows have no functional
- * readers - they're a short-lived diagnostic trail - so `completed` rows are pruned
- * quickly while `failed`/`partial_success` rows (which carry an error message) are
- * kept longer. Active records are never touched.
+ * Deletes terminal workflow publication outbox records so the table doesn't grow
+ * unbounded (one terminal row per publish/unpublish, plus one per active workflow
+ * on every leader startup). Terminal rows have no functional readers - they're a
+ * short-lived diagnostic trail - so `completed` rows are pruned quickly while
+ * `failed`/`partial_success` rows (which carry an error message) are kept longer.
+ * Active records are never touched. The periodic cadence lives on the
+ * `publication-outbox-cleanup` system task.
  */
 @Service()
 export class WorkflowPublicationOutboxCleanupService {
-	private cleanupInterval: NodeJS.Timeout | undefined;
-
 	private isShuttingDown = false;
 
 	private readonly logger: Logger;
@@ -38,41 +37,20 @@ export class WorkflowPublicationOutboxCleanupService {
 
 	init() {
 		if (!this.instanceSettings.isLeader) return;
-
-		this.startCleanup();
+		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 
 		// Run an initial pass at startup rather than waiting a full interval: a restart
 		// enqueues a terminal row per active workflow, so a backlog is likely waiting.
-		if (this.cleanupInterval) void this.cleanup();
-	}
-
-	@OnLeaderTakeover()
-	startCleanup() {
-		if (!this.workflowsConfig.useWorkflowPublicationService) return;
-		if (this.isShuttingDown || this.cleanupInterval) return;
-
-		const intervalSeconds = this.workflowsConfig.publicationOutboxCleanupIntervalSeconds;
-		this.cleanupInterval = setInterval(
-			async () => await this.cleanup(),
-			intervalSeconds * Time.seconds.toMilliseconds,
-		);
-
-		this.logger.debug(`Outbox cleanup scheduled every ${intervalSeconds}s`);
-	}
-
-	@OnLeaderStepdown()
-	stopCleanup() {
-		clearInterval(this.cleanupInterval);
-		this.cleanupInterval = undefined;
+		void this.cleanup();
 	}
 
 	@OnShutdown()
 	shutdown() {
 		this.isShuttingDown = true;
-		this.stopCleanup();
 	}
 
-	private async cleanup() {
+	/** One bounded cleanup pass over terminal outbox rows. Never throws: a failed pass is logged. */
+	async cleanup() {
 		const completedRetentionSeconds =
 			this.workflowsConfig.publicationOutboxCompletedRetentionHours * Time.hours.toSeconds;
 		const failedRetentionSeconds =

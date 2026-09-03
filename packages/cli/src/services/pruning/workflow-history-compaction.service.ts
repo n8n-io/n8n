@@ -19,8 +19,10 @@ export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
+ * The periodic cadence lives on the `workflow-history-compaction-optimize` and
+ * `workflow-history-compaction-trim` system tasks.
  *
- * Every hour (`optimizingTimeWindowHours` / 2):
+ * Every `optimizingTimeWindowHours` / 2 hours:
  *
  * 1. Find workflows with new versions in the time window determined
  *    by `optimizingMinimumAgeHours` and `optimizingTimeWindowHours`
@@ -47,13 +49,11 @@ export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number
  */
 @Service()
 export class WorkflowHistoryCompactionService {
-	private optimizingInterval: NodeJS.Timeout | undefined;
-	private trimmingInterval: NodeJS.Timeout | undefined;
-
-	private isShuttingDown = false;
-
 	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
+
+	/** Aborts the detached startup passes, which no system task run owns. */
+	private startupAbort = new AbortController();
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
@@ -70,88 +70,54 @@ export class WorkflowHistoryCompactionService {
 	init() {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
-		if (this.instanceSettings.isLeader) this.startCompacting();
+		if (this.instanceSettings.isLeader) this.runStartupCompaction();
 	}
 
 	get isEnabled() {
 		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
 	}
 
-	@OnLeaderTakeover()
-	startCompacting() {
-		const { connectionState } = this.dbConnection;
-		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
-
-		this.logger.debug('Started workflow histories optimization and trimming', { ...this.config });
-
-		this.scheduleOptimization();
-		this.scheduleTrimming();
-	}
-
-	@OnLeaderStepdown()
-	stopCompacting() {
-		if (!this.optimizingInterval && !this.trimmingInterval) return;
-
-		clearInterval(this.optimizingInterval);
-		clearInterval(this.trimmingInterval);
-
-		this.logger.debug('Stopped workflow histories compaction and trimming');
-	}
-
-	private scheduleTrimming() {
-		if (
-			this.globalConfig.workflowHistory.pruneTime !== -1 &&
-			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
+	/** Whether trimming may run at all: a prune horizon shorter than the trim window makes trimming pointless. */
+	get isTrimmingEnabled() {
+		return (
+			this.globalConfig.workflowHistory.pruneTime === -1 ||
+			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds >=
 				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
-		) {
-			this.logger.debug('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
-			return;
-		}
-
-		// This is written this way as it needs to account for leader changes and in particular
-		// the same instance being re-elected leader, so just starting a 1 day interval is unlikely
-		// to ever trigger in queue mode/multi-main
-		const trimOnceADay = async () => {
-			if (new Date().getHours() === 3) {
-				await this.trimLongRunningHistories();
-			}
-		};
-
-		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
-
-		if (!this.config.skipOnStartUp) {
-			if (this.config.trimOnStartUp) {
-				void this.trimLongRunningHistories();
-			} else {
-				void trimOnceADay();
-			}
-		}
-
-		this.logger.debug('Trimming histories once a day at 3am server time');
-	}
-
-	private scheduleOptimization() {
-		// We run optimization twice as often as the window for which we optimize workflows
-		// This allows redundancy for covering first and last versions in the window, accounts
-		// for restarts and other small gaps, e.g. caused by the next internal needing to wait
-		// for computing resources if the instance is busy
-		const rateMs = (this.config.optimizingTimeWindowHours / 2) * Time.hours.toMilliseconds;
-		this.optimizingInterval = setInterval(async () => await this.optimizeHistories(), rateMs);
-
-		this.logger.debug(
-			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
-
-		if (!this.config.skipOnStartUp) void this.optimizeHistories();
 	}
 
+	// One-shot catch-up pass on startup and on leader change, so a gap between
+	// leaders is compacted without waiting a full task interval.
+	@OnLeaderTakeover()
+	runStartupCompaction() {
+		const { connectionState } = this.dbConnection;
+		if (!this.isEnabled || !connectionState.migrated) return;
+		if (this.config.skipOnStartUp) return;
+
+		this.startupAbort = new AbortController();
+		const { signal } = this.startupAbort;
+
+		void this.optimizeHistories(signal);
+
+		if (!this.isTrimmingEnabled) return;
+		if (this.config.trimOnStartUp || new Date().getHours() === 3) {
+			void this.trimLongRunningHistories(signal);
+		}
+	}
+
+	// A startup pass runs detached, so losing leadership has to reach it here.
+	// The task-driven passes get their signal from the system task runner.
+	@OnLeaderStepdown()
 	@OnShutdown()
-	shutdown(): void {
-		this.isShuttingDown = true;
-		this.stopCompacting();
+	stopStartupCompaction(): void {
+		this.startupAbort.abort();
 	}
 
-	private async trimLongRunningHistories(): Promise<void> {
+	/**
+	 * One trimming pass over long-running histories. A pass overlapping a running
+	 * one is skipped, and an aborted `signal` stops the pass at the next workflow.
+	 */
+	async trimLongRunningHistories(signal: AbortSignal): Promise<void> {
 		if (this.isTrimmingHistories) {
 			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
@@ -180,6 +146,7 @@ export class WorkflowHistoryCompactionService {
 					),
 				],
 				[],
+				signal,
 				{ workflowSizeScore: true },
 			);
 		} finally {
@@ -187,7 +154,11 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
-	private async optimizeHistories(): Promise<void> {
+	/**
+	 * One optimization pass over recent histories. A pass overlapping a running
+	 * one is skipped, and an aborted `signal` stops the pass at the next workflow.
+	 */
+	async optimizeHistories(signal: AbortSignal): Promise<void> {
 		if (this.isOptimizingHistories) {
 			this.logger.debug('Skipping recent optimization as there is already a running iteration');
 			return;
@@ -206,6 +177,7 @@ export class WorkflowHistoryCompactionService {
 				endDelta,
 				[RULES.mergeAdditiveChanges],
 				[SKIP_RULES.makeSkipTimeDifference(20 * 60 * 1000)],
+				signal,
 			);
 		} finally {
 			this.isOptimizingHistories = false;
@@ -217,6 +189,7 @@ export class WorkflowHistoryCompactionService {
 		endDeltaMs: number,
 		rules: DiffRule[],
 		skipRules: DiffRule[],
+		signal: AbortSignal,
 		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
@@ -242,10 +215,19 @@ export class WorkflowHistoryCompactionService {
 		);
 
 		let batchSum = 0;
+		let workflowsProcessed = 0;
 		let totalVersionsSeen = 0;
 		let totalVersionsDeleted = 0;
 		let errorCount = 0;
 		for (const [index, workflowId] of workflowIds.entries()) {
+			if (signal.aborted) {
+				this.logger.debug(
+					`Stopping workflow history compaction after ${index} of ${workflowIds.length} workflows, the pass was aborted`,
+				);
+				break;
+			}
+			workflowsProcessed += 1;
+
 			try {
 				const { seen, deleted } = await this.workflowHistoryRepository.pruneHistory(
 					workflowId,
@@ -269,7 +251,7 @@ export class WorkflowHistoryCompactionService {
 				});
 
 				// Sleep after error to back off
-				await sleep(this.config.batchDelayMs);
+				await this.waitBetweenBatches(signal);
 			}
 
 			if (batchSum > this.config.batchSize) {
@@ -279,14 +261,14 @@ export class WorkflowHistoryCompactionService {
 				this.logger.debug(
 					`Compacted ${index} of ${workflowIds.length} workflows with versions between ${startIso} and ${endIso}`,
 				);
-				await sleep(this.config.batchDelayMs);
+				await this.waitBetweenBatches(signal);
 				batchSum = 0;
 			}
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
 		const payload = {
-			workflowsProcessed: workflowIds.length,
+			workflowsProcessed,
 			totalVersionsSeen,
 			totalVersionsDeleted,
 			errorCount,
@@ -299,5 +281,14 @@ export class WorkflowHistoryCompactionService {
 
 		// Runs are frequent and often find no work; only report runs that did something
 		if (workflowIds.length > 0) this.eventService.emit('history-compacted', payload);
+	}
+
+	/** Waits out the batch delay, returning as soon as the pass is aborted. */
+	private async waitBetweenBatches(signal: AbortSignal): Promise<void> {
+		try {
+			await sleep(this.config.batchDelayMs, signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 }

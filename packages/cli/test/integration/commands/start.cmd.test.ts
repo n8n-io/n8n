@@ -90,7 +90,7 @@ afterAll(async () => {
 		'@/workflows/publication/workflow-publication-reconciler.service.js'
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
-	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
+	Container.get(WorkflowPublicationOutboxCleanupService).shutdown();
 	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();
