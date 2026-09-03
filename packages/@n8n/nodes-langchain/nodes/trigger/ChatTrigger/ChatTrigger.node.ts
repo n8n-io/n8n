@@ -60,15 +60,20 @@ const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disab
  * modes no server identity exists, `user` is ordinary body data, and the body passes
  * through untouched.
  *
- * An array body is returned as is: it can carry no `user` key, and object rest would
- * silently turn it into `{ 0: …, 1: … }`.
+ * Only a plain object body is merged into. A string (`text/plain`), a scalar or an array
+ * body can carry no `user` key, and object rest would silently shred it into
+ * `{ 0: …, 1: … }`, so those pass through as they are.
  */
+function isPlainObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function withAuthenticatedUser(
 	json: IDataObject,
 	user: IUser | undefined,
 	serverOwnsUserKey: boolean,
 ): IDataObject {
-	if (!serverOwnsUserKey || Array.isArray(json)) return json;
+	if (!serverOwnsUserKey || !isPlainObject(json)) return json;
 	const { user: claimedUser, ...rest } = json;
 	if (!user) return rest;
 	// Field by field, so a future `IUser` field cannot leak into workflow data.

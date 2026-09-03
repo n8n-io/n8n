@@ -635,6 +635,17 @@ describe('ChatTrigger Node', () => {
 			expect(json).toEqual(arrayBody);
 		});
 
+		// A `text/plain` request body reaches the node as a string. Object rest would shred
+		// it into `{ 0: 'H', 1: 'e', … }`, so it must pass through untouched.
+		it('passes a string body through unchanged', async () => {
+			mockContext.getBodyData.mockReturnValue('Hello' as unknown as IDataObject);
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toBe('Hello');
+		});
+
 		it('omits the user when the toggle is off', async () => {
 			setParams({ includeUserInOutput: false });
 
