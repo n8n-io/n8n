@@ -263,9 +263,6 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
-  # Exact: a caret range re-resolves to the newest 8.x, which both splits
-  # @typescript-eslint instances (eslint 'Cannot redefine plugin') and
-  # changes lint behavior repo-wide.
   typescript-eslint: 8.35.0
   uuid: 11.1.1
   vite: ^8.0.2
@@ -457,10 +454,6 @@ overrides:
   undici@6: catalog:undici-v6
   undici@7: catalog:undici-v7
   node-gyp>undici: catalog:undici-v7
-  # Pin the auto-installed peer: pnpm otherwise keys it to the newest
-  # @typescript-eslint/utils in the tree (8.68.0 via eslint-plugin-storybook)
-  # on every lockfile re-resolution, which breaks the node-cli build against
-  # its typescript-eslint 8.35.0.
   'eslint-plugin-import-x>@typescript-eslint/utils': 8.35.0
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
