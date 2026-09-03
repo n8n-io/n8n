@@ -433,6 +433,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			systemTaskMetadata.register(taskClass);
 		}
 
+		// Every task has registered by now: the modules' during `initModules`, the
+		// main command's own just above.
+		await Container.get(SystemTaskRunner).provisionDurableJobs();
+
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(
 				'@/executions/enqueued-execution-recovery.service.js'
