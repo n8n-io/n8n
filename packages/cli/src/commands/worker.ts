@@ -90,7 +90,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.gracefulShutdownTimeoutInS =
 				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			this.logger.warn(
-				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT. Shutdown task handling uses N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
+				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
 		}
 		await this.initCrashJournal();
