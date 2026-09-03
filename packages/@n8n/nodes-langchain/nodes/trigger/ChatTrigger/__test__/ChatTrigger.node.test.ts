@@ -744,6 +744,16 @@ describe('ChatTrigger Node', () => {
 
 			expect(emittedJson(result)).toEqual({ message: 'Hello' });
 		});
+
+		// The lookup is identity, not authorization. Handling its failure as an auth
+		// challenge would write a response with an undefined status code.
+		it('surfaces a failed lookup as an error rather than an auth challenge', async () => {
+			setParams();
+			getTestWebhookUser.mockRejectedValue(new Error('lookup failed'));
+
+			await expect(chatTrigger.webhook(mockContext)).rejects.toThrow('lookup failed');
+			expect(mockResponse.writeHead).not.toHaveBeenCalled();
+		});
 	});
 
 	// `json` starts life as the caller's own request body, so a caller can put a `user`

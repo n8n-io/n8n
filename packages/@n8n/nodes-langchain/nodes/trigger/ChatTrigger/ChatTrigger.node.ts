@@ -949,31 +949,33 @@ export class ChatTrigger extends Node {
 
 		const authentication = ctx.getNodeParameter('authentication', 'none');
 		let authedUser: IUser | undefined;
-		try {
-			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
-			// test route (flagged by the backend at registration) is exempt from auth. Every
-			// other request — production or sessionless test — enforces the configured auth.
-			if (mode === 'test' && ctx.isChatSessionTest()) {
-				// Auth is skipped here, but the editor user who started the run is known, so
-				// report them under the same conditions production would.
-				if (authentication === 'n8nUserAuth') {
-					authedUser = await ctx.getTestWebhookUser?.();
-				}
-			} else {
+		// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+		// test route (flagged by the backend at registration) is exempt from auth. Every
+		// other request — production or sessionless test — enforces the configured auth.
+		if (mode === 'test' && ctx.isChatSessionTest()) {
+			// Auth is skipped here, but the editor user who started the run is known, so
+			// report them under the same conditions production would. This lookup is identity,
+			// not authorization: it stays outside the `catch` below, which reads its error as
+			// an auth challenge and would answer with an undefined status code.
+			if (authentication === 'n8nUserAuth') {
+				authedUser = await ctx.getTestWebhookUser?.();
+			}
+		} else {
+			try {
 				authedUser = await validateAuth(ctx);
+			} catch (error) {
+				if (error) {
+					// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
+					const webhookId = ctx.getNode().webhookId;
+					const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
+					res.writeHead((error as IDataObject).responseCode as number, {
+						'www-authenticate': `Basic realm="${realm}"`,
+					});
+					res.end((error as IDataObject).message as string);
+					return { noWebhookResponse: true };
+				}
+				throw error;
 			}
-		} catch (error) {
-			if (error) {
-				// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
-				const webhookId = ctx.getNode().webhookId;
-				const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
-				res.writeHead((error as IDataObject).responseCode as number, {
-					'www-authenticate': `Basic realm="${realm}"`,
-				});
-				res.end((error as IDataObject).message as string);
-				return { noWebhookResponse: true };
-			}
-			throw error;
 		}
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
