@@ -17,7 +17,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, QueryFailedError } from '@n8n/typeorm';
@@ -43,9 +43,11 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
+import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -59,8 +61,10 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -73,6 +77,9 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
+
+/** The API-key scope a caller needs to put a version live, whether directly or by saving. */
+const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
 
 /** What `getMany` should enrich or scope beyond the plain list query. */
 export type GetManyOptions = {
@@ -114,6 +121,8 @@ export class WorkflowService {
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
@@ -393,6 +402,8 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+			apiKeyScopes?: readonly string[];
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
@@ -408,6 +419,7 @@ export class WorkflowService {
 			forceSave = false,
 			publicApi = false,
 			publishIfActive = false,
+			apiKeyScopes,
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
@@ -704,6 +716,14 @@ export class WorkflowService {
 		});
 
 		if (versionIdToPublish) {
+			// Putting a different version live is a publication, so it has to clear the same bars as an
+			// explicit publish. A caller who may write but not publish keeps the draft they just saved,
+			// and the refusal names it. Re-applying the version that is already live publishes nothing
+			// new, so it stays a plain update.
+			if (versionIdToPublish !== workflow.activeVersionId) {
+				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
+			}
+
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
@@ -720,12 +740,47 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
+	/**
+	 * Both bars a save-triggered publication has to clear: the API key's own publish scope (a key can
+	 * be scoped more narrowly than its owner) and the caller's publish permission on the project.
+	 * Refused rather than rolled back: the draft the caller was allowed to write stays saved, and the
+	 * error carries its version so the caller does not have to read it back.
+	 */
+	private async assertMayPublishOnSave(
+		user: User,
+		workflowId: string,
+		apiKeyScopes: readonly string[] | undefined,
+		savedVersionId: string,
+	): Promise<void> {
+		if (apiKeyScopes && !apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
+			throw new WorkflowPublishForbiddenError({
+				reason: 'insufficient_api_key_scope',
+				versionId: savedVersionId,
+			});
+		}
+
+		// Scoped to the workflow rather than its project, so a role granted by sharing the workflow
+		// counts the same way it does on the publish endpoint.
+		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
+
+		if (!canPublish) {
+			this.logger.warn('User saved a draft but may not publish it', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new WorkflowPublishForbiddenError({
+				reason: 'insufficient_permissions',
+				versionId: savedVersionId,
+			});
+		}
+	}
+
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		tracking: { source: WorkflowActionSource } = { source: 'ui' },
+		options: { source: WorkflowActionSource } = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -785,8 +840,8 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: tracking.source === 'api',
-					source: tracking.source,
+					publicApi: options.source === 'api',
+					source: options.source,
 				});
 			}
 		}
@@ -858,9 +913,21 @@ export class WorkflowService {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
 		]);
+
+		// Re-applying the version that is already live publishes nothing new. It only re-registers the
+		// triggers so a settings change takes effect, so an editor's own scopes are enough. Resolved as
+		// a fallback, leaving the publish path above untouched. `workflow:read` joins the update scope
+		// because this path reads the live version back out of history below.
+		const resolvedWithEditorScopes = workflow === null;
+		if (resolvedWithEditorScopes) {
+			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+				'workflow:update',
+			]);
+		}
 
 		if (!workflow) {
 			this.logger.warn('User attempted to activate a workflow without permissions', {
@@ -878,6 +945,18 @@ export class WorkflowService {
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
+
+		// Reached with access to the workflow but not the right to release a version, so there is no
+		// existence to hide behind a 404 here.
+		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
+			this.logger.warn('User attempted to publish a workflow without permissions', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new ForbiddenError(
+				'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
+			);
+		}
 
 		let versionToActivate: WorkflowHistory;
 		try {
@@ -1409,7 +1488,21 @@ export class WorkflowService {
 		// to hit a DB statement timeout, however large the execution history.
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
-		await this.workflowRepository.delete(workflowId);
+		// The workflow stops owning scheduled jobs here, and nothing in the database
+		// removes them with it. Normally there are none left, since a published
+		// workflow cannot be deleted and unpublishing deprovisions them. This covers
+		// the paths that never published and anything an interrupted unpublish left.
+		//
+		// Both writes commit together. A deprovision of its own would leave a workflow
+		// whose delete then failed alive with its schedules stripped.
+		await this.workflowRepository.runInTransaction({}, async (trx) => {
+			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
+				trx,
+				this.workflowScheduledJobOwner.ref(workflowId),
+			);
+
+			await trx.delete(WorkflowEntity, { id: workflowId });
+		});
 
 		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
 

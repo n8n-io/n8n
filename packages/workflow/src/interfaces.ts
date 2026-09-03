@@ -155,7 +155,26 @@ export type N8nOAuth2ValidationResult =
 	| { valid: false; reason: OAuth2FailureReason };
 
 export type N8nOAuth2FlowResult =
-	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| {
+			valid: true;
+			token: string;
+			/** Rotated on every use. Never hand this to a browser document or to page script. */
+			refreshToken: string;
+			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
+			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
+			expiresIn: number;
+			user: IUser;
+			metadata?: Record<string, string>;
+	  }
+	| { valid: false; reason: string };
+
+/**
+ * Result of trading a refresh token for a fresh pair. Carries no user: the grant
+ * the token belongs to already fixes the subject, and the caller re-validates the
+ * access token when it needs the identity.
+ */
+export type N8nOAuth2RefreshResult =
+	| { valid: true; token: string; refreshToken: string; expiresIn: number }
 	| { valid: false; reason: string };
 
 export type ProjectSharingData = {
@@ -934,14 +953,16 @@ interface NodeHelperFunctions {
 
 /**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
- * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
- * validation and a connect-time secure DNS lookup.
+ * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
+ * validation, a connect-time secure DNS lookup, and per-redirect validation.
  */
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
+	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
+	validateRedirectSync(url: string): void;
 }
 
 export interface RequestHelperFunctions {
@@ -1004,10 +1025,10 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport, or `undefined` when egress filtering is not configured (callers
-	 * then use the default transport).
+	 * transport. When egress filtering is not configured, this is a passthrough
+	 * implementation, so callers can always use the returned filter unguarded.
 	 */
-	getSecureEgressFilter(): NodeEgressFilter | undefined;
+	getSecureEgressFilter(): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -1535,6 +1556,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
+	 * Trades the refresh token from a completed flow for a fresh access/refresh pair on
+	 * the same grant, keeping a long-lived page working past the access token's one-hour
+	 * life without a new redirect. The AS rotates the refresh token, so the caller must
+	 * store the returned one and drop the old one. `resourceUrl` must name the resource
+	 * the grant was approved for.
+	 */
+	refreshN8nOAuth2Flow(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/**
 	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
 	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
 	 * bearer token directly, and by browser triggers on the POST leg to re-check the
@@ -1588,6 +1617,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
 	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/**
+	 * The n8n user who started this test run, recorded on the webhook registration.
+	 * Only test webhooks carry it, so this resolves to `undefined` in production.
+	 *
+	 * Optional so hosts that implement this interface themselves are not forced to
+	 * supply it; call it as `getTestWebhookUser?.()`.
+	 */
+	getTestWebhookUser?(): Promise<IUser | undefined>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
@@ -2406,6 +2443,7 @@ export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export namespace MultiPartFormData {
 	export interface File {
+		/** Parser-owned temporary path. Consume it in the webhook function or its response stream. */
 		filepath: string;
 		mimetype?: string;
 		originalFilename?: string;
@@ -3418,6 +3456,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Set when a waiting webhook node is resumed. In that case `data.main` already
+	 * holds the resolved output branches returned by the node's `webhook()` method
+	 * (e.g. `[[], [item], []]`), and the node is flagged as disabled to prevent the
+	 * wait from starting over. The disabled-node handler must then forward every
+	 * output branch instead of only the first one. See `WorkflowExecute.handleDisabledNode`.
+	 */
+	forwardAllOutputs?: boolean;
+
+	/**
 	 * Error from a sub-workflow that finished with an error while its parent was
 	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
 	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
@@ -3760,6 +3807,10 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
 	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
+	refreshN8nOAuth2Flow?: (
+		refreshToken: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2RefreshResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,
@@ -3819,6 +3870,7 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
+	getUserById?: (id: string) => Promise<IUser | undefined>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.

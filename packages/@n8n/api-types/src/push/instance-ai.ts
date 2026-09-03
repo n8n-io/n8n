@@ -29,4 +29,10 @@ export type InstanceAiPushMessage =
 					totalCreditsUsed: number;
 				};
 			};
+	  }
+	| {
+			type: 'instanceAiMcpToolCallFailed';
+			data: {
+				connectionId: string;
+			};
 	  };

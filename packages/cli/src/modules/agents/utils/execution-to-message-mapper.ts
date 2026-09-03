@@ -170,6 +170,8 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	// The recorded run error travels with the transcript so history renders the
 	// same error bubble the live stream showed — also when the turn failed
 	// before producing any output at all (otherwise the run fails invisibly).
+	// It stays a separate field, not a text part, so the client does not show it
+	// as model output.
 	const executionError =
 		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
 			? execution.error

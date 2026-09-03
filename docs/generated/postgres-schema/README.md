@@ -8,6 +8,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 16 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
@@ -83,7 +84,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_observations](public.instance_ai_observations.md) | 10 |  | BASE TABLE |
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
-| [public.instance_ai_run_snapshots](public.instance_ai_run_snapshots.md) | 11 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
@@ -105,7 +105,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 21 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 23 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -165,6 +165,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -279,7 +281,6 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--o| "public.instance_ai_checkpoints" : "FOREIGN KEY (#quot;checkpointKey#quot;) REFERENCES instance_ai_checkpoints(key) ON DELETE CASCADE"
-"public.instance_ai_run_snapshots" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -305,7 +306,6 @@ erDiagram
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
-"public.scheduled_job" }o--o| "public.workflow_published_version" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_published_version(#quot;workflowId#quot;) ON DELETE CASCADE"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -357,6 +357,19 @@ erDiagram
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
+"public.activity_event" {
+  varchar_64_ action
+  varchar_32_ category
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer id
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  text resourceName
+  varchar_32_ resourceType
+  integer typeVersion
+  uuid userId FK
+}
 "public.agent_background_job" {
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
@@ -1139,19 +1152,6 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text workingMemory
 }
-"public.instance_ai_run_snapshots" {
-  timestamp_3__with_time_zone createdAt
-  varchar_36_ langsmithRunId
-  varchar_36_ langsmithTraceId
-  varchar_36_ messageGroupId
-  varchar_36_ runId
-  json runIds
-  varchar_64_ spanId
-  uuid threadId FK
-  varchar_64_ traceId
-  text tree
-  timestamp_3__with_time_zone updatedAt
-}
 "public.instance_ai_thread_grants" {
   timestamp_3__with_time_zone createdAt
   varchar_512_ grantKey
@@ -1333,14 +1333,16 @@ erDiagram
   varchar_16_ misfirePolicy
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
-  varchar_36_ nodeId
+  timestamp_3__with_time_zone orphanedAt
+  varchar_255_ ownerId
+  varchar_36_ ownerMemberId
+  varchar_32_ ownerType
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId FK
 }
 "public.scheduled_task" {
   integer attempts

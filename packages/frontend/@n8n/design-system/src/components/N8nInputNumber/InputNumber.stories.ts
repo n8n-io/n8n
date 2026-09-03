@@ -8,7 +8,7 @@ import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
 import N8nText from '../N8nText/Text.vue';
 
 const meta = {
-	title: 'Core/Input Number',
+	title: 'Core/InputNumber',
 	component: InputNumber,
 	parameters: {
 		docs: {
