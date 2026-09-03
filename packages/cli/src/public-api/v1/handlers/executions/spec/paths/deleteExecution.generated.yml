@@ -1,6 +1,6 @@
 operationId: deleteExecution
 tags:
-  - Executions
+  - Execution
 summary: Delete an execution
 description: Deletes an execution from your instance.
 x-required-scope: execution:delete
