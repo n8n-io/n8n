@@ -36,9 +36,22 @@ export async function getChats(
 	}
 
 	const returnData: INodeListSearchItems[] = [];
+	// ponytail: one page of 50 (the endpoint maximum), not full pagination - a user with >50 chats
+	// that are mostly 1:1 may still not see every group chat. Upgrade path if that is ever reported:
+	// server-side `$filter` on `chatType` if Graph supports it on this endpoint (unverified), else
+	// `microsoftApiRequestAllItems`. By-ID mode is the escape hatch meanwhile.
 	const qs: IDataObject = {
 		$expand: 'members',
+		$top: 50,
 	};
+
+	// `0` is the FALLBACK value in load-options contexts, not an itemIndex: the Teams
+	// trigger shares this picker and has neither parameter, so dropping the fallback
+	// makes `getNodeParameter` throw there instead of listing chats.
+	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
+	// Only Add and Remove are impossible on a 1:1 chat; listing its members is legal.
+	const excludeOneOnOne = resource === 'chatMember' && ['add', 'remove'].includes(operation);
 
 	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
 	// sleeping 1s between attempts (not after the last one), and surface the final
@@ -72,6 +85,7 @@ export async function getChats(
 				.map((member: IDataObject) => member.displayName)
 				.join(', ');
 		}
+		if (excludeOneOnOne && chat.chatType === 'oneOnOne') continue;
 		const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
 		const chatId = chat.id;
 		const url = chat.webUrl as string;
@@ -100,6 +114,85 @@ export async function getChats(
 		});
 
 	return { results };
+}
+
+export async function getChatMembers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const chatId = this.getCurrentNodeParameter('chatId', { extractValue: true }) as string;
+	// The picker can be opened before a chat is selected; show an empty list instead
+	// of failing on an empty id.
+	if (!chatId) return { results: [] };
+
+	// `GET /chats/{id}/members` supports no OData query parameters, so there is no
+	// server-side search to pass the filter to - it pages via @odata.nextLink only.
+	const value = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/members']),
+	)) as IDataObject[];
+
+	const returnData: INodeListSearchItems[] = value.map((member) => ({
+		name: member.email ? `${member.displayName} (${member.email})` : (member.displayName as string),
+		// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
+		value: member.id as string,
+	}));
+
+	const results = filterSortSearchListItems(returnData, filter);
+	return { results };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
+	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
+	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
+	let response: IDataObject;
+	if (paginationToken) {
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			{},
+			{},
+			paginationToken,
+			headers,
+		)) as IDataObject;
+	} else {
+		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
+		if (filter) {
+			// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
+			// first, then `"`, and the OR operator is uppercase and outside the quotes.
+			const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+			qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
+		}
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/v1.0/users',
+			{},
+			qs,
+			undefined,
+			headers,
+		)) as IDataObject;
+	}
+
+	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
+		name: `${user.displayName} (${user.userPrincipalName})`,
+		value: user.id as string,
+	}));
+
+	// No filter argument: `$search` already filtered server-side across the whole
+	// collection, so this only applies the sort every sibling picker uses.
+	return {
+		results: filterSortSearchListItems(returnData),
+		paginationToken: response['@odata.nextLink'] as string | undefined,
+	};
 }
 
 export async function getTeams(

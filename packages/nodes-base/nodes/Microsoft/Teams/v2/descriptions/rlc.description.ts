@@ -267,3 +267,77 @@ export const memberRLC: INodeProperties = {
 		},
 	],
 };
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a User...',
+			typeOptions: {
+				searchListMethod: 'getUsers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. jacob@contoso.com',
+			// `validation` only, never an `extractValue`: a GUID-only extractor makes core
+			// reject any expression that resolves to a user principal name before the node
+			// runs, and Graph binds a principal name directly.
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@]+@[^\\s@]+)[ \t]*$',
+						errorMessage: 'Not a valid user ID or user principal name',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const chatMemberRLC: INodeProperties = {
+	displayName: 'Member',
+	name: 'membershipId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the "id" field, not "userId")',
+	typeOptions: {
+		loadOptionsDependsOn: ['chatId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a Member...',
+			typeOptions: {
+				searchListMethod: 'getChatMembers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder:
+				'e.g. MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+			// validation missing because Microsoft documents no shape for membership ids.
+		},
+	],
+};
