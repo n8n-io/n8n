@@ -136,6 +136,23 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				};
 			}
 
+			// The claim comes from the persisted run, never from the model: a
+			// `verified` verdict on a partially covered run must not upgrade it.
+			const claim = (await context.workflowTaskService.getBuildOutcome(input.workItemId))
+				?.verification?.claim;
+			if (input.verdict === 'verified' && claim && claim.level !== 'verified') {
+				context.trackTelemetry?.('Builder verification claim downgraded', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					work_item_id: input.workItemId,
+					workflow_id: input.workflowId,
+					claim_level: claim.level,
+					nodes_not_reached: claim.nodesNotReached.length,
+					simulated_nodes: claim.simulatedNodes.length,
+					unproven_targets: claim.unprovenTargets.length,
+				});
+			}
+
 			const remediation = input.remediation ?? defaultRemediationForVerdict(input);
 			const forcedTerminalVerdict =
 				remediation && !remediation.shouldEdit
@@ -150,6 +167,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				workflowId: input.workflowId,
 				executionId: input.executionId,
 				verdict: forcedTerminalVerdict ?? input.verdict,
+				claim,
 				workflowInspection: input.workflowInspection,
 				failureSignature: forcedTerminalVerdict
 					? (remediation?.reason ?? input.failureSignature)

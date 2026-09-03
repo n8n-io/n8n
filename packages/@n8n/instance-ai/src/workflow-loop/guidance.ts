@@ -1,7 +1,56 @@
-import type { WorkflowLoopAction } from './workflow-loop-state';
+import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
+}
+
+function formatNodeList(names: readonly string[], max = 8): string {
+	if (names.length <= max) return names.join(', ');
+	return `${names.slice(0, max).join(', ')} and ${String(names.length - max)} more`;
+}
+
+/**
+ * Lead sentence for a completed build. Derived from the claim so the guidance
+ * never tells the model a partially covered run was verified — that sentence
+ * was the strongest license for the false success claims in AIA-31.
+ */
+function formatClaimLead(claim: VerificationClaim | undefined): string {
+	if (isVerifiedClaim(claim)) return 'Workflow verified successfully.';
+
+	const facts: string[] = [
+		`${String(claim.reachedNodeCount)} of ${String(claim.plannedNodeCount)} planned node(s) ran.`,
+	];
+	if (claim.nodesNotReached.length > 0) {
+		facts.push(`Never reached, so UNVERIFIED: ${formatNodeList(claim.nodesNotReached)}.`);
+	}
+	if (claim.simulatedNodes.length > 0) {
+		facts.push(
+			'Output was simulated, so nothing real happened at: ' +
+				`${formatNodeList(claim.simulatedNodes.map((node) => node.nodeName))}.`,
+		);
+	}
+
+	const lead =
+		claim.level === 'unproven'
+			? 'The workflow changed, but it is NOT verified. ' +
+				`The node(s) this change was about were never proven: ${formatNodeList(claim.unprovenTargets)}.`
+			: 'The workflow ran without errors, but it is NOT fully verified.';
+
+	// The verdict block the user sees is rendered from this same claim, so the
+	// model must not write a stronger claim next to it.
+	const rules = [
+		'Do NOT call the workflow verified, tested, working, or ready to publish.',
+		'Do NOT offer to publish it.',
+		claim.liveTestRecommended ? 'Offer a live end-to-end test instead.' : '',
+	].filter((rule) => rule !== '');
+
+	return [lead, ...facts, ...rules].join(' ');
+}
+
+function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
+	// A missing claim means no run reported one (e.g. a trigger-only build), so
+	// the pre-claim wording still applies.
+	return claim === undefined || claim.level === 'verified';
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
@@ -22,9 +71,11 @@ export function formatWorkflowLoopGuidance(
 		case 'continue_building':
 			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
+			const claimLead = formatClaimLead(action.claim);
 			if (action.setupSkippedByUser) {
 				return (
-					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					claimLead +
+					' The credentials it still needs are ones the user ' +
 					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
 					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
 					'to set them up whenever they want.'
@@ -32,14 +83,17 @@ export function formatWorkflowLoopGuidance(
 			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
-					'Workflow verified successfully with temporary mock data. ' +
+					`${claimLead} It still uses temporary mock data. ` +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the AI Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
-			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+			const closing = isVerifiedClaim(action.claim)
+				? 'Report completion to the user.'
+				: 'Report the outcome to the user.';
+			return `${claimLead} ${closing}${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		}
 		case 'verify':
 			return (

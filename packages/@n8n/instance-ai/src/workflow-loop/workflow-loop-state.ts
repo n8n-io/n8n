@@ -82,6 +82,11 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	/**
+	 * Node the last verdict sent for repair. Carried forward so the next run's
+	 * claim can tell whether the node the change was about was actually proven.
+	 */
+	lastFailedNodeName: z.string().optional(),
 	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
@@ -154,6 +159,40 @@ export const executionNodeErrorSchema = z.object({
 });
 
 /**
+ * Strength of the claim a verification run supports. `verified` means every
+ * planned node ran for real; anything less must not be reported as verified.
+ * See `tools/orchestration/verification/claim.ts` for the derivation.
+ */
+export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
+
+export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
+
+/**
+ * The deterministic verdict for one verification run. Derived in
+ * `tools/orchestration/verification/claim.ts` and carried through the loop so
+ * the claim the user sees never depends on the model restating it correctly.
+ */
+export const verificationClaimSchema = z.object({
+	level: verificationClaimLevelSchema,
+	plannedNodeCount: z.number().int().min(0),
+	reachedNodeCount: z.number().int().min(0),
+	nodesNotReached: z.array(z.string()),
+	/** Reached nodes whose output was mocked, so the run proves nothing about them. */
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })),
+	/** Pin-fed subset of `simulatedNodes` — these need the pin removed for a live test. */
+	pinnedNodes: z.array(z.string()),
+	/**
+	 * Fix targets still unreached or simulated — the reason this run cannot
+	 * claim `verified` even when it ended without an error.
+	 */
+	unprovenTargets: z.array(z.string()),
+	publishReady: z.boolean(),
+	liveTestRecommended: z.boolean(),
+});
+
+export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
+
+/**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
@@ -164,6 +203,12 @@ export const workflowVerificationEvidenceSchema = z.object({
 	executionId: z.string().optional(),
 	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
 	failureSignature: z.string().optional(),
+	/**
+	 * How strong a claim this run supports, and the facts behind it. Derived from
+	 * the run, so the user-facing verdict never depends on the model agreeing
+	 * with it. Self-contained: a later turn renders from this without the run.
+	 */
+	claim: verificationClaimSchema.optional(),
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
@@ -454,6 +499,11 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	/**
+	 * Deterministic claim for the run this verdict reports on. When present it
+	 * outranks `verdict`: the model cannot upgrade a partial run to verified.
+	 */
+	claim: verificationClaimSchema.optional(),
 	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
@@ -485,6 +535,8 @@ export type WorkflowLoopAction =
 			type: 'done';
 			workflowId?: string;
 			summary: string;
+			/** Deterministic verdict for the verifying run, when one ran. */
+			claim?: VerificationClaim;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;
 			setupSkippedByUser?: boolean;
