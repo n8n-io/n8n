@@ -3,7 +3,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { CredentialOAuth2Options, ICredentialDataDecryptedObject } from './interfaces';
 import { getOAuth2AuthHeaders } from './oauth2-helpers';
 
-
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
