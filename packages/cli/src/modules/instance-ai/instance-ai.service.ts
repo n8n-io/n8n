@@ -173,6 +173,7 @@ import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liv
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
 	buildInstanceAiObservabilityContext,
+	runMetricsModelLabel,
 	type InstanceAiObservabilityContext,
 } from './observability';
 import {
@@ -6628,7 +6629,7 @@ export class InstanceAiService {
 			// Duration is reported once, by the run's terminal event.
 			durationMs:
 				status !== 'suspended' && startedAt !== undefined ? Date.now() - startedAt : undefined,
-			model: typeof options?.modelId === 'string' ? options.modelId : 'custom',
+			model: runMetricsModelLabel(options?.modelId),
 			toolCalls: options?.workSummary?.totalToolCalls ?? 0,
 			toolErrors: options?.workSummary?.totalToolErrors ?? 0,
 			...(options?.usage ? { usage: options.usage } : {}),

@@ -8,10 +8,9 @@ import type {
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { CredentialsEntity, User } from '@n8n/db';
+import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import { QueryFailedError } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -178,7 +177,7 @@ export class InstanceAiMcpRegistryService {
 			});
 			return { connection, credential, server };
 		} catch (error) {
-			if (isUniqueConstraintViolation(error)) {
+			if (isUniqueConstraintError(error)) {
 				throw new ConflictError(
 					'A connection for this MCP server with this credential already exists',
 				);
@@ -506,11 +505,4 @@ export class InstanceAiMcpRegistryService {
 
 		connection.credentialId = newCredentialId;
 	}
-}
-
-function isUniqueConstraintViolation(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = error.driverError as { code?: string };
-	const code = driverError?.code;
-	return code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }

@@ -62,6 +62,7 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import type { NodeTypes } from '@/node-types';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -132,6 +133,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		mock<AiGatewayService>(),
 		mock<WorkflowTemplatesService>(),
 		mock<CollaborationService>(),
+		mock<PolicyEnforcementService>(),
 		undefined,
 		undefined,
 		undefined,
