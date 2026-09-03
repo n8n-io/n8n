@@ -45,9 +45,9 @@ pnpm session rm           # delete the codespace
 
 `agent-worker.mjs` lets an n8n workflow drive an OpenCode session on the
 codespace. This is how Slack (the Flaky bot) steers a session that runs here.
-Each turn runs `opencode run --format json --auto`. The session state is on
-disk. So the returned session ID continues a conversation across turns and
-across a stop/start.
+Each turn runs `opencode run --format json --auto`. The session state remains on
+disk. The returned session ID continues a conversation across turns and a
+Codespace restart.
 
 **The worker polls outward. Nothing inbound is exposed.** GitHub sets every
 forwarded port to private on start. It gives no API to make a port public. So
@@ -66,12 +66,12 @@ same way as `ANTHROPIC_API_KEY`:
 - `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
 
 The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
-worker posts one placeholder in that thread. It then updates the message after
-OpenCode completes each tool call, at most once every 1.5 seconds. It does not
-send reasoning text. The worker replaces the placeholder with the final answer.
+worker posts one placeholder in that thread. It coalesces completed tool calls.
+It updates the message at most once every 1.5 seconds. It does not send reasoning
+text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
-The worker removes its dequeue and Slack credentials from the OpenCode process.
-Interactive cloud sessions remove the same credentials before they start.
+The worker does not export its dequeue or Slack credentials to OpenCode.
+Interactive cloud sessions unset the same variables before they start.
 
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a

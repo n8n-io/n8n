@@ -30,37 +30,40 @@ async function waitFor(check) {
 	throw new Error('Condition was not met');
 }
 
-function childProcess(lines, code = 0, close = true) {
+function childProcess() {
 	const child = new EventEmitter();
 	child.pid = 123;
 	child.stdin = new PassThrough();
 	child.stdout = new PassThrough();
 	child.stderr = new PassThrough();
 	child.kill = () => {};
-	if (close)
-		setImmediate(() => {
-			for (const line of lines) child.stdout.write(`${line}\n`);
-			child.stdout.end();
-			child.stderr.end();
-			child.emit('close', code);
-		});
 	return child;
 }
 
-test('streams text and tool progress but excludes reasoning', async () => {
+function completedChild(lines) {
+	const child = childProcess();
+	setImmediate(() => {
+		for (const line of lines) child.stdout.write(`${line}\n`);
+		child.stdout.end();
+		child.stderr.end();
+		child.emit('close', 0);
+	});
+	return child;
+}
+
+test('streams tool progress but excludes reasoning', async () => {
 	const slack = slackRecorder();
 	const progress = await startSlackProgress(turn, {
-		token: 'test',
 		callSlack: slack.call,
 		updateInterval: 50,
 	});
 
-	progress.event('ses_1', {
+	progress.event({
 		type: 'reasoning',
 		sessionID: 'ses_1',
 		part: { id: 'prt_reason', type: 'reasoning', text: 'private reasoning' },
 	});
-	progress.event('ses_1', {
+	progress.event({
 		type: 'tool_use',
 		sessionID: 'ses_1',
 		part: {
@@ -70,41 +73,44 @@ test('streams text and tool progress but excludes reasoning', async () => {
 			state: { status: 'completed', title: 'Read worker source' },
 		},
 	});
-	progress.event('ses_1', {
-		type: 'text',
-		sessionID: 'ses_1',
-		part: { id: 'prt_text', type: 'text', text: 'Visible answer' },
-	});
 	await sleep(100);
 
 	const streamed = slack.calls.find((call) => call.method === 'chat.update')?.body.text;
 	assert.match(streamed, /Done: Read worker source/);
-	assert.match(streamed, /Visible answer/);
-	assert.doesNotMatch(streamed, /private reasoning|must stay hidden/);
+	assert.doesNotMatch(streamed, /private reasoning/);
 });
 
 test('coalesces Slack updates within the configured interval', async () => {
 	const slack = slackRecorder();
 	const progress = await startSlackProgress(turn, {
-		token: 'test',
 		callSlack: slack.call,
 		updateInterval: 50,
 	});
 
-	for (const text of ['One', 'Two', 'Three']) {
-		progress.event('ses_1', {
-			type: 'text',
+	for (const [id, title] of ['One', 'Two', 'Three'].entries()) {
+		progress.event({
+			type: 'tool_use',
 			sessionID: 'ses_1',
-			part: { id: 'prt_text', type: 'text', text },
+			part: {
+				id: `prt_${id}`,
+				type: 'tool',
+				tool: 'read',
+				state: { status: 'completed', title },
+			},
 		});
 	}
 	await sleep(100);
 	assert.equal(slack.calls.filter((call) => call.method === 'chat.update').length, 1);
 
-	progress.event('ses_1', {
-		type: 'text',
+	progress.event({
+		type: 'tool_use',
 		sessionID: 'ses_1',
-		part: { id: 'prt_text_2', type: 'text', text: 'Four' },
+		part: {
+			id: 'prt_4',
+			type: 'tool',
+			tool: 'read',
+			state: { status: 'completed', title: 'Four' },
+		},
 	});
 	assert.equal(slack.calls.filter((call) => call.method === 'chat.update').length, 1);
 	await sleep(100);
@@ -112,13 +118,21 @@ test('coalesces Slack updates within the configured interval', async () => {
 });
 
 test('replaces progress with the final answer', async () => {
-	const slack = slackRecorder();
+	const calls = [];
+	let releaseProgress;
+	const callSlack = async (method, body) => {
+		calls.push({ method, body });
+		if (method === 'chat.postMessage') return { ok: true, ts: '456.789' };
+		if (calls.filter((call) => call.method === 'chat.update').length === 1) {
+			return await new Promise((resolve) => (releaseProgress = () => resolve({ ok: true })));
+		}
+		return { ok: true };
+	};
 	const progress = await startSlackProgress(turn, {
-		token: 'test',
-		callSlack: slack.call,
-		updateInterval: 50,
+		callSlack,
+		updateInterval: 0,
 	});
-	progress.event('ses_1', {
+	progress.event({
 		type: 'tool_use',
 		sessionID: 'ses_1',
 		part: {
@@ -128,12 +142,27 @@ test('replaces progress with the final answer', async () => {
 			state: { status: 'completed', title: 'Read worker source' },
 		},
 	});
-	await waitFor(() => slack.calls.filter((call) => call.method === 'chat.update').length === 1);
-	const firstUpdateAt = Date.now();
+	await waitFor(() => calls.filter((call) => call.method === 'chat.update').length === 1);
+	for (const title of ['Second tool', 'Third tool', 'Fourth tool']) {
+		progress.event({
+			type: 'tool_use',
+			sessionID: 'ses_1',
+			part: {
+				id: title,
+				type: 'tool',
+				tool: 'read',
+				state: { status: 'completed', title },
+			},
+		});
+	}
 
-	await progress.finish('Final answer', 'ses_1', 'box-1');
+	const finish = progress.finish('Final answer', 'ses_1', 'box-1');
+	await sleep(10);
+	assert.equal(calls.filter((call) => call.method === 'chat.update').length, 1);
+	releaseProgress();
+	await finish;
 
-	assert.deepEqual(slack.calls.at(-1), {
+	assert.deepEqual(calls.at(-1), {
 		method: 'chat.update',
 		body: {
 			channel: 'C123',
@@ -141,7 +170,6 @@ test('replaces progress with the final answer', async () => {
 			text: 'Final answer\n\n⟳session:ses_1 ⟳box:box-1',
 		},
 	});
-	assert.ok(Date.now() - firstUpdateAt >= 40);
 });
 
 test('streams OpenCode CLI events and resumes an OpenCode session', async () => {
@@ -150,18 +178,17 @@ test('streams OpenCode CLI events and resumes an OpenCode session', async () => 
 	const events = [];
 	const result = await runOpenCode(
 		{
-			turnId: 'turn-1',
 			message: 'Test message',
 			sessionId: 'ses_existing',
 			cwd: '/workspaces/n8n',
 			author: 'Tester',
 		},
-		(_sessionId, event) => events.push(event),
+		(event) => events.push(event),
 		() => {},
 		{
 			spawnProcess(command, args, options) {
 				invocation = { command, args, options };
-				const child = childProcess([
+				const child = completedChild([
 					JSON.stringify({ type: 'step_start', sessionID: 'ses_existing', part: {} }),
 					JSON.stringify({
 						type: 'tool_use',
@@ -207,7 +234,7 @@ test('stops the OpenCode process group at the turn limit', async () => {
 		() => {},
 		{
 			spawnProcess() {
-				child = childProcess([], 0, false);
+				child = childProcess();
 				return child;
 			},
 			stopProcess(_child, signal) {
@@ -219,9 +246,8 @@ test('stops the OpenCode process group at the turn limit', async () => {
 		},
 	);
 
-	await assert.rejects(run, /timed out after 1ms/);
-	await sleep(10);
-	assert.deepEqual(signals, ['SIGTERM', 'SIGKILL']);
+	await assert.rejects(run, /The turn passed the 1-millisecond limit/);
+	assert.deepEqual(signals, ['SIGTERM']);
 });
 
 test('keeps broker credentials out of the OpenCode process', () => {

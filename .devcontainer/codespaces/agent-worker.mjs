@@ -1,19 +1,5 @@
 #!/usr/bin/env node
-// Poll worker for per-turn OpenCode conversations on a codespace.
-// You cannot reach a codespace from outside. GitHub keeps forwarded ports
-// private. So this worker calls out. It polls n8n for a turn addressed to this
-// box's owner. It runs one OpenCode turn. It sends the result to the turn's
-// resume URL. Every external call is outbound HTTPS. It opens no inbound port.
-//
-//   AGENT_WORKER_TOKEN=… N8N_DEQUEUE_URL=… node agent-worker.mjs
-//
-// Env:
-//   N8N_DEQUEUE_URL     n8n webhook that hands back one pending turn (required)
-//   AGENT_WORKER_TOKEN  shared bearer sent on every dequeue (required)
-//   GITHUB_USER         box owner's login; the bootstrap route for a new thread (see codespace-env.mjs)
-//   CODESPACE_NAME      stable box id; routes a thread back to the box holding its session (same source)
-//   SLACK_BOT_TOKEN     bot token for progress updates (optional; needs chat:write)
-//   TURN_TIMEOUT_MS     per-turn limit; keep below the n8n Wait limit (default 25 min)
+// GitHub keeps Codespaces ports private, so inbound delivery is not available.
 import { spawn } from 'node:child_process';
 import { resolve as resolvePath, sep } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -24,16 +10,15 @@ import { codespaceEnv } from '../../scripts/codespace-env.mjs';
 const DEQUEUE_URL = process.env.N8N_DEQUEUE_URL;
 const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN;
-// Read both identities from the codespace. tmux can give an empty copy of either.
+// tmux can retain empty identity values, but the Codespaces files stay current.
 const GITHUB_USER = codespaceEnv('GITHUB_USER');
 const BOX_ID = codespaceEnv('CODESPACE_NAME');
 const ROOT = '/workspaces';
 
 const POLL_INTERVAL_MS = 3000;
 const SLACK_UPDATE_INTERVAL_MS = 1500;
+const SLACK_TEXT_LIMIT = 3900;
 
-// Warn and use the default on a bad value, so a config mistake cannot silently
-// disable the turn limit.
 function posNum(name, fallback) {
 	const raw = process.env[name];
 	if (raw === undefined) return fallback;
@@ -43,9 +28,12 @@ function posNum(name, fallback) {
 	return fallback;
 }
 
-// Keep this below the n8n Wait-node limit. Then the worker reports a slow turn
-// before n8n's Wait ends with a generic message.
+// This limit expires before n8n's Wait node so that the user receives a specific error.
 const TURN_TIMEOUT_MS = posNum('TURN_TIMEOUT_MS', 25 * 60_000);
+function turnTimeoutMessage(timeout) {
+	const duration = timeout % 60_000 === 0 ? `${timeout / 60_000}-minute` : `${timeout}-millisecond`;
+	return `The turn passed the ${duration} limit and stopped. It may have been in a build. Do a smaller step, or run a long build in its own turn.`;
+}
 
 export function openCodeEnvironment(environment) {
 	const childEnvironment = { ...environment };
@@ -55,19 +43,14 @@ export function openCodeEnvironment(environment) {
 	return childEnvironment;
 }
 
-// Keep broker credentials out of the agent's shell while preserving its model,
-// GitHub, and tool credentials.
+// OpenCode does not need the credentials that control the broker.
 const TURN_ENV = openCodeEnvironment(process.env);
 if (BOX_ID) TURN_ENV.CODESPACE_NAME = BOX_ID;
 if (GITHUB_USER) TURN_ENV.GITHUB_USER = GITHUB_USER;
 
 const CODESPACE_DOCS = '.devcontainer/codespaces/README.md';
 
-// A session cannot be told any of this after its final message, and a system
-// prompt is not part of the resumed transcript, so send it on every turn. State
-// the turn's hard limits inline: a session that has to read a file to learn them
-// can reply before it gets there. Point at the box docs for the rest — they
-// already cover dev:up, ports, and build cost, and AGENTS.md does not.
+// The worker has no later turn, so each prompt must define the atomic runtime contract.
 function turnContract(author) {
 	return [
 		'# Your runtime',
@@ -166,7 +149,7 @@ export function runOpenCode(
 				onSession(activeSessionId);
 			}
 			if (event.sessionID !== activeSessionId) return;
-			onEvent(activeSessionId, event);
+			onEvent(event);
 			if (event.type === 'text' && typeof event.part?.text === 'string') text.push(event.part.text);
 			if (event.type === 'error') error = eventError(event) || 'OpenCode failed';
 		};
@@ -182,15 +165,15 @@ export function runOpenCode(
 		child.stderr.on('data', (chunk) => (stderr = `${stderr}${chunk}`.slice(-4000)));
 		child.once('error', (processError) => {
 			clearTimeout(timer);
-			if (forceTimer && !timedOut) clearTimeout(forceTimer);
+			if (forceTimer) clearTimeout(forceTimer);
 			reject(processError);
 		});
 		child.once('close', (code) => {
 			clearTimeout(timer);
-			if (forceTimer && !timedOut) clearTimeout(forceTimer);
+			if (forceTimer) clearTimeout(forceTimer);
 			consume(buffer);
 			if (timedOut) {
-				reject(new Error(`OpenCode timed out after ${timeout}ms`));
+				reject(new Error(turnTimeoutMessage(timeout)));
 				return;
 			}
 			if (code !== 0 || error) {
@@ -224,7 +207,7 @@ async function dequeue() {
 	const res = await post(DEQUEUE_URL, { githubUser: GITHUB_USER, boxId: BOX_ID, token: TOKEN });
 	if (!res.ok) throw new Error(`dequeue HTTP ${res.status}`);
 	const text = await res.text();
-	if (!text.trim()) return null; // no pending turn
+	if (!text.trim()) return null;
 	const turn = JSON.parse(text);
 	return turn?.turnId ? turn : null;
 }
@@ -241,36 +224,36 @@ async function slackApi(method, body) {
 	return result;
 }
 
-function progressText(tools, textParts) {
+function progressText(tools) {
 	const progress = [...tools.values()].slice(-6).map(({ status, title }) => {
-		if (status === 'completed') return `Done: ${title}`;
 		if (status === 'error') return `Failed: ${title}`;
-		return `Working: ${title}`;
+		return `Done: ${title}`;
 	});
-	const answer = [...textParts.values()].join('').trim();
-	const prefix = progress.length ? progress.join('\n') : 'Flaky is working…';
-	const remaining = Math.max(0, 3900 - prefix.length - 2);
-	return answer ? `${prefix}\n\n${answer.slice(-remaining)}` : prefix;
+	return (progress.length ? progress.join('\n') : 'Flaky is working…').slice(0, SLACK_TEXT_LIMIT);
 }
 
 function finalSlackText(text, sessionId, boxId) {
 	const metadata = [sessionId && `⟳session:${sessionId}`, boxId && `⟳box:${boxId}`]
 		.filter(Boolean)
 		.join(' ');
-	if (!metadata) return text.slice(0, 3900) || 'Flaky completed the turn';
-	const body = text.slice(0, Math.max(0, 3898 - metadata.length));
-	return `${body}\n\n${metadata}`;
+	const suffix = metadata ? `\n\n${metadata}` : '';
+	const body = text || 'Flaky completed the turn';
+	return `${body.slice(0, SLACK_TEXT_LIMIT - suffix.length)}${suffix}`;
 }
+
+const NO_SLACK_PROGRESS = { event() {}, async finish() {} };
 
 export async function startSlackProgress(
 	turn,
-	{ token = SLACK_TOKEN, callSlack = slackApi, updateInterval = SLACK_UPDATE_INTERVAL_MS } = {},
+	{
+		callSlack = SLACK_TOKEN ? slackApi : undefined,
+		updateInterval = SLACK_UPDATE_INTERVAL_MS,
+	} = {},
 ) {
 	const channel = turn.slack?.channel;
 	const threadTs = turn.slack?.thread_ts;
-	if (!token || typeof channel !== 'string' || typeof threadTs !== 'string') {
-		return { event() {}, async finish() {} };
-	}
+	if (!callSlack || typeof channel !== 'string' || typeof threadTs !== 'string')
+		return NO_SLACK_PROGRESS;
 
 	let message;
 	try {
@@ -281,13 +264,13 @@ export async function startSlackProgress(
 		});
 	} catch (error) {
 		console.error(`turn ${turn.turnId}: Slack placeholder failed: ${error.message}`);
-		return { event() {}, async finish() {} };
+		return NO_SLACK_PROGRESS;
 	}
 
-	const textParts = new Map();
 	const tools = new Map();
 	let timer;
-	let inFlight = Promise.resolve();
+	let inFlight;
+	let pending;
 	let lastUpdate = 0;
 	let stopped = false;
 
@@ -295,23 +278,29 @@ export async function startSlackProgress(
 		callSlack('chat.update', { channel, ts: message.ts, text }).catch((error) =>
 			console.error(`turn ${turn.turnId}: Slack update failed: ${error.message}`),
 		);
-	const schedule = () => {
-		if (stopped || timer) return;
+	const flush = () => {
+		if (stopped || timer || inFlight || pending === undefined) return;
 		const delay = Math.max(0, lastUpdate + updateInterval - Date.now());
 		timer = setTimeout(() => {
 			timer = undefined;
+			const text = pending;
+			pending = undefined;
 			lastUpdate = Date.now();
-			inFlight = update(progressText(tools, textParts));
+			inFlight = update(text).finally(() => {
+				inFlight = undefined;
+				flush();
+			});
 		}, delay);
+	};
+	const schedule = () => {
+		pending = progressText(tools);
+		flush();
 	};
 
 	return {
-		event(sessionId, event) {
-			if (event?.sessionID !== sessionId || !event.part?.id) return;
-			if (event.type === 'text' && typeof event.part.text === 'string') {
-				textParts.set(event.part.id, event.part.text);
-				schedule();
-			} else if (event.type === 'tool_use') {
+		event(event) {
+			if (!event.part?.id) return;
+			if (event.type === 'tool_use') {
 				tools.set(event.part.id, {
 					status: event.part.state?.status,
 					title: event.part.state?.title || event.part.tool,
@@ -321,11 +310,14 @@ export async function startSlackProgress(
 		},
 		async finish(text, sessionId, boxId) {
 			stopped = true;
-			if (timer) clearTimeout(timer);
-			await inFlight;
+			pending = undefined;
+			if (timer) {
+				clearTimeout(timer);
+				timer = undefined;
+			}
+			if (inFlight) await inFlight;
 			const delay = Math.max(0, lastUpdate + updateInterval - Date.now());
 			if (delay) await sleep(delay);
-			lastUpdate = Date.now();
 			await update(finalSlackText(text, sessionId, boxId));
 		},
 	};
@@ -340,26 +332,21 @@ async function handle(turn) {
 		result = {
 			turnId: turn.turnId,
 			status: 'done',
-			output: r.result ?? '',
-			sessionId: r.session_id ?? activeSessionId,
+			output: r.result,
+			sessionId: r.session_id,
 			boxId: BOX_ID,
 		};
 	} catch (error) {
-		const timedOut = error.message.includes(`timed out after ${TURN_TIMEOUT_MS}ms`);
 		result = {
 			turnId: turn.turnId,
 			status: 'error',
-			output: timedOut
-				? `The turn passed the ${Math.round(TURN_TIMEOUT_MS / 60_000)}-minute limit and stopped. It may have been in a build. Do a smaller step, or run a long build in its own turn.`
-				: error.message,
+			output: error.message,
 			sessionId: activeSessionId,
 			boxId: BOX_ID,
 		};
 	}
 	await progress.finish(result.output, result.sessionId, result.boxId);
-	// Send the result to the turn's resume URL. This continues the waiting n8n
-	// execution. Retry on a failed status or a network error, so a transient
-	// failure does not drop the result and leave the turn to time out.
+	// The resume POST is the delivery contract. Retry transient failures.
 	for (let attempt = 1; attempt <= 3; attempt++) {
 		try {
 			const res = await post(turn.resumeUrl, result);
@@ -387,7 +374,6 @@ async function main() {
 		}
 	}
 
-	// Without a box id, a thread cannot follow the box that holds its session.
 	if (!BOX_ID)
 		console.error(
 			'CODESPACE_NAME did not resolve — box pinning disabled; turns route by githubUser only.',
@@ -406,7 +392,7 @@ async function main() {
 					`${new Date().toISOString()} turn ${turn.turnId} by ${turn.author ?? 'unknown'}: ${turn.sessionId ? 'resume' : 'new'}`,
 				);
 				await handle(turn);
-				continue; // get the next turn now, with no delay
+				continue;
 			}
 		} catch (error) {
 			console.error(`poll error: ${error.message}`);
