@@ -844,6 +844,7 @@ async function submitAdd() {
 
 .ghostButton,
 .primaryButton {
+	white-space: nowrap;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border: var(--wireframe--border);
 	border-radius: var(--wireframe--radius);
