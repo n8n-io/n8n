@@ -50,6 +50,11 @@ declare const cipher: Cipher;
 void cipher.encryptV2('data');`,
 			filename: 'service.ts',
 		},
+		// Wildcard re-exports of unrelated modules are fine
+		{
+			code: "export * from './utils';",
+			filename: 'index.ts',
+		},
 		// encryptWithKey on an unrelated type stays allowed
 		{
 			code: `class Vault {
@@ -77,6 +82,19 @@ vault.encryptWithKey('d', 'k');`,
 			filename: 'helper.ts',
 			errors: [{ messageId: 'noPrimitiveReference', data: { name: 'CipherAes256CBC' } }],
 		},
+		// … and so do wildcard re-exports, which carry no identifier
+		{
+			code: "export * from 'n8n-core';",
+			filename: 'helper.ts',
+			errors: [{ messageId: 'noWildcardReexport', data: { source: 'n8n-core' } }],
+		},
+		// A directory merely named "migrations" is not the database migration root
+		{
+			code: "import { CipherAes256CBC } from 'n8n-core';",
+			filename: `${path.sep}repo${path.sep}packages${path.sep}cli${path.sep}src${path.sep}nodes${path.sep}migrations${path.sep}helper.ts`,
+			languageOptions: untypedParse,
+			errors: [{ messageId: 'noPrimitiveReference', data: { name: 'CipherAes256CBC' } }],
+		},
 		// Namespace member access
 		{
 			code: `import * as core from 'n8n-core';
@@ -102,6 +120,23 @@ declare const cipher: Cipher;
 cipher.encryptWithKey('d', 'k', 'aes-256-cbc');`,
 			filename: 'service.ts',
 			errors: [{ messageId: 'noExplicitKeyCall', data: { method: 'encryptWithKey' } }],
+		},
+		// Bound method references escape without ever being a call expression
+		{
+			code: `${cipherClass}
+declare const cipher: Cipher;
+export const leak = cipher.encryptWithKey;`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noExplicitKeyCall', data: { method: 'encryptWithKey' } }],
+		},
+		// Subclasses inherit the explicit-key methods
+		{
+			code: `${cipherClass}
+class ExtendedCipher extends Cipher {}
+declare const extended: ExtendedCipher;
+extended.decryptWithKey('d', 'k', 'aes-256-cbc');`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noExplicitKeyCall', data: { method: 'decryptWithKey' } }],
 		},
 		{
 			code: `${cipherClass}

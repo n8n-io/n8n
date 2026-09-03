@@ -72,7 +72,16 @@ export const NoEncryptionGuardrailDisableRule = ESLintUtils.RuleCreator.withoutD
 						continue;
 					}
 
-					const rule = TARGET_RULES.find((name) => text.includes(name));
+					// Only the comma-separated rule list counts; the free-text
+					// explanation after `--` may mention a rule without disabling it.
+					const ruleIds = ruleList
+						.split('--')[0]
+						.split(',')
+						.map((id) => id.trim())
+						.filter((id) => id !== '');
+					const rule = TARGET_RULES.find((name) =>
+						ruleIds.some((id) => id === name || id.endsWith(`/${name}`)),
+					);
 					if (rule) {
 						context.report({ loc: comment.loc, messageId: 'noDisable', data: { rule } });
 					}

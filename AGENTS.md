@@ -252,9 +252,12 @@ which output format. Enforced in CI by the rules in
 - **Deployment keys are never deleted** — data encrypted with a key becomes
   unreadable without it. Deactivate keys instead; the repository's delete
   surface throws at runtime and the lint rule rejects call sites.
-- Inline `eslint-disable` of these rules is itself a lint error. Widening the
-  boundary happens in `encryption-boundary.ts`, which requires security (IAM)
-  approval via OWNERS.
+- Inline disables that name these rules, and bare line-form disables, are
+  themselves lint errors. The block-comment forms ESLint cannot self-police
+  (`/* eslint-disable */` variants) and package-level rule overrides are
+  guarded by review instead: the boundary config, the rule files, and the
+  package eslint configs require security (IAM) approval via OWNERS. Widening
+  the boundary happens in `encryption-boundary.ts` only.
 
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`

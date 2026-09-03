@@ -1,17 +1,20 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import type * as ts from 'typescript';
 
 const DELETE_METHODS = new Set(['delete', 'remove', 'softDelete', 'softRemove', 'clear']);
 
 /** Methods that hand out an alternative surface over the entity. */
 const ACCESS_METHODS = new Set(['getRepository', 'createQueryBuilder', 'from']);
 
-/**
- * Cheap prefilter before the type checker: repository-instance receivers by
- * naming convention, or anything that names the entity outright. Deletes that
- * name the entity (as the first argument or as a typed entity instance) are
- * caught by the argument checks regardless of the receiver.
- */
-const RECEIVER_PREFILTER = /eposito|DeploymentKey/;
+/** The entity's class name and its table name, as entity targets. */
+const ENTITY_NAMES = new Set(['DeploymentKey', 'deployment_key']);
+
+/** Argument shapes that can never carry an entity-instance type. */
+const NON_ENTITY_ARGUMENTS = new Set<TSESTree.AST_NODE_TYPES>([
+	TSESTree.AST_NODE_TYPES.Literal,
+	TSESTree.AST_NODE_TYPES.TemplateLiteral,
+	TSESTree.AST_NODE_TYPES.ObjectExpression,
+]);
 
 /** Test files may clean up rows for setup/teardown. */
 const TEST_FILE_PATTERN = /(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])/;
@@ -39,6 +42,19 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 		if (TEST_FILE_PATTERN.test(context.filename)) return {};
 		const isOwnRepositoryFile = OWN_REPOSITORY_FILE.test(context.filename);
 
+		/** Identifier `DeploymentKey`, or the entity/table name as a string target. */
+		const namesEntity = (node: TSESTree.Node | undefined): boolean => {
+			if (node === undefined) return false;
+			if (node.type === TSESTree.AST_NODE_TYPES.Identifier) {
+				return node.name === 'DeploymentKey';
+			}
+			return (
+				node.type === TSESTree.AST_NODE_TYPES.Literal &&
+				typeof node.value === 'string' &&
+				ENTITY_NAMES.has(node.value)
+			);
+		};
+
 		/** True when the type of `node` is (an array of) the DeploymentKey entity. */
 		const isDeploymentKeyTyped = (node: TSESTree.Node): boolean => {
 			const services = ESLintUtils.getParserServices(context);
@@ -47,6 +63,19 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 			if (symbolName === 'DeploymentKey') return true;
 			const elementSymbol = type.getNumberIndexType?.()?.getSymbol();
 			return elementSymbol?.getName() === 'DeploymentKey';
+		};
+
+		/**
+		 * The concrete repository by name, or TypeORM's generic `Repository`
+		 * instantiated for the entity (`Repository<DeploymentKey>`, e.g. from
+		 * `getRepository(...)` results stored behind an annotation).
+		 */
+		const isDeploymentKeyRepository = (type: ts.Type): boolean => {
+			const symbolName = (type.getSymbol() ?? type.aliasSymbol)?.getName();
+			if (symbolName === 'DeploymentKeyRepository') return true;
+			if (symbolName !== 'Repository') return false;
+			const typeArguments = (type as ts.TypeReference).typeArguments ?? [];
+			return typeArguments.some((arg) => arg.getSymbol()?.getName() === 'DeploymentKey');
 		};
 
 		return {
@@ -71,15 +100,13 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 				if (method === null) return;
 
 				const [firstArg] = node.arguments;
-				const firstArgIsEntityIdentifier =
-					firstArg?.type === TSESTree.AST_NODE_TYPES.Identifier &&
-					firstArg.name === 'DeploymentKey';
 
 				// Alternative surfaces over the entity bypass the repository's
 				// delete lockdown: tx.getRepository(DeploymentKey).delete(…),
-				// qb.delete().from(DeploymentKey), createQueryBuilder(DeploymentKey, …).
+				// qb.delete().from(DeploymentKey), createQueryBuilder(DeploymentKey, …)
+				// — by identifier or by entity/table name string.
 				if (ACCESS_METHODS.has(method)) {
-					if (firstArgIsEntityIdentifier && !isOwnRepositoryFile) {
+					if (namesEntity(firstArg) && !isOwnRepositoryFile) {
 						context.report({ node: property, messageId: 'noAlternativeSurface', data: { method } });
 					}
 					return;
@@ -87,32 +114,28 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				if (!DELETE_METHODS.has(method)) return;
 
-				// Entity-manager form: tx.delete(DeploymentKey, …), or a typed entity
-				// instance: manager.remove(deploymentKey) / softRemove(keys).
-				if (firstArgIsEntityIdentifier) {
-					context.report({ node: property, messageId: 'noDelete' });
-					return;
-				}
-				// Only references can carry an entity-instance type; literals and
-				// object/array expressions never do, so skip the checker for them.
-				if (
-					firstArg !== undefined &&
-					(firstArg.type === TSESTree.AST_NODE_TYPES.Identifier ||
-						firstArg.type === TSESTree.AST_NODE_TYPES.MemberExpression) &&
-					isDeploymentKeyTyped(firstArg)
-				) {
+				// Entity-manager form: tx.delete(DeploymentKey, …) / tx.delete('deployment_key', …).
+				if (namesEntity(firstArg)) {
 					context.report({ node: property, messageId: 'noDelete' });
 					return;
 				}
 
-				// Repository form: <DeploymentKeyRepository instance>.delete(…)
-				const receiverText = context.sourceCode.getText(callee.object);
-				if (!RECEIVER_PREFILTER.test(receiverText)) return;
+				// Typed entity instances in any argument position, whatever the
+				// expression shape (identifier, member, call result, await, array).
+				for (const argument of node.arguments) {
+					if (NON_ENTITY_ARGUMENTS.has(argument.type)) continue;
+					const target =
+						argument.type === TSESTree.AST_NODE_TYPES.SpreadElement ? argument.argument : argument;
+					if (isDeploymentKeyTyped(target)) {
+						context.report({ node: property, messageId: 'noDelete' });
+						return;
+					}
+				}
 
+				// Repository form: the concrete repository or Repository<DeploymentKey>.
 				const services = ESLintUtils.getParserServices(context);
 				const receiverType = services.getTypeAtLocation(callee.object);
-				const symbolName = (receiverType.getSymbol() ?? receiverType.aliasSymbol)?.getName();
-				if (symbolName !== 'DeploymentKeyRepository') return;
+				if (!isDeploymentKeyRepository(receiverType)) return;
 
 				context.report({ node: property, messageId: 'noDelete' });
 			},

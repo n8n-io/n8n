@@ -72,6 +72,13 @@ declare const tx: { getRepository(entity: unknown): unknown };
 tx.getRepository(WebhookEntity);`,
 			filename: 'service.ts',
 		},
+		// Collections that merely hold entities are not a delete surface
+		{
+			code: `class DeploymentKey { id: string = ''; }
+declare const cache: Map<string, DeploymentKey>;
+cache.delete('x');`,
+			filename: 'service.ts',
+		},
 	],
 	invalid: [
 		{
@@ -151,6 +158,47 @@ declare const manager: { createQueryBuilder(entity: unknown, alias: string): unk
 void manager.createQueryBuilder(DeploymentKey, 'dk');`,
 			filename: 'service.ts',
 			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'createQueryBuilder' } }],
+		},
+		// A receiver whose name gives no hint is still caught by its type
+		{
+			code: `${repositoryClass}
+declare const repo: DeploymentKeyRepository;
+void repo.delete({});`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noDelete' }],
+		},
+		// The generic TypeORM repository instantiated for the entity
+		{
+			code: `class DeploymentKey { id: string = ''; }
+class Repository<T> {
+	async delete(criteria: unknown): Promise<T | undefined> { return undefined; }
+}
+declare const repo: Repository<DeploymentKey>;
+void repo.delete({});`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noDelete' }],
+		},
+		// Entity instances arriving through any expression shape
+		{
+			code: `class DeploymentKey { id: string = ''; }
+declare function loadKey(): Promise<DeploymentKey>;
+declare const manager: { remove(entity: unknown): Promise<unknown> };
+export const run = async () => await manager.remove(await loadKey());`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noDelete' }],
+		},
+		// String entity targets: class name or table name
+		{
+			code: `declare const tx: { getRepository(entity: unknown): unknown };
+tx.getRepository('DeploymentKey');`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'getRepository' } }],
+		},
+		{
+			code: `declare const qb: { delete(): { from(entity: unknown): { execute(): Promise<unknown> } } };
+void qb.delete().from('deployment_key').execute();`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'from' } }],
 		},
 	],
 });

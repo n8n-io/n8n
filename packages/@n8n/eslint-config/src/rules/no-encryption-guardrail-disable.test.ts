@@ -33,6 +33,10 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 		{
 			code: '// eslint-disable-next-line no-console\nconsole.log("x");',
 		},
+		// A guarded rule mentioned only in the `--` explanation is not disabled
+		{
+			code: '// eslint-disable-next-line no-console -- keep parity with no-legacy-cipher-methods docs\nconsole.log("x");',
+		},
 	],
 	invalid: [
 		{
