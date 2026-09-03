@@ -9,7 +9,6 @@ import {
 	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
-	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -28,8 +27,6 @@ import {
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
-
-const TERMINAL_PARENT_STATUSES: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
 
 /**
  * How long `resumeParentExecution` keeps retrying while the parent is still
@@ -244,8 +241,8 @@ export class WaitTracker {
 				if (parent?.status === 'waiting') {
 					// Parent parked — patch its stack, then claim and resume it.
 					await this.withRetry(
-						() =>
-							updateParentExecutionWithChildResults(
+						async () =>
+							await updateParentExecutionWithChildResults(
 								parentExecution.executionId,
 								subworkflowResults,
 								childExecution,
@@ -256,7 +253,7 @@ export class WaitTracker {
 
 					try {
 						await this.withRetry(
-							() => this.startExecution(parentExecution.executionId),
+							async () => await this.startExecution(parentExecution.executionId),
 							MAX_PARENT_RESUME_ATTEMPTS,
 							(error) =>
 								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
