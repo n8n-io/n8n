@@ -20,6 +20,7 @@ concurrency:
 
 env:
   NODE_VERSION: '26.7.0'
+  TURBO_CANARY_VERSION: '2.9.18'
 
 jobs:
   prime-cache:
@@ -69,10 +70,10 @@ jobs:
           build-command: ''
           turbo-use-relative-cache-path: 'true'
 
-      - name: Pin the repository Turbo binary
+      - name: Pin the canary Turbo binary
         shell: bash
         run: |
-          expected="$(node -p "require('turbo/package').version")"
+          expected="$TURBO_CANARY_VERSION"
           case "$(uname -m)" in
             x86_64) binary_package='@turbo/linux-64' ;;
             aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
@@ -190,10 +191,10 @@ jobs:
           build-command: ''
           turbo-use-relative-cache-path: 'true'
 
-      - name: Pin the repository Turbo binary
+      - name: Pin the canary Turbo binary
         shell: bash
         run: |
-          expected="$(node -p "require('turbo/package').version")"
+          expected="$TURBO_CANARY_VERSION"
           case "$(uname -m)" in
             x86_64) binary_package='@turbo/linux-64' ;;
             aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
