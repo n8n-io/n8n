@@ -2047,16 +2047,12 @@ export class CredentialsService {
 		return await this.persistInstanceCredential({ ...dto, isManaged: false }, user, ctx, options);
 	}
 
-	/**
-	 * Creates an empty credential placeholder for package import. Skips field
-	 * validation so every known type can be stubbed; the insert still enforces
-	 * `credential:create` on the target project. A supplied `id` preserves source identity.
-	 */
 	async createStubCredential(
 		opts: { id?: string; name: string; type: string; projectId: string; data?: ICredentialDataDecryptedObject },
 		user: User,
 	): Promise<CredentialsEntity> {
 		const data = opts.data ?? {};
+		await validateExternalSecretsPermissions({ user, projectId: opts.projectId, dataToSave: data });
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
