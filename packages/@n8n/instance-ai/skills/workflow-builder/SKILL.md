@@ -392,12 +392,12 @@ Discovery results can include a `setupPreference` array. Each entry has:
 - `setupCompletionPercent`, a percentage from 0 to 100 rounded to the nearest
   5 percentage points, or `null`
 - `popularityScore`, a relative adoption score from 0 to 1 rounded to one
-  decimal place
+  decimal place, or `null`
 
 Setup completion measures completion of an Instance AI setup step containing
-the credential; it is not an activation or validity rate. `null` means there
-was not enough data. Popularity is relative recent adoption, not a percentage.
-Treat both as coarse signals and ignore small differences.
+the credential; it is not an activation or validity rate. For either metric,
+`null` means there was not enough data. Popularity is relative recent adoption,
+not a percentage. Treat both as coarse signals and ignore small differences.
 
 When choosing a service:
 

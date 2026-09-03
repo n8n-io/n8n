@@ -6,7 +6,7 @@ function expectedPreference(metric: (typeof credentialSetupability)[number]) {
 		type: metric.id,
 		setupCompletionPercent:
 			metric.setupability === null ? null : Math.round(metric.setupability * 100),
-		popularityScore: Math.round(metric.popularity * 10) / 10,
+		popularityScore: metric.popularity === null ? null : Math.round(metric.popularity * 10) / 10,
 	};
 }
 
@@ -26,9 +26,11 @@ describe('credential setupability data', () => {
 				expect(metric.setupability).toBeLessThanOrEqual(1);
 				expect(metric.setupability * 20).toBeCloseTo(Math.round(metric.setupability * 20));
 			}
-			expect(metric.popularity).toBeGreaterThanOrEqual(0);
-			expect(metric.popularity).toBeLessThanOrEqual(1);
-			expect(metric.popularity * 10).toBeCloseTo(Math.round(metric.popularity * 10));
+			if (metric.popularity !== null) {
+				expect(metric.popularity).toBeGreaterThanOrEqual(0);
+				expect(metric.popularity).toBeLessThanOrEqual(1);
+				expect(metric.popularity * 10).toBeCloseTo(Math.round(metric.popularity * 10));
+			}
 		}
 	});
 

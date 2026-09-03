@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const outputFile = resolve(
@@ -11,7 +11,7 @@ const outputFile = resolve(
 const endpoint = process.env.N8N_CREDENTIAL_SETUPABILITY_ENDPOINT;
 
 const roundSetupability = (value) => (value === null ? null : Math.round(value * 20) / 20);
-const roundPopularity = (value) => Math.round(value * 10) / 10;
+export const roundPopularity = (value) => (value === null ? null : Math.round(value * 10) / 10);
 
 async function main() {
 	if (!endpoint) {
@@ -39,7 +39,9 @@ async function main() {
 	console.log(`Saved credential setupability data for ${metrics.length} credential types.`);
 }
 
-main().catch((error) => {
-	console.error(error instanceof Error ? error.message : String(error));
-	process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main().catch((error) => {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode = 1;
+	});
+}

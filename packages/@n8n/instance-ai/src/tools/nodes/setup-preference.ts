@@ -3,7 +3,7 @@ import credentialSetupability from './credential-setupability.json';
 export interface SetupPreference {
 	type: string;
 	setupCompletionPercent: number | null;
-	popularityScore: number;
+	popularityScore: number | null;
 }
 
 export type NodeWithSetupPreference<T extends object> = T & {
@@ -16,7 +16,7 @@ for (const { id, setupability, popularity } of credentialSetupability) {
 	setupPreferences.set(id, {
 		type: id,
 		setupCompletionPercent: setupability === null ? null : Math.round(setupability * 100),
-		popularityScore: Math.round(popularity * 10) / 10,
+		popularityScore: popularity === null ? null : Math.round(popularity * 10) / 10,
 	});
 }
 
