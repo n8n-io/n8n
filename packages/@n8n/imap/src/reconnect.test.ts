@@ -140,6 +140,27 @@ describe('reconnecting', () => {
 		expect(onArrival).toHaveBeenCalledWith({ count: 1 });
 	});
 
+	it('lets an error from a superseded dial cut nothing short on the transport that won', async () => {
+		const [first, second, third] = [new FakeTransport(), new FakeTransport(), new FakeTransport()];
+		second.mailboxOpen.mockReturnValue(neverSettles());
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+		const onError = vi.fn();
+
+		const connection = await openWatching(handOut(first, second, third));
+		connection.onArrival(onArrival).onError(onError);
+
+		first.emit('close');
+		// The dial into `second` hangs on its SELECT until the attempt times out; the retry wins.
+		await vi.advanceTimersByTimeAsync(RECONNECT_TIMEOUT + 1001);
+
+		third.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
+		second.emit('error', new Error('read ECONNRESET'));
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onArrival).toHaveBeenCalledWith({ count: 1 });
+		expect(onError).not.toHaveBeenCalled();
+	});
+
 	it('fails to connect when the first transport drops before it is in place', async () => {
 		const first = new FakeTransport();
 		let releaseSelect!: () => void;

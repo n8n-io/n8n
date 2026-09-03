@@ -259,7 +259,7 @@ export class ImapSimple {
 		await client.connect();
 
 		// Wired before the SELECT, so a transport that drops under it is still recovered from.
-		client.on('error', (error: Error) => this.onTransportError(error));
+		client.on('error', (error: Error) => this.onTransportError(error, client));
 		client.on('close', () => this.onTransportClose(client));
 
 		const mailbox = this.reconnectOptions?.mailbox;
@@ -286,7 +286,11 @@ export class ImapSimple {
 		client.on('flags', (data) => this.report('flags', (handler) => handler(data)));
 	}
 
-	private onTransportError(error: Error): void {
+	private onTransportError(error: Error, client: ImapTransport): void {
+		// A transport still being dialled surfaces its failure through the SELECT it interrupts;
+		// losing the installed connection over it would cut short work the drop never touched.
+		if (this.installed && client !== this.client) return;
+
 		// imapflow rejects its in-flight commands as the connection dies, and that reaches a
 		// handler before the `close` does, so the transport is spent from this first error.
 		this.lose();
