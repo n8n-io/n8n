@@ -137,8 +137,9 @@ function buildCredentialGateScript(streaming: boolean) {
 						event.stopImmediatePropagation();
 						if (window.parent === window) return;
 						// Asks the shell to surface its connect panel. Never a provider popup from
-						// here - one opened off a posted message is downgraded to a tab by some
-						// browsers, which is why the bar opens its own.
+						// here - this frame's click doesn't hand the shell a usable gesture (it's
+						// an opaque origin, by design), so a popup opened off this message would
+						// just be blocked. The dialog's own Connect button is a real click there.
 						window.parent.postMessage({ type: 'n8n-chat-connect-requested' }, '*');
 					}
 

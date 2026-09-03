@@ -838,10 +838,9 @@ describe('credential gate script', () => {
 				this.focused = true;
 			},
 		};
-		const posted: Array<{ message: unknown; targetOrigin: string }> = [];
+		const posted: Array<{ message: unknown; options: unknown }> = [];
 		const parent = {
-			postMessage: (message: unknown, targetOrigin: string) =>
-				posted.push({ message, targetOrigin }),
+			postMessage: (message: unknown, options: unknown) => posted.push({ message, options }),
 		};
 		const winListeners: Array<(event: unknown) => void> = [];
 		const win = {
@@ -996,7 +995,7 @@ describe('credential gate script', () => {
 		expect(posted).toEqual([
 			{
 				message: { type: 'n8n-chat-credentials-rejected', ids: ['cred-missing'] },
-				targetOrigin: '*',
+				options: '*',
 			},
 		]);
 	});
@@ -1085,9 +1084,7 @@ describe('credential gate script', () => {
 			sendStatus(notReady);
 			submit('click');
 
-			expect(posted).toEqual([
-				{ message: { type: 'n8n-chat-connect-requested' }, targetOrigin: '*' },
-			]);
+			expect(posted).toEqual([{ message: { type: 'n8n-chat-connect-requested' }, options: '*' }]);
 		});
 
 		it('blocks in test mode too, since the server refuses builders as well', () => {

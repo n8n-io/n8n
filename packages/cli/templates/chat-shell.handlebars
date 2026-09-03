@@ -497,7 +497,7 @@
 						if (!frame || event.source !== frame.contentWindow) return;
 						var data = event.data;
 						if (!data || data.type !== 'n8n-chat-connect-requested') return;
-						openConnectOrDialog();
+						if (overlay) overlay.classList.add('open');
 					});
 
 					// The widget mounts asynchronously, so its message listener may not be
@@ -770,6 +770,11 @@
 						overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.classList.remove('open'); });
 					}
 
+					// The popup is opened by a real click on this document, so it's never
+					// blocked. A message from the sandboxed frame doesn't carry that same
+					// gesture, which is why only this bar - never the frame - gets the
+					// single-account shortcut; the frame's own request always opens the
+					// dialog instead, whose own Connect button is a real click too.
 					function openConnectOrDialog() {
 						var row = onlyRow();
 						var key = row ? row.getAttribute('data-row-key') : null;

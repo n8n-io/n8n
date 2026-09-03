@@ -619,13 +619,13 @@ describe('chat-shell.handlebars', () => {
 			expect([...(overlay.classes as Set<string>)]).not.toContain('open');
 		});
 
-		it('opens the provider popup directly for a single missing account, matching the bar shortcut', async () => {
+		it('opens the dialog for a single missing account too, since a message from the frame is never a real click', async () => {
 			const { overlay, opened, send } = await runSingleAccountBarScript();
 
 			send({ type: 'n8n-chat-connect-requested' });
 
-			expect(opened).toEqual(['https://n8n.example.com/credentials/cred-1/authorize']);
-			expect([...(overlay.classes as Set<string>)]).not.toContain('open');
+			expect(opened).toEqual([]);
+			expect([...(overlay.classes as Set<string>)]).toContain('open');
 		});
 
 		it('never marks an account connected, whatever the frame sends', async () => {
