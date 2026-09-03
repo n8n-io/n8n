@@ -116,9 +116,9 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
-	it('tells agents invalid groups are dropped with warnings and the boundary redrawn', () => {
+	it('tells agents to fix what a dropped-group warning reports, not the boundary', () => {
 		// A build took two dropped-group warnings as licence to publish the stage
-		// ungrouped instead of moving the boundary.
+		// ungrouped instead of fixing the group.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/drop an invalid group.+report a warning/is);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/never means the stage should\s+stay ungrouped/is);
 		// The warning also fires for a duplicate name or a missing member, so telling the
