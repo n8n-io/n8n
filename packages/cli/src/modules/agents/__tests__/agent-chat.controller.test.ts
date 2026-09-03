@@ -1,4 +1,5 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { jsonParse } from 'n8n-workflow';
 import { FileNotFoundError } from 'n8n-core';
 import { EventEmitter } from 'node:events';
 import type { Mocked } from 'vitest';
@@ -95,6 +96,13 @@ function makeSseResponse(writes: string[]): FlushableResponse {
 	return res as unknown as FlushableResponse;
 }
 
+/** Parse the `data:` frames a handler wrote to its SSE response. */
+function sseEvents(writes: string[]): Array<Record<string, unknown>> {
+	return writes
+		.filter((line) => line.startsWith('data: '))
+		.map((line) => jsonParse<Record<string, unknown>>(line.slice(6).trim()));
+}
+
 describe('AgentChatController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentChatController);
 
@@ -170,16 +178,17 @@ describe('AgentChatController chat message history', () => {
 });
 
 describe('AgentChatController SSE done payload', () => {
-	it('still starts a chat when the response closes during preparation', async () => {
-		const { controller, agentTestRunService } = makeController();
-		let resolvePreparation = (_value: { status: 'ready'; sessionId: string }) => {};
-		agentTestRunService.prepareDraftRun.mockReturnValue(
-			new Promise((resolve) => {
-				resolvePreparation = resolve;
-			}),
-		);
+	it('runs a chat to completion when the response closes during preparation', async () => {
+		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
+		const preparing = createDeferredPromise<{ status: 'ready'; sessionId: string }>();
+		agentTestRunService.prepareDraftRun.mockReturnValue(preparing.promise);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			yield { type: 'text-delta', id: 'text-1', delta: 'answer' } as never;
+			config.onExecutionRecorded?.('exec-after-close');
+		});
 
-		const res = makeSseResponse([]);
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
 		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
@@ -189,11 +198,17 @@ describe('AgentChatController SSE done payload', () => {
 		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
 
 		(res as unknown as EventEmitter).emit('close');
-		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
+		preparing.resolve({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		// The turn outlives the connection so it is recorded and a reload shows it.
+		// The turn outlives the connection: it streams to the end and is recorded,
+		// so a reload shows the finished answer.
 		expect(agentTestRunService.streamDraftRun).toHaveBeenCalled();
+		expect(sseEvents(writes)).toContainEqual({
+			type: 'done',
+			sessionId: 'thread-1',
+			executionId: 'exec-after-close',
+		});
 	});
 
 	it('stops a chat that is still being prepared', async () => {
@@ -252,10 +267,7 @@ describe('AgentChatController SSE done payload', () => {
 		runBlocked.resolve();
 		await request;
 
-		const deltas = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { delta?: string })
-			.map((event) => event.delta);
+		const deltas = sseEvents(writes).map((event) => event.delta);
 		expect(deltas).toContain('before');
 		expect(deltas).not.toContain('after');
 	});
@@ -277,9 +289,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ message: 'hi', sessionId: 'thread-1' } as never,
 		);
 
-		const events = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		const events = sseEvents(writes);
 
 		expect(events).toContainEqual({
 			type: 'done',
@@ -305,9 +315,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
 		);
 
-		const events = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		const events = sseEvents(writes);
 
 		expect(events).toContainEqual({
 			type: 'done',
