@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { provide, ref } from 'vue';
 import { N8nButton } from '@n8n/design-system';
+import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
 
 import ToolsConnectionModal from './ToolsConnectionModal.vue';
 import McpToolSettingsContent from './McpToolSettingsContent.vue';
@@ -51,11 +52,6 @@ const AGENT_BUILDER_CATEGORIES: ToolCategoryKey[] = [
 const meta = {
 	title: 'Modules/ToolsConnectionModal',
 	component: ToolsConnectionModal,
-	args: {
-		suggestionPrompt: 'Need another capability?',
-		suggestionAction: 'Suggest a tool',
-		suggestionUrl: 'https://example.com/suggest-tool',
-	},
 	parameters: {
 		docs: {
 			description: {
@@ -102,6 +98,7 @@ function renderWithTrigger(
 			McpToolSettingsContent,
 			PlaceholderSettingsBody,
 			N8nButton,
+			SuggestionFooter,
 		},
 		setup() {
 			const isOpen = ref(false);
@@ -149,6 +146,13 @@ function renderWithTrigger(
 					@save="(item, settings) => console.log('[story] save', item, settings)"
 					@select-credential="(item, authType, credentialId) => console.log('[story] select-credential', item, authType, credentialId)"
 				>
+					<template #suggestion-footer>
+						<SuggestionFooter
+							prompt="Need another capability?"
+							action="Suggest a tool"
+							url="https://example.com/suggest-tool"
+						/>
+					</template>
 					<template #settings-body="{ item, onSave, onDisconnect }">
 						<McpToolSettingsContent
 							v-if="item.kind === 'mcp-server'"
