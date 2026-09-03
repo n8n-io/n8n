@@ -18,6 +18,8 @@ export class GroupPlaceholder implements INodeType {
 		iconColor: 'neutral',
 		group: ['organization'],
 		version: 1,
+		// Only the canvas inserts this node; it must not show in the node creator.
+		hidden: true,
 		description: 'Forwards items. Stands in for a group that is not generated yet.',
 		defaults: {
 			name: 'Group Placeholder',
