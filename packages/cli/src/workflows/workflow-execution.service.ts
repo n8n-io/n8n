@@ -7,7 +7,7 @@ import type {
 	WorkflowEntity,
 	PollLeaseFence,
 } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -41,6 +41,7 @@ import {
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -74,7 +75,7 @@ export class WorkflowExecutionService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async runWorkflow(
@@ -256,7 +257,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {

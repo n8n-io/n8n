@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -24,7 +23,6 @@ export class EnqueuedExecutionRecoveryService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly executionService: ExecutionService,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
@@ -103,6 +101,6 @@ export class EnqueuedExecutionRecoveryService {
 		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
 		this.logger.error('Failed to run enqueued execution', { executionId, error });
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId);
 	}
 }

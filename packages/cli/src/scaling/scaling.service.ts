@@ -51,6 +51,7 @@ export class ScalingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -637,7 +638,7 @@ export class ScalingService {
 			return waitMs;
 		}
 
-		await Container.get(ExecutionCrashService).markAsCrashed(danglingIds);
+		await this.executionCrashService.markAsCrashed(danglingIds);
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,

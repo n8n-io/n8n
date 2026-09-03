@@ -128,6 +128,7 @@ describe('ScalingService', () => {
 			instanceSettings,
 			mock(),
 			webhookResponseRelay,
+			executionCrashService,
 		);
 
 		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
@@ -413,6 +414,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -451,6 +453,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -484,6 +487,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -520,6 +524,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();

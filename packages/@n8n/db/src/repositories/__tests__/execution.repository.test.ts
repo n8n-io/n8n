@@ -10,7 +10,7 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity } from '../../entities';
+import { ExecutionEntity, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
 import type { OperationContext } from '../../services/transaction';
 import { TransactionRunner } from '../../services/transaction';
@@ -253,7 +253,12 @@ describe('ExecutionRepository', () => {
 
 	describe('markAsCrashed', () => {
 		const crashableRow = (id: string) =>
-			mock<ExecutionEntity>({ id, workflowId: `workflow-${id}`, mode: 'trigger' });
+			mock<ExecutionEntity>({
+				id,
+				workflowId: `workflow-${id}`,
+				mode: 'trigger',
+				workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
+			});
 
 		test('should batch updates above a threshold', async () => {
 			// Generates a list of many execution ids.
@@ -282,20 +287,64 @@ describe('ExecutionRepository', () => {
 			);
 		});
 
-		test('should report the workflow and mode of each execution it transitioned', async () => {
+		test('should report the workflow, name and mode of each execution it transitioned', async () => {
 			entityManager.find.mockResolvedValue([crashableRow('1')]);
 
 			const crashed = await executionRepository.markAsCrashed(['1', '2']);
 
-			expect(crashed).toEqual([{ id: '1', workflowId: 'workflow-1', mode: 'trigger' }]);
+			expect(crashed).toEqual([
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+				},
+			]);
 		});
 
-		test('should not update anything when no execution is crashable', async () => {
+		test('should only report rows carrying the `stoppedAt` it wrote', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed(['1']);
+
+			const updateValues = entityManager.update.mock.calls[0][2] as { stoppedAt: Date };
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({
+				where: { id: In(['1']), status: 'crashed', stoppedAt: updateValues.stoppedAt },
+			});
+		});
+
+		test('should report soft-deleted executions it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed(['1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				ExecutionEntity,
+				expect.objectContaining({ withDeleted: true }),
+			);
+		});
+
+		test('should report every batch as it transitions', async () => {
+			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
+				.fill(undefined)
+				.map((_, i) => i.toString());
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+			const reported: string[][] = [];
+
+			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed, (batch) =>
+				reported.push(batch.map(({ id }) => id)),
+			);
+
+			expect(reported).toEqual([['1'], ['1']]);
+		});
+
+		test('should report nothing when no execution transitioned', async () => {
 			entityManager.find.mockResolvedValue([]);
 
 			const crashed = await executionRepository.markAsCrashed(['1']);
 
-			expect(entityManager.update).not.toHaveBeenCalled();
 			expect(crashed).toEqual([]);
 		});
 	});

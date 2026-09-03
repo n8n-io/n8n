@@ -12,12 +12,10 @@ export class ExecutionCrashService {
 	) {}
 
 	async markAsCrashed(executionIds: string | string[]): Promise<CrashedExecution[]> {
-		const crashed = await this.executionRepository.markAsCrashed(executionIds);
+		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
+			if (batch.length === 0) return;
 
-		for (const { workflowId, mode } of crashed) {
-			this.workflowStatisticsService.emit('executionCrashed', { workflowId, mode });
-		}
-
-		return crashed;
+			this.workflowStatisticsService.emit('executionsCrashed', { executions: batch });
+		});
 	}
 }

@@ -70,6 +70,7 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 export type CrashedExecution = {
 	id: string;
 	workflowId: string;
+	workflowName?: string;
 	mode: WorkflowExecuteMode;
 };
 
@@ -379,7 +380,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	async markAsCrashed(executionIds: string | string[]): Promise<CrashedExecution[]> {
+	async markAsCrashed(
+		executionIds: string | string[],
+		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
+	): Promise<CrashedExecution[]> {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
 		const crashed: CrashedExecution[] = [];
@@ -388,30 +392,38 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		while (processed < executionIds.length) {
 			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
+			processed += batch.length;
+
+			const stoppedAt = new Date();
 
 			const transitioned = await this.runInTransaction({}, async (tx) => {
-				const rows = await tx.find(ExecutionEntity, {
-					select: ['id', 'workflowId', 'mode'],
-					// Guard against overwriting executions that have since moved to a `waiting` or
-					// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-					// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-					where: { id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				});
-
-				if (rows.length === 0) return [];
-
+				// Guard against overwriting executions that have since moved to a `waiting` or
+				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 				await tx.update(
 					ExecutionEntity,
-					{ id: In(rows.map(({ id }) => id)), status: In(CRASHABLE_EXECUTION_STATUSES) },
-					{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
+					{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
+					{ status: 'crashed', stoppedAt, waitTill: null },
 				);
 
-				return rows.map(({ id, workflowId, mode }) => ({ id, workflowId, mode }));
+				const rows = await tx.find(ExecutionEntity, {
+					select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
+					relations: { workflow: true },
+					where: { id: In(batch), status: 'crashed', stoppedAt },
+					withDeleted: true,
+				});
+
+				return rows.map(({ id, workflowId, mode, workflow }) => ({
+					id,
+					workflowId,
+					workflowName: workflow?.name,
+					mode,
+				}));
 			});
 
 			crashed.push(...transitioned);
+			onBatchTransitioned?.(transitioned);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
-			processed += batch.length;
 		}
 
 		return crashed;

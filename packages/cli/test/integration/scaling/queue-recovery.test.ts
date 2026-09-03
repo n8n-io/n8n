@@ -7,6 +7,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
@@ -16,6 +17,7 @@ describe('ScalingService queue recovery', () => {
 	let scalingService: ScalingService;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflow: WorkflowEntity;
+	const originalSkipStatisticsEvents = process.env.SKIP_STATISTICS_EVENTS;
 
 	beforeAll(async () => {
 		delete process.env.SKIP_STATISTICS_EVENTS;
@@ -38,6 +40,7 @@ describe('ScalingService queue recovery', () => {
 			Container.get(InstanceSettings),
 			mock(),
 			mock(),
+			Container.get(ExecutionCrashService),
 		);
 	});
 
@@ -50,14 +53,20 @@ describe('ScalingService queue recovery', () => {
 	});
 
 	afterAll(async () => {
+		if (originalSkipStatisticsEvents !== undefined) {
+			process.env.SKIP_STATISTICS_EVENTS = originalSkipStatisticsEvents;
+		}
+
 		await testDb.terminate();
 	});
 
-	const createDanglingExecution = async (mode: WorkflowExecuteMode) =>
-		await createExecution({ status: 'running', finished: false, stoppedAt: null, mode }, workflow);
+	const createDanglingExecution = async (
+		mode: WorkflowExecuteMode,
+		target: WorkflowEntity = workflow,
+	) => await createExecution({ status: 'running', finished: false, stoppedAt: null, mode }, target);
 
-	const findStatistics = async (name: StatisticsNames) =>
-		await workflowStatisticsRepository.findOneBy({ workflowId: workflow.id, name });
+	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) =>
+		await workflowStatisticsRepository.findOneBy({ workflowId, name });
 
 	it('increments the production error counter for an execution recovered as crashed', async () => {
 		const execution = await createDanglingExecution('trigger');
@@ -99,11 +108,92 @@ describe('ScalingService queue recovery', () => {
 		});
 	});
 
-	it('does not count a chat execution recovered as crashed', async () => {
-		await createDanglingExecution('chat');
+	it('stores the name of the workflow whose execution was recovered as crashed', async () => {
+		await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
 
-		expect(await workflowStatisticsRepository.findBy({ workflowId: workflow.id })).toEqual([]);
+		await vi.waitFor(async () => {
+			const statistics = await findStatistics(StatisticsNames.productionError);
+
+			expect(statistics).toMatchObject({ workflowName: workflow.name });
+		});
+	});
+
+	it('does not count a chat execution recovered as crashed', async () => {
+		const chatWorkflow = await createWorkflow();
+		await createDanglingExecution('chat', chatWorkflow);
+		await createDanglingExecution('trigger');
+
+		await scalingService.recoverFromQueue();
+
+		// the counted execution is recorded after the chat one, so its counter appearing
+		// means the chat execution has already been through the statistics path
+		await vi.waitFor(async () => {
+			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({ count: 1 });
+		});
+
+		expect(await workflowStatisticsRepository.findBy({ workflowId: chatWorkflow.id })).toEqual([]);
+	});
+
+	it('does not count the same recovered execution twice', async () => {
+		const execution = await createDanglingExecution('trigger');
+
+		await scalingService.recoverFromQueue();
+
+		await vi.waitFor(async () => {
+			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({ count: 1 });
+		});
+
+		await scalingService.recoverFromQueue();
+		await Container.get(ExecutionCrashService).markAsCrashed(execution.id);
+
+		const laterWorkflow = await createWorkflow();
+		await createDanglingExecution('trigger', laterWorkflow);
+
+		await scalingService.recoverFromQueue();
+
+		// the later execution is recorded after any repeat of the first one, so its counter
+		// appearing means a repeated increment would already be visible
+		await vi.waitFor(async () => {
+			expect(await findStatistics(StatisticsNames.productionError, laterWorkflow.id)).toMatchObject(
+				{ count: 1 },
+			);
+		});
+
+		expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({
+			count: 1,
+			rootCount: 1,
+		});
+	});
+
+	it('attributes each execution in one sweep to its own workflow and mode', async () => {
+		const manualWorkflow = await createWorkflow();
+		const subWorkflow = await createWorkflow();
+
+		await createDanglingExecution('trigger');
+		await createDanglingExecution('manual', manualWorkflow);
+		await createDanglingExecution('integrated', subWorkflow);
+
+		await scalingService.recoverFromQueue();
+
+		await vi.waitFor(async () => {
+			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({
+				count: 1,
+				rootCount: 1,
+			});
+			expect(await findStatistics(StatisticsNames.manualError, manualWorkflow.id)).toMatchObject({
+				count: 1,
+				rootCount: 0,
+			});
+			expect(await findStatistics(StatisticsNames.productionError, subWorkflow.id)).toMatchObject({
+				count: 1,
+				rootCount: 0,
+			});
+		});
+
+		expect(await findStatistics(StatisticsNames.manualError)).toBeNull();
+		expect(await findStatistics(StatisticsNames.productionError, manualWorkflow.id)).toBeNull();
+		expect(await findStatistics(StatisticsNames.manualError, subWorkflow.id)).toBeNull();
 	});
 });

@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { ExecutionRepository, IExecutionResponse, Project } from '@n8n/db';
+import type { IExecutionResponse, Project } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -22,7 +22,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	vi.mocked(logger.scoped).mockReturnValue(logger);
 	const errorReporter = mock<ErrorReporter>();
 	const executionService = mock<ExecutionService>();
-	const executionRepository = mock<ExecutionRepository>();
 	const executionCrashService = mock<ExecutionCrashService>();
 	const ownershipService = mock<OwnershipService>();
 	const workflowRunner = mock<WorkflowRunner>();
@@ -34,7 +33,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			errorReporter,
 			mock<ExecutionsConfig>({ mode }),
 			executionService,
-			executionRepository,
 			executionCrashService,
 			ownershipService,
 			workflowRunner,
@@ -86,7 +84,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
@@ -98,7 +96,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
@@ -133,7 +131,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 
 		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
-		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 	});
 
 	// A throw used to abort the whole loop, leaving every remaining execution at `new`.
@@ -145,7 +142,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,

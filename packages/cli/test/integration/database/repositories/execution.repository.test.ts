@@ -278,6 +278,46 @@ describe('ExecutionRepository', () => {
 			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
 			expect(successExec?.status).toBe('success');
 		});
+
+		it('should crash a soft-deleted in-progress execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const runningId = await createExecution('running');
+			await executionRepo.softDelete(runningId);
+
+			const crashed = await executionRepo.markAsCrashed([runningId]);
+
+			const runningExec = await executionRepo.findOne({
+				where: { id: runningId },
+				withDeleted: true,
+			});
+			expect(runningExec?.status).toBe('crashed');
+			expect(crashed).toHaveLength(1);
+		});
+
+		it('should report the workflow of each execution it transitioned', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const { identifiers } = await executionRepo.insert({
+				workflowId: workflow.id,
+				mode: 'trigger',
+				startedAt: new Date(),
+				status: 'running',
+				finished: false,
+				createdAt: new Date(),
+			});
+			const runningId = identifiers[0].id as string;
+
+			const crashed = await executionRepo.markAsCrashed([runningId]);
+
+			expect(crashed).toEqual([
+				{
+					id: runningId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					mode: 'trigger',
+				},
+			]);
+		});
 	});
 
 	describe('getWorkflowIdsWithExecutionsSince', () => {

@@ -1,5 +1,6 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
+import type { CrashedExecution } from '@n8n/db';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -100,7 +101,7 @@ type WorkflowStatisticsEvents = {
 		fullRunData: IRun;
 		source?: WorkflowExecutionSource;
 	};
-	executionCrashed: { workflowId: string; mode: WorkflowExecuteMode };
+	executionsCrashed: { executions: CrashedExecution[] };
 };
 
 @Service()
@@ -127,11 +128,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			async ({ workflowData, fullRunData, source }) =>
 				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
-		this.on(
-			'executionCrashed',
-			async ({ workflowId, mode }) =>
-				await this.recordExecutionOutcome({ workflowId, mode, status: 'crashed' }),
-		);
+		this.on('executionsCrashed', async ({ executions }) => {
+			for (const { workflowId, workflowName, mode } of executions) {
+				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
+			}
+		});
 	}
 
 	async workflowExecutionCompleted(
@@ -160,21 +161,29 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 	async recordExecutionOutcome({
 		workflowId,
+		workflowName,
 		mode,
 		status,
-	}: { workflowId: string } & CompletedRunOutcome): Promise<void> {
-		const outcome = { mode, status };
-		const statisticsName = getStatisticsNameForCompletedRun(outcome);
+	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		try {
+			const outcome = { mode, status };
+			const statisticsName = getStatisticsNameForCompletedRun(outcome);
 
-		if (!statisticsName) return;
+			if (!statisticsName) return;
 
-		await this.recordCompletedRun({
-			statisticsName,
-			workflowId,
-			workflowName: await this.workflowRepository.findNameById(workflowId),
-			isRoot: isRootExecutionForRun(outcome),
-			firstEventMs: Date.now(),
-		});
+			await this.recordCompletedRun({
+				statisticsName,
+				workflowId,
+				workflowName,
+				isRoot: isRootExecutionForRun(outcome),
+				firstEventMs: Date.now(),
+			});
+		} catch (error) {
+			this.logger.error('Failed to record the outcome of an execution', {
+				workflowId,
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private async recordCompletedRun({
