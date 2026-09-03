@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IExecuteResponsePromiseData,
+	INodeExecutionData,
 	IRun,
 	IWorkflowBase,
 	WorkflowExecuteMode,
@@ -9,6 +10,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 
 /** What an active trigger asks for when it hands items over. */
 export type EngineV2ActiveTriggerEmit = {
@@ -32,7 +34,10 @@ export type EngineV2ActiveTriggerEmit = {
  */
 @Service()
 export class EngineV2ActiveTriggers {
-	constructor(private readonly dispatcher: EngineV2Dispatcher) {}
+	constructor(
+		private readonly dispatcher: EngineV2Dispatcher,
+		private readonly payloadGuard: EngineV2PayloadGuard,
+	) {}
 
 	/** Whether this trigger run starts on the engine 2.0 data plane. */
 	handles(workflowData: IWorkflowBase, mode: WorkflowExecuteMode): boolean {
@@ -54,6 +59,29 @@ export class EngineV2ActiveTriggers {
 		throw new UserError(
 			'Engine 2.0 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
 		);
+	}
+
+	/**
+	 * Rejects an emit that carries files, deleting any the trigger already stored.
+	 *
+	 * The engine takes its payload as JSON, so a file cannot travel with it. Only
+	 * the node's own output says whether it produced one, so this runs on the emit
+	 * rather than at activation. Email Read IMAP is the case that matters today:
+	 * it downloads attachments and passes no promise, so nothing else refuses it.
+	 */
+	async assertPayloadSupported(slots: Array<INodeExecutionData[] | null>): Promise<void> {
+		await this.payloadGuard.assertNoFiles(
+			slots,
+			'Engine 2.0 cannot receive files from a trigger yet.',
+		);
+	}
+
+	/**
+	 * Deletes the files of an emit refused for another reason, so a payload the
+	 * poll path turns away does not leave them behind. Never throws.
+	 */
+	async discardFiles(slots: Array<INodeExecutionData[] | null>): Promise<void> {
+		await this.payloadGuard.discardFiles(slots);
 	}
 
 	/**

@@ -1,6 +1,4 @@
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
 	IWebhookResponseData,
@@ -20,6 +18,7 @@ import {
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
@@ -54,8 +53,7 @@ export type EngineV2WebhookRequest = {
 export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
-		private readonly binaryDataService: BinaryDataService,
-		private readonly logger: Logger,
+		private readonly payloadGuard: EngineV2PayloadGuard,
 	) {}
 
 	/** Whether this webhook run starts on the engine 2.0 data plane. */
@@ -113,35 +111,12 @@ export class EngineV2Webhooks {
 	 * Rejects a payload the engine cannot carry.
 	 *
 	 * Only the webhook node's own output says whether the request brought a file,
-	 * so this runs after the node, unlike {@link assertSupported}. In stored binary
-	 * modes the file is already written by then, and no execution will ever own it,
-	 * so it is deleted here rather than left for an execution pruning that never
-	 * comes.
+	 * so this runs after the node, unlike {@link assertSupported}.
 	 */
 	async assertPayloadSupported(webhookResultData: IWebhookResponseData): Promise<void> {
-		const items = (webhookResultData.workflowData ?? []).flatMap((slot) => slot ?? []);
-		// An empty `binary` map carries no file, so it does not count.
-		const files = items.flatMap((item) => Object.values(item.binary ?? {}));
-		if (files.length === 0) return;
-
-		await this.deleteStoredFiles(files.map((file) => file.id));
-
-		throw new UserError('Engine 2.0 cannot receive files from a webhook yet.');
-	}
-
-	/**
-	 * Only stored modes give a file an id; in memory the data rides on the item and
-	 * there is nothing to delete. A failed delete leaks a file, which must not
-	 * replace the caller's reason with a storage error.
-	 */
-	private async deleteStoredFiles(ids: Array<string | undefined>): Promise<void> {
-		const storedIds = ids.filter((id) => id !== undefined);
-		if (storedIds.length === 0) return;
-
-		try {
-			await this.binaryDataService.deleteManyByBinaryDataId(storedIds);
-		} catch (error) {
-			this.logger.error('Failed to delete the files of a rejected engine 2.0 webhook', { error });
-		}
+		await this.payloadGuard.assertNoFiles(
+			webhookResultData.workflowData ?? [],
+			'Engine 2.0 cannot receive files from a webhook yet.',
+		);
 	}
 }
