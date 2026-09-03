@@ -410,7 +410,6 @@ export default defineConfig(
 			'./src/modules/instance-registry/checks/check.service.ts',
 			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
 			'./src/modules/mcp-registry/registry/mcp-registry.service.ts',
-			'./src/modules/token-exchange/services/jti-cleanup.service.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',

@@ -31,7 +31,7 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
 	keyRefreshIntervalSeconds: number = 300;
 
-	/** Interval in seconds between JTI cleanup runs. */
+	/** Interval in seconds between JTI cleanup runs. Must be a positive integer. */
 	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
 	jtiCleanupIntervalSeconds: number = 60;
 
