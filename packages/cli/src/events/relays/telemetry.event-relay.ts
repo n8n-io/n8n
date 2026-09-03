@@ -1671,7 +1671,6 @@ export class TelemetryEventRelay extends EventRelay {
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			apiKeyScopes: this.licenseState.isApiKeyScopesLicensed(),
 			aiAssistant: this.licenseState.isAiAssistantLicensed(),
-			askAi: this.licenseState.isAskAiLicensed(),
 			aiCredits: this.licenseState.isAiCreditsLicensed(),
 			advancedExecutionFilters: this.licenseState.isAdvancedExecutionFiltersLicensed(),
 			advancedPermissions: this.licenseState.isAdvancedPermissionsLicensed(),

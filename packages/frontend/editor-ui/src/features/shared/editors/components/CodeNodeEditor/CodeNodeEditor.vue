@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ViewUpdate } from '@codemirror/view';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
-import { format } from 'prettier';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/app/constants';
@@ -11,61 +8,45 @@ import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useCodeEditor } from '../../composables/useCodeEditor';
-import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
-import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 type Props = {
 	mode: CodeExecutionMode;
 	modelValue: string;
-	aiButtonEnabled?: boolean;
 	fillParent?: boolean;
 	language?: CodeNodeLanguageOption;
 	isReadOnly?: boolean;
 	rows?: number;
 	id?: string;
 	targetNodeParameterContext?: TargetNodeParameterContext;
-	disableAskAi?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	aiButtonEnabled: false,
 	fillParent: false,
 	language: 'javaScript',
 	isReadOnly: false,
 	rows: 4,
 	id: () => crypto.randomUUID(),
 	targetNodeParameterContext: undefined,
-	disableAskAi: false,
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
 }>();
 
-const message = useMessage();
-const tabs = ref(['code', 'ask-ai']);
-const activeTab = ref('code');
-const isLoadingAIResponse = ref(false);
 const codeNodeEditorRef = ref<HTMLDivElement>();
 const codeNodeEditorContainerRef = ref<HTMLDivElement>();
-const hasManualChanges = ref(false);
 
 const rootStore = useRootStore();
-const i18n = useI18n();
 const telemetry = useTelemetry();
-const settingsStore = useSettingsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const linter = useLinter(
@@ -111,47 +92,14 @@ onBeforeUnmount(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
-const askAiEnabled = computed(() => {
-	return !props.disableAskAi && settingsStore.isAskAiEnabled && props.language === 'javaScript';
-});
-
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
 	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {
 		emit('update:modelValue', placeholder.value);
 	}
 });
 
-async function onBeforeTabLeave(_activeName: string | number, oldActiveName: string | number) {
-	// Confirm dialog if leaving ask-ai tab during loading
-	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
-		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
-			title: i18n.baseText('codeNodeEditor.askAi.areYouSure'),
-			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.switchTab'),
-			showClose: true,
-			showCancelButton: true,
-		});
-
-		return confirmModal === 'confirm';
-	}
-
-	return true;
-}
-
-async function onAiReplaceCode(code: string) {
-	const formattedCode = await format(code, {
-		parser: 'babel',
-		plugins: [jsParser, estree],
-	});
-
-	emit('update:modelValue', formattedCode);
-
-	activeTab.value = 'code';
-	hasManualChanges.value = false;
-}
-
 function onEditorUpdate(viewUpdate: ViewUpdate) {
 	trackCompletion(viewUpdate);
-	hasManualChanges.value = true;
 	emit('update:modelValue', readEditorValue());
 }
 
@@ -196,14 +144,6 @@ function trackCompletion(viewUpdate: ViewUpdate) {
 	} catch {}
 }
 
-function onAiLoadStart() {
-	isLoadingAIResponse.value = true;
-}
-
-function onAiLoadEnd() {
-	isLoadingAIResponse.value = false;
-}
-
 async function onDrop(value: string, event: MouseEvent) {
 	if (!editor.value) return;
 
@@ -229,59 +169,7 @@ defineExpose({
 		ref="codeNodeEditorContainerRef"
 		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
-		<ElTabs
-			v-if="askAiEnabled"
-			ref="tabs"
-			v-model="activeTab"
-			type="card"
-			:before-leave="onBeforeTabLeave"
-			:class="$style.tabs"
-		>
-			<ElTabPane
-				:label="i18n.baseText('codeNodeEditor.tabs.code')"
-				name="code"
-				data-test-id="code-node-tab-code"
-				:class="$style.fillHeight"
-			>
-				<DraggableTarget
-					type="mapping"
-					:disabled="!dragAndDropEnabled"
-					:class="$style.fillHeight"
-					@drop="onDrop"
-				>
-					<template #default="{ activeDrop, droppable }">
-						<div
-							ref="codeNodeEditorRef"
-							:class="[
-								'ph-no-capture',
-								'code-editor-tabs',
-								$style.editorInput,
-								$style.fillHeight,
-								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
-							]"
-						/>
-					</template>
-				</DraggableTarget>
-				<slot name="suffix" />
-			</ElTabPane>
-			<ElTabPane
-				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
-				name="ask-ai"
-				data-test-id="code-node-tab-ai"
-			>
-				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
-				<AskAI
-					:key="activeTab"
-					:has-changes="hasManualChanges"
-					:is-read-only="props.isReadOnly"
-					@replace-code="onAiReplaceCode"
-					@started-loading="onAiLoadStart"
-					@finished-loading="onAiLoadEnd"
-				/>
-			</ElTabPane>
-		</ElTabs>
-		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else :class="$style.fillHeight">
+		<div :class="$style.fillHeight">
 			<DraggableTarget
 				type="mapping"
 				:disabled="!dragAndDropEnabled"
@@ -306,12 +194,6 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
-:deep(.el-tabs) {
-	.cm-editor {
-		border: 0;
-	}
-}
-
 @keyframes backgroundAnimation {
 	0% {
 		background-color: none;
@@ -333,12 +215,6 @@ defineExpose({
 </style>
 
 <style lang="scss" module>
-.tabs {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-}
-
 .code-node-editor-container {
 	position: relative;
 }

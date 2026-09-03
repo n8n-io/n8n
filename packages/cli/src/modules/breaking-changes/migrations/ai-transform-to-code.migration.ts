@@ -8,8 +8,8 @@ import type { NodeMigration } from './node-migration';
  * Code node.
  *
  * A node whose prompt was never turned into code (`jsCode` empty) has nothing to
- * carry over and already errors at runtime, so we refuse rather than silently
- * produce an empty Code node and lose the prompt.
+ * carry over, so we refuse rather than silently produce an empty Code node and
+ * lose the prompt.
  */
 export const aiTransformToCode: NodeMigration = {
 	ruleId: 'ai-transform-deprecated',
@@ -17,7 +17,7 @@ export const aiTransformToCode: NodeMigration = {
 		const jsCode = node.parameters.jsCode;
 		if (!jsCode) {
 			throw new Error(
-				'This AI Transform node has no generated code yet. Open it and click "Generate code" (or replace it with a Code node manually) before migrating.',
+				'This AI Transform node never generated any code, so there is nothing to carry over. Replace it with a Code node and write the code for its instructions by hand.',
 			);
 		}
 

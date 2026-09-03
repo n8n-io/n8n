@@ -152,9 +152,6 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		enforced: false,
 	},
-	askAi: {
-		enabled: false,
-	},
 	aiBuilder: {
 		enabled: false,
 		setup: false,

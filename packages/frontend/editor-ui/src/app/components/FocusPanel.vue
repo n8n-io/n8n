@@ -23,7 +23,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import {
-	AI_TRANSFORM_NODE_TYPE,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type EditorType,
@@ -205,10 +204,6 @@ const expression = computed(() => {
 		? resolvedParameter.value.value
 		: resolvedParameter.value;
 });
-
-const shouldCaptureForPosthog = computed(
-	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
-);
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
 
@@ -496,7 +491,6 @@ function onRenameNode(value: string) {
 							:is-read-only="isReadOnly"
 							:target-node-parameter-context="targetNodeParameterContext"
 							fill-parent
-							:disable-ask-ai="true"
 							@update:model-value="onInputChange"
 						/>
 						<HtmlEditor
@@ -538,7 +532,6 @@ function onRenameNode(value: string) {
 							v-model="inputValue"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							:posthog-capture="shouldCaptureForPosthog"
 							fill-parent
 							@update:model-value="onInputChange"
 						/>

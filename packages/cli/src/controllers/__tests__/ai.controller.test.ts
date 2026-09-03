@@ -1,5 +1,4 @@
 import type {
-	AiAskRequestDto,
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
@@ -170,29 +169,6 @@ describe('AiController', () => {
 			aiService.applySuggestion.mockRejectedValue(mockError);
 
 			await expect(controller.applySuggestion(request, response, payload)).rejects.toThrow(
-				InternalServerError,
-			);
-		});
-	});
-
-	describe('askAi method', () => {
-		const payload = mock<AiAskRequestDto>();
-
-		it('should ask AI successfully', async () => {
-			const clientResponse = mock<AiAssistantSDK.AskAiResponsePayload>();
-			aiService.askAi.mockResolvedValue(clientResponse);
-
-			const result = await controller.askAi(request, response, payload);
-
-			expect(aiService.askAi).toHaveBeenCalledWith(payload, request.user);
-			expect(result).toEqual(clientResponse);
-		});
-
-		it('should throw InternalServerError if asking AI fails', async () => {
-			const mockError = new Error('Ask AI failed');
-			aiService.askAi.mockRejectedValue(mockError);
-
-			await expect(controller.askAi(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
 		});

@@ -1,6 +1,6 @@
 import type { ITelemetrySettings } from '@n8n/api-types';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import type { IDataObject, ITelemetryTrackProperties, NodeParameterValueType } from 'n8n-workflow';
+import type { ITelemetryTrackProperties, NodeParameterValueType } from 'n8n-workflow';
 import type { InjectionKey } from 'vue';
 import type { RouteLocation } from 'vue-router';
 
@@ -46,8 +46,6 @@ export interface Telemetry {
 	page(route: RouteLocation): void;
 	reset(): void;
 	flushPageEvents(): void;
-	trackAskAI(event: string, ndvPushRef: string, properties?: IDataObject): void;
-	trackAiTransform(event: string, ndvPushRef: string, properties?: IDataObject): void;
 	trackNodeParametersValuesChange(nodeType: string, change: TelemetryNodeParameterChange): void;
 }
 

@@ -163,6 +163,26 @@ describe('router', () => {
 		20000,
 	);
 
+	test.each<[string, RouteRecordName, boolean, boolean]>([
+		['/settings/ai', VIEWS.WORKFLOWS, false, false],
+		['/settings/ai', VIEWS.AI_SETTINGS, true, false],
+		// The page also governs AI Builder data sharing, so the Builder alone must reach it.
+		['/settings/ai', VIEWS.AI_SETTINGS, false, true],
+	])(
+		'should resolve %s to %s when assistant is %s and builder is %s',
+		async (path, name, assistantEnabled, builderEnabled) => {
+			const rbacStore = useRBACStore();
+			rbacStore.setGlobalScopes(['aiAssistant:manage']);
+
+			settingsStore.settings.aiAssistant = { enabled: assistantEnabled, setup: assistantEnabled };
+			settingsStore.settings.aiBuilder = { enabled: builderEnabled, setup: builderEnabled };
+
+			await router.push(path);
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each<[string, RouteRecordName, Scope[]]>([
 		['/settings/resolvers', VIEWS.WORKFLOWS, []],
 		[

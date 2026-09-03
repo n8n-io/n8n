@@ -37,7 +37,6 @@ export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
-export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
@@ -60,7 +59,7 @@ export const STARTING_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 ];
 
-export const SCRIPTING_NODE_TYPES = [CODE_NODE_TYPE, AI_TRANSFORM_NODE_TYPE];
+export const SCRIPTING_NODE_TYPES = [CODE_NODE_TYPE];
 
 export const DATA_TABLE_NODE_TYPES = [
 	DATA_TABLE_NODE_TYPE,
@@ -75,7 +74,13 @@ export const ADD_FORM_NOTICE = 'addFormPage';
  * Nodes whose parameter values may refer to other nodes without expressions.
  * Their content may need to be updated when the referenced node is renamed.
  */
-export const NODES_WITH_RENAMABLE_CONTENT = new Set([CODE_NODE_TYPE, AI_TRANSFORM_NODE_TYPE]);
+export const NODES_WITH_RENAMABLE_CONTENT = new Set([
+	CODE_NODE_TYPE,
+	// The AI Transform node is removed in v3, but unmigrated ones survive in stored
+	// workflows until the `ai-transform-deprecated` migration rewrites them. Keep
+	// renaming their `jsCode`, or the migration produces dangling references.
+	'n8n-nodes-base.aiTransform',
+]);
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
 export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
 	MAILGUN_NODE_TYPE,
@@ -145,8 +150,6 @@ export const LANGCHAIN_CUSTOM_TOOLS = [
 ];
 
 export const SEND_AND_WAIT_OPERATION = 'sendAndWait';
-export const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
-export const AI_TRANSFORM_JS_CODE = 'jsCode';
 
 /**
  * Key for an item standing in for a manual execution data item too large to be

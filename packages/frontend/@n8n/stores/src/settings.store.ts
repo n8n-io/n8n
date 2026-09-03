@@ -124,8 +124,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.aiAssistant?.enabled && settings.value.aiAssistant?.setup,
 	);
 
-	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
-
 	const isAiBuilderEnabled = computed(
 		() => settings.value.aiBuilder?.enabled && settings.value.aiBuilder?.setup,
 	);
@@ -517,7 +515,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
-		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
