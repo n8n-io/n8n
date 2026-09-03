@@ -123,7 +123,8 @@ function resolveCredentialId(credentials: INodeCredentials | undefined): string 
 
 function resolveAuthenticationFromNode(node: INode): string {
 	const authentication = toStringValue(node.parameters.authentication);
-	if (authentication) return authentication;
+	// for mcp registry nodes use credential name directly
+	if (authentication && !isMcpRegistryNodeType(node.type)) return authentication;
 
 	const credentialType = resolveCredentialType(node.credentials);
 	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? credentialType;
@@ -228,6 +229,15 @@ export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJso
 	};
 }
 
+function resolveAuthenticationParameterFromCredentialType(
+	credentialType: string,
+	nodeTypeDescription: INodeTypeDescription,
+) {
+	const credentials = nodeTypeDescription.credentials;
+	const credential = credentials?.find((credential) => credential.name === credentialType);
+	return credential?.displayOptions?.show?.authentication?.[0];
+}
+
 export function mcpServerToNode(
 	server: AgentJsonMcpServerConfig,
 	nodeTypeDescription: INodeTypeDescription,
@@ -245,6 +255,10 @@ export function mcpServerToNode(
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
 
+	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
+		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
+		: server.authentication;
+
 	return {
 		id: uuidv4(),
 		name: server.name,
@@ -253,7 +267,7 @@ export function mcpServerToNode(
 		parameters: {
 			endpointUrl: server.url,
 			serverTransport: toNodeTransport(server.transport),
-			authentication: server.authentication,
+			authentication: authentication,
 			...toolFilterParams,
 			options,
 		},
