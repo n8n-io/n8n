@@ -962,6 +962,10 @@ function onCanvasGroupUngroup(
 	groupId: string,
 	source: CanvasNodeGroupEventSource = 'group-toolbar',
 ) {
+	// Ungrouping an empty group would strand its placeholder as a bare node on
+	// the canvas. Every entry point (toolbar, shortcut, context menu) lands here.
+	if (workflowDocumentStore.value.isEmptyGroup(groupId)) return;
+
 	// Capture before deletion — the group is gone by the time we track.
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
@@ -1097,7 +1101,9 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		// emitting this event) and toggles collapse. Staying selected pairs the
 		// click with Space-to-rename, like nodes.
 		const groupId = parseCanvasGroupNodeId(node.id);
-		if (groupId) {
+		// An empty group always renders as the chip, so collapse is a no-op: skip
+		// the view-store flip and its telemetry.
+		if (groupId && !workflowDocumentStore.value.isEmptyGroup(groupId)) {
 			const isRepeatClick =
 				lastHeaderToggle?.groupId === groupId &&
 				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;

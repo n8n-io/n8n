@@ -257,7 +257,11 @@ export function useContextMenuItems(
 						id: 'ungroup_nodes',
 						label: i18n.baseText('contextMenu.ungroupNodes'),
 						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
-						disabled: isReadOnly.value,
+						// Ungrouping an empty group would strand its placeholder on the canvas.
+						disabled:
+							isReadOnly.value ||
+							(targetGroupId?.value !== undefined &&
+								(workflowDocumentStore?.value?.isEmptyGroup(targetGroupId.value) ?? false)),
 					},
 					...groupDescriptionActions,
 				]

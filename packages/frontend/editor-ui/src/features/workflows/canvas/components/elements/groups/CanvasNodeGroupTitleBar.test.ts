@@ -593,6 +593,17 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-generate')).toBeNull();
 		});
 
+		// An empty group holds only a hidden placeholder: ungrouping would strand it
+		// on the canvas, there is nothing to add to the chat, and it never expands.
+		it('hides the ungroup, add-to-chat and toggle buttons when the group is empty', () => {
+			isNodeContextEnabled.value = true;
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
+
+			expect(wrapper.queryByTestId('canvas-node-group-ungroup')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-add-to-chat')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-toggle')).toBeNull();
+		});
+
 		it('focuses the title when autofocusGroupId matches the group', async () => {
 			const wrapper = render({
 				data: makeData({ isCollapsed: false }),

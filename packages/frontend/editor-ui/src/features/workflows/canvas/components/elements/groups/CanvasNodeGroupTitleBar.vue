@@ -456,7 +456,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 							@click.stop="onGenerateClick"
 						/>
 					</N8nTooltip>
+					<!-- Ungrouping an empty group would leave its placeholder bare on the canvas. -->
 					<KeyboardShortcutTooltip
+						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"
 					>
@@ -485,8 +487,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 							@click.stop="onExtractClick"
 						/>
 					</KeyboardShortcutTooltip>
+					<!-- An empty group has no nodes to add to the chat. -->
 					<KeyboardShortcutTooltip
-						v-if="isNodeContextEnabled"
+						v-if="isNodeContextEnabled && !isEmptyGroup"
 						:label="i18n.baseText('canvas.nodeGroup.addToChat')"
 					>
 						<N8nIconButton
@@ -577,7 +580,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</div>
 				</div>
+				<!-- An empty group always renders as the chip, so collapse has no effect. -->
 				<N8nIconButton
+					v-if="!isEmptyGroup"
 					class="nodrag"
 					:class="$style.toggle"
 					variant="ghost"
@@ -978,6 +983,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--lg);
 	box-sizing: border-box;
+	// A description can run to GROUP_DESCRIPTION_MAX_LENGTH; cap the panel
+	// so a long one scrolls instead of covering the canvas.
+	max-height: 40vh;
+	overflow-y: auto;
 	background: var(--background--subtle);
 	@include styles.canvas-node-border;
 	border-radius: var(--radius--xs);
