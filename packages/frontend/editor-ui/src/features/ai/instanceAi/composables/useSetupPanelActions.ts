@@ -1,4 +1,4 @@
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type {
 	InstanceAiAttachment,
@@ -133,8 +133,8 @@ export function useSetupPanelActions(options: {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const pendingCredentialBinds = ref(new Map<string, CredentialBind>());
-	const pendingParameterApplies = ref(new Map<string, INodeParameters>());
+	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
+	const pendingParameterApplies = shallowReactive(new Map<string, INodeParameters>());
 	/**
 	 * The workflow the queued writes were captured for. A build settling and a
 	 * re-anchor can land in the same flush (the settle watcher runs first), so
@@ -144,7 +144,7 @@ export function useSetupPanelActions(options: {
 
 	/** Queued writes awaiting the agent lock release. */
 	const pendingApplyCount = computed(
-		() => pendingCredentialBinds.value.size + pendingParameterApplies.value.size,
+		() => pendingCredentialBinds.size + pendingParameterApplies.size,
 	);
 
 	/** Puts a delta back into the queues, keeping any newer entries queued meanwhile. */
@@ -152,13 +152,13 @@ export function useSetupPanelActions(options: {
 		if (toValue(options.workflowId) !== workflowId) return;
 		queuedWorkflowId = workflowId;
 		for (const bind of delta.credentialBinds) {
-			if (!pendingCredentialBinds.value.has(bind.item.id)) {
-				pendingCredentialBinds.value.set(bind.item.id, bind);
+			if (!pendingCredentialBinds.has(bind.item.id)) {
+				pendingCredentialBinds.set(bind.item.id, bind);
 			}
 		}
 		for (const { nodeName, values } of delta.parameterApplies) {
-			const existing = pendingParameterApplies.value.get(nodeName);
-			pendingParameterApplies.value.set(nodeName, { ...values, ...existing });
+			const existing = pendingParameterApplies.get(nodeName);
+			pendingParameterApplies.set(nodeName, { ...values, ...existing });
 		}
 	}
 
@@ -271,7 +271,7 @@ export function useSetupPanelActions(options: {
 	): Promise<SetupPanelApplyResult> {
 		if (toValue(options.isAgentBuilding)) {
 			queuedWorkflowId = toValue(options.workflowId);
-			pendingCredentialBinds.value.set(item.id, { item, credential });
+			pendingCredentialBinds.set(item.id, { item, credential });
 			return 'queued';
 		}
 		const workflowId = toValue(options.workflowId);
@@ -289,8 +289,8 @@ export function useSetupPanelActions(options: {
 	): Promise<SetupPanelApplyResult> {
 		if (toValue(options.isAgentBuilding)) {
 			queuedWorkflowId = toValue(options.workflowId);
-			const existing = pendingParameterApplies.value.get(nodeName);
-			pendingParameterApplies.value.set(nodeName, { ...existing, ...values });
+			const existing = pendingParameterApplies.get(nodeName);
+			pendingParameterApplies.set(nodeName, { ...existing, ...values });
 			return 'queued';
 		}
 		const workflowId = toValue(options.workflowId);
@@ -314,19 +314,19 @@ export function useSetupPanelActions(options: {
 		// Queued writes belong to the workflow they were captured for; if the
 		// panel re-anchored since (even in this same flush), drop them.
 		if (!workflowId || workflowId !== queuedWorkflowId) {
-			pendingCredentialBinds.value.clear();
-			pendingParameterApplies.value.clear();
+			pendingCredentialBinds.clear();
+			pendingParameterApplies.clear();
 			return 'dropped';
 		}
 		const delta: NodesDelta = {
-			credentialBinds: [...pendingCredentialBinds.value.values()],
-			parameterApplies: [...pendingParameterApplies.value.entries()].map(([nodeName, values]) => ({
+			credentialBinds: [...pendingCredentialBinds.values()],
+			parameterApplies: [...pendingParameterApplies.entries()].map(([nodeName, values]) => ({
 				nodeName,
 				values,
 			})),
 		};
-		pendingCredentialBinds.value.clear();
-		pendingParameterApplies.value.clear();
+		pendingCredentialBinds.clear();
+		pendingParameterApplies.clear();
 		return await patchWorkflowNodes(workflowId, delta);
 	}
 
@@ -346,8 +346,8 @@ export function useSetupPanelActions(options: {
 	watch(
 		() => toValue(options.workflowId),
 		() => {
-			pendingCredentialBinds.value.clear();
-			pendingParameterApplies.value.clear();
+			pendingCredentialBinds.clear();
+			pendingParameterApplies.clear();
 		},
 	);
 
