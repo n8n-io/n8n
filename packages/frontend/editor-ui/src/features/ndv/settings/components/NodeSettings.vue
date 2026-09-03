@@ -850,7 +850,14 @@ function handleSelectAction(params: INodeParameters) {
 				data-test-id="node-feature-request"
 				:class="$style.featureRequest"
 			>
-				<a target="_blank" @click="onFeatureRequestClick">
+				<a
+					target="_blank"
+					@click="onFeatureRequestClick"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="onFeatureRequestClick"
+					@keydown.space.self.prevent="onFeatureRequestClick"
+				>
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}
 				</a>

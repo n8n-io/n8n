@@ -295,6 +295,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .insightsView {
 	flex: 1;
 	display: flex;
@@ -363,6 +364,7 @@ onMounted(() => {
 		transition: left 0s linear;
 		left: 0;
 		transition-delay: 0.5s;
+		@include motion.reduced-motion;
 	}
 
 	> span {
@@ -422,5 +424,6 @@ onMounted(() => {
 	&:hover {
 		background-color: var(--color--foreground--tint-1);
 	}
+	@include motion.reduced-motion;
 }
 </style>

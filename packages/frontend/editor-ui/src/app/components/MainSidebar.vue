@@ -408,6 +408,7 @@ useKeybindings({
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
+@use '@n8n/design-system/css/mixins/motion';
 
 .sideMenu {
 	position: relative;
@@ -427,6 +428,7 @@ useKeybindings({
 	&.sideMenuResizing {
 		transition: none;
 	}
+	@include motion.reduced-motion;
 }
 
 .scrollAreaWrapper {

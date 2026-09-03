@@ -141,6 +141,7 @@ async function handleClickExecute() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	z-index: -1;
 	position: absolute;
@@ -167,6 +168,7 @@ async function handleClickExecute() {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		transform: scale(var(--canvas-zoom-compensation-factor, 1));
 		transform-origin: center right;
+		@include motion.reduced-motion;
 	}
 
 	/* Override N8nButton's .disabled { opacity: 0.5 } which has higher specificity */
@@ -200,5 +202,6 @@ async function handleClickExecute() {
 		translate: -12px 0;
 		opacity: 0;
 	}
+	@include motion.reduced-motion;
 }
 </style>

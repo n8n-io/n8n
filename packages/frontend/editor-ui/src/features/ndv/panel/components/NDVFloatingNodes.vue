@@ -127,6 +127,10 @@ defineExpose({
 						:data-node-name="node.name"
 						:data-node-placement="connectionGroup"
 						@click="emit('switchSelectedNode', node.name)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="emit('switchSelectedNode', node.name)"
+						@keydown.space.self.prevent="emit('switchSelectedNode', node.name)"
 					>
 						<NodeIcon
 							:node-type="nodeType"
@@ -143,6 +147,7 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .floatingNodes {
 	position: absolute;
 	bottom: 0;
@@ -194,6 +199,7 @@ defineExpose({
 		left: 0;
 		transform: translateX(-50%);
 	}
+	@include motion.reduced-motion;
 }
 .connectedNode {
 	border: var(--border);
@@ -220,5 +226,6 @@ defineExpose({
 		align-items: center;
 		justify-content: center;
 	}
+	@include motion.reduced-motion;
 }
 </style>

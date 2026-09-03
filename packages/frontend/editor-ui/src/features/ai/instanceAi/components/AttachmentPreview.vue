@@ -126,6 +126,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .resourceChip {
 	display: inline-flex;
 	align-items: center;
@@ -200,5 +201,6 @@ onBeforeUnmount(() => {
 	@media (hover: none) {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 </style>

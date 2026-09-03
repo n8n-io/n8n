@@ -362,6 +362,7 @@ const onModalOpenChange = (open: boolean) => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	display: contents;
 }
@@ -383,6 +384,7 @@ const onModalOpenChange = (open: boolean) => {
 		display: inline-flex;
 		opacity: 0;
 		transition: opacity 0.3s ease;
+		@include motion.reduced-motion;
 	}
 
 	&:hover {

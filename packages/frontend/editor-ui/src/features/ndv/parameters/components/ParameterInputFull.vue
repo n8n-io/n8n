@@ -582,6 +582,7 @@ function removeOverride(clearField = false) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 
@@ -650,6 +651,7 @@ function removeOverride(clearField = false) {
 	&.visible {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 
 .optionsAbove {
@@ -666,5 +668,6 @@ function removeOverride(clearField = false) {
 	&.visible {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 </style>

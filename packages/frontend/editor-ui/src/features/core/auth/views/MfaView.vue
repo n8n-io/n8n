@@ -223,9 +223,15 @@ onMounted(() => {
 						color="text-base"
 						:bold="false"
 						>{{ i18.baseText('mfa.code.input.info') }}
-						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
-							i18.baseText('mfa.code.input.info.action')
-						}}</a></N8nText
+						<a
+							data-test-id="mfa-enter-recovery-code-button"
+							@click="onRecoveryCodeClick"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="onRecoveryCodeClick"
+							@keydown.space.self.prevent="onRecoveryCodeClick"
+							>{{ i18.baseText('mfa.code.input.info.action') }}</a
+						></N8nText
 					>
 					<N8nText v-if="reportError" color="danger" size="small"
 						>{{ formError }}
@@ -233,6 +239,10 @@ onMounted(() => {
 							v-if="!showRecoveryCodeForm"
 							:class="$style.recoveryCodeLink"
 							@click="onRecoveryCodeClick"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="onRecoveryCodeClick"
+							@keydown.space.self.prevent="onRecoveryCodeClick"
 						>
 							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
 						>

@@ -303,6 +303,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .content {
 	display: flex;
 	flex-direction: column;
@@ -332,6 +333,7 @@ onBeforeUnmount(() => {
 		&:hover {
 			background-color: var(--color--background);
 		}
+		@include motion.reduced-motion;
 	}
 
 	:global(input[type='file']) {

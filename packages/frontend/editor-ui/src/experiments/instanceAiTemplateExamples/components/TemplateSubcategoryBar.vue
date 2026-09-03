@@ -227,6 +227,7 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	margin-bottom: 16px;
@@ -297,6 +298,7 @@ watch(
 	&:hover {
 		background: var(--color--foreground--tint-1);
 	}
+	@include motion.reduced-motion;
 }
 
 .visible {
@@ -321,6 +323,7 @@ watch(
 	border-radius: 50%;
 	padding: var(--spacing--3xs);
 	cursor: pointer;
+	@include motion.reduced-motion;
 }
 
 .scrollHintVisible {
@@ -339,6 +342,7 @@ watch(
 
 .scrollHintRight.scrollHintVisible {
 	animation: nudgeRight 1s ease-in-out infinite;
+	@include motion.reduced-motion;
 }
 
 .scrollHintLeft {
@@ -348,6 +352,7 @@ watch(
 
 .scrollHintLeft.scrollHintVisible {
 	animation: nudgeLeft 1s ease-in-out infinite;
+	@include motion.reduced-motion;
 }
 
 @keyframes nudgeRight {

@@ -101,12 +101,14 @@ function onClickAdd() {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .canvas-node-handle-non-main-input-enter-active,
 .canvas-node-handle-non-main-input-leave-active {
 	transform-origin: center 0;
 	transition-property: transform, opacity;
 	transition-duration: 0.2s;
 	transition-timing-function: ease;
+	@include motion.reduced-motion;
 }
 
 .canvas-node-handle-non-main-input-enter-from,

@@ -421,6 +421,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .carousel {
 	display: flex;
 	align-items: center;
@@ -460,6 +461,7 @@ onBeforeUnmount(() => {
 	transition:
 		opacity,
 		transform var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
 }
 
 .cell[data-error='true']::before {
@@ -516,6 +518,7 @@ onBeforeUnmount(() => {
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
+	@include motion.reduced-motion;
 }
 
 /*

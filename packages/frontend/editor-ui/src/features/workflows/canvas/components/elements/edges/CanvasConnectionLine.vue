@@ -62,6 +62,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .edge {
 	transition-property: stroke, opacity;
 	transition-duration: 300ms;
@@ -71,5 +72,6 @@ onMounted(() => {
 	&.visible {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 </style>

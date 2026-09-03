@@ -80,7 +80,14 @@ const fileIcon = computed(() => {
 
 <template>
 	<div :class="$style.container" :style="containerStyle">
-		<div :class="$style.wrapper" @click="viewBinaryData">
+		<div
+			:class="$style.wrapper"
+			@click="viewBinaryData"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="viewBinaryData"
+			@keydown.space.self.prevent="viewBinaryData"
+		>
 			<img
 				v-if="tablePreview"
 				:src="fileUrl"
@@ -92,7 +99,16 @@ const fileIcon = computed(() => {
 			</div>
 		</div>
 		<div :class="$style.info">
-			<div :class="$style.filename" @click="viewBinaryData">{{ fileName }}</div>
+			<div
+				:class="$style.filename"
+				@click="viewBinaryData"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="viewBinaryData"
+				@keydown.space.self.prevent="viewBinaryData"
+			>
+				{{ fileName }}
+			</div>
 			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
 		<button :class="$style.download" @click="downloadBinaryData">
@@ -102,6 +118,7 @@ const fileIcon = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	display: flex;
 	align-items: center;
@@ -199,5 +216,6 @@ const fileIcon = computed(() => {
 	&:hover {
 		color: var(--color--primary);
 	}
+	@include motion.reduced-motion;
 }
 </style>

@@ -321,6 +321,7 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	display: flex;
@@ -349,6 +350,7 @@ watch(
 	opacity: 0;
 	transition: opacity 100ms ease-in;
 	color: var(--icon--color);
+	@include motion.reduced-motion;
 }
 
 .defaultTopPadding {

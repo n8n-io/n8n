@@ -195,12 +195,14 @@ onBeforeMount(() => {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .agile {
 	&__list {
 		width: 100%;
 		padding-bottom: var(--spacing--2xs);
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
+		@include motion.reduced-motion;
 	}
 
 	&__track {

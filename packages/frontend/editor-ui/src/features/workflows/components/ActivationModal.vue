@@ -110,11 +110,24 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 						{{ i18n.baseText('activationModal.theseExecutionsWillNotShowUp') }}
 					</N8nText>
 					{{ i18n.baseText('activationModal.butYouCanSeeThem') }}
-					<a @click="showExecutionsList">
+					<a
+						@click="showExecutionsList"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="showExecutionsList"
+						@keydown.space.self.prevent="showExecutionsList"
+					>
 						{{ i18n.baseText('activationModal.executionList') }}
 					</a>
 					{{ i18n.baseText('activationModal.ifYouChooseTo') }}
-					<a @click="showSettings">{{ i18n.baseText('activationModal.saveExecutions') }}</a>
+					<a
+						@click="showSettings"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="showSettings"
+						@keydown.space.self.prevent="showSettings"
+						>{{ i18n.baseText('activationModal.saveExecutions') }}</a
+					>
 				</N8nText>
 			</div>
 		</template>

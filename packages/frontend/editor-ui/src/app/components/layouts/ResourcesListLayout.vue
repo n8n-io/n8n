@@ -874,6 +874,7 @@ defineExpose({
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .resource-list-loading {
 	position: relative;
 	height: 0;
@@ -902,9 +903,11 @@ defineExpose({
 			height: 69px;
 		}
 	}
+	@include motion.reduced-motion;
 }
 .resource-list-loading-instant {
 	animation: 0.01s linear 0s forwards changeVisibility;
+	@include motion.reduced-motion;
 }
 
 @keyframes changeVisibility {

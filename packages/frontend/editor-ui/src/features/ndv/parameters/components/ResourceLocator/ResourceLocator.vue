@@ -1134,10 +1134,22 @@ function removeOverride() {
 							v-if="credentialsRequiredAndNotSet"
 							:class="$style['credential-link']"
 							@click="createNewCredential"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="createNewCredential"
+							@keydown.space.self.prevent="createNewCredential"
 						>
 							{{ i18n.baseText('resourceLocator.mode.list.error.description.noCredentials') }}
 						</a>
-						<a v-else :class="$style['credential-link']" @click="openCredential">
+						<a
+							v-else
+							:class="$style['credential-link']"
+							@click="openCredential"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="openCredential"
+							@keydown.space.self.prevent="openCredential"
+						>
 							{{ i18n.baseText('resourceLocator.mode.list.error.description.checkCredentials') }}
 						</a>
 					</div>
@@ -1182,6 +1194,10 @@ function removeOverride() {
 					:class="$style.inputContainer"
 					data-test-id="rlc-input-container"
 					@click="onInputContainerClick"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="onInputContainerClick"
+					@keydown.space.self.prevent="onInputContainerClick"
 				>
 					<DraggableTarget
 						type="mapping"

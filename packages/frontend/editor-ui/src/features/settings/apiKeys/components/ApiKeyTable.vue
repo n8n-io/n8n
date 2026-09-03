@@ -60,7 +60,7 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
-function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
+function onRowClick(_event: MouseEvent | KeyboardEvent, payload: { item: ApiKey }) {
 	emit('edit', payload.item);
 }
 

@@ -64,11 +64,12 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 	<div>
 		<div :class="[shared.settingsItem, { [shared.settingsItemNoBorder]: !showMappingMethod }]">
 			<div :class="shared.settingsItemLabel">
-				<label>{{ ssoKey('roleAssignment.label') }}</label>
+				<label for="sso-role-assignment">{{ ssoKey('roleAssignment.label') }}</label>
 				<small>{{ ssoKey('roleAssignment.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
 				<N8nSelect
+					id="sso-role-assignment"
 					v-model="roleAssignment"
 					size="medium"
 					:disabled="disabled || !canManage"
@@ -91,11 +92,12 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 
 		<div v-if="showMappingMethod" :class="shared.settingsItem">
 			<div :class="shared.settingsItemLabel">
-				<label>{{ ssoKey('roleMappingMethod.label') }}</label>
+				<label for="sso-role-mapping-method">{{ ssoKey('roleMappingMethod.label') }}</label>
 				<small>{{ ssoKey('roleMappingMethod.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
 				<N8nSelect
+					id="sso-role-mapping-method"
 					v-model="mappingMethod"
 					size="medium"
 					:disabled="disabled || !canManage"

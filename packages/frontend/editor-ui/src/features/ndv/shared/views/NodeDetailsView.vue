@@ -737,6 +737,10 @@ onBeforeUnmount(() => {
 			:class="$style.backdrop"
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
 			@click="close"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="close"
+			@keydown.space.self.prevent="close"
 		></div>
 
 		<dialog

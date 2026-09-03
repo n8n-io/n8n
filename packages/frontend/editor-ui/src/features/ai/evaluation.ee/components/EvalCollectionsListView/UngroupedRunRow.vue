@@ -96,6 +96,7 @@ const formattedDate = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .runRow {
 	display: grid;
 	grid-template-columns: minmax(0, 1.4fr) minmax(80px, auto) minmax(120px, 1fr) 56px 96px;
@@ -139,6 +140,7 @@ const formattedDate = computed(() => {
 	background: var(--color--success);
 	border-radius: var(--radius--full);
 	transition: width var(--animation--duration) var(--animation--easing);
+	@include motion.reduced-motion;
 }
 
 .scoreText {

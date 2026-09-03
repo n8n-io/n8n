@@ -597,6 +597,7 @@ function onOptionMouseEnter(idx: number) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -672,6 +673,7 @@ function onOptionMouseEnter(idx: number) {
 		color: var(--color--text--tint-1);
 		cursor: not-allowed;
 	}
+	@include motion.reduced-motion;
 }
 
 .numberBadge {
@@ -694,6 +696,7 @@ function onOptionMouseEnter(idx: number) {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .optionLabel {
@@ -716,6 +719,7 @@ function onOptionMouseEnter(idx: number) {
 	&.highlighted {
 		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
+	@include motion.reduced-motion;
 }
 
 .somethingElseRow {
@@ -747,6 +751,7 @@ function onOptionMouseEnter(idx: number) {
 			}
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .somethingElseRowMulti {
@@ -763,6 +768,7 @@ function onOptionMouseEnter(idx: number) {
 	&.highlighted {
 		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
+	@include motion.reduced-motion;
 }
 
 .pencilIconContainer {
@@ -818,6 +824,7 @@ function onOptionMouseEnter(idx: number) {
 .questionFade-enter-active,
 .questionFade-leave-active {
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .questionFade-enter-from,

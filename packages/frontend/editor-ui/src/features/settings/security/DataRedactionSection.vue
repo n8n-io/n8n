@@ -197,7 +197,13 @@ function goToUpgrade() {
 								<template #content>
 									<I18nT :keypath="TOOLTIP_KEY" tag="span" scope="global">
 										<template #action>
-											<a @click="goToUpgrade">
+											<a
+												@click="goToUpgrade"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="goToUpgrade"
+												@keydown.space.self.prevent="goToUpgrade"
+											>
 												{{
 													i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
 												}}
@@ -242,7 +248,13 @@ function goToUpgrade() {
 								<template #content>
 									<I18nT :keypath="TOOLTIP_KEY" tag="span" scope="global">
 										<template #action>
-											<a @click="goToUpgrade">
+											<a
+												@click="goToUpgrade"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="goToUpgrade"
+												@keydown.space.self.prevent="goToUpgrade"
+											>
 												{{
 													i18n.baseText('settings.security.dataRedaction.unlicensed_tooltip.link')
 												}}

@@ -72,6 +72,7 @@ function handleSelect() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	position: relative;
 	display: flex;
@@ -99,6 +100,7 @@ function handleSelect() {
 		outline: 2px solid var(--color--primary);
 		outline-offset: 2px;
 	}
+	@include motion.reduced-motion;
 }
 
 .title {
@@ -125,6 +127,7 @@ function handleSelect() {
 		opacity: 1;
 		filter: grayscale(0);
 	}
+	@include motion.reduced-motion;
 }
 
 .editHint {
@@ -141,6 +144,7 @@ function handleSelect() {
 	.card:hover & {
 		opacity: 0.6;
 	}
+	@include motion.reduced-motion;
 }
 
 .editHintText {

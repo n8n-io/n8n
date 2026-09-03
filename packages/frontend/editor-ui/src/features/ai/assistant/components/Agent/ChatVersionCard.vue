@@ -188,6 +188,7 @@ function onRestoreConfirm() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
@@ -220,6 +221,7 @@ function onRestoreConfirm() {
 	transition: transform 0.2s ease;
 	color: var(--color--text);
 	flex-shrink: 0;
+	@include motion.reduced-motion;
 }
 
 .chevronExpanded {

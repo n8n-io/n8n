@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { computed, useCssModule, watch, watchEffect } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
@@ -211,6 +212,10 @@ watch(
 		data-test-id="canvas-node-agent"
 		@dblclick.stop="onActivate"
 		@contextmenu="onOpenContextMenu"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="dispatchClickOnKeyboardActivation"
+		@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 	>
 		<div :class="$style.surface">
 			<header :class="$style.header">

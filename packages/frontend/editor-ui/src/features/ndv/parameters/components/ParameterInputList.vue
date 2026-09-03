@@ -1069,6 +1069,7 @@ watch(
 
 <style lang="scss">
 @use '@/app/css/variables' as *;
+@use '@n8n/design-system/css/mixins/motion';
 
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
@@ -1081,6 +1082,7 @@ watch(
 		Button {
 			color: var(--icon--color);
 		}
+		@include motion.reduced-motion;
 	}
 	.icon-button > Button:hover {
 		color: var(--icon--color--hover);

@@ -2158,7 +2158,13 @@ defineExpose({ enterEditMode });
 			<div v-else-if="shouldShowBinaryOnlyHint" :class="$style.center">
 				<N8nText>
 					{{ i18n.baseText('runData.switchToBinary.info') }}
-					<a @click="switchToBinary">
+					<a
+						@click="switchToBinary"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="switchToBinary"
+						@keydown.space.self.prevent="switchToBinary"
+					>
 						{{ i18n.baseText('runData.switchToBinary.binary') }}
 					</a>
 				</N8nText>

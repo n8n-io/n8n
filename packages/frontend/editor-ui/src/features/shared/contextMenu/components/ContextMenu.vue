@@ -123,6 +123,7 @@ function onOpenChange(open: boolean) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .trigger {
 	position: fixed;
 	width: 1px;
@@ -159,6 +160,7 @@ function onOpenChange(open: boolean) {
 		animation-duration: var(--duration--snappy);
 		animation-timing-function: var(--easing--ease-out);
 		animation-name: contextMenuIn;
+		@include motion.reduced-motion;
 	}
 }
 

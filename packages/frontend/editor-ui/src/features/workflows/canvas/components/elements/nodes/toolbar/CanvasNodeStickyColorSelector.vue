@@ -104,6 +104,10 @@ onBeforeUnmount(() => {
 							renderOptions.color === color ? $style.selected : '',
 						]"
 						@click="changeColor(color)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="changeColor(color)"
+						@keydown.space.self.prevent="changeColor(color)"
 					></div>
 
 					<div
@@ -120,6 +124,10 @@ onBeforeUnmount(() => {
 						"
 						:title="i18n.baseText('node.customColor')"
 						@click.stop="openNativeColorPicker"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="openNativeColorPicker"
+						@keydown.space.self.prevent="openNativeColorPicker"
 					>
 						<N8nIcon icon="plus" size="xsmall" :class="$style.plusIcon" />
 					</div>

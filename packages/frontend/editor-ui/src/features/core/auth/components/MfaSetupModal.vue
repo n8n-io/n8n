@@ -191,6 +191,10 @@ onMounted(async () => {
 									:class="$style.secret"
 									data-test-id="mfa-secret-button"
 									@click="onCopySecretToClipboard"
+									role="button"
+									tabindex="0"
+									@keydown.enter.self="onCopySecretToClipboard"
+									@keydown.space.self.prevent="onCopySecretToClipboard"
 									>{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
