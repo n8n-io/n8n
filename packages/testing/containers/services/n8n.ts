@@ -8,6 +8,7 @@ import {
 	createElapsedLogger,
 	createReadinessProbe,
 	createSilentLogConsumer,
+	normalizeStackBasePath,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
@@ -173,10 +174,10 @@ async function createContainer(
 	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
 		shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
-	// When n8n is hosted under a custom base path, the readiness endpoint moves with it
-	const basePath = (environment.N8N_BASE_PATH ?? '').replace(/\/+$/, '');
+	const basePath = normalizeStackBasePath(environment.N8N_BASE_PATH);
+	const readinessBasePath = role === 'worker' ? '' : basePath;
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
-		`${basePath}/healthz/readiness`,
+		`${readinessBasePath}/healthz/readiness`,
 		N8N_READINESS_PORT,
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);

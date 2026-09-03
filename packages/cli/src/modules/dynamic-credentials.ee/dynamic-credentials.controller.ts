@@ -254,16 +254,20 @@ export class DynamicCredentialsController {
 					credentialId: intent.credentialId,
 				});
 				// Absolute, same-origin http(s) URL so SigninView returns here after login.
-				// req.originalUrl includes the mount base path, and getInstanceBaseUrl()
-				// already ends with it, so strip it once to avoid a doubled segment.
+				// req.originalUrl includes the mount base path. Strip it only when the
+				// configured editor URL already carries that same suffix.
 				const basePath = this.pathResolvingService.getBasePath();
+				const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+				const instanceBaseUrlHasBasePath =
+					basePath !== '/' &&
+					(instanceBaseUrl.endsWith(basePath) || instanceBaseUrl.endsWith(`${basePath}/`));
 				const requestPath =
-					basePath !== '/' && req.originalUrl.startsWith(`${basePath}/`)
+					instanceBaseUrlHasBasePath && req.originalUrl.startsWith(`${basePath}/`)
 						? req.originalUrl.slice(basePath.length)
 						: req.originalUrl;
-				const returnUrl = `${this.urlService.getInstanceBaseUrl()}${requestPath}`;
+				const returnUrl = `${instanceBaseUrl}${requestPath}`;
 				res.redirect(
-					`${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+					`${instanceBaseUrl}/signin?redirect=${encodeURIComponent(returnUrl)}`,
 				);
 				return;
 			}

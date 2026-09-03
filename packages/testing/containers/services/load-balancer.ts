@@ -1,6 +1,6 @@
 import { GenericContainer, Wait } from 'testcontainers';
 
-import { createSilentLogConsumer } from '../helpers/utils';
+import { createSilentLogConsumer, normalizeStackBasePath } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { LoadBalancerPolicy, Service, ServiceResult } from './types';
 
@@ -10,6 +10,7 @@ export interface LoadBalancerConfig {
 	webhookCount: number;
 	hostPort?: number;
 	policy: LoadBalancerPolicy;
+	basePath: string;
 }
 
 export interface LoadBalancerMeta {
@@ -33,14 +34,16 @@ function buildCaddyConfig(
 	mainUpstreams: string[],
 	webhookUpstreams: string[],
 	policy: LoadBalancerPolicy,
+	basePath: string,
 ): string {
 	const mainBackends = mainUpstreams.join(' ');
 	const webhookBackends = webhookUpstreams.join(' ');
+	const healthUri = `${basePath}/healthz`;
 
 	const sharedReverseProxyBlock = `    lb_policy ${policy}
 
     # Health check
-    health_uri /healthz
+    health_uri ${healthUri}
     health_interval 10s
 
     # Timeouts
@@ -97,6 +100,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			webhookCount: ctx.webhooks,
 			hostPort: ctx.allocatedPorts.loadBalancer,
 			policy: ctx.config.lbPolicy ?? 'first',
+			basePath: normalizeStackBasePath(ctx.config.env?.N8N_BASE_PATH),
 		} as LoadBalancerConfig;
 	},
 
@@ -108,7 +112,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {
-		const { mainCount, webhookCount, hostPort, policy } = config as LoadBalancerConfig;
+		const { mainCount, webhookCount, hostPort, policy, basePath } = config as LoadBalancerConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		// Single-main containers are named `${projectName}-n8n`, not `-n8n-main-1`.
@@ -120,7 +124,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			(_, index) => `${projectName}-n8n-webhook-${index + 1}:5678`,
 		);
 
-		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy);
+		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy, basePath);
 
 		try {
 			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.caddy)

@@ -213,7 +213,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		// Clear cookie with the same path it was set with
-		res.clearCookie(AUTH_COOKIE_NAME, { path: this.pathResolvingService.getBasePath() });
+		const basePath = this.pathResolvingService.getBasePath();
+		res.clearCookie(AUTH_COOKIE_NAME, { path: basePath });
+		if (basePath !== '/') {
+			res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
+		}
 		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
 		// names embed the workflow/execution they were minted for, and this response
 		// can neither read them (they're scoped to the form-waiting path) nor clear a

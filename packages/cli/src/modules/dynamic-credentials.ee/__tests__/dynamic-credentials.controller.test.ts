@@ -694,6 +694,34 @@ describe('DynamicCredentialsController', () => {
 			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
 		});
 
+		it('preserves the base path when the editor URL does not include it', async () => {
+			const req = mock<Request>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				originalUrl: '/n8n/rest/credentials/cred-1/authorize?token=tok',
+			});
+			const res = mock<Response>();
+
+			pathResolvingService.getBasePath.mockReturnValue('/n8n');
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				`http://localhost:5678/signin?redirect=${encodeURIComponent(
+					'http://localhost:5678/n8n/rest/credentials/cred-1/authorize?token=tok',
+				)}`,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
 		it('rejects a bound link opened by a different account', async () => {
 			const req = mock<AuthenticatedRequest>({
 				params: { id: 'cred-1' },

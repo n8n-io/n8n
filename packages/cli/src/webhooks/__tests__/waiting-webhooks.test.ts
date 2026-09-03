@@ -1,4 +1,3 @@
-import type { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
@@ -11,6 +10,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -40,9 +40,9 @@ describe('WaitingWebhooks', () => {
 	const mockWebhookService = mock<WebhookService>();
 	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
 	const mockEventService = mock<EventService>();
-	const mockEndpointsConfig = mock<EndpointsConfig>({
-		webhookWaiting: 'webhook-waiting',
-		formWaiting: 'form-waiting',
+	const mockPathResolvingService = mock<PathResolvingService>({
+		resolveWebhookWaitingEndpoint: () => '/webhook-waiting',
+		resolveFormWaitingEndpoint: () => '/form-waiting',
 	});
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
@@ -51,7 +51,7 @@ describe('WaitingWebhooks', () => {
 		mockWebhookService,
 		mockInstanceSettings,
 		mockEventService,
-		mockEndpointsConfig,
+		mockPathResolvingService,
 	);
 
 	beforeEach(() => {
@@ -479,6 +479,39 @@ describe('WaitingWebhooks', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
+		it('redirects only the mounted endpoint segment under a matching base path', async () => {
+			const pathResolvingService = mock<PathResolvingService>({
+				resolveWebhookWaitingEndpoint: () => '/webhook-waiting/webhook-waiting',
+				resolveFormWaitingEndpoint: () => '/webhook-waiting/form-waiting',
+			});
+			const webhooksUnderMatchingBasePath = new TestWaitingWebhooks(
+				mock(),
+				mock(),
+				executionPersistence,
+				mockWebhookService,
+				mockInstanceSettings,
+				mockEventService,
+				pathResolvingService,
+			);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				buildExecution({ nodeType: 'n8n-nodes-base.form' }),
+			);
+			const res = buildRes();
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'exec-id', suffix: undefined },
+				method: 'GET',
+				originalUrl: '/webhook-waiting/webhook-waiting/exec-id?signature=abc',
+			});
+
+			const result = await webhooksUnderMatchingBasePath.executeWebhook(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				307,
+				'/webhook-waiting/form-waiting/exec-id?signature=abc',
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
 		it('does not redirect a Wait node resuming on webhook call', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				buildExecution({ nodeType: 'n8n-nodes-base.wait', nodeParameters: { resume: 'webhook' } }),
@@ -516,9 +549,9 @@ describe('WaitingWebhooks', () => {
 		});
 
 		it('does not redirect when the waiting endpoints are configured identically', async () => {
-			const identicalEndpointsConfig = mock<EndpointsConfig>({
-				webhookWaiting: 'webhook-waiting',
-				formWaiting: 'webhook-waiting',
+			const identicalPathResolvingService = mock<PathResolvingService>({
+				resolveWebhookWaitingEndpoint: () => '/webhook-waiting',
+				resolveFormWaitingEndpoint: () => '/webhook-waiting',
 			});
 			const webhooksWithIdenticalEndpoints = new TestWaitingWebhooks(
 				mock(),
@@ -527,7 +560,7 @@ describe('WaitingWebhooks', () => {
 				mockWebhookService,
 				mockInstanceSettings,
 				mockEventService,
-				identicalEndpointsConfig,
+				identicalPathResolvingService,
 			);
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				buildExecution({ nodeType: 'n8n-nodes-base.wait', nodeParameters: { resume: 'form' } }),

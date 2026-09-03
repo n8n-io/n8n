@@ -130,7 +130,7 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_PATH',
 			message:
-				'N8N_PATH is deprecated and will be removed in a future version. Please use N8N_BASE_PATH instead for hosting n8n under a subpath. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/',
+				'N8N_PATH is deprecated and will be removed in a future version. Replace it with N8N_BASE_PATH, which hosts n8n under a subpath but also moves all routes and health endpoints (e.g. /healthz) under that subpath; N8N_PATH and N8N_BASE_PATH must not be set together. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/',
 			checkValue: (value?: string) => value !== undefined && value !== '/',
 		},
 	];

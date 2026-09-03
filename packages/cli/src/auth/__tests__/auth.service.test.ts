@@ -984,6 +984,30 @@ describe('AuthService', () => {
 			// workflow/execution they were minted for, unknown to this response.
 			expect(res.clearCookie).toHaveBeenCalledTimes(1);
 		});
+
+		it('should clear session cookies from the current and legacy root paths', () => {
+			const nonRootPathResolvingService = mock<PathResolvingService>({
+				getBasePath: () => '/custom-path',
+			});
+			const nonRootAuthService = new AuthService(
+				globalConfig,
+				logger,
+				license,
+				jwtService,
+				urlService,
+				userRepository,
+				invalidAuthTokenRepository,
+				mfaService,
+				nonRootPathResolvingService,
+			);
+			const res = mock<Response>();
+
+			nonRootAuthService.clearCookie(res);
+
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/custom-path' });
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
+			expect(res.clearCookie).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('getCookieToken', () => {

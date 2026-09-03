@@ -104,9 +104,19 @@ const publicApiAgent = (
 	return agent;
 };
 
-const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
+const publicApiAgentWithCookie = (
+	app: express.Application,
+	user: User,
+	version = 1,
+	basePath = '/',
+) => {
 	const agent = request.agent(app);
-	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
+	const normalizedBasePath = normalizeBasePath(basePath);
+	const publicApiPath =
+		normalizedBasePath === '/'
+			? PUBLIC_API_REST_PATH_SEGMENT
+			: `${normalizedBasePath}/${PUBLIC_API_REST_PATH_SEGMENT}`;
+	void agent.use(prefix(`${publicApiPath}/v${version}`));
 	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
 		req.set('browser-id', browserId);
@@ -153,7 +163,7 @@ export const setupTestServer = ({
 		publicApiAgentFor: (user) => publicApiAgent(app, { user, basePath }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey, basePath }),
 		publicApiAgentWithoutApiKey: () => publicApiAgent(app, { basePath }),
-		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user, 1, basePath),
 		license: new LicenseMocker(),
 	};
 
