@@ -269,6 +269,33 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				fixTargetNodeNames,
 			});
 
+			// Emitted here, not at verdict time: a direct build never calls
+			// `report-verification-verdict`, so this is the only point every
+			// verification passes through.
+			try {
+				context.trackTelemetry?.('Builder verification claim derived', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					work_item_id: resolvedInput.workItemId,
+					workflow_id: workflowId,
+					owner_type: buildOutcome.owner?.type ?? 'direct',
+					claim_level: claim.level,
+					planned_node_count: claim.plannedNodeCount,
+					reached_node_count: claim.reachedNodeCount,
+					nodes_not_reached: claim.nodesNotReached.length,
+					simulated_nodes: claim.simulatedNodes.length,
+					pinned_nodes: claim.pinnedNodes.length,
+					unproven_targets: claim.unprovenTargets.length,
+					publish_ready: claim.publishReady,
+				});
+			} catch (error) {
+				context.logger.warn('verify-built-workflow: failed to emit claim telemetry', {
+					workItemId: resolvedInput.workItemId,
+					workflowId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			await persistVerificationOutcome({
 				input: resolvedInput,
 				context,

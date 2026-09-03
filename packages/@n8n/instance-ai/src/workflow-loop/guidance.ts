@@ -15,7 +15,8 @@ function formatNodeList(names: readonly string[], max = 8): string {
  * was the strongest license for the false success claims in AIA-31.
  */
 function formatClaimLead(claim: VerificationClaim | undefined): string {
-	if (isVerifiedClaim(claim)) return 'Workflow verified successfully.';
+	// Inline rather than via isVerifiedClaim: this branch must narrow `claim`.
+	if (claim === undefined || claim.level === 'verified') return 'Workflow verified successfully.';
 
 	const facts: string[] = [
 		`${String(claim.reachedNodeCount)} of ${String(claim.plannedNodeCount)} planned node(s) ran.`,
