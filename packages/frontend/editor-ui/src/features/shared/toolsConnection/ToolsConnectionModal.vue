@@ -522,6 +522,9 @@ function handleOpenChange(value: boolean) {
 
 .suggestionRow {
 	width: 100%;
-	margin-top: var(--spacing--sm);
+
+	&:has(*) {
+		margin-top: var(--spacing--sm);
+	}
 }
 </style>
