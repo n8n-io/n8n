@@ -786,7 +786,7 @@ describe('credential gate script', () => {
 	};
 
 	const NOTICE =
-		'Not all required accounts are connected, so your message could not be processed. Connect them above, then send it again.';
+		'Not all required accounts are connected, so your message could not be processed. Connect them below, then send it again.';
 
 	/** A send body shaped the way the widget builds one. */
 	const sendBody = (chatInput: string) =>

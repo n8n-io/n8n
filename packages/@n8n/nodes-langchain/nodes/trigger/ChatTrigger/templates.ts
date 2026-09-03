@@ -99,7 +99,7 @@ function buildCredentialGateScript(streaming: boolean) {
 				(function () {
 					var STREAMING = ${!!streaming};
 					var NOTICE =
-						'Not all required accounts are connected, so your message could not be processed. Connect them above, then send it again.';
+						'Not all required accounts are connected, so your message could not be processed. Connect them below, then send it again.';
 					var nativeFetch = window.fetch.bind(window);
 
 					// Both the status and the discriminator must match. A 428 without this body
