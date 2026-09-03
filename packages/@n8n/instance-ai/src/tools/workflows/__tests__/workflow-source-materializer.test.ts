@@ -298,6 +298,55 @@ describe('materializeWorkflowSource', () => {
 		expect(files.get('src/workflows/w.workflow.ts')).toBe('// agent-written draft');
 	});
 
+	it('ignores a .json binding and writes the TypeScript source to its own path', async () => {
+		const jsonSource = '{"name":"W","nodes":[],"connections":{}}';
+		const files = new Map<string, string>([['src/workflows/wf1.json', jsonSource]]);
+		const context = createContext(files);
+		// build-workflow binds the path it built from, a JSON source included.
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/wf1.json',
+			workflowId: 'wf1',
+			workflowVersionId: 'v1',
+			workflowChecksum: 'c1',
+			sourceHash: hashWorkflowSource(jsonSource),
+		});
+
+		const result = await materializeWorkflowSource(context, {
+			workflowId: 'wf1',
+			name: 'W',
+			code: CODE_V1,
+			saved: { versionId: 'v1', checksum: 'c1' },
+		});
+
+		expect(result).toMatchObject({ filePath: 'src/workflows/w.workflow.ts', status: 'written' });
+		expect(files.get('src/workflows/wf1.json')).toBe(jsonSource);
+	});
+
+	it('prefers the TypeScript binding when the workflow has several', async () => {
+		const files = new Map<string, string>([['src/workflows/mine.workflow.ts', CODE_V1]]);
+		const context = createContext(files);
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/wf1.json',
+			workflowId: 'wf1',
+		});
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/mine.workflow.ts',
+			workflowId: 'wf1',
+			workflowVersionId: 'v1',
+			workflowChecksum: 'c1',
+			sourceHash: hashWorkflowSource(CODE_V1),
+		});
+
+		const result = await materializeWorkflowSource(context, {
+			workflowId: 'wf1',
+			name: 'W',
+			code: CODE_V1,
+			saved: { versionId: 'v1', checksum: 'c1' },
+		});
+
+		expect(result).toMatchObject({ filePath: 'src/workflows/mine.workflow.ts', status: 'current' });
+	});
+
 	it('rewrites an unedited file when codegen output changed for the same saved workflow', async () => {
 		const files = new Map<string, string>();
 		const context = createContext(files);

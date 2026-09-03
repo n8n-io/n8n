@@ -725,10 +725,15 @@ async function handleGetAsCode(
 			code,
 			saved: { versionId: saved.versionId, checksum: saved.checksum },
 		});
-		await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
-			versionId: saved.versionId,
-			checksum: saved.checksum,
-		});
+		// A conflict leaves source generated from an older version on disk, so the
+		// binding keeps that version's token: building that file must hit the
+		// lost-update guard instead of overwriting whatever changed the workflow since.
+		if (materialized.status !== 'conflict') {
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
+				versionId: saved.versionId,
+				checksum: saved.checksum,
+			});
+		}
 
 		return {
 			...base,

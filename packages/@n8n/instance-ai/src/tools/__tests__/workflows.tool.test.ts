@@ -1136,6 +1136,74 @@ describe('workflows tool', () => {
 			expect(result.nodes[0].line).toBe(5);
 		});
 
+		it('keeps the concurrency token on the old version when it reports a conflict', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const tool = createWorkflowsTool(context, 'full');
+			const filePath = 'src/workflows/test-wf.workflow.ts';
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+			// The agent edits the file without building, then the user edits the canvas.
+			files.set(filePath, files.get(filePath)!.replace("name: 'Start'", "name: 'Start (edited)'"));
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v2',
+				checksum: 'c2',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-02',
+				nodes: [],
+				connections: {},
+			});
+
+			const result = await executeTool<{ status: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.status).toBe('conflict');
+			// The file still derives from v1, so a build of it must hit the lost-update guard.
+			await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+				workflowChecksum: 'c1',
+				workflowVersionId: 'v1',
+			});
+		});
+
+		it('moves the concurrency token forward when only the canvas changed and the source is current', async () => {
+			const files = new Map<string, string>();
+			const context = createWorkspaceContext(files);
+			const tool = createWorkflowsTool(context, 'full');
+			const filePath = 'src/workflows/test-wf.workflow.ts';
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+			// A node was moved: new version, same generated source (positions are not emitted).
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v2',
+				checksum: 'c2',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-02',
+				nodes: [],
+				connections: {},
+			});
+
+			const result = await executeTool<{ status: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.status).toBe('current');
+			await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+				workflowChecksum: 'c2',
+				workflowVersionId: 'v2',
+			});
+		});
+
 		it('retries when the workflow changes between the source read and the checksum read', async () => {
 			const files = new Map<string, string>();
 			const context = createWorkspaceContext(files);

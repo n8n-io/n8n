@@ -7,6 +7,7 @@ import {
 	saveWorkflowSourceFileBinding,
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
+import { isTypeScriptWorkflowSource } from './workflow-source-compiler';
 import type { InstanceAiContext } from '../../types';
 import { readWorkspaceFile, writeWorkspaceFile } from '../../workspace/workspace-files';
 
@@ -98,8 +99,12 @@ async function resolveSourceFilePath(
 	workflowId: string,
 	name: string,
 ): Promise<{ filePath: string; binding?: WorkflowSourceFileBinding }> {
-	const own = await findWorkflowSourceFileBindingsForWorkflow(context, workflowId);
-	if (own.length > 0) return { filePath: own[0].filePath, binding: own[0] };
+	// build-workflow binds whatever path it built from, a JSON source included. Only
+	// a TypeScript binding can take generated TypeScript; anything else is left alone.
+	const own = (await findWorkflowSourceFileBindingsForWorkflow(context, workflowId)).find(
+		(binding) => isTypeScriptWorkflowSource(binding.filePath),
+	);
+	if (own) return { filePath: own.filePath, binding: own };
 
 	const slug = workflowSourceFileSlug(name, workflowId);
 	const candidate = `${WORKFLOW_SOURCE_DIR}/${slug}.workflow.ts`;
