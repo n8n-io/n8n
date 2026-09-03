@@ -337,7 +337,6 @@ describe('DELETE /executions/:id', () => {
 });
 
 describe('POST /executions/:id/retry', () => {
-	/** What the service resolves to: dates are still `Date` at this point. */
 	const retryServiceResponse = (overrides: Record<string, unknown> = {}) =>
 		({
 			id: '1001',
