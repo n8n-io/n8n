@@ -468,6 +468,7 @@ useKeybindings({
 }
 
 .destination {
+	flex-shrink: 0;
 	margin-left: auto;
 	margin-right: var(--spacing--2xs);
 }
@@ -523,6 +524,15 @@ useKeybindings({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-width: 0;
+	overflow: hidden;
+
+	// The session switcher is the only thing allowed to give way; the dropdown
+	// trigger wrapper has to be shrinkable for the title inside to truncate.
+	> :first-child {
+		flex: 1 1 auto;
+		min-width: 3rem;
+	}
 }
 
 .sessionTitle {
