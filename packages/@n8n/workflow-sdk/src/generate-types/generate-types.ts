@@ -1127,10 +1127,6 @@ function mapNestedPropertyTypeInner(
 		case 'credentials':
 		case 'callout':
 			return '';
-		case 'button':
-			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
-			// store the user-typed text; pure-action buttons store the default ''.
-			return 'string | Expression<string>';
 		case 'icon':
 			return ICON_TS_TYPE;
 		case 'workflowSelector':
@@ -1832,11 +1828,6 @@ function mapPropertyTypeInner(
 		case 'credentials':
 		case 'callout':
 			return ''; // Skip display-only types
-
-		case 'button':
-			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
-			// store the user-typed text; pure-action buttons store the default ''.
-			return 'string | Expression<string>';
 
 		case 'icon':
 			return ICON_TS_TYPE;
