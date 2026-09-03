@@ -8,6 +8,10 @@ export const FOLDER_SCAN_LIMIT = 200;
  *  turning an error into an inventory dump. */
 export const FOLDER_CANDIDATE_LIMIT = 20;
 
+/** Projects one instance-wide folder request will scan. Past this the caller is
+ *  asked to name a project rather than the instance paying N queries. */
+export const FOLDER_SCAN_PROJECT_LIMIT = 20;
+
 export interface FolderInScope {
 	id: string;
 	name: string;

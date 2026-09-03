@@ -90,9 +90,11 @@ describe('Instance AI folder-scoped workflow listing (integration)', () => {
 		const result = await listFor(owner, project.id).list();
 
 		const byName = new Map(result.workflows.map((wf) => [wf.name, wf]));
+		expect(byName.has('Old inbound')).toBe(true);
 		expect(byName.get('Old inbound')?.folder).toEqual(
 			expect.objectContaining({ name: 'Archive', path: 'Clients/Acme/Archive' }),
 		);
+		expect(byName.has('Acme overview')).toBe(true);
 		expect(byName.get('Acme overview')?.folder).toBeUndefined();
 	});
 
@@ -104,6 +106,9 @@ describe('Instance AI folder-scoped workflow listing (integration)', () => {
 		const result = await listFor(member, project.id).list({ folderId: acmeId });
 
 		expect(result.workflows).toEqual([]);
+		// The member cannot list folders in the owner's project, so the scan finds
+		// nothing and the id is reported as a miss rather than silently widening.
+		expect(result.folderResolution?.reason).toBe('not-found');
 	});
 
 	it('lists candidates from the scanned project when the folder does not resolve', async () => {

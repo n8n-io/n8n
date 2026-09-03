@@ -1933,6 +1933,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
 	folderExploration?: boolean;
+	// Builds the adapter without the folder subtree finder, as an instance that
+	// runs an older module set would.
+	omitFolderFinderService?: boolean;
 	// Defaults to a bound project (every production run has one). Pass `null` to
 	// simulate a run with no bound project.
 	projectId?: string | null;
@@ -2059,7 +2062,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isLicensed: vi.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
-				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? true;
+				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
 			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
@@ -2085,9 +2088,11 @@ function createWorkflowAdapterForTests(overrides?: {
 		undefined,
 		undefined,
 		mockFolderRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[40],
-		mockFolderFinderService as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[41],
+		overrides?.omitFolderFinderService
+			? undefined
+			: (mockFolderFinderService as unknown as ConstructorParameters<
+					typeof InstanceAiAdapterService
+				>[41]),
 	);
 
 	const boundProjectId =
@@ -2424,6 +2429,31 @@ describe('createWorkflowAdapter', () => {
 			expect(result.workflows[1].folder).toBeUndefined();
 		});
 
+		it('chunks the path lookup and merges the chunks on a large page', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true });
+			const rows = Array.from({ length: 1001 }, (_, index) => ({
+				...savedWorkflow,
+				id: `wf-${index}`,
+				parentFolder: { id: `f-${index}`, name: `F${index}`, parentFolderId: null },
+			}));
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: rows, count: rows.length });
+			mockFolderRepository.getFolderPathsToRoot.mockImplementation(
+				async (folderIds: string[]) => new Map(folderIds.map((id) => [id, ['Root', id]])),
+			);
+
+			const result = await adapter.list({ limit: 1001 });
+
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledTimes(3);
+			expect(
+				mockFolderRepository.getFolderPathsToRoot.mock.calls.map(
+					([folderIds]: [string[]]) => folderIds.length,
+				),
+			).toEqual([500, 500, 1]);
+			// Every chunk lands in the merged map, so the last row still has its path.
+			expect(result.workflows.at(-1)?.folder?.path).toBe('Root/f-1000');
+		});
+
 		it('skips the path lookup when no row on the page is in a folder', async () => {
 			const { adapter, mockFolderRepository } = createWorkflowAdapterForTests({
 				folderExploration: true,
@@ -2455,8 +2485,15 @@ describe('createWorkflowAdapter', () => {
 			['acme', ['Clients', 'Acme']],
 		]);
 
-		function withFolders(overrides?: { foldersLicensed?: boolean }) {
-			const fixture = createWorkflowAdapterForTests({ folderExploration: true, ...overrides });
+		function withFolders(overrides?: {
+			foldersLicensed?: boolean;
+			omitFolderFinderService?: boolean;
+		}) {
+			const fixture = createWorkflowAdapterForTests({
+				folderExploration: true,
+				foldersLicensed: true,
+				...overrides,
+			});
 			fixture.mockFolderRepository.getMany.mockResolvedValue(folders);
 			fixture.mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(paths);
 			fixture.mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue([
@@ -2559,6 +2596,97 @@ describe('createWorkflowAdapter', () => {
 			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
 
 			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(2);
+		});
+
+		it('skips a project the user cannot list folders in, and never offers its folders', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _globalOnly, { projectId }) => projectId !== 'p2',
+			);
+			mockFolderRepository.getMany.mockImplementation(
+				async ({ filter }: { filter: { projectId: string } }) =>
+					filter.projectId === 'p2'
+						? [{ id: 'secret', name: 'Secret', parentFolderId: null, homeProject: { id: 'p2' } }]
+						: folders,
+			);
+
+			const result = await adapter.list({ scope: 'instance', folderPath: 'Nope' });
+
+			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(1);
+			expect(mockFolderRepository.getMany).toHaveBeenCalledWith({
+				filter: { projectId: 'team-project-id' },
+				take: 200,
+			});
+			expect(result.folderResolution?.reason).toBe('not-found');
+			expect(result.folderResolution?.candidates).not.toContain('Secret');
+		});
+
+		it('asks for a projectId instead of scanning when too many projects are in scope', async () => {
+			const { adapter, mockFolderRepository, mockWorkflowService, mockProjectService } =
+				withFolders();
+			mockProjectService.getAccessibleProjects.mockResolvedValue(
+				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
+			);
+
+			const result = await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflows: [],
+				total: 0,
+				totalInScope: 0,
+				folderResolution: { requested: 'Clients', reason: 'scope-too-wide', candidates: [] },
+			});
+		});
+
+		it('tracks a too-wide scope with no candidates', async () => {
+			const { adapter, mockTelemetry, mockProjectService } = withFolders();
+			mockProjectService.getAccessibleProjects.mockResolvedValue(
+				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
+			);
+
+			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_scope: 'path',
+					folder_resolution: 'scope_too_wide',
+					candidate_count: 0,
+					scope: 'instance',
+					result_count: 0,
+				}),
+			);
+		});
+
+		it('reports folders as unsupported when the subtree finder is missing', async () => {
+			const { adapter, mockWorkflowService } = withFolders({ omitFolderFinderService: true });
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients/Acme',
+				reason: 'unsupported',
+				candidates: [],
+			});
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+		});
+
+		it('reports the folderId as requested when a path and an id are both given', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme', folderId: 'ghost' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'ghost',
+				reason: 'not-found',
+				candidates: ['Clients', 'Clients/Acme'],
+			});
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({ folder_scope: 'id' }),
+			);
 		});
 
 		it('reports a miss instead of widening when the folder expansion comes back empty', async () => {

@@ -179,6 +179,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	FOLDER_SCAN_LIMIT,
+	FOLDER_SCAN_PROJECT_LIMIT,
 	listCandidatePaths,
 	resolveRequestedFolder,
 	type FolderInScope,
@@ -277,12 +278,19 @@ function hasCredentialValue(value: unknown): boolean {
 	return true;
 }
 
-/** The telemetry taxonomy collapses `resolveRequestedFolder`'s `not-found` into
- *  `not_found` (a valid BigQuery column name); the other reasons pass through. */
+/** The telemetry taxonomy replaces the hyphens with underscores (a valid
+ *  BigQuery column name); the single-word reasons pass through. */
 function toTelemetryReason(
 	reason: FolderResolutionFailure['reason'],
-): 'not_found' | 'ambiguous' | 'unsupported' {
-	return reason === 'not-found' ? 'not_found' : reason;
+): 'not_found' | 'ambiguous' | 'unsupported' | 'scope_too_wide' {
+	switch (reason) {
+		case 'not-found':
+			return 'not_found';
+		case 'scope-too-wide':
+			return 'scope_too_wide';
+		default:
+			return reason;
+	}
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -855,7 +863,7 @@ export class InstanceAiAdapterService {
 		const trackListed = (props: {
 			folderScope: 'none' | 'path' | 'id';
 			recursive?: boolean;
-			folderResolution?: 'resolved' | 'not_found' | 'ambiguous' | 'unsupported';
+			folderResolution?: 'resolved' | 'not_found' | 'ambiguous' | 'unsupported' | 'scope_too_wide';
 			candidateCount?: number;
 			scope: 'project' | 'instance';
 			hasQuery: boolean;
@@ -922,72 +930,75 @@ export class InstanceAiAdapterService {
 				// Telemetry dimensions, computed once so both early returns and the
 				// normal return report the same scope kind. A folder-addressed call
 				// only counts as folder-scoped when the flag is actually on.
+				// `folderId` wins when both are given, the same way the resolver reads them.
 				const folderScope: 'none' | 'path' | 'id' = foldersOn
-					? options?.folderPath !== undefined
-						? 'path'
-						: options?.folderId !== undefined
-							? 'id'
+					? options?.folderId !== undefined
+						? 'id'
+						: options?.folderPath !== undefined
+							? 'path'
 							: 'none'
 					: 'none';
 				const listScope: 'project' | 'instance' =
 					options?.scope === 'instance' ? 'instance' : 'project';
 
+				/** Every folder failure reports the same empty result and one telemetry row. */
+				const failFolderResolution = (folderResolution: FolderResolutionFailure) => {
+					trackListed({
+						folderScope,
+						recursive: options?.recursive !== false,
+						folderResolution: toTelemetryReason(folderResolution.reason),
+						candidateCount: folderResolution.candidates.length,
+						scope: listScope,
+						hasQuery: Boolean(options?.query),
+						resultCount: 0,
+						total: 0,
+					});
+					return { workflows: [], total: 0, totalInScope: 0, folderResolution };
+				};
+
 				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
 				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
 				let folderIds: string[] | undefined;
 				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
-					const requested = options.folderPath ?? options.folderId ?? '';
+					const requested = options.folderId ?? options.folderPath ?? '';
 					const projectIds = targetProjectId
 						? [targetProjectId]
 						: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
+					// One folder query per project, so a caller with access to very many
+					// projects is asked to name one instead of the instance paying for all.
+					if (targetProjectId === undefined && projectIds.length > FOLDER_SCAN_PROJECT_LIMIT) {
+						return failFolderResolution({ requested, reason: 'scope-too-wide', candidates: [] });
+					}
 					const foldersInScope = await readFoldersInScope(projectIds);
 					const resolved = resolveRequestedFolder(
 						{ folderPath: options.folderPath, folderId: options.folderId },
 						foldersInScope,
 					);
 					if (!('folderId' in resolved)) {
-						const folderResolution: FolderResolutionFailure = { requested, ...resolved };
-						trackListed({
-							folderScope,
-							recursive: options?.recursive !== false,
-							folderResolution: toTelemetryReason(resolved.reason),
-							candidateCount: resolved.candidates.length,
-							scope: listScope,
-							hasQuery: Boolean(options?.query),
-							resultCount: 0,
-							total: 0,
-						});
-						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
+						return failFolderResolution({ requested, ...resolved });
+					}
+					// Recursion is part of the contract, so a missing finder is reported the
+					// same way an unlicensed instance is. Reading only the folder's top level
+					// would silently answer a different question.
+					if (!folderFinderService) {
+						return failFolderResolution({ requested, reason: 'unsupported', candidates: [] });
 					}
 					// Expanded here, not in the repository: the plain list query treats
 					// `parentFolderId` as an exact match, so relying on it would silently
 					// return only the folder's top level.
-					const expanded = folderFinderService
-						? await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
-								resolved.folderId,
-								options.recursive !== false,
-							)
-						: [resolved.folderId];
+					const expanded = await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
+						resolved.folderId,
+						options.recursive !== false,
+					);
 					// No ids means the folder went away between the scan and the expansion.
 					// The repository drops an empty `parentFolderIds` filter, which would
 					// list the whole scope, so report the miss instead.
 					if (expanded.length === 0) {
-						const folderResolution: FolderResolutionFailure = {
+						return failFolderResolution({
 							requested,
 							reason: 'not-found',
 							candidates: listCandidatePaths(foldersInScope ?? []),
-						};
-						trackListed({
-							folderScope,
-							recursive: options?.recursive !== false,
-							folderResolution: toTelemetryReason(folderResolution.reason),
-							candidateCount: folderResolution.candidates.length,
-							scope: listScope,
-							hasQuery: Boolean(options?.query),
-							resultCount: 0,
-							total: 0,
 						});
-						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
 					}
 					folderIds = expanded;
 				}
@@ -4357,7 +4368,12 @@ function readParentFolder(workflow: object): { id: string; name: string } | unde
 	return { id, name };
 }
 
-/** One recursive CTE for the page's distinct folder ids; none when no row is foldered. */
+/** Folder ids per path query. `getFolderPathsToRoot` binds one parameter per id
+ *  and SQLite allows 999 of them, so the ids are read in chunks. */
+const FOLDER_PATH_CHUNK_SIZE = 500;
+
+/** One recursive CTE per chunk of the page's distinct folder ids; none when no
+ *  row is foldered. */
 async function readFolderPaths(
 	folderRepository: FolderRepository,
 	folderIds: string[],
@@ -4365,8 +4381,14 @@ async function readFolderPaths(
 	const distinct = [...new Set(folderIds)];
 	if (distinct.length === 0) return new Map();
 
-	const segments = await folderRepository.getFolderPathsToRoot(distinct);
-	return new Map([...segments].map(([id, names]) => [id, names.join('/')]));
+	const paths = new Map<string, string>();
+	for (let start = 0; start < distinct.length; start += FOLDER_PATH_CHUNK_SIZE) {
+		const segments = await folderRepository.getFolderPathsToRoot(
+			distinct.slice(start, start + FOLDER_PATH_CHUNK_SIZE),
+		);
+		for (const [id, names] of segments) paths.set(id, names.join('/'));
+	}
+	return paths;
 }
 
 function hasCredentialId(value: unknown): boolean {
