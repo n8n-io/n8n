@@ -83,6 +83,14 @@ const isAutofocusReady = computed(
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
 const isEmptyGroup = computed(() => props.data.isEmptyGroup);
+
+// An empty group is wired through the chip itself, so its handles must be
+// visible and grabbable; a normal group keeps the decorative hidden handles.
+const handleClass = computed(() =>
+	isEmptyGroup.value && !props.readOnly
+		? `${$style.handle} ${$style.handleConnectable}`
+		: $style.handle,
+);
 const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
@@ -428,14 +436,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
 				type="target"
 				:position="Position.Left"
-				:class="$style.handle"
+				:class="handleClass"
 				:is-connectable="isEmptyGroup && !readOnly"
 			/>
 			<Handle
 				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
 				type="source"
 				:position="Position.Right"
-				:class="$style.handle"
+				:class="handleClass"
 				:is-connectable="isEmptyGroup && !readOnly"
 			/>
 
@@ -969,6 +977,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 .handle {
 	opacity: 0;
 	pointer-events: none;
+}
+
+// An empty group is wired through the chip itself, so its handles must be
+// grabbable. Normal groups keep the decorative, non-interactive handles above.
+.handleConnectable {
+	width: 12px;
+	height: 12px;
+	opacity: 1;
+	pointer-events: all;
+	background: var(--color--foreground--shade-1);
+	border: var(--border);
 }
 
 // Floating description shown below a collapsed group on hover or when pinned.
