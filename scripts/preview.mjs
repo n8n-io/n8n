@@ -11,6 +11,7 @@
 //   --json       print {pr, sha, codespace, url} for a workflow to consume
 //   --dry-run    resolve the PR and print the commands, touching nothing
 import { execFileSync, spawnSync } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import { shareWithOrg } from './serve-ready.mjs';
 
@@ -126,7 +127,29 @@ function report(pr, head, codespace, json, orgVisible = false) {
 	else console.log(`\nPreview for PR #${pr}: ${url}${orgVisible ? ' (org-visible)' : ''}`);
 }
 
-function serve(pr, cs, head, { json, dryRun }) {
+// `gh codespace create` returns when the record exists, not when the box can accept
+// a connection, and sshd lags the Available state by a few seconds more. Probe with a
+// no-op so a connection problem never looks like a failed build.
+async function waitForSsh(name, timeoutMs = 600_000) {
+	const deadline = Date.now() + timeoutMs;
+	let attempt = 0;
+	let lastError = 'no attempt completed';
+	while (Date.now() < deadline) {
+		const probe = spawnSync('gh', ['codespace', 'ssh', '-c', name, '--', 'true'], {
+			stdio: ['ignore', 'ignore', 'pipe'],
+			encoding: 'utf8',
+		});
+		if (probe.status === 0) return;
+		lastError = (probe.stderr ?? '').trim().split('\n').pop() || `exit ${probe.status}`;
+		if (attempt++ === 0) console.log(`Waiting for ${name} to accept ssh…`);
+		await sleep(5000);
+	}
+	fail(
+		`${name} did not accept ssh within ${Math.round(timeoutMs / 1000)}s — last error: ${lastError}`,
+	);
+}
+
+async function serve(pr, cs, head, { json, dryRun }) {
 	const command = serveCommand(head);
 	if (dryRun) {
 		console.log(`Would ssh to ${cs.name} and run:\n  ${command}`);
@@ -134,6 +157,8 @@ function serve(pr, cs, head, { json, dryRun }) {
 		report(pr, head, cs.name, json);
 		return;
 	}
+
+	await waitForSsh(cs.name);
 
 	console.log(`Serving ${head.headRefOid.slice(0, 7)} on ${cs.name}…`);
 	const { status } = ghTty('codespace', 'ssh', '-c', cs.name, '--', command);
@@ -150,7 +175,7 @@ function serve(pr, cs, head, { json, dryRun }) {
 	report(pr, head, cs.name, json, share.shared);
 }
 
-function up(pr, options) {
+async function up(pr, options) {
 	const head = prHead(pr);
 	let cs = findPreview(pr);
 
@@ -176,13 +201,13 @@ function up(pr, options) {
 		console.log(`${cs.name} is ${cs.state} — ssh will start it (~30-60 s)…`);
 	}
 
-	serve(pr, cs, head, options);
+	await serve(pr, cs, head, options);
 }
 
-function refresh(pr, options) {
+async function refresh(pr, options) {
 	const cs = findPreview(pr);
 	if (!cs) fail(`No preview box for PR #${pr}. Run \`pnpm preview up ${pr}\` first.`);
-	serve(pr, cs, prHead(pr), options);
+	await serve(pr, cs, prHead(pr), options);
 }
 
 function down(pr, { dryRun }) {
@@ -221,10 +246,10 @@ const requirePr = () => {
 
 switch (cmd) {
 	case 'up':
-		up(requirePr(), options);
+		await up(requirePr(), options);
 		break;
 	case 'refresh':
-		refresh(requirePr(), options);
+		await refresh(requirePr(), options);
 		break;
 	case 'down':
 		down(requirePr(), options);
