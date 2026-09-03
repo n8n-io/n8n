@@ -15,6 +15,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -1079,6 +1080,20 @@ export interface BuilderOpenSuspension {
  * suspend, which the caller cascades through its own suspend/resume so the
  * builder's questions survive a process restart.
  */
+
+/** Capabilities and limitations the orchestrator surfaces to plan an agent
+ *  build, sourced from the agents module via `InstanceAiBuilderDelegate.listAgentCapabilities`
+ *  so they stay aligned with the agent config schema and business rules as
+ * they evolve — the orchestrator never hardcodes these. */
+export interface AgentCapabilitiesSummary {
+	/** Supported chat-channel integrations; absence from this list means unsupported. */
+	channels: ChatIntegrationDescriptor[];
+	/** What an n8n Agent can do beyond chat channels — brief, for planning. */
+	agentCapabilities: string[];
+	/** Agent-level limitations the orchestrator must respect when planning a build. */
+	limitations: string[];
+}
+
 export interface InstanceAiBuilderDelegate {
 	/** `id` creates the agent under an id the frontend already minted for its
 	 *  unsaved artifact, so the chat and the editor converge on one agent. */
@@ -1104,6 +1119,11 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Capabilities and limitations the orchestrator surfaces to plan an agent
+	 *  build, sourced from the agents module via `listAgentCapabilities` so they
+	 *  stay aligned with the agent config schema and business rules as they
+	 *  evolve — the orchestrator never hardcodes these. */
+	listAgentCapabilities(): Promise<AgentCapabilitiesSummary>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
