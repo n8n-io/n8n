@@ -28,6 +28,15 @@ describe('Microsoft Teams V2 — chatMember:remove error surfacing', () => {
 			error: { error: { code, message } },
 		});
 
+	const executeAndCatch = async () => {
+		try {
+			await node.execute.call(ctx);
+		} catch (error) {
+			return error as NodeApiError | NodeOperationError;
+		}
+		throw new Error('execute was expected to throw');
+	};
+
 	const setParams = (params: Record<string, unknown>) => {
 		ctx.getNodeParameter.mockImplementation(
 			(name: string, _itemIndex?: number, fallback?: unknown): NodeParameterValueType =>
@@ -66,15 +75,14 @@ describe('Microsoft Teams V2 — chatMember:remove error surfacing', () => {
 			),
 		);
 
-		const error = await node.execute.call(ctx).catch((e: Error) => e);
+		const error = await executeAndCatch();
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		// Graph's own text stays the message: a 403 here is not necessarily a scope problem.
 		expect(error.message).toContain('Insufficient privileges to complete the operation.');
-		const { description } = error as NodeOperationError;
-		expect(description).toContain('ChatMember.ReadWrite');
-		expect(description).toContain('reconnect');
-		expect(description).toContain('Enabled Scopes');
+		expect(error.description).toContain('ChatMember.ReadWrite');
+		expect(error.description).toContain('reconnect');
+		expect(error.description).toContain('Enabled Scopes');
 		expect(requestOAuth2).toHaveBeenCalledTimes(1);
 	});
 
@@ -83,7 +91,7 @@ describe('Microsoft Teams V2 — chatMember:remove error surfacing', () => {
 			graphError(404, 'itemNotFound', 'The requested item was not found.'),
 		);
 
-		const error = await node.execute.call(ctx).catch((e: Error) => e);
+		const error = await executeAndCatch();
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect((error as NodeApiError).httpCode).toBe('404');

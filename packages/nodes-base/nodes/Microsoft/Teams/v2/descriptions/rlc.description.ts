@@ -316,7 +316,7 @@ export const chatMemberRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description:
-		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the "id" field, not "userId")',
+		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the ID field, not the "userId" field)',
 	typeOptions: {
 		loadOptionsDependsOn: ['chatId.value'],
 	},
