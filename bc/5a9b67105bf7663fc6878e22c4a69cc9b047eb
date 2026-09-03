@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_5fc5f4c07cd999::t_aa6a5dbf038d1b 8,129,134-136,148,161,259-298
+  s_5fc5f4c07cd999::t_c6cc69fd32b909 682,725
+  s_5fc5f4c07cd999::t_22c9f4f01cf5f2 235-236
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5fc5f4c07cd999::t_f2fe9dd0048151 280
+  s_5fc5f4c07cd999::t_1056c883792d0e 234-237
+  s_5fc5f4c07cd999::t_e26f7830a3faf5 3
+packages/cli/src/modules/agents/background/agent-wake-lock.ts
+  s_5fc5f4c07cd999::t_aa6a5dbf038d1b 1
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_5fc5f4c07cd999::t_aa6a5dbf038d1b 10,34,292,502,849-865
+  s_5fc5f4c07cd999::t_da7a400827695b 484-501
+  s_5fc5f4c07cd999::t_c6cc69fd32b909 866,916-929
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_5fc5f4c07cd999::t_aa6a5dbf038d1b 23,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc5a9b67105bf7663fc6878e22c4a69cc9b047eb",
+  "prompts": {},
+  "sessions": {
+    "s_5fc5f4c07cd999": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05d66-0771-78e2-b6fe-5d1f5f686565",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

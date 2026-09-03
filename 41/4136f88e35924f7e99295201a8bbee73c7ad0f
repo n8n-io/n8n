@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_5fc5f4c07cd999::t_dc23bb1dcf6bea 272,283,291,295-320,452-456,519,526-543
+  s_5fc5f4c07cd999::t_6da902db31e5a2 394-396,500-502
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_5fc5f4c07cd999::t_5fd08b5f808b50 659-697
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_5fc5f4c07cd999::t_4804e27acd9d17 5-7
+  s_5fc5f4c07cd999::t_dc23bb1dcf6bea 23-29,31-32,35,37-39,47-50
+packages/@n8n/agents/src/runtime/__tests__/strip-orphaned-tool-messages.test.ts
+  s_5fc5f4c07cd999::t_5fd08b5f808b50 247-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "414136f88e35924f7e99295201a8bbee73c7ad0f",
+  "prompts": {},
+  "sessions": {
+    "s_5fc5f4c07cd999": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05d66-0771-78e2-b6fe-5d1f5f686565",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
