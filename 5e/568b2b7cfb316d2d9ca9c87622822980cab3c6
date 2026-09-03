@@ -1,0 +1,53 @@
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_e6082a820900c7::t_51fc048553b6f5 138-139
+  s_e6082a820900c7::t_dcf42ecdf33cfa 157-158
+packages/cli/src/executions/execution.service.ts
+  s_e6082a820900c7::t_986b189376a633 810-811,827-828
+packages/cli/src/executions/execution-persistence.ts
+  s_e6082a820900c7::t_b1ccccf580b3f5 604-605
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_e6082a820900c7::t_8844018eee8642 40-55,65-66
+packages/@n8n/db/src/repositories/execution.repository.ts
+  h_ed1b2d65e81e8e 141,147,151-153
+  s_e6082a820900c7::t_b668079c91777c 699-700
+  s_e6082a820900c7::t_e3cfeafbb22b8a 121-122,130-136
+  s_e6082a820900c7::t_50945c97f1207f 137-140,142-143,145-146,148-149
+  s_e6082a820900c7::t_6a53406b7e9d56 984-985
+  s_e6082a820900c7::t_03bc30f0b0500e 1192-1193
+  s_e6082a820900c7::t_d0bdfa88ec64f3 686-687
+  s_e6082a820900c7::t_f1b57c4fed54fd 646-647
+  s_e6082a820900c7::t_0c2f0ff36b114c 701
+  s_e6082a820900c7::t_1b6b1b0194dcce 150
+packages/cli/src/public-api/types.ts
+  s_e6082a820900c7::t_8e65daee9c70d7 52-53
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_e6082a820900c7::t_1be2393c1bbfcc 182
+  s_e6082a820900c7::t_ea6a4c75ff04b4 157-181,183-202,204-231
+  s_e6082a820900c7::t_ef4e48a8ca1b1a 203
+  s_e6082a820900c7::t_3c4f7971650a2f 6-7
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_e6082a820900c7::t_c4b5215e91cc05 909-931
+packages/cli/test/integration/public-api/executions.test.ts
+  s_e6082a820900c7::t_5330fa5956e845 727-855
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5e568b2b7cfb316d2d9ca9c87622822980cab3c6",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e6082a820900c7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5d728b8d-b122-4986-8b71-ae171df805bf",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
