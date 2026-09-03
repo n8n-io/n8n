@@ -82,6 +82,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           build-command: ''
+          enable-docker-cache: 'true'
+          # Blacksmith stores a separate Sticky Disk variant per architecture.
+          docker-cache-key: n8n-io/n8n
 
       - name: Download the shared Docker context
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -92,11 +95,8 @@ jobs:
       - name: Restore the shared Docker context
         run: tar -xf "$RUNNER_TEMP/build-context/build-context.tar"
 
-      # Use a fresh builder. Docker caching must not hide a bad native build.
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-
-      - name: Build every image variant without Docker cache
+      # docker-build-smoke.yml remains the no-cache guard for native builds.
+      - name: Build every image variant with Docker cache
         env:
           PLATFORMS: ${{ env.TARGET_PLATFORM }}
           N8N_TAGS: ${{ env.N8N_IMAGE }}
@@ -107,7 +107,6 @@ jobs:
           docker buildx bake -f docker/docker-bake.hcl \
             n8n n8n-pc runners runners-distroless \
             --load \
-            --no-cache \
             --provenance=false \
             --sbom=false
 
