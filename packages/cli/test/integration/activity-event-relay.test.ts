@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ActivityEventRepository } from '@n8n/db';
+import { ActivityEventRepository, WorkflowRepository } from '@n8n/db';
 import type { Project, User, WorkflowEntity, ActivityEvent } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
@@ -10,6 +10,7 @@ import type { INode } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from './shared/db/users';
 
@@ -90,13 +91,14 @@ describe('ActivityEventRelay', () => {
 	});
 
 	it('keeps a deletion entry after the workflow it describes is gone', async () => {
-		eventService.emit('workflow-deleted', {
-			user: actor(),
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			publicApi: false,
-		});
+		// Through the service, not the event: name and owning project only reach the relay because
+		// `delete` resolves them ahead of the cascade. Emitting by hand would assert nothing about
+		// that ordering, and would leave the workflow the entry describes alive.
+		// `force`, since the workflow is unarchived — the same argument the public API passes.
+		await Container.get(WorkflowService).delete(owner, workflow.id, true);
+
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toBeNull();
+
 		const [entry] = await waitForEntry(project.id);
 
 		expect(entry).toMatchObject({

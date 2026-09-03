@@ -2,7 +2,7 @@ import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
 	SharedWorkflow,
 	WorkflowEntity,
@@ -1475,10 +1475,15 @@ export class WorkflowService {
 		}
 
 		// Resolved here for the same reason the hook below runs here: after the cascade the
-		// `shared_workflow` rows that name the project are gone. Deliberately the non-throwing
-		// lookup rather than the cached one, which raises when no owner row exists — recording
-		// the delete must never be the reason the delete fails.
-		const owningProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		// `shared_workflow` rows that name the project are gone. It only attributes the activity
+		// entry, so neither a missing owner row nor a failed query may fail the delete — hence the
+		// non-throwing lookup, and the catch for everything it does not cover.
+		let owningProject: Project | undefined;
+		try {
+			owningProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		} catch (error) {
+			this.logger.warn('Failed to resolve the project owning a workflow', { workflowId, error });
+		}
 
 		// Ahead of every destructive step: the hook captures rows the delete is about
 		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.

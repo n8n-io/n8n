@@ -1236,6 +1236,29 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it('deletes a non-resolvable credential even when resolving its project throws', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'project-credential',
+				type: 'gmailOAuth2',
+				usageScope: 'project',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsRepository.remove.mockResolvedValue(credential);
+			// Nothing but the activity entry needs the project here, so the delete goes ahead.
+			sharedCredentialsRepository.findCredentialOwningProject.mockRejectedValue(
+				new Error('db is gone'),
+			);
+
+			await expect(service.delete(ownerUser, credential.id)).resolves.not.toThrow();
+
+			expect(credentialsRepository.remove).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-deleted',
+				expect.objectContaining({ projectId: undefined }),
+			);
+		});
+
 		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'project-credential',

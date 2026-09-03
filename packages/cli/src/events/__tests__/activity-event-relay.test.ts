@@ -214,7 +214,12 @@ describe('ActivityEventRelay', () => {
 						credentialId: 'credential1',
 						credentialName: 'Team Slack',
 					}),
-				{ category: 'credential', action: 'updated', resourceName: 'Team Slack' },
+				{
+					category: 'credential',
+					action: 'updated',
+					resourceName: 'Team Slack',
+					data: { credentialType: 'slackApi' },
+				},
 			],
 			[
 				'credentials-deleted',
@@ -226,7 +231,12 @@ describe('ActivityEventRelay', () => {
 						credentialName: 'Team Slack',
 						projectId: 'project1',
 					}),
-				{ category: 'credential', action: 'deleted', resourceName: 'Team Slack' },
+				{
+					category: 'credential',
+					action: 'deleted',
+					resourceName: 'Team Slack',
+					data: { credentialType: 'slackApi' },
+				},
 			],
 		];
 
@@ -315,6 +325,15 @@ describe('ActivityEventRelay', () => {
 				nodesRemoved: ['set'],
 				settingsChanged: ['timezone'],
 			});
+		});
+
+		it('keeps an explicit false apart from a save that never mentioned the builder', async () => {
+			relayWith(true);
+
+			savedWith({ source: 'ui', aiBuilderAssisted: false });
+			await flushPromises();
+
+			expect(recordedData()).toEqual({ source: 'ui', aiBuilderAssisted: false, nodeCount: 1 });
 		});
 
 		it('reports no delta when there is no before state to compare against', async () => {

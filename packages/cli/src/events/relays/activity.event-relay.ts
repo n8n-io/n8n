@@ -360,8 +360,9 @@ function nodeCount(workflow: Pick<IWorkflowBase, 'nodes'>): number {
 
 /**
  * `source` is server-set per code path, so it is the authoritative answer to "was this the
- * assistant or the user". `aiBuilderAssisted` comes off the request body, so it is recorded only
- * when set and is the weaker of the two when they disagree.
+ * assistant or the user". `aiBuilderAssisted` comes off the request body, so it is the weaker of
+ * the two when they disagree. An explicit `false` is kept: a save that stated the assistant was
+ * not involved says more than one that never mentioned it.
  */
 function provenance(
 	source: WorkflowActionSource | undefined,
@@ -369,7 +370,7 @@ function provenance(
 ): IDataObject {
 	return {
 		...(source ? { source } : {}),
-		...(aiBuilderAssisted ? { aiBuilderAssisted: true } : {}),
+		...(aiBuilderAssisted === undefined ? {} : { aiBuilderAssisted }),
 	};
 }
 

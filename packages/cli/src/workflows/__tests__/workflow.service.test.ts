@@ -2154,6 +2154,23 @@ describe('WorkflowService', () => {
 			});
 		});
 
+		test('deletes the workflow even when resolving its project throws', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflow = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			// The lookup exists only to attribute an activity entry, so it must not fail the delete.
+			sharedWorkflowRepositoryMock.getWorkflowOwningProject.mockRejectedValue(
+				new Error('db is gone'),
+			);
+
+			await expect(workflowService.delete(user, WORKFLOW_ID)).resolves.toBeDefined();
+
+			expect(deleteEventServiceMock.emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ projectId: undefined }),
+			);
+		});
+
 		test('deletes the workflow even when no owning project can be resolved', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			const workflow = makeWorkflowEntity({ isArchived: true });
