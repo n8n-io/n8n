@@ -447,6 +447,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			source: z.enum(['button', 'dropdown', 'card']),
 			agent_id: z.string().describe('Minted at the click; no agent row exists yet'),
+			manual: z
+				.boolean()
+				.optional()
+				.describe(
+					'True when the click came from a "Create agent manually" entry point that skips the Instance AI flow',
+				),
 			session_id: sessionId,
 		}),
 	},
