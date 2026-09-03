@@ -68,6 +68,10 @@ same way as `ANTHROPIC_API_KEY`:
 - `OPENROUTER_API_KEY` — the model provider key for Sol.
 - `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
 
+The worker explicitly reloads `/usr/local/lib/codespaces-env.sh` when its tmux
+session starts. An existing tmux server can otherwise retain an environment
+that did not load the Codespaces secrets.
+
 The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
 worker posts one placeholder in that thread. It coalesces completed tool calls.
 It updates the message at most once every 1.5 seconds. It does not send reasoning
