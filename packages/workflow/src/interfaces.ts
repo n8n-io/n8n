@@ -1900,7 +1900,6 @@ export interface INodeParameters {
 
 export type NodePropertyTypes =
 	| 'boolean'
-	| 'button'
 	| 'collection'
 	| 'color'
 	| 'dateTime'
@@ -1960,13 +1959,6 @@ export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBa
 export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
-	// Supported by: button
-	buttonConfig?: {
-		action?: string;
-		label?: string; // otherwise "displayName" is used
-		hasInputField?: boolean;
-		inputFieldMaxLength?: number; // Supported if hasInputField is true
-	};
 	containerClass?: string; // Supported by: notice
 	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
