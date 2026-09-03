@@ -121,6 +121,13 @@ export function useSetupPanelActions(options: {
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
 	isAgentBuilding: MaybeRefOrGetter<boolean>;
+	/**
+	 * Receives the outcome of the automatic settle flush (queued writes
+	 * draining when the agent lock releases) — the one apply path with no
+	 * caller to return to. Manual `flushPendingApplies` calls report through
+	 * their return value instead.
+	 */
+	onFlushResult?: (result: SetupPanelApplyResult) => void;
 }) {
 	const i18n = useI18n();
 	const rootStore = useRootStore();
@@ -287,17 +294,22 @@ export function useSetupPanelActions(options: {
 		});
 	}
 
-	/** Lands every queued write in one guarded PATCH. One attempt — leftovers drop. */
-	async function flushPendingApplies(): Promise<void> {
+	/**
+	 * Lands every queued write in one guarded PATCH. One attempt — leftovers
+	 * drop. Returns the apply outcome, or undefined when there was nothing to
+	 * flush or the lock is still held.
+	 */
+	async function flushPendingApplies(): Promise<SetupPanelApplyResult | undefined> {
 		// The lock rule holds for manual flushes too — the queue stays intact.
-		if (toValue(options.isAgentBuilding)) return;
+		if (toValue(options.isAgentBuilding)) return undefined;
+		if (pendingApplyCount.value === 0) return undefined;
 		const workflowId = toValue(options.workflowId);
 		// Queued writes belong to the workflow they were captured for; if the
 		// panel re-anchored since (even in this same flush), drop them.
-		if (workflowId !== queuedWorkflowId) {
+		if (!workflowId || workflowId !== queuedWorkflowId) {
 			pendingCredentialBinds.value.clear();
 			pendingParameterApplies.value.clear();
-			return;
+			return 'dropped';
 		}
 		const delta: NodesDelta = {
 			credentialBinds: [...pendingCredentialBinds.value.values()],
@@ -308,15 +320,17 @@ export function useSetupPanelActions(options: {
 		};
 		pendingCredentialBinds.value.clear();
 		pendingParameterApplies.value.clear();
-		if (!workflowId || (delta.credentialBinds.length === 0 && delta.parameterApplies.length === 0))
-			return;
-		await patchWorkflowNodes(workflowId, delta);
+		return await patchWorkflowNodes(workflowId, delta);
 	}
 
 	watch(
 		() => toValue(options.isAgentBuilding),
 		(building, wasBuilding) => {
-			if (wasBuilding && !building) void flushPendingApplies();
+			if (wasBuilding && !building) {
+				void flushPendingApplies().then((result) => {
+					if (result) options.onFlushResult?.(result);
+				});
+			}
 		},
 	);
 

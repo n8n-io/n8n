@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,6 +16,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useSetupPanelActions,
 	type SetupCredentialItem,
+	type SetupPanelApplyResult,
 } from '../composables/useSetupPanelActions';
 
 vi.mock('@/app/api/workflows', async (importOriginal) => ({
@@ -47,7 +48,13 @@ function conflictError() {
 	return new ResponseError('conflict', { httpStatusCode: 409 });
 }
 
-function createHarness(options: { agentBuilding?: boolean; workflowId?: string | undefined } = {}) {
+function createHarness(
+	options: {
+		agentBuilding?: boolean;
+		workflowId?: string | undefined;
+		onFlushResult?: (result: SetupPanelApplyResult) => void;
+	} = {},
+) {
 	const building = ref(options.agentBuilding ?? false);
 	const workflowId = ref('workflowId' in options ? options.workflowId : WORKFLOW_ID);
 	const sendMessage = vi.fn().mockResolvedValue(true);
@@ -64,6 +71,7 @@ function createHarness(options: { agentBuilding?: boolean; workflowId?: string |
 		thread: { sendMessage },
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
+		onFlushResult: options.onFlushResult,
 	});
 	return { actions, building, workflowId, sendMessage, updateWorkflow };
 }
@@ -302,6 +310,38 @@ describe('useSetupPanelActions', () => {
 		building.value = false;
 		await actions.flushPendingApplies();
 		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('reports a conflicted settle flush through onFlushResult', async () => {
+		const onFlushResult = vi.fn();
+		const { actions, building, updateWorkflow } = createHarness({
+			agentBuilding: true,
+			onFlushResult,
+		});
+		await actions.bindCredential(credentialItem, credential);
+		updateWorkflow.mockRejectedValue(conflictError());
+
+		building.value = false;
+		await vi.waitFor(() => expect(onFlushResult).toHaveBeenCalledExactlyOnceWith('conflict'));
+	});
+
+	it('does not report a settle flush when nothing is queued', async () => {
+		const onFlushResult = vi.fn();
+		const { building } = createHarness({ agentBuilding: true, onFlushResult });
+
+		building.value = false;
+		await nextTick();
+		await Promise.resolve();
+
+		expect(onFlushResult).not.toHaveBeenCalled();
+	});
+
+	it('returns the apply outcome from a manual flush', async () => {
+		const { actions, building } = createHarness({ agentBuilding: true });
+		await actions.bindCredential(credentialItem, credential);
+
+		building.value = false;
+		await expect(actions.flushPendingApplies()).resolves.toBe('applied');
 	});
 
 	it('applies parameter values through the same guarded PATCH', async () => {
