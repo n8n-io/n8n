@@ -115,6 +115,7 @@ import {
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -214,10 +215,6 @@ import {
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** A resource attachment as the trace records it: the reference, not its contents. */
 type TracedResourceAttachment = {
