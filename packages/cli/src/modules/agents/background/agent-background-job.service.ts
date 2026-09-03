@@ -142,9 +142,11 @@ export class AgentBackgroundJobService {
 		settlement: AgentBackgroundJobSettlement,
 		checkpoint: { runId: string; agentId: string } | undefined,
 	): Promise<boolean> {
-		const settled = await this.settle(jobId, settlement);
-		if (checkpoint) await this.discardCheckpoint(jobId, checkpoint);
-		return settled;
+		try {
+			return await this.settle(jobId, settlement);
+		} finally {
+			if (checkpoint) await this.discardCheckpoint(jobId, checkpoint);
+		}
 	}
 
 	/**

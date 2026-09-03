@@ -148,7 +148,7 @@ describe('settle', () => {
 });
 
 describe('park', () => {
-	it('lifts the timeout and drops the live abort handle', async () => {
+	it('parks the job and drops the live abort handle', async () => {
 		const { service, jobRepository, executionRepository } = setup();
 		jobRepository.parkIfRunning.mockResolvedValue(true);
 		service.registerAbortController('job-1', new AbortController());

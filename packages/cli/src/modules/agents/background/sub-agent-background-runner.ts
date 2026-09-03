@@ -221,6 +221,9 @@ export class SubAgentBackgroundRunner {
 		timeout.unref();
 
 		void run(abortController.signal)
+			// The run is over either way; a timer firing during the settle write
+			// would otherwise fail a row that `finish()` is about to park.
+			.finally(() => clearTimeout(timeout))
 			.then(
 				async (result) => await this.finish(job, result, suspensionBase),
 				async (error: unknown) =>
@@ -238,8 +241,7 @@ export class SubAgentBackgroundRunner {
 					jobId: job.id,
 					error,
 				});
-			})
-			.finally(() => clearTimeout(timeout));
+			});
 	}
 
 	private async finish(
