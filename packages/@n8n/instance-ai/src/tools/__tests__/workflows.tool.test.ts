@@ -711,6 +711,107 @@ describe('workflows tool', () => {
 					recursive: false,
 				});
 			});
+
+			const folderRow = {
+				id: 'wf1',
+				name: 'Slack inbound',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				folder: { id: 'f1', name: 'Triggers', path: 'Triggers' },
+			};
+
+			it('puts the unresolved-folder note first and forbids a query substitute', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Trigger',
+						reason: 'not-found',
+						candidates: ['Clients/Acme', 'Triggers'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{
+					note: string;
+					folderResolution: { reason: string };
+				}>(tool, { action: 'list', folderPath: 'Trigger', limit: 1 }, {} as never);
+
+				expect(result.note.startsWith('Folder "Trigger" was not found')).toBe(true);
+				expect(result.note).toContain('Clients/Acme');
+				expect(result.note).toContain('Triggers');
+				expect(result.note).toContain('Do NOT substitute a `query` name filter');
+				expect(result.folderResolution).toEqual(expect.objectContaining({ reason: 'not-found' }));
+			});
+
+			it('names an ambiguous folder and lists only the colliding paths', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Acme',
+						reason: 'ambiguous',
+						candidates: ['Archive/Acme', 'Clients/Acme'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('matches more than one folder');
+				expect(result.note).toContain('Archive/Acme');
+				expect(result.note).toContain('Clients/Acme');
+			});
+
+			it('says folders are unavailable when the instance does not support them', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: { requested: 'Acme', reason: 'unsupported', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('Folders are not available on this instance');
+				expect(result.note).toContain('ask the user');
+			});
+
+			it('passes folder attribution through and adds no folder note when resolved', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [folderRow],
+					total: 1,
+					totalInScope: 1,
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ workflows: unknown[]; note?: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Triggers' },
+					{} as never,
+				);
+
+				expect(result.workflows).toEqual([folderRow]);
+				expect(result.note).toBeUndefined();
+			});
 		});
 	});
 

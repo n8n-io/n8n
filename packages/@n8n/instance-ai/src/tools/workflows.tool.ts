@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
-import type { InstanceAiContext } from '../types';
+import type { FolderResolutionFailure, InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
 	findSetupHintTestUrlOriginProblem,
@@ -629,6 +629,29 @@ async function handleNodeUsage(
 	};
 }
 
+/**
+ * An unresolved folder must read as "these rows are NOT the folder", before any
+ * other note. Acting on a wider set as if it were the folder is the failure this
+ * field exists to remove.
+ */
+function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
+	const candidates =
+		failure.candidates.length > 0
+			? ` Folders in scope: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
+			: '';
+	const guidance =
+		' Do NOT substitute a `query` name filter — folder membership is not a name prefix. Retry with one of the listed paths or its `folderId`, or ask the user which folder they mean.';
+
+	switch (failure.reason) {
+		case 'ambiguous':
+			return `Folder "${failure.requested}" matches more than one folder, so no rows were returned.${candidates}${guidance}`;
+		case 'unsupported':
+			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Tell the user and ask the user how to proceed.`;
+		default:
+			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
+	}
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
 	const { workflows, total, totalInScope, folderResolution } = await context.workflowService.list({
 		limit: input.limit,
@@ -641,11 +664,13 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		...(input.folderId ? { folderId: input.folderId } : {}),
 		...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
 	});
-	void folderResolution;
 
 	// A partial list must never read as the complete inventory: guessed name
 	// filters used to silently hide the rest of a project's workflows.
 	const notes: string[] = [];
+	if (folderResolution) {
+		notes.push(formatFolderResolutionNote(folderResolution));
+	}
 	if (input.query !== undefined && totalInScope > total) {
 		notes.push(
 			`Name filter "${input.query}" matched ${total} of ${totalInScope} workflows in scope — ${totalInScope - total} are hidden. This is NOT the full set: re-run without \`query\` before answering anything about what exists here.`,
@@ -673,6 +698,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		workflows,
 		total,
 		totalInScope,
+		...(folderResolution ? { folderResolution } : {}),
 		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
 	};
 }
