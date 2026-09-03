@@ -90,7 +90,8 @@ vi.mock('../workflow-json-utils', async () => {
 vi.mock('../classify-node-destructiveness.service', () => ({
 	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
 }));
-vi.mock('../generate-simulation-fixtures.service', () => ({
+vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
 }));
 

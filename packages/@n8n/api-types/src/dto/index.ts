@@ -384,6 +384,18 @@ export {
 	RetryExecutionPublicDto,
 	retryExecutionPublicSchema,
 } from './executions/retry-execution-public.dto';
+export {
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
+	stoppedExecutionPublicSchema,
+	stoppedExecutionsPublicSchema,
+} from './executions/stopped-execution-public.dto';
+export {
+	StopManyExecutionsPublicDto,
+	STOPPABLE_PUBLIC_EXECUTION_STATUSES,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	type StoppablePublicExecutionStatus,
+} from './executions/stop-many-executions-public.dto';
 export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';

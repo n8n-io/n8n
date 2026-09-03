@@ -17,7 +17,7 @@ import type {
 	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -33,20 +33,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace ExecutionRequest {
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type StopMany = AuthenticatedRequest<
-		{},
-		{},
-		{
-			status: Array<Extract<ExecutionStatus, 'waiting' | 'running'> | 'queued'>;
-			workflowId?: string;
-			startedAfter?: string;
-			startedBefore?: string;
-		}
-	>;
-}
-
 export declare namespace TestRunRequest {
 	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
 	// resolves it from `req.params.id`); `runId` is the test run id.
