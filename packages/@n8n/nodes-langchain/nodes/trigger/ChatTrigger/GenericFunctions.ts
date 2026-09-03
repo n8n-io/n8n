@@ -118,20 +118,22 @@ export async function validateAuth(context: IWebhookFunctions) {
  * receive the AS's session-cookie check, and any consent/sign-in page the AS
  * falls back to would then render editor-ui inside the opaque frame.
  *
- * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie, the
- * grant's refresh token in the long-lived httpOnly `n8n-chat-oauth-refresh`
- * cookie, and returns the session — the caller renders the shell around it,
- * whose frame's own GET picks the one-hop cookie up via
- * `resolveInnerFrameIdentity`. Returns `null` after already sending a
- * redirect/error response — the caller must abort with `noWebhookResponse`.
+ * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie and the
+ * grant's refresh token in the long-lived httpOnly `n8n-chat-oauth-refresh` cookie,
+ * establishes the run's identity from the access token (so the outer GET can check
+ * end-user-credential readiness for the connect panel), and returns the resolved
+ * identity plus the access token's remaining life — the caller renders the shell
+ * around it, whose frame's own GET picks the one-hop cookie up via
+ * `resolveInnerFrameIdentity`. Returns `null` after already sending a redirect/error
+ * response — the caller must abort with `noWebhookResponse`.
  *
- * The returned session carries the expiry only. The refresh token stays in its
- * cookie and never reaches the caller, so it can't reach a document either.
+ * The refresh token stays in its cookie and never reaches the caller, so it can't
+ * reach a document either.
  */
 export async function establishChatSessionIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
-): Promise<ChatShellSession | null> {
+): Promise<(ChatFrameIdentity & ChatShellSession) | null> {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 	const { code, state } = req.query;
@@ -178,7 +180,12 @@ export async function establishChatSessionIdentity(
 		if (session) {
 			const validation = await context.validateN8nOAuth2Token(session.token, resourceUrl);
 			if (validation.valid) {
-				return { expiresIn: secondsUntil(session.expiresAt) };
+				await context.establishTriggerIdentity(session.token, resourceUrl, validation.user.id);
+				return {
+					visitor: validation.user,
+					authToken: session.token,
+					expiresIn: secondsUntil(session.expiresAt),
+				};
 			}
 			// Stale/invalid cookie — fall through to restart the OAuth2 flow.
 		} else {
@@ -186,7 +193,20 @@ export async function establishChatSessionIdentity(
 			// is still live in the refresh cookie. Rotating is cheaper than a full
 			// redirect round trip through the AS, and keeps the visitor on the page.
 			const refreshed = await refreshChatSession(context, resourceUrl);
-			if (refreshed) return { expiresIn: refreshed.expiresIn };
+			if (refreshed) {
+				// A refresh result names no user — the grant already fixes the subject — so
+				// the fresh token is validated to recover the visitor the connect panel is
+				// rendered for.
+				const validation = await context.validateN8nOAuth2Token(refreshed.token, resourceUrl);
+				if (validation.valid) {
+					await context.establishTriggerIdentity(refreshed.token, resourceUrl, validation.user.id);
+					return {
+						visitor: validation.user,
+						authToken: refreshed.token,
+						expiresIn: refreshed.expiresIn,
+					};
+				}
+			}
 			// Refresh failed — fall through to restart the OAuth2 flow, which handles it.
 		}
 	}

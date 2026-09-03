@@ -507,7 +507,10 @@ describe('ChatTrigger Node', () => {
 			});
 			expect(mockContext.logger.error).toHaveBeenCalledWith(
 				'Chat trigger credential readiness check failed',
-				{ error },
+			);
+			expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ error: expect.anything() }),
 			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
@@ -552,6 +555,10 @@ describe('ChatTrigger Node', () => {
 
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
+		const renderedView = () =>
+			(vi.mocked(mockResponse.render).mock.calls.at(-1)?.[1] ?? {}) as Record<string, unknown>;
+		const renderedTemplate = () => vi.mocked(mockResponse.render).mock.calls.at(-1)?.[0];
+
 		// Every body and header this request produced, so a `/signin` anywhere in the
 		// response — a redirect Location as much as a rendered page — shows up.
 		const everySentResponse = () =>
@@ -573,7 +580,11 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
-			vi.mocked(establishChatSessionIdentity).mockResolvedValue({ expiresIn: 3600 });
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue({
+				visitor,
+				authToken: 'outer-token',
+				expiresIn: 3600,
+			});
 			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue({
 				visitor,
 				authToken: 'as-token',
@@ -601,12 +612,14 @@ describe('ChatTrigger Node', () => {
 				'Content-Security-Policy',
 				"frame-ancestors 'none'",
 			);
-			expect(renderedPage()).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
-			expect(renderedPage()).toContain(
-				'sandbox="allow-scripts allow-forms allow-modals allow-popups"',
-			);
-			// No author-supplied CSS or markup on the trusted document.
-			expect(renderedPage()).not.toContain('createChat');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView()).toMatchObject({
+				iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
+				sandbox: 'allow-scripts allow-forms allow-modals allow-popups',
+			});
+			// The frame must have no origin of its own.
+			expect(renderedView().sandbox).not.toContain('allow-same-origin');
+			expect(renderedView().sandbox).not.toContain('allow-popups-to-escape-sandbox');
 		});
 
 		it('renders the author chat for the frame own request', async () => {
@@ -670,8 +683,8 @@ describe('ChatTrigger Node', () => {
 
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('data-src=');
-			expect(renderedPage()).not.toContain('createChat');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView().iframeSrc).toBeTruthy();
 		});
 
 		// The page used to bounce a visitor with no editor session to `/signin` before the
@@ -700,6 +713,8 @@ describe('ChatTrigger Node', () => {
 			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			expect(renderedPage()).not.toContain('n8nShellInner');
+			// The unsplit render is the page itself, not a shell around a frame.
+			expect(mockResponse.render).not.toHaveBeenCalled();
 			expect(renderedPage()).not.toContain('n8nChatRefresh');
 		});
 
@@ -712,6 +727,7 @@ describe('ChatTrigger Node', () => {
 				expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 				expect(renderedPage()).toContain('createChat');
 				expect(renderedPage()).not.toContain('n8nShellInner');
+				expect(mockResponse.render).not.toHaveBeenCalled();
 				expect(renderedPage()).not.toContain('n8nChatRefresh');
 			},
 		);
@@ -719,11 +735,13 @@ describe('ChatTrigger Node', () => {
 		it('carries the refresh endpoint and schedule into the shell', async () => {
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('/webhook/abc/chat?n8nChatRefresh=1');
-			expect(renderedPage()).toContain("'x-n8n-chat-refresh': '1'");
-			// The session's duration, passed straight through — no timestamp of ours
-			// for the page's clock to disagree with.
-			expect(renderedPage()).toContain('planFor(3600)');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView()).toMatchObject({
+				refreshUrl: '/webhook/abc/chat?n8nChatRefresh=1',
+				// The session's duration, passed straight through — no timestamp of ours
+				// for the page's clock to disagree with.
+				refreshExpiresIn: 3600,
+			});
 		});
 
 		// The leg answers with JSON, not a page, and authenticates from its own httpOnly
@@ -747,6 +765,7 @@ describe('ChatTrigger Node', () => {
 			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
 			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(mockResponse.render).not.toHaveBeenCalled();
 		});
 
 		// Without the custom header the request is forgeable by shape alone, so it must
@@ -768,7 +787,136 @@ describe('ChatTrigger Node', () => {
 
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('data-src="/webhook-test/abc/chat?n8nShellInner=1"');
+			expect(renderedView()).toMatchObject({
+				iframeSrc: '/webhook-test/abc/chat?n8nShellInner=1',
+			});
+		});
+
+		describe('connect status', () => {
+			it('embeds no connect script or dialog when the workflow needs no end-user credentials', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({ hasCredentials: false });
+				expect(renderedView().credentials).toBeUndefined();
+			});
+
+			it('embeds no connect script or dialog when the credential check reports nothing (dynamic credentials off)', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({ hasCredentials: false });
+				expect(renderedView().credentials).toBeUndefined();
+			});
+
+			it('embeds the credential and visitor data for a single required credential, with no dialog', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Slack account',
+							credentialType: 'slackOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+						},
+					],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({
+					hasCredentials: true,
+					ready: false,
+					visitorEmail: 'visitor@example.com',
+					barText: 'Connect Slack account to start this chat',
+					// One required account connects straight from the bar, so the template
+					// keeps the no-dialog shortcut — but still renders the dialog, since it
+					// is the only place carrying Disconnect once that account is connected.
+					useDialog: false,
+					total: 1,
+					connectedCount: 0,
+				});
+				expect(renderedView().credentials).toMatchObject([
+					{
+						id: 'cred-1',
+						name: 'Slack account',
+						connected: false,
+						authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+					},
+				]);
+			});
+
+			// Matches the message-send path: a readiness check we cannot answer must not
+			// render a chat that looks usable and then fails on the first send.
+			it('fails closed with 503 when the readiness check throws on the shell GET', async () => {
+				const error = new Error('could not decrypt credential context');
+				mockContext.checkTriggerCredentialStatus.mockRejectedValue(error);
+
+				const result = await renderSetupPage();
+
+				expect(mockResponse.status).toHaveBeenCalledWith(503);
+				expect(mockContext.logger.error).toHaveBeenCalledWith(
+					'Chat trigger credential readiness check failed',
+				);
+				expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ error: expect.anything() }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockResponse.render).not.toHaveBeenCalled();
+			});
+
+			it('renders the "Connect your accounts" dialog when two or more end-user credentials are required', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Slack account',
+							credentialType: 'slackOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+						},
+						{
+							credentialId: 'cred-2',
+							credentialName: 'Google account',
+							credentialType: 'googleOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-2/authorize',
+						},
+					],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({
+					hasCredentials: true,
+					useDialog: true,
+					total: 2,
+					connectedCount: 0,
+					footerText: '0 of 2 accounts connected',
+					barText: '2 accounts needed to start this chat',
+				});
+			});
+
+			it("never checks credential status for the frame's own request", async () => {
+				mockRequest.query = { n8nShellInner: '1' };
+				mockRequest.headers = {
+					'x-forwarded-proto': 'http',
+					host: 'localhost:5678',
+					'sec-fetch-dest': 'iframe',
+				};
+
+				await renderSetupPage();
+
+				expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

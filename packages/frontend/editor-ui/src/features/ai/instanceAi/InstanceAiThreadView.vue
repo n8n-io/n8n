@@ -35,6 +35,8 @@ import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composable
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
@@ -884,6 +886,8 @@ function handleSubmit(
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
 
+	const nodeCount = countAttachedNodes(attachments);
+
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
@@ -892,6 +896,13 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Track message-with-nodes only after a successful send, so failed
+			// sends and retries don't inflate the node-count metric.
+			if (nodeCount > 0) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+					node_count: nodeCount,
+				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
 			// up front loses the selection on a failed send that the user retries.

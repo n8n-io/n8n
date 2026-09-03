@@ -1001,7 +1001,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -1031,8 +1033,12 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone). No delta/retraction protocol. */
-	items: z.array(setupItemSchema),
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({

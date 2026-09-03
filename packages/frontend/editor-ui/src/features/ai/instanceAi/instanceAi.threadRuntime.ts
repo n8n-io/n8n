@@ -237,6 +237,10 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
  * per key). Bounded by the hydrated message page: snapshots older than the
  * page are deliberately not resurrected — at rest the panel derives its state
  * from the saved workflow itself, the event feed only covers live builds.
+ *
+ * Message position is the recency proxy for restored snapshots — if parallel
+ * emitters across message groups ever land, stamp the events with a sequence
+ * instead of trusting position.
  */
 function findLatestSetupItemsFromMessages(
 	messages: InstanceAiMessage[],
@@ -718,6 +722,7 @@ export function createThreadRuntime(
 		if (conf.inputType) return false;
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
+		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
 		return true;
