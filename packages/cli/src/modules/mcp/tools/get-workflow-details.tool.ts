@@ -40,6 +40,15 @@ export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
 const SUPPORTED_TRIGGER_TYPES = Object.keys(SUPPORTED_MCP_TRIGGERS);
 
 /**
+ * Drafts can be persisted with nodes that have no `parameters` key at all (the
+ * REST write paths accept them), even though INode types the field as required.
+ * Normalize at the read boundary so the trigger-info builders and the response
+ * payload always see an object, and future readers cannot regress (ADO-5355).
+ */
+const ensureNodeParameters = (nodes: INode[]): INode[] =>
+	nodes.map((node) => (node.parameters ? node : { ...node, parameters: {} }));
+
+/**
  * Splits a version's nodes into the triggers MCP can execute directly and the
  * triggers it cannot (e.g. Gmail Trigger). Keeping the unsupported ones lets the
  * notice distinguish a workflow whose triggers MCP can't drive from one with no
@@ -66,7 +75,7 @@ const toActiveVersionSummary = (workflow: FoundWorkflow) => {
 	if (!workflow.activeVersionId || !workflow.activeVersion) return null;
 	if (workflow.activeVersionId === workflow.versionId) return { sameAsDraft: true as const };
 
-	const publishedNodes = workflow.activeVersion.nodes ?? [];
+	const publishedNodes = ensureNodeParameters(workflow.activeVersion.nodes ?? []);
 	return {
 		sameAsDraft: false as const,
 		nodes: publishedNodes.map(sanitizeNodeCredentials),
@@ -195,7 +204,7 @@ export async function getWorkflowDetails(
 	const scopes = workflowWithScopes.scopes ?? [];
 	const canExecute = scopes.includes('workflow:execute');
 
-	const nodes = workflow.nodes ?? [];
+	const nodes = ensureNodeParameters(workflow.nodes ?? []);
 
 	const noticeFor = async ({ supported, unsupported }: ReturnType<typeof splitTriggers>) =>
 		await getTriggerDetails(
@@ -228,7 +237,9 @@ export async function getWorkflowDetails(
 	const publishedNodes = hasDivergedPublishedVersion ? workflow.activeVersion?.nodes : undefined;
 	let activeVersionTriggerNotice: string | undefined;
 	if (publishedNodes) {
-		const publishedTriggers = splitTriggers(publishedNodes);
+		// Normalized like the draft nodes, so a node differing only by a missing
+		// `parameters` key does not read as a trigger divergence.
+		const publishedTriggers = splitTriggers(ensureNodeParameters(publishedNodes));
 		if (JSON.stringify(publishedTriggers) !== JSON.stringify(draftTriggers)) {
 			const publishedNotice = await noticeFor(publishedTriggers);
 			if (publishedNotice !== triggerNotice) {
