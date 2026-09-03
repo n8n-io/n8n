@@ -1,0 +1,16 @@
+{
+	"id": "folder-scoped-workflow-list",
+	"userMessage": "Which workflows are in the Clients/Acme folder? Just list them, do not change anything.",
+	"instanceState": { "folderExploration": true },
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "workflows",
+				"args": { "action": "list" },
+				"argsContainAny": ["folderPath"]
+			}
+		],
+		"noneOf": ["build-workflow", "create-tasks"]
+	},
+	"rationale": "When the user names a FOLDER, the agent must address it with folderPath on workflows(list) rather than guessing a name filter or dumping the inventory. Folder membership is stored, not encoded in workflow names; a query prefix returns exactly the wrong set. Guards the discoverability of the folder-exploration capability."
+}

@@ -81,6 +81,7 @@ export const discoveryTestCaseSchema = z
 				localGateway: localGatewayStatusSchema.optional(),
 				browserAvailable: z.boolean().optional(),
 				mcp: mcpStateSchema.optional(),
+				folderExploration: z.boolean().optional(),
 			})
 			.strict()
 			.optional(),
