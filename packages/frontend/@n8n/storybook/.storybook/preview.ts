@@ -89,7 +89,7 @@ export const parameters = {
 const withN8nTheme: Decorator = (storyFn, context) => {
 	const selected = pluckThemeFromContext(context);
 	const theme =
-		themeOverrideFromParameters(context.parameters) ?? (selected.length > 0 ? selected : undefined);
+		themeOverrideFromParameters(context.parameters) ?? (selected?.length ? selected : undefined);
 
 	// Docs remounts every embedded story on a toolbar change. Those stories can
 	// render before `globals.theme` is set; falling back to light paints the
