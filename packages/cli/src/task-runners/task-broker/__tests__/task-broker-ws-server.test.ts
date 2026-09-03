@@ -277,21 +277,24 @@ describe('TaskBrokerWsServer', () => {
 	});
 
 	describe('capTaskTimeoutsForShutdown', () => {
-		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
+		beforeEach(() => {
 			vi.useFakeTimers();
-			try {
-				const taskBroker = mock<TaskBroker>();
-				const server = createServer({ taskBroker });
+		});
 
-				server.capTaskTimeoutsForShutdown();
+		afterEach(() => {
+			vi.useRealTimers();
+		});
 
-				expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
-					Date.now() +
-						0.8 * globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds,
-				);
-			} finally {
-				vi.useRealTimers();
-			}
+		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+
+			server.capTaskTimeoutsForShutdown();
+
+			expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
+				Date.now() +
+					0.8 * globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds,
+			);
 		});
 	});
 
