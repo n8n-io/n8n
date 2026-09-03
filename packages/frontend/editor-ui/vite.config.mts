@@ -196,7 +196,7 @@ export default defineConfig({
 		// map in the script source and monocart resolves offsets back to src.
 		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
 		target,
-		cssTarget: target
+		cssTarget: target,
 	},
 	optimizeDeps: {
 		exclude: ['wa-sqlite'],
