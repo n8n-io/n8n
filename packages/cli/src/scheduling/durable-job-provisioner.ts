@@ -54,6 +54,8 @@ export interface ProvisionRequest {
 	 * scheduler's own floor and ceiling; omit to inherit the instance default.
 	 */
 	misfireGraceSeconds?: number;
+	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
+	maxAttempts?: number;
 }
 
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
@@ -212,11 +214,13 @@ export class DurableJobProvisioner {
 		payload,
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
+		maxAttempts: requestedMaxAttempts,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			owner,
 		);
+		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -242,7 +246,11 @@ export class DurableJobProvisioner {
 							if (graceChanged) {
 								outdatedGraceJobIds.push(row.id);
 							}
-							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
+							if (
+								graceChanged ||
+								row.misfirePolicy !== misfirePolicy ||
+								row.maxAttempts !== maxAttempts
+							) {
 								outdatedPolicyJobIds.push(row.id);
 							}
 						}
@@ -264,7 +272,7 @@ export class DurableJobProvisioner {
 								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
-								maxAttempts: this.globalConfig.scheduler.maxAttempts,
+								maxAttempts,
 								misfirePolicy,
 								misfireGraceSeconds,
 							}),
@@ -277,6 +285,7 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
+							maxAttempts,
 							misfirePolicy,
 							misfireGraceSeconds,
 						});
@@ -286,9 +295,10 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
-				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
-				// schedule needs this to pick up a policy/grace change on its own.
+				// Only `redefine` touches a job's attempts, misfire policy and grace, so an
+				// unchanged schedule needs this to pick up a change to them on its own.
 				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
+					maxAttempts,
 					misfirePolicy,
 					misfireGraceSeconds,
 				});

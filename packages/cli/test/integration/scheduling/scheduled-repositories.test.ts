@@ -569,6 +569,7 @@ describe('scheduled repositories', () => {
 			await dataSource.transaction(
 				async (trx) =>
 					await jobRepository.updateMisfirePolicy(trx, [updated.id], {
+						maxAttempts: updated.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 					}),
@@ -592,6 +593,7 @@ describe('scheduled repositories', () => {
 			await dataSource.transaction(
 				async (trx) =>
 					await jobRepository.updateMisfirePolicy(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
 					}),
@@ -606,6 +608,7 @@ describe('scheduled repositories', () => {
 			await dataSource.transaction(
 				async (trx) =>
 					await jobRepository.updateMisfirePolicy(trx, [], {
+						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 					}),
