@@ -1474,6 +1474,12 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Resolved here for the same reason the hook below runs here: after the cascade the
+		// `shared_workflow` rows that name the project are gone. Deliberately the non-throwing
+		// lookup rather than the cached one, which raises when no owner row exists — recording
+		// the delete must never be the reason the delete fails.
+		const owningProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+
 		// Ahead of every destructive step: the hook captures rows the delete is about
 		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
 		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
@@ -1513,6 +1519,8 @@ export class WorkflowService {
 		this.eventService.emit('workflow-deleted', {
 			user,
 			workflowId,
+			workflowName: workflow.name,
+			projectId: owningProject?.id,
 			publicApi: options?.publicApi ?? false,
 		});
 		await this.externalHooks.run('workflow.afterDelete', [

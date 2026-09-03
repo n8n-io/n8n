@@ -645,8 +645,16 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Credentials
 
+	/**
+	 * These three forward the rest of the payload as-is, so a field added for another consumer
+	 * would silently widen the audit event. Drop the ones the activity relay needs.
+	 */
 	@Redactable()
-	private credentialsCreated({ user, ...rest }: RelayEventMap['credentials-created']) {
+	private credentialsCreated({
+		user,
+		credentialName: _credentialName,
+		...rest
+	}: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
 			payload: { ...user, ...rest },
@@ -654,7 +662,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private credentialsDeleted({ user, ...rest }: RelayEventMap['credentials-deleted']) {
+	private credentialsDeleted({
+		user,
+		credentialName: _credentialName,
+		projectId: _projectId,
+		...rest
+	}: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, ...rest },
@@ -681,7 +694,11 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private credentialsUpdated({ user, ...rest }: RelayEventMap['credentials-updated']) {
+	private credentialsUpdated({
+		user,
+		credentialName: _credentialName,
+		...rest
+	}: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
 			payload: { ...user, ...rest },

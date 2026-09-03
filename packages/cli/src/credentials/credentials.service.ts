@@ -1209,9 +1209,12 @@ export class CredentialsService {
 			return;
 		}
 
+		// Read before the delete cascades away the `shared_credentials` rows that name it. The
+		// end-user check below reuses it rather than querying for the same row again.
+		const owningProject =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+
 		if (credential.isResolvable) {
-			const owningProject =
-				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
 		}
 		await this.externalHooks.run('credentials.delete', [credentialId]);
@@ -1226,20 +1229,26 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential);
+				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
 			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential);
+		this.emitCredentialDeleted(user, credential, owningProject?.id);
 	}
 
-	private emitCredentialDeleted(user: User, credential: CredentialsEntity) {
+	private emitCredentialDeleted(
+		user: User,
+		credential: CredentialsEntity,
+		projectId: string | undefined,
+	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			credentialName: credential.name,
+			projectId,
 		});
 
 		if (credential.isResolvable) {

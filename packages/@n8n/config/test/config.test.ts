@@ -198,6 +198,11 @@ describe('GlobalConfig', () => {
 		featureFlags: {
 			override: {},
 		},
+		activityLog: {
+			enabled: false,
+			retentionDays: 14,
+			maxEntries: 20_000,
+		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],

@@ -1165,6 +1165,8 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
 			});
 		});
 
@@ -1224,6 +1226,8 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: 'project-1',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
 				user: ownerUser,
@@ -1248,6 +1252,8 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
