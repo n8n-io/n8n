@@ -1,0 +1,28 @@
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_1b995c2a71c1af::t_19db75668da59d 852
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_1b995c2a71c1af::t_e8f402ba564a1d 443
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_1b995c2a71c1af::t_148c475eab5c5a 94
+  s_1b995c2a71c1af::t_6b4690eeebd38a 335
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-connection.test.ts
+  s_1b995c2a71c1af::t_ee6da19f64842a 15-24
+  s_1b995c2a71c1af::t_1505fe9b5da5b3 112-147
+  s_1b995c2a71c1af::t_3a3bfc237460fa 50-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7bfbd3e0f726427aabc289570158863637e5ee7f",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
