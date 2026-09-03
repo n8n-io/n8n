@@ -1,3 +1,11 @@
+## [2.37.8](https://github.com/n8n-io/n8n/compare/n8n@2.37.7...n8n@2.37.8) (2026-09-03)
+
+
+### Bug Fixes
+
+* **core:** Restore mutating array methods on $json data in expressions ([#37727](https://github.com/n8n-io/n8n/issues/37727)) ([336c081](https://github.com/n8n-io/n8n/commit/336c0810c0bd98172b7204ce42497a966efa9bdf))
+
+
 ## [2.37.7](https://github.com/n8n-io/n8n/compare/n8n@2.37.6...n8n@2.37.7) (2026-09-02)
 
 
