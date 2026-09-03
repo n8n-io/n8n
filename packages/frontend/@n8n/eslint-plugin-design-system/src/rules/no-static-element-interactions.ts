@@ -9,10 +9,13 @@ import {
 	isDynamicAttribute,
 	isNativeInteractiveElement,
 	toESTreeNode,
+	VALID_ROLES,
 	type VueParserServices,
 } from './a11y-utils.js';
 
 const INTERACTION_EVENTS = new Set(['click', 'dblclick']);
+const KEYBOARD_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
+const DECORATIVE_ROLES = new Set(['none', 'presentation']);
 
 function isPropagationOnlyHandler(attribute: VAttribute | VDirective): boolean {
 	if (!attribute.directive || attribute.key.name.name !== 'on') return false;
@@ -46,6 +49,17 @@ function hasCaptureInteractionHandler(node: VElement): boolean {
 	});
 }
 
+function hasKeyboardHandler(node: VElement): boolean {
+	return node.startTag.attributes.some(function isKeyboardHandler(attribute) {
+		return (
+			attribute.directive &&
+			attribute.key.name.name === 'on' &&
+			attribute.key.argument?.type === 'VIdentifier' &&
+			KEYBOARD_EVENTS.has(attribute.key.argument.name)
+		);
+	});
+}
+
 export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
@@ -70,10 +84,15 @@ export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDo
 				)
 					return;
 				const roleAttribute = getAttribute(node, 'role');
+				const role = getRole(node);
 				if (
 					isDynamicAttribute(roleAttribute) ||
-					INTERACTIVE_ROLES.has(getRole(node) ?? '') ||
-					hasCaptureInteractionHandler(node)
+					INTERACTIVE_ROLES.has(role ?? '') ||
+					hasCaptureInteractionHandler(node) ||
+					(roleAttribute &&
+						VALID_ROLES.has(role ?? '') &&
+						!DECORATIVE_ROLES.has(role ?? '') &&
+						hasKeyboardHandler(node))
 				)
 					return;
 				const handler = node.startTag.attributes.find(isInteractionHandler);
