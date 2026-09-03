@@ -19,6 +19,13 @@ export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
 	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>,
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id is not the deployment
+	 * id, so the agent flow must carry the user's deployment name separately.
+	 * Only meaningful for the `azure-openai` provider with a classic endpoint.
+	 */
+	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const provider = getProviderPrefix(model);
 
@@ -41,5 +48,9 @@ export async function resolveCredentialAwareModelConfig(
 
 	const raw = await credentialProvider.resolve(credential);
 	const mapped = mapCredentialForProvider(provider, raw);
-	return { id: model, ...mapped } as ModelConfig;
+	return {
+		id: model,
+		...mapped,
+		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
+	} as ModelConfig;
 }

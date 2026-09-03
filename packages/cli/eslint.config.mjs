@@ -53,7 +53,7 @@ export default defineConfig(
 			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
 			// Seal WorkflowEntity node-writes to the token-gated repository methods.
-			// The allowlist below must shrink to empty; a new unsealed write fails CI.
+			// Every write site is migrated; there is no allowlist left to grant an exception.
 			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
 			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
@@ -213,16 +213,6 @@ export default defineConfig(
 				},
 			],
 		},
-	},
-	{
-		// Shrink-only ratchet: node-write sites not yet migrated to the sealed repository path.
-		// NEVER add a new write here — it must fail CI. Remove each entry as its site migrates.
-		files: [
-			'./src/services/import.service.ts',
-			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
-		],
-		rules: { 'n8n-local-rules/no-unsealed-workflow-entity-write': 'off' },
 	},
 	{
 		// Only the PEP may import the clearance minter.
