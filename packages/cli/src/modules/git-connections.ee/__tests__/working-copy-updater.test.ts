@@ -4,6 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities/credential/credential-requirements.extractor';
+import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
+import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
+import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
+import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -50,7 +55,7 @@ const cred = (id: string) => ({ id, name: id, target: `projects/alpha/credential
 const credReq = (id: string, usedByWorkflows: string[]) => ({
 	id,
 	name: id,
-	type: 'http',
+	type: CREDENTIAL_TYPE,
 	usedByWorkflows,
 });
 
@@ -59,7 +64,34 @@ const credReq = (id: string, usedByWorkflows: string[]) => ({
 const projectFile = JSON.stringify({ id: alpha.id, name: alpha.name });
 const folderFile = (id: string, name: string) => JSON.stringify({ id, name });
 const workflowFile = (id: string, extra: Record<string, unknown> = {}) =>
-	JSON.stringify({ id, name: id.toUpperCase(), ...extra });
+	JSON.stringify({
+		id,
+		name: id.toUpperCase(),
+		nodes: [],
+		connections: {},
+		versionId: `version-${id}`,
+		parentFolderId: null,
+		isPublished: false,
+		isArchived: false,
+		...extra,
+	});
+
+const CREDENTIAL_TYPE = 'httpBasicAuth';
+const NODE_TYPE = 'n8n-nodes-base.httpRequest';
+
+/** A workflow whose nodes use `credentialIds`, so the branch shows who needs what. */
+const workflowUsing = (id: string, credentialIds: string[]) =>
+	workflowFile(id, {
+		nodes: credentialIds.map((credentialId, index) => ({
+			id: `${id}-n${index}`,
+			name: `Call ${index}`,
+			type: NODE_TYPE,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { [CREDENTIAL_TYPE]: { id: credentialId, name: credentialId } },
+		})),
+	});
 const credentialFile = (id: string) => JSON.stringify({ id, name: id });
 
 const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePushOptions => ({
@@ -76,6 +108,12 @@ describe('WorkingCopyUpdater', () => {
 	const updater = new WorkingCopyUpdater(
 		mock<InstanceSettings>({ instanceId: 'inst-1' }),
 		packageImportConfig,
+		new PackageRequirementsReader(
+			new WorkflowSerializer(),
+			new CredentialRequirementsExtractor(),
+			new DataTableRequirementsExtractor(),
+			new VariableRequirementsExtractor(),
+		),
 	);
 
 	const writeTree = async (base: string, files: Record<string, string>) => {
@@ -150,13 +188,12 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('readBranchState', () => {
-		it('reads the entries from the directories and the requirements from the manifest', async () => {
-			const requirements = { credentials: [credReq('c1', ['w1'])] };
+		it('reads the entries and who uses a dependency from the directories', async () => {
 			await writeTree(exportFolder, {
-				// The manifest lists no entry, and w1 is still on the branch.
-				'manifest.json': manifestFile(makeManifest({ requirements })),
+				// The manifest states nothing: the files carry all of it.
+				'manifest.json': manifestFile(makeManifest()),
 				'projects/alpha/project.json': projectFile,
-				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1']),
 				'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
 			});
 
@@ -165,7 +202,10 @@ describe('WorkingCopyUpdater', () => {
 			expect(branch.projects).toEqual([alpha]);
 			expect(branch.workflows).toEqual([wf('w1')]);
 			expect(branch.credentials).toEqual([cred('c1')]);
-			expect(branch.requirements).toEqual(requirements);
+			expect(branch.requirements?.credentials).toEqual([credReq('c1', ['w1'])]);
+			expect(branch.requirements?.nodeTypes).toEqual([
+				{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] },
+			]);
 		});
 
 		it('keeps the variable ids the manifest knows, because the files omit them', async () => {
@@ -349,7 +389,8 @@ describe('WorkingCopyUpdater', () => {
 			const merged = await apply(
 				{
 					'projects/alpha/project.json': projectFile,
-					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+					// On the branch w1 still uses both; the push re-exports it with one.
+					'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1', 'c-old']),
 					'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
 					'projects/alpha/credentials/c-old/credential.json': credentialFile('c-old'),
@@ -361,13 +402,8 @@ describe('WorkingCopyUpdater', () => {
 					requirements: { credentials: [credReq('c1', ['w1'])] },
 				}),
 				{
-					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+					'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1']),
 					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
-				},
-				{
-					branchManifest: makeManifest({
-						requirements: { credentials: [credReq('c1', ['w1']), credReq('c-old', ['w1'])] },
-					}),
 				},
 			);
 

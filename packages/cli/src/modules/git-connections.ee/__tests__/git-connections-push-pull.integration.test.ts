@@ -20,6 +20,9 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { readPackageEntries } from '@/modules/n8n-packages/engine/package-entries';
+import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
+import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
@@ -27,6 +30,7 @@ import {
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { ProjectService } from '@/services/project.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
@@ -48,6 +52,7 @@ type TestRemote = {
 };
 
 const packageImportConfig = Container.get(PackageImportConfig);
+const packageRequirements = Container.get(PackageRequirementsReader);
 
 const licenseMocker = new LicenseMocker();
 
@@ -115,7 +120,7 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageRequirements),
 		logger,
 	);
 });
@@ -166,6 +171,25 @@ async function inspectBranch(
 	const inspectionDir = path.join(testRoot, `inspection-${Date.now()}`);
 	await simpleGit().clone(bareDir, inspectionDir, ['--branch', branch, '--single-branch']);
 	return { git: simpleGit(inspectionDir), dir: inspectionDir };
+}
+
+/** Both sides list in their own order, so compare them sorted. */
+function sortRequirements(requirements?: PackageRequirements) {
+	const byContent = (a: unknown, b: unknown) => JSON.stringify(a).localeCompare(JSON.stringify(b));
+
+	return Object.fromEntries(
+		Object.entries(requirements ?? {})
+			.filter(([, list]) => list !== undefined)
+			.map(([kind, list]) => [
+				kind,
+				list
+					.map((item: { usedByWorkflows: string[] }) => ({
+						...item,
+						usedByWorkflows: [...item.usedByWorkflows].sort(),
+					}))
+					.sort(byContent),
+			]),
+	);
 }
 
 async function readBranchManifest(inspectionDir: string) {
@@ -592,6 +616,31 @@ describe('Selective push', () => {
 		]);
 		const credentialDir = path.join(dir, 'n8n-export', manifest.credentials![0].target);
 		await expect(stat(path.join(credentialDir, 'credential.json'))).resolves.toBeDefined();
+	});
+
+	it('derives the same requirements from the branch files that the exporter wrote', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project } = await setupProjectWithWorkflows('Orders', [], connection.id);
+		const credential = await saveProjectCredential('Cred A', project);
+		await buildWorkflowReferencingCredential({ name: 'w1', project, credential });
+		await buildWorkflowReferencingCredential({ name: 'w2', project, credential });
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const reader = new DirectoryPackageReader(path.join(dir, 'n8n-export'), packageImportConfig);
+		const derived = await packageRequirements.read(reader, await readPackageEntries(reader));
+
+		// The exporter states the requirements from the database; the reader
+		// derives them from the files it wrote. They have to agree, because the
+		// derivation replaces the statement when the manifest leaves the branch.
+		expect(sortRequirements(derived)).toEqual(
+			sortRequirements((await readBranchManifest(dir)).requirements),
+		);
+		expect(derived?.credentials).toHaveLength(1);
 	});
 
 	it('removes a dependency from the branch together with its last user', async () => {

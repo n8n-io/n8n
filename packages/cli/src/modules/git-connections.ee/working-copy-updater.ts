@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { readPackageEntries } from '@/modules/n8n-packages/engine/package-entries';
+import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -37,6 +38,7 @@ export class WorkingCopyUpdater {
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly packageRequirements: PackageRequirementsReader,
 	) {}
 
 	validateSelection(selection: SelectivePushOptions): void {
@@ -81,15 +83,14 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * What the branch holds. The entries come from the directories on disk, so
-	 * a manifest that drifted from the tree cannot steer the push.
+	 * What the branch holds, read from the directories on disk: the entries
+	 * from the entity files, and who uses which dependency from the workflow
+	 * files. A manifest that drifted from the tree cannot steer the push.
 	 *
-	 * Two things no directory carries still come from the manifest: the
-	 * requirements, which record who uses a dependency, and the variable ids,
-	 * which the package format leaves out on purpose. Both go away with the
-	 * manifest. A manifest that is present but unreadable is an error rather
-	 * than an empty bridge: without the requirements the merge would read every
-	 * dependency of an unselected workflow as an orphan and drop it.
+	 * The one thing still taken from the manifest is the variable ids, which
+	 * the package format leaves out of a variable file on purpose. They are
+	 * needed only to restate them in the manifest this push writes, so they go
+	 * away with that file.
 	 */
 	async readBranchState(exportFolder: string): Promise<BranchState> {
 		// The same reader a pull uses, so a branch this push accepts is a branch
@@ -97,14 +98,14 @@ export class WorkingCopyUpdater {
 		// limits.
 		const reader = new DirectoryPackageReader(exportFolder, this.packageImportConfig);
 		const tree = await readPackageEntries(reader);
+		const requirements = await this.packageRequirements.read(reader, tree);
 		const manifest = await this.readManifestIfPresent(exportFolder);
-		if (!manifest) return tree;
 
-		const idByTarget = new Map((manifest.variables ?? []).map((v) => [v.target, v.id]));
+		const idByTarget = new Map((manifest?.variables ?? []).map((v) => [v.target, v.id]));
 		return {
 			...tree,
 			variables: tree.variables?.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
-			requirements: manifest.requirements,
+			...(requirements ? { requirements } : {}),
 		};
 	}
 

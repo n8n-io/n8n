@@ -13,6 +13,11 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities/credential/credential-requirements.extractor';
+import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
+import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
+import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
+import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
@@ -28,6 +33,26 @@ import type { GitConnectionRepository } from '../database/repositories/git-conne
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+
+const packageRequirements = new PackageRequirementsReader(
+	new WorkflowSerializer(),
+	new CredentialRequirementsExtractor(),
+	new DataTableRequirementsExtractor(),
+	new VariableRequirementsExtractor(),
+);
+
+/** What an export writes for a workflow, so the branch can be read back. */
+const branchWorkflowFile = (id: string, name: string) =>
+	JSON.stringify({
+		id,
+		name,
+		nodes: [],
+		connections: {},
+		versionId: `version-${id}`,
+		parentFolderId: null,
+		isPublished: false,
+		isArchived: false,
+	});
 
 const packageImportConfig = mock<PackageImportConfig>({
 	maxUncompressedBytes: 300 * 1024 * 1024,
@@ -60,7 +85,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageRequirements),
 		logger,
 	);
 
@@ -279,7 +304,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig),
+				new WorkingCopyUpdater(settings, packageImportConfig, packageRequirements),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -545,7 +570,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				selectiveInstanceSettings,
-				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig),
+				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig, packageRequirements),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -624,7 +649,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await writeExportTree(exportFolder, {
 				'manifest.json': buildManifest(),
 				'projects/alpha/project.json': JSON.stringify(alpha),
-				'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
+				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
 
 			await expect(
@@ -842,7 +867,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig),
+				new WorkingCopyUpdater(settings, packageImportConfig, packageRequirements),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
