@@ -25,7 +25,11 @@ const logout = async () => {
 		const viaOidc = ssoStore.isDefaultAuthenticationOidc;
 		const { redirectUrl } = await usersStore.logout({ viaOidc });
 
-		window.location.href = redirectUrl ?? router.resolve({ name: VIEWS.SIGNIN }).href;
+		// `loggedOut` stops the sign-in page from immediately redirecting back to the
+		// SSO provider, which — with a still-active IdP session — would re-log the
+		// user straight back in and make logout appear to do nothing.
+		window.location.href =
+			redirectUrl ?? router.resolve({ name: VIEWS.SIGNIN, query: { loggedOut: 'true' } }).href;
 	} catch (e) {
 		toast.showError(e, i18n.baseText('auth.signout.error'));
 	}

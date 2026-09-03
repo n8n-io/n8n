@@ -56,15 +56,24 @@ const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0
 // The internal-auth fallback: `?internalAuth=true` skips the SSO redirect and
 // shows the email/password form (e.g. for an admin to recover if SSO is down).
 const isInternalAuthRequested = computed(() => route.query.internalAuth === 'true');
+// An SSO error (e.g. "Block access") lands the user back here; without this guard
+// the auto-redirect would bounce them to the IdP again and hide the error / loop.
+const hasSsoError = computed(() => Boolean(route.query[SSO_ERROR_QUERY_PARAM]));
+// Set by the sign-out flow so the user is not immediately re-authenticated by an
+// IdP session that is still active (which would make logout appear to do nothing).
+const wasLoggedOut = computed(() => route.query.loggedOut === 'true');
 const redirectingToSso = ref(false);
 
 onMounted(async () => {
 	// When SSO is the active method, funnel users straight to the provider unless
-	// they explicitly requested the internal-auth fallback or an admin disabled it.
+	// they explicitly requested the internal-auth fallback, an admin disabled it,
+	// an SSO error must be shown, or the user just logged out.
 	if (
 		ssoStore.showSsoLoginButton &&
 		ssoStore.redirectLoginToSso &&
-		!isInternalAuthRequested.value
+		!isInternalAuthRequested.value &&
+		!hasSsoError.value &&
+		!wasLoggedOut.value
 	) {
 		redirectingToSso.value = true;
 		try {

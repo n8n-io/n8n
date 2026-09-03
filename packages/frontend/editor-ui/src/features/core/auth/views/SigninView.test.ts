@@ -227,6 +227,31 @@ describe('SigninView', () => {
 			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
 			expect(hrefSpy).not.toHaveBeenCalled();
 		});
+
+		it('does not redirect when an SSO error must be shown (avoids a redirect loop)', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ ssoError: 'access-denied' });
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: "You don't have access to n8n", type: 'error' }),
+			);
+		});
+
+		it('does not redirect right after logout (?loggedOut=true)', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ loggedOut: 'true' });
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when redirect query parameter is set', () => {

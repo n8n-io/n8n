@@ -7,10 +7,12 @@ import SignoutView from './SignoutView.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
-const SIGNIN_HREF = '/signin';
+const SIGNIN_LOGGED_OUT_HREF = '/signin?loggedOut=true';
 
 vi.mock('vue-router', () => {
-	const resolve = vi.fn(() => ({ href: SIGNIN_HREF }));
+	const resolve = vi.fn((to?: { query?: { loggedOut?: string } }) => ({
+		href: to?.query?.loggedOut === 'true' ? '/signin?loggedOut=true' : '/signin',
+	}));
 	return {
 		useRouter: () => ({ resolve }),
 		useRoute: vi.fn(),
@@ -63,8 +65,10 @@ describe('SignoutView', () => {
 		await flushPromises();
 
 		expect(usersStore.logout).toHaveBeenCalledWith({ viaOidc: false });
-		expect(router.resolve).toHaveBeenCalled();
-		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);
+		expect(router.resolve).toHaveBeenCalledWith(
+			expect.objectContaining({ query: { loggedOut: 'true' } }),
+		);
+		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_LOGGED_OUT_HREF);
 	});
 
 	it('should sign out via OIDC and redirect to the RP-initiated logout URL when the backend returns one', async () => {
@@ -91,7 +95,7 @@ describe('SignoutView', () => {
 		await flushPromises();
 
 		expect(usersStore.logout).toHaveBeenCalledWith({ viaOidc: true });
-		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);
+		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_LOGGED_OUT_HREF);
 	});
 
 	it('should show an error toast when logout fails', async () => {
