@@ -193,6 +193,9 @@ describe('Worker', () => {
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
+			{ envValue: '45seconds', expected: 20, case: 'the queue default when partly numeric' },
+			{ envValue: '0', expected: 20, case: 'the queue default when zero' },
+			{ envValue: '-45', expected: 20, case: 'the queue default when negative' },
 		])(
 			'should apply QUEUE_WORKER_TIMEOUT as $case to both the shutdown and the drain timeout',
 			async ({ envValue, expected }) => {

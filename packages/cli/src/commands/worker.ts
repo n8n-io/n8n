@@ -86,8 +86,19 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
-			const timeout =
-				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// Accept a whole positive number only, the way the config layer parses
+			// `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`, so a malformed value cannot shorten the
+			// shutdown window.
+			const parsed = Number(QUEUE_WORKER_TIMEOUT);
+			const isValid = Number.isInteger(parsed) && parsed > 0;
+
+			if (!isValid) {
+				this.logger.warn(
+					`Invalid QUEUE_WORKER_TIMEOUT value "${QUEUE_WORKER_TIMEOUT}". Using the configured queue timeout.`,
+				);
+			}
+
+			const timeout = isValid ? parsed : this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			// One field arms the force-exit timer, the other sizes the shutdown drains.
 			this.gracefulShutdownTimeoutInS = timeout;
 			this.globalConfig.generic.gracefulShutdownTimeout = timeout;
