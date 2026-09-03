@@ -2,6 +2,7 @@ import type {
 	StepError,
 	StepKey,
 	StepKeyId,
+	StepResume,
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
@@ -35,6 +36,10 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** The wait this step declared; `null` unless it has suspended. */
+	wait: WaitDeclaration | null;
+	/** What resumed this step's current dispatch; `null` on a first run. */
+	resume: StepResume | null;
 }
 
 /**
@@ -112,6 +117,18 @@ export interface StepStore {
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
 	 */
 	suspendStep(id: string, wait: WaitDeclaration): Promise<boolean>;
+
+	/**
+	 * Resume a wait: persist `resume` and return the step to `queued`, from
+	 * where the normal worker path re-dispatches it. A compare-and-set on
+	 * `waiting`, so a doubled resume - a webhook retry, a sweep racing a
+	 * request - resolves the wait once. The declaration stays on the row: a
+	 * deadline resume reads its captured outputs after the claim.
+	 *
+	 * Whether a given resume is allowed against a given wait is checked by
+	 * whoever accepts it, not here.
+	 */
+	resumeStep(id: string, resume: StepResume): Promise<boolean>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;

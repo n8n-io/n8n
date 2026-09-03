@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type StepResume,
 	type WaitDeclaration,
 	type StepError,
 	type StepKey,
@@ -40,7 +41,14 @@ type StepSummaryRow = {
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
-type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
+type ClaimedStepRow = {
+	id: string;
+	execution_id: string;
+	node_id: string;
+	iteration: number;
+	wait: WaitDeclaration | null;
+	resume: StepResume | null;
+};
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -121,9 +129,13 @@ export class TypeOrmStepStore implements StepStore {
 
 	async claimStep(id: string): Promise<StepRecord | null> {
 		// The one transition that hands the row back, so the claimant doesn't
-		// need a second query to learn which node it now runs. RETURNING covers
-		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs` is `null` by the lifecycle.
+		// need a second query to learn which node it now runs. `outputs` is not
+		// among the returned columns: a step claimed out of `queued` can't have
+		// an outcome yet, so it is `null` by the lifecycle.
+		//
+		// `wait` and `resume` are, because a resumed step is also claimed out of
+		// `queued` and carries both — a deadline resume reads its captured
+		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -149,7 +161,7 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration'])
+				.returning(['id', 'executionId', 'nodeId', 'iteration', 'wait', 'resume'])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -162,6 +174,8 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				wait: row.wait,
+				resume: row.resume,
 			};
 		});
 	}
@@ -178,6 +192,10 @@ export class TypeOrmStepStore implements StepStore {
 			wait,
 			waitTill: wait.resumeAt === undefined ? null : new Date(wait.resumeAt),
 		});
+	}
+
+	async resumeStep(id: string, resume: StepResume): Promise<boolean> {
+		return await this.transition(id, 'waiting', 'queued', { resume });
 	}
 
 	async cancelQueuedSteps(executionId: string): Promise<void> {
@@ -217,6 +235,7 @@ export class TypeOrmStepStore implements StepStore {
 			error?: StepError;
 			wait?: WaitDeclaration;
 			waitTill?: Date | null;
+			resume?: StepResume;
 		} = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
