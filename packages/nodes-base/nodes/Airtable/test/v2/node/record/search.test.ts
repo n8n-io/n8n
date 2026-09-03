@@ -272,6 +272,101 @@ describe('Test AirtableV2, search operation', () => {
 		);
 	});
 
+	it('should not include an offset in the output on the last page for v2.3', async () => {
+		vi.mocked(transport.apiRequest).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recYYY',
+					fields: { foo: 'foo 2', bar: 'bar 2' },
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({ id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } });
+		expect(result[0].json).not.toHaveProperty('offset');
+	});
+
+	it('should keep the offset in the output on the downloadFields path for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {
+				downloadFields: ['attachment'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result[0].json).toEqual({
+			id: 'recYYY',
+			fields: {
+				foo: 'foo 2',
+				bar: 'bar 2',
+				attachment: [{ url: 'http://example.com/file.png' }],
+			},
+			offset: 'itrNextPage/recYYY',
+		});
+	});
+
+	it('should not forward the response offset for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// v2.2 uses maxRecords and must not forward the response offset to the output
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ maxRecords: 1 },
+		);
+		expect(result[0].json).not.toHaveProperty('offset');
+	});
+
 	afterEach(() => vi.clearAllMocks());
 
 	it('should search records with attachments and nested fields structure for v2.2', async () => {

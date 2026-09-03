@@ -224,8 +224,10 @@ export async function execute(
 				qs.view = (options.view as IDataObject).value as string;
 			}
 
-			if (options.pageSize) {
-				qs.pageSize = options.pageSize;
+			const pageSize = options.pageSize as number | undefined;
+
+			if (pageSize) {
+				qs.pageSize = pageSize;
 			}
 
 			if (options.offset) {
@@ -241,7 +243,7 @@ export async function execute(
 				if (nodeVersion >= 2.3) {
 					// Airtable omits the next-page offset once maxRecords is reached,
 					// so cap the request via pageSize instead to keep manual pagination working
-					qs.pageSize = Math.min(limit, (qs.pageSize as number) ?? 100);
+					qs.pageSize = Math.min(limit, pageSize ?? 100);
 				} else {
 					qs.maxRecords = limit;
 				}
