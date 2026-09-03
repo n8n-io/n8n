@@ -150,6 +150,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 */
 	private collectPinDataFromComposite(
 		composite: unknown,
+		nameMapping?: Map<string, string>,
 	): Record<string, IDataObject[]> | undefined {
 		const registry = this._registry ?? pluginRegistry;
 		const handler = registry.findCompositeHandler(composite);
@@ -157,9 +158,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return this._pinData;
 		}
 		let pinData = this._pinData;
-		handler.collectPinData(composite, (node) => {
-			pinData = this.collectPinDataFromNode(node, pinData);
-		});
+		// Handlers emit branch targets as-is, which can be chains or nested composites.
+		// Recurse into those so every concrete node's pins are collected.
+		const seen = new Set<unknown>([composite]);
+		const visit = (item: unknown): void => {
+			if (item === null || item === undefined || seen.has(item)) return;
+			seen.add(item);
+			if (isNodeChain(item)) {
+				for (const chainNode of item.allNodes) visit(chainNode);
+				return;
+			}
+			const nestedHandler = registry.findCompositeHandler(item);
+			if (nestedHandler?.collectPinData) {
+				nestedHandler.collectPinData(item, visit);
+				return;
+			}
+			if (isInputTarget(item)) {
+				visit(item.node);
+				return;
+			}
+			pinData = this.collectPinDataFromNode(
+				item as NodeInstance<string, string, unknown>,
+				pinData,
+				nameMapping,
+			);
+		};
+		handler.collectPinData(composite, visit);
 		return pinData;
 	}
 
@@ -186,17 +210,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Helper to collect pinData from a single node and merge with existing pinData
+	 * Helper to collect pinData from a single node and merge with existing pinData.
+	 * Keys by the deduped map key when the node was auto-renamed on a name collision.
 	 */
 	private collectPinDataFromNode(
 		node: NodeInstance<string, string, unknown>,
 		existingPinData: Record<string, IDataObject[]> | undefined,
+		nameMapping?: Map<string, string>,
 	): Record<string, IDataObject[]> | undefined {
 		const nodePinData = node.config?.pinData;
 		if (nodePinData && nodePinData.length > 0) {
 			return {
 				...existingPinData,
-				[node.name]: nodePinData,
+				[nameMapping?.get(node.id) ?? node.name]: nodePinData,
 			};
 		}
 		return existingPinData;
@@ -243,7 +269,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (addHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = addHandler.addNodes(node, ctx);
-			this._pinData = this.collectPinDataFromComposite(node);
+			this._pinData = this.collectPinDataFromComposite(node, ctx.nameMapping);
 			this._currentNode = headName;
 			this._currentOutput = 0;
 			return this;
@@ -370,7 +396,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				}
 			}
 
-			this._pinData = this.collectPinDataFromComposite(nodeOrComposite);
+			this._pinData = this.collectPinDataFromComposite(nodeOrComposite, ctx.nameMapping);
 			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
 			this._currentNode = continuation?.currentNode ?? headName;
 			this._currentOutput = continuation?.currentOutput ?? 0;
