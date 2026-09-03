@@ -248,6 +248,7 @@ parallelism). See the `--build-via-mcp` section in
 
 | Workflow                    | Purpose                                                 |
 |-----------------------------|---------------------------------------------------------|
+| `docker-cross-arch-cache-canary.yml` | Verify Turbo cache reuse between native AMD64 and ARM64 builds |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
