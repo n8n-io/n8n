@@ -128,12 +128,8 @@ export function runOpenCode(
 	} = {},
 ) {
 	const directory = safeCwd(cwd);
-	const requestedSessionId = typeof sessionId === 'string' ? sessionId : '';
-	if (requestedSessionId && !requestedSessionId.startsWith('ses_')) {
-		throw new Error('This thread does not contain an OpenCode session. Start a new session.');
-	}
 	const args = ['run', '--format', 'json', '--auto'];
-	if (requestedSessionId) args.push('--session', requestedSessionId);
+	if (sessionId) args.push('--session', sessionId);
 
 	return new Promise((resolve, reject) => {
 		const child = spawnProcess('opencode', args, {
@@ -142,7 +138,7 @@ export function runOpenCode(
 			env: TURN_ENV,
 			stdio: ['pipe', 'pipe', 'pipe'],
 		});
-		let activeSessionId = requestedSessionId;
+		let activeSessionId = sessionId ?? '';
 		let buffer = '';
 		let stderr = '';
 		let error = '';

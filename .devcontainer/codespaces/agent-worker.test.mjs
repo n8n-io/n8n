@@ -198,23 +198,6 @@ test('streams OpenCode CLI events and resumes an OpenCode session', async () => 
 	);
 });
 
-test('rejects sessions from another engine', () => {
-	assert.throws(
-		() =>
-			runOpenCode(
-				{
-					message: 'Test message',
-					sessionId: 'non-opencode-session-id',
-					cwd: '/workspaces/n8n',
-					author: 'Tester',
-				},
-				() => {},
-				() => {},
-			),
-		/does not contain an OpenCode session/,
-	);
-});
-
 test('stops the OpenCode process group at the turn limit', async () => {
 	const signals = [];
 	let child;
