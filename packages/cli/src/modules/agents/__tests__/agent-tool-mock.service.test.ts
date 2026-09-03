@@ -3,20 +3,51 @@ vi.mock('@n8n/instance-ai', () => ({
 	extractText: vi.fn(),
 }));
 
+const { agentModelGenerateMock } = vi.hoisted(() => ({ agentModelGenerateMock: vi.fn() }));
+
+// A plain class (not vi.fn().mockImplementation) so a global mock reset
+// between tests cannot strip the chainable implementation.
+vi.mock('@n8n/agents', () => ({
+	Agent: class {
+		model() {
+			return this;
+		}
+
+		instructions() {
+			return this;
+		}
+
+		async generate(...args: unknown[]) {
+			return await agentModelGenerateMock(...args);
+		}
+	},
+}));
+
+vi.mock('../json-config/model-config', () => ({
+	resolveCredentialAwareModelConfig: vi.fn(),
+}));
+
+vi.mock('../utils/agent-credential-provider', () => ({
+	createAgentCredentialProvider: vi.fn(),
+}));
+
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import type { AgentConfigService } from '../agent-config.service';
 import { AgentToolMockService } from '../agent-tool-mock.service';
+import { resolveCredentialAwareModelConfig } from '../json-config/model-config';
 
 const createEvalAgentMock = vi.mocked(createEvalAgent);
 const extractTextMock = vi.mocked(extractText);
+const resolveCredentialAwareModelConfigMock = vi.mocked(resolveCredentialAwareModelConfig);
 const generateMock = vi.fn();
 
 function respondWith(text: string) {
@@ -63,6 +94,7 @@ function makeService() {
 		mockLogger(),
 		agentConfigService,
 		loadNodesAndCredentials,
+		mock<CredentialsService>(),
 	);
 	return { service, agentConfigService, loadNodesAndCredentials };
 }
@@ -144,6 +176,44 @@ describe('AgentToolMockService', () => {
 
 		expect(result.fallbackUsed).toBe(true);
 		expect(result.mock.items).toEqual([{}]);
+	});
+
+	it("generates with the agent's own model when a credential is configured (gateway deployments)", async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig.mockResolvedValue(
+			makeAgentConfig({ credential: '__AI_GATEWAY_MANAGED__' }),
+		);
+		const modelConfig = { id: 'anthropic/claude-sonnet-4-5', apiKey: 'gateway-token' };
+		resolveCredentialAwareModelConfigMock.mockResolvedValue(modelConfig as never);
+		agentModelGenerateMock.mockResolvedValue({});
+		extractTextMock.mockReturnValue(JSON.stringify({ Gmail: [{ json: { id: 'abc123' } }] }));
+
+		const result = await service.generateAndPersist(agentId, projectId, 'Gmail', user, 'user');
+
+		expect(result.fallbackUsed).toBe(false);
+		expect(result.mock.items).toEqual([{ id: 'abc123' }]);
+		expect(resolveCredentialAwareModelConfigMock).toHaveBeenCalledWith(
+			'anthropic/claude-sonnet-4-5',
+			'__AI_GATEWAY_MANAGED__',
+			undefined,
+			undefined,
+		);
+		expect(agentModelGenerateMock).toHaveBeenCalled();
+		expect(createEvalAgentMock).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the instance AI lane when the agent model cannot resolve', async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig.mockResolvedValue(makeAgentConfig({ credential: 'credential-1' }));
+		resolveCredentialAwareModelConfigMock.mockRejectedValue(new Error('credential not found'));
+		respondWith(JSON.stringify({ Gmail: [{ json: { id: 'env-lane' } }] }));
+
+		const result = await service.generateAndPersist(agentId, projectId, 'Gmail', user, 'user');
+
+		expect(result.fallbackUsed).toBe(false);
+		expect(result.mock.items).toEqual([{ id: 'env-lane' }]);
+		expect(createEvalAgentMock).toHaveBeenCalled();
+		expect(agentModelGenerateMock).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError for an unknown tool name', async () => {
