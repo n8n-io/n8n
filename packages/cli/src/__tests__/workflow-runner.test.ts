@@ -525,7 +525,7 @@ describe('enqueueExecution', () => {
 			executionData: undefined,
 		});
 		const error = new Error('pool resolution failed');
-		const { PoolConfigService } = await import('@/scaling/pool-config.service.js');
+		const { PoolConfigService } = await import('@/scaling/pool-config.service.ee.js');
 		vi.spyOn(Container.get(PoolConfigService), 'resolvePoolForExecution').mockRejectedValueOnce(
 			error,
 		);
