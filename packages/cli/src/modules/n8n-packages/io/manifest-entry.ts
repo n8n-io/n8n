@@ -40,6 +40,8 @@ const FILE_NAMES = {
 /** Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so no `/` and no dots. */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
+const MAX_PATH_SEGMENT_LENGTH = 255;
+
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
 const FALLBACK_SLUGS = {
 	projects: 'project',
@@ -91,7 +93,17 @@ export function createManifestEntry(
 	}
 
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
-	return { id: entity.id, name: entity.name, target: `${baseDir}/${slug}-${entity.id}` };
+	const pathSegment = `${slug}-${entity.id}`;
+	if (pathSegment.length > MAX_PATH_SEGMENT_LENGTH) {
+		throw new PackageExportBlockedError(
+			`${collection} entry "${entity.name}" creates a path segment longer than ${MAX_PATH_SEGMENT_LENGTH} characters. Shorten the entity name and retry the export.`,
+			{
+				description: `The generated path segment has ${pathSegment.length} characters.`,
+			},
+		);
+	}
+
+	return { id: entity.id, name: entity.name, target: `${baseDir}/${pathSegment}` };
 }
 
 export async function writeManifestEntry(

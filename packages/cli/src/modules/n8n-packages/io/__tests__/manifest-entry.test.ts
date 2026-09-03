@@ -18,4 +18,13 @@ describe('createManifestEntry', () => {
 			createManifestEntry('workflows', 'workflows', { id, name: 'Daily Report' }),
 		).toThrow(PackageExportBlockedError);
 	});
+
+	it('blocks an export when the path segment exceeds 255 characters', () => {
+		expect(() =>
+			createManifestEntry('projects', 'projects', {
+				id: 'project-id',
+				name: 'a'.repeat(255),
+			}),
+		).toThrow('Shorten the entity name and retry the export.');
+	});
 });
