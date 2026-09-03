@@ -5201,6 +5201,7 @@
 	"dataTable.sort.lastCreated": "Sort by last created",
 	"dataTable.noResults": "No data tables found",
 	"settings.ai": "AI usage",
+	"settings.ai.description.both": "Control what n8n sends when using the AI Assistant and AI Builder",
 	"settings.ai.description.assistantOnly": "Manage how n8n uses your data to improve our AI features. These settings only apply to <b>AI Assistant Chat</b> feature.",
 	"settings.ai.button.tooltip": "AI usage settings",
 	"settings.ai.allowSendingSchema.label": "Send field names and types (schema)",

@@ -532,7 +532,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			const itemsInSubcategory: INodeCreateElement[] = itemsBySubcategory.value[subcategory] ?? [];
+			// Copy: `stackItems` is mutated below via `forceIncludeNodes`, and the
+			// source array lives inside the `itemsBySubcategory` computed.
+			const itemsInSubcategory: INodeCreateElement[] = [
+				...(itemsBySubcategory.value[subcategory] ?? []),
+			];
 
 			const sections = stack.sections;
 

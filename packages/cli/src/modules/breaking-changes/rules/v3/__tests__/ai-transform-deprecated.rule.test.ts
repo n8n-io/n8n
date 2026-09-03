@@ -8,6 +8,25 @@ describe('AiTransformDeprecatedRule', () => {
 		rule = new AiTransformDeprecatedRule();
 	});
 
+	describe('getMetadata()', () => {
+		it('describes the node as removed, not deprecated', () => {
+			const metadata = rule.getMetadata();
+
+			expect(metadata.version).toBe('v3');
+			expect(metadata.title).toBe('AI Transform node removed');
+			expect(metadata.description).toContain('no longer supported');
+			expect(metadata.description).not.toContain('deprecated');
+		});
+	});
+
+	describe('getRecommendations()', () => {
+		it('recommends the Code node', async () => {
+			const [recommendation] = await rule.getRecommendations([]);
+
+			expect(recommendation.action).toBe('Replace AI Transform with a Code node');
+		});
+	});
+
 	describe('detectWorkflow()', () => {
 		it('should not be affected when no AI Transform node is present', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
@@ -34,6 +53,8 @@ describe('AiTransformDeprecatedRule', () => {
 			expect(result.issues.map((i) => i.nodeName)).toEqual(['Transform A', 'Transform B']);
 			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].nodeId).toBe('node-Transform A');
+			expect(result.issues[0].title).toBe("AI Transform node 'Transform A' is no longer supported");
+			expect(result.issues[0].description).not.toContain('deprecated');
 		});
 	});
 });

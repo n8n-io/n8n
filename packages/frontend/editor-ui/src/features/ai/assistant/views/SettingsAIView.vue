@@ -22,6 +22,14 @@ const allowSendingSchema = ref(true);
 const isBuilderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
+// The page governs data sharing for the Assistant and the Builder, so the
+// Builder gate decides whether the copy names both.
+const aiSettingsDescription = computed(() =>
+	isBuilderEnabled.value
+		? i18n.baseText('settings.ai.description.both')
+		: i18n.baseText('settings.ai.description.assistantOnly'),
+);
+
 const confirmationMessage = computed(() => {
 	if (isBuilderEnabled.value) {
 		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
@@ -65,11 +73,7 @@ onMounted(async () => {
 	<div :class="$style.container" data-test-id="ai">
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.ai') }}</N8nHeading>
-			<N8nText
-				v-n8n-html="i18n.baseText('settings.ai.description.assistantOnly')"
-				size="small"
-				color="text-light"
-			/>
+			<N8nText v-n8n-html="aiSettingsDescription" size="small" color="text-light" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.checkboxContainer">
