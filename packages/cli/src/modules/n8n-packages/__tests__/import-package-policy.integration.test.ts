@@ -14,7 +14,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import type {
 	ContentImportContext,
 	PolicyCheckResult,
@@ -152,20 +152,9 @@ describe('contentImport on a direct package import', () => {
 		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
 	});
 
-	it('reports the package transport to the check', async () => {
-		const owner = await createOwner();
-
-		await importPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer([
-				serializedWorkflow({ id: 'wf-1', name: 'Unremarkable Workflow' }),
-			]),
-		});
-
-		expect(seenTransports).toEqual(['package']);
-	});
-
-	it('imports normally when no check objects', async () => {
+	// The registry short-circuit (nothing registered for `contentImport`) cannot be covered here:
+	// `@PolicyCheck` registers per process, so this file always has one. See the gate's unit test.
+	it('imports the workflow when the check admits it', async () => {
 		const owner = await createOwner();
 
 		const result = await importPackage({
@@ -175,6 +164,8 @@ describe('contentImport on a direct package import', () => {
 			]),
 		});
 
+		// Proves the check ran and allowed it, rather than never running at all.
+		expect(seenTransports).toEqual(['package']);
 		expect(result.workflows).toHaveLength(1);
 		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(1);
 	});
@@ -235,6 +226,18 @@ describe('contentImport on a git pull', () => {
 
 		expect(seenTransports).toEqual(['git-connection']);
 		expect(error).toBeInstanceOf(UnprocessableRequestError);
+
+		// "Writes nothing" means the target is untouched, not empty: the pull would have
+		// rewritten this workflow, so its row must still carry the version it had before.
+		const workflowRepository = Container.get(WorkflowRepository);
+		await expect(workflowRepository.count()).resolves.toBe(1);
+		await expect(workflowRepository.findOneBy({ id: workflow.id })).resolves.toMatchObject({
+			name: workflow.name,
+			versionId: workflow.versionId,
+			activeVersionId: workflow.activeVersionId,
+		});
+		await expect(Container.get(WorkflowHistoryRepository).count()).resolves.toBe(0);
+
 		expect((error as UnprocessableRequestError).meta?.issues).toContainEqual({
 			type: 'policy-violation',
 			sourceWorkflowId: workflow.id,
