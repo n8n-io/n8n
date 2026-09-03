@@ -17,7 +17,7 @@ import type {
 	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -34,47 +34,7 @@ export type PaginatedRequest = AuthenticatedRequest<
 	}
 >;
 export declare namespace ExecutionRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			includeData?: boolean;
-			ignoreDataSizeLimit?: boolean;
-			redactExecutionData?: boolean;
-			workflowId?: string;
-			lastId?: string;
-			projectId?: string;
-			startedAfter?: string;
-			startedBefore?: string;
-		}
-	>;
-
-	type Get = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
-	>;
-	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type StopMany = AuthenticatedRequest<
-		{},
-		{},
-		{
-			status: Array<Extract<ExecutionStatus, 'waiting' | 'running'> | 'queued'>;
-			workflowId?: string;
-			startedAfter?: string;
-			startedBefore?: string;
-		}
-	>;
-	type GetTags = AuthenticatedRequest<{ id: string }>;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }
 
 export declare namespace TestRunRequest {

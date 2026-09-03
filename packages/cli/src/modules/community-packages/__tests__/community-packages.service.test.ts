@@ -3,7 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { N8N_NODES_API_VERSION, type PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -125,6 +125,25 @@ describe('CommunityPackagesService', () => {
 				).toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
+			'should reject reserved package name %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test.each(['n8n-nodes-base@1.2.3', '@n8n/n8n-nodes-langchain@1.2.3'])(
+			'should reject reserved package name with version specifier %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test('should accept a package name that merely starts with a reserved name', () => {
+			const parsed = communityPackagesService.parseNpmPackageName('n8n-nodes-base-extended');
+			expect(parsed.packageName).toBe('n8n-nodes-base-extended');
+		});
 
 		test.each(['beta', 'next', 'latest', 'canary', 'rc-1'])(
 			'should accept npm dist-tag as version',
@@ -1213,6 +1232,92 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 			expect(logger.info).toHaveBeenCalledWith(
 				'Packages reinstalled successfully. Resuming regular initialization.',
+			);
+		});
+
+		test('should not reinstall a package the startup guard skipped as incompatible', async () => {
+			// The package is on disk but declares a node API version this runtime
+			// does not support. Reinstalling the same version cannot fix it, and
+			// `loadPackage` would import its node code, bypassing the startup guard.
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: 'package-1',
+					version: '1.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+				}),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Not reinstalling package "package-1"'),
+			);
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+		});
+
+		test('should not reinstall a package with a malformed node API version on disk', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: '3' } }),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('invalid n8nNodesApiVersion'),
+			);
+		});
+
+		test('should reinstall a not-loaded package whose on-disk copy is compatible', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: 'package-1',
+					version: '1.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
+				}),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		test('should reinstall a package whose package.json is unreadable', async () => {
+			// An unreadable package.json is the partial/corrupt-install case:
+			// reinstall is the repair path, incompatibility is not the diagnosis.
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
 			);
 		});
 

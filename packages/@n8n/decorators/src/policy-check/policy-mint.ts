@@ -1,8 +1,7 @@
 import { UnexpectedError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 
 import { brand } from './policy-brand';
-import type { EnforcementPoint, PolicedWorkflow, PolicyDecision } from './policy-check';
+import type { EnforcementPoint, PolicyDecision } from './policy-check';
 import type { PolicyCleared, PolicySubject } from './policy-cleared';
 
 /**
@@ -43,14 +42,4 @@ export function mintPolicyCleared<Point extends EnforcementPoint>({
 		decision,
 		policyVersions: decision.policyVersions ?? [],
 	};
-}
-
-/** A workflow being created has no id yet, so it binds to its nodes instead. */
-export function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
-	if (workflow.id !== null) return { type: 'workflow', id: workflow.id };
-
-	// Same object within one request, so key order is stable.
-	const nodes = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
-
-	return { type: 'workflow', id: nodes };
 }

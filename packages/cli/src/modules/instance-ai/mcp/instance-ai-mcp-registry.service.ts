@@ -8,15 +8,15 @@ import type {
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { CredentialsEntity, User } from '@n8n/db';
+import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import { QueryFailedError } from '@n8n/typeorm';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -41,7 +41,8 @@ interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
 	authType: McpRegistryServer['authType'];
-	connection: NonNullable<ReturnType<typeof resolveMcpRegistryConnection>>;
+	/** Never templated: this path cannot resolve a template, so those are skipped. */
+	connection: LiteralMcpRegistryConnection;
 }
 
 const MCP_REGISTRY_SERVER_PREFIX = 'mcp_';
@@ -140,6 +141,15 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
 		}
 
+		// This path cannot resolve a templated server URL, so `getRegistryMcpServers`
+		// skips such a row at load time. Reject it here too, otherwise the connection
+		// persists and reads as connected while contributing nothing.
+		if (resolveMcpRegistryConnection(server)?.isTemplated) {
+			throw new BadRequestError(
+				`MCP registry server "${input.serverSlug}" cannot be connected here`,
+			);
+		}
+
 		// v1 invariant: at most one connection per (user, serverSlug). To switch
 		// credentials the user must disconnect first (the FE orchestrates this
 		// as a two-step swap). The DB unique index is currently looser; this
@@ -178,7 +188,7 @@ export class InstanceAiMcpRegistryService {
 			});
 			return { connection, credential, server };
 		} catch (error) {
-			if (isUniqueConstraintViolation(error)) {
+			if (isUniqueConstraintError(error)) {
 				throw new ConflictError(
 					'A connection for this MCP server with this credential already exists',
 				);
@@ -402,6 +412,18 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
+		// This path reads the credential without resolving expressions, so a
+		// templated row's URL would stay an unresolved template. Skipping keeps
+		// the row out of the picker instead of offering a connection that breaks.
+		if (connection.isTemplated) {
+			this.logger.warn('Skipping MCP registry connection with a templated server URL', {
+				connectionId,
+				serverSlug,
+				credentialId,
+			});
+			return null;
+		}
+
 		return {
 			serverSlug,
 			credentialId,
@@ -506,11 +528,4 @@ export class InstanceAiMcpRegistryService {
 
 		connection.credentialId = newCredentialId;
 	}
-}
-
-function isUniqueConstraintViolation(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = error.driverError as { code?: string };
-	const code = driverError?.code;
-	return code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }

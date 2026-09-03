@@ -209,6 +209,58 @@ describe('WebhookContext', () => {
 		});
 	});
 
+	describe('getTestWebhookUser', () => {
+		const user = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+
+		const contextWith = (
+			webhookOverrides: Partial<IWebhookData>,
+			getUserById?: IWorkflowExecuteAdditionalData['getUserById'],
+		) =>
+			new WebhookContext(
+				workflow,
+				node,
+				{ ...additionalData, getUserById } as IWorkflowExecuteAdditionalData,
+				mode,
+				mock<IWebhookData>({ webhookDescription: { name: 'default' }, ...webhookOverrides }),
+				[],
+				null,
+			);
+
+		it('should return the user recorded on the test-webhook registration', async () => {
+			const getUserById = vi.fn().mockResolvedValue(user);
+			const context = contextWith({ userId: 'user-1' }, getUserById);
+
+			await expect(context.getTestWebhookUser()).resolves.toEqual(user);
+			expect(getUserById).toHaveBeenCalledWith('user-1');
+		});
+
+		// Production webhooks never carry a user id, so they must resolve to nobody.
+		it('should return undefined when the webhook carries no user id', async () => {
+			const getUserById = vi.fn();
+			const context = contextWith({ userId: undefined }, getUserById);
+
+			await expect(context.getTestWebhookUser()).resolves.toBeUndefined();
+			expect(getUserById).not.toHaveBeenCalled();
+		});
+
+		it('should return undefined when no user lookup is wired up', async () => {
+			const context = contextWith({ userId: 'user-1' }, undefined);
+
+			await expect(context.getTestWebhookUser()).resolves.toBeUndefined();
+		});
+
+		it('should return undefined when the user no longer exists', async () => {
+			const context = contextWith({ userId: 'user-1' }, vi.fn().mockResolvedValue(undefined));
+
+			await expect(context.getTestWebhookUser()).resolves.toBeUndefined();
+		});
+	});
+
 	describe('webhook URLs', () => {
 		const WEBHOOK_KINDS = [
 			['a generic webhook', undefined],

@@ -56,6 +56,15 @@ describe('EngineDataPlaneProxyService', () => {
 		proxy.registerProvider(provider);
 
 		await expect(proxy.getExecution(executionId)).resolves.toBe(snapshot);
-		expect(provider.getExecution).toHaveBeenCalledWith(executionId);
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, undefined);
+	});
+
+	it('passes the read options through to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+
+		await proxy.getExecution(executionId, { includeSteps: true });
+
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
 	});
 });
