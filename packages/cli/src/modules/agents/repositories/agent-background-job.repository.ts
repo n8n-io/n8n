@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
 import {
@@ -12,6 +12,8 @@ type NewAgentBackgroundJobBase = {
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
+	parentResourceId: string;
+	parentPrincipalHash: string;
 	title: string;
 };
 
@@ -79,6 +81,50 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 			where: ids?.length ? { parentThreadId, id: In(ids) } : { parentThreadId },
 			order: { createdAt: 'ASC' },
 		});
+	}
+
+	async findById(id: string): Promise<AgentBackgroundJob | null> {
+		return await this.findOneBy({ id });
+	}
+
+	async findWakeableUnconsumedSettled(parentThreadId: string): Promise<AgentBackgroundJob[]> {
+		return await this.createQueryBuilder('job')
+			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
+			.andWhere('job.settledAt IS NOT NULL')
+			.andWhere('job.notifiedAt IS NULL')
+			.andWhere('job.parentResourceId IS NOT NULL')
+			.andWhere('job.parentPrincipalHash IS NOT NULL')
+			.orderBy('job.settledAt', 'ASC')
+			.addOrderBy('job.createdAt', 'ASC')
+			.getMany();
+	}
+
+	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
+		if (ids.length === 0) return 0;
+
+		const result = await this.update(
+			{
+				parentThreadId,
+				id: In(ids),
+				settledAt: Not(IsNull()),
+				notifiedAt: IsNull(),
+			},
+			{ notifiedAt: new Date() },
+		);
+		return result.affected ?? 0;
+	}
+
+	/** Threads with pending mail that has enough identity to run automatically. */
+	async findThreadsWithUnconsumedMail(): Promise<string[]> {
+		const rows = await this.createQueryBuilder('job')
+			.select('DISTINCT job.parentThreadId', 'parentThreadId')
+			.where('job.settledAt IS NOT NULL')
+			.andWhere('job.notifiedAt IS NULL')
+			.andWhere('job.parentResourceId IS NOT NULL')
+			.andWhere('job.parentPrincipalHash IS NOT NULL')
+			.getRawMany<{ parentThreadId: string }>();
+
+		return rows.map(({ parentThreadId }) => parentThreadId);
 	}
 
 	async findRunningWorkflowJobByExecutionId(
