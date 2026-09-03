@@ -116,9 +116,13 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
-	it('tells agents invalid groups are dropped with warnings and source should be fixed', () => {
+	it('tells agents invalid groups are dropped with warnings and the boundary redrawn', () => {
+		// A build took two dropped-group warnings as licence to publish the stage
+		// ungrouped instead of moving the boundary.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/drop an invalid group.+report a warning/is);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/fix the source.+not re-emitted/is);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/not that the stage\s+should stay ungrouped/is);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/redraw it so the group is valid/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/never re-emit the\s+same invalid group/is);
 		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
 	});
 
@@ -189,35 +193,51 @@ describe('GROUPING_GUIDANCE', () => {
 			// The observed failure was omission, not misjudgement: the agent knew the
 			// criteria and never reached the step.
 			expect(GROUPING_GUIDANCE).toMatch(/explicit grouping decision/i);
-			expect(GROUPING_GUIDANCE).toMatch(/skipping the decision is not an option/i);
+			expect(GROUPING_GUIDANCE).toMatch(/skipping the decision is not/i);
 			expect(GROUPING_GUIDANCE).toMatch(/deciding against groups/i);
 		});
 
 		it('decides whether to group by counting, not by shape', () => {
 			// An agent read "purely linear" as a standalone exemption and skipped the
 			// count: 9 top-level items, no groups.
-			expect(GROUPING_GUIDANCE).toMatch(/count the top-level items/i);
-			expect(GROUPING_GUIDANCE).toMatch(/more than 7 means you must group/i);
-			expect(GROUPING_GUIDANCE).toMatch(/one straight line is not an exemption/i);
+			expect(GROUPING_GUIDANCE).toMatch(/count top-level items/i);
+			expect(GROUPING_GUIDANCE).toMatch(/more than 7 → you must group/i);
+			expect(GROUPING_GUIDANCE).toMatch(
+				/linear pipeline is the normal case for grouping, not an exemption/i,
+			);
 		});
 
 		it('leaves a workflow under the ceiling ungrouped', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/7 items or fewer.+leave it ungrouped/is);
+			expect(GROUPING_GUIDANCE).toMatch(/7 or fewer.+leave it ungrouped/is);
 		});
 
 		it('tells agents to widen boundaries instead of emitting one-node groups', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes each, the boundaries are too fine/i);
+			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes mean the boundaries are too fine/i);
+		});
+
+		it('says where to cut when an objective ends in a branch', () => {
+			// A build grouped an IF with its stop branch and lost both groups to
+			// `Output Edge From Non-Leaf Node`: the IF continued inside and exited too.
+			expect(GROUPING_GUIDANCE).toMatch(/end the group before the branch node/i);
+			expect(GROUPING_GUIDANCE).toMatch(/both continues inside it and exits it/i);
 		});
 
 		it('breaks ties toward fewer, larger groups', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/in doubt, fewer and larger groups/i);
+			expect(GROUPING_GUIDANCE).toMatch(/in doubt, fewer and larger/i);
 		});
 
 		it('does not let the ceiling justify an invalid or absurd split', () => {
-			// A trigger-level fan-out cannot share a group, so some graphs land over the
-			// ceiling and chasing the number would produce groups the save path drops.
-			expect(GROUPING_GUIDANCE).toMatch(/never invent a group that breaks the validity rules/i);
-			expect(GROUPING_GUIDANCE).toMatch(/an item or two over is fine/i);
+			// A branchy graph cannot always reach 7, and chasing the number produces
+			// groups the save path drops.
+			expect(GROUPING_GUIDANCE).toMatch(/never break a validity rule/i);
+			expect(GROUPING_GUIDANCE).toMatch(/split one objective to hit the number/i);
+		});
+
+		it('allows exceeding the ceiling only for items that cannot be grouped', () => {
+			// A build left five groupable nodes at the top level and settled at 8.
+			expect(GROUPING_GUIDANCE).toMatch(/staying above 7 is only acceptable/i);
+			expect(GROUPING_GUIDANCE).toMatch(/cannot join one without breaking a validity rule/i);
+			expect(GROUPING_GUIDANCE).toMatch(/check each one before you settle/i);
 		});
 
 		it('gives a group count for a medium workflow', () => {
@@ -227,14 +247,14 @@ describe('GROUPING_GUIDANCE', () => {
 		});
 
 		it('caps what is visible at the canvas top level', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/at most 7 items/i);
-			expect(GROUPING_GUIDANCE).toMatch(/counting the trigger/i);
+			expect(GROUPING_GUIDANCE).toMatch(/at most 7 top-level items/i);
+			expect(GROUPING_GUIDANCE).toMatch(/trigger \+ groups \+ nodes left outside/i);
 		});
 
 		it('makes a group a business outcome rather than a technical category', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/business outcome/i);
 			expect(GROUPING_GUIDANCE).toMatch(/never a technical category/i);
-			expect(GROUPING_GUIDANCE).toMatch(/merge two groups/i);
+			expect(GROUPING_GUIDANCE).toMatch(/merge groups serving the same outcome/i);
 		});
 
 		it('keeps the groups-vs-sub-workflows distinction', () => {
@@ -248,12 +268,22 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/2-4 words/);
 		});
 
+		it('prefers one outcome over two verbs, without licensing a split', () => {
+			// Builds produced "Charge & ship" and "Store & alert": the steps, not the
+			// outcome. Coverage still wins — a two-verb title beats fewer groups.
+			expect(GROUPING_GUIDANCE).toMatch(/naming one outcome/i);
+			expect(GROUPING_GUIDANCE).toMatch(/find the outcome they add up to/i);
+			expect(GROUPING_GUIDANCE).toMatch(
+				/two-verb title beats splitting a coherent stage or leaving it ungrouped/i,
+			);
+		});
+
 		it('bans implementation jargon in titles', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/no node, credential, or API names/i);
 		});
 
 		it('gives the self-explanatory test for a title', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/from the title alone, without expanding/i);
+			expect(GROUPING_GUIDANCE).toMatch(/from the title alone/i);
 		});
 
 		it('tells agents to split a group whose purpose will not fit the title', () => {
@@ -263,25 +293,25 @@ describe('GROUPING_GUIDANCE', () => {
 
 	describe('descriptions', () => {
 		it('requires one on every group', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/write one for every group/i);
+			expect(GROUPING_GUIDANCE).toMatch(/one per group/i);
 		});
 
 		it('forbids restating the title, including as an opening clause', () => {
 			// An agent restated the title and appended a detail, and the collapsed group
 			// clipped the description before the detail was visible.
-			expect(GROUPING_GUIDANCE).toMatch(/add to the title, never restate it/i);
-			expect(GROUPING_GUIDANCE).toMatch(/must not open by repeating it/i);
+			expect(GROUPING_GUIDANCE).toMatch(/add to the title — never restate it/i);
+			expect(GROUPING_GUIDANCE).toMatch(/open by repeating it/i);
 		});
 
 		it('tells agents to lead with the detail because collapsed text is clipped', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/collapsed group clips the description/i);
+			expect(GROUPING_GUIDANCE).toMatch(/collapsed groups clip the text/i);
 		});
 
 		it('forbids opening on the nodes the group is built from', () => {
 			// A build spent the visible half of a description on "AI agent with Postgres
 			// chat memory", which the reader can already see on the canvas.
-			expect(GROUPING_GUIDANCE).toMatch(/never on what the group is built from/i);
-			expect(GROUPING_GUIDANCE).toMatch(/opens on the parts list/i);
+			expect(GROUPING_GUIDANCE).toMatch(/never open on the parts list/i);
+			expect(GROUPING_GUIDANCE).toMatch(/says only what the reader can already see/i);
 		});
 
 		it('interpolates the length cap instead of hardcoding it', () => {

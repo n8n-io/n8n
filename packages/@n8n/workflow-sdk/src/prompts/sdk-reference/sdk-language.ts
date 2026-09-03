@@ -76,10 +76,10 @@ const SAFE_METHODS_SENTENCE =
  */
 export const NODE_GROUPS_REFERENCE = `## Node groups
 
-A node group is a named, visual grouping of nodes (a frame on the canvas). It is
-purely organisational — nothing about execution depends on it. Declare one with
-\`.group(name, members, options?)\` on the workflow. Members are the node handles (the
-\`const\` from \`node(...)\`) — the same way connections reference nodes:
+A node group is a named visual frame around nodes on the canvas, purely organisational —
+nothing about execution depends on it. Declare one with \`.group(name, members, options?)\`
+on the workflow; members are the node handles (the \`const\` from \`node(...)\`), the same
+way connections reference nodes:
 
 \`\`\`typescript
 const fetch = node({ /* ... name: 'Fetch data' */ });
@@ -92,16 +92,17 @@ export default workflow('id', 'My workflow')
   });
 \`\`\`
 
-\`description\` is what the user sees while the group is collapsed, so always set one.
-Anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off. What the description
-should say is covered by the grouping guidance.
+\`description\` is what the user sees while the group is collapsed, so always set one —
+anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off. The grouping guidance
+covers what it should say.
 
 When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
 intact** unless the change is specifically about grouping.
 
-Agent save tools drop an invalid group from the saved workflow and report a warning.
-Fix the source so the invalid group is not re-emitted. These rules MUST be followed
-when creating or editing groups.
+The rules below MUST be followed. Agent save tools drop an invalid group from the saved
+workflow and report a warning. A warning means the boundary was wrong, not that the stage
+should stay ungrouped: redraw it so the group is valid and build again. Never re-emit the
+same invalid group.
 
 Rules:
 ${renderRulesLines()}
@@ -115,37 +116,25 @@ ${renderRulesLines()}
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
-Node groups are named visual frames drawn on the canvas, so a workflow reads correctly the first time the user sees it.
+Node groups are named visual frames on the canvas.
 
-Every workflow you build needs an explicit grouping decision, taken while you write the code: declare the groups, or conclude this workflow does not warrant any. Skipping the decision is not an option; deciding against groups often is.
+Every workflow needs an explicit grouping decision, taken while you write the code: declare groups, or conclude this one does not warrant any. Deciding against groups is fine; skipping the decision is not.
 
-- **When to group:** count the top-level items the workflow would have with no groups — the trigger plus every node or existing group. More than 7 means you must group. The workflow being one straight line is not an exemption: stages run in sequence (e.g. ingest → transform → deliver), so a linear pipeline is the normal case for grouping, not the exception. At 7 items or fewer, serving a single objective, leave it ungrouped.
-- **How many:** one group per distinct stage or high-level objective — typically 3 to 5. After grouping, aim for at most 7 items at the top level, counting the trigger (always ungrouped), every group, and every node left outside one. Some graphs cannot reach it — branches fanning straight out of the trigger cannot share a group — and landing an item or two over is fine there. Never invent a group that breaks the validity rules, or split a stage that reads as one objective, just to hit the number. When in doubt, fewer and larger groups.
-- **What belongs together:** a group is one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Put the boundary where the objective changes, and merge two groups that serve the same outcome. If the stages you find come out at one or two nodes each, the boundaries are too fine: widen them until each group is a real objective.
-- **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
+- **When:** count top-level items with no groups (trigger + every node or existing group). More than 7 → you must group. A linear pipeline is the normal case for grouping, not an exemption: stages run in sequence (ingest → transform → deliver). 7 or fewer serving one objective → leave it ungrouped.
+- **How many:** one per stage or high-level objective, typically 3-5, aiming for at most 7 top-level items after grouping (trigger + groups + nodes left outside). Staying above 7 is only acceptable when every item still at the top level is either a group already, or a node that cannot join one without breaking a validity rule — check each one before you settle. Never break a validity rule or split one objective to hit the number. When in doubt, fewer and larger.
+- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them. Where an objective ends in a branch that stops one way and continues the other, end the group before the branch node, or leave that node and its stop path outside: a group cannot hold a node that both continues inside it and exits it.
+- **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is separately executed and reusable. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 
-### Naming
+Groups are created collapsed, so title + description is all the user sees.
 
-Groups are created collapsed, so the title is the first and often the only thing the user reads.
+**Titles:** outcome-first, 2-4 words, naming one outcome. "Fetch new recordings", not "HTTP + Drive"; "Generate call summary", not "Claude + Edit Fields". No node, credential, or API names. Two verbs joined by "and" or "&" mean you named the steps instead of the outcome — find the outcome they add up to: "Create & invite" is really "Provision new hire". This one is a preference, not a rule: a two-verb title beats splitting a coherent stage or leaving it ungrouped. If someone who has never seen the workflow cannot tell what it does from the title alone, fix the title or the boundary. If the purpose does not fit in 2-4 words, the group is doing too much — split it.
 
-- Outcome-first and 2-4 words: "Fetch new recordings", not "HTTP + Drive"; "Generate call summary", not "Claude + Edit Fields".
-- No implementation jargon — no node, credential, or API names.
-- Test it: could someone who has never seen this workflow tell what the group does from the title alone, without expanding it? If not, fix the title or the boundary.
-- If the purpose does not fit in 2-4 words, the group is doing too much — split it.
-
-### Descriptions
-
-- Write one for every group, at most ${GROUP_DESCRIPTION_MAX_LENGTH} characters.
-- It must add to the title, never restate it, and it must not open by repeating it. "Validates the shipping address against the Google API and reduces it to a verdict" under the title "Validate via Google" wastes the words the user actually reads.
-- Lead with the detail that earns its place. A collapsed group clips the description, so the first few words are often all the user sees — spend them on the trigger, the destination, or the scope. Never on the title again, and never on what the group is built from: "AI agent with Postgres chat memory drafts a reply" opens on the parts list and says nothing the reader could not already see.
-- The detail worth adding is the trigger or input, the destination or output, or the scope boundary.
-- Plain language a non-technical reader follows — no node types or parameter values.
+**Descriptions:** one per group, at most ${GROUP_DESCRIPTION_MAX_LENGTH} characters, plain language a non-technical reader follows, no node types or parameter values. It must add to the title — never restate it or open by repeating it ("Validates the shipping address against the Google API…" under the title "Validate via Google"), and never open on the parts list ("AI agent with Postgres chat memory drafts a reply" says only what the reader can already see). Collapsed groups clip the text, so spend the first words on the trigger/input, the destination/output, or the scope boundary.
 
 Examples:
 
 - "Fetch new recordings" → "Polls Gong every 15 min for fresh calls, downloads audio, stores raw files in Google Drive"
 - "Generate call summary" → "Transcribes the audio, then extracts action items, sentiment, and key topics"
-- "Save and notify" → "Writes summary and metadata to Supabase, then alerts the sales team in Slack"
 - "Draft support reply" → "Turns the email and the customer's plan and open tickets into a draft, citing our docs"
 
 Read the node groups reference for the exact rules before creating groups.`;
