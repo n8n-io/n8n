@@ -91,7 +91,7 @@
           "locale": "en-us",
           "body": {
             "contentType": "html",
-            "content": "new sale <at id=\"0\">Jane Smith</at> <at id=\"1\">Bob Jones</at>"
+            "content": "<at id=\"0\">Jane Smith</at> <at id=\"1\">Bob Jones</at> new sale"
           },
           "channelIdentity": {
             "teamId": "1111-2222-3333",

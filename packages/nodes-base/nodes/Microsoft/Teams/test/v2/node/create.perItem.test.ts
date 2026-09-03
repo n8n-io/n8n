@@ -75,6 +75,6 @@ describe('Microsoft Teams V2, create per item', () => {
 		const sent = apiRequest.mock.calls
 			.filter((call) => call[0] === 'POST')
 			.map((call) => (call[2] as { body: { content: string } }).body.content);
-		expect(sent).toEqual(['hi <at id="0">Jane Smith</at>', 'hi <at id="0">Bob Jones</at>']);
+		expect(sent).toEqual(['<at id="0">Jane Smith</at> hi', '<at id="0">Bob Jones</at> hi']);
 	});
 });

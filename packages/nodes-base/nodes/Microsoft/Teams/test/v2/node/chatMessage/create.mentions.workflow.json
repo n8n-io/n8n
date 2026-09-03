@@ -77,7 +77,7 @@
           "locale": "en-us",
           "body": {
             "contentType": "html",
-            "content": "Hello! <at id=\"0\">Ada Byron</at><br>\n<br>\n<em> Powered by <a href=\"http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+            "content": "<at id=\"0\">Ada Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href=\"http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
           },
           "attachments": [],
           "mentions": [

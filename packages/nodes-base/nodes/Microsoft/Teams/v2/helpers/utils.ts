@@ -13,6 +13,10 @@ import {
 } from '../../../GenericFunctions';
 import { microsoftApiRequest } from '../transport';
 
+/** Where the `<at>` tokens go relative to the message text. The workflow-link footer, when on,
+ * always comes last, so `end` means "after the text, before the footer". */
+export type MentionPlacement = 'start' | 'end';
+
 export type Mention = {
 	mentionText: string;
 	mentioned: { user: { id: string; displayName: string; userIdentityType: 'aadUser' } };
@@ -135,13 +139,17 @@ export function prepareMessage(
 	includeLinkToWorkflow: boolean,
 	instanceId?: string,
 	mentions: Mention[] = [],
+	mentionPlacement: MentionPlacement = 'start',
 ) {
 	if (mentions.length) {
 		// A mention in a `text` message is a hard 400 ("Mentions are only allowed in Html messages").
 		contentType = 'html';
-		message = `${message} ${mentions
+		const tokens = mentions
 			.map((mention, index) => `<at id="${index}">${escapeMentionText(mention.mentionText)}</at>`)
-			.join(' ')}`;
+			.join(' ');
+		// The footer is appended after this, so tokens stay above it either way.
+		const parts = mentionPlacement === 'end' ? [message, tokens] : [tokens, message];
+		message = parts.filter(Boolean).join(' ');
 	}
 
 	if (includeLinkToWorkflow) {

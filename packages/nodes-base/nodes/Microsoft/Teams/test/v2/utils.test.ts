@@ -82,13 +82,49 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		});
 	});
 
+	it.each([
+		['start', '<at id="0">Jane Smith</at> hi'],
+		['end', 'hi <at id="0">Jane Smith</at>'],
+	])('places the tokens at the %s of the message', (placement, expected) => {
+		const body = prepareMessage.call(
+			ctx,
+			'hi',
+			'html',
+			false,
+			undefined,
+			[mention('guid-1', 'Jane Smith')],
+			placement as 'start' | 'end',
+		);
+
+		expect((body.body as { content: string }).content).toBe(expected);
+	});
+
+	it.each(['start', 'end'])(
+		'keeps the workflow-link footer last with %s placement',
+		(placement) => {
+			const body = prepareMessage.call(
+				ctx,
+				'hi',
+				'text',
+				true,
+				'instance-1',
+				[mention('guid-1', 'Jane Smith')],
+				placement as 'start' | 'end',
+			);
+
+			const { content } = body.body as { content: string };
+			expect(content.indexOf('<at id="0"')).toBeLessThan(content.indexOf('Powered by'));
+			expect(content.endsWith('</em>')).toBe(true);
+		},
+	);
+
 	it('appends a mention token and the matching mentions entry', () => {
 		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
 			mention('guid-1', 'Jane Smith'),
 		]);
 
 		expect(body).toEqual({
-			body: { contentType: 'html', content: 'hi <at id="0">Jane Smith</at>' },
+			body: { contentType: 'html', content: '<at id="0">Jane Smith</at> hi' },
 			mentions: [{ id: 0, ...mention('guid-1', 'Jane Smith') }],
 		});
 		// Graph rejects a string id
@@ -107,7 +143,7 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		const content = (body.body as { content: string }).content;
 		const emitted = body.mentions as Array<Mention & { id: number }>;
 		expect(content).toBe(
-			'hi <at id="0">Jane Smith</at> <at id="1">Bob Jones</at> <at id="2">Ada Byron</at>',
+			'<at id="0">Jane Smith</at> <at id="1">Bob Jones</at> <at id="2">Ada Byron</at> hi',
 		);
 		for (const entry of emitted) {
 			expect(content).toContain(`<at id="${entry.id}">${entry.mentionText}</at>`);
@@ -138,7 +174,7 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		]);
 
 		expect((body.body as { content: string }).content).toBe(
-			'hi <at id="0">A &amp; B &lt;Ops&gt;</at>',
+			'<at id="0">A &amp; B &lt;Ops&gt;</at> hi',
 		);
 		const emitted = body.mentions as Mention[];
 		expect(emitted[0].mentionText).toBe('A & B <Ops>');

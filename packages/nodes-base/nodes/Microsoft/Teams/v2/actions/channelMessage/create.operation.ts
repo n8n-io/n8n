@@ -5,9 +5,11 @@ import { updateDisplayOptions } from '@utils/utilities';
 import {
 	channelRLC,
 	includeLinkToWorkflowOption,
+	mentionPlacementOption,
 	mentionsField,
 	teamRLC,
 } from '../../descriptions';
+import type { MentionPlacement } from '../../helpers/utils';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
@@ -53,6 +55,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			includeLinkToWorkflowOption,
+			mentionPlacementOption,
 			{
 				displayName: 'Reply to ID',
 				name: 'makeReply',
@@ -109,6 +112,7 @@ export async function execute(
 		includeLinkToWorkflow as boolean,
 		instanceId,
 		mentions,
+		(options.mentionPlacement as MentionPlacement) || 'start',
 	);
 
 	if (options.makeReply) {

@@ -23,7 +23,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 			const mentions = (body as { mentions?: Array<Record<string, unknown>> }).mentions ?? [];
 			return (
 				contentType === 'html' &&
-				content.startsWith('Hello! <at id="0">Ada Byron</at><br><br><em> Powered by <a href="') &&
+				content.startsWith('<at id="0">Ada Byron</at> Hello!<br><br><em> Powered by <a href="') &&
 				content.includes(
 					'utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams',
 				) &&
@@ -45,7 +45,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 			body: {
 				contentType: 'html',
 				content:
-					'Hello! <at id="0">Ada Byron</at><br>\n<br>\n<em> Powered by <a href="http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams">this n8n workflow</a> </em>',
+					'<at id="0">Ada Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href="http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams">this n8n workflow</a> </em>',
 			},
 			attachments: [],
 			mentions: [
