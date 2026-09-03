@@ -60,6 +60,7 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -1793,6 +1794,89 @@ describe('useCanvasOperations', () => {
 			deleteNode(node.id);
 
 			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('re-inserts a placeholder when the last real member of a group is deleted', () => {
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const trigger = createTestNode({ id: 't', name: 'Trigger', position: [0, 0] });
+			const member = createTestNode({
+				id: 'm',
+				name: 'Member',
+				type: SET_NODE_TYPE,
+				position: [200, 0],
+			});
+			const next = createTestNode({ id: 'n', name: 'Next', position: [400, 0] });
+			const nodes: INodeUi[] = [trigger, member, next];
+			workflowDocumentStoreInstance.allNodes = nodes;
+
+			const connections: IConnections = {
+				Trigger: { main: [[{ node: 'Member', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Member: { main: [[{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+			workflowDocumentStoreInstance.connectionsBySourceNode = connections;
+
+			const group = { id: 'g1', name: 'Plan', nodeIds: ['m'] };
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => nodes.find((node) => node.name === name) ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((nodeId) =>
+				nodeId === 'm' ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockImplementation((id) =>
+				id === group.id ? group : undefined,
+			);
+
+			let placeholder: INodeUi | undefined;
+			vi.mocked(workflowDocumentStoreInstance.addNode).mockImplementation((node) => {
+				placeholder = node;
+				nodes.push(node);
+			});
+			vi.mocked(workflowDocumentStoreInstance.addNodesToGroup).mockImplementation((id, nodeIds) => {
+				if (id !== group.id) return;
+				group.nodeIds = nodeIds;
+			});
+			vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
+				({ connection }: { connection: IConnection[] }) => {
+					const [sourceData, destinationData] = connection;
+					if (!sourceData || !destinationData) return;
+					connections[sourceData.node] ??= {};
+					connections[sourceData.node][sourceData.type] ??= [];
+					connections[sourceData.node][sourceData.type][sourceData.index] ??= [];
+					connections[sourceData.node][sourceData.type][sourceData.index]?.push(destinationData);
+				},
+			);
+			vi.mocked(workflowDocumentStoreInstance.removeConnection).mockImplementation(
+				({ connection }: { connection: IConnection[] }) => {
+					const [sourceData, destinationData] = connection;
+					if (!sourceData || !destinationData) return;
+					const existing = connections[sourceData.node]?.[sourceData.type]?.[sourceData.index];
+					if (!existing) return;
+					connections[sourceData.node][sourceData.type][sourceData.index] = existing.filter(
+						(entry) =>
+							entry.node !== destinationData.node ||
+							entry.type !== destinationData.type ||
+							entry.index !== destinationData.index,
+					);
+				},
+			);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m');
+
+			expect(group.nodeIds).toEqual([placeholder?.id]);
+			expect(placeholder?.type).toBe(GROUP_PLACEHOLDER_NODE_TYPE);
+			expect(placeholder?.position).toEqual([200, 0]);
+			expect(connections.Trigger?.main?.[0]).toEqual([
+				{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+			]);
+			expect(placeholder?.name).toBeTruthy();
+			expect(connections[placeholder!.name]?.main?.[0]).toEqual([
+				{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 },
+			]);
 		});
 
 		it('should delete node without tracking history', () => {

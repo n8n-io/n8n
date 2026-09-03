@@ -39,6 +39,7 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -132,6 +133,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	mapConnectionsByDestination,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -559,6 +561,55 @@ export function useCanvasOperations() {
 		}
 	}
 
+	/**
+	 * Keeps a group alive as an empty group when its last real node is removed:
+	 * inserts a placeholder at the node's position and moves the node's main
+	 * boundary connections onto it. Returns false when the node is not the sole
+	 * real member of a group.
+	 */
+	function replaceLastGroupMemberWithPlaceholder(node: INodeUi): boolean {
+		const group = workflowDocumentStore.value.getGroupForNode(node.id);
+		if (!group || group.nodeIds.length !== 1 || node.type === GROUP_PLACEHOLDER_NODE_TYPE) {
+			return false;
+		}
+
+		const placeholder: INodeUi = {
+			id: window.crypto.randomUUID(),
+			name: uniqueNodeName(group.name),
+			type: GROUP_PLACEHOLDER_NODE_TYPE,
+			typeVersion: 1,
+			position: [...node.position],
+			parameters: {},
+		};
+		workflowDocumentStore.value.addNode(placeholder);
+		workflowDocumentStore.value.addNodesToGroup(group.id, [placeholder.id]);
+
+		const bySource = workflowDocumentStore.value.connectionsBySourceNode;
+		const byDestination = mapConnectionsByDestination(bySource);
+		const main = NodeConnectionTypes.Main;
+
+		for (const incoming of byDestination[node.name]?.[main]?.flat() ?? []) {
+			if (!incoming) continue;
+			workflowDocumentStore.value.addConnection({
+				connection: [
+					{ node: incoming.node, type: main, index: incoming.index },
+					{ node: placeholder.name, type: main, index: 0 },
+				],
+			});
+		}
+		for (const outgoing of bySource[node.name]?.[main]?.flat() ?? []) {
+			if (!outgoing) continue;
+			workflowDocumentStore.value.addConnection({
+				connection: [
+					{ node: placeholder.name, type: main, index: 0 },
+					{ node: outgoing.node, type: main, index: outgoing.index },
+				],
+			});
+		}
+		// ponytail: not undoable as one step; add history commands when the POC lands.
+		return true;
+	}
+
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 		if (!node) {
@@ -575,7 +626,11 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
+		// A group's last real node hands its connections to a placeholder
+		// instead of bridging its neighbours, so the plan stays wired.
+		if (!replaceLastGroupMemberWithPlaceholder(node)) {
+			connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
+		}
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		// Snapshot the group first so its membership change is reverted with the node.
