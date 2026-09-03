@@ -24,7 +24,6 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
-	isLeader?: boolean;
 	instanceType?: 'main' | 'worker';
 };
 
@@ -33,7 +32,6 @@ function createService(options: CreateServiceOptions = {}) {
 	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
 	const instanceSettings = mock<InstanceSettings>({
-		isLeader: options.isLeader ?? false,
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
@@ -92,7 +90,6 @@ function createService(options: CreateServiceOptions = {}) {
 
 describe('McpRegistryService', () => {
 	afterEach(() => {
-		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
 
@@ -187,34 +184,16 @@ describe('McpRegistryService', () => {
 	});
 
 	describe('refresh flow', () => {
-		it('init does not start periodic refresh on followers', async () => {
-			vi.useFakeTimers();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-			const { service, apiClient } = createService({ isLeader: false });
+		it('init loads the persisted registry without calling the API', async () => {
+			const { service, apiClient } = createService();
 
 			await service.init();
 
-			expect(setIntervalSpy).not.toHaveBeenCalled();
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
+			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 		});
 
-		it('init starts periodic refresh and kicks off startup refresh on leaders', async () => {
-			vi.useFakeTimers();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-			const { service, apiClient } = createService({ isLeader: true });
-
-			await service.init();
-			await Promise.resolve();
-
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-			expect(apiClient.fetchServersMetadata).toHaveBeenCalledTimes(1);
-
-			service.shutdown();
-		});
-
-		it('onLeaderTakeover skips write + notifications when metadata is unchanged', async () => {
-			vi.useFakeTimers();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+		it('refreshFromApi skips write + notifications when metadata is unchanged', async () => {
 			const metadata: McpRegistryServerMetadata[] = [
 				{
 					slug: notionMockServer.slug,
@@ -230,18 +209,15 @@ describe('McpRegistryService', () => {
 			const { service, apiClient, repository, push, publisher } = createService();
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
 			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.shutdown();
 		});
 
-		it('onLeaderTakeover deprecates servers missing from metadata', async () => {
+		it('refreshFromApi deprecates servers missing from metadata', async () => {
 			const metadata: McpRegistryServerMetadata[] = [
 				{
 					slug: notionMockServer.slug,
@@ -254,7 +230,7 @@ describe('McpRegistryService', () => {
 			});
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
@@ -271,11 +247,9 @@ describe('McpRegistryService', () => {
 			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
-
-			service.shutdown();
 		});
 
-		it('onLeaderTakeover fetches only changed servers and publishes reload', async () => {
+		it('refreshFromApi fetches only changed servers and publishes reload', async () => {
 			const staleNotion: McpRegistryServer = {
 				...notionMockServer,
 				version: '1.1.0',
@@ -299,7 +273,7 @@ describe('McpRegistryService', () => {
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
 			apiClient.fetchServersBySlugs.mockResolvedValue([notionMockServer]);
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith([notionMockServer.slug]);
@@ -308,20 +282,26 @@ describe('McpRegistryService', () => {
 			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
-
-			service.shutdown();
 		});
 
-		it('onLeaderTakeover fetches all servers when no data is persisted', async () => {
+		it('refreshFromApi fetches all servers when no data is persisted', async () => {
 			const { service, apiClient, repository } = createService({ storedServers: null });
 
-			await service.onLeaderTakeover();
+			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
+		});
 
-			service.shutdown();
+		it('refreshFromApi rethrows an API failure and writes nothing', async () => {
+			const { service, apiClient, repository, push } = createService();
+			apiClient.fetchServersMetadata.mockRejectedValue(new Error('api down'));
+
+			await expect(service.refreshFromApi()).rejects.toThrow('api down');
+
+			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
 		});
 	});
 
