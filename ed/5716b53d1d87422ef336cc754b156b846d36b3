@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_14f52ab61740a5::t_22723beb9cac7e 284,293-295
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_14f52ab61740a5::t_384ab4ecb3a0f0 80
+  s_14f52ab61740a5::t_f29274a8d2c521 99-101
+  s_14f52ab61740a5::t_f5ed533c68157a 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ed5716b53d1d87422ef336cc754b156b846d36b3",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
