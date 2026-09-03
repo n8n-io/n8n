@@ -35,6 +35,9 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
+const isRangeError = (error: unknown): error is RangeError =>
+	error instanceof RangeError || (error instanceof Error && error.name === 'RangeError');
+
 // Make sure that error get forwarded
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
@@ -675,6 +678,8 @@ export class Expression {
 			if (isExpressionError(error)) throw error;
 
 			if (isSyntaxError(error)) throw new UserError('invalid syntax');
+
+			if (isRangeError(error)) throw new UserError('expression is too complex to evaluate');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
