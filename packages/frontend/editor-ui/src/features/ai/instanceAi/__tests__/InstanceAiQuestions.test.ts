@@ -52,7 +52,7 @@ describe('InstanceAiQuestions', () => {
 			return styles;
 		});
 		vi.spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get').mockImplementation(
-			function getScrollHeight() {
+			function getScrollHeight(this: HTMLTextAreaElement) {
 				return Math.max(this.value.split('\n').length, 1) * 20;
 			},
 		);
@@ -68,7 +68,7 @@ describe('InstanceAiQuestions', () => {
 		await fireEvent.update(textarea, longText);
 
 		await waitFor(() => {
-		expect(textarea).toHaveStyle({ height: '160px', overflowY: 'auto' });
+			expect(textarea).toHaveStyle({ height: '160px', overflowY: 'auto' });
 		});
 
 		const editedText = longText.replace('Line 5', 'Edited line 5');
