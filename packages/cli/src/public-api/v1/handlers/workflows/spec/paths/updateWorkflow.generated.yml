@@ -2,7 +2,7 @@ operationId: updateWorkflow
 tags:
   - Workflow
 summary: Update a workflow
-description: Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`.
+description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.'
 x-required-scope: workflow:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -878,14 +878,19 @@ responses:
                 properties:
                   id:
                     type: string
+                    readOnly: true
+                    example: 2tUt1wbLX592XDdX
                   name:
                     type: string
+                    example: Production
                   createdAt:
                     type: string
                     format: date-time
+                    readOnly: true
                   updatedAt:
                     type: string
                     format: date-time
+                    readOnly: true
                 required:
                   - id
                   - name
@@ -1102,7 +1107,23 @@ responses:
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
-    $ref: ../../../../shared/spec/responses/forbidden.yml
+    description: The update would re-publish the workflow, but the API key lacks `workflow:activate` or the caller lacks `workflow:publish` on the project. The update is still saved as a draft, named by `versionId`, and the published version stays live.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            reason:
+              type: string
+              enum:
+                - insufficient_api_key_scope
+                - insufficient_permissions
+            versionId:
+              type: string
+          required:
+            - message
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
