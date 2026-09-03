@@ -100,9 +100,9 @@ When editing an existing workflow, **keep the \`.group(...)\` calls and their de
 intact** unless the change is specifically about grouping.
 
 The rules below MUST be followed. Agent save tools drop an invalid group from the saved
-workflow and report a warning. A warning means the boundary was wrong, not that the stage
-should stay ungrouped: redraw it so the group is valid and build again. Never re-emit the
-same invalid group.
+workflow and report a warning naming what was invalid. A warning never means the stage should
+stay ungrouped: fix what it reports — a duplicate name, a member that does not exist, a
+boundary the rules reject — and build again. Never re-emit the same invalid group.
 
 Rules:
 ${renderRulesLines()}

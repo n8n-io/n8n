@@ -120,8 +120,11 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		// A build took two dropped-group warnings as licence to publish the stage
 		// ungrouped instead of moving the boundary.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/drop an invalid group.+report a warning/is);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/not that the stage\s+should stay ungrouped/is);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/redraw it so the group is valid/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/never means the stage should\s+stay ungrouped/is);
+		// The warning also fires for a duplicate name or a missing member, so telling the
+		// agent to redraw the boundary would misdirect it.
+		expect(NODE_GROUPS_REFERENCE).toMatch(/fix what it reports/i);
+		expect(NODE_GROUPS_REFERENCE).not.toMatch(/the boundary was wrong/i);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/never re-emit the\s+same invalid group/is);
 		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
 	});

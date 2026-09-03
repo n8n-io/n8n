@@ -900,7 +900,8 @@ store its own public endpoint.
 
 Do not report a build as done until you have made the grouping decision described in
 [Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
-means the boundary was wrong: redraw it and build again. If the top level is still above 7
+names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
+reject: fix what the warning reports and build again. If the top level is still above 7
 items, name each remaining item and why it cannot join a group — if you cannot, group it and
 build again.
 
