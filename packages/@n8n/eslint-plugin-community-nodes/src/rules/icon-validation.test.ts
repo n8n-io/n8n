@@ -163,6 +163,17 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			),
 		},
 		{
+			name: 'node with the same file for light and dark icons',
+			filename: nodeFilePath,
+			code: createNodeCode(
+				{
+					light: 'file:icons/SameIcon.svg',
+					dark: 'file:icons/SameIcon.svg',
+				},
+				true,
+			),
+		},
+		{
 			name: 'credential with valid string icon',
 			filename: credentialFilePath,
 			code: createCredentialCode('file:icons/TestNode.svg'),
@@ -178,6 +189,14 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			code: createCredentialCode({
 				light: 'file:icons/ValidIcon.svg',
 				dark: 'file:icons/ValidIcon.dark.svg',
+			}),
+		},
+		{
+			name: 'credential with the same file for light and dark icons',
+			filename: credentialFilePath,
+			code: createCredentialCode({
+				light: 'file:icons/SameIcon.svg',
+				dark: 'file:icons/SameIcon.svg',
 			}),
 		},
 	],
