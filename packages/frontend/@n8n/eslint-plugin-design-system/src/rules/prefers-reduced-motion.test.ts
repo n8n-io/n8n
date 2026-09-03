@@ -75,6 +75,20 @@ ruleTester.run('prefers-reduced-motion', PrefersReducedMotionRule, {
 				}
 			`),
 		},
+		{
+			filename: 'Component.vue',
+			code: vue(`
+				.card {
+					animation: enter 200ms ease-out;
+					transition: opacity 100ms ease;
+					@include motion.reduced-motion;
+				}
+			`),
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('.card { transition: opacity 100ms ease; @include reduced-motion(); }'),
+		},
 	],
 	invalid: [
 		{
@@ -127,6 +141,11 @@ ruleTester.run('prefers-reduced-motion', PrefersReducedMotionRule, {
 					.card { animation: none; }
 				}
 			`),
+			errors: [{ messageId: 'missingReducedMotion' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('.card { transition: opacity 100ms ease; @include motion.shimmer; }'),
 			errors: [{ messageId: 'missingReducedMotion' }],
 		},
 		{
