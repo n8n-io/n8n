@@ -367,6 +367,37 @@ describe('Test AirtableV2, search operation', () => {
 		expect(result[0].json).not.toHaveProperty('offset');
 	});
 
+	it('should not send the pageSize and offset options for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {
+				pageSize: 50,
+				offset: 'itrPreviousPage/recXXX',
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// v2.2 keeps its old request shape: pageSize and offset must not be sent
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ maxRecords: 1 },
+		);
+	});
+
 	afterEach(() => vi.clearAllMocks());
 
 	it('should search records with attachments and nested fields structure for v2.2', async () => {

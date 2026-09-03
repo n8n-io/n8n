@@ -224,13 +224,14 @@ export async function execute(
 				qs.view = (options.view as IDataObject).value as string;
 			}
 
+			// pageSize and offset are 2.3+ only, so a node pinned to <2.3 keeps its old request shape
 			const pageSize = options.pageSize as number | undefined;
 
-			if (pageSize) {
+			if (nodeVersion >= 2.3 && pageSize) {
 				qs.pageSize = pageSize;
 			}
 
-			if (options.offset) {
+			if (nodeVersion >= 2.3 && options.offset) {
 				qs.offset = options.offset;
 			}
 
