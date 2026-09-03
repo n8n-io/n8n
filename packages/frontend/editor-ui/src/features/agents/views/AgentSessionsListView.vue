@@ -3,6 +3,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { useAgentReviewStore } from '@/features/agents/agentReview.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
@@ -13,7 +14,7 @@ import type {
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
@@ -57,6 +58,23 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+
+// Wireframe: Review walks the moments waiting for an eye; the filter narrows the
+// list to the sessions among them.
+const reviewStore = useAgentReviewStore();
+const needsEyeOnly = ref(false);
+const attention = computed(() => reviewStore.attentionFor(agentId.value));
+const needsEyeIds = computed(
+	() => new Set(reviewStore.needsEyeThreadIdsByAgentId[agentId.value] ?? []),
+);
+const visibleThreads = computed(() =>
+	needsEyeOnly.value
+		? sessionsStore.threads.filter((t) => needsEyeIds.value.has(t.id))
+		: sessionsStore.threads,
+);
+function openReview() {
+	reviewStore.requestReview(agentId.value);
+}
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
@@ -267,13 +285,30 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
 			/>
-			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
+			<button
+				v-if="attention > 0"
+				:class="$style.reviewButton"
+				type="button"
+				data-testid="agent-sessions-review"
+				@click="openReview"
+			>
+				{{
+					i18n.baseText('agents.builder.checks.review', {
+						interpolate: { count: String(attention) },
+					})
+				}}
+			</button>
+			<AgentSessionsFilter
+				v-model:needs-eye="needsEyeOnly"
+				:model-value="sessionsStore.filters"
+				@filter-changed="onFiltersChange"
+			/>
 		</div>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
-						v-for="thread in sessionsStore.threads"
+						v-for="thread in visibleThreads"
 						:key="thread.id"
 						:class="$style.clickableRow"
 						:data-status="thread.status"
@@ -356,7 +391,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							</template>
 						</td>
 					</tr>
-					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
+					<tr v-if="sessionsStore.nextCursor" :class="$style.lastRow">
 						<td :colspan="5">
 							<N8nButton
 								icon="refresh-cw"
@@ -431,6 +466,21 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+}
+
+.reviewButton {
+	margin-left: auto;
+	margin-right: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--wireframe--ink);
+	color: var(--background--surface);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	cursor: pointer;
 }
 
 .titleCell {

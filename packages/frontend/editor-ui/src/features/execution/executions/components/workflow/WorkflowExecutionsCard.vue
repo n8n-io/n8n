@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useStackVerdictCounts } from '@/app/composables/useWorkflowOutputStack';
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
@@ -44,6 +45,11 @@ const isAdvancedExecutionFilterEnabled = computed(
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
 const workflowId = useInjectWorkflowId();
+// Wireframe: how this run's outputs were judged (Executions is the ledger).
+const stackVerdicts = useStackVerdictCounts(
+	workflowId,
+	computed(() => props.execution.id),
+);
 
 const hasPrivateCredentials = computed(() => props.execution.usedPrivateCredentials === true);
 const retryExecutionActions = computed(() => [
@@ -144,6 +150,26 @@ function onRetryMenuItemSelect(action: string): void {
 						}}
 					</N8nText>
 				</div>
+				<div
+					v-if="stackVerdicts.ok + stackVerdicts.flagged > 0"
+					:class="$style.stackVerdicts"
+					data-testid="execution-card-stack-verdicts"
+				>
+					<span v-if="stackVerdicts.ok > 0" :class="$style.stackOk">
+						{{
+							locale.baseText('workflows.stack.rowVerdicts.ok', {
+								interpolate: { count: String(stackVerdicts.ok) },
+							})
+						}}
+					</span>
+					<span v-if="stackVerdicts.flagged > 0" :class="$style.stackFlagged">
+						{{
+							locale.baseText('workflows.stack.rowVerdicts.flagged', {
+								interpolate: { count: String(stackVerdicts.flagged) },
+							})
+						}}
+					</span>
+				</div>
 				<div v-if="execution.mode === 'retry'">
 					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
@@ -196,6 +222,24 @@ function onRetryMenuItemSelect(action: string): void {
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
+
+// Wireframe: verdict summary on the ledger row.
+.stackVerdicts {
+	display: flex;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--4xs);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	white-space: nowrap;
+}
+.stackOk {
+	color: var(--color--success);
+}
+.stackFlagged {
+	color: var(--color--danger);
+}
 
 .WorkflowExecutionsCard {
 	--execution-list-item--color--background: var(--execution-card--color--background);

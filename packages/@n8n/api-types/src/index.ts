@@ -655,6 +655,8 @@ export {
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,
+	caseInputFlavorSchema,
+	CASE_INPUT_FLAVORS,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
 } from './schemas/agent-evals.schema';
@@ -677,6 +679,8 @@ export type {
 	AgentEvalRunDetail,
 	AgentEvalRunSummary,
 	AgentEvalDraftCase,
+	AgentEvalGeneratedCase,
+	CaseInputFlavor,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
 } from './schemas/agent-evals.schema';

@@ -1,0 +1,76 @@
+// Prototype-only tokens for "wireframe on top of the product" components.
+// Anything using these is a design exploration, not shipped UI.
+// The handwritten face is loaded from Google Fonts in index.html (prototype only).
+// On `body`, not `:root`: n8n's theme tokens are set on body/[data-theme], and these
+// derive from them.
+body,
+[data-theme] {
+	--wireframe--font-family:
+		'Balsamiq Sans', 'Architects Daughter', 'Patrick Hand', 'Bradley Hand', 'Segoe Print', cursive;
+	--wireframe--font-weight: var(--font-weight--bold);
+	/* Long text (samples, replies) reads at normal weight; labels stay bold. */
+	--wireframe--body-weight: var(--font-weight--regular);
+	--wireframe--font-size: var(--font-size--md);
+	--wireframe--letter-spacing: 0.03em;
+	// Derived from the app's own text colour so it follows n8n's theme, not the OS color-scheme
+	// (light-dark() resolved to white on a light UI under a dark OS).
+	--wireframe--ink: var(--text-color);
+	--wireframe--border-width: 2px;
+	--wireframe--border: var(--wireframe--border-width) solid var(--wireframe--ink);
+	--wireframe--radius: var(--radius--lg);
+	--wireframe--hover-fill: color-mix(in srgb, var(--wireframe--ink) 6%, transparent);
+
+	// Striped "this is a preview, not the thing itself" surface.
+	--wireframe--stripe-ink: color-mix(in srgb, var(--wireframe--ink) 7%, transparent);
+	--wireframe--stripe-base: color-mix(
+		in srgb,
+		var(--wireframe--ink) 7%,
+		var(--background--surface)
+	);
+	--wireframe--stripes: repeating-linear-gradient(
+		-45deg,
+		var(--wireframe--stripe-ink) 0 6px,
+		transparent 6px 14px
+	);
+}
+
+// Wireframe: trace bubbles over the canvas while an output card is hovered.
+.vue-flow__node {
+	transition: opacity 120ms ease;
+}
+
+.wireframe-trace-layer {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1000;
+}
+
+.wireframe-trace-bubble {
+	position: absolute;
+	transform: translate(-50%, -100%);
+	display: flex;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--background--surface);
+	font-family: var(--wireframe--font-family);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	color: var(--color--secondary, #7d4cdb);
+	white-space: nowrap;
+
+	span + span::before {
+		content: '·';
+		margin-right: var(--spacing--4xs);
+		color: var(--text-color--subtler);
+	}
+
+	&.is-output {
+		color: var(--text-color);
+		background: var(--wireframe--hover-fill);
+		max-width: 22rem;
+		white-space: normal;
+	}
+}

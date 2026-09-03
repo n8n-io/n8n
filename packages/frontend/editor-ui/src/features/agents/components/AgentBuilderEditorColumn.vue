@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TabOptions } from '@n8n/design-system';
 import { computed } from 'vue';
 import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -29,7 +30,7 @@ import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
-	mainTabOptions: Array<{ label: string; value: AgentBuilderMainTab }>;
+	mainTabOptions: Array<TabOptions<AgentBuilderMainTab>>;
 	localConfig: AgentJsonConfig | null;
 	agent: AgentResource | null;
 	projectId: string;

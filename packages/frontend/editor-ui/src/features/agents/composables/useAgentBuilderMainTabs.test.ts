@@ -43,42 +43,31 @@ describe('useAgentBuilderMainTabs', () => {
 			expect(tabValues()).toEqual(['agent', 'knowledge', 'sessions', 'settings']);
 		});
 
-		it('appends the evals tab after settings when the flag is on', () => {
+		// Wireframe: the tab stays hidden even with the flag on while eval cases are
+		// surfaced in the preview instead.
+		it('keeps the evals tab hidden when the flag is on', () => {
 			evalsFlag.value = true;
 
-			expect(tabValues()).toEqual(['agent', 'knowledge', 'sessions', 'settings', 'evals']);
+			expect(tabValues()).toEqual(['agent', 'knowledge', 'sessions', 'settings']);
 		});
 
-		it('reacts to the flag resolving after the first frame', async () => {
+		it('stays hidden when the flag resolves after the first frame', async () => {
 			const { mainTabOptions } = setup();
 			expect(mainTabOptions.value.map((tab) => tab.value)).not.toContain('evals');
 
-			// PostHog resolves asynchronously, so the tab row has to pick it up
-			// rather than being computed once at setup.
 			evalsFlag.value = true;
 			await nextTick();
 
-			expect(mainTabOptions.value.map((tab) => tab.value)).toContain('evals');
+			expect(mainTabOptions.value.map((tab) => tab.value)).not.toContain('evals');
 		});
 	});
 
 	describe('section query param', () => {
-		it('round-trips evals through the query param like the sibling tabs', async () => {
-			evalsFlag.value = true;
-			const { activeMainTab } = setup();
-
-			activeMainTab.value = 'evals';
-			await nextTick();
-
-			expect(replace).toHaveBeenCalledWith({ query: { section: 'evals' } });
-			expect(activeMainTab.value).toBe('evals');
-		});
-
-		it('selects the evals tab from a deep link when the flag is on', () => {
+		it('falls back to the agent tab for an evals deep link while the tab is hidden', () => {
 			evalsFlag.value = true;
 			route.query = { section: 'evals' };
 
-			expect(setup().activeMainTab.value).toBe('evals');
+			expect(setup().activeMainTab.value).toBe('agent');
 		});
 
 		it('falls back to the agent tab for an evals deep link while the flag is off', () => {
@@ -89,7 +78,7 @@ describe('useAgentBuilderMainTabs', () => {
 			expect(setup().activeMainTab.value).toBe('agent');
 		});
 
-		it('honours an evals deep link once a late-resolving flag turns on', async () => {
+		it('keeps an evals deep link on the agent tab even once a late flag turns on', async () => {
 			route.query = { section: 'evals' };
 			const { activeMainTab } = setup();
 			expect(activeMainTab.value).toBe('agent');
@@ -97,7 +86,7 @@ describe('useAgentBuilderMainTabs', () => {
 			evalsFlag.value = true;
 			await nextTick();
 
-			expect(activeMainTab.value).toBe('evals');
+			expect(activeMainTab.value).toBe('agent');
 		});
 
 		it('leaves the sibling tabs unaffected by the flag', () => {

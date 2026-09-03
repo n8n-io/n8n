@@ -3,6 +3,7 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentEvalDraftCase,
+	type AgentEvalGeneratedCase,
 	type AgentJsonConfig,
 	type GenerateDraftCasesOptions,
 	type GenerateDraftCasesResult,
@@ -48,6 +49,8 @@ const GENERATE_TIMEOUT_MS = 60_000;
 // drafts have no gold answer and are never auto-graded.
 const INPUT_COLUMN = 'input';
 const CRITERIA_COLUMN = 'criteria';
+// The sampled input flavor, so surfaces can offer cases by kind.
+const TYPE_COLUMN = 'type';
 
 // How many name variants ("… (2)", "… (3)") to try before giving up on a
 // per-project name clash.
@@ -105,7 +108,7 @@ export class AgentEvalCaseGenerationService {
 
 		const count = clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
-		const tuples = sampleDimensionTuples(capabilities, count);
+		const tuples = sampleDimensionTuples(capabilities, count, options.flavors);
 
 		const summary = buildAgentSummary(config);
 		const generated = await this.invokeModel(
@@ -116,7 +119,11 @@ export class AgentEvalCaseGenerationService {
 		// Cap to the requested count and bound each field: the model output is
 		// untrusted, so a runaway or prompt-injected response can't balloon the
 		// persisted dataset.
-		const cases = boundCases(generated, tuples.length);
+		// Each case answers exactly one scenario, in order, so its flavor is the tuple's.
+		const cases: AgentEvalGeneratedCase[] = boundCases(generated, tuples.length).map((c, i) => ({
+			...c,
+			flavor: tuples[i].flavor,
+		}));
 
 		// Blank/whitespace names fall back to the agent-derived default.
 		const trimmedName = options.datasetName?.trim();
@@ -245,11 +252,12 @@ export class AgentEvalCaseGenerationService {
 		agentId: string,
 		createdById: string,
 		baseName: string,
-		cases: AgentEvalDraftCase[],
+		cases: AgentEvalGeneratedCase[],
 	): Promise<{ datasetId: string; dataTableId: string }> {
 		const columns = [
 			{ name: INPUT_COLUMN, type: 'string' as const },
 			{ name: CRITERIA_COLUMN, type: 'string' as const },
+			{ name: TYPE_COLUMN, type: 'string' as const },
 		];
 
 		let table: Awaited<ReturnType<DataTableService['createDataTable']>> | undefined;
@@ -270,6 +278,7 @@ export class AgentEvalCaseGenerationService {
 			const rows = cases.map((c) => ({
 				[INPUT_COLUMN]: c.input,
 				[CRITERIA_COLUMN]: c.whatToCheck,
+				[TYPE_COLUMN]: c.flavor,
 			}));
 			await this.dataTableService.insertRows(table.id, projectId, rows);
 
@@ -278,7 +287,7 @@ export class AgentEvalCaseGenerationService {
 				agentId,
 				datasetSource: 'data_table',
 				datasetRef: { dataTableId: table.id },
-				columnMapping: { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN },
+				columnMapping: { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN, type: TYPE_COLUMN },
 				createdById,
 			});
 			return { datasetId: dataset.id, dataTableId: table.id };

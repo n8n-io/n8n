@@ -18,6 +18,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
+import { useStorage } from '@vueuse/core';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useRoute, useRouter } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
@@ -25,7 +27,16 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nSpinner,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import WorkflowOutputStackCards from '@/app/components/MainHeader/WorkflowOutputStackCards.vue';
+import { useWorkflowOutputStack } from '@/app/composables/useWorkflowOutputStack';
 import VoteButtons from './VoteButtons.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
@@ -115,6 +126,25 @@ const hasAnnotation = computed(
 );
 
 const executionsStore = useExecutionsStore();
+// Wireframe: a run's detail is its stack. The summary prop has no run data, so
+// the full execution is fetched for the strip.
+const fullExecution = ref<IExecutionResponse | null>(null);
+watch(
+	() => props.execution?.id,
+	async (id) => {
+		fullExecution.value = null;
+		if (!id) return;
+		try {
+			fullExecution.value = (await executionsStore.fetchExecution(id)) ?? null;
+		} catch {
+			fullExecution.value = null;
+		}
+	},
+	{ immediate: true },
+);
+const outputStack = useWorkflowOutputStack({ execution: fullExecution });
+// Shown by default; the choice sticks across runs.
+const outputsCollapsed = useStorage('N8N_WIREFRAME_EXEC_OUTPUTS_COLLAPSED', false);
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 const workflowVersion = ref<WorkflowVersion | null>(null);
@@ -387,6 +417,26 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					v-if="isAnnotationEnabled && execution"
 					:execution="execution"
 				/>
+				<div
+					v-if="outputStack.all.value.length > 0"
+					:class="$style.stackStrip"
+					data-testid="execution-preview-stack"
+				>
+					<button
+						type="button"
+						:class="$style.stackTitle"
+						:aria-expanded="!outputsCollapsed"
+						data-testid="execution-preview-stack-toggle"
+						@click="outputsCollapsed = !outputsCollapsed"
+					>
+						<N8nIcon :icon="outputsCollapsed ? 'chevron-right' : 'chevron-down'" :size="14" />
+						{{ locale.baseText('workflows.stack.runDetail') }}
+						<span v-if="outputsCollapsed" :class="$style.stackCount">{{
+							outputStack.visible.value.length
+						}}</span>
+					</button>
+					<WorkflowOutputStackCards v-if="!outputsCollapsed" :stack="outputStack" hide-run-link />
+				</div>
 			</div>
 
 			<div :class="$style.actions">
@@ -478,6 +528,37 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 </template>
 
 <style module lang="scss">
+// Wireframe: the run's stack under its details.
+.stackStrip {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
+	max-width: 40rem;
+}
+
+.stackTitle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	align-self: flex-start;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--sm);
+	letter-spacing: var(--wireframe--letter-spacing);
+	color: var(--text-color);
+	cursor: pointer;
+}
+
+.stackCount {
+	margin-left: var(--spacing--3xs);
+	color: var(--text-color--subtler);
+	font-weight: normal;
+}
+
 .previewContainer {
 	position: relative;
 	height: 100%;

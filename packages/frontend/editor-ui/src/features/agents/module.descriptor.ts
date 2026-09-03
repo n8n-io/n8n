@@ -4,6 +4,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
+	AGENT_REVIEW_VIEW,
 	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -55,6 +56,16 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: NewAgentView,
 			meta: {
 				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			// Wireframe: what an invited reviewer sees. Token is `project~agent~reviewer`.
+			name: AGENT_REVIEW_VIEW,
+			path: '/review/:token',
+			component: async () => await import('@/features/agents/views/AgentReviewerView.vue'),
+			meta: {
+				layout: 'auth',
+				middleware: ['authenticated'],
 			},
 		},
 		{

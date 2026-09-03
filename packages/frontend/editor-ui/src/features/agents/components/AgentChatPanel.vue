@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	toRef,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -309,13 +318,16 @@ async function onSubmit() {
 	}
 }
 
-function sendMessageFromOutside(message: string) {
+async function sendMessageFromOutside(message: string) {
 	if (hasOpenApproval.value) return;
 	inputText.value = message;
-	void onSubmit();
+	// An externally owned draft round-trips through the parent prop, so the
+	// new text is only visible to `onSubmit` after the next tick.
+	await nextTick();
+	await onSubmit();
 }
 
-defineExpose({ focusInput, sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside, messages });
 
 onMounted(() => {
 	void loadHistory();
@@ -395,6 +407,7 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<ChatInputBase
 				ref="chatInput"
 				v-model="inputText"

@@ -3302,19 +3302,22 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
 	}
 
-	it('selects the evals tab for a request raised before it mounted', async () => {
+	// Wireframe: the Evals tab is hidden regardless of the flag, so a focus
+	// request has no tab to land on and is ignored like the flag-off case.
+	it('ignores a request raised before it mounted while the tab is hidden', async () => {
 		const wrapper = await seedFocusRequest('a1', false);
 		await settle(evalsTabShown(wrapper));
 
-		expect(evalsTabShown(wrapper)()).toBe(true);
+		expect(evalsTabShown(wrapper)()).toBe(false);
 		expect(generateDraftCasesMock).not.toHaveBeenCalled();
 	});
 
-	it('starts generation when the request asks for it', async () => {
-		await seedFocusRequest('a1', true);
-		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+	it('does not start generation while the tab is hidden', async () => {
+		const wrapper = await seedFocusRequest('a1', true);
+		await settle(evalsTabShown(wrapper));
 
-		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
 	});
 
 	it('ignores a request naming a different agent', async () => {

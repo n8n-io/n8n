@@ -10,23 +10,30 @@ import {
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, toRef, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
+import { useAgentReviewStore } from '../agentReview.store';
+import { useAgentChecks } from '../composables/useAgentChecks';
+import { useAgentReviewQueue } from '../composables/useAgentReviewQueue';
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import { useWireframeDestination } from '../composables/useWireframeDestination';
+import { useWireframeReviewers } from '../composables/useWireframeReviewers';
 import { AGENT_PREVIEW_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
+	AgentSendToAssistantEvent,
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
+import AgentPreviewDestination from './AgentPreviewDestination.vue';
+import AgentPreviewReviewers from './AgentPreviewReviewers.vue';
 
 interface SessionOption {
 	id: string;
@@ -71,12 +78,59 @@ const emit = defineEmits<{
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const dock = useTemplateRef<HTMLElement>('dock');
+
+// Wireframe: the dock owns checks, reviewers and the review queue so the header
+// badge, the review card and the Sessions tab agree.
+const checks = useAgentChecks({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	config: toRef(props, 'localConfig'),
+	versionId: computed(() => props.agent?.versionId),
+	isRunnable: computed(() => props.agent?.isRunnable === true),
+	editingLocked: computed(() => false),
+});
+const reviewers = useWireframeReviewers(toRef(props, 'agentId'));
+const review = useAgentReviewQueue({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	currentSessionId: toRef(props, 'effectiveSessionId'),
+	checks,
+	reviewers,
+});
+const { destination } = useWireframeDestination(toRef(props, 'effectiveSessionId'));
+
+const reviewStore = useAgentReviewStore();
+watch(
+	[review.attentionCount, () => props.agentId],
+	([count, agentId]) => {
+		reviewStore.setAttention(agentId, count);
+		reviewStore.setNeedsEyeThreadIds(
+			agentId,
+			review.queue.value.flatMap((m) => (m.kind === 'live' && m.threadId ? [m.threadId] : [])),
+		);
+	},
+	{ immediate: true },
+);
+// The Sessions tab can ask the dock to open review mode.
+watch(
+	() => reviewStore.pendingReviewOpen,
+	(pending) => {
+		if (pending && reviewStore.consumeReviewRequest(props.agentId)) review.open();
+	},
+	{ immediate: true },
+);
+watch(
+	() => props.isOpen,
+	(isOpen) => {
+		if (!isOpen) review.close();
+	},
+);
 const {
 	isEnabled: isLangSmithExportEnabled,
 	isExporting,
@@ -203,7 +257,31 @@ useKeybindings({
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
+				<template v-if="review.active.value">
+					<button
+						type="button"
+						:class="$style.backToChat"
+						data-testid="agent-preview-back-to-chat"
+						@click="review.close()"
+					>
+						<N8nIcon icon="arrow-left" :size="14" />
+						{{ i18n.baseText('agents.builder.review.backToChat') }}
+					</button>
+					<span :class="$style.reviewingLabel" data-testid="agent-preview-reviewing-label">
+						{{
+							review.done.value
+								? i18n.baseText('agents.builder.checks.caughtUp')
+								: i18n.baseText('agents.builder.review.progress', {
+										interpolate: {
+											n: String(review.position.value),
+											total: String(review.total.value),
+										},
+									})
+						}}
+					</span>
+				</template>
 				<N8nDropdownMenu
+					v-else
 					:items="sessionDropdownOptions"
 					placement="bottom-start"
 					:extra-popper-class="$style.sessionDropdownMenu"
@@ -238,9 +316,24 @@ useKeybindings({
 					</template>
 				</N8nDropdownMenu>
 
+				<AgentPreviewDestination
+					v-if="!review.active.value"
+					v-model="destination"
+					:class="$style.destination"
+				/>
+
 				<div :class="$style.actions">
+					<AgentPreviewReviewers
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:checks="checks"
+						:review="review"
+						:reviewers="reviewers"
+						@review="review.open()"
+						@open-check="review.open(`check:${$event.rowId}`)"
+					/>
 					<N8nTooltip
-						v-if="props.hasSession && props.effectiveSessionId"
+						v-if="!review.active.value && props.hasSession && props.effectiveSessionId"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -258,7 +351,12 @@ useKeybindings({
 					</N8nTooltip>
 
 					<N8nTooltip
-						v-if="isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId"
+						v-if="
+							!review.active.value &&
+							isLangSmithExportEnabled &&
+							props.hasSession &&
+							props.effectiveSessionId
+						"
 						:content="i18n.baseText('agentSessions.langsmithExport.button')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -277,6 +375,7 @@ useKeybindings({
 					</N8nTooltip>
 
 					<KeyboardShortcutTooltip
+						v-if="!review.active.value"
 						placement="bottom"
 						:label="i18n.baseText('agents.builder.chat.newChat.label')"
 						:shortcut="{ metaKey: true, shiftKey: true, keys: [';'] }"
@@ -324,6 +423,9 @@ useKeybindings({
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:before-send="props.beforeSend"
+				:review="review"
+				:reviewers="reviewers"
+				:destination="destination"
 				layout="dock"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
@@ -334,6 +436,42 @@ useKeybindings({
 </template>
 
 <style lang="scss" module>
+.backToChat,
+.reviewingLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: 1.75rem;
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	color: var(--wireframe--ink);
+	white-space: nowrap;
+}
+
+.backToChat {
+	padding: 0 var(--spacing--2xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--background--surface);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--wireframe--hover-fill);
+	}
+}
+
+.reviewingLabel {
+	margin-left: var(--spacing--2xs);
+	color: var(--text-color--subtler);
+}
+
+.destination {
+	margin-left: auto;
+	margin-right: var(--spacing--2xs);
+}
+
 .dock {
 	position: absolute;
 	top: 0;

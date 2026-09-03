@@ -49,11 +49,16 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
+// Wireframe: outputs are judged from the header badge and the Executions ledger,
+// so the Evaluations tab goes. Flip to false to bring it back.
+const WIREFRAME_HIDE_EVALUATIONS_TAB = true;
 const tabBarItems = computed(() => {
 	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+		...(WIREFRAME_HIDE_EVALUATIONS_TAB
+			? []
+			: [{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') }]),
 	];
 });
 

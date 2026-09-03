@@ -17,6 +17,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system';
 import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowOutputStack from '@/app/components/MainHeader/WorkflowOutputStack.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
@@ -393,6 +394,8 @@ onBeforeUnmount(() => {
 		</span>
 
 		<ConnectionTracker class="actions">
+			<!-- Wireframe: outputs badge, same words as the agent badge. -->
+			<WorkflowOutputStack v-if="!isNewWorkflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				:is-archived="isArchived"

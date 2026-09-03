@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryValue } from 'vue-router';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { TabOptions } from '@n8n/design-system';
 
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
+import { useAgentReviewStore } from '../agentReview.store';
 import { EXECUTIONS_SECTION_KEY } from '../constants';
 
 export type AgentBuilderMainTab = 'agent' | 'knowledge' | 'sessions' | 'settings' | 'evals';
@@ -17,6 +19,10 @@ type AgentBuilderSection =
 	| null;
 
 const SECTION_QUERY_PARAM = 'section';
+
+// Wireframe: the Evals tab is hidden while we explore surfacing eval cases inside
+// the preview instead. Flip to false to bring the tab back.
+const WIREFRAME_HIDE_EVALS_TAB = true;
 
 function getSectionFromQuery(
 	section: LocationQueryValue | LocationQueryValue[] | undefined,
@@ -50,7 +56,8 @@ export function useAgentBuilderMainTabs({
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
-	const isEvalsEnabled = useAgentEvalsFlag();
+	const isEvalsFlagEnabled = useAgentEvalsFlag();
+	const isEvalsEnabled = computed(() => isEvalsFlagEnabled.value && !WIREFRAME_HIDE_EVALS_TAB);
 	const selectedSection = ref<AgentBuilderSection>(null);
 
 	async function setSelectedSection(section: AgentBuilderSection) {
@@ -74,13 +81,19 @@ export function useAgentBuilderMainTabs({
 		},
 	});
 
-	const mainTabOptions = computed<Array<{ label: string; value: AgentBuilderMainTab }>>(() => [
+	// Wireframe: Sessions is the ledger — it carries the dot when something wants an eye.
+	const reviewStore = useAgentReviewStore();
+	const mainTabOptions = computed<Array<TabOptions<AgentBuilderMainTab>>>(() => [
 		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
 		{
 			label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
 			value: 'knowledge',
 		},
-		{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
+		{
+			label: i18n.baseText('agents.builder.header.tab.executions'),
+			value: 'sessions',
+			notification: reviewStore.attentionFor(String(route.params.agentId ?? '')) > 0,
+		},
 		{
 			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
 			value: 'settings',

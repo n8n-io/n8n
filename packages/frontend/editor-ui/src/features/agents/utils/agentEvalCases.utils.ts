@@ -4,7 +4,7 @@
  * rules — the part that would silently corrupt a dataset if wrong — are testable
  * on their own.
  */
-import type { AgentEvalColumnMapping } from '@n8n/api-types';
+import { caseInputFlavorSchema, type AgentEvalColumnMapping } from '@n8n/api-types';
 
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/core/dataTable/constants';
 import type { DataTableRow, DataTableValue } from '@/features/core/dataTable/dataTable.types';
@@ -22,6 +22,8 @@ import type {
 export type AgentEvalCaseColumns = {
 	input: string;
 	whatToCheck: string | null;
+	/** Column holding the sampled flavor; absent on datasets that predate it. */
+	type?: string;
 };
 
 /**
@@ -44,7 +46,12 @@ export const resolveCaseColumns = (
 	// and the check renders read-only rather than corrupting the row.
 	const criteria = mapping.criteria === mapping.input ? undefined : mapping.criteria;
 
-	return { input: mapping.input, whatToCheck: criteria ?? null };
+	const type =
+		mapping.type && mapping.type !== mapping.input && mapping.type !== criteria
+			? mapping.type
+			: undefined;
+
+	return { input: mapping.input, whatToCheck: criteria ?? null, ...(type ? { type } : {}) };
 };
 
 /** Narrows a dataset to its Data Table backing — the single place the ref union is split. */
@@ -96,10 +103,14 @@ export const toAgentEvalCase = (
 	const rowId = row[DEFAULT_ID_COLUMN_NAME];
 	if (typeof rowId !== 'number') return null;
 
+	// Only a recognised flavor is surfaced; anything else reads as "untyped".
+	const flavor = columns.type ? caseInputFlavorSchema.safeParse(row[columns.type]) : null;
+
 	return {
 		rowId,
 		input: toDisplayText(row[columns.input]),
 		whatToCheck: columns.whatToCheck === null ? '' : toDisplayText(row[columns.whatToCheck]),
+		...(flavor?.success ? { flavor: flavor.data } : {}),
 	};
 };
 

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nOption, N8nPopover, N8nSelect } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nOption,
+	N8nPopover,
+	N8nSelect,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElDatePicker } from 'element-plus';
 import { computed } from 'vue';
@@ -13,10 +20,12 @@ import {
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
-const props = defineProps<{ modelValue: AgentSessionFilters }>();
+// Wireframe: `needsEye` narrows the list to sessions still waiting for a verdict.
+const props = defineProps<{ modelValue: AgentSessionFilters; needsEye?: boolean }>();
 
 const emit = defineEmits<{
 	filterChanged: [value: AgentSessionFilters];
+	'update:needsEye': [value: boolean];
 }>();
 
 const i18n = useI18n();
@@ -97,6 +106,14 @@ function reset() {
 
 		<template #content>
 			<div data-test-id="agent-sessions-filter-form">
+				<div :class="$style.group">
+					<N8nCheckbox
+						:model-value="props.needsEye === true"
+						:label="i18n.baseText('agents.builder.review.needsMyEyeFilter')"
+						data-testid="agent-sessions-filter-needs-eye"
+						@update:model-value="emit('update:needsEye', $event)"
+					/>
+				</div>
 				<div :class="$style.group">
 					<label for="agent-sessions-filter-status">{{
 						i18n.baseText('agentSessions.filters.status')

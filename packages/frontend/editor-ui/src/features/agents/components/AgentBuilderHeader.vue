@@ -16,7 +16,6 @@ import {
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
-	N8nToggle,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
@@ -85,11 +84,9 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
-const previewLabel = computed(() =>
-	props.isPreviewOpen
-		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
+// Wireframe: in the assistant the preview is never gated on runnability.
+const isPreviewDisabled = computed(
+	() => !props.isPreviewOpen && !props.artifactMode && props.agent?.isRunnable !== true,
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
@@ -203,16 +200,21 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				action="preview"
 				:issues="props.configValidationIssues ?? []"
 			>
-				<N8nToggle
-					:model-value="props.isPreviewOpen"
-					variant="ghost"
-					size="medium"
-					icon="play"
-					:label="previewLabel"
+				<!-- Wireframe: same Preview button on agents and workflows. -->
+				<button
+					type="button"
+					:class="[
+						$style.wireframePreview,
+						{ [$style.wireframePreviewActive]: props.isPreviewOpen },
+					]"
+					:aria-pressed="props.isPreviewOpen"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
-				/>
+				>
+					<N8nIcon icon="play" :size="12" />
+					<span>{{ i18n.baseText('agents.builder.preview.button') }}</span>
+				</button>
 			</AgentValidationTooltip>
 			<AgentPublishButton
 				:agent="agent"
@@ -348,5 +350,33 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 
 .headerActionsMenu {
 	--n8n--dropdown-menu-width: var(--spacing--5xl);
+}
+
+.wireframePreview {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: 1.75rem;
+	padding: 0 var(--spacing--2xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--background--surface);
+	color: var(--wireframe--ink);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	white-space: nowrap;
+	cursor: pointer;
+
+	&:hover,
+	&.wireframePreviewActive {
+		background: var(--wireframe--hover-fill);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
 }
 </style>

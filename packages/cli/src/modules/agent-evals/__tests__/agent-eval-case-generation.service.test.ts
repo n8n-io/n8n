@@ -164,19 +164,20 @@ describe('AgentEvalCaseGenerationService', () => {
 			expect.stringContaining('Write exactly 6'),
 			expect.anything(),
 		);
-		// Table has the input + criteria string columns.
+		// Table has the input + criteria + type string columns.
 		expect(dataTableService.createDataTable).toHaveBeenCalledWith('project-1', {
 			name: 'Draft cases for Support Bot',
 			columns: [
 				{ name: 'input', type: 'string' },
 				{ name: 'criteria', type: 'string' },
+				{ name: 'type', type: 'string' },
 			],
 		});
-		// Rows map input → input, whatToCheck → criteria.
+		// Rows map input → input, whatToCheck → criteria, sampled flavor → type.
 		expect(dataTableService.insertRows).toHaveBeenCalledWith(
 			'dt-1',
 			'project-1',
-			cases.map((c) => ({ input: c.input, criteria: c.whatToCheck })),
+			cases.map((c) => ({ input: c.input, criteria: c.whatToCheck, type: expect.any(String) })),
 		);
 		// Dataset points at the table and never carries an expectedOutput (no gold).
 		expect(datasetRepository.createDataset).toHaveBeenCalledWith({
@@ -184,10 +185,14 @@ describe('AgentEvalCaseGenerationService', () => {
 			agentId: 'agent-1',
 			datasetSource: 'data_table',
 			datasetRef: { dataTableId: 'dt-1' },
-			columnMapping: { input: 'input', criteria: 'criteria' },
+			columnMapping: { input: 'input', criteria: 'criteria', type: 'type' },
 			createdById: 'user-1',
 		});
-		expect(result).toEqual({ datasetId: 'ds-1', dataTableId: 'dt-1', cases });
+		expect(result).toEqual({
+			datasetId: 'ds-1',
+			dataTableId: 'dt-1',
+			cases: cases.map((c) => ({ ...c, flavor: expect.any(String) })),
+		});
 	});
 
 	it('honors a custom count in the prompt', async () => {
@@ -259,7 +264,12 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		// 8 returned, 2 blank dropped → 6 valid, capped at the requested 6.
 		expect(result.cases).toHaveLength(6);
-		expect(result.cases[0]).toEqual({ input: 'needs trimming', whatToCheck: 'ok' });
+		// The first sampled tuple is the happy path, so the first case carries that flavor.
+		expect(result.cases[0]).toEqual({
+			input: 'needs trimming',
+			whatToCheck: 'ok',
+			flavor: 'happy_path',
+		});
 		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
 			input: string;
 			criteria: string;
@@ -323,6 +333,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			columns: [
 				{ name: 'input', type: 'string' },
 				{ name: 'criteria', type: 'string' },
+				{ name: 'type', type: 'string' },
 			],
 		});
 		expect(datasetRepository.createDataset).toHaveBeenCalledWith(

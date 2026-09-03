@@ -8,14 +8,14 @@
  * predictable and testable; the model only fills each tuple with concrete text.
  */
 
+import { CASE_INPUT_FLAVORS as ALL_CASE_INPUT_FLAVORS, type CaseInputFlavor } from '@n8n/api-types';
+
 /** How much work a case implies for the agent. */
 export type CaseDifficulty = 'simple' | 'multi_step';
 
-/**
- * The shape of the user input, so the sample spans well-formed requests as well
- * as the messy ones a real agent has to cope with.
- */
-export type CaseInputFlavor = 'happy_path' | 'underspecified' | 'out_of_scope' | 'adversarial';
+// The flavor axis is shared with the frontend (it's persisted per case), so the
+// enum lives in api-types and is only re-exported here.
+export type { CaseInputFlavor };
 
 /** One point in the dimension space; becomes exactly one generated case. */
 export interface DimensionTuple {
@@ -26,12 +26,7 @@ export interface DimensionTuple {
 }
 
 export const CASE_DIFFICULTIES: readonly CaseDifficulty[] = ['simple', 'multi_step'];
-export const CASE_INPUT_FLAVORS: readonly CaseInputFlavor[] = [
-	'happy_path',
-	'underspecified',
-	'out_of_scope',
-	'adversarial',
-];
+export const CASE_INPUT_FLAVORS: readonly CaseInputFlavor[] = ALL_CASE_INPUT_FLAVORS;
 
 /** Fallback capability label when the agent config declares no tools/skills. */
 export const GENERAL_CAPABILITY = 'general';
@@ -46,13 +41,19 @@ export const GENERAL_CAPABILITY = 'general';
  * combination repeats it walks to the next unused grid cell, keeping the tuples
  * distinct until the grid is exhausted, after which the grid is cycled.
  */
-export function sampleDimensionTuples(capabilities: string[], count: number): DimensionTuple[] {
+export function sampleDimensionTuples(
+	capabilities: string[],
+	count: number,
+	flavors: readonly CaseInputFlavor[] = CASE_INPUT_FLAVORS,
+): DimensionTuple[] {
 	if (count <= 0) return [];
 
 	const caps = capabilities.length > 0 ? capabilities : [GENERAL_CAPABILITY];
+	// An empty restriction is treated as "no restriction" rather than an empty grid.
+	const flavorAxis = flavors.length > 0 ? flavors : CASE_INPUT_FLAVORS;
 	const nCaps = caps.length;
 	const nDiff = CASE_DIFFICULTIES.length;
-	const nFlavors = CASE_INPUT_FLAVORS.length;
+	const nFlavors = flavorAxis.length;
 	const gridSize = nCaps * nDiff * nFlavors;
 
 	const key = (c: number, d: number, f: number) => `${c}:${d}:${f}`;
@@ -95,7 +96,7 @@ export function sampleDimensionTuples(capabilities: string[], count: number): Di
 		tuples.push({
 			capability: caps[c],
 			difficulty: CASE_DIFFICULTIES[d],
-			flavor: CASE_INPUT_FLAVORS[f],
+			flavor: flavorAxis[f],
 		});
 	}
 

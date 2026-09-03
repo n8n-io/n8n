@@ -39,11 +39,12 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
+	AgentSendToAssistantEvent,
 	AgentSkill,
 } from '../types';
+import { isAgentReviewAssistantDraftEvent } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -214,7 +215,7 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
+async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 	const session = sessionsStore.threads.find(({ id }) => id === threadId);
@@ -228,7 +229,9 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle,
-		...(event
+		// Wireframe: the review card hands over its own draft.
+		...(isAgentReviewAssistantDraftEvent(event) ? { initialDraft: event.initialDraft } : {}),
+		...(event && !isAgentReviewAssistantDraftEvent(event)
 			? {
 					executionId: event.executionId,
 					initialDraft: buildAgentFixWithAssistantPrompt(
@@ -599,7 +602,9 @@ function startNewPreviewSession() {
 }
 
 async function onOpenPreview() {
-	if (!isBuilt.value) return;
+	// Wireframe: inside the assistant the preview is available from the start; a
+	// misconfigured agent surfaces its missing pieces in the chat instead of a gate.
+	if (!isBuilt.value && !isArtifactMode.value) return;
 
 	try {
 		await flushAutosave();
@@ -1669,6 +1674,14 @@ async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
 		bindPreviewSession();
 	}
 }
+
+// Wireframe: open the preview as soon as the assistant finishes building the
+// agent, before any model/credential setup, so the user lands in the preview.
+watch([() => props.artifactEditingLocked, initialized], ([locked, isInitialized], [wasLocked]) => {
+	if (!isArtifactMode.value || !isInitialized || locked || !wasLocked) return;
+	if (persistedPreviewOpen.value) return;
+	openArtifactPreview();
+});
 
 watch(
 	[() => props.artifactPreviewSessionId, initialized],

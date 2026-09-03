@@ -48,6 +48,8 @@ export const agentEvalColumnMappingSchema = z.object({
 	input: z.string().min(1),
 	expectedOutput: z.string().min(1).optional(),
 	criteria: z.string().min(1).optional(),
+	/** Column holding the case's input flavor (see `caseInputFlavorSchema`), when the dataset records one. */
+	type: z.string().min(1).optional(),
 });
 export type AgentEvalColumnMapping = z.infer<typeof agentEvalColumnMappingSchema>;
 
@@ -256,11 +258,30 @@ export const agentEvalDraftCaseSchema = z.object({
 });
 export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 
+/**
+ * The shape of a generated case's input. Sampled in code by the generator (not
+ * chosen by the model) and persisted alongside the case so surfaces can offer
+ * "a kind of test" rather than an undifferentiated list.
+ */
+export const caseInputFlavorSchema = z.enum([
+	'happy_path',
+	'underspecified',
+	'out_of_scope',
+	'adversarial',
+]);
+export type CaseInputFlavor = z.infer<typeof caseInputFlavorSchema>;
+export const CASE_INPUT_FLAVORS = caseInputFlavorSchema.options;
+
+/** A draft case as the generator returns it: the model's text plus the sampled flavor. */
+export type AgentEvalGeneratedCase = AgentEvalDraftCase & { flavor: CaseInputFlavor };
+
 // Request body for the generate-cases endpoint. `count` is a positive int; the
 // service clamps it to its supported maximum rather than rejecting.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
+	/** Restrict sampling to these flavors (e.g. draft one adversarial case on demand). */
+	flavors: z.array(caseInputFlavorSchema).min(1).optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
@@ -269,5 +290,5 @@ export class GenerateDraftCasesOptionsDto extends Z.class(generateDraftCasesOpti
 export type GenerateDraftCasesResult = {
 	datasetId: string;
 	dataTableId: string;
-	cases: AgentEvalDraftCase[];
+	cases: AgentEvalGeneratedCase[];
 };

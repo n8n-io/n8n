@@ -28,6 +28,19 @@ export interface AgentFixWithAssistantEvent {
 	failures: AgentFixWithAssistantFailure[];
 }
 
+/** Wireframe: a hand-written draft for the Assistant (review card → Fix with Assistant). */
+export interface AgentReviewAssistantDraftEvent {
+	initialDraft: string;
+}
+
+export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentReviewAssistantDraftEvent;
+
+export function isAgentReviewAssistantDraftEvent(
+	event: AgentSendToAssistantEvent | undefined,
+): event is AgentReviewAssistantDraftEvent {
+	return event !== undefined && 'initialDraft' in event;
+}
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.

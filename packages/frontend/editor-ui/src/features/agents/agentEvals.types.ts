@@ -1,7 +1,7 @@
 // Re-exports from @n8n/api-types so agent-eval FE callers don't reach across
 // packages. New shared type? Export it from `@n8n/api-types` first.
 
-import type { AgentEvalDatasetRecord, DataTableDatasetRef } from '@n8n/api-types';
+import type { AgentEvalDatasetRecord, CaseInputFlavor, DataTableDatasetRef } from '@n8n/api-types';
 
 export type {
 	AgentEvalColumnMapping,
@@ -46,6 +46,8 @@ export type AgentEvalCase = {
 	rowId: number;
 	input: string;
 	whatToCheck: string;
+	/** Sampled input flavor, when the dataset records one (generated datasets do). */
+	flavor?: CaseInputFlavor;
 };
 
 /**
