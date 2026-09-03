@@ -10,7 +10,6 @@ import {
 	type IDataObject,
 	type ITriggerFunctions,
 	deepCopy,
-	NodeOperationError,
 	type IBinaryKeyData,
 } from 'n8n-workflow';
 
@@ -148,7 +147,8 @@ function itemBuilderFor(
 
 		return async (message) => {
 			if (message.source === undefined) {
-				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+				this.logger.warn(`Skipping email UID ${message.uid}: message source missing`);
+				return undefined;
 			}
 			const item = await parseRawEmail.call(this, message.source, prefix);
 			item.json.attributes = { uid: message.uid };
@@ -204,7 +204,8 @@ function itemBuilderFor(
 		return async (message) => {
 			const raw = message.bodyParts?.get('text')?.toString('utf8');
 			if (raw === undefined) {
-				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+				this.logger.warn(`Skipping email UID ${message.uid}: TEXT part missing`);
+				return undefined;
 			}
 			return { json: { raw } };
 		};
