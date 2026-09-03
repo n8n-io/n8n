@@ -56,6 +56,9 @@ jobs:
     name: Build and verify images (${{ matrix.target }})
     needs: build-app
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -68,10 +71,10 @@ jobs:
     timeout-minutes: 90
     env:
       TARGET_PLATFORM: linux/${{ matrix.target }}
-      N8N_IMAGE: n8nio/n8n:shared-build-canary-${{ matrix.target }}
-      N8N_PC_IMAGE: n8nio/n8n:shared-build-canary-${{ matrix.target }}-pc
-      RUNNERS_IMAGE: n8nio/runners:shared-build-canary-${{ matrix.target }}
-      RUNNERS_DISTROLESS_IMAGE: n8nio/runners:shared-build-canary-${{ matrix.target }}-distroless
+      N8N_IMAGE: ghcr.io/${{ github.repository }}-shared-build-canary:n8n-${{ github.run_id }}-${{ matrix.target }}
+      N8N_PC_IMAGE: ghcr.io/${{ github.repository }}-shared-build-canary:n8n-pc-${{ github.run_id }}-${{ matrix.target }}
+      RUNNERS_IMAGE: ghcr.io/${{ github.repository }}-shared-build-canary:runners-${{ github.run_id }}-${{ matrix.target }}
+      RUNNERS_DISTROLESS_IMAGE: ghcr.io/${{ github.repository }}-shared-build-canary:runners-distroless-${{ github.run_id }}-${{ matrix.target }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -95,8 +98,13 @@ jobs:
       - name: Restore the shared Docker context
         run: tar -xf "$RUNNER_TEMP/build-context/build-context.tar"
 
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
       # docker-build-smoke.yml remains the no-cache guard for native builds.
-      - name: Build every image variant with Docker cache
+      - name: Build and push every image variant with Docker cache
         env:
           PLATFORMS: ${{ env.TARGET_PLATFORM }}
           N8N_TAGS: ${{ env.N8N_IMAGE }}
@@ -106,9 +114,20 @@ jobs:
         run: |
           docker buildx bake -f docker/docker-bake.hcl \
             n8n n8n-pc runners runners-distroless \
-            --load \
             --provenance=false \
-            --sbom=false
+            --sbom=false \
+            --set '*.output=type=image,oci-mediatypes=true,push=true'
+
+      - name: Pull images for runtime verification
+        run: |
+          for image in \
+            "$N8N_IMAGE" \
+            "$N8N_PC_IMAGE" \
+            "$RUNNERS_IMAGE" \
+            "$RUNNERS_DISTROLESS_IMAGE"
+          do
+            docker pull "$image"
+          done
 
       - name: Create a token for the Cloud chart smoke check
         id: cloud-token
