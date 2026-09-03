@@ -845,8 +845,12 @@ async function handleSetup(
 
 		// Setup panel v2: a workflow's credential needs are announced to the
 		// persistent panel and the turn continues — no card, no suspension. The
-		// finalize stage and standalone setup (no workflow) keep the card.
-		const panelWorkflowId = isFinalize ? undefined : resolveSetupPanelWorkflowId(context, input);
+		// finalize stage, standalone setup (no workflow), and an explicit user
+		// request to see the picker (`requireUserSelection`) keep the card.
+		const panelWorkflowId =
+			isFinalize || input.requireUserSelection === true
+				? undefined
+				: resolveSetupPanelWorkflowId(context, input);
 		if (isSetupPanelEnabled(context) && panelWorkflowId !== undefined) {
 			return await announceSetupItems(context, input, panelWorkflowId);
 		}

@@ -57,10 +57,30 @@ export function createSetupItemsEmitter(options: {
 		merge(workflowId, items) {
 			const byId = new Map<string, InstanceAiSetupItem>();
 			for (const item of lastSnapshots.get(workflowId)?.items ?? []) byId.set(item.id, item);
-			for (const item of items) byId.set(item.id, item);
+			for (const item of items) {
+				const existing = byId.get(item.id);
+				byId.set(item.id, existing ? mergeSetupItem(existing, item) : item);
+			}
 			return emit(workflowId, [...byId.values()]);
 		},
 	};
+}
+
+/**
+ * Field-level merge for one id: incoming fields win, fields the incoming item
+ * does not carry (e.g. `nodeBindings` from a build snapshot) survive.
+ */
+function mergeSetupItem(
+	existing: InstanceAiSetupItem,
+	incoming: InstanceAiSetupItem,
+): InstanceAiSetupItem {
+	if (existing.kind === 'credential' && incoming.kind === 'credential') {
+		return { ...existing, ...incoming };
+	}
+	if (existing.kind === 'parameters' && incoming.kind === 'parameters') {
+		return { ...existing, ...incoming };
+	}
+	return incoming;
 }
 
 export function credentialSetupItemId(

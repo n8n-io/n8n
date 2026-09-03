@@ -928,6 +928,28 @@ describe('credentials tool', () => {
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 		});
 
+		it('should keep the card when the user explicitly asked to pick a credential', async () => {
+			const { context, emitter } = panelContext();
+			const suspendFn = vi.fn();
+
+			await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'slackApi' }],
+					requireUserSelection: true,
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(emitter.merge).not.toHaveBeenCalled();
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({ requireUserSelection: true }),
+			);
+		});
+
 		it('should keep the card for the finalize stage', async () => {
 			const { context, emitter } = panelContext();
 			const suspendFn = vi.fn();

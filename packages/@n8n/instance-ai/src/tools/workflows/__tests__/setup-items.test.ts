@@ -159,6 +159,45 @@ describe('createSetupItemsEmitter', () => {
 		]);
 		expect(last.payload.items[0]).toMatchObject({ reason: 'to post' });
 	});
+
+	it('keeps node bindings and setupHint from the build snapshot when an announcement lacks them', () => {
+		const { emitter, published } = makeEmitter();
+		const setupHint = {
+			template: { headers: { 'X-Key': '{{api_key}}' } },
+			placeholders: [{ name: 'api_key', title: 'API key' }],
+		};
+		emitter.emit('wf-1', [
+			{
+				id: 'wf-1:credential:httpTemplatedCustomAuth',
+				kind: 'credential',
+				credentialType: 'httpTemplatedCustomAuth',
+				nodeBindings: [{ nodeName: 'Fetch' }],
+				setupHint,
+			},
+		]);
+
+		emitter.merge('wf-1', [
+			{
+				id: 'wf-1:credential:httpTemplatedCustomAuth',
+				kind: 'credential',
+				credentialType: 'httpTemplatedCustomAuth',
+				reason: 'to fetch orders',
+			},
+		]);
+
+		const last = published[1].event;
+		if (last.type !== 'setup-items') throw new Error('expected a setup-items event');
+		expect(last.payload.items).toEqual([
+			{
+				id: 'wf-1:credential:httpTemplatedCustomAuth',
+				kind: 'credential',
+				credentialType: 'httpTemplatedCustomAuth',
+				nodeBindings: [{ nodeName: 'Fetch' }],
+				setupHint,
+				reason: 'to fetch orders',
+			},
+		]);
+	});
 });
 
 describe('buildSetupItemsFromCredentialRequests', () => {
