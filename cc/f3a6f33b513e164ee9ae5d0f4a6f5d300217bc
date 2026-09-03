@@ -1,0 +1,39 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_dab2d060d91655::t_d37fb54a56dd2b 94,335
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_dab2d060d91655::t_dcd356fdbe29e5 852
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_dab2d060d91655::t_3a5e972eda0585 443
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-connection.test.ts
+  s_dab2d060d91655::t_31f5a14088e149 15-24,50-77,112-147
+packages/cli/src/modules/mcp-registry/__tests__/node-description-transform.test.ts
+  s_dab2d060d91655::t_b9ca3fcab2330d 10,380-401,635-761
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_dab2d060d91655::t_e65ccb14bc2ad6 27-29,32-48,52-53,57,82-100
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_dab2d060d91655::t_2862628efce1ca 56-59,61-62,64,66-69,93-96,100,155-159,180-191,195-199
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_dab2d060d91655::t_97cdb43b160b23 88-101
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.types.ts
+  s_dab2d060d91655::t_c873e96973b089 29-32,67
+packages/cli/src/modules/mcp-registry/registry/mock-servers.ts
+  s_dab2d060d91655::t_f4bc2ff593fa8e 88-127
+packages/workflow/src/mcp-helpers.ts
+  s_dab2d060d91655::t_18913e879f6fd0 14-20,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ccf3a6f33b513e164ee9ae5d0f4a6f5d300217bc",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
