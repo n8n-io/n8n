@@ -70,9 +70,12 @@ type PlaygroundArgs = {
 	size: SegmentControlSize;
 	disabled: boolean;
 	squareButtons: boolean;
+	options?: Array<SegmentOption<string>>;
+	modelValue?: string;
+	defaultValue?: string;
 };
 
-const playgroundOptionsByCount: Record<PlaygroundItemCount, SegmentOption<string>[]> = {
+const playgroundOptionsByCount: Record<PlaygroundItemCount, Array<SegmentOption<string>>> = {
 	2: [
 		{ label: 'Item 1', value: '1' },
 		{ label: 'Item 2', value: '2' },

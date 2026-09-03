@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref, watch } from 'vue';
 
+import N8nToggleGroup from './ToggleGroup.vue';
 import type { ButtonProps } from '../../types/button';
 import type { IconName } from '../N8nIcon/icons';
 import N8nToggle from '../N8nToggle/Toggle.vue';
-import N8nToggleGroup from './ToggleGroup.vue';
 
 const playgroundItemCounts = [3, 4, 5, 6] as const;
 
@@ -86,6 +86,8 @@ type PlaygroundArgs = {
 	size: NonNullable<ButtonProps['size']>;
 	orientation: 'horizontal' | 'vertical';
 	disabled: boolean;
+	modelValue?: string | string[];
+	defaultValue?: string | string[];
 };
 
 const playgroundItemsByCount: Record<PlaygroundItemCount, PlaygroundItem[]> = {

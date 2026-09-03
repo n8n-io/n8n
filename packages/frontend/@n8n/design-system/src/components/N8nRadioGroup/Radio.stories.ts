@@ -39,7 +39,7 @@ const meta = {
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<RadioArgs>;
 
 export const Default: Story = {
 	render: (args) => ({
