@@ -19,6 +19,7 @@ const mockFindPackageJson = vi.mocked(fileUtils.findPackageJson);
 const ruleTester = new RuleTester();
 
 const nodeFilePath = '/tmp/TestNode.node.ts';
+const versionedNodeFilePath = '/tmp/v1/TestNodeV1.node.ts';
 
 function createNodeCode(
 	credentials: Array<string | { name: string; required?: boolean }> = [],
@@ -97,6 +98,36 @@ export class TestNode implements INodeType {
 }`;
 }
 
+/**
+ * Versioned node layout from the node-building docs: each version class
+ * implements `INodeType` and assigns `description` in its constructor, merging
+ * the `baseDescription` that the `VersionedNodeType` entry file passes in.
+ */
+function createVersionedNodeCode(credentialNameLiteral: string): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 1,
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: ${credentialNameLiteral},
+					required: true,
+				},
+			],
+			properties: [],
+		};
+	}
+}`;
+}
+
 // Helper function to create non-node class
 function createNonNodeClass(): string {
 	return `
@@ -163,6 +194,29 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'SECURITY: versioned node assigning description in its constructor uses credential not in package',
+			filename: versionedNodeFilePath,
+			code: createVersionedNodeCode("'ExternalApi'"),
+			errors: [
+				{
+					messageId: 'credentialNotInPackage',
+					data: { credentialName: 'ExternalApi' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: createVersionedNodeCode('"myApiCredential"'),
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: createVersionedNodeCode('"anotherApiCredential"'),
+						},
+					],
+				},
+			],
+		},
 		{
 			name: 'SECURITY: node using credential not in package (object form)',
 			filename: nodeFilePath,

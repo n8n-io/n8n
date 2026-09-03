@@ -8,7 +8,11 @@ import {
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -73,8 +77,9 @@ function normalizeWorkflowDescription(description?: string) {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z

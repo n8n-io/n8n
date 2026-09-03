@@ -51,7 +51,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nInputNumber2: {
+	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
 		template:

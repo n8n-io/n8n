@@ -58,6 +58,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'nodeTypePolicy:manage': {
+		displayName: 'Manage Node Type Policies',
+		description: 'Allows managing which node types are available on the instance.',
+	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
 		description: 'Allows listing and rotating instance encryption keys.',
@@ -164,5 +168,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'gitConnection:manageProjects': {
 		displayName: 'Manage Git Connection Projects',
 		description: 'Allows adding projects to and removing projects from a Git connection.',
+	},
+	'gitConnection:pull': {
+		displayName: 'Pull Git Connection',
+		description:
+			'Allows importing all projects from a Git connection working copy into the instance.',
 	},
 };

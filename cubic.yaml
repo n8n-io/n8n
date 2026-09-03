@@ -60,33 +60,29 @@ reviews:
   custom_instructions: |-
     ## The bar for a comment
 
-    Priority order: architecture fit, solution complexity, bugs and behavioural
-    regressions, security edge cases, code quality, missing tests. Style and
-    naming last, and only when they genuinely matter.
+    Rank findings in this order: architecture fit, solution complexity, bugs and
+    behavioural regressions, security edge cases, code quality, missing tests.
+    Report style and naming last, and only when they matter.
 
-    A comment must name the concrete failure — the input, state, or sequence that
-    makes the code wrong — and what to do instead: the snippet, or the specific
-    function to reach for. "This could be cleaner" is noise. Zero comments on a
-    clean PR is a good review; do not manufacture findings.
-
-    Where a deliberate decision and a mistake look identical, ask what the intent
-    was rather than asserting a defect.
+    Name the concrete failure: the input, state or sequence that makes the code
+    wrong. Then give the fix, a snippet or the function to call. "This could be
+    cleaner" is noise. Do not manufacture findings; zero comments on a clean PR is
+    a good review. Ask the intent when a deliberate decision and a mistake look
+    the same.
 
     ## Scope
 
-    Review only the lines this PR adds or modifies. Each PR is meant to have a
-    limited scope — do not report problems in surrounding code that already
-    existed.
-
-    Each linked rule file opens with the packages it applies to. Skip a file when
-    the changed code is out of its scope; if none apply, say nothing.
+    Review only the lines this PR adds or modifies. Do not report problems that
+    already exist in the surrounding code. Each rule file names the packages it
+    covers; skip it when the changed code is out of scope, and say nothing when
+    none apply.
 
     ## Don't repeat what CI already fails on
 
-    `pnpm lint`, `pnpm typecheck`, Poutine, Zizmor, and `@n8n/code-health` run on
-    every PR. A defect one of them already fails the build for is not a finding —
-    the author sees it before you do. The linked rule files name the specific
-    exemptions. Report what static analysis cannot see.
+    `pnpm lint`, `pnpm typecheck`, Poutine, Zizmor and `@n8n/code-health` run on
+    every PR. A defect one of them fails the build for is not a finding; the
+    author sees it first. Rule files name the exemptions. Report what static
+    analysis cannot see.
 
     ## This is a public repository
 
@@ -97,16 +93,17 @@ reviews:
 
     ## Community contributions
 
-    For PRs from outside the n8n organisation, the bar is set by the "Community PR
-    Guidelines" section of `CONTRIBUTING.md`. The golden rule there: a contribution
-    should be worth more to the project than the time it takes to review it.
+    For PRs from outside the n8n organisation, apply the "Community PR Guidelines"
+    section of `CONTRIBUTING.md`: a contribution should be worth more to the
+    project than the time it takes to review it.
   custom_rules:
     - name: Security
       file_paths:
         - .agents/review-rules/security/code-execution-and-sandboxing.md
-        - .agents/review-rules/security/credentials-and-secrets.md
+        - .agents/review-rules/security/outbound-requests.md
         - .agents/review-rules/security/auth-and-access-control.md
-        - .agents/review-rules/security/data-and-infrastructure.md
+        - .agents/review-rules/security/rendering-untrusted-content.md
+        - .agents/review-rules/security/credentials-and-secrets.md
         - .agents/review-rules/security/node-input-safety.md
       include:
         - packages/cli/**
@@ -115,17 +112,17 @@ reviews:
         - packages/workflow/**
         - packages/nodes-base/**
         - packages/@n8n/nodes-langchain/**
+        - packages/frontend/**
       exclude:
         - '**/__tests__/**'
         - '**/*.test.ts'
         - '**/*.spec.ts'
+        - '**/*.stories.ts'
         - '**/test/**'
       description: |-
-        Flag security defects introduced by this PR, using the linked rules.
-
-        Higher scrutiny for the expression engine, credential handling, code
-        execution nodes, license enforcement, and SSO integrations. Community
-        and custom nodes carry a higher risk profile than official ones.
+        Flag security defects introduced by this PR, using the linked rules,
+        ordered by how often each class shows up. Community and custom nodes
+        carry a higher risk profile than official ones.
     - name: Backend
       file_paths:
         - .agents/review-rules/backend/controller-request-validation.md
@@ -133,6 +130,7 @@ reviews:
         - .agents/review-rules/backend/explicit-any.md
         - .agents/review-rules/backend/lazy-load-heavy-modules.md
         - .agents/review-rules/backend/hand-rolled-delays.md
+        - .agents/review-rules/backend/license-enforcement.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/cli/**
@@ -156,6 +154,23 @@ reviews:
         ESLint already fails the build for `@n8n/typeorm` imports in
         `packages/cli` business logic, uncaught `JSON.parse`, and
         `JSON.parse(JSON.stringify())` — never spend a comment on those.
+    - name: DB migrations
+      file_paths:
+        - .agents/review-rules/db-migrations/necessity-and-schema-design.md
+        - .agents/review-rules/db-migrations/data-safety.md
+        - .agents/review-rules/db-migrations/performance-and-scale.md
+        - .agents/review-rules/db-migrations/cross-db-compatibility.md
+        - .agents/review-rules/db-migrations/conventions-and-tests.md
+      include:
+        - packages/@n8n/db/src/migrations/**
+        - packages/cli/test/migration/**
+      description: |-
+        Take the linked rules in order: if the migration should not exist, its
+        shape matters less.
+
+        A migration is permanent. It runs unattended at startup on every
+        instance, and blocks that instance until it finishes. Read it in full,
+        plus the entity it touches and the queries that will use any new column.
     - name: Frontend
       file_paths:
         - .agents/skills/design-system/SKILL.md
@@ -204,8 +219,8 @@ reviews:
         What this surface's scanners cannot see: a documented invariant being
         undone, a guard being widened, a gate that stops being able to fail.
 
-  # cubic silently drops any rule past the fifth, so the last slot is a decision,
-  # not somewhere to append. Merge into an existing agent instead.
+  # All five slots are now used. cubic silently drops any rule past the fifth, so
+  # a new domain has to merge into an existing agent, not append to this list.
 pr_descriptions:
   generate: false
 issues:

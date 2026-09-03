@@ -6,7 +6,6 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
-import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
@@ -26,6 +25,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -35,9 +35,11 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -79,7 +81,7 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
@@ -197,6 +199,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
+		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
@@ -497,6 +500,8 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				onConnectionFailed: (event) => {
 					this.logger.warn('Skipped MCP server that failed to connect', {
 						agentId: memoryOwnerAgentId,
@@ -606,6 +611,7 @@ export class AgentRuntimeReconstructionService {
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() });
 		});
+		const proxyManagedFetch = createAiProxyFetch(this.outboundHttp);
 
 		return {
 			baseURL,
@@ -624,7 +630,7 @@ export class AgentRuntimeReconstructionService {
 				)) {
 					headers.set(key, value);
 				}
-				return await proxyFetch(input as string, { ...init, headers });
+				return await proxyManagedFetch(input, { ...init, headers });
 			},
 		};
 	}
@@ -656,6 +662,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveWorkflowTool(ref, {
 					workflowLoader: Container.get(WorkflowToolWorkflowLoader),
 					workflowRunner: await getWorkflowRunner(),
+					subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
 					activeExecutions: this.activeExecutions,
 					projectId,
 					executionMode: workflowToolExecutionMode,
@@ -847,6 +854,20 @@ export class AgentRuntimeReconstructionService {
 				instrumentation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
+
+			if (Container.get(AgentsConfig).backgroundTasksEnabled) {
+				await this.attachBackgroundJobTools({
+					agent,
+					parentAgentId: parentAgentIdForDelegation,
+					projectId,
+					credentialProvider,
+					runType,
+					workflowToolExecutionMode,
+					delegation: subAgentDelegation,
+					user,
+					instrumentation,
+				});
+			}
 		}
 
 		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
@@ -898,7 +919,7 @@ export class AgentRuntimeReconstructionService {
 		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
-				runner: Container.get(SubAgentForegroundRunner),
+				runner: Container.get(SubAgentRunner),
 				...delegation,
 				projectId,
 				parentAgentId,
@@ -943,6 +964,50 @@ export class AgentRuntimeReconstructionService {
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
 		agent.tool(createWriteTodosTool());
 		this.logger.debug('Injected write_todos tool', { agentId });
+	}
+
+	private async attachBackgroundJobTools(params: {
+		agent: RuntimeAgent;
+		parentAgentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
+		delegation: SubAgentDelegationConfig;
+		user?: User;
+		instrumentation?: AgentRuntimeInstrumentation;
+	}): Promise<void> {
+		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
+		const {
+			createSpawnBackgroundSubAgentTool,
+			createCheckBackgroundJobsTool,
+			createCancelBackgroundJobTool,
+		} = await import('./background/background-job-tools.js');
+		const { AgentBackgroundJobService } = await import(
+			'./background/agent-background-job.service.js'
+		);
+		const { SubAgentBackgroundRunner } = await import(
+			'./background/sub-agent-background-runner.js'
+		);
+		const jobService = Container.get(AgentBackgroundJobService);
+
+		agent.tool(createCheckBackgroundJobsTool(jobService));
+		agent.tool(createCancelBackgroundJobTool(jobService));
+
+		// Attached even with no configured sub-agents: inline self-delegation is
+		// always available.
+		agent.tool(
+			createSpawnBackgroundSubAgentTool({
+				jobService,
+				backgroundRunner: Container.get(SubAgentBackgroundRunner),
+				sourcesById: delegation.sourcesById,
+				availableSubAgents: delegation.availableSubAgents,
+				projectId,
+				parentAgentId,
+				runContext,
+			}),
+		);
+		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
 	}
 
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {

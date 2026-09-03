@@ -8,12 +8,13 @@ import type { EngineDataPlaneProvider } from '../engine-data-plane-proxy.service
 import { EngineDataPlaneProxyService } from '../engine-data-plane-proxy.service';
 
 describe('EngineDataPlaneProxyService', () => {
+	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
+
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		executionId,
 	};
-
-	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 	let proxy: EngineDataPlaneProxyService;
 
@@ -55,6 +56,15 @@ describe('EngineDataPlaneProxyService', () => {
 		proxy.registerProvider(provider);
 
 		await expect(proxy.getExecution(executionId)).resolves.toBe(snapshot);
-		expect(provider.getExecution).toHaveBeenCalledWith(executionId);
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, undefined);
+	});
+
+	it('passes the read options through to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+
+		await proxy.getExecution(executionId, { includeSteps: true });
+
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
 	});
 });

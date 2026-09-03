@@ -44,6 +44,17 @@ describe('V1StepExecutor', () => {
 		}
 	});
 
+	it('accepts the quickjs expression engine', async () => {
+		vi.spyOn(Expression, 'getActiveImplementation').mockReturnValue('quickjs');
+		try {
+			const graph = graphWith('test.echoParam', { message: 'hi' });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
+			expect(result.outputs).toEqual([[{ json: { message: 'hi' } }]]);
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
 	it('resolves `getNodeParameter` per item', async () => {
 		const graph = graphWith('test.echoParam', { message: 'hi' });
 		const result = await testStepExecutor(graph).execute(

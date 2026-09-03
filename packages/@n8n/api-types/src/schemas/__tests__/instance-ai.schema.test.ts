@@ -10,6 +10,7 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -21,6 +22,7 @@ import {
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
@@ -75,6 +77,65 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
+			},
+		};
+
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 });
 
@@ -239,6 +300,30 @@ describe('confirmationRequestPayloadSchema', () => {
 		const payload = makeConfirmation({ requireUserSelection: true });
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -472,6 +557,14 @@ describe('data-tables session grant keys', () => {
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
 	});
 });
 

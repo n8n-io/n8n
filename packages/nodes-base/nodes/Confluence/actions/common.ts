@@ -7,10 +7,47 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
+import {
+	confluenceApiRequest,
+	getConfluenceCloudId,
+	getConfluenceCredentialName,
+} from '../transport';
 
 /** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
+
+/**
+ * Top-level site selector carried by every operation (each resource spreads it
+ * right after its Operation field). The stored From List value is the cloudId
+ * itself — accessible-resources returns it, so list mode needs no resolution;
+ * By URL is hostname-matched against the connection's sites at execute time.
+ * Left empty, single-site connections auto-resolve at runtime.
+ */
+export const siteRLC: INodeProperties = {
+	displayName: 'Site',
+	name: 'site',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The Confluence site to use. Can be left empty when the connection has access to exactly one site.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSites',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://your-site.atlassian.net',
+		},
+	],
+};
 
 /**
  * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
@@ -25,7 +62,7 @@ export const pageRLC: INodeProperties = {
 	required: true,
 	description: 'The page to operate on',
 	typeOptions: {
-		loadOptionsDependsOn: ['space.value'],
+		loadOptionsDependsOn: ['site.value', 'space.value'],
 	},
 	modes: [
 		{
@@ -87,6 +124,9 @@ export const labelRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The label to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -147,6 +187,9 @@ export const spaceRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description: 'The Confluence space',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -274,10 +317,11 @@ export async function resolveSpaceKey(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	spaceId: string,
 ): Promise<string | undefined> {
-	// Space IDs are only unique per site, so the cache is keyed per credential
-	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
+	// Space IDs are only unique per site, and one credential can reach several
+	const rawCredentialId = this.getNode().credentials?.[getConfluenceCredentialName(this)]?.id;
 	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
-	const cacheKey = `${credentialId}:${spaceId}`;
+	const cloudId = await getConfluenceCloudId.call(this);
+	const cacheKey = `${credentialId}:${cloudId}:${spaceId}`;
 
 	const cached = spaceKeyCache.get(cacheKey);
 	if (cached !== undefined) return cached;

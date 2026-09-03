@@ -48,6 +48,13 @@ await runWebhookThroughputTest({ handle, api, services, testInfo, baseUrl,
 });
 ```
 
+## Other Senders
+
+`ci-metrics.ts` holds the payload context and the webhook send. The
+accessibility reporter (`a11y-reporter.ts`) uses it to send a per-bucket axe
+score under the `a11y-buckets` benchmark. Reuse it for a new reporter instead of
+rebuilding the payload.
+
 ## Example Queries
 
 ```sql

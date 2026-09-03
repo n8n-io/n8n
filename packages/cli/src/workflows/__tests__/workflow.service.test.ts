@@ -35,8 +35,11 @@ import type { RedactionEnforcementService } from '@/modules/redaction/redaction-
 import type { PolicyCleared } from '@n8n/decorators';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { TagService } from '@/services/tag.service';
@@ -45,6 +48,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -59,10 +63,13 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowRepositoryMock: MockProxy<{
 			getManyAndCountWithSharingSubquery: Mock;
+			getWorkflowsAndFoldersWithCountWithSharingSubquery: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
+		let workflowPublicationStatusServiceMock: MockProxy<WorkflowPublicationStatusService>;
 
 		beforeEach(() => {
 			workflowRepositoryMock = mock();
@@ -80,6 +87,11 @@ describe('WorkflowService', () => {
 			// By default the requester can read the supplied parent workflow.
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			});
+			workflowPublicationStatusServiceMock = mock<WorkflowPublicationStatusService>();
+
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
@@ -94,7 +106,7 @@ describe('WorkflowService', () => {
 				mock(), // projectService
 				mock(), // executionPersistence
 				mock(), // eventService
-				mock(), // globalConfig
+				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
@@ -110,11 +122,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 			);
 		});
 
@@ -141,14 +156,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -168,14 +176,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:read', 'workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -195,14 +196,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const executeScope: Scope[] = ['workflow:execute'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				executeScope,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: executeScope });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', executeScope);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', executeScope);
@@ -320,6 +314,120 @@ describe('WorkflowService', () => {
 				);
 			});
 		});
+
+		describe('getMany publicationStatus enrichment', () => {
+			const user = mock<User>();
+
+			beforeEach(() => {
+				workflowRepositoryMock.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					workflows: [{ id: 'wf-1' }, { id: 'wf-2' }],
+					count: 2,
+				});
+			});
+
+			it('attaches publicationStatus when the caller opts in and the publication service flag is on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'partial']]),
+				);
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					publicationStatus: 'partial',
+				});
+				expect(workflows.find((w) => w.id === 'wf-2')).not.toHaveProperty('publicationStatus');
+			});
+
+			it('is a no-op when the flag is off', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = false;
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('is a no-op when the caller does not opt in, even with the flag on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+
+				const { workflows } = await workflowService.getMany(user, {});
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('returns the list unenriched when the status lookup fails', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockRejectedValue(
+					new Error('table is locked'),
+				);
+
+				const { workflows, count } = await workflowService.getMany(
+					user,
+					{},
+					{
+						includePublicationStatus: true,
+					},
+				);
+
+				expect(count).toBe(2);
+				expect(workflows).toHaveLength(2);
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('enriches the workflow row and leaves folder rows untouched on the folder list path', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery.mockResolvedValue(
+					[
+						[
+							{ id: 'folder-1', resource: 'folder' },
+							{ id: 'wf-1', resource: 'workflow' },
+						],
+						2,
+					],
+				);
+				// Only the workflow id has a settled status; the folder id never matches.
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'published']]),
+				);
+
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{
+						includeFolders: true,
+						includePublicationStatus: true,
+					},
+				);
+
+				// Folder ids are never fed to the aggregate query.
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).toHaveBeenCalledWith(['wf-1']);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					resource: 'workflow',
+					publicationStatus: 'published',
+				});
+
+				const folder = workflows.find((w) => w.id === 'folder-1');
+				expect(folder).toMatchObject({ resource: 'folder' });
+				expect(folder).not.toHaveProperty('publicationStatus');
+			});
+		});
 	});
 
 	describe('update() redactionPolicy scope enforcement', () => {
@@ -382,11 +490,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 
 			vi.clearAllMocks();
@@ -1062,6 +1173,8 @@ describe('WorkflowService', () => {
 		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
 		let workflowPublishGuardMock: MockProxy<WorkflowPublishGuardProxy>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
+		let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
+		let ownershipServiceMock: MockProxy<OwnershipService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1117,6 +1230,14 @@ describe('WorkflowService', () => {
 			pollTriggerJobRegistrarMock = mock();
 			workflowPublishGuardMock = mock<WorkflowPublishGuardProxy>();
 			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
+			// Stands in for the dummy always-allow check: with no backend registered the
+			// real service clears every publish.
+			policyEnforcementServiceMock = mock<PolicyEnforcementService>();
+			policyEnforcementServiceMock.hasChecksFor.mockReturnValue(true);
+			ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1127,7 +1248,7 @@ describe('WorkflowService', () => {
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // ownershipService
+				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				workflowHistoryServiceMock, // workflowHistoryService
 				externalHooksMock, // externalHooks
@@ -1152,11 +1273,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
 				pollTriggerJobRegistrarMock, // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				workflowPublishGuardMock, // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
-				mock(), // policyEnforcementService
+				policyEnforcementServiceMock, // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 
 			// Bypass validation internals
@@ -1622,6 +1746,175 @@ describe('WorkflowService', () => {
 
 			expect(externalHooksMock.run).not.toHaveBeenCalled();
 		});
+
+		describe('policy enforcement', () => {
+			const arrangeSuccessfulActivation = (workflow: WorkflowEntity) => {
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+				workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+				externalHooksMock.run.mockResolvedValue(undefined);
+				vi.spyOn(
+					workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+					'_addToActiveWorkflowManager',
+				).mockResolvedValue(undefined);
+			};
+
+			test('enforces the publish with the version being activated and the owning project', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				const versionToActivate = makeVersionToActivate();
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(versionToActivate);
+
+				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				});
+
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+					{
+						workflow: {
+							id: WORKFLOW_ID,
+							name: workflow.name,
+							nodes: versionToActivate.nodes,
+						},
+						projectId: 'project-1',
+					},
+				);
+			});
+
+			// The candidate shares its node array with the version row, so an in-place
+			// mutation would otherwise be policed even though it is never persisted.
+			test('polices the version even when the hook mutates the nodes in place', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				const versionToActivate = makeVersionToActivate();
+				const originalNodes = [...versionToActivate.nodes];
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(versionToActivate);
+
+				externalHooksMock.run.mockImplementation(async (_name, args) => {
+					const [candidate] = args as unknown as [WorkflowEntity];
+					candidate.nodes.push({ name: 'Injected by hook' } as INode);
+				});
+
+				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				});
+
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).toHaveBeenCalledWith(
+					expect.objectContaining({
+						workflow: expect.objectContaining({ nodes: originalNodes }),
+					}),
+				);
+			});
+
+			// Only the version row gets registered, so a hook that rewrites the candidate
+			// changes a graph that never runs.
+			test('polices the version being published, not a hook-mutated candidate', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				const versionToActivate = makeVersionToActivate();
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(versionToActivate);
+
+				externalHooksMock.run.mockImplementation(async (_name, args) => {
+					const [candidate] = args as unknown as [WorkflowEntity];
+					candidate.nodes = [{ name: 'Rewritten by hook' } as INode];
+				});
+
+				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				});
+
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).toHaveBeenCalledWith(
+					expect.objectContaining({
+						workflow: expect.objectContaining({ nodes: versionToActivate.nodes }),
+					}),
+				);
+			});
+
+			// Unlike the review gate: re-applying the current version still re-registers.
+			test('enforces when re-applying the already-published version', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(makeActiveVersion());
+
+				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: PREVIOUS_VERSION_ID,
+				});
+
+				expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).toHaveBeenCalledTimes(1);
+			});
+
+			test.each([
+				['current publication path', false],
+				['outbox publication path', true],
+			] as const)(
+				'publishes nothing on the %s when policy blocks the version',
+				async (_path, useWorkflowPublicationService) => {
+					globalConfigMock.workflows.useWorkflowPublicationService = useWorkflowPublicationService;
+					const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+					arrangeSuccessfulActivation(workflow);
+					workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+					policyEnforcementServiceMock.enforceWorkflowPublish.mockRejectedValue(
+						new PolicyViolationError([
+							{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked' },
+						]),
+					);
+
+					await expect(
+						workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+							versionId: TARGET_VERSION_ID,
+						}),
+					).rejects.toBeInstanceOf(PolicyViolationError);
+
+					expect(workflow.activeVersionId).toBe(PREVIOUS_VERSION_ID);
+					expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+					expect(activeWorkflowManagerMock.add).not.toHaveBeenCalled();
+					expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+					expect(outboxRepositoryMock.enqueue).not.toHaveBeenCalled();
+					expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+					expect(workflowMutationHooksMock.afterWorkflowPublished).not.toHaveBeenCalled();
+				},
+			);
+
+			test('does not enforce while unpublishing', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+				await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
+
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).not.toHaveBeenCalled();
+			});
+
+			// An unevaluated project rule is not a passed one, so the lookup is unguarded.
+			test('propagates a failed ownership lookup instead of policing a null scope', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+				ownershipServiceMock.getWorkflowProjectCached.mockRejectedValue(new Error('no owner row'));
+
+				await expect(
+					workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+						versionId: TARGET_VERSION_ID,
+					}),
+				).rejects.toThrow('no owner row');
+
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).not.toHaveBeenCalled();
+			});
+
+			// A feature that is merely absent must not cost a lookup on every publish.
+			test('does not resolve ownership when no check is registered', async () => {
+				const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+				arrangeSuccessfulActivation(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+				policyEnforcementServiceMock.hasChecksFor.mockReturnValue(false);
+
+				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				});
+
+				expect(ownershipServiceMock.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(policyEnforcementServiceMock.enforceWorkflowPublish).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('deactivateWorkflowAsSystem()', () => {
@@ -1690,11 +1983,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -1755,8 +2051,12 @@ describe('WorkflowService', () => {
 		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 		let ownershipServiceMock: MockProxy<OwnershipService>;
+		let workflowScheduledJobOwnerMock: MockProxy<WorkflowScheduledJobOwner>;
+		let durableJobProvisionerMock: MockProxy<DurableJobProvisioner>;
+		let trxMock: MockProxy<EntityManager>;
 
 		const WORKFLOW_ID = 'workflow-1';
+		const WORKFLOW_OWNER_REF = { ownerType: 'workflow', ownerId: WORKFLOW_ID };
 
 		function makeWorkflowEntity(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 			const workflow = new WorkflowEntity();
@@ -1779,9 +2079,17 @@ describe('WorkflowService', () => {
 			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 			workflowPublishedVersionRepositoryMock = mock<WorkflowPublishedVersionRepository>();
 			workflowPublishedVersionRepositoryMock.getPublishedVersionId.mockResolvedValue(null);
+			workflowScheduledJobOwnerMock = mock<WorkflowScheduledJobOwner>();
+			workflowScheduledJobOwnerMock.ref.mockReturnValue(WORKFLOW_OWNER_REF);
+			durableJobProvisionerMock = mock<DurableJobProvisioner>();
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			});
+
+			trxMock = mock<EntityManager>();
+			workflowRepositoryMock.runInTransaction.mockImplementation(
+				async (ctx, runInTransaction) => await runInTransaction(trxMock, ctx),
+			);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -1811,11 +2119,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				workflowScheduledJobOwnerMock, // workflowScheduledJobOwner
+				durableJobProvisionerMock, // durableJobProvisioner
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -1827,7 +2138,7 @@ describe('WorkflowService', () => {
 				ConflictError,
 			);
 
-			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
+			expect(trxMock.delete).not.toHaveBeenCalled();
 		});
 
 		test('throws ConflictError while the published-version mapping still exists', async () => {
@@ -1840,7 +2151,7 @@ describe('WorkflowService', () => {
 				'Workflow is still being unpublished. Please try again in a few moments.',
 			);
 
-			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
+			expect(trxMock.delete).not.toHaveBeenCalled();
 		});
 
 		test('deletes a workflow whose active version was set while publication service was off', async () => {
@@ -1851,7 +2162,7 @@ describe('WorkflowService', () => {
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
 			expect(activeWorkflowManagerMock.remove).toHaveBeenCalledWith(WORKFLOW_ID);
-			expect(workflowRepositoryMock.delete).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(trxMock.delete).toHaveBeenCalledWith(WorkflowEntity, { id: WORKFLOW_ID });
 		});
 
 		test('deletes an unpublished workflow when publication service is on', async () => {
@@ -1860,7 +2171,38 @@ describe('WorkflowService', () => {
 
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
-			expect(workflowRepositoryMock.delete).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(trxMock.delete).toHaveBeenCalledWith(WorkflowEntity, { id: WORKFLOW_ID });
+		});
+
+		// Nothing in the database removes a workflow's scheduled jobs with it, so the
+		// delete has to do it in the same transaction as the row delete. A deprovision
+		// of its own would strip the schedules of a workflow that survives a failed
+		// delete.
+		test('deprovisions the scheduled jobs the workflow owned in the row delete transaction', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(workflowScheduledJobOwnerMock.ref).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(
+				durableJobProvisionerMock.deprovisionOwnerInTransaction,
+			).toHaveBeenCalledExactlyOnceWith(trxMock, WORKFLOW_OWNER_REF);
+			expect(durableJobProvisionerMock.deprovisionOwner).not.toHaveBeenCalled();
+			expect(
+				durableJobProvisionerMock.deprovisionOwnerInTransaction.mock.invocationCallOrder[0],
+			).toBeLessThan(trxMock.delete.mock.invocationCallOrder[0]);
+		});
+
+		test('deprovisions no scheduled jobs when deletion is rejected', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: 'v1' });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toBeInstanceOf(
+				ConflictError,
+			);
+
+			expect(durableJobProvisionerMock.deprovisionOwnerInTransaction).not.toHaveBeenCalled();
 		});
 
 		test('runs the beforeWorkflowDeleted lifecycle hook before the row delete', async () => {
@@ -1875,7 +2217,7 @@ describe('WorkflowService', () => {
 			);
 			expect(
 				workflowMutationHooksMock.beforeWorkflowDeleted.mock.invocationCallOrder[0],
-			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+			).toBeLessThan(trxMock.delete.mock.invocationCallOrder[0]);
 		});
 
 		test('does not run the beforeWorkflowDeleted lifecycle hook when deletion is rejected', async () => {
@@ -1914,7 +2256,7 @@ describe('WorkflowService', () => {
 			]);
 			expect(
 				workflowMutationHooksMock.afterWorkflowsDeleted.mock.invocationCallOrder[0],
-			).toBeGreaterThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+			).toBeGreaterThan(trxMock.delete.mock.invocationCallOrder[0]);
 		});
 
 		test('deletes the workflow executions before the workflow itself', async () => {
@@ -1926,7 +2268,7 @@ describe('WorkflowService', () => {
 			expect(executionPersistenceMock.hardDeleteByWorkflowId).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(
 				executionPersistenceMock.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
-			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+			).toBeLessThan(trxMock.delete.mock.invocationCallOrder[0]);
 		});
 
 		test('invalidates the cached project for the deleted workflow', async () => {
@@ -2031,11 +2373,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2197,11 +2542,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2374,11 +2722,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2473,11 +2824,14 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 

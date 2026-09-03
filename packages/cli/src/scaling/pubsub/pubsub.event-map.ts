@@ -136,6 +136,15 @@ export type PubSubCommandMap = {
 		status: string;
 	};
 
+	/**
+	 * Ask mains to abort a background job's live run. The job row is already
+	 * claimed as cancelled by the publisher; only the main holding the
+	 * in-process abort handle acts on this.
+	 */
+	'cancel-agent-background-job': {
+		jobId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;

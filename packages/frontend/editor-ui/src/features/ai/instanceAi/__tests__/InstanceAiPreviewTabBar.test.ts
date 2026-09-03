@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -76,7 +77,8 @@ const Wrapper = defineComponent({
 	},
 });
 
-const renderComponent = createComponentRenderer(Wrapper);
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
 
 async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
 	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
@@ -125,6 +127,23 @@ describe('InstanceAiPreviewTabBar', () => {
 
 		expect(getByText('My Workflow')).toBeInTheDocument();
 		expect(getByText('My Table')).toBeInTheDocument();
+	});
+
+	it('shows a spinner instead of the artifact icon while the AI is building the artifact', () => {
+		const { container } = renderComponent({
+			props: {
+				tabs: [{ ...agentTab, building: true }, workflowTab],
+				activeTabId: 'agent-1',
+			},
+		});
+
+		const buildingTab = container.querySelector('[data-tab-id="agent-1"]');
+		const idleTab = container.querySelector('[data-tab-id="wf-1"]');
+
+		expect(
+			buildingTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]'),
+		).not.toBeNull();
+		expect(idleTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
 	});
 
 	it('marks the active tab with data-state=active', () => {

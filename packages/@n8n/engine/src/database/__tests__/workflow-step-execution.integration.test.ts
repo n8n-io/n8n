@@ -8,6 +8,7 @@ import { StepNotFoundError, type NewStepRecord } from '../../execution/step-stor
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -39,6 +40,7 @@ describe('workflow_step_execution table (integration)', () => {
 	async function createExecution(): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
+			id: generateId(),
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
@@ -731,7 +733,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(column).toEqual({ is_nullable: 'NO', column_default: '0' });
 	});
 
-	it('TypeOrmExecutionViewStore.loadStepViews returns every row of the execution, none of another', async () => {
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView returns every row of the execution, none of another', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -741,18 +743,23 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 		await store.createSteps(otherExecutionId, [{ nodeId: 'c', iteration: 0, status: 'queued' }]);
 
-		const steps = await viewStore().loadStepViews(executionId);
+		const { id, steps } = await viewStore().loadExecutionWithStepsView(executionId);
 
+		expect(id).toBe(executionId);
 		expect(steps.map((step) => step.nodeId).sort()).toEqual(['a', 'b']);
 	});
 
-	it('TypeOrmExecutionViewStore.loadStepViews returns [] for an execution with no steps', async () => {
+	// The left join still has to report the execution itself.
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView returns [] for an execution with no steps', async () => {
 		const executionId = await createExecution();
 
-		expect(await viewStore().loadStepViews(executionId)).toEqual([]);
+		const view = await viewStore().loadExecutionWithStepsView(executionId);
+
+		expect(view.id).toBe(executionId);
+		expect(view.steps).toEqual([]);
 	});
 
-	it('TypeOrmExecutionViewStore.loadStepViews carries outputs, error and timestamps', async () => {
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView carries outputs, error and timestamps', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -764,7 +771,7 @@ describe('workflow_step_execution table (integration)', () => {
 		await store.claimStep(failedId);
 		await store.failStep(failedId, { name: 'Error', message: 'boom' });
 
-		const steps = await viewStore().loadStepViews(executionId);
+		const { steps } = await viewStore().loadExecutionWithStepsView(executionId);
 
 		const completed = steps.find((step) => step.nodeId === 'a');
 		expect(completed).toMatchObject({
