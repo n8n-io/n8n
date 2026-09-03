@@ -319,8 +319,7 @@ export class ActiveExecutions {
 
 	cancelRunningExecutions(): string[] {
 		// An execution is registered before its workflow execution is attached. To
-		// cancel inside that window deletes the entry, so the pending attach then
-		// fails and records a misleading failed execution. Leave those alone.
+		// cancel inside that window records the execution as failed, not cancelled.
 		const executionIds = this.getRunningExecutionIds().filter(
 			(executionId) => this.activeExecutions[executionId].workflowExecution !== undefined,
 		);

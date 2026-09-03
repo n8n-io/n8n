@@ -181,8 +181,6 @@ export class ScalingService {
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
-	// Runs at the highest shutdown priority, so both drains finish before the task
-	// runner shuts down and executions can still reach it.
 	private async stopWorker() {
 		await this.pauseQueue();
 
@@ -200,14 +198,11 @@ export class ScalingService {
 
 		let count = 0;
 
-		// Queued jobs hold the loop open past the budget. In-process stragglers are
-		// therefore cancelled only once the queue is empty.
 		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {
 			if (count++ % 4 === 0) this.logExecutionsToDrain();
 
-			// A flat tick can overshoot the budget and leave no time to cancel before
-			// the force-exit timer fires, so cap the last sleep at what is left of it.
-			// While queued jobs drain, the wait is unbounded and the cadence stands.
+			// Cap the last sleep at what is left of the budget, so the tick cannot
+			// overshoot it and leave no time to cancel before the force-exit timer.
 			const remainingBudgetMs = drainTimeoutMs - (Date.now() - start);
 			const sleepMs = hasQueuedJobsToDrain()
 				? DRAIN_POLL_INTERVAL_MS
@@ -216,8 +211,8 @@ export class ScalingService {
 			await sleep(sleepMs);
 		}
 
-		// Cancel the stragglers instead of leaving them to run. The task runner shuts
-		// down next, and the later wait in `ActiveExecutions.shutdown` has no timeout.
+		// Cancel the stragglers rather than leave them to run. The task runner stops
+		// next, so they cannot make progress.
 		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
 			const elapsed = Math.round((Date.now() - start) / Time.seconds.toMilliseconds);
 

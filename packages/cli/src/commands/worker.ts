@@ -88,8 +88,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (QUEUE_WORKER_TIMEOUT) {
 			const timeout =
 				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
-			// Set both fields: one arms the force-exit timer, the other sizes the
-			// shutdown drains.
+			// One field arms the force-exit timer, the other sizes the shutdown drains.
 			this.gracefulShutdownTimeoutInS = timeout;
 			this.globalConfig.generic.gracefulShutdownTimeout = timeout;
 			this.logger.warn(
