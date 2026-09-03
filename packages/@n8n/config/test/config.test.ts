@@ -201,7 +201,7 @@ describe('GlobalConfig', () => {
 		activityLog: {
 			enabled: false,
 			retentionDays: 14,
-			maxEntries: 100,
+			maxEntries: 1_000,
 		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',

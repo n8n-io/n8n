@@ -15,11 +15,11 @@ export class ActivityLogConfig {
 	retentionDays: number = 14;
 
 	/**
-	 * Hard ceiling on stored entries, instance-wide rather than per project. Deliberately low: it
-	 * is the bound that actually holds the table, so the age cap above rarely binds. Raise it
-	 * before widening the read window, since a busy project can otherwise crowd out a quiet one.
-	 * `0` means no cap.
+	 * Hard ceiling on stored entries, instance-wide rather than per project — so a busy project
+	 * can crowd a quiet one out of the window, which is the reason to raise this rather than disk:
+	 * the whole table is well under a megabyte at this size on either driver. Which cap binds
+	 * depends on the instance: the age cap above on a quiet one, this on a busy one. `0` means no cap.
 	 */
 	@Env('N8N_ACTIVITY_LOG_MAX_ENTRIES', nonnegativeIntSchema)
-	maxEntries: number = 100;
+	maxEntries: number = 1_000;
 }
