@@ -50,6 +50,7 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
+  - scripts/test-pokeapi-mcp
 
 catalog:
   '@ai-sdk/alibaba': ^2.0.32

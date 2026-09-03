@@ -1,0 +1,15 @@
+{
+  "name": "test-pokeapi-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.91.0",
+    "@types/node": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}
