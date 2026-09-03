@@ -263,20 +263,35 @@ const args = process.argv.slice(2);
 const options = { json: args.includes('--json'), dryRun: args.includes('--dry-run') };
 const [cmd, pr] = args.filter((arg) => !arg.startsWith('--'));
 
-const requirePr = () => {
-	if (!/^\d+$/.test(pr ?? '')) fail(`Give a PR number, e.g. \`pnpm preview ${cmd} 1234\`.`);
+/**
+	* Grabs the given PR number from command or tries to default to
+	* the PR number of the branch currently checked out.
+	* */
+async function requirePr() {
+	const noPrSpecified = !/^\d+$/.test(pr ?? '')
+
+	if (noPrSpecified) {
+		const prInfoForCurrentBranch = ghJson(['pr', 'view', "--json", "number"]);
+		if (prInfoForCurrentBranch && Number.isInteger(prInfoForCurrentBranch.number)) {
+			return prInfoForCurrentBranch.number;
+		}
+	}
+
+	if (noPrSpecified) {
+		fail(`Give a PR number, e.g. \`pnpm preview ${cmd} 1234\` or check out a branch that has an open PR and run \`pnpm preview ${cmd}\`.`)
+	}
 	return pr;
-};
+}
 
 switch (cmd) {
 	case 'up':
-		await up(requirePr(), options);
+		await up(await requirePr(), options);
 		break;
 	case 'refresh':
-		await refresh(requirePr(), options);
+		await refresh(await requirePr(), options);
 		break;
 	case 'down':
-		down(requirePr(), options);
+		down(await requirePr(), options);
 		break;
 	case 'ls':
 		ls();
