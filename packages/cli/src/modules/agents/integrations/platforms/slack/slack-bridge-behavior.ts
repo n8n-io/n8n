@@ -1,6 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { Message, Thread } from 'chat';
+import escapeRegExp from 'lodash/escapeRegExp';
 
 import type {
 	BridgeExecutionContext,
@@ -425,10 +426,6 @@ function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantS
 
 function stringValue(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function getSlackErrorCode(error: unknown): string | undefined {

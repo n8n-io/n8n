@@ -17,6 +17,8 @@ import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
@@ -74,6 +76,8 @@ export class WorkflowPublicationApplier {
 		private readonly telemetry: Telemetry,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -358,6 +362,20 @@ export class WorkflowPublicationApplier {
 		// database instead of the cache ever serving a version for an unpublished
 		// workflow. No repopulation follows: the end state has no published version.
 		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
+
+		// Before the mapping goes, not after. The mapping is what makes the workflow an
+		// owner of scheduled jobs, so removing it first would turn any job this misses
+		// into an orphan only the reconciliation sweep could find. The two are not one
+		// transaction: a crash between them, or a failing mapping removal, leaves no
+		// jobs and an intact mapping. The reconciler re-enqueues that unpublish, and
+		// the retry deprovisions nothing before it removes the mapping.
+		//
+		// Keyed by the workflow alone, not by the nodes deactivated above, so a job
+		// whose node is gone from the version goes too.
+		await this.durableJobProvisioner.deprovisionOwner(
+			this.workflowScheduledJobOwner.ref(record.workflowId),
+		);
+
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
 		return teardownFailures.length > 0

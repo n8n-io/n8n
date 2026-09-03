@@ -297,7 +297,9 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against `allowedDomains`
  *     so credentials are never sent to a host the credential doesn't allow,
  *   - validates the initial URL and every redirect hop against the instance
- *     `secureEgressFilter`, and pins the connection to the validated address.
+ *     `secureEgressFilter`, and pins the connection to the validated address,
+ *   - withholds the auth headers once a redirect crosses origins, so
+ *     credentials never reach a host other than the one the request started on.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
