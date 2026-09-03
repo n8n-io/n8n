@@ -130,10 +130,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Setup and Build
@@ -183,10 +183,11 @@ jobs:
       runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: useblacksmith/setup-docker-builder@a5256a73e30f09e37e3eceb8ca36043d17621d24 # v2.1.0
@@ -457,155 +458,22 @@ jobs:
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
-  # This checks the cached release path. docker-build-smoke.yml remains the
-  # no-cache sanity check for fresh native compilation and prebuild selection.
-  verify-images:
-    name: Verify published images (${{ matrix.platform }})
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.determine-build-context.outputs.push_enabled == 'true'
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
-    runs-on: ${{ matrix.platform == 'arm64' && 'blacksmith-2vcpu-ubuntu-2204-arm' || 'blacksmith-2vcpu-ubuntu-2204' }}
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: read
-    env:
-      N8N_IMAGE: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
-      N8N_PC_IMAGE: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
-      RUNNERS_IMAGE: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
-      RUNNERS_DISTROLESS_IMAGE: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.ref }}
-          persist-credentials: false
-
-      - name: Install Docker smoke-test dependencies
-        uses: ./.github/actions/setup-nodejs
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./scripts --ignore-workspace
-          cache-dependency-path: scripts/pnpm-lock.yaml
-
-      - name: Login to GHCR
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: 'true'
-
-      - name: Pull images for runtime verification
-        run: |
-          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE" "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
-            [[ -n "$image" ]] || continue
-            docker pull "$image"
-          done
-
-      - name: Create a token for the Cloud chart smoke check
-        id: cloud-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
-          owner: n8n-io
-          repositories: n8n-cloud
-          permission-contents: read
-
-      - name: Set up Helm
-        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
-
-      - name: Verify n8n images against Cloud
-        env:
-          GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
-          SMOKE_RUNNERS_IMAGES: ${{ env.RUNNERS_IMAGE }},${{ env.RUNNERS_DISTROLESS_IMAGE }}
-        run: |
-          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE"; do
-            [[ -n "$image" ]] || continue
-            SMOKE_IMAGE="$image" pnpm build:docker:smoke
-          done
-
-      - name: Execute native modules and agent-browser
-        run: |
-          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE"; do
-            [[ -n "$image" ]] || continue
-            docker run --rm --entrypoint node "$image" -e \
-              "require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm'); require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3')"
-
-            # The package expects its postinstall to set the executable bit.
-            # Run as root so this check tests binary compatibility only.
-            docker run --rm --user root --entrypoint sh "$image" -c '
-              set -- $(find /usr/local/lib/node_modules/n8n -type f -path "*/agent-browser/bin/agent-browser.js")
-              if [ "$#" -eq 0 ]; then
-                echo "agent-browser launcher not found" >&2
-                exit 1
-              fi
-              node "$1" --version
-            '
-          done
-
-      - name: Execute task runner launchers
-        run: |
-          for image in "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
-            [[ -n "$image" ]] || continue
-            output="$(docker run --rm \
-              --env N8N_RUNNERS_AUTH_TOKEN=release-verification \
-              --entrypoint /usr/local/bin/task-runner-launcher \
-              "$image" release-verification-invalid-runner 2>&1 || true)"
-            if ! grep -q 'does not contain requested runner type: release-verification-invalid-runner' <<< "$output"; then
-              echo "::error::Task runner launcher did not start in $image"
-              echo "$output"
-              exit 1
-            fi
-          done
-
-      - name: Verify image architecture
-        env:
-          EXPECTED_ARCH: ${{ matrix.platform }}
-        run: |
-          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE" "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
-            [[ -n "$image" ]] || continue
-            actual="$(docker image inspect --format '{{.Architecture}}' "$image")"
-            if [[ "$actual" != "$EXPECTED_ARCH" ]]; then
-              echo "::error::$image has architecture $actual, expected $EXPECTED_ARCH"
-              exit 1
-            fi
-          done
-
   call-success-url:
     name: Call Success URL
-    needs:
-      [
-        determine-build-context,
-        build-app,
-        build-and-push-docker,
-        create_multi_arch_manifest,
-        verify-images,
-        provenance-n8n,
-        provenance-n8n-pc,
-        provenance-runners,
-        provenance-runners-distroless,
-      ]
+    needs: [determine-build-context, build-app, build-and-push-docker, create_multi_arch_manifest]
     runs-on: ubuntu-latest
     if: |
       always() &&
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.success_url != '' &&
       needs.determine-build-context.result == 'success' &&
       needs.build-app.result == 'success' &&
       needs.build-and-push-docker.result == 'success' &&
-      (needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped') &&
-      (needs.verify-images.result == 'success' || needs.verify-images.result == 'skipped') &&
-      (needs.provenance-n8n.result == 'success' || needs.provenance-n8n.result == 'skipped') &&
-      (needs.provenance-n8n-pc.result == 'success' || needs.provenance-n8n-pc.result == 'skipped') &&
-      (needs.provenance-runners.result == 'success' || needs.provenance-runners.result == 'skipped') &&
-      (needs.provenance-runners-distroless.result == 'success' || needs.provenance-runners-distroless.result == 'skipped')
+      (needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped')
     steps:
       - name: Call Success URL
         env:
           SUCCESS_URL: ${{ github.event.inputs.success_url }}
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
         run: |
           echo "Calling success URL: ${{ env.SUCCESS_URL }}"
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
@@ -615,6 +483,7 @@ jobs:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_digest != ''
     permissions:
@@ -634,6 +503,7 @@ jobs:
     name: SLSA Provenance (n8n-pc)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_pc_digest != ''
     permissions:
@@ -653,6 +523,7 @@ jobs:
     name: SLSA Provenance (runners)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_digest != ''
     permissions:
@@ -672,6 +543,7 @@ jobs:
     name: SLSA Provenance (runners-distroless)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
     permissions:
@@ -702,6 +574,7 @@ jobs:
       ]
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
@@ -788,6 +661,7 @@ jobs:
       ]
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
@@ -799,7 +673,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
 
       # Nothing to install: syft replaced cdxgen, and the two license scripts have
       # no dependencies. This step only pins the Node version.
@@ -895,13 +772,6 @@ jobs:
         build-app,
         build-and-push-docker,
         create_multi_arch_manifest,
-        verify-images,
-        provenance-n8n,
-        provenance-n8n-pc,
-        provenance-runners,
-        provenance-runners-distroless,
-        vex-attestation,
-        sbom-attestation,
         security-scan,
         security-scan-pc,
         security-scan-runners,

@@ -326,8 +326,8 @@ test-workflows-pr-comment.yml
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
 │  │   ├─ Build the application once on amd64                                │
 │  │   ├─ Build/push images on native amd64 + arm64 runners                  │
-│  │   └─ Merge manifests, then provenance + image verification in parallel  │
-│  │       └─ VEX/SBOM attestations follow provenance                         │
+│  │   └─ Merge manifests, then add release provenance                       │
+│  │       └─ Release VEX/SBOM attestations follow provenance                 │
 │  ├─ create-github-release                                                  │
 │  ├─ create-sentry-release (sourcemaps)                                     │
 │  ├─ generate-sbom ────────────────▶ sbom-generation-callable.yml           │
@@ -558,7 +558,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
-| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 
