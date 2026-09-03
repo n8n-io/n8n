@@ -45,7 +45,8 @@ export class TokenExchangeModule implements ModuleInterface {
 			return [];
 		}
 
+		const { TrustedKeyRefreshTask } = await import('./services/trusted-key-refresh.task.js');
 		const { JtiCleanupTask } = await import('./services/jti-cleanup.task.js');
-		return [JtiCleanupTask];
+		return [TrustedKeyRefreshTask, JtiCleanupTask];
 	}
 }
