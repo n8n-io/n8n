@@ -16,6 +16,7 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiSandboxProvider,
+	InstanceAiSetupState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -1275,6 +1276,11 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
+	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
+	isInstanceAiSetupPanelEnabled(): boolean {
+		return this.config.instanceAiSetupPanelEnabled;
+	}
+
 	/** Whether this instance is in the activation-capped trial cohort. */
 	isActivationCapped(): boolean {
 		return this.config.activationCapped;
@@ -1308,8 +1314,22 @@ export class InstanceAiSettingsService {
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
 	async isSetupCompleted(): Promise<boolean> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).setupCompleted;
+	}
 
+	/**
+	 * Whether a model is available to answer a run. Narrower than
+	 * `isSetupCompleted` on purpose: sandbox and web search are optional for a
+	 * conversation, a model is not, so this is what the chat endpoint enforces.
+	 */
+	async isModelConfigured(): Promise<boolean> {
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).modelSource !== 'none';
+	}
+
+	/** Setup state of a direct self-managed instance, from the shared derivation. */
+	private async resolveSetupState(): Promise<InstanceAiSetupState> {
 		const [modelSelection, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
 			await Promise.all([
 				this.readAdminModelSelection(),
@@ -1327,7 +1347,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId,
 			searchCredentialId,
 		});
-		return deriveInstanceAiSetupState(response).setupCompleted;
+		return deriveInstanceAiSetupState(response);
 	}
 
 	getConfiguredModelId(): string {

@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Container } from '@n8n/di';
+import { createResultOk } from '@n8n/utils/result';
 import { mock } from 'vitest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
@@ -9,6 +10,7 @@ import {
 	type ILoadOptionsFunctions,
 	type INode,
 	type ISupplyDataFunctions,
+	type NodeEgressFilter,
 } from 'n8n-workflow';
 
 import { McpClientsManager } from './McpClientsManager';
@@ -44,6 +46,17 @@ const baseConnectionConfig: McpConnectionConfig = {
 	timeout: 60000,
 };
 
+const createTestEgressFilter = (): NodeEgressFilter => ({
+	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	createSecureLookup: vi.fn(),
+	validateRedirectSync: vi.fn(),
+});
+
+const egressHelpers = <T extends { helpers: unknown }>(): Partial<T> =>
+	({
+		helpers: { getSecureEgressFilter: vi.fn(() => createTestEgressFilter()) },
+	}) as Partial<T>;
+
 const sampleTool = {
 	name: 'search',
 	description: 'Search the workspace',
@@ -59,6 +72,7 @@ function createSupplyDataCtx(overrides: Record<string, unknown> = {}) {
 		logger: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 		addInputData: vi.fn(() => ({ index: 0 })),
 		addOutputData: vi.fn(),
+		...egressHelpers<ISupplyDataFunctions>(),
 		...overrides,
 	} as Partial<ISupplyDataFunctions>);
 }
@@ -71,6 +85,7 @@ function createExecuteCtx(
 		getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP', type: 'mcp' })),
 		logger: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 		getInputData: vi.fn(() => inputItems),
+		...egressHelpers<IExecuteFunctions>(),
 		...overrides,
 	} as Partial<IExecuteFunctions>);
 }
@@ -428,6 +443,7 @@ describe('runtime', () => {
 				getExecutionId: vi.fn(() => executionId),
 				getExecutionCancelSignal: vi.fn(() => undefined),
 				onExecutionCancellation: vi.fn(),
+				...egressHelpers<IExecuteFunctions>(),
 				...overrides,
 			} as Partial<IExecuteFunctions>);
 		}
@@ -538,6 +554,7 @@ describe('runtime', () => {
 			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
 			const ctx = mock<ILoadOptionsFunctions>({
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP' })),
+				...egressHelpers<ILoadOptionsFunctions>(),
 			});
 
 			const result = await loadMcpToolOptions(ctx, baseConnectionConfig);
@@ -556,6 +573,7 @@ describe('runtime', () => {
 			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('boom'));
 			const ctx = mock<ILoadOptionsFunctions>({
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP' })),
+				...egressHelpers<ILoadOptionsFunctions>(),
 			});
 
 			await expect(loadMcpToolOptions(ctx, baseConnectionConfig)).rejects.toThrow(
@@ -569,6 +587,7 @@ describe('runtime', () => {
 			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
 			const ctx = mock<ILoadOptionsFunctions>({
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP' })),
+				...egressHelpers<ILoadOptionsFunctions>(),
 			});
 
 			await expect(loadMcpToolOptions(ctx, baseConnectionConfig)).rejects.toThrow('list-failed');
