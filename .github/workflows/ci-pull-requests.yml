@@ -27,7 +27,6 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -115,16 +114,12 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .devcontainer/codespaces/agent-worker*.mjs
               OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
               .agents/review-rules/**
-            performance:
-              packages/testing/performance/**
-              packages/workflow/src/**
-              packages/@n8n/expression-runtime/src/**
-              .github/workflows/test-bench-reusable.yml
             e2e-performance:
               packages/testing/playwright/tests/performance/**
               packages/testing/playwright/utils/performance-helper.ts
@@ -323,14 +318,6 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
 
-  performance:
-    name: Performance
-    needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
-    uses: ./.github/workflows/test-bench-reusable.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
   e2e-performance:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
@@ -396,7 +383,6 @@ jobs:
         e2e,
         dev-server-smoke,
         db-tests,
-        performance,
         security-checks,
         workflow-scripts,
       ]

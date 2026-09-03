@@ -1,5 +1,5 @@
 import { InvalidScheduleError } from '../../errors';
-import type { OneOffSchedule, ScheduledJob } from '../../types';
+import type { OneOffSchedule, StoredSchedule } from '../../types';
 import { required } from '../field';
 
 /**
@@ -39,6 +39,6 @@ export function* oneOffOccurrences(first: Date): Generator<Date> {
  * @returns The one-off schedule.
  * @throws {CorruptStorageRowError} When the fire-time field is unset.
  */
-export function resolveOneOff(job: ScheduledJob): OneOffSchedule {
+export function resolveOneOff(job: StoredSchedule): OneOffSchedule {
 	return { kind: 'one_off', fireAt: required(job, 'fireAt') };
 }

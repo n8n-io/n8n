@@ -1,11 +1,13 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
-import type { EntityManager } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ScheduledJob } from '../entities/scheduled-job';
+import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
+import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
 import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
@@ -19,8 +21,9 @@ export interface JobAdvance {
 export type NewScheduledJob = Pick<
 	ScheduledJob,
 	| 'name'
-	| 'workflowId'
-	| 'nodeId'
+	| 'ownerType'
+	| 'ownerId'
+	| 'ownerMemberId'
 	| 'taskType'
 	| 'payload'
 	| 'kind'
@@ -120,13 +123,9 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		};
 	}
 
-	/** All jobs owned by one trigger node */
-	async findManyByWorkflowNode(
-		manager: EntityManager,
-		workflowId: string,
-		nodeId: string,
-	): Promise<ScheduledJob[]> {
-		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
+	/** All jobs owned by exactly this owner member. */
+	async findManyByOwner(manager: EntityManager, owner: ScheduledJobOwner): Promise<ScheduledJob[]> {
+		return await manager.findBy(ScheduledJob, ownerCriteria(owner));
 	}
 
 	/** The jobs with the given ids, read back within a transaction. */
@@ -135,19 +134,21 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
-	async countByWorkflowNode(workflowId: string, nodeId: string): Promise<number> {
-		return await this.count({ where: { workflowId, nodeId } });
+	async countByOwner(owner: ScheduledJobOwner): Promise<number> {
+		return await this.count({ where: ownerCriteria(owner) });
 	}
 
-	async backdateNextRunAt(
-		workflowId: string,
-		nodeId: string,
-		secondsInPast: number,
-	): Promise<void> {
+	async backdateNextRunAt(owner: ScheduledJobOwner, secondsInPast: number): Promise<void> {
+		const memberClause =
+			owner.ownerMemberId === null ? '"ownerMemberId" IS NULL' : '"ownerMemberId" = :ownerMemberId';
 		await this.createQueryBuilder()
 			.update(ScheduledJob)
 			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsInPast * 1000) })
-			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
+			.where(`"ownerType" = :ownerType AND "ownerId" = :ownerId AND ${memberClause}`, {
+				ownerType: owner.ownerType,
+				ownerId: owner.ownerId,
+				ownerMemberId: owner.ownerMemberId,
+			})
 			.execute();
 	}
 
@@ -166,6 +167,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * would come back without an id. `name` is unique and every input job has a row
 	 * once the insert returns (ours, or the concurrent writer's), so the read-back
 	 * yields exactly one id per job.
+	 *
+	 * @throws {UnexpectedError} when a name's row belongs to a different owner. Job
+	 * names are scoped by convention, not by the schema, so a collision would
+	 * otherwise have `orIgnore` hand back another owner's id and let this call
+	 * reschedule their job.
 	 */
 	async insertMany(
 		manager: EntityManager,
@@ -197,7 +203,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		for (let start = 0; start < names.length; start += size) {
 			const found = await manager.find(ScheduledJob, {
 				where: { name: In(names.slice(start, start + size)) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			rows.push(...found);
 		}
@@ -233,28 +239,226 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Delete all jobs owned by one trigger node; their tasks cascade away.
+	 * Delete all jobs owned by exactly this owner member; their tasks cascade away.
 	 * @returns how many jobs were deleted (0 when the driver can't report it).
 	 */
-	async deleteByWorkflowNode(
-		manager: EntityManager,
-		workflowId: string,
-		nodeId: string,
-	): Promise<number> {
-		const result = await manager.delete(ScheduledJob, { workflowId, nodeId });
+	async deleteByOwnerMember(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
+		const result = await manager.delete(ScheduledJob, ownerCriteria(owner));
 		return result.affected ?? 0;
 	}
 
 	/**
-	 * Delete all jobs of one task type owned by a workflow; their tasks cascade away.
+	 * Delete every job an owner holds, whichever of its members provisioned them;
+	 * their tasks cascade away.
 	 * @returns how many jobs were deleted (0 when the driver can't report it).
 	 */
-	async deleteByWorkflowTaskType(
+	async deleteByOwnerRef(manager: EntityManager, owner: ScheduledJobOwnerRef): Promise<number> {
+		const result = await manager.delete(ScheduledJob, ownerRefCriteria(owner));
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete an owner's jobs of one task type, whichever of its members own them;
+	 * their tasks cascade away.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByOwnerTaskType(
 		manager: EntityManager,
-		workflowId: string,
+		owner: ScheduledJobOwnerRef,
 		taskType: string,
 	): Promise<number> {
-		const result = await manager.delete(ScheduledJob, { workflowId, taskType });
+		const result = await manager.delete(ScheduledJob, { ...ownerRefCriteria(owner), taskType });
+		return result.affected ?? 0;
+	}
+
+	/** The owner kinds that currently own at least one job, one row per kind. */
+	async findOwnerTypes(): Promise<string[]> {
+		const rows: Array<{ ownerType: string }> = await this.createQueryBuilder('job')
+			.select('job.ownerType', 'ownerType')
+			.distinct(true)
+			.orderBy('job.ownerType', 'ASC')
+			.getRawMany();
+		return rows.map((row) => row.ownerType);
+	}
+
+	/**
+	 * One page of the distinct owners of a kind, keyset paginated on `ownerId` so
+	 * a long sweep stays on the `(ownerType, ownerId, ownerMemberId)` index.
+	 *
+	 * Only owners with a job older than `settledBefore`. A module may provision
+	 * before the transaction that creates the owner commits, and the resolver
+	 * would read that brand-new job as orphaned. The bound is on `createdAt`
+	 * because the poller rewrites `updatedAt` on every fire.
+	 *
+	 * @param after exclusive lower bound on `ownerId`; omit for the first page.
+	 * @returns at most `limit` owner ids, ascending.
+	 */
+	async findOwnerIds(
+		ownerType: string,
+		settledBefore: Date,
+		limit: number,
+		after?: string,
+	): Promise<string[]> {
+		const query = this.createQueryBuilder('job')
+			.select('job.ownerId', 'ownerId')
+			.distinct(true)
+			.where('job.ownerType = :ownerType', { ownerType })
+			.andWhere('job.createdAt <= :settledBefore', { settledBefore })
+			.orderBy('job.ownerId', 'ASC')
+			.limit(limit);
+		if (after !== undefined) {
+			query.andWhere('job.ownerId > :after', { after });
+		}
+		const rows: Array<{ ownerId: string }> = await query.getRawMany();
+		return rows.map((row) => row.ownerId);
+	}
+
+	/**
+	 * Quarantine every not-yet-quarantined job of these owners: clock cleared,
+	 * `orphanedAt` stamped, and its queued occurrences withdrawn. Both writes
+	 * commit together, or the job would either still fire or requeue what was
+	 * withdrawn. `enabled` is left as it was, so a lift restores the job's own
+	 * state rather than turning on one that was disabled before.
+	 *
+	 * `settledBefore` applies the same bound as {@link findOwnerIds}, sparing a
+	 * job written since the caller's liveness check.
+	 *
+	 * @returns how many jobs were quarantined (0 when the driver can't report it).
+	 */
+	async quarantineByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+		orphanedAt: Date,
+		settledBefore: Date,
+	): Promise<number> {
+		if (ownerIds.length === 0) {
+			return 0;
+		}
+
+		return await this.manager.transaction(async (manager) => {
+			const quarantined = await manager
+				.createQueryBuilder()
+				.update(ScheduledJob)
+				.set({ nextRunAt: null, orphanedAt })
+				.where('"ownerType" = :ownerType', { ownerType })
+				.andWhere('"ownerId" IN (:...ownerIds)', { ownerIds })
+				.andWhere('"orphanedAt" IS NULL')
+				.andWhere('"createdAt" <= :settledBefore', { settledBefore })
+				.execute();
+
+			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds);
+
+			return quarantined.affected ?? 0;
+		});
+	}
+
+	/**
+	 * Delete the pending occurrences of these owners' quarantined jobs.
+	 *
+	 * Keyed on the quarantine stamp rather than on the bounds the update used, so
+	 * it reaches only rows still quarantined when it runs: a job another instance
+	 * revived in between has no stamp and keeps the runs it just seeded.
+	 */
+	private async withdrawQueuedOccurrences(
+		manager: EntityManager,
+		ownerType: string,
+		ownerIds: string[],
+	): Promise<void> {
+		// `tablePath` comes from entity metadata, never from caller input.
+		const jobTable = this.metadata.tablePath;
+		await manager
+			.createQueryBuilder()
+			.delete()
+			.from(ScheduledTask)
+			.where('"status" = :status', { status: ScheduledTaskStatus.Pending })
+			.andWhere(
+				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "orphanedAt" IS NOT NULL)`,
+				{ ownerType, ownerIds },
+			)
+			.execute();
+	}
+
+	/**
+	 * Delete the quarantined jobs of these owners whose grace period has run out;
+	 * their occurrences cascade away.
+	 *
+	 * @param quarantinedBefore only jobs stamped at or before this instant.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteQuarantinedByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+		quarantinedBefore: Date,
+	): Promise<number> {
+		if (ownerIds.length === 0) {
+			return 0;
+		}
+		const result = await this.createQueryBuilder()
+			.delete()
+			.from(ScheduledJob)
+			.where('"ownerType" = :ownerType', { ownerType })
+			.andWhere('"ownerId" IN (:...ownerIds)', { ownerIds })
+			.andWhere('"orphanedAt" IS NOT NULL')
+			.andWhere('"orphanedAt" <= :quarantinedBefore', { quarantinedBefore })
+			.execute();
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * The quarantined jobs of these owners, so a revival can recompute their clocks.
+	 *
+	 * @param limit at most this many jobs.
+	 */
+	async findQuarantinedByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+		limit: number,
+	): Promise<ScheduledJob[]> {
+		if (ownerIds.length === 0) {
+			return [];
+		}
+		return await this.createQueryBuilder('job')
+			.where('job.ownerType = :ownerType', { ownerType })
+			.andWhere('job.ownerId IN (:...ownerIds)', { ownerIds })
+			.andWhere('job.orphanedAt IS NOT NULL')
+			.limit(limit)
+			.getMany();
+	}
+
+	/**
+	 * Lift the quarantine on one job: `orphanedAt` cleared, clock restarted from
+	 * `nextRunAt` (`null` when nothing is left to fire). A no-op unless the job is
+	 * still quarantined, so a concurrent lift or delete wins.
+	 *
+	 * @returns how many quarantines were lifted (0 when nothing was left to lift).
+	 */
+	async liftQuarantine(id: number, nextRunAt: Date | null): Promise<number> {
+		const result = await this.update(
+			{ id, orphanedAt: Not(IsNull()) },
+			{ orphanedAt: null, nextRunAt },
+		);
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Lift the quarantine on every quarantined job of this owner member, leaving
+	 * their clocks to the caller. Must run inside a transaction.
+	 *
+	 * A lifted job keeps its `createdAt`, so the settle window of
+	 * {@link findOwnerIds} does not shield it again. Call this only once the
+	 * owner is visible to its resolver, or the next sweep quarantines it anew.
+	 *
+	 * @returns how many quarantines were lifted (0 when the driver can't report it).
+	 */
+	async liftQuarantineByOwner(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
+		if (manager.queryRunner === undefined) {
+			throw new UnexpectedError('liftQuarantineByOwner must run within a transaction');
+		}
+		const result = await manager.update(
+			ScheduledJob,
+			{ ...ownerCriteria(owner), orphanedAt: Not(IsNull()) },
+			{ orphanedAt: null },
+		);
 		return result.affected ?? 0;
 	}
 
@@ -301,21 +505,52 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 }
 
+/** A read-back row, carrying the owner the id is only valid under. */
+type InsertedRow = Pick<ScheduledJob, 'id' | 'name' | 'ownerType' | 'ownerId' | 'ownerMemberId'>;
+
 /**
- * Ids for `jobs`, in input order, from rows carrying their `{ id, name }`.
+ * Ids for `jobs`, in input order, from the rows read back after the insert.
  * Throws on a name with no row: the caller zips the result back to `jobs` by
- * index, so a gap would misalign every id after it.
+ * index, so a gap would misalign every id after it. Throws too on a row owned by
+ * someone else, rather than handing back an id this caller has no claim to.
  */
-function orderIdsByName(
-	rows: Array<{ id: number; name: string }>,
-	jobs: NewScheduledJob[],
-): number[] {
-	const idByName = new Map(rows.map((row) => [row.name, row.id]));
+function orderIdsByName(rows: InsertedRow[], jobs: NewScheduledJob[]): number[] {
+	const rowByName = new Map(rows.map((row) => [row.name, row]));
 	return jobs.map((job) => {
-		const id = idByName.get(job.name);
-		if (id === undefined) {
+		const row = rowByName.get(job.name);
+		if (row === undefined) {
 			throw new UnexpectedError(`No row found for scheduled job "${job.name}" after insert`);
 		}
-		return id;
+		if (
+			row.ownerType !== job.ownerType ||
+			row.ownerId !== job.ownerId ||
+			row.ownerMemberId !== job.ownerMemberId
+		) {
+			throw new UnexpectedError('Scheduled job name is already taken by another owner', {
+				extra: { name: job.name, ownerType: job.ownerType, ownerId: job.ownerId },
+			});
+		}
+		return row.id;
 	});
+}
+
+/**
+ * Matches every job an owner holds, whichever member provisioned it. Spelled out
+ * rather than spread, so passing a full {@link ScheduledJobOwner} cannot narrow
+ * an owner-wide delete to one member.
+ */
+function ownerRefCriteria(owner: ScheduledJobOwnerRef): FindOptionsWhere<ScheduledJob> {
+	return { ownerType: owner.ownerType, ownerId: owner.ownerId };
+}
+
+/**
+ * Matches exactly one owner member. Spelled out so a `null` member becomes
+ * `IS NULL` instead of `= NULL`, which matches nothing.
+ */
+function ownerCriteria(owner: ScheduledJobOwner): FindOptionsWhere<ScheduledJob> {
+	return {
+		ownerType: owner.ownerType,
+		ownerId: owner.ownerId,
+		ownerMemberId: owner.ownerMemberId === null ? IsNull() : owner.ownerMemberId,
+	};
 }

@@ -1,6 +1,6 @@
 import basicAuth from 'basic-auth';
 import { UnexpectedError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from './error';
 import {
@@ -27,7 +27,13 @@ function secondsUntil(expiresAt: number): number {
 	return Math.max(0, (expiresAt - Date.now()) / 1000);
 }
 
-export async function validateAuth(context: IWebhookFunctions) {
+/**
+ * Verifies the caller against the node's configured authentication. Throws a
+ * `ChatTriggerAuthorizationError` when the caller fails the check, so the return value
+ * only ever answers *who*: the authenticated n8n user under `n8nUserAuth`, or
+ * `undefined` for the modes that identify nobody (`none`, `basicAuth`, `setup`).
+ */
+export async function validateAuth(context: IWebhookFunctions): Promise<IUser | undefined> {
 	const authentication = context.getNodeParameter(
 		'authentication',
 		'none',
@@ -87,7 +93,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 						const validation = await context.validateN8nOAuth2Token(chatToken, resourceUrl);
 						if (validation.valid) {
 							await context.establishTriggerIdentity(chatToken, resourceUrl, validation.user.id);
-							return;
+							return validation.user;
 						}
 					}
 					throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
@@ -100,7 +106,8 @@ export async function validateAuth(context: IWebhookFunctions) {
 			}
 
 			try {
-				await context.validateCookieAuth(authCookie);
+				// Kept inside the `try` so a rejection still becomes a 401.
+				return await context.validateCookieAuth(authCookie);
 			} catch {
 				throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
 			}
