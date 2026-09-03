@@ -2560,6 +2560,31 @@ describe('createWorkflowAdapter', () => {
 
 			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(2);
 		});
+
+		it('reports a miss instead of widening when the folder expansion comes back empty', async () => {
+			const { adapter, mockWorkflowService, mockFolderFinderService } = withFolders();
+			// The finder returns no ids for a folder that no longer exists.
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue([]);
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result.workflows).toEqual([]);
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients/Acme',
+				reason: 'not-found',
+				candidates: ['Clients', 'Clients/Acme'],
+			});
+		});
+
+		it('reports a miss for an empty folderPath rather than listing everything', async () => {
+			const { adapter, mockWorkflowService } = withFolders();
+
+			const result = await adapter.list({ folderPath: '' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result.folderResolution?.reason).toBe('not-found');
+		});
 	});
 
 	it('lists archived workflows when requested', async () => {

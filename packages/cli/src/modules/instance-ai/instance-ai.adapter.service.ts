@@ -179,6 +179,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	FOLDER_SCAN_LIMIT,
+	listCandidatePaths,
 	resolveRequestedFolder,
 	type FolderInScope,
 } from './instance-ai-folder-scope';
@@ -881,7 +882,7 @@ export class InstanceAiAdapterService {
 				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
 				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
 				let folderIds: string[] | undefined;
-				if (foldersOn && (options?.folderPath || options?.folderId)) {
+				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
 					const requested = options.folderPath ?? options.folderId ?? '';
 					const projectIds = targetProjectId
 						? [targetProjectId]
@@ -898,12 +899,24 @@ export class InstanceAiAdapterService {
 					// Expanded here, not in the repository: the plain list query treats
 					// `parentFolderId` as an exact match, so relying on it would silently
 					// return only the folder's top level.
-					folderIds = folderFinderService
+					const expanded = folderFinderService
 						? await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
 								resolved.folderId,
 								options.recursive !== false,
 							)
 						: [resolved.folderId];
+					// No ids means the folder went away between the scan and the expansion.
+					// The repository drops an empty `parentFolderIds` filter, which would
+					// list the whole scope, so report the miss instead.
+					if (expanded.length === 0) {
+						const folderResolution: FolderResolutionFailure = {
+							requested,
+							reason: 'not-found',
+							candidates: listCandidatePaths(foldersInScope ?? []),
+						};
+						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
+					}
+					folderIds = expanded;
 				}
 
 				const scopeFilter = {
