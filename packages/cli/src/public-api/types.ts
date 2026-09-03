@@ -54,13 +54,6 @@ export declare namespace ExecutionRequest {
 		}
 	>;
 
-	type Get = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
-	>;
-	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
 	type StopMany = AuthenticatedRequest<
@@ -73,8 +66,6 @@ export declare namespace ExecutionRequest {
 			startedBefore?: string;
 		}
 	>;
-	type GetTags = AuthenticatedRequest<{ id: string }>;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }
 
 export declare namespace TestRunRequest {

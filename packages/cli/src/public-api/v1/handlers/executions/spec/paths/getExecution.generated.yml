@@ -1,0 +1,219 @@
+operationId: getExecution
+tags:
+  - Execution
+summary: Retrieve an execution
+description: Retrieve an execution from your instance.
+x-required-scope: execution:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: executionId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+      description: Whether or not to include the execution's detailed data.
+    required: false
+    name: includeData
+    in: query
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+    required: false
+    name: ignoreDataSizeLimit
+    in: query
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      description: Controls execution data redaction. When `true`, execution output data is always redacted. When `false`, requests unredacted (revealed) data — requires the `execution:reveal` scope. When omitted, follows the workflow redaction policy.
+    required: false
+    name: redactExecutionData
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              example: '1000'
+            finished:
+              type: boolean
+              description: Whether the execution ran to completion. Use `status` instead.
+              example: true
+              deprecated: true
+            mode:
+              type: string
+              enum:
+                - cli
+                - error
+                - integrated
+                - internal
+                - manual
+                - retry
+                - trigger
+                - webhook
+                - evaluation
+                - chat
+                - agent
+              example: manual
+            retryOf:
+              type: string
+              nullable: true
+              description: ID of the execution this one is a retry of.
+            retrySuccessId:
+              type: string
+              nullable: true
+              description: ID of the retry that succeeded, if this execution failed and a retry did not.
+              example: '2'
+            status:
+              type: string
+              enum:
+                - canceled
+                - crashed
+                - error
+                - new
+                - running
+                - success
+                - unknown
+                - waiting
+            createdAt:
+              type: string
+              format: date-time
+            startedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: Null until the execution leaves the queue and starts running.
+            stoppedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: The time at which the execution stopped. Null while it has not stopped yet.
+            deletedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: Always null. Soft-deleted executions are not returned.
+            workflowId:
+              type: string
+              example: '1000'
+            waitTill:
+              type: string
+              nullable: true
+              format: date-time
+              description: The time at which a waiting execution resumes.
+            storedAt:
+              type: string
+              description: Where the execution data is stored.
+              enum:
+                - db
+                - fs
+                - s3
+                - az
+            tracingContext:
+              type: object
+              nullable: true
+              properties:
+                traceparent:
+                  type: string
+                tracestate:
+                  type: string
+              required:
+                - traceparent
+              description: W3C trace context propagated with the execution.
+            deduplicationKey:
+              type: string
+              nullable: true
+              description: Key used to stop a duplicate execution from being created.
+            jsonSizeBytes:
+              type: number
+              description: Size of the stored execution data in bytes. 0 means unknown.
+              example: 0
+            binaryDataSizeBytes:
+              type: number
+              description: Size of the stored binary data in bytes. 0 means unknown.
+              example: 0
+            workflowVersionId:
+              type: string
+              nullable: true
+              description: ID of the workflow version this execution ran.
+            usedPrivateCredentials:
+              type: boolean
+              description: Whether the execution used credentials that are not shared with the project.
+              example: false
+            data:
+              type: object
+              description: Detailed execution data. Only included when `includeData` is `true`.
+              additionalProperties: true
+              properties:
+                redactionInfo:
+                  type: object
+                  nullable: true
+                  description: Present when execution data has been redacted.
+                  properties:
+                    isRedacted:
+                      type: boolean
+                      description: Whether the execution data was redacted.
+                    reason:
+                      type: string
+                      description: The reason for redaction.
+                    canReveal:
+                      type: boolean
+                      description: Whether the current user has permission to reveal the redacted data.
+            customData:
+              type: object
+              description: Execution metadata set by the workflow. Only included when `includeData` is `true`.
+              additionalProperties:
+                type: string
+            workflowData:
+              type: object
+              description: The workflow as it was saved when the execution ran. Only included when `includeData` is `true`. Older executions carry more fields than newer ones.
+              additionalProperties: true
+            dataTooLargeToDisplay:
+              type: boolean
+              description: Present and true when the execution data was larger than `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`. `data` is then empty and `jsonSizeBytes` holds the real size. Use `ignoreDataSizeLimit` to read it anyway.
+          required:
+            - id
+            - finished
+            - mode
+            - retryOf
+            - retrySuccessId
+            - status
+            - createdAt
+            - startedAt
+            - stoppedAt
+            - deletedAt
+            - workflowId
+            - waitTill
+            - storedAt
+            - tracingContext
+            - deduplicationKey
+            - jsonSizeBytes
+            - binaryDataSizeBytes
+            - workflowVersionId
+            - usedPrivateCredentials
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

@@ -3,6 +3,16 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /executions/{executionId}:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecution.generated.yml
+    delete:
+      $ref: ./handlers/executions/spec/paths/deleteExecution.generated.yml
+  /executions/{executionId}/tags:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecutionTags.generated.yml
+    put:
+      $ref: ./handlers/executions/spec/paths/updateExecutionTags.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
@@ -99,6 +109,9 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/versions/{versionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
   /workflows/{workflowId}/tags:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml

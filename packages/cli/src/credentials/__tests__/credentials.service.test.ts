@@ -4197,10 +4197,21 @@ describe('CredentialsService', () => {
 			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
 		});
 
+		it('should refuse a test URL without a stored service origin', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: 'https://api.example.com/me' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential test URL is not bound to its service origin',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
 		it('should probe the persisted test URL with parsed accepted status codes', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
 			const data: ICredentialDataDecryptedObject = {
 				testUrl: 'https://api.example.com/me',
+				serviceOrigin: 'https://api.example.com',
 				acceptedStatusCodes: '[401]',
 			};
 			mockDecryptedData(data);
@@ -4217,13 +4228,30 @@ describe('CredentialsService', () => {
 				'httpTemplatedCustomAuth',
 				{ id: 'cred-id', name: 'Templated cred', type: 'httpTemplatedCustomAuth', data },
 				'https://api.example.com/me',
-				{ acceptedStatusCodes: [401] },
+				{ acceptedStatusCodes: [401], allowedDomains: 'api.example.com' },
 			);
+		});
+
+		it('should refuse a test URL outside the stored service origin', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({
+				testUrl: 'https://status.example.net/me',
+				serviceOrigin: 'https://api.example.com',
+			});
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential test URL is not bound to its service origin',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
 		});
 
 		it('should ignore malformed accepted status codes', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
-			mockDecryptedData({ testUrl: 'https://api.example.com/me', acceptedStatusCodes: 'nope' });
+			mockDecryptedData({
+				testUrl: 'https://api.example.com/me',
+				serviceOrigin: 'https://api.example.com',
+				acceptedStatusCodes: 'nope',
+			});
 			credentialsTester.probeCredentialAuth.mockResolvedValue({
 				status: 'OK',
 				message: 'Connection successful!',
@@ -4236,7 +4264,7 @@ describe('CredentialsService', () => {
 				expect.anything(),
 				expect.anything(),
 				expect.anything(),
-				{ acceptedStatusCodes: undefined },
+				{ acceptedStatusCodes: undefined, allowedDomains: 'api.example.com' },
 			);
 		});
 	});

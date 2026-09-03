@@ -39,6 +39,9 @@ import {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 } from './scheduled-job';
 import {
 	ScheduledTask,
@@ -128,6 +131,9 @@ export {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,

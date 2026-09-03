@@ -10,6 +10,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -199,6 +200,7 @@ export class AgentConfigService {
 		const toolsProvided = validatedConfig.tools !== undefined;
 		const skillsProvided = validatedConfig.skills !== undefined;
 		const credentialProvided = validatedConfig.credential !== undefined;
+		const modelDeploymentNameProvided = validatedConfig.modelDeploymentName !== undefined;
 		const personalisationProvided = validatedConfig.personalisation !== undefined;
 		const memoryProvided = validatedConfig.memory !== undefined;
 		const subAgentsProvided = validatedConfig.subAgents !== undefined;
@@ -240,6 +242,15 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (modelDeploymentNameProvided) {
+			const deploymentName = decomposedSchema.modelDeploymentName?.trim();
+			if (deploymentName) {
+				nextSchema.modelDeploymentName = deploymentName;
+			} else {
+				delete nextSchema.modelDeploymentName;
+			}
+		}
 
 		if (options?.clearOmittedOptionalFields) {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);
@@ -369,10 +380,6 @@ export class AgentConfigService {
 	}
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function mergePersonalisationWithPreviousGradient(
 	personalisation: AgentJsonConfig['personalisation'],
 	previousSchema: AgentJsonConfig | null,
@@ -403,6 +410,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
 	const optionalFields = [
 		'credential',
+		'modelDeploymentName',
 		'personalisation',
 		'memory',
 		'subAgents',

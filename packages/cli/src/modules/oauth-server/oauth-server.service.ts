@@ -43,6 +43,46 @@ import { isSameProtectedResource } from './resource-identity';
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
 
+/** Maximum length for a client_name, matching the column size declared in the CreateOAuthEntities migration */
+const MAX_CLIENT_NAME_LENGTH = 255;
+
+/**
+ * Grant types this OAuth server implements. Kept in sync with the
+ * `grant_types_supported` list advertised by the metadata endpoint
+ * (see oauth.controller.ts).
+ */
+const SUPPORTED_GRANT_TYPES = ['authorization_code', 'refresh_token'];
+
+/**
+ * Token endpoint auth methods this OAuth server implements. Kept in sync
+ * with the `token_endpoint_auth_methods_supported` list advertised by the
+ * metadata endpoint (see oauth.controller.ts).
+ */
+const SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS = ['none', 'client_secret_post', 'client_secret_basic'];
+
+/**
+ * Counts Unicode code points rather than UTF-16 code units, so a value
+ * containing supplementary-plane characters (surrogate pairs) isn't counted
+ * as longer than it is. Stops once past `limit` to avoid scanning an
+ * oversized value in full.
+ */
+function countCodePointsUpTo(value: string, limit: number): number {
+	let count = 0;
+
+	for (const _codePoint of value) {
+		count++;
+
+		if (count > limit) {
+			break;
+		}
+	}
+
+	return count;
+}
+
+/** Maximum number of grant types per client — one entry per supported grant type is all a client ever needs */
+const MAX_GRANT_TYPES = SUPPORTED_GRANT_TYPES.length;
+
 export type ConnectedOAuthClientOwner = {
 	id: string;
 	firstName: string | null;
@@ -231,7 +271,10 @@ export class OAuthServerService implements OAuthServerProvider {
 				id: clientId,
 				name: resource.displayName ?? clientId,
 				redirectUris: [clientId],
-				grantTypes: ['authorization_code'],
+				// `refresh_token` so the column matches what the grant actually supports:
+				// the AS issues a refresh token on every authorization-code exchange, and
+				// long-lived trigger pages rotate it rather than redirect again.
+				grantTypes: ['authorization_code', 'refresh_token'],
 				tokenEndpointAuthMethod: 'none',
 				clientSecret: null,
 				clientSecretExpiresAt: null,
@@ -244,7 +287,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			client_id: clientId,
 			client_name: resource.displayName ?? clientId,
 			redirect_uris: [clientId],
-			grant_types: ['authorization_code'],
+			grant_types: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_method: 'none',
 			response_types: ['code'],
 			logo_uri: undefined,
@@ -264,8 +307,22 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new Error('client_name is required');
 		}
 
+		if (countCodePointsUpTo(client.client_name, MAX_CLIENT_NAME_LENGTH) > MAX_CLIENT_NAME_LENGTH) {
+			throw new Error(`client_name exceeds maximum length of ${MAX_CLIENT_NAME_LENGTH} characters`);
+		}
+
 		if (!client.grant_types || client.grant_types.length === 0) {
 			throw new Error('grant_types is required');
+		}
+
+		if (client.grant_types.length > MAX_GRANT_TYPES) {
+			throw new Error(`grant_types exceeds maximum count of ${MAX_GRANT_TYPES}`);
+		}
+
+		for (const grantType of client.grant_types) {
+			if (!SUPPORTED_GRANT_TYPES.includes(grantType)) {
+				throw new Error('grant_types contains an unsupported value');
+			}
 		}
 
 		if (!client.redirect_uris || client.redirect_uris.length === 0) {
@@ -282,6 +339,13 @@ export class OAuthServerService implements OAuthServerProvider {
 					`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
 				);
 			}
+		}
+
+		if (
+			client.token_endpoint_auth_method !== undefined &&
+			!SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS.includes(client.token_endpoint_auth_method)
+		) {
+			throw new Error('token_endpoint_auth_method contains an unsupported value');
 		}
 	}
 
