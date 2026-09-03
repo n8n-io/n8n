@@ -46,8 +46,6 @@ export declare namespace ExecutionRequest {
 			startedBefore?: string;
 		}
 	>;
-	type GetTags = AuthenticatedRequest<{ id: string }>;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }
 
 export declare namespace TestRunRequest {

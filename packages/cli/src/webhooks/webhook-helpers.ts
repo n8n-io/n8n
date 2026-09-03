@@ -473,8 +473,16 @@ export function prepareExecutionData(
 	if (executionId !== undefined) {
 		// Set the data the webhook node did return on the waiting node if executionId
 		// already exists as it means that we are restarting an existing execution.
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
-			webhookResultData.workflowData ?? [];
+		// The resuming node is flagged as disabled to stop the wait from starting over,
+		// so mark it to forward every output branch (not just the first). Otherwise items
+		// routed to outputs other than 0 are silently dropped.
+		// See https://github.com/n8n-io/n8n/issues/12823
+		const resumingNodeExecutionData = runExecutionData.executionData!.nodeExecutionStack[0];
+		resumingNodeExecutionData.data.main = webhookResultData.workflowData ?? [];
+		resumingNodeExecutionData.metadata = {
+			...resumingNodeExecutionData.metadata,
+			forwardAllOutputs: true,
+		};
 	}
 
 	if (Object.keys(runExecutionDataMerge).length !== 0) {
@@ -618,6 +626,9 @@ export async function executeWebhook(
 
 	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
 		await Container.get(OAuth2FlowProxy).complete(code, state);
+
+	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
+		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
