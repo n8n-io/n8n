@@ -234,6 +234,8 @@ describe('scheduled job owner teardown', () => {
 			new Date(),
 			new Date(Date.now() + 60_000),
 		);
+		const quarantined = await jobRepo.findOneByOrFail({ id: jobId });
+		expect(quarantined.orphanedAt).not.toBeNull();
 
 		const summary = await provisionOnce();
 
