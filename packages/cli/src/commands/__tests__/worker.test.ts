@@ -177,11 +177,19 @@ describe('Worker', () => {
 	});
 
 	describe('init', () => {
-		it('should reflect QUEUE_WORKER_TIMEOUT in the graceful shutdown config', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			const originalTimeout = globalConfig.generic.gracefulShutdownTimeout;
-			process.env.QUEUE_WORKER_TIMEOUT = '90';
+		const globalConfig = Container.get(GlobalConfig);
+		const originalTimeout = globalConfig.generic.gracefulShutdownTimeout;
 
+		beforeEach(() => {
+			vi.stubEnv('QUEUE_WORKER_TIMEOUT', '90');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+			globalConfig.generic.gracefulShutdownTimeout = originalTimeout;
+		});
+
+		it('should reflect QUEUE_WORKER_TIMEOUT in the graceful shutdown config', async () => {
 			const worker = new Worker();
 			// The config write-back happens before the crash journal; abort there to
 			// keep the rest of the heavy init path out of this test.
@@ -191,14 +199,9 @@ describe('Worker', () => {
 				'initCrashJournal',
 			).mockRejectedValue(abort);
 
-			try {
-				await expect(worker.init()).rejects.toThrow(abort);
+			await expect(worker.init()).rejects.toThrow(abort);
 
-				expect(globalConfig.generic.gracefulShutdownTimeout).toBe(90);
-			} finally {
-				delete process.env.QUEUE_WORKER_TIMEOUT;
-				globalConfig.generic.gracefulShutdownTimeout = originalTimeout;
-			}
+			expect(globalConfig.generic.gracefulShutdownTimeout).toBe(90);
 		});
 	});
 
