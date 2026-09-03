@@ -332,15 +332,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (thenHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = thenHandler.addNodes(nodeOrComposite, ctx);
+			// The incoming connection lands on the composite's entry node. When the composite
+			// was built from a chain (e.g. .to(a.to(b).onTrue(...))), the entry is the chain head.
+			const entryName =
+				thenRegistry.resolveCompositeHeadName(nodeOrComposite, ctx.nameMapping) ?? headName;
 
-			// Connect current node to head of composite
+			// Connect current node to entry of composite
 			if (this._currentNode) {
 				const currentGraphNode = this._nodes.get(this._currentNode);
 				if (currentGraphNode) {
 					const mainConns =
 						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
 					const outputConns: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-					outputConns.push({ node: headName, type: 'main', index: 0 });
+					outputConns.push({ node: entryName, type: 'main', index: 0 });
 					mainConns.set(this._currentOutput, outputConns);
 					currentGraphNode.connections.set('main', mainConns);
 				}
@@ -974,7 +978,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this._dispatchedComposites.add(target);
 			}
 			const ctx = this.createMutablePluginContext(nodes, nameMapping);
-			return handler.addNodes(target, ctx);
+			const headName = handler.addNodes(target, ctx);
+			// Callers connect to the returned name, so resolve the composite's entry node:
+			// the source-chain head when the composite was built from a chain.
+			return registry.resolveCompositeHeadName(target, ctx.nameMapping) ?? headName;
 		}
 
 		return undefined;

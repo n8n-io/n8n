@@ -303,3 +303,36 @@ describe('Switch Case fluent API', () => {
 		});
 	});
 });
+
+describe('inline chains that end in a Switch node', () => {
+	it('connects the previous node to the chain head, not the Switch node', () => {
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const switchNode = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'My Switch' },
+		}) as SwitchNode;
+		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
+		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(prep.to(switchNode).onCase!(0, caseA).onCase(1, caseB));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Case A', 'Case B', 'My Switch', 'Prep', 'Start']);
+
+		// The trigger enters the chain at its head, and the chain reaches the Switch
+		expect(json.connections['Start'].main[0]![0].node).toBe('Prep');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('My Switch');
+		expect(json.connections['My Switch'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['My Switch'].main[1]![0].node).toBe('Case B');
+	});
+});

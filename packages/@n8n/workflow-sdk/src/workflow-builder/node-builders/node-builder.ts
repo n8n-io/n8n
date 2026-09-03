@@ -547,7 +547,10 @@ class NodeChainImpl<
 		if (!this.tail.onTrue) {
 			throw new Error(`.onTrue() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
-		return this.tail.onTrue(target);
+		const builder = this.tail.onTrue(target);
+		// Pass this chain to the builder so workflow-builder can add all chain nodes
+		(builder as IfElseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		return builder;
 	}
 
 	/**
@@ -558,7 +561,10 @@ class NodeChainImpl<
 		if (!this.tail.onFalse) {
 			throw new Error(`.onFalse() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
-		return this.tail.onFalse(target);
+		const builder = this.tail.onFalse(target);
+		// Pass this chain to the builder so workflow-builder can add all chain nodes
+		(builder as IfElseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		return builder;
 	}
 
 	/**
@@ -756,6 +762,11 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 	errorBranch?: IfElseTarget;
 	/** All nodes from both branches (for workflow-builder) */
 	_allBranchNodes: Array<NodeInstance<string, string, unknown>> = [];
+	/** Source chain if created from NodeChain.onTrue()/onFalse() (e.g., a.to(ifNode).onTrue()) */
+	sourceChain?: NodeChain<
+		NodeInstance<string, string, unknown>,
+		NodeInstance<string, string, unknown>
+	>;
 
 	constructor(ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>) {
 		this.ifNode = ifNode;

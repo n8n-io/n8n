@@ -399,3 +399,100 @@ describe('IF Else fluent API', () => {
 		});
 	});
 });
+
+describe('inline branch chains that end in an IF node', () => {
+	it('expands a multi-node chain passed inline to .onFalse() instead of collapsing it', () => {
+		// Repro from a production trace: the retry chain passed to .onFalse() used to
+		// collapse to its IF tail. Build Repair 2, OpenRouter Call 2, and Validate Attempt 2
+		// were silently dropped, and IF 1 connected straight to IF 2.
+		const code = `
+const t = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'Sub Trigger' } });
+const validate1 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Validate Attempt 1' } });
+const if1 = ifElse({ version: 2.2, config: { name: 'Attempt 1 Valid?' } });
+const repair2 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Build Repair 2' } });
+const http2 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'OpenRouter Call 2' } });
+const validate2 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Validate Attempt 2' } });
+const if2 = ifElse({ version: 2.2, config: { name: 'Attempt 2 Valid?' } });
+const repair3 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Build Repair 3' } });
+const finalize = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Finalize' } });
+
+export default workflow('test-id', 'Test')
+  .add(t)
+  .to(validate1)
+  .to(if1)
+  .onTrue(finalize)
+  .onFalse(
+    repair2
+      .to(http2)
+      .to(validate2)
+      .to(if2)
+      .onTrue(finalize)
+      .onFalse(repair3.to(finalize))
+  );
+`;
+		const json = parseWorkflowCode(code);
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual([
+			'Attempt 1 Valid?',
+			'Attempt 2 Valid?',
+			'Build Repair 2',
+			'Build Repair 3',
+			'Finalize',
+			'OpenRouter Call 2',
+			'Sub Trigger',
+			'Validate Attempt 1',
+			'Validate Attempt 2',
+		]);
+
+		// IF 1 false output lands on the chain head, not the inner IF
+		expect(json.connections['Attempt 1 Valid?'].main[0]![0].node).toBe('Finalize');
+		expect(json.connections['Attempt 1 Valid?'].main[1]![0].node).toBe('Build Repair 2');
+
+		// Chain internal connections are preserved
+		expect(json.connections['Build Repair 2'].main[0]![0].node).toBe('OpenRouter Call 2');
+		expect(json.connections['OpenRouter Call 2'].main[0]![0].node).toBe('Validate Attempt 2');
+		expect(json.connections['Validate Attempt 2'].main[0]![0].node).toBe('Attempt 2 Valid?');
+
+		// Inner IF branches are wired
+		expect(json.connections['Attempt 2 Valid?'].main[0]![0].node).toBe('Finalize');
+		expect(json.connections['Attempt 2 Valid?'].main[1]![0].node).toBe('Build Repair 3');
+		expect(json.connections['Build Repair 3'].main[0]![0].node).toBe('Finalize');
+	});
+
+	it('routes a nested branch target built from a chain to the chain head', () => {
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const outerIf = node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: { name: 'Outer IF' },
+		}) as IfNode;
+		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
+		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const innerIf = node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: { name: 'Inner IF' },
+		}) as IfNode;
+		const done = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Done' } });
+		const retry = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Retry' } });
+
+		const inner = prep.to(innerIf).onTrue!(done).onFalse(retry);
+		const wf = workflow('test-id', 'Test').add(t).to(outerIf.onTrue!(ok).onFalse(inner));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Done', 'Inner IF', 'OK', 'Outer IF', 'Prep', 'Retry', 'Start']);
+
+		expect(json.connections['Outer IF'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer IF'].main[1]![0].node).toBe('Prep');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Inner IF');
+		expect(json.connections['Inner IF'].main[0]![0].node).toBe('Done');
+		expect(json.connections['Inner IF'].main[1]![0].node).toBe('Retry');
+	});
+});

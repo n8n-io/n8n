@@ -36,6 +36,13 @@ import type { MutablePluginContext } from '../types';
 export function getTargetNodeId(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
 
+	// A builder created from a chain (a.to(if).onTrue(...)) enters at the chain head.
+	// Check before the composite guards: builders also match those.
+	const sourceChain = (target as { sourceChain?: { head: { id: string } } }).sourceChain;
+	if (sourceChain) {
+		return sourceChain.head.id;
+	}
+
 	if (isInputTarget(target)) {
 		return target.node.id;
 	}
@@ -78,6 +85,13 @@ export function getTargetNodeId(target: unknown): string | undefined {
  */
 export function getTargetNodeName(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
+
+	// A builder created from a chain (a.to(if).onTrue(...)) enters at the chain head.
+	// Check before the composite guards: builders also match those.
+	const sourceChain = (target as { sourceChain?: { head: { name: string } } }).sourceChain;
+	if (sourceChain) {
+		return sourceChain.head.name;
+	}
 
 	// Handle InputTarget (e.g. merge.input(1)) - return the underlying node's name
 	if (isInputTarget(target)) {

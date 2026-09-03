@@ -16,6 +16,7 @@ import type {
 	ConnectionTarget,
 	NodeInstance,
 	IfElseBuilder,
+	NodeChain,
 } from '../../../types/base';
 import { isIfElseBuilder } from '../../node-builders/node-builder';
 import { isIfElseComposite } from '../../type-guards';
@@ -42,6 +43,12 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 	},
 
 	getHeadNodeName(input: IfElseInput): { name: string; id: string } {
+		// Connections into the composite land on the source-chain head when present.
+		// For a.to(b).to(ifNode).onTrue(...) the entry is `a`, not the IF node.
+		const sourceChain = (input as { sourceChain?: NodeChain }).sourceChain;
+		if (sourceChain) {
+			return { name: sourceChain.head.name, id: sourceChain.head.id };
+		}
 		if (isIfElseBuilder(input)) {
 			return { name: input.ifNode.name, id: input.ifNode.id };
 		}
@@ -70,6 +77,12 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 	},
 
 	addNodes(input: IfElseInput, ctx: MutablePluginContext): string {
+		// Handle sourceChain if present (for a.to(ifNode).onTrue() pattern)
+		const builderWithChain = input as { sourceChain?: unknown };
+		if (builderWithChain.sourceChain) {
+			ctx.addBranchToGraph(builderWithChain.sourceChain);
+		}
+
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
 		// Handle IfElseBuilder differently - need to set up connections BEFORE adding branches

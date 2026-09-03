@@ -16,6 +16,7 @@ import type {
 	ConnectionTarget,
 	NodeInstance,
 	SwitchCaseBuilder,
+	NodeChain,
 } from '../../../types/base';
 import { isSwitchCaseBuilder } from '../../node-builders/node-builder';
 import { isSwitchCaseComposite } from '../../type-guards';
@@ -42,6 +43,12 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	getHeadNodeName(input: SwitchCaseInput): { name: string; id: string } {
+		// Connections into the composite land on the source-chain head when present.
+		// For a.to(b).to(switchNode).onCase(...) the entry is `a`, not the Switch node.
+		const sourceChain = (input as { sourceChain?: NodeChain }).sourceChain;
+		if (sourceChain) {
+			return { name: sourceChain.head.name, id: sourceChain.head.id };
+		}
 		if (isSwitchCaseBuilder(input)) {
 			return { name: input.switchNode.name, id: input.switchNode.id };
 		}
