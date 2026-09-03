@@ -339,6 +339,15 @@ describe('ExecutionRepository', () => {
 
 			expect(entityManager.update).toBeCalledTimes(1);
 		});
+
+		test('should skip the read-back and report nothing when the UPDATE affects no rows', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			const crashed = await executionRepository.markAsCrashed(['1']);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(crashed).toEqual([]);
+		});
 	});
 
 	describe('setRunning', () => {

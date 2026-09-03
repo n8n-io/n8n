@@ -281,7 +281,16 @@ describe('ExecutionRepository', () => {
 
 		it('should crash a soft-deleted in-progress execution', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const runningId = await createExecution('running');
+			const workflow = await createWorkflow();
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'running',
+				finished: false,
+				createdAt: new Date(),
+			});
+			const runningId = identifiers[0].id as string;
 			await executionRepo.softDelete(runningId);
 
 			const crashed = await executionRepo.markAsCrashed([runningId]);
@@ -291,7 +300,16 @@ describe('ExecutionRepository', () => {
 				withDeleted: true,
 			});
 			expect(runningExec?.status).toBe('crashed');
-			expect(crashed).toHaveLength(1);
+			// The statistics counter relies on these fields being present on the
+			// returned rows, not just on the row count.
+			expect(crashed).toEqual([
+				{
+					id: runningId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					mode: 'manual',
+				},
+			]);
 		});
 	});
 

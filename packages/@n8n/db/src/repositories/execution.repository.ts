@@ -395,20 +395,29 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const crashed: CrashedExecution[] = [];
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
-			// `stoppedAt` doubles as a claim token: the read below matches only the rows
-			// this UPDATE wrote, so concurrent sweeps each report their own rows without
-			// `SELECT ... FOR UPDATE`, which SQLite does not support.
+			// `stoppedAt` doubles as a claim token: when the UPDATE affects rows, the read
+			// below matches only the rows this UPDATE wrote, so concurrent sweeps each report
+			// their own rows without `SELECT ... FOR UPDATE`, which SQLite does not support.
+			// This does not hold for ids a concurrent sweep already claimed: the UPDATE
+			// matches none of those, but if the same batch also claims other ids, the read
+			// still picks up the untouched ones by their shared `stoppedAt`.
 			const stoppedAt = new Date();
 
 			const transitioned = await this.runInTransaction({}, async (tx) => {
 				// Guard against overwriting executions that have since moved to a `waiting` or
 				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
 				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-				await tx.update(
+				const updateResult = await tx.update(
 					ExecutionEntity,
 					{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
 					{ status: 'crashed', stoppedAt, waitTill: null },
 				);
+
+				// Skip the read-back when the UPDATE is known to have affected nothing, so a
+				// concurrent sweeper that already claimed this whole batch reports no rows for
+				// it. Treat an unreported `affected` (null/undefined) as unknown, not zero, and
+				// fall back to the read.
+				if (updateResult?.affected === 0) return [];
 
 				const rows = await tx.find(ExecutionEntity, {
 					select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
