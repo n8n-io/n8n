@@ -632,8 +632,17 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
-		if (resp.statusCode === 200 || (manualMount?.subPath === '' && resp.statusCode === 404)) {
+		const { body } = resp;
+		// Vault answers a list on an empty KV mount with 404 and an empty `errors` array. A 404 for an
+		// unknown mount path carries an error message instead.
+		const isEmptyMount =
+			resp.statusCode === 404 &&
+			typeof body === 'object' &&
+			body !== null &&
+			'errors' in body &&
+			Array.isArray(body.errors) &&
+			body.errors.length === 0;
+		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
 			return [true];
 		}
 		return [false, failureMessage(resp.statusCode)];

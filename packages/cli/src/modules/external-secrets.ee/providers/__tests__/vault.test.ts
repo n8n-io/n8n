@@ -758,6 +758,28 @@ describe('VaultProvider', () => {
 			expect(success).toBe(true);
 		});
 
+		it('should return error when the configured KV mount does not exist', async () => {
+			const { provider } = await initProvider(
+				[
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: tokenLookupResponse() },
+					{
+						method: 'GET',
+						pathname: '/v1/exmaple-kv/metadata/',
+						status: 404,
+						body: {
+							errors: ['no handler for route "exmaple-kv/metadata/". route entry not found.'],
+						},
+					},
+				],
+				vaultSettingsWithKvPath('exmaple-kv', '2'),
+			);
+
+			const [success, message] = await provider.test();
+
+			expect(success).toBe(false);
+			expect(message).toBe('Could not access exmaple-kv/metadata/ (status 404).');
+		});
+
 		it('should name the requested path when the token lacks access to the sub-path', async () => {
 			const { provider, httpRequest } = await initProvider(
 				[
