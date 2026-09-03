@@ -1917,6 +1917,24 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
+		// Deleting the sticky leaves the real node behind, so the group is not
+		// losing its last real member and must not gain a placeholder.
+		it('does not re-insert a placeholder when a sticky is deleted from the group', () => {
+			const sticky = createTestNode({
+				id: 's',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [150, -100],
+			});
+			const { group, state } = setupLastGroupMemberDelete([sticky]);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('s');
+
+			expect(state.placeholder).toBeUndefined();
+			expect(group.nodeIds).toEqual(['m']);
+		});
+
 		// Undo must revert the whole re-insert: the placeholder, both of its
 		// connections, and the group membership from before it was inserted.
 		it('records the placeholder re-insert so undo reverts it as a unit', () => {

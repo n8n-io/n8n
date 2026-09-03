@@ -576,11 +576,12 @@ export function useCanvasOperations() {
 			return false;
 		}
 		// Stickies can't be connected, so they don't keep a group alive: a group
-		// of one node plus stickies still loses its last real member here.
+		// of one node plus stickies still loses its last real member here. The
+		// deleted node must be that member — deleting a sticky leaves it behind.
 		const connectableMembers = group.nodeIds.filter(
 			(id) => workflowDocumentStore.value.getNodeById(id)?.type !== STICKY_NODE_TYPE,
 		);
-		if (connectableMembers.length !== 1) {
+		if (connectableMembers.length !== 1 || connectableMembers[0] !== node.id) {
 			return false;
 		}
 
