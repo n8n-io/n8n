@@ -275,7 +275,7 @@ When implementing features:
    `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
-   frontend feature module, follow
+   frontend feature module, obey
    `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types

@@ -9,8 +9,8 @@ pnpm n8n-module-sdk create my-feature --stack=frontend
 
 `create` writes `packages/modules/<name>/<frontend|backend>`.
 
-Then read [frontend-module-guide.md](./frontend-module-guide.md) — the descriptor contract, the
-import boundaries, the registration points and the traps each one has.
+Then read [frontend-module-guide.md](./frontend-module-guide.md). It gives the descriptor
+contract, the import boundaries, the registration points and the problem in each one.
 
 ## Frontend
 

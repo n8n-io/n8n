@@ -1,50 +1,52 @@
 # Frontend module
 
-A frontend module is a self-contained unit of editor-ui functionality, shipped as its own
-workspace package at `packages/modules/<name>/frontend`, and registered with the editor-ui shell
-through a descriptor.
+A frontend module is one unit of editor-ui function. It is a workspace package at
+`packages/modules/<name>/frontend`. A descriptor registers it with the editor-ui shell.
 
-Benefits of modularity:
+Modules give these benefits:
 
-- **Organization:** Feature code has one home, and a public entry that says what the rest of the
-  app may use
-- **Independence:** Typecheck, lint and test one feature in seconds instead of running all of
-  editor-ui (~770K lines of `.ts` and `.vue`, of which `src/features/` is ~600K)
-- **Decoupling:** A module cannot reach into the shell or into another module, so features stop
-  entangling
-- **Ownership:** One package, one CODEOWNERS line
-- **Parity:** The frontend module id matches its backend twin, and both gate off
-  `/rest/module-settings`
+- **Organization:** Feature code has one home. Its public entry says what the rest of the app
+  can use.
+- **Independence:** You typecheck, lint and test one feature in seconds. You do not run all of
+  editor-ui (~770K lines of `.ts` and `.vue`; `src/features/` holds ~600K of that).
+- **Decoupling:** A module cannot read the shell or another module. Features stay separate.
+- **Ownership:** One package has one CODEOWNERS line.
+- **Parity:** The frontend module id is the same as the backend module id. Both read
+  `/rest/module-settings`.
 
-Frontend modules are **source-only**: `"main": "src/index.ts"`, no `build` script, no `dist`.
-Two reasons. `tsdown` — what `@n8n/stores` and friends build with — cannot compile `.vue` SFCs.
-And a `dist` would have no consumer: every frontend package is already aliased to its `src`, so
-the shell's Vite graph compiles module sources directly. "Built separately" here means
-**typechecked, linted and tested separately**, which is where the CI win actually comes from.
+Frontend modules are **source-only**. They declare `"main": "src/index.ts"`. They have no `build`
+script and no `dist`.
 
-This guide is written against the shipped CLI. Where it disagrees with the original
-modularization design proposal (CAT-3680), the code wins; those disagreements are called out
-inline.
+There are two reasons. First, `tsdown` cannot compile `.vue` SFCs, and `@n8n/stores` and similar
+packages build with `tsdown`. Second, a `dist` would have no consumer, because an alias already
+points every frontend package at its `src`. The Vite graph of the shell compiles module sources
+directly.
+
+"Built separately" here means **typechecked, linted and tested separately**. That is the source of
+the CI benefit.
+
+This guide describes the CLI that shipped. If it disagrees with the original modularization
+design proposal (CAT-3680), the code is correct. This guide marks each disagreement.
 
 ## Quickstart
 
-From the monorepo root:
+Run these commands from the monorepo root:
 
 ```sh
 pnpm n8n-module-sdk create                      # prompts for name and stack
 pnpm n8n-module-sdk create my-feature --stack=frontend
 ```
 
-`create` prompts for two things: the module name, and whether you want the frontend half, the
-backend half, or both. The name is the canonical spelling of your module — it becomes the package
-suffix, the directory name, the file infix, the descriptor `id`, and the backend module id it must
-match. It must be kebab-case, and every word must start with a letter; the CLI rejects anything
-else.
+`create` asks two questions. It asks for the module name. It then asks for the frontend half, the
+backend half, or both.
 
-Real output:
+The name is the one spelling of your module. It becomes the package suffix, the directory name,
+the file infix and the descriptor `id`. It must also be the same as the backend module id. Write
+it in kebab-case, and start every word with a letter. The CLI refuses any other form.
+
+The command prints this output:
 
 ```
-Formatted 12 files in 5ms. No fixes applied.
 ✔ Created packages/modules/my-feature
   packages/modules/my-feature/frontend  → @n8n/frontend-module-my-feature
   updated @n8n/frontend-vite-config/index.ts (Vite alias)
@@ -65,35 +67,41 @@ Formatted 12 files in 5ms. No fixes applied.
  ╰───────────────────────────────────────────────────────────────────╯
 ```
 
-The first line is Biome. The CLI formats the new package and every file it edited, because a
-registration line can be longer than the 100-column limit; without that step the next
-`format:check` in CI fails on a module nobody touched by hand.
+Biome prints one more line before that output: `Formatted 12 files in 5ms. No fixes applied.` The
+CLI formats the new package and every file that it changed. A registration line can be longer than
+the limit of 100 columns. Without this step, the next `format:check` in CI fails on a module that
+nobody changed by hand.
 
-⚠️ **Those next-steps go through turbo on purpose — don't "simplify" them to
-`pnpm --filter … typecheck`.** `n8n-workflow` and `@n8n/permissions` are consumed from their built
-`dist` (they are not in the module tsconfig base's `paths`), so a direct `--filter` run on a cold
-tree fails with a wall of
+**Caution:** do not change those next-steps to `pnpm --filter … typecheck`. They use turbo for a
+reason.
+
+A module reads `n8n-workflow` and `@n8n/permissions` from their built `dist`, because the module
+tsconfig base does not list them in `paths`. A direct `--filter` run on a cold tree then fails
+with many errors:
 
 ```
 ../../../@n8n/api-types/src/agent-builder-tool-node-types.ts(5,8): error TS2307: Cannot find module 'n8n-workflow' or its corresponding type declarations.
 ../../../@n8n/api-types/src/api-keys.ts(1,34): error TS2307: Cannot find module '@n8n/permissions' or its corresponding type declarations.
 ```
 
-Nothing is wrong with your module. `turbo typecheck` declares `dependsOn: ["^build"]`, builds the
-dependencies first, and passes. `lint` and `test` are green either way.
+Your module is correct. `turbo typecheck` declares `dependsOn: ["^build"]`. Turbo builds the
+dependencies first, and the typecheck then passes. `lint` and `test` pass in both forms.
 
-Every edit the CLI makes outside the new package is idempotent, so re-running after a partial
-failure is safe.
+The CLI makes every edit outside the new package idempotent. You can run the command again after
+a partial failure.
 
 ### `--stack=backend` is a placeholder
 
-The backend half is a reserved path and a README, and **nothing loads it**. The backend runtime
-discovers modules under `packages/cli/src/modules/<name>`, which is where all 37 real backend
-modules live, so `packages/modules/<name>/backend` is deliberately not a workspace package. To
-create a backend module that actually runs, use `pnpm setup-backend-module` and follow
-`scripts/backend-module/backend-module-guide.md`. The CLI says all of this on stdout when you ask
-for the backend half; it is repeated here because it is the one thing about `create` that could
-mislead you.
+The backend half is a reserved path and a README. **Nothing loads it.**
+
+The backend runtime reads its modules from `packages/cli/src/modules/<name>`. All 37 real backend
+modules are there. For this reason `packages/modules/<name>/backend` is not a workspace package.
+
+To create a backend module that runs, use `pnpm setup-backend-module`. Then obey
+`scripts/backend-module/backend-module-guide.md`.
+
+The CLI prints all of this when you ask for the backend half. This guide repeats it, because it is
+the one part of `create` that can mislead you.
 
 ## File structure
 
@@ -114,17 +122,19 @@ packages/modules/my-feature/frontend/
         └── setup.ts           # per-package test bootstrap
 ```
 
-Add what you need — `views/`, `components/`, `composables/`, `my-feature.api.ts`,
-`my-feature.constants.ts`. As on the backend, infixes are not enforced (except on `.module.ts`)
-but are strongly recommended: they make files searchable once a module has several dozen.
+Add the directories and files that you need: `views/`, `components/`, `composables/`,
+`my-feature.api.ts` and `my-feature.constants.ts`.
 
-The worked example in-repo is **`packages/modules/instance-registry/frontend`** — the first real
-extraction, and still the only one, small enough to read in one sitting.
+Only `.module.ts` must have an infix, the same as on the backend. Use an infix on the other files
+also. A module with many files is then easy to search.
+
+The example in the repository is **`packages/modules/instance-registry/frontend`**. It is the
+first extraction, and still the only one. It is small enough to read at one time.
 
 ## Entrypoint
 
-Two files make up the entrypoint: `src/index.ts` (what the shell may import) and
-`src/<name>.module.ts` (the descriptor).
+The entrypoint has two files. `src/index.ts` holds what the shell can import.
+`src/<name>.module.ts` holds the descriptor.
 
 ```ts
 // src/index.ts — the module's only public entry.
@@ -132,8 +142,8 @@ export { MyFeatureModule } from './my-feature.module';
 export { useMyFeatureStore } from './my-feature.store';
 ```
 
-Deep paths into `src/` are not part of the contract. If the shell or another package needs
-something, export it here.
+A deep path into `src/` is not part of the contract. If the shell or another package needs a
+value, export that value here.
 
 ```ts
 // src/my-feature.module.ts
@@ -148,22 +158,23 @@ export const MyFeatureModule: FrontendModuleDescription = {
 };
 ```
 
-`id` is load-bearing. `settingsStore.isModuleActive(id)` reads the backend's `activeModules`
-list, so an id with no backend twin is never active — and any route that opts into the module
-availability guard (below) will refuse to resolve.
+The `id` field is critical. `settingsStore.isModuleActive(id)` reads the `activeModules` list from
+the backend. An id with no backend twin is never active. A route that uses the module availability
+guard then does not resolve.
 
-A descriptor with no surfaces at all is legitimate. `instance-registry` is exactly that: the
-store is the whole module, and the descriptor is what makes it a module the shell knows about
-rather than a library it happens to import.
+A descriptor with no surfaces is correct. `instance-registry` is such a module. Its store is the
+full module. The descriptor makes it a module that the shell knows, and not a library that the
+shell imports.
 
 ## The descriptor contract
 
-`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) types twelve
-extension surfaces. They sit at three different levels of wiring, and the difference matters.
+`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares twelve
+extension surfaces. The shell connects them at three different levels. Read the difference before
+you use a surface.
 
-### Live — the shell reads these and something renders them
+### Live — the shell registers these, and a reader shows them
 
-| Field                   | Registered by                  | Consumed by                              |
+| Field                   | Register function              | Reader                                   |
 | ----------------------- | ------------------------------ | ---------------------------------------- |
 | `routes`                | `registerModuleRoutes`         | vue-router                               |
 | `projectTabs`           | `registerModuleProjectTabs`    | `ProjectHeader`                          |
@@ -173,61 +184,62 @@ extension surfaces. They sit at three different levels of wiring, and the differ
 | `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
 | `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
 
-All of them live in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`. `routes` register
-pre-mount from `main.ts`; the rest register post-login from `app/init/index.ts`.
+All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
+`main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
+after the login.
 
-`pushHandlers` has one extra rule: only an **active** module registers. A claimed push type also
-suppresses the shell's own handler for it, so registering from an inactive module would silently
-kill the built-in.
+`pushHandlers` has one more rule. Only an **active** module registers its handlers. A module
+handler also stops the built-in handler of the shell for that push type. A handler from an
+inactive module would stop the built-in handler and give no message.
 
-### Registered, but nothing renders it yet
+### The shell registers this one, but nothing shows it
 
-`commands` is registered into `commandRegistry` by `registerModuleCommands`. No command-bar host
-subscribes to that registry — `features/shared/commandBar` still builds its list from its own
-`use*Commands` composables. So a `commands` array is stored and never shown.
+`registerModuleCommands` puts `commands` into `commandRegistry`. No command-bar host reads that
+registry. `features/shared/commandBar` still makes its list from its own `use*Commands`
+composables. The registry keeps your `commands` array, but the command bar never shows it.
 
-### Types-only — setting these does nothing at all
+### Types-only — these do nothing at all
 
 `locales` · `shortcuts` · `banners` · `setup`
 
-The SDK exports the types. Nothing in the shell reads them. A value you set is silently ignored:
-no error, no warning, no behaviour.
+The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
+error, no warning, no behaviour.
 
-Do not use `commands` or the four types-only fields yet. The remaining wiring is tracked in
-**CAT-3685**. The scaffolded descriptor carries the same split as a comment so it is in front of
-you while you write.
+Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
+The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
 
-This is the one place a module author is most likely to lose an afternoon — the type accepts your
-`commands` array happily, and nothing ever draws it.
+**Note:** this is the most common cause of lost time for a new module author. The type accepts
+your `commands` array, and no component draws it.
 
-### Route names are yours, and they are checked
+### Route names are yours, and a check guards them
 
-Route names are global to the router, and `router.addRoute` replaces a duplicate without warning:
-the losing route just stops resolving. The shell's central `VIEWS` enum used to keep every name
-unique by construction. A module cannot import `VIEWS` — that is `@/app/constants`, the shell — so
-declare your own constant and export it from your `constants.ts`:
+A route name is global to the router. `router.addRoute` replaces a duplicate name and gives no
+warning. The route that loses then does not resolve.
+
+The central `VIEWS` enum of the shell made every name unique. A module cannot import `VIEWS`,
+because `VIEWS` is in `@/app/constants` — the shell. Declare your own constant, and export it from
+your `constants.ts` file:
 
 ```ts
 // src/my-feature.constants.ts
 export const MY_FEATURE_VIEW = 'my-feature';
 ```
 
-`assertUniqueRouteNames` (`@n8n/frontend-module-sdk`) restores the lost check. It runs inside
-`registerModuleRoutes`, before any module route is added, and throws on a collision with the shell
-or with another module:
+`assertUniqueRouteNames` (`@n8n/frontend-module-sdk`) gives that check back. `registerModuleRoutes`
+calls it before it adds a module route. It throws an error if a name is the same as a shell name
+or as another module name:
 
 ```
 Duplicate route name "my-feature" declared by module "my-feature" — already taken by the app shell.
 ```
 
-`features/workflow-reviews/module.descriptor.ts` is the in-shell precedent for module-owned name
+`features/workflow-reviews/module.descriptor.ts` is the example in the shell of module-owned name
 constants.
 
 ### Route gating
 
-`registerModuleRoutes` stamps `meta.moduleName = <module id>` onto every route a module
-contributes, but the availability check is **opt-in per route**. It only runs if the route asks
-for it:
+`registerModuleRoutes` writes `meta.moduleName = <module id>` on every route of a module. The
+availability check is **per route, and optional**. It runs only if the route asks for it:
 
 ```ts
 routes: [
@@ -243,50 +255,53 @@ routes: [
 ],
 ```
 
-Without `'custom'` in `meta.middleware`, the route resolves whether or not the module is active.
+If `meta.middleware` has no `'custom'` entry, the route resolves. The state of the module then
+makes no difference.
 
 ## Import-light descriptors
 
-The descriptor file may import **types and the SDK only**. Views load lazily; stores are
-referenced inside guards, handlers or `setup`, never at module scope.
+The descriptor file can import **types and the SDK only**. Load views lazily. Read a store inside
+a guard, a handler or `setup`. Never read a store at module scope.
 
 ```ts
 const MyFeatureView = async () => await import('./views/MyFeatureView.vue');
 ```
 
-Two reasons, one of them load-bearing today:
+There are two reasons. The first reason applies today.
 
-1. **Boot order.** `modules.manifest.ts` is reached through `main.ts`'s own imports, so every
-   descriptor body is evaluated *before* `app.use(pinia)` runs. A top-level `useXStore()` call
-   therefore executes with no active Pinia.
-2. **Future chunking.** Import-light descriptors are the precondition for per-module `import()`
-   chunks. A descriptor that eagerly pulls its own views drags the whole module into
-   the entry bundle even when the module is disabled.
+1. **Boot order.** The imports of `main.ts` reach `modules.manifest.ts`, so JavaScript runs every
+   descriptor body *before* `app.use(pinia)`. A `useXStore()` call at module scope then runs with
+   no active Pinia.
+2. **Chunks, later.** Import-light descriptors are the condition for one `import()` chunk for each
+   module. A descriptor that imports its own views puts the full module in the entry bundle, even
+   when the module is inactive.
 
-**This is a burn-down, not a clean slate.** All eight in-shell descriptors already lazy-load their
-view components — that part is settled convention, codified here. But six of the eight still reach
-past types and the SDK at module scope: `settings/otel` imports `useRBACStore`, and
-`core/dataTable` calls `useI18n()` at module scope. Fix the descriptor you are extracting; don't
-take the existing ones as the pattern.
+**The shell descriptors are not all correct yet.** All eight descriptors in the shell load their
+view components lazily. That part is the agreed convention, and this guide records it.
+
+But six of the eight still import more than types and the SDK at module scope. `settings/otel`
+imports `useRBACStore`. `core/dataTable` calls `useI18n()` at module scope. Correct the descriptor
+that you extract. Do not copy the descriptors that are in the shell today.
 
 ## Imports and boundaries
 
-A module may depend on **L0–L2 packages only**. The full set the shared tsconfig base resolves
-from source:
+A module can depend on **L0–L2 packages only**. The shared tsconfig base resolves this set from
+source:
 
 `@n8n/api-types` · `@n8n/chat` · `@n8n/chat-hub` · `@n8n/composables` · `@n8n/constants` ·
 `@n8n/design-system` · `@n8n/frontend-constants` · `@n8n/frontend-module-sdk` ·
 `@n8n/frontend-utils` · `@n8n/i18n` · `@n8n/rest-api-client` · `@n8n/stores` · `@n8n/telemetry` ·
 `@n8n/utils`
 
-plus `@n8n/permissions`, `n8n-workflow`, `vue`, `vue-router` and `pinia`, which resolve from their
-built `dist` — the reason the next-steps commands go through turbo.
+A module also uses `@n8n/permissions`, `n8n-workflow`, `vue`, `vue-router` and `pinia`. These five
+resolve from their built `dist`. That is why the next-steps commands use turbo.
 
-Never import another `@n8n/frontend-module-*`. Never import `@/…` — that is the shell.
+Never import another `@n8n/frontend-module-*`. Never import `@/…`, because `@/…` is the shell.
 
-### ⚠️ Several platform packages are subpath-only
+### Caution: several platform packages are subpath-only
 
-This one bites everybody, and it fails in two different ways:
+**Caution:** import the subpath, and not the package root. A root import fails in two different
+ways:
 
 ```ts
 import { useSettingsStore } from '@n8n/stores';       // ❌ TS2305: no exported member
@@ -296,35 +311,41 @@ import { useSettingsStore } from '@n8n/stores/settings.store';   // ✅
 import { useToast } from '@n8n/composables/useToast';            // ✅
 ```
 
-`@n8n/stores/src/index.ts` is a single line — `export * from './constants'` — so a root import
-resolves but exposes nothing you want. `@n8n/composables` has no `src/index.ts` at all and
-declares only `"./*"` in its `exports`, so a root import does not resolve. The same is true of
-`@n8n/frontend-constants`, `@n8n/frontend-utils` and `@n8n/utils`: the alias table marks them
-`entry: false`, and a package with no root entry deliberately gets no bare-specifier alias
-(`@n8n/frontend-vite-config/index.ts`).
+`@n8n/stores/src/index.ts` has one line: `export * from './constants'`. A root import of it
+resolves, but it gives you nothing that you need.
 
-Always import the subpath. The design proposal's dependency list implies root imports; it is
-wrong.
+`@n8n/composables` has no `src/index.ts` file. Its `exports` map declares only `"./*"`. A root
+import of it does not resolve.
 
-### The no-cross-module rule: what is enforced, and what is not
+`@n8n/frontend-constants`, `@n8n/frontend-utils` and `@n8n/utils` behave in the same way. The alias
+table marks them `entry: false`. A package with no root entry gets no bare-specifier alias, on
+purpose (`@n8n/frontend-vite-config/index.ts`).
 
-Be precise about this one, because three different things get called "the boundary".
+Always import the subpath. The dependency list in the design proposal shows root imports. That
+list is wrong.
 
-**Accidental cross-module imports are blocked, in two places.** A module's `vite.config.ts`
-spreads `frontendAliases` — the platform table plus the `@n8n/tournament` rewrite. Sibling modules
-live in a second array, `modulePackages`, which only the shell expands through
-`frontendModuleAliases`. So a stray import of a sibling fails to resolve at test time:
+### The no-cross-module rule: what a tool stops, and what it does not
+
+Read this section with care. Three different mechanisms have the name "the boundary".
+
+**Two mechanisms stop an accidental cross-module import.**
+
+The `vite.config.ts` file of a module spreads `frontendAliases`. That set holds the platform table
+and the `@n8n/tournament` rewrite. A second array, `modulePackages`, holds the sibling modules.
+Only the shell expands that array, through `frontendModuleAliases`. An import of a sibling then
+does not resolve in a test run:
 
 ```
 Error: Failed to resolve import "@n8n/frontend-module-instance-registry" from "src/cross.test.ts". Does the file exist?
   Plugin: vite:import-analysis
 ```
 
-And it fails at typecheck too, because the shared tsconfig base omits module `paths`.
+The typecheck also fails, because the shared tsconfig base has no module `paths`.
 
-**A deliberate cross-module import is still not blocked by either.** Add the sibling to your
-`dependencies`, and pnpm symlinks it; because modules are source-only (`"main": "src/index.ts"`),
-node resolution finds it with no alias involved. The tsconfig base says so itself:
+**Neither mechanism stops a deliberate cross-module import.** Add the sibling to your
+`dependencies`, and pnpm makes a symlink to it. Modules are source-only
+(`"main": "src/index.ts"`), so node resolution finds the sibling and uses no alias. The tsconfig
+base says the same:
 
 > `paths` lists the L0-L2 packages a module consumes from source. Module packages are absent
 > from it on purpose, which stops an *accidental* cross-module import — but it is not a
@@ -333,21 +354,23 @@ node resolution finds it with no alias involved. The tsconfig base says so itsel
 >
 > — `packages/@n8n/typescript-config/tsconfig.frontend-module.json`
 
-**`pnpm boundaries:check` does not close the gap either.** It ratchets `turbo boundaries`, which
-finds *undeclared* dependencies and reach-in imports against a committed baseline
-(`.boundaries-baseline.json`). A declared dependency is exactly what it is designed to accept.
+**`pnpm boundaries:check` does not close the gap either.** It runs `turbo boundaries` against a
+baseline in the repository (`.boundaries-baseline.json`). The count of issues can only decrease.
+`turbo boundaries` reports an *undeclared* dependency or a reach-in import. It accepts a declared
+dependency by design.
 
-So: the alias split raises the cost of an accident from "silently works" to "fails in two
-places". It does not stop anyone who means it. The enforcement that would is an ESLint
-`no-restricted-imports` rule, and **it does not exist in the repo yet** — tracked as
-**CAT-3692**. Until it lands, treat the boundary as a review responsibility. Reviewers: a new
-`@n8n/frontend-module-*` entry in a module's `dependencies` is the tell, and it is the *only*
-tell — once it is there, every check goes green.
+The alias split changes an accidental import from a silent success into two clear failures. It
+does not stop a person who wants that import. An ESLint `no-restricted-imports` rule would stop
+it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
+
+Until that rule lands, the boundary is the responsibility of the reviewer. Reviewers, look for a
+new `@n8n/frontend-module-*` entry in the `dependencies` of a module. That entry is the only
+signal. After a module declares the dependency, every check passes.
 
 ## Stores
 
-Pinia stores self-register on the first `use…Store()` call, so there is nothing to declare in
-the descriptor and no lifecycle to wire.
+A Pinia store registers itself on the first `use…Store()` call. You declare nothing in the
+descriptor, and you connect no lifecycle.
 
 ```ts
 import { defineStore } from 'pinia';
@@ -360,13 +383,12 @@ export const useMyFeatureStore = defineStore('myFeature', () => {
 });
 ```
 
-Export the store from `src/index.ts` if anything outside the module reads it —
-`instance-registry` does exactly this, because the About modal and the debug-info report consume
-its cluster-info store.
+Export the store from `src/index.ts` if a file outside the module reads it. `instance-registry`
+does this, because `AboutModal` and `useDebugInfo` read its cluster-info store.
 
-## Module settings and the timing trap
+## Module settings and the timing problem
 
-There are two levels of gating, and they come from **different endpoints at different times**:
+There are two levels of gating. They come from **different endpoints at different times**:
 
 ```ts
 // Level 1 — is the module enabled on this instance at all?
@@ -376,13 +398,15 @@ settingsStore.isModuleActive('my-feature')          // from `settings.activeModu
 settingsStore.moduleSettings['my-feature']?.enabled // from `/rest/module-settings`
 ```
 
-⚠️ **`moduleSettings` is `{}` until after login.** `getModuleSettings()` runs exactly once,
-inside the login hook in `editor-ui/src/app/init/index.ts`. During bootstrap and route
-registration the bag is empty, so an eager read returns `undefined` and silently behaves like
-"disabled".
+**Caution:** do not read `moduleSettings` before the login. It is `{}` until then.
 
-Never read it at module scope, in a store's setup body, or anywhere on the pre-login path. Read
-it inside a route guard, a computed, or an event handler. The two-level pattern in full:
+`getModuleSettings()` runs one time, in the login hook in `editor-ui/src/app/init/index.ts`. The
+object is empty during the boot and during the route registration. An early read returns
+`undefined`, and your code then behaves as if the module is inactive.
+
+Never read it at module scope. Never read it in the setup body of a store. Never read it on the
+path before the login. Read it in a route guard, a computed value or an event handler. This is the
+full pattern:
 
 ```ts
 const isEnabled = computed(
@@ -391,14 +415,14 @@ const isEnabled = computed(
 );
 ```
 
-`isModuleActive` alone is safe earlier — it reads the main settings payload, not
-`/rest/module-settings` — but it is still not populated before `getSettings()`.
+`isModuleActive` is safe earlier, because it reads the main settings payload and not
+`/rest/module-settings`. But it is also empty before `getSettings()`.
 
-## Registering with the shell
+## Register the module with the shell
 
-A module is inert until the shell can see it. That takes **four file edits plus a CODEOWNERS
-line** — the CLI makes the four edits for you, and this section exists for when you are
-hand-registering or debugging a red CI.
+A module does nothing until the shell can see it. The shell needs **four file edits and one
+CODEOWNERS line**. The CLI makes the four edits. Read this section when you register a module by
+hand, or when you debug a CI failure.
 
 | # | Where                                          | What                                      | Scaffolded? |
 | - | ---------------------------------------------- | ----------------------------------------- | ----------- |
@@ -408,25 +432,26 @@ hand-registering or debugging a red CI.
 | 4 | `editor-ui/src/app/modules.manifest.ts`        | import + array entry                       | ✅          |
 | 5 | `.github/CODEOWNERS`                           | one line for the new package               | ❌ do this  |
 
-The frontend has no CODEOWNERS entries at all today, so #5 is a new habit rather than a line to
-copy. Add yours at creation time — a package with no owner is how half-migrations rot.
+The frontend has no CODEOWNERS entries today, so you cannot copy a line for #5. Add your line when
+you create the module. A package with no owner is the start of an incomplete migration.
 
-**#1, #2 and #3 must land in the same PR.** They are not alternatives, and each covers a
-different resolver:
+**Put #1, #2 and #3 in the same PR.** They are not alternatives. Each one serves a different
+resolver:
 
-- **#1** is the Vite alias — what makes the dev server and the production bundle load your module
-  from `src`. The mapping is **hand-maintained**; it does not appear on its own.
-- **#2** is what makes a bare import resolve outside Vite at all — vue-tsc, node.
-- **#3** is what makes vue-tsc resolve the same `src` Vite does.
+- **#1** is the Vite alias. It makes the dev server and the production bundle read your module
+  from `src`. A person maintains this table by hand. It does not appear without that edit.
+- **#2** makes a bare import resolve outside Vite, for `vue-tsc` and for node.
+- **#3** makes `vue-tsc` resolve the same `src` that Vite resolves.
 
-⚠️ **The list used to be derived from the filesystem. It is not any more** — `fae4c98` reversed
-that deliberately, in favour of a table you read and edit. If you are working from an older
-description of this system, that is the part that changed.
+**Note:** the list came from the file system in the past. It does not now. Commit `fae4c98` made
+that change on purpose, and gave a table that you read and edit. If you read an older description
+of this system, this is the part that changed.
 
-### The table is guarded by name
+### A test guards the table by name
 
-Miss #1 and you do not get a silent bundle/typecheck split — you get a named test failure.
-Dropping a module from the table and running `editor-ui/vite/aliases.test.ts`:
+If you forget #1, you do not get a silent split between the bundle and the typecheck. You get a
+test failure with the name of the package. Remove a module from the table, then run
+`editor-ui/vite/aliases.test.ts`:
 
 ```
  FAIL  vite/aliases.test.ts > editor-ui vite aliases > aliases every source package editor-ui typechecks from src
@@ -441,39 +466,42 @@ AssertionError: expected [ '@n8n/frontend-module-my-feature' ] to deeply equal [
 + ]
 ```
 
-It names the package you forgot. That test is the enforcement for registration — a real gate,
-not a convention — and it exists because the failure it catches is not hypothetical: four
-packages spent months typechecked from `src` while the bundle was built from their `dist`.
+The message gives the name of the package that you forgot. That test enforces the registration. It
+is a real gate, and not a convention. The failure is also real: for months, `vue-tsc` read four
+packages from `src` while the build used their `dist`.
 
-Note what it does and does not cover. It guards that the alias table, editor-ui's `paths` and the
-shared module base all agree. It says nothing about whether one module imports another — that is
-the separate, still-unenforced boundary above.
+**Note:** the test makes sure that the alias table, the `paths` of editor-ui and the shared module
+base agree. It says nothing about an import of one module by another module. That is the separate
+boundary above, and no tool enforces it.
 
-The old `pnpm check:frontend-aliases` script is gone; `aliases.test.ts` replaced it, so the guard
-now runs in the normal frontend test job rather than in `lint:ci`.
+The old `pnpm check:frontend-aliases` script is gone. `aliases.test.ts` replaced it. The guard now
+runs in the standard frontend test job, and not in `lint:ci`.
 
-If you add or rename a **platform** package, add it to the `sourcePackages` array in the same
-file, and update `editor-ui/tsconfig.json` and `tsconfig.frontend-module.json` to match. The same
-test tells you if you missed one.
+If you add a **platform** package, or you rename one, add it to the `sourcePackages` array in the
+same file. Then update `editor-ui/tsconfig.json` and `tsconfig.frontend-module.json` to agree. The
+same test reports a file that you forgot.
 
-`packages/@n8n/typescript-config/tsconfig.frontend-module.json` is **hand-maintained** and has to
-agree with both the alias table and editor-ui's `paths`. `aliases.test.ts` fails when they
-diverge.
+A person maintains `packages/@n8n/typescript-config/tsconfig.frontend-module.json` by hand. It must
+agree with the alias table and with the `paths` of editor-ui. `aliases.test.ts` fails if they
+disagree.
 
 ## Typecheck
 
-Each module runs its own `vue-tsc --noEmit` against
-`@n8n/typescript-config/tsconfig.frontend-module.json`. Three things about that base are worth
-knowing before they surprise you.
+Each module runs its own `vue-tsc --noEmit` with
+`@n8n/typescript-config/tsconfig.frontend-module.json`. Learn three facts about that base file
+first.
 
-### `paths` is inherited; `rootDirs`, `types` and `include` are not
+### A module inherits `paths`, but not `rootDirs`, `types` or `include`
 
-Relative entries in `rootDirs`, `types` and `include` resolve against the **consuming** config,
-so a copy of them in the base would point at the base's own directory. `paths` is the exception —
-it anchors to the file that *declares* it, which is what lets one shared base serve modules at
-any depth. That asymmetry is why the module tsconfig template looks lopsided.
+A relative entry in `rootDirs`, `types` or `include` resolves against the config file that
+**consumes** it. A copy of those three in the base file would point at the directory of the base
+file.
 
-### Ambient `.d.ts` shims live per-module, for the same reason
+`paths` is the exception, because it anchors to the file that *declares* it. For this reason one
+shared base can serve a module at any depth. That difference explains the shape of the module
+tsconfig template.
+
+### Each module keeps its own ambient `.d.ts` shims, for the same reason
 
 ```jsonc
 "types": [
@@ -485,17 +513,17 @@ any depth. That asymmetry is why the module tsconfig template looks lopsided.
 ]
 ```
 
-These are ambient declarations your module never imports — nothing pulls them into the program on
-its own. They are here because you consume `@n8n/design-system` and `@n8n/stores` **from source**:
-a built `dist` would have carried its own declarations, and consuming source makes them the
-consumer's problem. They cannot be hoisted into the shared base, by the resolution rule above.
+Your module never imports these ambient declarations. No file adds them to the program. They are
+here because your module reads `@n8n/design-system` and `@n8n/stores` **from source**. A built
+`dist` carries its own declarations. Source does not, so the consumer must add them. The
+resolution rule above stops a move of these entries into the shared base.
 
-Keep them. If a module drops the `@n8n/design-system` dependency, drop the matching shim with it.
+Keep them. If a module removes the `@n8n/design-system` dependency, remove the related shim also.
 
 ### `useUnknownInCatchVariables: false`
 
-Every module inherits it from the base. A `catch` variable types as **`any`, not `unknown`** — so
-this compiles clean inside a module, and would not elsewhere:
+Every module inherits this flag from the base file. A `catch` variable then has the type **`any`,
+and not `unknown`**. This code compiles in a module. It does not compile in another package:
 
 ```ts
 try { … } catch (error) {
@@ -503,10 +531,12 @@ try { … } catch (error) {
 }
 ```
 
-This is not a style choice and not a licence to be sloppy. It is the price of consuming
-`@n8n/rest-api-client` from source: that package sets the flag in its own tsconfig and its
-`catch` blocks rely on it, so the flag has to hold in every consumer. editor-ui carries the same
-line. It goes away when that package's source stops needing it. Narrow your errors by hand.
+This flag is not a style decision. It is the cost of a read of `@n8n/rest-api-client` from source.
+That package sets the flag in its own tsconfig, and its `catch` blocks need it. The flag must then
+hold for every consumer. editor-ui has the same line. The flag goes away when the source of that
+package no longer needs it.
+
+Narrow the type of each error by hand.
 
 ## Lint
 
@@ -515,9 +545,9 @@ pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # eslint src --qui
 pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
 ```
 
-⚠️ **Extracted code hits stricter lint than it did in the shell.** `editor-ui/eslint.config.mjs`
-sets `'import-x/order': 'off'`; the shared frontend config leaves it on. So code that was green
-inside editor-ui goes red the moment it moves into a module:
+**Note:** lint is stricter in a module than in the shell. `editor-ui/eslint.config.mjs` sets
+`'import-x/order': 'off'`. The shared frontend config keeps that rule on. Code that passed in
+editor-ui then fails in a module:
 
 ```
   2:1  error  `@n8n/stores/settings.store` import should occur before import of `vue`  import-x/order
@@ -526,10 +556,12 @@ inside editor-ui goes red the moment it moves into a module:
   1 error and 0 warnings potentially fixable with the `--fix` option.
 ```
 
-Autofixable — `pnpm lint:fix` clears it. Expect a non-behavioural import-order churn in every
-extraction PR, keep it in its own commit so reviewers can skip it, and say so in the PR body. A
-first-time module author who reads that red as their own mistake will go looking for a bug that
-isn't there.
+`pnpm lint:fix` corrects this error. Every extraction PR gets these import-order changes, and they
+change no behaviour.
+
+Put those changes in one commit, so a reviewer can skip them. Then say so in the PR body. A new
+module author can read this error as a defect, and can then search for a problem that does not
+exist.
 
 ## Tests
 
@@ -538,90 +570,106 @@ pnpm turbo test --filter=@n8n/frontend-module-my-feature   # vitest run
 pnpm --filter @n8n/frontend-module-my-feature test:dev     # watch
 ```
 
-Colocate tests next to the code (`my-feature.store.test.ts`), the same convention editor-ui uses.
-`vite.config.ts` already wires `@vitejs/plugin-vue` and the shared source aliases, so `.vue` files
-compile in tests with no extra setup. `src/__tests__/setup.ts` imports the shared jsdom harness
-(`@n8n/vitest-config/setup/frontend` — observers, matchMedia, canvas, timers, teardown guards) and
-boots Pinia per test. Framework boot stays per-package on purpose: `@n8n/i18n` devDepends on
-`@n8n/vitest-config`, so booting i18n inside the shared harness would close a turbo cycle. Add
-`useI18n` boot to your own setup file if you need it.
+Put each test next to its code (`my-feature.store.test.ts`). editor-ui uses the same convention.
 
-### Two entries in `package.json` are mandatory, not optional
+`vite.config.ts` already holds `@vitejs/plugin-vue` and the shared source aliases. A `.vue` file
+then compiles in a test with no more setup.
 
-**`"test:changed": "janitor test-scoped"`.** PR CI runs `pnpm test:ci:frontend:changed`, which is
+`src/__tests__/setup.ts` imports the shared jsdom harness, `@n8n/vitest-config/setup/frontend`.
+That harness gives the observers, `matchMedia`, canvas, timers and the teardown guards. The file
+then starts Pinia for each test.
+
+Each package starts the frameworks itself, on purpose. `@n8n/i18n` has `@n8n/vitest-config` in its
+`devDependencies`. A start of i18n inside the shared harness would make a turbo cycle. Add the
+`useI18n` start to your own setup file if your module needs it.
+
+### Two entries in `package.json` are mandatory
+
+**`"test:changed": "janitor test-scoped"`.** The CI for a PR runs `pnpm test:ci:frontend:changed`.
+That script is
 `turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'`.
-Turbo **silently no-ops a package that does not define the script** — no error, no skip notice.
-Your suite simply never runs in PR CI, and the job is green.
 
-(That second filter is why modules are in the frontend test job at all: `packages/modules/**` is
-not under `packages/frontend/**`, so without it a module would drop out of the sharded frontend
-job and reappear in the backend one.)
+Turbo **does nothing for a package that has no such script**. It gives no error and no skip
+message. Your tests then never run in the CI for a PR, and the job passes.
 
-This is not hypothetical: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants`,
-`@n8n/frontend-utils` and `@n8n/eslint-plugin-design-system` are in exactly that hole today. Do
-not add a fifth.
+The second `--filter` puts modules in the frontend test job. `packages/modules/**` is not inside
+`packages/frontend/**`. Without that filter, a module leaves the sharded frontend job and joins the
+backend job.
 
-**`passWithNoTests: true`.** Inherited from `@n8n/vitest-config/frontend` (the config factory, not
-the `setup/frontend` harness above), so you get it for free — but do not override it. CI shards
-the frontend two ways (`--shard=N/2`), and vitest exits non-zero when a shard is handed no test
-files. A sparse module would fail on shard 2 for no reason.
+Four packages have this defect today: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants`,
+`@n8n/frontend-utils` and `@n8n/eslint-plugin-design-system`. Do not add a fifth.
 
-The pair is a trade: `passWithNoTests` means an empty module suite is green rather than red. So
-`test:changed` and a real test are what actually protect you. The CLI emits a passing example
-test — replace it, don't delete it.
+**`passWithNoTests: true`.** Your module inherits this option from `@n8n/vitest-config/frontend`.
+That is the config factory, and not the `setup/frontend` harness above. Do not override the option.
 
-## Publishing
+CI splits the frontend into two shards (`--shard=N/2`). vitest exits with an error when a shard
+gets no test file. A module with few tests would then fail on shard 2 for no reason.
 
-Frontend modules are **published packages** — no `"private": true`. This reverses the design
-proposal deliberately (Alex, 2026-08-05).
+The two options are a compromise. `passWithNoTests` makes an empty module suite pass. So
+`test:changed` and one real test are your true protection. The CLI writes an example test that
+passes. Replace that test. Do not delete it.
 
-`scripts/check-workspace-private-deps.mjs` fails `pnpm lint:ci` when a non-private package has a
-private workspace **runtime** dependency. `n8n-editor-ui` is published and depends on every
-module at runtime, so marking a module private breaks `npm install n8n` — the install graph would
-point at packages that were never published. Keep `"license": "LicenseRef-n8n-sustainable-use"`
-and leave `private` off.
+## Publish the package
+
+The repository publishes frontend module packages. Do not add `"private": true`. This decision
+reverses the design proposal, on purpose (Alex, 2026-08-05).
+
+`scripts/check-workspace-private-deps.mjs` fails `pnpm lint:ci` if a public package has a private
+workspace **runtime** dependency. The repository publishes `n8n-editor-ui`, and that package
+depends on every module at run time.
+
+**Caution:** do not mark a module private. `npm install n8n` then fails, because the install graph
+points at packages that nobody published.
+
+Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
 
 ## Future work
 
-1. **Five descriptor surfaces are not usable yet** — `commands` registers into `commandRegistry`
-   but no command-bar host subscribes to it, and `locales`, `shortcuts`, `banners` and `setup` are
-   types with no read site at all (**CAT-3685**). Until then, cross-feature glue still goes
-   through the shell.
-2. **The cross-module boundary has no enforcement against a deliberate import** — the ESLint
-   `no-restricted-imports` rule is **CAT-3692**. The alias split blocks accidents at test time,
-   the tsconfig base blocks them at typecheck, and `turbo boundaries` only looks for *undeclared*
-   dependencies — declaring the dependency clears all three. It should land before the second
-   extraction, not after.
-3. **Per-module i18n.** Modules currently keep their strings in the central `@n8n/i18n` `en.json`.
-   The `locales` descriptor field plus per-module key types is the target; central `en.json` is
-   the accepted fallback and must not become permanent.
-4. **Per-module build-time chunks.** Once descriptors are genuinely import-light, the manifest can
-   become a static map of dynamic imports and Vite emits one chunk per module. Decision point is
-   wave-2 exit, with bundle data. Runtime dynamic loading is ruled out.
-5. **CODEOWNERS is manual.** Adding it to the CLI is a small, obvious follow-up.
-6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types produces
-   only `no-unsafe-*` noise; ten other `@n8n/*` packages ship the same way and Biome still formats
-   it. Revisit if the CLI grows past a few hundred lines.
+1. **Five descriptor surfaces do not work yet.** `commands` goes into `commandRegistry`, but no
+   command-bar host reads that registry. `locales`, `shortcuts`, `banners` and `setup` are types,
+   and no file reads them (**CAT-3685**). Until that work lands, cross-feature code stays in the
+   shell.
+2. **No tool stops a deliberate cross-module import.** The ESLint `no-restricted-imports` rule is
+   **CAT-3692**. The alias split stops an accident in a test run. The tsconfig base stops one at
+   typecheck. `turbo boundaries` reports only an *undeclared* dependency. A declared dependency
+   clears all three. This rule must land before the second extraction.
+3. **Per-module i18n.** A module keeps its strings in the central `en.json` of `@n8n/i18n` today.
+   The target is the `locales` descriptor field with per-module key types. The central `en.json` is
+   the accepted alternative, but it must not become permanent.
+4. **One build-time chunk for each module.** After the descriptors are import-light, the manifest
+   can become a static map of dynamic imports. Vite then emits one chunk for each module. The
+   decision point is the end of wave 2, with bundle data. The team decided against a module load
+   at run time.
+5. **CODEOWNERS is a manual step.** An addition to the CLI is a small and clear follow-up.
+6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types gives
+   only `no-unsafe-*` noise. Ten other `@n8n/*` packages ship in the same way, and Biome still
+   formats this one. Review this decision if the CLI grows past a few hundred lines.
 
 ## FAQs
 
-- **What is a good example of a frontend module?** `packages/modules/instance-registry/frontend` —
-  the first extraction, small enough to read end to end.
-- **Why is there no `build` script?** There is nothing to build. Modules are consumed from source
-  by whatever Vite context loads them — the dev server, the shell's production build, or the
-  module's own vitest. See the intro.
-- **Does `pnpm dev` still hot-reload?** Yes, unchanged. One Vite dev server; editing a file inside
-  a module HMRs exactly as it did under `editor-ui/src/features/`.
-- **My module needs something from another module. What do I do?** Don't import it. Either the
-  shared piece belongs in an L2 package (`@n8n/stores`, `@n8n/composables`), or the two features
-  are one module. If you genuinely need a contribution point that doesn't exist, raise it against
-  the SDK — the registries are the supported inversion, not a direct import.
-- **Do I need a backend module too?** Only if your feature needs backend gating. But if a backend
-  twin exists, the ids **must** match — `isModuleActive` and `/rest/module-settings` key off the
-  same string. See `scripts/backend-module/backend-module-guide.md`.
-- **Should every new feature be a module?** New features should be born as packages once the
-  pattern is proven on the Wave-1 pilots. The editor core — canvas, NDV, node creator — stays in
-  the shell for now; see the modularization roadmap on CAT-3680.
-- **Does a module PR use a special PR-title scope?** No. Module PRs keep the `editor` scope.
-- **How do I remove a module?** Reverse the four registration points, delete the package, run
-  `pnpm install`, and re-run `editor-ui/vite/aliases.test.ts`. Check inbound imports first.
+- **Which module is a good example?** `packages/modules/instance-registry/frontend`. It is the
+  first extraction, and it is small enough to read fully.
+- **Why is there no `build` script?** There is nothing to build. The Vite context that loads a
+  module reads it from source. That context is the dev server, the production build of the shell,
+  or the vitest run of the module. See the introduction.
+- **Does `pnpm dev` still hot-reload?** Yes, with no change. There is one Vite dev server. A change
+  to a file in a module hot-reloads in the same way as a change to a file in
+  `editor-ui/src/features/`.
+- **My module needs a value from another module. What must I do?** Do not import that module. Move
+  the shared value into an L2 package, such as `@n8n/stores` or `@n8n/composables`. If you cannot
+  move it, the two features are one module. If you need a contribution point that does not exist,
+  ask for it on the SDK. The registries are the supported method, and a direct import is not.
+- **Do I need a backend module also?** Only if your feature needs a gate on the backend. If a
+  backend twin exists, the two ids **must** be the same, because `isModuleActive` and
+  `/rest/module-settings` use the same string. See
+  `scripts/backend-module/backend-module-guide.md`.
+- **Must every new feature be a module?** Yes, after the wave-1 pilots prove the pattern. Each new
+  feature then starts as a package. The editor core — canvas, NDV and the node creator — stays in
+  the shell for now. See the modularization roadmap on CAT-3680.
+- **Does a module PR need a special PR-title scope?** No. A module PR keeps the `editor` scope.
+- **How do I remove a module?** Do these five steps:
+  1. Find the files that import the module.
+  2. Reverse the four registrations.
+  3. Delete the package.
+  4. Run `pnpm install`.
+  5. Run `editor-ui/vite/aliases.test.ts` again.
