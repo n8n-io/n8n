@@ -13,6 +13,8 @@ import {
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
 	type GenerateDraftCasesResult,
+	NameCheckDto,
+	type NameCheckResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -128,6 +130,19 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.generateDraftCases(req.user, agentId, projectId, payload);
+	}
+
+	// Names a hand-written check from its content; same model path as generation.
+	@Post('/:agentId/evals/checks/name')
+	@ProjectScope('agent:update')
+	async nameCheck(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: NameCheckDto,
+	): Promise<NameCheckResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.service.nameCheck(req.user, projectId, agentId, payload);
 	}
 
 	// ---- runs ----

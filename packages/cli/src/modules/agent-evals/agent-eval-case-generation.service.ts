@@ -7,12 +7,15 @@ import {
 	type AgentJsonConfig,
 	type GenerateDraftCasesOptions,
 	type GenerateDraftCasesResult,
+	type NameCheckPayload,
+	type NameCheckResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -76,6 +79,8 @@ const MAX_NAME_ATTEMPTS = 20;
  * agent-eval runner reads. Framed as drafts: the user reviews and edits them;
  * they are never auto-graded.
  */
+const nameSchema = z.object({ name: z.string().min(1).max(60) });
+
 @Service()
 export class AgentEvalCaseGenerationService {
 	constructor(
@@ -168,6 +173,32 @@ export class AgentEvalCaseGenerationService {
 	 * bring-your-own-key model (draft/unset, managed, or unsupported provider),
 	 * since generation calls the provider directly with that credential.
 	 */
+	/** A 2–4 word label for a hand-written check, from its request and what to check. */
+	async nameCheck(
+		user: User,
+		projectId: string,
+		agentId: string,
+		payload: NameCheckPayload,
+	): Promise<NameCheckResult> {
+		await this.flagGate.assertEnabled(user);
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const modelConfig = await this.resolveAgentModel(config, projectId, user);
+		const { Agent } = await import('@n8n/agents');
+		const agent: Agent = new Agent('agent-eval-check-naming')
+			.model(modelConfig)
+			.instructions(
+				'You label test cases for a chat agent. Given a user request and what the reply should do, return a short title of 2 to 4 words that says what the check is about. Title case, no quotes, no trailing period.',
+			)
+			.structuredOutput(nameSchema);
+		const result = await agent.generate(
+			`Request: ${payload.input}\nWhat to check: ${payload.whatToCheck}`,
+			{ abortSignal: AbortSignal.timeout(20_000) },
+		);
+		const parsed = nameSchema.safeParse(result.structuredOutput);
+		if (!parsed.success) throw new OperationalError('Check naming returned no usable title');
+		return { name: parsed.data.name.trim().slice(0, 40) };
+	}
+
 	private async resolveAgentModel(config: AgentJsonConfig, projectId: string, user: User) {
 		const { model, credential } = config;
 		if (!model || !credential || credential === MANAGED_CREDENTIAL_TOKEN) {

@@ -13,7 +13,7 @@ import type {
 	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -67,6 +67,18 @@ const attention = computed(() => reviewStore.attentionFor(agentId.value));
 const needsEyeIds = computed(
 	() => new Set(reviewStore.needsEyeThreadIdsByAgentId[agentId.value] ?? []),
 );
+// Tester checks with a result are ledger rows too; clicking one opens it in review.
+const testerRows = computed(() => {
+	const rows = reviewStore.ledgerChecksByAgentId[agentId.value] ?? [];
+	const withResult = rows.filter((r) => r.state !== 'idle');
+	return needsEyeOnly.value ? withResult.filter((r) => r.state === 'needsEye') : withResult;
+});
+function openCheck(rowId: number) {
+	reviewStore.requestReview(agentId.value, `check:${rowId}`);
+}
+function checkStateLabel(state: string) {
+	return i18n.baseText(`agents.builder.checks.state.${state}` as BaseTextKey);
+}
 const visibleThreads = computed(() =>
 	needsEyeOnly.value
 		? sessionsStore.threads.filter((t) => needsEyeIds.value.has(t.id))
@@ -308,6 +320,39 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
+						v-for="row in testerRows"
+						:key="`check-${row.rowId}`"
+						:class="[$style.clickableRow, $style.testerRow]"
+						:data-state="row.state"
+						data-testid="agent-session-tester-row"
+						@click="openCheck(row.rowId)"
+					>
+						<td :class="$style.titleCell">
+							<button type="button" :class="$style.sessionOpen">
+								<span :class="$style.sessionTitleRow">
+									<span :class="$style.sessionTitle">
+										<span v-if="row.label" :class="$style.testerKind">{{ row.label }}</span>
+										{{ row.input }}
+									</span>
+									<span :class="$style.statusRow">
+										<N8nText :class="$style[`checkState_${row.state}`]" size="small">{{
+											checkStateLabel(row.state)
+										}}</N8nText>
+									</span>
+								</span>
+							</button>
+						</td>
+						<td :class="$style.originCell">
+							<span :class="[$style.originPill, $style.testerPill]">
+								<N8nIcon icon="flask-conical" size="large" />
+								<span>{{ i18n.baseText('agents.builder.checks.evalAgent') }}</span>
+							</span>
+						</td>
+						<td :class="$style.dateCell">{{ row.at ? formatDate(row.at) : '' }}</td>
+						<td :class="$style.tokenCell"></td>
+						<td :class="$style.actionCell"></td>
+					</tr>
+					<tr
 						v-for="thread in visibleThreads"
 						:key="thread.id"
 						:class="$style.clickableRow"
@@ -466,6 +511,39 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+}
+
+.testerRow {
+	font-family: var(--wireframe--font-family);
+	letter-spacing: var(--wireframe--letter-spacing);
+}
+
+.testerKind {
+	margin-right: var(--spacing--2xs);
+	font-weight: var(--wireframe--font-weight);
+}
+
+.testerPill {
+	border: var(--wireframe--border-width) solid var(--color--warning);
+	background: color-mix(in srgb, var(--color--warning) 18%, var(--background--surface));
+	color: var(--color--warning);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+}
+
+.checkState_needsEye {
+	color: var(--color--warning);
+}
+.checkState_ok {
+	color: var(--color--success);
+}
+.checkState_flagged,
+.checkState_error {
+	color: var(--color--danger);
+}
+.checkState_running,
+.checkState_idle {
+	color: var(--text-color--subtler);
 }
 
 .reviewButton {

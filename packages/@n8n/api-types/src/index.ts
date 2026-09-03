@@ -659,6 +659,8 @@ export {
 	CASE_INPUT_FLAVORS,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
+	NameCheckDto,
+	nameCheckSchema,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -683,6 +685,8 @@ export type {
 	CaseInputFlavor,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	NameCheckPayload,
+	NameCheckResult,
 } from './schemas/agent-evals.schema';
 
 export {

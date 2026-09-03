@@ -8,6 +8,8 @@ import type {
 	CreateAgentEvalRunPayload,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	NameCheckPayload,
+	NameCheckResult,
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -135,6 +137,16 @@ export class AgentEvalService {
 		return await this.caseGenerationService.generateDraftCases(user, projectId, agentId, options);
 	}
 
+	async nameCheck(
+		user: User,
+		projectId: string,
+		agentId: string,
+		payload: NameCheckPayload,
+	): Promise<NameCheckResult> {
+		await this.assertAgentInProject(agentId, projectId);
+		return await this.caseGenerationService.nameCheck(user, projectId, agentId, payload);
+	}
+
 	// ---- runs ----
 
 	// Returns once seeded; cases run in the background, so callers poll the summary.
@@ -154,7 +166,9 @@ export class AgentEvalService {
 			throw new BadRequestError('Pinning an agent version for an eval run is not supported yet.');
 		}
 
-		const { runId } = await this.runner.startRun(datasetId, projectId, user);
+		const { runId } = await this.runner.startRun(datasetId, projectId, user, {
+			rowIds: payload.rowIds,
+		});
 
 		const run = await this.runRepository.findById(runId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);

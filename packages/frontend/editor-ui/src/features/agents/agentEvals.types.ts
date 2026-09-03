@@ -48,6 +48,8 @@ export type AgentEvalCase = {
 	whatToCheck: string;
 	/** Sampled input flavor, when the dataset records one (generated datasets do). */
 	flavor?: CaseInputFlavor;
+	/** Free-text label of a hand-written check (stored in the type column when it isn't a flavor). */
+	label?: string;
 };
 
 /**

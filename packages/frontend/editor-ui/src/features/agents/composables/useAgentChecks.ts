@@ -2,6 +2,9 @@ import { CASE_INPUT_FLAVORS, type AgentEvalVote } from '@n8n/api-types';
 import { useStorage } from '@vueuse/core';
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import * as agentEvalsApi from '../agentEvals.api';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalCase, AgentEvalResultRecord } from '../agentEvals.types';
 import type { AgentJsonConfig } from '../types';
@@ -57,6 +60,7 @@ export function useAgentChecks(params: {
 	editingLocked: Ref<boolean>;
 }) {
 	const store = useAgentEvalsStore();
+	const rootStore = useRootStore();
 
 	const source = ref<AgentEvalCaseSource | null>(null);
 	const resolving = ref(false);
@@ -77,6 +81,20 @@ export function useAgentChecks(params: {
 		source.value ? (store.getLatestRunId(source.value.datasetId) ?? null) : null,
 	);
 	const review = computed(() => (runId.value ? store.getReview(runId.value) : null));
+	// Every run seen for this dataset, newest first. A single-check run only covers
+	// one row, so each check shows its newest result across all of them.
+	const knownRunIds = ref<string[]>([]);
+	watch(
+		runId,
+		(id) => {
+			if (id && !knownRunIds.value.includes(id)) knownRunIds.value = [id, ...knownRunIds.value];
+		},
+		{ immediate: true },
+	);
+	// A new agent means a new dataset; forget the other agent's runs.
+	watch(params.agentId, () => {
+		knownRunIds.value = [];
+	});
 	const isRunning = computed(
 		() =>
 			(source.value ? store.isStartingRun(source.value.datasetId) : false) ||
@@ -88,13 +106,21 @@ export function useAgentChecks(params: {
 	);
 
 	const checks = computed<AgentCheck[]>(() => {
-		const results = new Map<string, AgentEvalResultRecord>();
-		for (const r of review.value?.results ?? []) {
-			if (r.sourceRowId !== null) results.set(String(r.sourceRowId), r);
+		// Newest result per row across the runs we know about.
+		const results = new Map<string, { result: AgentEvalResultRecord; runId: string }>();
+		for (const rid of knownRunIds.value) {
+			for (const r of store.getReview(rid)?.results ?? []) {
+				if (r.sourceRowId !== null && !results.has(String(r.sourceRowId))) {
+					results.set(String(r.sourceRowId), { result: r, runId: rid });
+				}
+			}
 		}
 		return cases.value.map((c) => {
-			const result = results.get(String(c.rowId)) ?? null;
-			const vote = result ? (review.value?.ratingsByResultId[result.id]?.vote ?? null) : null;
+			const hit = results.get(String(c.rowId)) ?? null;
+			const result = hit?.result ?? null;
+			const vote = hit
+				? (store.getReview(hit.runId)?.ratingsByResultId[result?.id ?? '']?.vote ?? null)
+				: null;
 			let state: AgentCheckState = 'idle';
 			if (result) {
 				if (result.status === 'new' || result.status === 'running') state = 'running';
@@ -214,22 +240,52 @@ export function useAgentChecks(params: {
 	}
 
 	async function vote(check: AgentCheck, value: AgentEvalVote, note?: string) {
-		if (!runId.value || !check.result) return;
-		store.beginVote(runId.value, check.result.id, value);
+		if (!check.result) return;
+		const rid = check.result.runId;
+		store.beginVote(rid, check.result.id, value);
 		// A "not right" needs the one sentence that says why — it doubles as the new rule.
-		if (value === 'down' && note) store.setDraftComment(runId.value, check.result.id, note);
-		await store.saveReview(
-			params.projectId.value,
-			params.agentId.value,
-			runId.value,
-			check.result.id,
-		);
+		if (value === 'down' && note) store.setDraftComment(rid, check.result.id, note);
+		await store.saveReview(params.projectId.value, params.agentId.value, rid, check.result.id);
+	}
+
+	/** Run one check on its own. */
+	async function runOne(rowId: number) {
+		const s = source.value;
+		if (!s || isRunning.value || params.editingLocked.value) return;
+		try {
+			await store.startRun(params.projectId.value, params.agentId.value, s.datasetId, {
+				rowIds: [String(rowId)],
+			});
+			await adoptLatestRun();
+		} catch {
+			// Same as a full run: a start that fails leaves the previous result standing.
+		}
 	}
 
 	/** A rule is just another check row: the request that went wrong plus one sentence of what to check. */
 	async function addCheck(input: string, whatToCheck: string) {
-		if (!source.value) return null;
-		return await store.createCase(params.projectId.value, source.value, { input, whatToCheck });
+		const s = source.value;
+		if (!s) return null;
+		const created = await store.createCase(params.projectId.value, s, { input, whatToCheck });
+		// Give it a name from its content, so the list reads like the Tester's rows.
+		if (created && s.columns.type) {
+			try {
+				const { name } = await agentEvalsApi.nameCheck(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					{ input, whatToCheck },
+				);
+				await store.updateCase(params.projectId.value, s, created.rowId, {
+					input,
+					whatToCheck,
+					type: name,
+				});
+			} catch {
+				// Unnamed is fine; the row still shows its request.
+			}
+		}
+		return created;
 	}
 
 	/** Feed a verdict back into the check it came from. */
@@ -296,6 +352,7 @@ export function useAgentChecks(params: {
 		failed,
 		lastRunAt,
 		run,
+		runOne,
 		vote,
 		addCheck,
 		updateCheck,

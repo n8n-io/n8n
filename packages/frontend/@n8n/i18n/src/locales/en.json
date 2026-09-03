@@ -7985,6 +7985,7 @@
 	"agents.builder.checks.none": "No checks yet. They appear once the agent can run.",
 	"agents.builder.checks.addCheck": "+ Add a check",
 	"agents.builder.checks.runAgain": "Run again",
+	"agents.builder.checks.runOne": "Run this check",
 	"agents.builder.checks.invite": "Invite a reviewer",
 	"agents.builder.checks.invite.placeholder": "Email address",
 	"agents.builder.checks.invite.link": "Link · 14 days, no account",

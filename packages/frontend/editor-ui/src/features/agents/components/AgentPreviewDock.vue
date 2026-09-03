@@ -121,9 +121,30 @@ watch(
 watch(
 	() => reviewStore.pendingReviewOpen,
 	(pending) => {
-		if (pending && reviewStore.consumeReviewRequest(props.agentId)) review.open();
+		if (!pending) return;
+		const request = reviewStore.consumeReviewRequest(props.agentId);
+		if (request) review.open(request.startKey);
 	},
 	{ immediate: true },
+);
+// The Sessions ledger lists Tester checks; it reads this snapshot.
+watch(
+	[checks.checks, () => props.agentId],
+	([rows, agentId]) => {
+		reviewStore.setLedgerChecks(
+			agentId,
+			rows.map((c) => ({
+				rowId: c.rowId,
+				label: c.flavor
+					? i18n.baseText(`agents.builder.preview.wireframe.evalPill.type.${c.flavor}.name`)
+					: (c.label ?? ''),
+				input: c.input,
+				state: c.state,
+				at: c.result?.completedAt ?? c.result?.runAt ?? null,
+			})),
+		);
+	},
+	{ immediate: true, deep: true },
 );
 watch(
 	() => props.isOpen,

@@ -46,8 +46,8 @@ const sourceLabel = computed(() => {
 	const m = current.value;
 	if (!m) return '';
 	if (m.kind === 'check') {
-		// A typed check was drafted by the Tester; an untyped one was written by a person (avatar only).
-		if (!m.flavor) return '';
+		// A typed check was drafted by the Tester; a hand-written one carries its own label.
+		if (!m.flavor) return m.check?.label ?? '';
 		const kind = i18n.baseText(`agents.builder.preview.wireframe.evalPill.type.${m.flavor}.name`);
 		return `${i18n.baseText('agents.builder.checks.evalAgent')} · ${kind}`;
 	}
@@ -107,8 +107,26 @@ async function fixWithAssistant() {
 	await fix.start(
 		{ projectId: props.projectId, agentId: props.agentId, agentName: props.agentName, draft },
 		async () => {
+			// Stay in the working state until the rechecked reply is actually here.
+			const previousResultId = current.value?.check?.result?.id ?? null;
 			rechecking.value = true;
 			await props.review.rerun();
+			await new Promise<void>((resolve) => {
+				const stop = watch(
+					() => current.value?.check,
+					(check) => {
+						if (!check?.result || check.result.id === previousResultId) return;
+						if (check.state === 'running') return;
+						stop();
+						resolve();
+					},
+					{ immediate: true, deep: true },
+				);
+				setTimeout(() => {
+					stop();
+					resolve();
+				}, 180_000);
+			});
 			rechecking.value = false;
 			fixedOnce.value = true;
 			fixing.value = false;
@@ -282,13 +300,11 @@ function openSession() {
 			</footer>
 
 			<div v-else :class="$style.fixPanel" data-testid="agent-preview-review-fix-panel">
-				<div :class="$style.actions">
+				<!-- Once the Assistant is on it, the choice is made: only progress remains. -->
+				<div v-if="fix.status.value === 'idle' && !rechecking" :class="$style.actions">
 					<button
 						type="button"
 						:class="[$style.button, $style.primary]"
-						:disabled="
-							fix.status.value === 'starting' || fix.status.value === 'working' || rechecking
-						"
 						data-testid="agent-preview-review-fix"
 						@click="fixWithAssistant"
 					>

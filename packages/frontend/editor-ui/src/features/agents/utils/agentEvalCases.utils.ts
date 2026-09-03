@@ -103,14 +103,21 @@ export const toAgentEvalCase = (
 	const rowId = row[DEFAULT_ID_COLUMN_NAME];
 	if (typeof rowId !== 'number') return null;
 
-	// Only a recognised flavor is surfaced; anything else reads as "untyped".
-	const flavor = columns.type ? caseInputFlavorSchema.safeParse(row[columns.type]) : null;
+	// A recognised flavor is a kind; any other non-empty text in that column is a
+	// label the user (or the naming step) gave a hand-written check.
+	const rawType = columns.type ? row[columns.type] : undefined;
+	const flavor = columns.type ? caseInputFlavorSchema.safeParse(rawType) : null;
+	const label =
+		!flavor?.success && typeof rawType === 'string' && rawType.trim().length > 0
+			? rawType.trim()
+			: undefined;
 
 	return {
 		rowId,
 		input: toDisplayText(row[columns.input]),
 		whatToCheck: columns.whatToCheck === null ? '' : toDisplayText(row[columns.whatToCheck]),
 		...(flavor?.success ? { flavor: flavor.data } : {}),
+		...(label ? { label } : {}),
 	};
 };
 
@@ -129,10 +136,11 @@ export const toAgentEvalCases = (
  * leaves any other column on the table — an expected output, a note — untouched.
  */
 export const toDataTableRow = (
-	value: Pick<AgentEvalCase, 'input' | 'whatToCheck'>,
+	value: Pick<AgentEvalCase, 'input' | 'whatToCheck'> & { type?: string },
 	columns: AgentEvalCaseColumns,
 ): DataTableRow => {
 	const row: DataTableRow = { [columns.input]: value.input };
 	if (columns.whatToCheck !== null) row[columns.whatToCheck] = value.whatToCheck;
+	if (columns.type && value.type !== undefined) row[columns.type] = value.type;
 	return row;
 };

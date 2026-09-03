@@ -32,7 +32,7 @@ import {
 } from './utils/agentEvalCases.utils';
 
 /** The two fields a case is edited through; the row id identifies which row they land on. */
-type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'>;
+type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'> & { type?: string };
 
 /**
  * Per-run review state: the run, a page of its cases, the latest rating on each,
@@ -379,7 +379,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 			setCases(
 				source.datasetId,
-				getCases(source.datasetId).map((c) => (c.rowId === rowId ? { ...c, ...value } : c)),
+				getCases(source.datasetId).map((c) =>
+					c.rowId === rowId
+						? {
+								...c,
+								input: value.input,
+								whatToCheck: value.whatToCheck,
+								// A free-text type is the check's label; the column itself isn't a case field.
+								...(value.type !== undefined ? { label: value.type } : {}),
+							}
+						: c,
+				),
 			);
 			return true;
 		} finally {
@@ -928,7 +938,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	};
 
 	/** Runs the dataset's cases again against the agent's current config. */
-	const startRun = async (projectId: string, agentId: string, datasetId: string) => {
+	const startRun = async (
+		projectId: string,
+		agentId: string,
+		datasetId: string,
+		options: { rowIds?: string[] } = {},
+	) => {
 		startingRunByDatasetId.value = { ...startingRunByDatasetId.value, [datasetId]: true };
 		try {
 			const run = await agentEvalsApi.startRun(
@@ -936,6 +951,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				projectId,
 				agentId,
 				datasetId,
+				options,
 			);
 			latestRunIdByDatasetId.value = { ...latestRunIdByDatasetId.value, [datasetId]: run.id };
 			return run;

@@ -131,7 +131,7 @@ const badgeLabel = computed(() => {
 function kindLabel(check: AgentCheck) {
 	return check.flavor
 		? i18n.baseText(`agents.builder.preview.wireframe.evalPill.type.${check.flavor}.name`)
-		: '';
+		: (check.label ?? '');
 }
 
 function stateLabel(check: AgentCheck) {
@@ -335,6 +335,21 @@ async function submitAdd() {
 								{{ kindLabel(check) }}
 							</span>
 							<span :class="$style.request">{{ check.input }}</span>
+							<span
+								:class="$style.rowRun"
+								role="button"
+								tabindex="0"
+								:title="i18n.baseText('agents.builder.checks.runOne')"
+								data-testid="agent-preview-check-run-one"
+								@click.stop="checksApi.runOne(check.rowId)"
+								@keydown.enter.stop="checksApi.runOne(check.rowId)"
+							>
+								<N8nIcon
+									:icon="check.state === 'running' ? 'loader-circle' : 'play'"
+									:size="12"
+									:spin="check.state === 'running'"
+								/>
+							</span>
 							<span :class="[$style.state, $style[`state_${check.state}`]]">{{
 								stateLabel(check)
 							}}</span>
@@ -612,7 +627,7 @@ async function submitAdd() {
 
 .row {
 	display: grid;
-	grid-template-columns: 0.7rem 10.5rem minmax(0, 1fr) auto;
+	grid-template-columns: 0.7rem 10.5rem minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
@@ -667,6 +682,9 @@ async function submitAdd() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-weight: var(--wireframe--font-weight);
 	white-space: nowrap;
 }
@@ -681,6 +699,25 @@ async function submitAdd() {
 	border: var(--wireframe--border-width) solid var(--border-color--strong);
 	background: color-mix(in srgb, var(--color--success) 20%, var(--background--surface));
 	font-size: 0.6rem;
+}
+
+.rowRun {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 50%;
+	border: var(--wireframe--border-width) solid var(--border-color--strong);
+	color: var(--text-color--subtler);
+	opacity: 0.55;
+	cursor: pointer;
+
+	&:hover {
+		opacity: 1;
+		color: var(--wireframe--ink);
+		border-color: var(--wireframe--ink);
+	}
 }
 
 .request {

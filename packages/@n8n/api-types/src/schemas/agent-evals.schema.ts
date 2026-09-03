@@ -109,6 +109,8 @@ export class UpdateAgentEvalDatasetDto extends Z.class(updateAgentEvalDatasetSha
 // version, but the API rejects it until the runner can execute a snapshot.
 const createAgentEvalRunShape = {
 	agentVersionId: z.string().min(1).optional(),
+	/** Run only these dataset rows (by row id). Omitted = the whole dataset. */
+	rowIds: z.array(z.string().min(1)).min(1).max(200).optional(),
 };
 export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
@@ -286,6 +288,16 @@ const generateDraftCasesOptionsShape = {
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
 export class GenerateDraftCasesOptionsDto extends Z.class(generateDraftCasesOptionsShape) {}
+
+// Names a hand-written check from its content (a short label for lists).
+const nameCheckShape = {
+	input: z.string().min(1),
+	whatToCheck: z.string().min(1),
+};
+export const nameCheckSchema = z.object(nameCheckShape);
+export type NameCheckPayload = z.infer<typeof nameCheckSchema>;
+export class NameCheckDto extends Z.class(nameCheckShape) {}
+export type NameCheckResult = { name: string };
 
 export type GenerateDraftCasesResult = {
 	datasetId: string;

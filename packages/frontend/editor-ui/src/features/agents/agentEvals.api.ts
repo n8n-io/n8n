@@ -133,17 +133,33 @@ export const rateResult = async (
 // Runs the dataset's cases against the agent's current config. `agentVersionId`
 // is omitted deliberately — the API rejects it until the runner can execute a
 // published snapshot.
+/** Names a hand-written check from its content. */
+export const nameCheck = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: { input: string; whatToCheck: string },
+) => {
+	return await makeRestApiRequest<{ name: string }>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/checks/name`,
+		payload,
+	);
+};
+
 export const startRun = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	datasetId: string,
+	payload: { rowIds?: string[] } = {},
 ) => {
 	return await makeRestApiRequest<AgentEvalRunRecord>(
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/datasets/${datasetId}/runs`,
-		{},
+		payload,
 	);
 };
 

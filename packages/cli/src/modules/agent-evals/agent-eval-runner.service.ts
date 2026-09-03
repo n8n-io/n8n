@@ -101,7 +101,7 @@ export class AgentEvalRunnerService {
 		datasetId: string,
 		projectId: string,
 		user: User,
-		options: { timeoutMs?: number } = {},
+		options: { timeoutMs?: number; rowIds?: string[] } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
 		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
 		// is the backstop for any other caller.
@@ -136,7 +136,12 @@ export class AgentEvalRunnerService {
 			throw new NotFoundError(`Agent ${dataset.agentId} not found or not accessible.`);
 		}
 
-		const cases = await this.resolveCases(dataset, user);
+		const allCases = await this.resolveCases(dataset, user);
+		// A partial run (one check from the preview) keeps only the requested rows.
+		const wanted = options.rowIds ? new Set(options.rowIds) : null;
+		const cases = wanted
+			? allCases.filter((c) => c.sourceRowId !== null && wanted.has(String(c.sourceRowId)))
+			: allCases;
 		if (cases.length === 0) {
 			throw new BadRequestError('The dataset has no rows to run.');
 		}
