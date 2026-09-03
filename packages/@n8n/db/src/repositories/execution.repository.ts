@@ -385,6 +385,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
 	): Promise<CrashedExecution[]> {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+		executionIds = [...new Set(executionIds)];
 
 		const crashed: CrashedExecution[] = [];
 

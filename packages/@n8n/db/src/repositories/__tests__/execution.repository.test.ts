@@ -347,6 +347,15 @@ describe('ExecutionRepository', () => {
 
 			expect(crashed).toEqual([]);
 		});
+
+		test('should report a duplicated id only once', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '1']);
+
+			expect(crashed).toHaveLength(1);
+			expect(entityManager.find).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('setRunning', () => {

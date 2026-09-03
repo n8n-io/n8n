@@ -123,12 +123,15 @@ describe('ScalingService queue recovery', () => {
 	it('does not count a chat execution recovered as crashed', async () => {
 		const chatWorkflow = await createWorkflow();
 		await createDanglingExecution('chat', chatWorkflow);
+
+		await scalingService.recoverFromQueue();
+
 		await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
 
-		// the counted execution is recorded after the chat one, so its counter appearing
-		// means the chat execution has already been through the statistics path
+		// the chat execution is recovered in its own earlier sweep, so the later sweep's
+		// counter appearing means the chat execution has already been through the statistics path
 		await vi.waitFor(async () => {
 			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({ count: 1 });
 		});
@@ -136,7 +139,7 @@ describe('ScalingService queue recovery', () => {
 		expect(await workflowStatisticsRepository.findBy({ workflowId: chatWorkflow.id })).toEqual([]);
 	});
 
-	it('does not count the same recovered execution twice', async () => {
+	it('excludes an execution already `crashed` from a later, sequential sweep', async () => {
 		const execution = await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
