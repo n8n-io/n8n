@@ -98,7 +98,9 @@ const ENSURE_PLUGINS = [
 function remoteCommand(session, launcher, extraArgs) {
 	const executable = launcher === 'opencode' ? 'opencode --auto' : launcher;
 	const command =
-		launcher === 'shell' ? 'exec "${SHELL:-/bin/bash}" -l' : `${executable} ${extraArgs}`.trim();
+		launcher === 'shell'
+			? 'export N8N_SKIP_CODESPACE_SECRETS=1; exec "${SHELL:-/bin/bash}" -l'
+			: `${executable} ${extraArgs}`.trim();
 	const prelude = [
 		SESSION_SECRETS,
 		launcher === 'opencode' ? OPENCODE_CONFIG : 'unset OPENROUTER_API_KEY',
