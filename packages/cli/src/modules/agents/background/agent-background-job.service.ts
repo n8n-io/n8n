@@ -219,10 +219,11 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Claim the row as canceled, then abort the live run. When this process
-	 * holds the handle the abort is direct; otherwise the spawning main is
-	 * reached via pubsub. The row is claimed first either way, so the aborted
-	 * run's own settle write loses to the claim.
+	 * Cancel a job. A sub-agent row is claimed as cancelled first and its live
+	 * run aborted second, so the aborted run's own settle write loses to the
+	 * claim. When this process holds the handle the abort is direct; otherwise
+	 * the spawning main is reached via pubsub. A workflow job stops its
+	 * execution first instead; see `cancelWorkflowJob`.
 	 */
 	async cancel(
 		parentThreadId: string,
@@ -230,14 +231,12 @@ export class AgentBackgroundJobService {
 	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
 		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
 		if (!job) return 'not-found';
+		if (job.status !== 'running') return 'already-settled';
+
+		if (job.kind === 'workflow') return await this.cancelWorkflowJob(job);
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
-
-		if (job.kind === 'workflow') {
-			await this.stopWorkflowExecution(job);
-			return 'cancelled';
-		}
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -294,37 +293,41 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Cross-process stop of a cancelled workflow job's execution. The job row is
-	 * already claimed, so a stop that finds the execution finished (or gone) is
-	 * not an error worth surfacing to the model — but any other failure means
-	 * the workflow keeps running while the model believes it stopped, so it is
-	 * logged loudly.
+	 * Stop the execution first, then claim the row. A workflow job has no
+	 * timeout, so a row claimed before a failed stop would tell the model the
+	 * workflow stopped while it keeps waiting. An unexpected stop failure is
+	 * rethrown with the row still running, so the cancel can be retried. An
+	 * execution that already finished (or is gone) is left to reconciliation,
+	 * which records its real outcome.
 	 */
-	private async stopWorkflowExecution(job: AgentBackgroundJob): Promise<void> {
-		if (job.childExecutionId === null || job.workflowId === null) return;
-
-		// Lazy: ExecutionService is a heavy dependency this service otherwise
-		// never needs — workers load this class for the settle path alone.
-		const { ExecutionService } = await import('@/executions/execution.service.js');
-		const { MissingExecutionStopError } = await import('@/errors/missing-execution-stop.error.js');
-		try {
-			await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
-		} catch (error) {
-			const details = {
-				jobId: job.id,
-				executionId: job.childExecutionId,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			// Already finished or gone — nothing left to stop.
-			if (error instanceof MissingExecutionStopError || error instanceof WorkflowOperationError) {
-				this.logger.debug('Cancelled workflow job execution was already beyond stopping', details);
-			} else {
-				this.logger.error(
-					'Failed to stop a cancelled workflow job execution — it may still be running',
-					details,
-				);
+	private async cancelWorkflowJob(
+		job: AgentBackgroundJob,
+	): Promise<'cancelled' | 'already-settled'> {
+		if (job.childExecutionId !== null && job.workflowId !== null) {
+			// Lazy: ExecutionService is a heavy dependency this service otherwise
+			// never needs — workers load this class for the settle path alone.
+			const { ExecutionService } = await import('@/executions/execution.service.js');
+			const { MissingExecutionStopError } = await import(
+				'@/errors/missing-execution-stop.error.js'
+			);
+			try {
+				await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
+			} catch (error) {
+				if (error instanceof MissingExecutionStopError || error instanceof WorkflowOperationError) {
+					this.logger.debug('Workflow job execution was already beyond stopping', {
+						jobId: job.id,
+						executionId: job.childExecutionId,
+					});
+					return 'already-settled';
+				}
+				throw error;
 			}
 		}
+
+		// The stopped execution's settle hook may have written `cancelled` first;
+		// either way the job is cancelled.
+		await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		return 'cancelled';
 	}
 
 	/**

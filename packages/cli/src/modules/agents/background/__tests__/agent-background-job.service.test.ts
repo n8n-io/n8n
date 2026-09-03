@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
+import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -432,7 +433,7 @@ describe('cancel — workflow jobs', () => {
 		Container.reset();
 	});
 
-	it('claims the row and stops the execution', async () => {
+	it('stops the execution, then claims the row', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
 		const executionService = mock<ExecutionService>();
@@ -441,20 +442,45 @@ describe('cancel — workflow jobs', () => {
 		const outcome = await service.cancel('thread-1', 'wf-job-1');
 
 		expect(outcome).toBe('cancelled');
+		expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('wf-job-1', {
 			status: 'cancelled',
 		});
-		expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
+		expect(executionService.stop.mock.invocationCallOrder[0]).toBeLessThan(
+			jobRepository.settleIfRunning.mock.invocationCallOrder[0],
+		);
 	});
 
-	it('keeps the row cancelled when stopping the finished execution errors', async () => {
+	it('reports already-settled and leaves the row to reconciliation when the execution already finished', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
 		const executionService = mock<ExecutionService>();
-		executionService.stop.mockRejectedValue(new Error('already finished'));
+		executionService.stop.mockRejectedValue(new WorkflowOperationError('already finished'));
 		Container.set(ExecutionService, executionService);
 
-		expect(await service.cancel('thread-1', 'wf-job-1')).toBe('cancelled');
+		expect(await service.cancel('thread-1', 'wf-job-1')).toBe('already-settled');
+		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+	});
+
+	it('rethrows an unexpected stop failure with the row still running', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
+		const executionService = mock<ExecutionService>();
+		executionService.stop.mockRejectedValue(new Error('db down'));
+		Container.set(ExecutionService, executionService);
+
+		await expect(service.cancel('thread-1', 'wf-job-1')).rejects.toThrow('db down');
+		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+	});
+
+	it('reports already-settled for a row that is no longer running', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob({ status: 'completed' })]);
+		const executionService = mock<ExecutionService>();
+		Container.set(ExecutionService, executionService);
+
+		expect(await service.cancel('thread-1', 'wf-job-1')).toBe('already-settled');
+		expect(executionService.stop).not.toHaveBeenCalled();
 	});
 
 	it('claims a row that lost its execution id without attempting a stop', async () => {

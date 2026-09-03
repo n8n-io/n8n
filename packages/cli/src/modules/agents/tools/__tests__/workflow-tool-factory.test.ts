@@ -1008,6 +1008,21 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
+	it('settles as outcome-unknown when the execution is pruned between the status and data reads', async () => {
+		setPersistence({ status: 'success' }, undefined);
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(jobService.settle).toHaveBeenCalledWith('job-1', {
+			status: 'failed',
+			error: expect.stringContaining('outcome is unknown'),
+		});
+		expect(result).toMatchObject({ status: 'unknown', jobId: 'job-1' });
+	});
+
 	it('points at check_background_jobs when the settle hook already recorded the outcome', async () => {
 		setPersistence(undefined);
 		const jobService = setJobService();

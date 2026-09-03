@@ -618,6 +618,7 @@ export async function executeWorkflow(
 /** Map an execution's raw status into the tool's simplified status value. */
 function normaliseExecutionStatus(status: string | undefined): string {
 	if (status === 'error' || status === 'crashed') return 'error';
+	if (status === 'canceled') return 'canceled';
 	if (status === 'running' || status === 'new') return 'running';
 	if (status === 'waiting') return 'waiting';
 	return 'success';
@@ -779,22 +780,7 @@ async function backgroundWaitingExecution(
 
 		const executionPersistence = Container.get(ExecutionPersistence);
 		const recheck = await executionPersistence.findSingleExecution(result.executionId);
-
-		if (!recheck) {
-			const claimed = await jobService.settle(jobId, {
-				status: 'failed',
-				error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
-			});
-			// A lost claim means the settle hook already recorded the real outcome.
-			return {
-				executionId: result.executionId,
-				status: 'unknown',
-				jobId,
-				note: claimed
-					? EXECUTION_OUTCOME_UNKNOWN_ERROR
-					: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
-			};
-		}
+		if (!recheck) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
 
 		const rawStatus = recheck.status;
 		if (isTerminalExecutionStatus(rawStatus)) {
@@ -802,16 +788,14 @@ async function backgroundWaitingExecution(
 				includeData: true,
 				unflattenData: true,
 			});
-			const fresh = formatResult(
-				result.executionId,
-				full?.status ?? rawStatus,
-				full?.data,
-				allOutputs,
-			);
+			// Pruned between the status read and the data read.
+			if (!full) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+
+			const fresh = formatResult(result.executionId, full.status, full.data, allOutputs);
 			// The job row keeps the last node's output for completed runs only,
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);
-			const runData = full?.data?.resultData?.runData;
+			const runData = full.data?.resultData?.runData;
 			await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
@@ -844,6 +828,26 @@ async function backgroundWaitingExecution(
 		});
 		return undefined;
 	}
+}
+
+/** The execution is gone, so its outcome cannot be known; a lost claim means the settle hook recorded it first. */
+async function settleOutcomeUnknown(
+	jobService: AgentBackgroundJobService,
+	jobId: string,
+	executionId: string,
+): Promise<WorkflowToolResult & { jobId: string }> {
+	const claimed = await jobService.settle(jobId, {
+		status: 'failed',
+		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
+	});
+	return {
+		executionId,
+		status: 'unknown',
+		jobId,
+		note: claimed
+			? EXECUTION_OUTCOME_UNKNOWN_ERROR
+			: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
+	};
 }
 
 function isPollableWait(wait: WorkflowWaitState | undefined): wait is { waitTill: Date } {
