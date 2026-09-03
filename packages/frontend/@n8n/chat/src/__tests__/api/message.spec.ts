@@ -67,7 +67,7 @@ describe('sendMessageStreaming', () => {
 				action: 'sendMessage',
 				sessionId: 'test-session-id',
 				chatInput: 'Test message',
-				query: {
+				chatQueryParameters: {
 					q: '123',
 					foo: 'bar',
 				},
@@ -133,7 +133,7 @@ describe('sendMessageStreaming', () => {
 				action: 'sendMessage',
 				sessionId: 'test-session-id',
 				chatInput: 'Test message',
-				query: expectedQuery,
+				chatQueryParameters: expectedQuery,
 			}),
 		});
 	});
