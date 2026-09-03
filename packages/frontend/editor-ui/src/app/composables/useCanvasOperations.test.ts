@@ -22,6 +22,7 @@ import type {
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
+	AddNodeCommand,
 	AddNodeGroupCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
@@ -1796,7 +1797,11 @@ describe('useCanvasOperations', () => {
 			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
 		});
 
-		it('re-inserts a placeholder when the last real member of a group is deleted', () => {
+		/**
+		 * Trigger -> Member -> Next, with `Member` the only real node of group `g1`.
+		 * `extraMembers` join the group without being connectable (e.g. a sticky).
+		 */
+		function setupLastGroupMemberDelete(extraMembers: INodeUi[] = []) {
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
 			const trigger = createTestNode({ id: 't', name: 'Trigger', position: [0, 0] });
@@ -1807,7 +1812,7 @@ describe('useCanvasOperations', () => {
 				position: [200, 0],
 			});
 			const next = createTestNode({ id: 'n', name: 'Next', position: [400, 0] });
-			const nodes: INodeUi[] = [trigger, member, next];
+			const nodes: INodeUi[] = [trigger, member, next, ...extraMembers];
 			workflowDocumentStoreInstance.allNodes = nodes;
 
 			const connections: IConnections = {
@@ -1816,7 +1821,8 @@ describe('useCanvasOperations', () => {
 			};
 			workflowDocumentStoreInstance.connectionsBySourceNode = connections;
 
-			const group = { id: 'g1', name: 'Plan', nodeIds: ['m'] };
+			const memberIds = ['m', ...extraMembers.map((node) => node.id)];
+			const group = { id: 'g1', name: 'Plan', nodeIds: memberIds };
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
 				nodes.find((node) => node.id === id),
 			);
@@ -1824,20 +1830,23 @@ describe('useCanvasOperations', () => {
 				(name) => nodes.find((node) => node.name === name) ?? null,
 			);
 			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((nodeId) =>
-				nodeId === 'm' ? group : undefined,
+				group.nodeIds.includes(nodeId) ? group : undefined,
 			);
 			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockImplementation((id) =>
 				id === group.id ? group : undefined,
 			);
 
-			let placeholder: INodeUi | undefined;
+			const state: { placeholder?: INodeUi } = {};
 			vi.mocked(workflowDocumentStoreInstance.addNode).mockImplementation((node) => {
-				placeholder = node;
+				state.placeholder = node;
 				nodes.push(node);
 			});
 			vi.mocked(workflowDocumentStoreInstance.addNodesToGroup).mockImplementation((id, nodeIds) => {
 				if (id !== group.id) return;
-				group.nodeIds = nodeIds;
+				group.nodeIds = [...group.nodeIds, ...nodeIds];
+			});
+			vi.mocked(workflowDocumentStoreInstance.removeNodeById).mockImplementation((id) => {
+				group.nodeIds = group.nodeIds.filter((nodeId) => nodeId !== id);
 			});
 			vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
 				({ connection }: { connection: IConnection[] }) => {
@@ -1864,9 +1873,16 @@ describe('useCanvasOperations', () => {
 				},
 			);
 
+			return { group, connections, state };
+		}
+
+		it('re-inserts a placeholder when the last real member of a group is deleted', () => {
+			const { group, connections, state } = setupLastGroupMemberDelete();
+
 			const { deleteNode } = useCanvasOperations();
 			deleteNode('m');
 
+			const placeholder = state.placeholder;
 			expect(group.nodeIds).toEqual([placeholder?.id]);
 			expect(placeholder?.type).toBe(GROUP_PLACEHOLDER_NODE_TYPE);
 			expect(placeholder?.position).toEqual([200, 0]);
@@ -1877,6 +1893,70 @@ describe('useCanvasOperations', () => {
 			expect(connections[placeholder!.name]?.main?.[0]).toEqual([
 				{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 },
 			]);
+		});
+
+		// Stickies can't be connected, so a group of one node plus a sticky still
+		// loses its last real member and must keep the placeholder.
+		it('re-inserts a placeholder when the group also holds a sticky note', () => {
+			const sticky = createTestNode({
+				id: 's',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [150, -100],
+			});
+			const { group, connections, state } = setupLastGroupMemberDelete([sticky]);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m');
+
+			const placeholder = state.placeholder;
+			expect(placeholder?.type).toBe(GROUP_PLACEHOLDER_NODE_TYPE);
+			expect(group.nodeIds).toEqual(['s', placeholder?.id]);
+			expect(connections.Trigger?.main?.[0]).toEqual([
+				{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+			]);
+		});
+
+		// Undo must revert the whole re-insert: the placeholder, both of its
+		// connections, and the group membership from before it was inserted.
+		it('records the placeholder re-insert so undo reverts it as a unit', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const { state } = setupLastGroupMemberDelete();
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('m', { trackHistory: true });
+
+			const placeholder = state.placeholder;
+			const commands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+
+			const addNodeCommand = commands.find(
+				(command): command is AddNodeCommand => command instanceof AddNodeCommand,
+			);
+			expect(addNodeCommand?.node.id).toBe(placeholder?.id);
+
+			const addedConnections = commands
+				.filter(
+					(command): command is AddConnectionCommand => command instanceof AddConnectionCommand,
+				)
+				.map((command) => command.connectionData);
+			expect(addedConnections).toEqual([
+				[
+					{ node: 'Trigger', type: NodeConnectionTypes.Main, index: 0 },
+					{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+				[
+					{ node: placeholder?.name, type: NodeConnectionTypes.Main, index: 0 },
+					{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			]);
+
+			// The group snapshot predates the placeholder, so reverting the
+			// commands above leaves the group holding only the real node again.
+			const groupCommand = commands.find(
+				(command): command is UpdateNodeGroupCommand => command instanceof UpdateNodeGroupCommand,
+			);
+			expect(groupCommand?.before.nodeIds).toEqual(['m']);
+			expect(groupCommand?.after.nodeIds).toEqual([placeholder?.id]);
 		});
 
 		it('should delete node without tracking history', () => {

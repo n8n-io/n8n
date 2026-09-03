@@ -12,7 +12,7 @@ import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocume
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
 import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
-import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { GROUP_PLACEHOLDER_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -278,8 +278,14 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		/** The placeholder node of an empty group, if this group is one. */
 		function getEmptyGroupPlaceholder(groupId: string): INodeUi | undefined {
 			const group = workflowDocumentNodeGroups.getGroupById(groupId);
-			if (!group || group.nodeIds.length !== 1) return undefined;
-			const node = workflowDocumentNodes.getNodeById(group.nodeIds[0]);
+			if (!group) return undefined;
+			// Stickies aren't connectable, so a group of stickies plus a placeholder
+			// is still empty — the placeholder is its only real member.
+			const connectableMembers = group.nodeIds
+				.map((id) => workflowDocumentNodes.getNodeById(id))
+				.filter((node) => node !== undefined && node.type !== STICKY_NODE_TYPE);
+			if (connectableMembers.length !== 1) return undefined;
+			const [node] = connectableMembers;
 			return node?.type === GROUP_PLACEHOLDER_NODE_TYPE ? node : undefined;
 		}
 

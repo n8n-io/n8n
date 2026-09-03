@@ -22,7 +22,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
-import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { GROUP_PLACEHOLDER_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -799,6 +799,19 @@ describe('workflowDocument.store orchestration', () => {
 			expect(workflowDocumentStore.getEmptyGroupPlaceholder(empty.id)?.id).toBe(placeholder.id);
 			expect(workflowDocumentStore.isEmptyGroup(filled.id)).toBe(false);
 			expect(workflowDocumentStore.getEmptyGroupPlaceholder(filled.id)).toBeUndefined();
+		});
+
+		// A sticky isn't connectable, so it doesn't make the group non-empty.
+		it('ignores sticky notes when deciding whether a group is empty', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const placeholder = createNode({ type: GROUP_PLACEHOLDER_NODE_TYPE });
+			const sticky = createNode({ type: STICKY_NODE_TYPE });
+			workflowDocumentStore.addNode(placeholder);
+			workflowDocumentStore.addNode(sticky);
+			const group = workflowDocumentStore.createGroup([placeholder.id, sticky.id], 'Plan');
+
+			expect(workflowDocumentStore.isEmptyGroup(group.id)).toBe(true);
+			expect(workflowDocumentStore.getEmptyGroupPlaceholder(group.id)?.id).toBe(placeholder.id);
 		});
 	});
 });

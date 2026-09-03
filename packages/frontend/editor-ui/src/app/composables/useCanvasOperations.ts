@@ -567,9 +567,20 @@ export function useCanvasOperations() {
 	 * boundary connections onto it. Returns false when the node is not the sole
 	 * real member of a group.
 	 */
-	function replaceLastGroupMemberWithPlaceholder(node: INodeUi): boolean {
+	function replaceLastGroupMemberWithPlaceholder(
+		node: INodeUi,
+		{ trackHistory = false } = {},
+	): boolean {
 		const group = workflowDocumentStore.value.getGroupForNode(node.id);
-		if (!group || group.nodeIds.length !== 1 || node.type === GROUP_PLACEHOLDER_NODE_TYPE) {
+		if (!group || node.type === GROUP_PLACEHOLDER_NODE_TYPE) {
+			return false;
+		}
+		// Stickies can't be connected, so they don't keep a group alive: a group
+		// of one node plus stickies still loses its last real member here.
+		const connectableMembers = group.nodeIds.filter(
+			(id) => workflowDocumentStore.value.getNodeById(id)?.type !== STICKY_NODE_TYPE,
+		);
+		if (connectableMembers.length !== 1) {
 			return false;
 		}
 
@@ -583,30 +594,38 @@ export function useCanvasOperations() {
 		};
 		workflowDocumentStore.value.addNode(placeholder);
 		workflowDocumentStore.value.addNodesToGroup(group.id, [placeholder.id]);
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new AddNodeCommand(placeholder, Date.now()));
+		}
 
 		const bySource = workflowDocumentStore.value.connectionsBySourceNode;
 		const byDestination = mapConnectionsByDestination(bySource);
 		const main = NodeConnectionTypes.Main;
 
+		// The placeholder is not a group member yet as far as the connection
+		// policy is concerned, so add its edges through the raw store and record
+		// them by hand — undo then removes them with the placeholder.
+		const addPlaceholderConnection = (connection: [IConnection, IConnection]) => {
+			workflowDocumentStore.value.addConnection({ connection });
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddConnectionCommand(connection, Date.now()));
+			}
+		};
+
 		for (const incoming of byDestination[node.name]?.[main]?.flat() ?? []) {
 			if (!incoming) continue;
-			workflowDocumentStore.value.addConnection({
-				connection: [
-					{ node: incoming.node, type: main, index: incoming.index },
-					{ node: placeholder.name, type: main, index: 0 },
-				],
-			});
+			addPlaceholderConnection([
+				{ node: incoming.node, type: main, index: incoming.index },
+				{ node: placeholder.name, type: main, index: 0 },
+			]);
 		}
 		for (const outgoing of bySource[node.name]?.[main]?.flat() ?? []) {
 			if (!outgoing) continue;
-			workflowDocumentStore.value.addConnection({
-				connection: [
-					{ node: placeholder.name, type: main, index: 0 },
-					{ node: outgoing.node, type: main, index: outgoing.index },
-				],
-			});
+			addPlaceholderConnection([
+				{ node: placeholder.name, type: main, index: 0 },
+				{ node: outgoing.node, type: main, index: outgoing.index },
+			]);
 		}
-		// ponytail: not undoable as one step; add history commands when the POC lands.
 		return true;
 	}
 
@@ -626,20 +645,21 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		// A group's last real node hands its connections to a placeholder
-		// instead of bridging its neighbours, so the plan stays wired.
-		if (!replaceLastGroupMemberWithPlaceholder(node)) {
-			connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
-		}
-		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
-
-		// Snapshot the group first so its membership change is reverted with the node.
+		// Snapshot the group before anything touches its membership, so undo
+		// restores the state from before the placeholder was inserted too.
 		const groupBeforeDelete = trackHistory
 			? workflowDocumentStore.value.getGroupForNode(id)
 			: undefined;
 		const groupSnapshot = groupBeforeDelete
 			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
 			: undefined;
+
+		// A group's last real node hands its connections to a placeholder
+		// instead of bridging its neighbours, so the plan stays wired.
+		if (!replaceLastGroupMemberWithPlaceholder(node, { trackHistory })) {
+			connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
+		}
+		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		useWorkflowExecutionStateStore(
 			workflowDocumentStore.value.documentId,
@@ -2251,11 +2271,21 @@ export function useCanvasOperations() {
 		connectionsToAdd?: Array<[IConnection, IConnection]>;
 		trackHistory?: boolean;
 	}): boolean {
+		// Auto-extending an empty group would pull a real node in and stop it
+		// being empty, so a second edge onto the chip is rejected instead.
+		// ponytail: no drop guard yet — the chip still accepts the drag gesture
+		// and only rejects on release; add one when the POC lands.
+		const touchesEmptyGroup = params.nodeIds.some((nodeId) => {
+			const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+			return group !== undefined && workflowDocumentStore.value.isEmptyGroup(group.id);
+		});
+
 		const decision = isConnectionReplacementAllowedForNodeGroups({
 			nodeIds: params.nodeIds,
 			connectionsToRemove: params.connectionsToRemove ?? [],
 			connectionsToAdd: params.connectionsToAdd ?? [],
 			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
+			allowAutoExtend: !touchesEmptyGroup,
 		});
 		switch (decision.outcome) {
 			case 'abort':
