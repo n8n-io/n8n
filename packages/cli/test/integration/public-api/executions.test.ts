@@ -1461,10 +1461,7 @@ describe('POST /executions/stop', () => {
 		const response = await authUser1Agent.post('/executions/stop').send({ status: [] });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toEqual({
-			message: 'Status filter is required. Please provide at least one status to stop executions.',
-			example: { status: ['running', 'waiting', 'queued'] },
-		});
+		expect(response.body.message).toBe('request/body/status must include at least one status');
 	});
 
 	test('should stop multiple running executions', async () => {

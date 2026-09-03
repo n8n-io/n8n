@@ -9,6 +9,7 @@ export const STOPPABLE_PUBLIC_EXECUTION_STATUSES = ['queued', 'running', 'waitin
 
 export type StoppablePublicExecutionStatus = (typeof STOPPABLE_PUBLIC_EXECUTION_STATUSES)[number];
 
+// The public API calls the internal `new` status `queued`, and never exposes `unknown`.
 export const STOPPABLE_PUBLIC_TO_INTERNAL_STATUS = {
 	queued: 'new',
 	running: 'running',
@@ -16,10 +17,13 @@ export const STOPPABLE_PUBLIC_TO_INTERNAL_STATUS = {
 } as const satisfies Record<StoppablePublicExecutionStatus, ExecutionStatus>;
 
 export class StopManyExecutionsPublicDto extends Z.class({
-	status: z.array(z.enum(STOPPABLE_PUBLIC_EXECUTION_STATUSES)).openapi({
-		description: 'Array of execution statuses to stop. Must include at least one status.',
-		example: ['queued', 'running', 'waiting'],
-	}),
+	status: z
+		.array(z.enum(STOPPABLE_PUBLIC_EXECUTION_STATUSES))
+		.min(1, 'must include at least one status')
+		.openapi({
+			description: 'Array of execution statuses to stop. Must include at least one status.',
+			example: ['queued', 'running', 'waiting'],
+		}),
 	workflowId: z
 		.string()
 		.optional()

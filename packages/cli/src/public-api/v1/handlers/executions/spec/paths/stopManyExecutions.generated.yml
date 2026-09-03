@@ -1,6 +1,6 @@
 operationId: stopManyExecutions
 tags:
-  - Execution
+  - Executions
 summary: Stop multiple executions
 description: Stop multiple executions from your instance based on filter criteria.
 x-required-scope: execution:stop
@@ -22,6 +22,7 @@ requestBody:
                 - queued
                 - running
                 - waiting
+            minItems: 1
             description: Array of execution statuses to stop. Must include at least one status.
             example:
               - queued

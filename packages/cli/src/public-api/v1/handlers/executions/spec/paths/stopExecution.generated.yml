@@ -1,6 +1,6 @@
 operationId: stopExecution
 tags:
-  - Execution
+  - Executions
 summary: Stop an execution
 description: Stop an execution by id.
 x-required-scope: execution:stop

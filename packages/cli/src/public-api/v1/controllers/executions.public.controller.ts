@@ -107,7 +107,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:list')
 	@ApiSummary('Retrieve all executions')
 	@ApiDescription('Retrieve all executions from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionListPublicDto)
 	@ApiErrorResponse(404)
 	async getExecutions(
@@ -173,7 +173,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:read')
 	@ApiSummary('Retrieve an execution')
 	@ApiDescription('Retrieve an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionPublicDto)
 	@ApiErrorResponse(404)
 	async getExecution(
@@ -230,7 +230,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:delete')
 	@ApiSummary('Delete an execution')
 	@ApiDescription('Deletes an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
@@ -259,7 +259,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('executionTags:list')
 	@ApiSummary('Get execution tags')
 	@ApiDescription('Get annotation tags for an execution.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionTagsPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
@@ -288,7 +288,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('executionTags:update')
 	@ApiSummary('Update tags of an execution')
 	@ApiDescription('Update annotation tags of an execution.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionTagsPublicDto)
 	@ApiErrorResponse(404)
 	async updateExecutionTags(
@@ -320,25 +320,14 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:stop')
 	@ApiSummary('Stop multiple executions')
 	@ApiDescription('Stop multiple executions from your instance based on filter criteria.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, StoppedExecutionsPublicDto)
 	@ApiErrorResponse(404)
 	async stopManyExecutions(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body body: StopManyExecutionsPublicDto,
-	): Promise<StoppedExecutionsPublicDto | undefined> {
-		if (body.status.length === 0) {
-			res.status(400).json({
-				message:
-					'Status filter is required. Please provide at least one status to stop executions.',
-				example: {
-					status: ['running', 'waiting', 'queued'],
-				},
-			});
-			return;
-		}
-
+	): Promise<StoppedExecutionsPublicDto> {
 		const status = body.status.map((value) => STOPPABLE_PUBLIC_TO_INTERNAL_STATUS[value]);
 
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
@@ -373,7 +362,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:stop')
 	@ApiSummary('Stop an execution')
 	@ApiDescription('Stop an execution by id.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, StoppedExecutionPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
