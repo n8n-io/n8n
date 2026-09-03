@@ -899,7 +899,10 @@ store its own public endpoint.
 ## Completion
 
 Do not report a build as done until you have made the grouping decision described in
-[Node Groups](#node-groups).
+[Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
+means the boundary was wrong: redraw it and build again. If the top level is still above 7
+items, name each remaining item and why it cannot join a group — if you cannot, group it and
+build again.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
