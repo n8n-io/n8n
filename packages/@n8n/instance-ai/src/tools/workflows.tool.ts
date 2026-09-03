@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
+import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
@@ -51,6 +52,8 @@ import {
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
 import {
+	exceedsFullPayloadLimit,
+	FULL_PAYLOAD_TOO_LARGE_NOTE,
 	isSmallPayload,
 	STRUCTURE_ONLY_NOTE,
 	summarizeWorkflowStructure,
@@ -61,8 +64,17 @@ import {
 	canSkipWorkflowUpdateHitl,
 	formatWarning,
 } from './workflows/workflow-build-context';
-import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
+import {
+	refreshWorkflowSourceFileBindingFromSave,
+	refreshWorkflowSourceFileBindingFromWorkflow,
+} from './workflows/workflow-file-bindings';
 import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import {
+	INLINE_SOURCE_LIMIT_CHARS,
+	indexSourceNodes,
+	materializeWorkflowSource,
+	type MaterializedSourceStatus,
+} from './workflows/workflow-source-materializer';
 import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -128,7 +140,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code. Pass versionId for a past version instead of the current draft.',
+			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with build-workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -529,7 +541,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 				};
 			}
 			const version = await context.workflowService.getVersion(input.workflowId, input.versionId);
-			if (input.full || isSmallPayload(version)) {
+			if (isSmallPayload(version) || (input.full && !exceedsFullPayloadLimit(version))) {
 				return { workflowId: input.workflowId, ...version };
 			}
 			const { nodes, connections, ...meta } = version;
@@ -538,18 +550,19 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 				...meta,
 				nodeCount: nodes.length,
 				structure: await summarizeWorkflowStructure(meta.name ?? '', nodes, connections),
-				note: STRUCTURE_ONLY_NOTE,
+				note: input.full ? FULL_PAYLOAD_TOO_LARGE_NOTE : STRUCTURE_ONLY_NOTE,
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
 		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
-		if (input.full || isSmallPayload(detail)) return detail;
+		if (isSmallPayload(detail)) return detail;
+		if (input.full && !exceedsFullPayloadLimit(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
 		return {
 			...meta,
 			nodeCount: nodes.length,
 			structure: await summarizeWorkflowStructure(meta.name, nodes, connections),
-			note: STRUCTURE_ONLY_NOTE,
+			note: input.full ? FULL_PAYLOAD_TOO_LARGE_NOTE : STRUCTURE_ONLY_NOTE,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
@@ -622,21 +635,117 @@ async function handleGetJson(
 	}
 }
 
+const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
+	written:
+		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call build-workflow with this filePath. Do not rewrite the whole file.',
+	refreshed:
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then build-workflow.',
+	current:
+		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call build-workflow with this filePath.',
+	conflict:
+		'The file has edits that were never built, so it was left untouched. Build it with build-workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+};
+
+/**
+ * The source and the concurrency token come from two reads. A save landing between
+ * them would bind older source to a newer checksum, and a later build could then
+ * overwrite that save. Re-read the checksum after generating and retry once when
+ * it moved; give up loudly instead of binding a torn snapshot.
+ */
+async function readConsistentWorkflowSnapshot(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<{ json: WorkflowJSON; saved: { versionId: string; checksum?: string } }> {
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const before = await context.workflowService.get(workflowId);
+		const json = await context.workflowService.getAsWorkflowJSON(workflowId);
+		const after = await context.workflowService.get(workflowId);
+		if (before.checksum === after.checksum && before.versionId === after.versionId) {
+			return { json, saved: { versionId: after.versionId, checksum: after.checksum } };
+		}
+	}
+	throw new WorkflowSnapshotChangedError(workflowId);
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
-	const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
-	try {
-		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
+	const toCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
-		// and carrying the ids through is what keeps node identity stable.
-		const code = generateWorkflowCode({ workflow: json, includeNodeIds: true });
-		// Historical reads must not advance the optimistic-concurrency lock.
-		if (!input.versionId) {
-			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+		// and carrying the ids through is what keeps node identity stable. Positions stay
+		// out: build-workflow restores the saved layout by id, so a position in the file
+		// is only an invitation to edit layout.
+		const body = generateWorkflowCode({
+			workflow: json,
+			includeNodeIds: true,
+			includePositions: false,
+		});
+		// The file must build as-is, so it carries the import line codegen omits.
+		const importLine = buildImports(body);
+		return importLine ? `${importLine}\n\n${body}` : body;
+	};
+	try {
+		// Historical reads are not bound to a file and must not advance the
+		// optimistic-concurrency lock; they stay inline.
+		if (input.versionId) {
+			const json = await context.workflowService.getAsWorkflowJSON(
+				input.workflowId,
+				input.versionId,
+			);
+			const code = toCode(json);
+			return {
+				workflowId: input.workflowId,
+				name: json.name,
+				nodeCount: json.nodes?.length ?? 0,
+				nodes: await indexSourceNodes(json, code),
+				code,
+			};
 		}
-		return { workflowId: input.workflowId, name: json.name, code };
+
+		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
+		const code = toCode(json);
+		const nodeCount = json.nodes?.length ?? 0;
+		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
+
+		// Without a workspace there is no file to write; the code stays inline and the
+		// conversation's view of the workflow still moves to the current version.
+		if (!context.workspace) {
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
+				versionId: saved.versionId,
+				checksum: saved.checksum,
+			});
+			return { ...base, nodes: await indexSourceNodes(json, code), code };
+		}
+
+		const materialized = await materializeWorkflowSource(context, {
+			workflowId: input.workflowId,
+			name: json.name,
+			code,
+			saved: { versionId: saved.versionId, checksum: saved.checksum },
+		});
+		// A conflict leaves source generated from an older version on disk, so the
+		// binding keeps that version's token: building that file must hit the
+		// lost-update guard instead of overwriting whatever changed the workflow since.
+		if (materialized.status !== 'conflict') {
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, {
+				versionId: saved.versionId,
+				checksum: saved.checksum,
+			});
+		}
+
+		return {
+			...base,
+			filePath: materialized.filePath,
+			status: materialized.status,
+			// Index what is on disk: for `current` and `conflict` that is not the regenerated code.
+			nodes: await indexSourceNodes(json, materialized.content),
+			note: SOURCE_FILE_NOTES[materialized.status],
+			...(materialized.status !== 'conflict' && code.length <= INLINE_SOURCE_LIMIT_CHARS
+				? { code }
+				: {}),
+		};
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,

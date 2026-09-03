@@ -237,8 +237,10 @@ describe('emit-instance-ai', () => {
 			'isSwitchNodeType',
 			'isWebhookType',
 			// Codegen + parse round-trip
+			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
+			'locateNodeDeclarations',
 			'parseWorkflowCode',
 			'parseWorkflowCodeToBuilder',
 			// Code-step helpers — appear as arguments to `.code()` callbacks, not as
