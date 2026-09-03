@@ -5,6 +5,13 @@ import type { Mock } from 'vitest';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
+import type { SetupRequest } from '../workflows/setup-workflow.schema';
+import { analyzeWorkflow } from '../workflows/setup-workflow.service';
+
+vi.mock('../workflows/setup-workflow.service', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../workflows/setup-workflow.service')>()),
+	analyzeWorkflow: vi.fn(async () => await Promise.resolve([])),
+}));
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -835,9 +842,21 @@ describe('credentials tool', () => {
 	// ── setup ───────────────────────────────────────────────────────────────
 
 	describe('setup action — setup panel announcement', () => {
+		beforeEach(() => {
+			vi.mocked(analyzeWorkflow).mockReset().mockResolvedValue([]);
+		});
+
 		function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
-			const emitter = { emit: vi.fn(() => true), merge: vi.fn(() => true) };
-			const context = createMockContext({ setupItemsEmitter: emitter, ...overrides });
+			const emitter = {
+				emit: vi.fn(() => true),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn<() => string | undefined>(() => undefined),
+			};
+			const context = createMockContext({
+				setupItemsEmitter: emitter,
+				logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
+				...overrides,
+			});
 			return { context, emitter };
 		}
 
@@ -876,6 +895,9 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).not.toHaveBeenCalled();
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf-1', undefined, {
+				includeSettled: true,
+			});
 			expect(emitter.merge).toHaveBeenCalledWith('wf-1', [
 				{
 					id: 'wf-1:credential:slackApi',
@@ -896,10 +918,9 @@ describe('credentials tool', () => {
 			expect(result.message).toContain('continue the build');
 		});
 
-		it('should fall back to the workflow created in this run when no workflowId is passed', async () => {
-			const { context, emitter } = panelContext({
-				aiCreatedWorkflowIds: new Set(['wf-old', 'wf-new']),
-			});
+		it('should fall back to the workflow this run last saved when no workflowId is passed', async () => {
+			const { context, emitter } = panelContext();
+			emitter.lastWorkflowId.mockReturnValue('wf-new');
 			const suspendFn = vi.fn();
 
 			await executeTool(
@@ -947,6 +968,122 @@ describe('credentials tool', () => {
 			expect(suspendFn).toHaveBeenCalledTimes(1);
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({ requireUserSelection: true }),
+			);
+		});
+
+		it('should announce against the saved workflow so generic auth types land on their node rows', async () => {
+			const { context, emitter } = panelContext();
+			vi.mocked(analyzeWorkflow).mockResolvedValue([
+				{
+					node: {
+						id: 'n1',
+						name: 'Fetch Acme',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						parameters: {},
+						position: [0, 0],
+					},
+					credentialType: 'httpTemplatedCustomAuth',
+					isTrigger: false,
+					needsAction: true,
+					credentialNeedsAction: true,
+				} as SetupRequest,
+			]);
+			const setupHint = {
+				template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			};
+
+			await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'httpTemplatedCustomAuth', setupHint }],
+				},
+				suspendCtx(),
+			);
+
+			expect(emitter.merge).toHaveBeenCalledWith('wf-1', [
+				expect.objectContaining({
+					id: 'wf-1:credential:httpTemplatedCustomAuth:Fetch Acme',
+					nodeBindings: [{ nodeName: 'Fetch Acme' }],
+					setupHint,
+				}),
+			]);
+		});
+
+		it('should fall back to node-less rows when the workflow analysis fails', async () => {
+			const { context, emitter } = panelContext();
+			vi.mocked(analyzeWorkflow).mockRejectedValue(new Error('workflow gone'));
+
+			const result = await executeTool<{ announced?: boolean }>(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				suspendCtx(),
+			);
+
+			expect(result.announced).toBe(true);
+			expect(emitter.merge).toHaveBeenCalledWith('wf-1', [
+				expect.objectContaining({ id: 'wf-1:credential:slackApi' }),
+			]);
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to announce setup-items, falling back to node-less rows',
+				expect.objectContaining({ workflowId: 'wf-1', error: 'workflow gone' }),
+			);
+		});
+
+		it('should keep the card when an entry asks for a new credential', async () => {
+			const { context, emitter } = panelContext();
+			const suspendFn = vi.fn();
+
+			await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'slackApi', preferNew: true }],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(emitter.merge).not.toHaveBeenCalled();
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					credentialRequests: [
+						expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+					],
+				}),
+			);
+		});
+
+		it('should still announce when the emitter fails', async () => {
+			const { context, emitter } = panelContext();
+			emitter.merge.mockImplementation(() => {
+				throw new Error('bus down');
+			});
+			const suspendFn = vi.fn();
+
+			const result = await executeTool<{ announced?: boolean }>(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(result.announced).toBe(true);
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to announce setup-items, falling back to node-less rows',
+				expect.objectContaining({ workflowId: 'wf-1', error: 'bus down' }),
 			);
 		});
 

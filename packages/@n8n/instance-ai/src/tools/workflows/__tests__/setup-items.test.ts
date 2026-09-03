@@ -1,6 +1,7 @@
 import { instanceAiEventSchema, type InstanceAiEvent } from '@n8n/api-types';
 
 import {
+	buildSetupItemsFromAnnouncement,
 	buildSetupItemsFromCredentialRequests,
 	buildSetupItemsFromSetupRequests,
 	createSetupItemsEmitter,
@@ -148,6 +149,22 @@ describe('createSetupItemsEmitter', () => {
 		expect(published).toHaveLength(1);
 	});
 
+	it('remembers the workflow of the latest emission, even when the snapshot did not change', () => {
+		const { emitter } = makeEmitter();
+		const slack = {
+			id: 'wf-1:credential:slackApi',
+			kind: 'credential' as const,
+			credentialType: 'slackApi',
+		};
+
+		expect(emitter.lastWorkflowId()).toBeUndefined();
+		emitter.emit('wf-1', [slack]);
+		emitter.emit('wf-2', []);
+		expect(emitter.lastWorkflowId()).toBe('wf-2');
+		expect(emitter.emit('wf-1', [slack])).toBe(false);
+		expect(emitter.lastWorkflowId()).toBe('wf-1');
+	});
+
 	it('merges partial announcements into the last snapshot instead of replacing it', () => {
 		const { emitter, published } = makeEmitter();
 		emitter.emit('wf-1', [
@@ -226,17 +243,17 @@ describe('createSetupItemsEmitter', () => {
 	});
 });
 
+const templatedAuthHint = {
+	template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+	placeholders: [{ name: 'api_key', title: 'API key' }],
+};
+
 describe('buildSetupItemsFromCredentialRequests', () => {
 	it('builds one service-keyed credential item per type, carrying reason and setupHint', () => {
-		const setupHint = {
-			template: { headers: { Authorization: 'Bearer {{api_key}}' } },
-			placeholders: [{ name: 'api_key', title: 'API key' }],
-		};
-
 		const items = buildSetupItemsFromCredentialRequests('wf-1', [
 			{ credentialType: 'slackApi', reason: 'to post alerts' },
 			{ credentialType: 'slackApi' },
-			{ credentialType: 'httpTemplatedCustomAuth', setupHint },
+			{ credentialType: 'gmailOAuth2', setupHint: templatedAuthHint },
 		]);
 
 		expect(items).toEqual([
@@ -247,12 +264,90 @@ describe('buildSetupItemsFromCredentialRequests', () => {
 				reason: 'to post alerts',
 			},
 			{
-				id: 'wf-1:credential:httpTemplatedCustomAuth',
+				id: 'wf-1:credential:gmailOAuth2',
 				kind: 'credential',
-				credentialType: 'httpTemplatedCustomAuth',
-				setupHint,
+				credentialType: 'gmailOAuth2',
+				setupHint: templatedAuthHint,
 			},
 		]);
+	});
+
+	it('skips generic auth types, whose rows are keyed per node', () => {
+		const items = buildSetupItemsFromCredentialRequests('wf-1', [
+			{ credentialType: 'httpHeaderAuth' },
+			{ credentialType: 'httpTemplatedCustomAuth', setupHint: templatedAuthHint },
+			{ credentialType: 'slackApi' },
+		]);
+
+		expect(items.map((item) => item.id)).toEqual(['wf-1:credential:slackApi']);
+	});
+});
+
+describe('buildSetupItemsFromAnnouncement', () => {
+	it('lands generic auth types on the per-node rows of the analysed workflow, carrying the announcement', () => {
+		const items = buildSetupItemsFromAnnouncement(
+			'wf-1',
+			[
+				{
+					credentialType: 'httpTemplatedCustomAuth',
+					reason: 'to call Acme',
+					setupHint: templatedAuthHint,
+				},
+			],
+			[
+				setupRequest({
+					nodeName: 'Fetch Acme',
+					credentialType: 'httpTemplatedCustomAuth',
+					credentialNeedsAction: true,
+				}),
+				setupRequest({
+					nodeName: 'Post to Slack',
+					credentialType: 'slackApi',
+					boundCredential: { id: 'c1', name: 'Team Slack' },
+					credentialNeedsAction: false,
+				}),
+			],
+		);
+
+		expect(items).toEqual([
+			{
+				id: 'wf-1:credential:httpTemplatedCustomAuth:Fetch Acme',
+				kind: 'credential',
+				credentialType: 'httpTemplatedCustomAuth',
+				nodeBindings: [{ nodeName: 'Fetch Acme' }],
+				reason: 'to call Acme',
+				setupHint: templatedAuthHint,
+			},
+			{
+				id: 'wf-1:credential:slackApi',
+				kind: 'credential',
+				credentialType: 'slackApi',
+				nodeBindings: [{ nodeName: 'Post to Slack' }],
+			},
+		]);
+	});
+
+	it('adds node-less rows for announced service types the saved workflow does not use yet', () => {
+		const items = buildSetupItemsFromAnnouncement(
+			'wf-1',
+			[
+				{ credentialType: 'gmailOAuth2', reason: 'to send the digest' },
+				{ credentialType: 'httpHeaderAuth' },
+			],
+			[
+				setupRequest({
+					nodeName: 'Post to Slack',
+					credentialType: 'slackApi',
+					credentialNeedsAction: true,
+				}),
+			],
+		);
+
+		expect(items.map((item) => item.id)).toEqual([
+			'wf-1:credential:slackApi',
+			'wf-1:credential:gmailOAuth2',
+		]);
+		expect(items[1]).toMatchObject({ reason: 'to send the digest' });
 	});
 });
 

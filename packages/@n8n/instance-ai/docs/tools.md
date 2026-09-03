@@ -683,12 +683,17 @@ directly, then call `credentials(action="setup")` again to select the created
 credential.
 
 **Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
-to a workflow (`workflowId`, or a workflow this run created) and the stage is
-not `finalize`, the tool does not suspend. It merges the credential types into
-the workflow's durable `setup-items` snapshot and returns
+to a workflow (`workflowId`, or the workflow this run last saved) and the stage
+is not `finalize`, the tool does not suspend. It merges the credential types
+into the workflow's durable `setup-items` snapshot and returns
 `{ success: true, announced: true, workflowId, credentials: [{ credentialType,
 existingCredentials }], message }` so the build continues while the user
-connects credentials from the panel. Standalone setup keeps the card.
+connects credentials from the panel. The announcement is built from the saved
+workflow's analysis, so generic auth types land on their per-node rows; a type
+no saved node uses yet gets a node-less row (generic types wait for the next
+build snapshot). Standalone setup, `requireUserSelection`, and an entry with
+`preferNew` keep the card: the panel cannot express "replace the bound
+credential".
 
 ### `credentials(action="test")`
 

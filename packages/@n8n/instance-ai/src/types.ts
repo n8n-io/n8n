@@ -1284,6 +1284,11 @@ export interface SetupItemsEmitter {
 	 * credential announcement without node context.
 	 */
 	merge(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/**
+	 * The workflow of the most recent emission this run, i.e. the latest saved
+	 * artifact — the workflow the panel follows. Undefined before the first save.
+	 */
+	lastWorkflowId(): string | undefined;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────

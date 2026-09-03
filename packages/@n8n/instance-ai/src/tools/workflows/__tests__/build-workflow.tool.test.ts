@@ -696,7 +696,11 @@ describe('createBuildWorkflowTool', () => {
 
 		it('announces the checklist on save, including bound slots, while routing only on open ones', async () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
-			const emitter = { emit: vi.fn(() => true), merge: vi.fn(() => true) };
+			const emitter = {
+				emit: vi.fn(() => true),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
 				overrides: { setupItemsEmitter: emitter },
@@ -735,7 +739,11 @@ describe('createBuildWorkflowTool', () => {
 
 		it('reports no setup requirement from a snapshot made only of bound slots', async () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);
-			const emitter = { emit: vi.fn(() => true), merge: vi.fn(() => true) };
+			const emitter = {
+				emit: vi.fn(() => true),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
 				overrides: { setupItemsEmitter: emitter },
@@ -783,6 +791,7 @@ describe('createBuildWorkflowTool', () => {
 					throw new Error('bus down');
 				}),
 				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',

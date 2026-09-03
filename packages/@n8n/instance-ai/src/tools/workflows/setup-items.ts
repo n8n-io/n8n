@@ -38,8 +38,11 @@ export function createSetupItemsEmitter(options: {
 }): SetupItemsEmitter {
 	const { eventBus, threadId, runId, agentId } = options;
 	const lastSnapshots = new Map<string, { fingerprint: string; items: InstanceAiSetupItem[] }>();
+	let lastWorkflowId: string | undefined;
 
 	const emit = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
+		// Tracked before the dedupe: an unchanged snapshot is still the latest save.
+		lastWorkflowId = workflowId;
 		const next = fingerprint(items);
 		if (lastSnapshots.get(workflowId)?.fingerprint === next) return false;
 		eventBus.publish(threadId, {
@@ -65,6 +68,7 @@ export function createSetupItemsEmitter(options: {
 			}
 			return emit(workflowId, [...byId.values()]);
 		},
+		lastWorkflowId: () => lastWorkflowId,
 	};
 }
 
@@ -101,21 +105,25 @@ export function parametersSetupItemId(workflowId: string, nodeName: string): str
 	return `${workflowId}:parameters:${nodeName}`;
 }
 
+export interface AnnouncedCredentialRequest {
+	credentialType: string;
+	reason?: string;
+	setupHint?: InstanceAiCredentialSetupHint;
+}
+
 /**
- * Items for a `credentials(action="setup")` announcement. There is no node
- * context yet, so credential rows carry no bindings; the next build snapshot
- * fans them out.
+ * Items for a `credentials(action="setup")` announcement without node context:
+ * one service-keyed row per type, no bindings; the next build snapshot fans them
+ * out. Generic auth types are skipped: their rows are keyed per node (see
+ * `credentialSetupItemId`), so a node-less row would never reconcile as done.
  */
 export function buildSetupItemsFromCredentialRequests(
 	workflowId: string,
-	requests: ReadonlyArray<{
-		credentialType: string;
-		reason?: string;
-		setupHint?: InstanceAiCredentialSetupHint;
-	}>,
+	requests: readonly AnnouncedCredentialRequest[],
 ): InstanceAiSetupItem[] {
 	const byType = new Map<string, InstanceAiSetupItem>();
 	for (const request of requests) {
+		if (GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType)) continue;
 		const id = credentialSetupItemId(workflowId, request.credentialType);
 		if (byType.has(id)) continue;
 		byType.set(id, {
@@ -127,6 +135,40 @@ export function buildSetupItemsFromCredentialRequests(
 		});
 	}
 	return [...byType.values()];
+}
+
+/**
+ * Items for a `credentials(action="setup")` announcement against a saved
+ * workflow: the workflow's analysed checklist (so generic auth types land on
+ * their per-node rows, and the snapshot is whole even in a later run), with the
+ * announcement's `reason` and `setupHint` applied to every row of an announced
+ * type. Announced types no saved node uses yet fall back to node-less rows.
+ */
+export function buildSetupItemsFromAnnouncement(
+	workflowId: string,
+	requests: readonly AnnouncedCredentialRequest[],
+	analyzedRequests: readonly SetupRequest[],
+): InstanceAiSetupItem[] {
+	const requestByType = new Map<string, AnnouncedCredentialRequest>();
+	for (const request of requests) {
+		if (!requestByType.has(request.credentialType)) {
+			requestByType.set(request.credentialType, request);
+		}
+	}
+	const coveredTypes = new Set<string>();
+	const items = buildSetupItemsFromSetupRequests(workflowId, analyzedRequests).map((item) => {
+		if (item.kind !== 'credential') return item;
+		const request = requestByType.get(item.credentialType);
+		if (!request) return item;
+		coveredTypes.add(item.credentialType);
+		return {
+			...item,
+			...(request.reason ? { reason: request.reason } : {}),
+			...(request.setupHint ? { setupHint: request.setupHint } : {}),
+		};
+	});
+	const pending = requests.filter((request) => !coveredTypes.has(request.credentialType));
+	return [...items, ...buildSetupItemsFromCredentialRequests(workflowId, pending)];
 }
 
 /**
