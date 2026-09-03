@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AGENT_BACKGROUND_WAKE_TAG } from './background/background-job-messages';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { N8nMemory } from './integrations/n8n-memory';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -23,11 +24,19 @@ export class AgentTestChatService {
 	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory
+		const messages = await this.n8nMemory
 			.getImplementation(agentId)
 			.getMessages(chatThreadId(agentId, userId), {
 				resourceId: draftChatMemoryResourceId(userId),
 			});
+		return messages.filter(
+			(message) =>
+				!('role' in message) ||
+				message.role !== 'user' ||
+				!message.content.some(
+					(part) => part.type === 'text' && part.text.startsWith(AGENT_BACKGROUND_WAKE_TAG),
+				),
+		);
 	}
 
 	/**

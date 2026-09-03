@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { AgentWakeService } from '../background/agent-wake.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
@@ -12,6 +13,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const agentWakeService = mock<AgentWakeService>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
@@ -20,9 +22,10 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		repository,
 		executionService,
 		backgroundJobService,
+		agentWakeService,
 		agentsConfig,
 	);
-	return { sweeper, repository, executionService, backgroundJobService };
+	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
 }
 
 describe('AgentInterruptedExecutionSweeper', () => {
@@ -72,5 +75,14 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		await enabled.sweeper.sweep();
 		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
 		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
+	});
+
+	it('scans for pending mail after reconciliation', async () => {
+		const { sweeper, repository, agentWakeService } = setup();
+		repository.findRunning.mockResolvedValue([]);
+
+		await sweeper.sweep();
+
+		expect(agentWakeService.drainUnconsumed).toHaveBeenCalled();
 	});
 });

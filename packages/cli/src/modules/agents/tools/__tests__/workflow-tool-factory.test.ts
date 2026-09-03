@@ -949,6 +949,8 @@ describe('workflow tool → background job handoff', () => {
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
 		});
+		// The model gets this result inline, so no wake should repeat it.
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			status: 'success',
 			jobId: 'job-1',
@@ -1051,6 +1053,7 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			error: expect.stringContaining('outcome is unknown'),
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			executionId: 'exec-1',
 			status: 'unknown',
@@ -1089,5 +1092,7 @@ describe('workflow tool → background job handoff', () => {
 			jobId: 'job-1',
 			note: expect.stringContaining('check_background_jobs'),
 		});
+		// The settle hook owns that outcome, so its mail must stay deliverable.
+		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 });

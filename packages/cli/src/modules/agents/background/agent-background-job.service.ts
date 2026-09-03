@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -124,6 +125,7 @@ export class AgentBackgroundJobService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly publisher: Publisher,
 		private readonly logger: Logger,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -180,12 +182,18 @@ export class AgentBackgroundJobService {
 
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
 		try {
-			return await this.jobRepository.settleIfRunning(jobId, settlement);
+			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
+			if (settled) await this.requestWakeSafely(jobId);
+			return settled;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
 			// shield the still-running row from orphan reconciliation forever.
 			this.abortControllers.delete(jobId);
 		}
+	}
+
+	async markMailConsumed(parentThreadId: string, jobIds: string[]): Promise<number> {
+		return await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
 	}
 
 	registerAbortController(jobId: string, controller: AbortController): void {
@@ -256,7 +264,25 @@ export class AgentBackgroundJobService {
 				this.logger.warn('Failed to relay background job cancellation', { jobId, error });
 			}
 		}
+
+		await this.consumeCancelledMail(parentThreadId, jobId);
 		return 'cancelled';
+	}
+
+	private async requestWakeSafely(jobId: string): Promise<void> {
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
+		try {
+			const job = await this.jobRepository.findById(jobId);
+			if (!job) return;
+			const { AgentWakeService } = await import('./agent-wake.service.js');
+			await Container.get(AgentWakeService).requestWake(job.parentThreadId);
+		} catch (error) {
+			this.logger.warn('Failed to request a parent wake for a settled background job', {
+				jobId,
+				error,
+			});
+		}
 	}
 
 	@OnPubSubEvent('cancel-agent-background-job', { instanceType: 'main' })
@@ -334,7 +360,21 @@ export class AgentBackgroundJobService {
 		// The stopped execution's settle hook may have written `cancelled` first;
 		// either way the job is cancelled.
 		await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';
+	}
+
+	/**
+	 * The model already saw the cancel result, so its mail is consumed. This
+	 * runs after the stop so a failed write cannot leave the child running,
+	 * and a failure only means one redundant wake later.
+	 */
+	private async consumeCancelledMail(parentThreadId: string, jobId: string): Promise<void> {
+		try {
+			await this.jobRepository.markMailConsumed(parentThreadId, [jobId]);
+		} catch (error) {
+			this.logger.warn('Failed to consume mail of a cancelled background job', { jobId, error });
+		}
 	}
 
 	/**
