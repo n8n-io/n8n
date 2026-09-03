@@ -34,7 +34,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 
 	// Faithful to the load-options signature: the SECOND argument is the fallback
 	// value (there is no itemIndex), and a read with no fallback and no stored value
-	// throws — which is what lets the "no resource or operation" case below fail if
+	// throws - which is what lets the "no resource or operation" case below fail if
 	// the fallback form is ever dropped from `getChats`.
 	const setParams = (params: Record<string, unknown>) => {
 		ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
@@ -205,7 +205,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 	});
 });
 
-describe('Microsoft Teams v2 — getUsers', () => {
+describe('Microsoft Teams v2 - getUsers', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
 
@@ -297,7 +297,7 @@ describe('Microsoft Teams v2 — getUsers', () => {
 	});
 });
 
-describe('Microsoft Teams v2 — getChatMembers', () => {
+describe('Microsoft Teams v2 - getChatMembers', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
 	const apiRequestAllItems = transport.microsoftApiRequestAllItems as Mock;
 

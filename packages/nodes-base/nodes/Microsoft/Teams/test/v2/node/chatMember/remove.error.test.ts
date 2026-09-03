@@ -17,7 +17,7 @@ import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
  * real transport builds, so the rejection is injected at the request-library layer
  * to prove the whole chain, not just that the code branches on a hand-set property.
  */
-describe('Microsoft Teams V2 — chatMember:remove error surfacing', () => {
+describe('Microsoft Teams V2 - chatMember:remove error surfacing', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 	let requestOAuth2: Mock;

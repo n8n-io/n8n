@@ -48,7 +48,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	} catch (error) {
 		// 403 only, never a catch-all, and Graph's own message stays the message: a 403
 		// here can equally be a legitimate refusal. Inline because there is a single
-		// call site — see the per-operation 403 hint note in utils/microsoft/transport.ts.
+		// call site - see the per-operation 403 hint note in utils/microsoft/transport.ts.
 		if (error instanceof NodeApiError && error.httpCode === '403') {
 			throw new NodeOperationError(this.getNode(), error as Error, {
 				itemIndex: i,

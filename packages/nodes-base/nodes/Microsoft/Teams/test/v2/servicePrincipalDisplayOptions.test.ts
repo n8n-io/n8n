@@ -66,7 +66,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
-	describe('chatMember — hidden under SP via the slash-prefixed field-level key', () => {
+	describe('chatMember - hidden under SP via the slash-prefixed field-level key', () => {
 		it('operation selector carries hide["/authentication"] = [SP]', () => {
 			const op = actionProps.find(
 				(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('chatMember'),

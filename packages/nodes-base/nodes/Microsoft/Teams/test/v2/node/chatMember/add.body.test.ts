@@ -18,7 +18,7 @@ vi.mock('../../../../v2/transport', async () => {
 	};
 });
 
-describe('Microsoft Teams V2 — chatMember:add request body', () => {
+describe('Microsoft Teams V2 - chatMember:add request body', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
@@ -109,7 +109,7 @@ describe('Microsoft Teams V2 — chatMember:add request body', () => {
 	});
 
 	// Every Entra B2B guest principal name carries `#EXT#`, which the Graph id
-	// validator rejects — guests have to be given by object ID.
+	// validator rejects - guests have to be given by object ID.
 	it('rejects a guest UPN containing #EXT# before any request', async () => {
 		setParams(addParams({ userId: 'alias_contoso.com#EXT#@tenant.onmicrosoft.com', options: {} }));
 
