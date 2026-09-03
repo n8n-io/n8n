@@ -506,6 +506,22 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(setup(false)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EXPANDED);
 		expect(setup(true)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_COLLAPSED);
 	});
+
+	it('forces an empty group collapsed and flags it', () => {
+		const group: IWorkflowGroup = { id: 'g1', name: 'Plan', nodeIds: ['p1'] };
+		const getById = nodeStore(makeNode('p1', 0, 0));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			isEmptyGroup: (id) => id === 'g1',
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].data?.isCollapsed).toBe(true);
+		expect(out[0].data?.isEmptyGroup).toBe(true);
+	});
 });
 
 describe('buildCollapsedGroupByNodeId', () => {

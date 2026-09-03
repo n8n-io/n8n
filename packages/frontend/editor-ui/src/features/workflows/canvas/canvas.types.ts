@@ -205,6 +205,8 @@ export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup: boolean;
 	executionStatus?: GroupExecutionStatus;
 	allNodesDisabled?: boolean;
 }

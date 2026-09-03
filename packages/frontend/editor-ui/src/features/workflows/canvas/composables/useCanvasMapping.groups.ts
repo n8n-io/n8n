@@ -205,6 +205,8 @@ export interface MapGroupsToVueFlowNodesInputs {
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	getGroupVisualOffset?: (id: string) => { x: number; y: number };
 	isGroupCollapsed: (id: string) => boolean;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup?: (id: string) => boolean;
 	readOnly: boolean;
 	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot;
 }
@@ -219,6 +221,7 @@ export function mapGroupsToVueFlowNodes({
 	getNodeDisplaySize,
 	getGroupVisualOffset,
 	isGroupCollapsed,
+	isEmptyGroup = () => false,
 	readOnly,
 	getNodeExecutionSnapshot,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
@@ -230,7 +233,9 @@ export function mapGroupsToVueFlowNodes({
 		if (!hasNode) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-		const collapsed = isGroupCollapsed(group.id);
+		const isEmpty = isEmptyGroup(group.id);
+		// An empty group always renders as the chip; its placeholder stays hidden.
+		const collapsed = isEmpty || isGroupCollapsed(group.id);
 		const memberNodes = group.nodeIds
 			.map(getNodeById)
 			.filter((node): node is INodeUi => node !== undefined);
@@ -243,6 +248,7 @@ export function mapGroupsToVueFlowNodes({
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			isEmptyGroup: isEmpty,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
 			allNodesDisabled:
 				connectableMembers.length > 0 && connectableMembers.every((node) => node.disabled === true),

@@ -144,6 +144,7 @@ const {
 	renderData,
 	allGroups,
 	nodeGroupView,
+	isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 	isExperimentalNdvActive,
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
@@ -195,6 +196,7 @@ const mappedGroupVueFlowNodes = computed(() =>
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+		isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 		getNodeExecutionSnapshot,
 	}),

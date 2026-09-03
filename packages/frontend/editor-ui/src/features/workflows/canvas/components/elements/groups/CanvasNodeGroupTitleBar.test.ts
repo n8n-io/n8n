@@ -58,6 +58,7 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
 		isCollapsed: true,
+		isEmptyGroup: false,
 		...overrides,
 	};
 }

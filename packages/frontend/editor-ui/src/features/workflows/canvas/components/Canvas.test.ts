@@ -141,6 +141,7 @@ function createCanvasGroupNode({
 			group: { id, name: `Group ${id}`, nodeIds },
 			nodesRect,
 			isCollapsed,
+			isEmptyGroup: false,
 		},
 	};
 }

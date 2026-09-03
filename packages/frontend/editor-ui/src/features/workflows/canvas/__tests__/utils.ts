@@ -99,6 +99,7 @@ export function createCanvasGroupElement({
 			group: { id, name, nodeIds },
 			nodesRect,
 			isCollapsed,
+			isEmptyGroup: false,
 		},
 	};
 }
