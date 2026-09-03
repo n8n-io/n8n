@@ -1,11 +1,26 @@
 import type { TestMigrationContext } from '@n8n/backend-test-utils';
 
 /**
+ * Column list of an index DDL statement, in the order the index declares them.
+ *
+ * Exported separately from {@link indexColumnsInOrder} so the parsing is testable without a
+ * database: the DDL shapes that matter (a `WHERE` clause, a function call) are string cases, not
+ * query cases.
+ */
+export function parseIndexColumns(definition: string): string[] {
+	const columnList = definition.slice(definition.lastIndexOf('(') + 1, definition.lastIndexOf(')'));
+
+	return columnList.split(',').map((column) => column.trim().replace(/^"|"$/g, ''));
+}
+
+/**
  * Columns of an index, in the order the index declares them.
  *
- * `queryRunner.getTable()` cannot be used for this: the Postgres driver returns index columns
- * alphabetically, so a leading-column assertion passes there whatever the real order is. Reading
- * the DDL back is the only portable way to see the order the index was actually built with.
+ * `queryRunner.getTable()` cannot be used for this. Its index query joins `pg_attribute` on
+ * `attnum = ANY (ix.indkey)` and has no `ORDER BY`, so the ordinal position inside the index is
+ * discarded and the columns come back in table-definition order. On a table whose column order
+ * happens to match the expectation, an assertion through it passes whatever order the index was
+ * really built with. Reading the DDL back is the only portable way to see the true order.
  *
  * Returns `undefined` when no such index exists.
  */
@@ -31,9 +46,5 @@ export async function indexColumnsInOrder(
 
 	if (!definition) return undefined;
 
-	// The column list is the last parenthesised group: `... ON "t" ("a", "b")`, and on Postgres
-	// `... USING btree ("a", b)` — where unreserved identifiers come back unquoted.
-	const columnList = definition.slice(definition.lastIndexOf('(') + 1, definition.lastIndexOf(')'));
-
-	return columnList.split(',').map((column) => column.trim().replace(/^"|"$/g, ''));
+	return parseIndexColumns(definition);
 }
