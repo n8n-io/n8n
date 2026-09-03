@@ -41,6 +41,8 @@ test.describe('Custom Base Path', () => {
 	});
 
 	test('serves node icons under the base path', async ({ n8nContainer }) => {
+		test.skip(!n8nContainer, 'requires container stack');
+
 		const iconPath = '/icons/n8n-nodes-base/dist/nodes/Webhook/webhook.svg';
 		const origin = new URL(n8nContainer.baseUrl).origin;
 		const ctx = await request.newContext({ baseURL: origin });
@@ -60,6 +62,8 @@ test.describe('Custom Base Path', () => {
 	});
 
 	test('webhook trigger routes are bound to the base path', async ({ n8nContainer }) => {
+		test.skip(!n8nContainer, 'requires container stack');
+
 		const unknownWebhook = '/webhook/__no_such_webhook_xyz__';
 		const origin = new URL(n8nContainer.baseUrl).origin;
 		const ctx = await request.newContext({ baseURL: origin });
@@ -76,7 +80,7 @@ test.describe('Custom Base Path', () => {
 		// Without the prefix the webhook router is not mounted; the request must
 		// not be handled by the webhook layer.
 		const rootRes = await ctx.get(unknownWebhook);
-		const rootContentType = rootRes.headers()['content-type'] ?? '';
+		const rootContentType = String(rootRes.headers()['content-type']);
 		expect(rootContentType).not.toContain('application/json');
 
 		await ctx.dispose();

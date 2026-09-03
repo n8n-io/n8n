@@ -385,6 +385,10 @@ export function createPage({
 	const normalizedInstanceBaseUrl = instanceBaseUrl.endsWith('/')
 		? instanceBaseUrl
 		: `${instanceBaseUrl}/`;
+	const loginUrl = escapeForScriptContext(`${normalizedInstanceBaseUrl}rest/login`);
+	const signInRedirectBaseUrl = escapeForScriptContext(
+		`${normalizedInstanceBaseUrl}signin?redirect=`,
+	);
 
 	// How the page learns who the visitor is. The `/rest/login` bootstrap can only work on
 	// the real origin: from the frame's opaque origin the request carries no cookie, and the
@@ -401,7 +405,7 @@ export function createPage({
 						metadata = { user: injectedVisitor };
 					} else if (authentication === 'n8nUserAuth') {
 						try {
-							const response = await fetch('${normalizedInstanceBaseUrl}rest/login', {
+							const response = await fetch(${loginUrl}, {
 									method: 'GET',
 									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
@@ -420,7 +424,7 @@ export function createPage({
 								},
 							};
 						} catch (error) {
-							window.location.href = '${normalizedInstanceBaseUrl}signin?redirect=' + encodeURIComponent(window.location.href);
+							window.location.href = ${signInRedirectBaseUrl} + encodeURIComponent(window.location.href);
 							return;
 						}
 					}`

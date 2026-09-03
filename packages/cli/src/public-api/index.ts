@@ -395,11 +395,22 @@ function createApiRouter(
 		);
 	}
 
-	apiController.get(`/${mountedPublicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+	apiController.get(`/${mountedPublicApiEndpoint}/${version}/openapi.yml`, async (_, res, next) => {
 		// Public, read-only spec with no auth or sensitive data - safe to expose
 		// cross-origin for documentation playgrounds
 		res.header('Access-Control-Allow-Origin', '*');
-		res.sendFile(openApiSpecPath);
+		if (basePath === '/') {
+			res.sendFile(openApiSpecPath);
+			return;
+		}
+
+		try {
+			const YAML = await import('yaml');
+			const openApiDocument = await loadOpenApiDocument(openApiSpecPath, basePath);
+			res.type('yaml').send(YAML.stringify(openApiDocument));
+		} catch (error) {
+			next(error);
+		}
 	});
 
 	// Error handler specifically for JSON parsing - must come immediately after express.json()

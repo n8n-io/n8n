@@ -42,6 +42,7 @@ export interface DiscoverOptions {
 	includeSchemas?: boolean;
 	resource?: string;
 	operation?: string;
+	specUrl?: string;
 }
 
 let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
@@ -243,7 +244,7 @@ export async function buildDiscoverResponse(
 				values: ['schemas'],
 			},
 		},
-		specUrl: '/api/v1/openapi.yml',
+		specUrl: options?.specUrl ?? '/api/v1/openapi.yml',
 	};
 }
 
