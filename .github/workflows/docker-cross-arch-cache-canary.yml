@@ -62,12 +62,38 @@ jobs:
           fs.writeFileSync(path, config.replace(before, after));
           NODE
 
-      - name: Install and prime the Turbo cache
+      - name: Install dependencies and configure the Turbo cache
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ env.NODE_VERSION }}
-          build-command: pnpm build:n8n
+          build-command: ''
           turbo-use-relative-cache-path: 'true'
+
+      - name: Pin the repository Turbo binary
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const fs = require('node:fs');
+          const { createRequire } = require('node:module');
+
+          const turboPackagePath = require.resolve('turbo/package');
+          const turboPackage = require(turboPackagePath);
+          const turboRequire = createRequire(turboPackagePath);
+          const binaryArchitecture = process.arch === 'x64' ? '64' : process.arch;
+          const binary = turboRequire.resolve(`@turbo/linux-${binaryArchitecture}/bin/turbo`);
+          const actualVersion = execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim();
+
+          if (actualVersion !== turboPackage.version) {
+            throw new Error(`Turbo binary ${actualVersion} does not match package ${turboPackage.version}`);
+          }
+
+          console.log(`Using Turbo ${actualVersion} from ${binary}`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `TURBO_BINARY_PATH=${binary}\n`);
+          NODE
+
+      - name: Prime the Turbo cache
+        run: pnpm build:n8n
 
       - name: Verify the prime build used a fresh cache key
         env:
@@ -157,12 +183,38 @@ jobs:
           fs.writeFileSync(path, config.replace(before, after));
           NODE
 
-      - name: Install and consume the Turbo cache
+      - name: Install dependencies and configure the Turbo cache
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ env.NODE_VERSION }}
-          build-command: pnpm build:n8n
+          build-command: ''
           turbo-use-relative-cache-path: 'true'
+
+      - name: Pin the repository Turbo binary
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const fs = require('node:fs');
+          const { createRequire } = require('node:module');
+
+          const turboPackagePath = require.resolve('turbo/package');
+          const turboPackage = require(turboPackagePath);
+          const turboRequire = createRequire(turboPackagePath);
+          const binaryArchitecture = process.arch === 'x64' ? '64' : process.arch;
+          const binary = turboRequire.resolve(`@turbo/linux-${binaryArchitecture}/bin/turbo`);
+          const actualVersion = execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim();
+
+          if (actualVersion !== turboPackage.version) {
+            throw new Error(`Turbo binary ${actualVersion} does not match package ${turboPackage.version}`);
+          }
+
+          console.log(`Using Turbo ${actualVersion} from ${binary}`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `TURBO_BINARY_PATH=${binary}\n`);
+          NODE
+
+      - name: Consume the Turbo cache
+        run: pnpm build:n8n
 
       - name: Verify every build task used the remote cache
         shell: bash
