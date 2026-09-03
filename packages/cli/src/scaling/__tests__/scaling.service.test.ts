@@ -123,7 +123,7 @@ describe('ScalingService', () => {
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
 		activeExecutions.getRunningExecutionIds.mockReturnValue([]);
-		activeExecutions.cancelRunningExecutions.mockReturnValue([]);
+		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
 		globalConfig.generic.gracefulShutdownTimeout = 30;
 
@@ -331,7 +331,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
-				activeExecutions.cancelRunningExecutions.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
 
 				let hasStopped = false;
 				const stopped = scalingService.stop().then(() => (hasStopped = true));
@@ -349,6 +349,38 @@ describe('ScalingService', () => {
 				expect(scopedLogger.warn).toHaveBeenCalledWith(
 					'Drain timeout reached after 4s, shutting down with executions still active...',
 				);
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
+			it('should not finish the drain until the cancellation has settled', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 5;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+
+				let finishCancellation: (executionIds: string[]) => void = () => {};
+				activeExecutions.cancelRunningExecutions.mockReturnValue(
+					new Promise((resolve) => (finishCancellation = resolve)),
+				);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(4_000);
+
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+				expect(hasStopped).toBe(false);
+
+				finishCancellation(['exec-1']);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
 				expect(scopedLogger.warn).toHaveBeenCalledWith(
 					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
 					{ executionIds: ['exec-1'] },
@@ -398,7 +430,7 @@ describe('ScalingService', () => {
 					let runningJobIds = ['1'];
 					jobProcessor.getRunningJobIds.mockImplementation(() => runningJobIds);
 					activeExecutions.getRunningExecutionIds.mockReturnValue(inProcessExecutionIds);
-					activeExecutions.cancelRunningExecutions.mockReturnValue(inProcessExecutionIds);
+					activeExecutions.cancelRunningExecutions.mockResolvedValue(inProcessExecutionIds);
 
 					let hasStopped = false;
 					const stopped = scalingService.stop().then(() => (hasStopped = true));
@@ -430,7 +462,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
-				activeExecutions.cancelRunningExecutions.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
 
 				let hasStopped = false;
 				const stopped = scalingService.stop().then(() => (hasStopped = true));

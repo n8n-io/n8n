@@ -221,7 +221,7 @@ export class ScalingService {
 			);
 			this.logExecutionsToDrain();
 
-			const cancelledExecutionIds = this.activeExecutions.cancelRunningExecutions();
+			const cancelledExecutionIds = await this.activeExecutions.cancelRunningExecutions();
 
 			if (cancelledExecutionIds.length > 0) {
 				this.logger.warn(

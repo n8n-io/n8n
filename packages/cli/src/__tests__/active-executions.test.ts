@@ -38,6 +38,7 @@ vi.mock('@n8n/utils/sleep', () => ({
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
+const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
 
@@ -82,7 +83,7 @@ describe('ActiveExecutions', () => {
 
 	beforeEach(() => {
 		activeExecutions = new ActiveExecutions(
-			mock(),
+			logger,
 			executionRepository,
 			executionPersistence,
 			concurrencyControl,
@@ -90,6 +91,7 @@ describe('ActiveExecutions', () => {
 			executionsConfig,
 		);
 
+		executionRepository.cancelMany.mockResolvedValue();
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(new Date());
@@ -578,7 +580,9 @@ describe('ActiveExecutions', () => {
 
 			const waitingExecutionId = await addExecutionWithStatus('waiting');
 
-			expect(activeExecutions.cancelRunningExecutions()).toEqual([runningExecutionId]);
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				runningExecutionId,
+			]);
 
 			await expect(runningPostExecutePromise).rejects.toThrow(
 				SystemShutdownExecutionCancelledError,
@@ -595,7 +599,9 @@ describe('ActiveExecutions', () => {
 
 			const unattachedExecutionId = await addExecutionWithStatus('running');
 
-			expect(activeExecutions.cancelRunningExecutions()).toEqual([attachedExecutionId]);
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				attachedExecutionId,
+			]);
 
 			await expect(attachedPostExecutePromise).rejects.toThrow(
 				SystemShutdownExecutionCancelledError,
@@ -608,8 +614,72 @@ describe('ActiveExecutions', () => {
 			const waitingExecutionId = await addExecutionWithStatus('waiting');
 
 			expect(activeExecutions.getRunningExecutionIds()).toEqual([]);
-			expect(activeExecutions.cancelRunningExecutions()).toEqual([]);
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([]);
 			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
+			expect(executionRepository.cancelMany).not.toHaveBeenCalled();
+		});
+
+		test('Should record the executions as cancelled before returning', async () => {
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const postExecute = activeExecutions.getPostExecutePromise(executionId);
+
+			let hasRecorded = false;
+			executionRepository.cancelMany.mockImplementation(async () => {
+				hasRecorded = true;
+			});
+
+			await activeExecutions.cancelRunningExecutions();
+
+			expect(hasRecorded).toBe(true);
+			expect(executionRepository.cancelMany).toHaveBeenCalledWith([executionId]);
+			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
+		});
+
+		test('Should still cancel and report the executions when the recording fails', async () => {
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			const postExecute = activeExecutions.getPostExecutePromise(executionId);
+
+			executionRepository.cancelMany.mockRejectedValue(new Error('Connection terminated'));
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([executionId]);
+
+			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Connection terminated',
+				{ executionIds: [executionId] },
+			);
+		});
+
+		test('Should give up on a recording that does not settle within its deadline', async () => {
+			vi.useFakeTimers();
+
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			executionRepository.cancelMany.mockReturnValue(new Promise(() => {}));
+
+			let hasCancelled = false;
+			const cancelling = activeExecutions.cancelRunningExecutions().then((ids) => {
+				hasCancelled = true;
+				return ids;
+			});
+
+			await vi.advanceTimersByTimeAsync(2_999);
+
+			expect(hasCancelled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			await expect(cancelling).resolves.toEqual([executionId]);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Timed out writing the cancelled status',
+				{ executionIds: [executionId] },
+			);
+
+			vi.useRealTimers();
 		});
 	});
 
