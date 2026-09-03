@@ -258,7 +258,10 @@ jobs:
             docker run --rm --entrypoint node "$image" -e \
               "require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm'); require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3')"
 
-            docker run --rm --entrypoint sh "$image" -c '
+            # The published package expects its postinstall to set the executable
+            # bit. Run this compatibility check as root so it tests the binary,
+            # not the production closure's existing file-mode behavior.
+            docker run --rm --user root --entrypoint sh "$image" -c '
               set -- $(find /usr/local/lib/node_modules/n8n -type f -path "*/agent-browser/bin/agent-browser.js")
               if [ "$#" -eq 0 ]; then
                 echo "agent-browser launcher not found" >&2
