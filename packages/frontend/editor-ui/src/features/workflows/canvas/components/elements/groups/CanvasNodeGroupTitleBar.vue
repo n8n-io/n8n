@@ -64,6 +64,7 @@ const emit = defineEmits<{
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	extract: [id: string];
+	generate: [id: string];
 	'add-nodes-to-chat': [id: string];
 	toggle: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent];
@@ -155,6 +156,10 @@ function onDescriptionUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', group.value.id);
+}
+
+function onGenerateClick() {
+	emit('generate', group.value.id);
 }
 
 function onExtractClick() {
@@ -440,6 +445,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 				data-test-id="canvas-node-group-toolbar"
 			>
 				<div :class="$style.toolbarItems">
+					<N8nTooltip v-if="isEmptyGroup" :content="i18n.baseText('canvas.nodeGroup.generate')">
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							icon="sparkles"
+							:aria-label="i18n.baseText('canvas.nodeGroup.generate')"
+							data-test-id="canvas-node-group-generate"
+							@click.stop="onGenerateClick"
+						/>
+					</N8nTooltip>
 					<KeyboardShortcutTooltip
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"

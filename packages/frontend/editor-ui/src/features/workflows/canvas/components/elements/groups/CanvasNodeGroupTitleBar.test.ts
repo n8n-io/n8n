@@ -581,6 +581,18 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).toBeNull();
 		});
 
+		it('shows the generate button and emits generate with the group id when the group is empty', async () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: true }) });
+			const button = wrapper.getByTestId('canvas-node-group-generate');
+			await fireEvent.click(button);
+			expect(wrapper.emitted().generate).toEqual([['g1']]);
+		});
+
+		it('hides the generate button when the group is not empty', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-generate')).toBeNull();
+		});
+
 		it('focuses the title when autofocusGroupId matches the group', async () => {
 			const wrapper = render({
 				data: makeData({ isCollapsed: false }),

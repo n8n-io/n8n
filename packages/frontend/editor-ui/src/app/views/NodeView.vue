@@ -125,6 +125,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -212,6 +213,7 @@ const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
+const chatPanelStore = useChatPanelStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -1089,6 +1091,27 @@ async function onCreateEmptyGroup() {
 	if (!placeholder) return;
 	// ponytail: not one undo step with the node; wrap in a history bulk later.
 	workflowDocumentStore.value.createGroup([placeholder.id], name);
+}
+
+async function onGenerateGroup(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!group || !placeholder) return;
+
+	// ponytail: free-text prompt to the builder; replace with an Instance AI
+	// tool that takes the group id and enforces the single entry/exit contract.
+	const text = [
+		`Generate the nodes for the node group "${group.name}".`,
+		group.description ? `Objective: ${group.description}` : '',
+		`Replace the placeholder node "${placeholder.name}" with the generated nodes.`,
+		`Keep the generated nodes inside the group "${group.name}" and keep the placeholder's incoming connections attached to the generated section's entry and its outgoing connections attached to the section's exit.`,
+		'Do not change any other node group.',
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	await chatPanelStore.open({ mode: 'builder' });
+	await builderStore.sendChatMessage({ text, source: 'canvas' });
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2075,6 +2098,7 @@ onBeforeUnmount(() => {
 			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
+			@generate:group="onGenerateGroup"
 			@create:connection:cancelled="onCreateConnectionCancelled"
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"

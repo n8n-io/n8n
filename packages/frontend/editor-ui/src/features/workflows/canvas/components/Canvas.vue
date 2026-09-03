@@ -140,6 +140,7 @@ const emit = defineEmits<{
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
 	'create:empty-group': [];
+	'generate:group': [groupId: string];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -1907,6 +1908,7 @@ defineExpose({
 				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@generate="emit('generate:group', $event)"
 				@extract="onCanvasGroupExtract"
 				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
