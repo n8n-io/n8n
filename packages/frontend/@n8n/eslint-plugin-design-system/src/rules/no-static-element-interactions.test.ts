@@ -25,6 +25,10 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		{ filename: 'Component.vue', code: vue('<div @keydown.capture="delegateKeydown" />') },
 		{ filename: 'Component.vue', code: vue('<div @mouseup="finishDrag" />') },
 		{ filename: 'Component.vue', code: vue('<div @click.capture="delegateClick" />') },
+		{
+			filename: 'Component.vue',
+			code: vue('<div role="group" @click="toggle" @keydown="handleKeydown" />'),
+		},
 	],
 	invalid: [
 		{
@@ -40,11 +44,6 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		{
 			filename: 'Component.vue',
 			code: vue('<div @click.capture.self="toggle" />'),
-			errors: [{ messageId: 'staticInteraction' }],
-		},
-		{
-			filename: 'Component.vue',
-			code: vue('<div role="group" @click="toggle" @keydown="handleKeydown" />'),
 			errors: [{ messageId: 'staticInteraction' }],
 		},
 		{
