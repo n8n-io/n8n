@@ -18,21 +18,15 @@ describe('ExecutionCrashService', () => {
 		...overrides,
 	});
 
-	/** Report the given batches the way the repository reports each batch it transitions. */
-	const transitions = (batches: CrashedExecution[][]) =>
+	/** Report one batch the way the repository reports each batch it transitions. */
+	const transitions = (batch: CrashedExecution[]) =>
 		executionRepository.markAsCrashed.mockImplementation(async (_ids, onBatchTransitioned) => {
-			const crashed: CrashedExecution[] = [];
+			onBatchTransitioned?.(batch);
 
-			for (const batch of batches) {
-				onBatchTransitioned?.(batch);
-				crashed.push(...batch);
-			}
-
-			return await Promise.resolve(crashed);
+			return await Promise.resolve(batch);
 		});
 
-	const emittedExecutions = () =>
-		workflowStatisticsService.emit.mock.calls.map(([, payload]) => payload);
+	const emitted = () => workflowStatisticsService.emit.mock.calls;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -41,12 +35,12 @@ describe('ExecutionCrashService', () => {
 	test('reports the executions it transitioned for counting', async () => {
 		const first = crashedExecution('1');
 		const second = crashedExecution('2', { mode: 'manual' });
-		transitions([[first, second]]);
+		transitions([first, second]);
 
 		const crashed = await crashService.markAsCrashed(['1', '2']);
 
 		expect(crashed).toEqual([first, second]);
-		expect(emittedExecutions()).toEqual([{ executions: [first, second] }]);
+		expect(emitted()).toEqual([['executionsCrashed', { executions: [first, second] }]]);
 	});
 
 	test('reports each batch as it transitions, so a later failure keeps earlier ones counted', async () => {
@@ -61,11 +55,14 @@ describe('ExecutionCrashService', () => {
 
 		await expect(crashService.markAsCrashed(['1', '2', '3'])).rejects.toThrow('connection reset');
 
-		expect(emittedExecutions()).toEqual([{ executions: [first] }, { executions: [second] }]);
+		expect(emitted()).toEqual([
+			['executionsCrashed', { executions: [first] }],
+			['executionsCrashed', { executions: [second] }],
+		]);
 	});
 
 	test('reports nothing when no execution transitioned', async () => {
-		transitions([[]]);
+		transitions([]);
 
 		const crashed = await crashService.markAsCrashed(['1']);
 

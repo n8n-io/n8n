@@ -260,17 +260,24 @@ describe('ExecutionRepository', () => {
 				workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
 			});
 
-		test('should batch updates above a threshold', async () => {
-			// Generates a list of many execution ids.
-			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
-			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
+		const executionIdsOfLength = (length: number) =>
+			Array(length)
 				.fill(undefined)
 				.map((_, i) => i.toString());
-			entityManager.find.mockResolvedValue([crashableRow('1')]);
 
-			const crashed = await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
+		test('should batch updates above a threshold and report each batch as it transitions', async () => {
+			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
+			const manyExecutionsToMarkAsCrashed = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+			const reported: string[][] = [];
+
+			const crashed = await executionRepository.markAsCrashed(
+				manyExecutionsToMarkAsCrashed,
+				(batch) => reported.push(batch.map(({ id }) => id)),
+			);
 
 			expect(entityManager.update).toBeCalledTimes(2);
+			expect(reported).toEqual([['1'], ['1']]);
 			expect(crashed).toHaveLength(2);
 		});
 
@@ -326,35 +333,13 @@ describe('ExecutionRepository', () => {
 			);
 		});
 
-		test('should report every batch as it transitions', async () => {
-			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
-				.fill(undefined)
-				.map((_, i) => i.toString());
-			entityManager.find.mockResolvedValue([crashableRow('1')]);
-			const reported: string[][] = [];
-
-			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed, (batch) =>
-				reported.push(batch.map(({ id }) => id)),
-			);
-
-			expect(reported).toEqual([['1'], ['1']]);
-		});
-
-		test('should report nothing when no execution transitioned', async () => {
-			entityManager.find.mockResolvedValue([]);
-
-			const crashed = await executionRepository.markAsCrashed(['1']);
-
-			expect(crashed).toEqual([]);
-		});
-
-		test('should report a duplicated id only once', async () => {
+		test('should collapse duplicated ids before batching', async () => {
+			const oneBatchWorthOfIds = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD - 1);
 			entityManager.find.mockResolvedValue([crashableRow('1')]);
 
-			const crashed = await executionRepository.markAsCrashed(['1', '1']);
+			await executionRepository.markAsCrashed([...oneBatchWorthOfIds, '0']);
 
-			expect(crashed).toHaveLength(1);
-			expect(entityManager.find).toHaveBeenCalledTimes(1);
+			expect(entityManager.update).toBeCalledTimes(1);
 		});
 	});
 

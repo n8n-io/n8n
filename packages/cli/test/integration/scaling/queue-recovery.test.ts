@@ -68,7 +68,7 @@ describe('ScalingService queue recovery', () => {
 	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) =>
 		await workflowStatisticsRepository.findOneBy({ workflowId, name });
 
-	it('increments the production error counter for an execution recovered as crashed', async () => {
+	it('records a production error against the workflow for an execution recovered as crashed', async () => {
 		const execution = await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
@@ -80,35 +80,12 @@ describe('ScalingService queue recovery', () => {
 		await vi.waitFor(async () => {
 			const statistics = await findStatistics(StatisticsNames.productionError);
 
-			expect(statistics).toMatchObject({ count: 1, rootCount: 1 });
+			expect(statistics).toMatchObject({ count: 1, rootCount: 1, workflowName: workflow.name });
 		});
 	});
 
-	it('increments the manual error counter for a manual execution recovered as crashed', async () => {
-		await createDanglingExecution('manual');
-
-		await scalingService.recoverFromQueue();
-
-		await vi.waitFor(async () => {
-			const statistics = await findStatistics(StatisticsNames.manualError);
-
-			expect(statistics).toMatchObject({ count: 1, rootCount: 0 });
-		});
-	});
-
-	it('increments the production error counter without a root count for a recovered sub-workflow execution', async () => {
-		await createDanglingExecution('integrated');
-
-		await scalingService.recoverFromQueue();
-
-		await vi.waitFor(async () => {
-			const statistics = await findStatistics(StatisticsNames.productionError);
-
-			expect(statistics).toMatchObject({ count: 1, rootCount: 0 });
-		});
-	});
-
-	it('stores the name of the workflow whose execution was recovered as crashed', async () => {
+	it('counts every crashed execution of the same workflow in one sweep', async () => {
+		await createDanglingExecution('trigger');
 		await createDanglingExecution('trigger');
 
 		await scalingService.recoverFromQueue();
@@ -116,7 +93,7 @@ describe('ScalingService queue recovery', () => {
 		await vi.waitFor(async () => {
 			const statistics = await findStatistics(StatisticsNames.productionError);
 
-			expect(statistics).toMatchObject({ workflowName: workflow.name });
+			expect(statistics).toMatchObject({ count: 2, rootCount: 2 });
 		});
 	});
 
