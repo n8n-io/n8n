@@ -2,20 +2,22 @@
 
 exports[`N8nActionPill > snapshots > renders clickable correctly 1`] = `
 <div>
-  <span
+  <button
     class="root clickable"
+    type="button"
   >
     
     Label
     
-  </span>
+  </button>
 </div>
 `;
 
 exports[`N8nActionPill > snapshots > renders danger + clickable + hoverText correctly 1`] = `
 <div>
-  <span
+  <button
     class="root danger clickable"
+    type="button"
   >
     <span
       class="labelGrid"
@@ -33,7 +35,7 @@ exports[`N8nActionPill > snapshots > renders danger + clickable + hoverText corr
         Top up
       </span>
     </span>
-  </span>
+  </button>
 </div>
 `;
 

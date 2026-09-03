@@ -97,4 +97,10 @@ defineSlots<{
 		opacity: 1;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.actions {
+		transition: none;
+	}
+}
 </style>

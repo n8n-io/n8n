@@ -66,6 +66,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 });
 
 const editor = ref<HTMLDivElement | undefined>(undefined);
+const contentRole = 'document';
 
 const { options } = props;
 const md = new Markdown(options.markdown)
@@ -275,6 +276,7 @@ const onCheckboxChange = (index: number) => {
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]"
+			:role="contentRole"
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"

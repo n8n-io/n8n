@@ -119,14 +119,20 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 	}
 };
 
-const emitItemSelected = (id: string, event?: MouseEvent) => {
+const emitItemSelected = (id: string, event?: MouseEvent | KeyboardEvent) => {
 	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
 
 	// Allow default browser behavior for modifier keys (ctrl/cmd/shift + click) or middle mouse button
-	if (event && (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) {
+	if (
+		event &&
+		(event.ctrlKey ||
+			event.metaKey ||
+			event.shiftKey ||
+			(event instanceof MouseEvent && event.button === 1))
+	) {
 		return;
 	}
 
@@ -253,7 +259,13 @@ const handleTooltipClose = () => {
 					:data-resourceid="item.id"
 					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
+					:role="item.href ? undefined : 'button'"
+					:tabindex="item.href ? undefined : 0"
 					@click="(event: MouseEvent) => emitItemSelected(item.id, event)"
+					@keydown.enter="(event: KeyboardEvent) => !item.href && emitItemSelected(item.id, event)"
+					@keydown.space.prevent="
+						(event: KeyboardEvent) => !item.href && emitItemSelected(item.id, event)
+					"
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
