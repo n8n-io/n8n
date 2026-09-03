@@ -201,6 +201,25 @@ When a journey acts as another user, `n8n.start.withUser()` returns a new
 `n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
 checker reports into the same scan list.
 
+### Main landmark structure
+
+`utils/a11y-landmark-check.ts` checks the one structural rule axe cannot see on a
+composed layout: the page must have exactly one `<main>` element, that `<main>`
+must not sit inside another landmark, and `id="content"` must be unique. It walks
+the composed DOM (the document plus every open shadow tree), runs no axe rules,
+and leaves the default WCAG 2.1 A + AA tag selection alone.
+
+```typescript
+import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
+
+await assertMainLandmarkStructure(n8n.page);
+```
+
+`assertMainLandmarkStructure(page)` throws with each problem it found.
+`checkMainLandmarkStructure(page)` returns `{ ok, problems }` instead, for a
+caller that wants to report rather than fail. Regression cover for both lives in
+`tests/e2e/a11y/a11y-landmark-structure.spec.ts`, against synthetic markup.
+
 ### Report and failure budget
 
 Every scan is attached to its test, so the raw axe results are always available
