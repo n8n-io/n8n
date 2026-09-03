@@ -195,9 +195,12 @@ describe('getNewEmails UID tracking', () => {
 
 	/** Bypasses ImapSimple so a search can answer with a hand-built list of messages. */
 	const fetchSimple = async (
-		searches: Array<Array<{ uid: number; headers?: Buffer }>>,
+		searches: Array<
+			Array<{ uid: number; headers?: Buffer; source?: Buffer; bodyParts?: Map<string, Buffer> }>
+		>,
 		staticData: IDataObject,
 		postProcessAction = 'nothing',
+		format = 'simple',
 	) => {
 		const connection = mock<ImapSimple>({
 			search: searches.reduce(
@@ -207,7 +210,7 @@ describe('getNewEmails UID tracking', () => {
 		});
 
 		trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
-		trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+		trigger.getNodeParameter.calledWith('format').mockReturnValue(format);
 		trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 		trigger.getWorkflowStaticData.mockReturnValue(staticData);
 
@@ -235,6 +238,31 @@ describe('getNewEmails UID tracking', () => {
 		expect(trigger.logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('HEADER part missing'),
 		);
+	});
+
+	it('skips a message whose source is missing, keeping the rest of the batch', async () => {
+		const { batches } = await fetchSimple(
+			[[{ uid: 900 }, { uid: 901, source: Buffer.from('From: a@b.com\r\nSubject: ok\r\n\r\nhi') }]],
+			{},
+			'nothing',
+			'resolved',
+		);
+
+		expect(batches).toEqual([[901]]);
+		expect(trigger.logger.warn).toHaveBeenCalledWith(expect.stringContaining('source missing'));
+	});
+
+	it('skips a message whose TEXT part is missing, keeping the rest of the batch', async () => {
+		const { connection, batches } = await fetchSimple(
+			[[{ uid: 900 }, { uid: 901, bodyParts: new Map([['text', Buffer.from('raw body')]]) }]],
+			{},
+			'read',
+			'raw',
+		);
+
+		expect(batches[0]).toHaveLength(1);
+		expect(connection.addFlags).toHaveBeenCalledExactlyOnceWith([901], ['\\SEEN']);
+		expect(trigger.logger.warn).toHaveBeenCalledWith(expect.stringContaining('TEXT part missing'));
 	});
 
 	it('only marks the messages it emitted as read', async () => {
