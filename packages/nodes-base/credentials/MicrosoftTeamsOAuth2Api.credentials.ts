@@ -8,6 +8,8 @@ const defaultScopes = [
 	'User.Read.All',
 	'Group.ReadWrite.All',
 	'Chat.ReadWrite',
+	// Removing a chat member has no higher-privileged alternative, so this scope is mandatory
+	'ChatMember.ReadWrite',
 	'ChannelMessage.Read.All',
 	'OnlineMeetings.ReadWrite',
 ];

@@ -11,6 +11,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'User.Read.All',
 		'Group.ReadWrite.All',
 		'Chat.ReadWrite',
+		'ChatMember.ReadWrite',
 		'ChannelMessage.Read.All',
 		'OnlineMeetings.ReadWrite',
 	];
@@ -71,7 +72,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChatMember.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
 		);
 	});
 

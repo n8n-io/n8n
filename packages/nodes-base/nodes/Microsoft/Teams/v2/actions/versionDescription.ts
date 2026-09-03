@@ -70,7 +70,7 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Microsoft OAuth2 (Graph)',
 					value: 'microsoftOAuth2Api',
 					description:
-						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite, User.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
+						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChatMember.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite, User.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
 				},
 				{
 					name: 'Service Principal (App-Only)',

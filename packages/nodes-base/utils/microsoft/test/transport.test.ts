@@ -470,6 +470,13 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() =>
 				validateMicrosoftGraphId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode),
 			).not.toThrow();
+			// base64 chat-membership id: the trailing `=` padding must not be rejected
+			expect(() =>
+				validateMicrosoftGraphId(
+					'MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+					mockNode,
+				),
+			).not.toThrow();
 		});
 
 		it('accepts a real colon-bearing channel id (`:` and `@` are allowed)', () => {
