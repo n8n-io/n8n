@@ -149,6 +149,24 @@ async function waitForSsh(name, timeoutMs = 600_000) {
 	);
 }
 
+// `waitForHealth` polls 127.0.0.1 inside the box, which goes green before the
+// Codespaces agent notices the listener and registers the forward. Sharing a port
+// that is not forwarded yet fails, so keep trying until it is.
+async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
+	const deadline = Date.now() + timeoutMs;
+	let share = shareWithOrg(port, name);
+	let waited = false;
+	while (!share.shared && Date.now() < deadline) {
+		if (!waited) {
+			console.log(`Waiting for port ${port} to be forwarded before sharing it…`);
+			waited = true;
+		}
+		await sleep(3000);
+		share = shareWithOrg(port, name);
+	}
+	return share;
+}
+
 async function serve(pr, cs, head, { json, dryRun }) {
 	const command = serveCommand(head);
 	if (dryRun) {
@@ -167,7 +185,7 @@ async function serve(pr, cs, head, { json, dryRun }) {
 	// Share from here rather than inside the box: this gh already held the codespace
 	// scope to create it, while the codespace's own token is only repo-scoped.
 	// GitHub also makes every forwarded port private again at each container start.
-	const share = shareWithOrg(PORT, cs.name);
+	const share = await shareWhenForwarded(PORT, cs.name);
 	if (!share.shared)
 		console.error(
 			`Port ${PORT} is still private: ${share.error} — retry with \`gh codespace ports visibility ${PORT}:org -c ${cs.name}\``,
