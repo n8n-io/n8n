@@ -526,10 +526,9 @@ describe('enqueueExecution', () => {
 		});
 		const error = new Error('pool resolution failed');
 		const { PoolConfigService } = await import('@/scaling/pool-config.service.js');
-		vi.spyOn(
-			Container.get(PoolConfigService),
-			'resolvePoolForExecution',
-		).mockRejectedValueOnce(error);
+		vi.spyOn(Container.get(PoolConfigService), 'resolvePoolForExecution').mockRejectedValueOnce(
+			error,
+		);
 
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
