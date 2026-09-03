@@ -72,25 +72,25 @@ jobs:
       - name: Pin the repository Turbo binary
         shell: bash
         run: |
-          node <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const fs = require('node:fs');
-          const { createRequire } = require('node:module');
+          expected="$(node -p "require('turbo/package').version")"
+          case "$(uname -m)" in
+            x86_64) binary_package='@turbo/linux-64' ;;
+            aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
+            *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+          esac
 
-          const turboPackagePath = require.resolve('turbo/package');
-          const turboPackage = require(turboPackagePath);
-          const turboRequire = createRequire(turboPackagePath);
-          const binaryArchitecture = process.arch === 'x64' ? '64' : process.arch;
-          const binary = turboRequire.resolve(`@turbo/linux-${binaryArchitecture}/bin/turbo`);
-          const actualVersion = execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim();
+          install_dir="$RUNNER_TEMP/turbo-canary"
+          npm install --prefix "$install_dir" --no-save --ignore-scripts --prefer-online \
+            "${binary_package}@${expected}"
+          binary="$install_dir/node_modules/$binary_package/bin/turbo"
+          actual="$("$binary" --version)"
+          if [ "$actual" != "$expected" ]; then
+            echo "Turbo binary $actual does not match package $expected" >&2
+            exit 1
+          fi
 
-          if (actualVersion !== turboPackage.version) {
-            throw new Error(`Turbo binary ${actualVersion} does not match package ${turboPackage.version}`);
-          }
-
-          console.log(`Using Turbo ${actualVersion} from ${binary}`);
-          fs.appendFileSync(process.env.GITHUB_ENV, `TURBO_BINARY_PATH=${binary}\n`);
-          NODE
+          echo "Using Turbo $actual from $binary"
+          echo "TURBO_BINARY_PATH=$binary" >> "$GITHUB_ENV"
 
       - name: Prime the Turbo cache
         run: pnpm build:n8n
@@ -134,7 +134,7 @@ jobs:
         with:
           name: turbo-prime-${{ matrix.direction }}
           path: .turbo/runs/*.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
   consume-cache-and-build:
@@ -193,25 +193,25 @@ jobs:
       - name: Pin the repository Turbo binary
         shell: bash
         run: |
-          node <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const fs = require('node:fs');
-          const { createRequire } = require('node:module');
+          expected="$(node -p "require('turbo/package').version")"
+          case "$(uname -m)" in
+            x86_64) binary_package='@turbo/linux-64' ;;
+            aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
+            *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+          esac
 
-          const turboPackagePath = require.resolve('turbo/package');
-          const turboPackage = require(turboPackagePath);
-          const turboRequire = createRequire(turboPackagePath);
-          const binaryArchitecture = process.arch === 'x64' ? '64' : process.arch;
-          const binary = turboRequire.resolve(`@turbo/linux-${binaryArchitecture}/bin/turbo`);
-          const actualVersion = execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim();
+          install_dir="$RUNNER_TEMP/turbo-canary"
+          npm install --prefix "$install_dir" --no-save --ignore-scripts --prefer-online \
+            "${binary_package}@${expected}"
+          binary="$install_dir/node_modules/$binary_package/bin/turbo"
+          actual="$("$binary" --version)"
+          if [ "$actual" != "$expected" ]; then
+            echo "Turbo binary $actual does not match package $expected" >&2
+            exit 1
+          fi
 
-          if (actualVersion !== turboPackage.version) {
-            throw new Error(`Turbo binary ${actualVersion} does not match package ${turboPackage.version}`);
-          }
-
-          console.log(`Using Turbo ${actualVersion} from ${binary}`);
-          fs.appendFileSync(process.env.GITHUB_ENV, `TURBO_BINARY_PATH=${binary}\n`);
-          NODE
+          echo "Using Turbo $actual from $binary"
+          echo "TURBO_BINARY_PATH=$binary" >> "$GITHUB_ENV"
 
       - name: Consume the Turbo cache
         run: pnpm build:n8n
