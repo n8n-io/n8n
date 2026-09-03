@@ -8,7 +8,7 @@ import type {
 import { searchAtlassianSites } from '@utils/atlassian';
 
 import { extractNextCursor, resolveSpaceKey } from '../actions/common';
-import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
+import { confluenceApiRequest, getConfluenceCredentialName } from '../transport';
 
 interface SearchPage {
 	entries: IDataObject[];
@@ -70,7 +70,7 @@ export async function getSites(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await searchAtlassianSites.call(this, CONFLUENCE_CREDENTIAL_NAME, filter);
+	return await searchAtlassianSites.call(this, getConfluenceCredentialName(this), filter);
 }
 
 export async function searchSpaces(
