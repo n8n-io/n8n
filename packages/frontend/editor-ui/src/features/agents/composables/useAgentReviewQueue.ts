@@ -31,6 +31,8 @@ type LiveVerdict = { vote: 'up' | 'down'; note?: string; at: string };
 // without a Slack integration. Remove when live sweeping exists.
 const SAMPLE_CHANNELS = ['Slack · #support', 'Slack · DM', 'Email'];
 const SAMPLE_LIVE_LIMIT = 3;
+// Off: sampled "live" moments inflated the Review count without matching any row.
+const SAMPLE_LIVE_MOMENTS_ENABLED = false;
 
 function textOf(parts: Array<{ type: string; text?: string }>): string {
 	return parts
@@ -63,7 +65,7 @@ export function useAgentReviewQueue(params: {
 	async function loadLiveMoments() {
 		const projectId = params.projectId.value;
 		const agentId = params.agentId.value;
-		if (!projectId || !agentId) return;
+		if (!SAMPLE_LIVE_MOMENTS_ENABLED || !projectId || !agentId) return;
 		try {
 			const page = await listThreads(rootStore.restApiContext, projectId, agentId, { limit: 6 });
 			const moments: ReviewMoment[] = [];
@@ -227,6 +229,17 @@ export function useAgentReviewQueue(params: {
 			: null;
 	}
 
+	async function rerun() {
+		await params.checks.run();
+	}
+
+	/** Not right, without leaving the card: the fix happens right here. */
+	async function markNotRight() {
+		const m = current.value;
+		if (!m || m.kind !== 'check' || !m.check) return;
+		await params.checks.vote(m.check, 'down', 'Not right');
+	}
+
 	async function undoRule() {
 		const rule = lastRule.value;
 		if (!rule) return;
@@ -261,6 +274,8 @@ export function useAgentReviewQueue(params: {
 		skip,
 		looksRight,
 		notRight,
+		markNotRight,
+		rerun,
 		undoRule,
 		ask,
 	};

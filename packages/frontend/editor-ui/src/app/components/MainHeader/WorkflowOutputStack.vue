@@ -374,8 +374,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClickCaptu
 }
 
 .tester {
-	border-style: dashed;
-	border-color: var(--color--warning);
+	background: color-mix(in srgb, var(--color--warning) 18%, var(--background--surface));
 	color: var(--color--warning);
 }
 

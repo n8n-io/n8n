@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import type { AgentReviewQueue } from '../composables/useAgentReviewQueue';
+import { useAssistantBackgroundFix } from '../composables/useAssistantBackgroundFix';
 import type { useWireframeReviewers } from '../composables/useWireframeReviewers';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 
@@ -20,7 +21,7 @@ const props = defineProps<{
 	reviewers: ReturnType<typeof useWireframeReviewers>;
 }>();
 
-const emit = defineEmits<{ 'fix-with-assistant': [draft: string] }>();
+const emit = defineEmits<{ 'fix-with-assistant': [draft: string]; 'edit-prompt': [] }>();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -59,27 +60,33 @@ const sourceIcon = computed<IconName>(() => {
 	return m.source.startsWith('Slack') ? 'message-square' : 'mail';
 });
 
-// Not right → one sentence. The sentence is the rule.
-const noting = ref(false);
-const note = ref('');
+// Not right → two ways out: let the Assistant fix it here, or edit the prompt yourself.
+const fixing = ref(false);
+const fix = useAssistantBackgroundFix();
+const rechecking = ref(false);
+const fixedOnce = ref(false);
 const INVITE_ID = '__invite';
 const inviting = ref(false);
 const inviteEmail = ref('');
 
-watch(current, () => {
-	noting.value = false;
-	note.value = '';
+watch(current, (next, previous) => {
+	if (next?.key === previous?.key) return;
+	fixing.value = false;
+	fixedOnce.value = false;
+	rechecking.value = false;
+	fix.reset();
 	inviting.value = false;
 	inviteEmail.value = '';
 });
 
-async function submitNotRight() {
-	await props.review.notRight(note.value);
+async function notRight() {
+	fixing.value = true;
+	await props.review.markNotRight();
 }
 
-function fixWithAssistant() {
+function buildDraft() {
 	const m = current.value;
-	if (!m) return;
+	if (!m) return '';
 	const lines = [
 		i18n.baseText('agents.builder.review.fixDraft.intro', {
 			interpolate: { agent: props.agentName ?? '' },
@@ -90,9 +97,23 @@ function fixWithAssistant() {
 	];
 	if (m.whatToCheck)
 		lines.push(`${i18n.baseText('agents.builder.review.whatToCheck')}: ${m.whatToCheck}`);
-	if (note.value.trim())
-		lines.push(`${i18n.baseText('agents.builder.review.shouldHave')}: ${note.value.trim()}`);
-	emit('fix-with-assistant', lines.join('\n'));
+	return lines.join('\n');
+}
+
+// The Assistant works in the background; when it settles, the check reruns here.
+async function fixWithAssistant() {
+	const draft = buildDraft();
+	if (!draft) return;
+	await fix.start(
+		{ projectId: props.projectId, agentId: props.agentId, agentName: props.agentName, draft },
+		async () => {
+			rechecking.value = true;
+			await props.review.rerun();
+			rechecking.value = false;
+			fixedOnce.value = true;
+			fixing.value = false;
+		},
+	);
 }
 
 const askItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
@@ -217,7 +238,12 @@ function openSession() {
 				</button>
 			</div>
 
-			<footer v-if="!noting" :class="$style.actions">
+			<div v-if="fixedOnce" :class="$style.fixedLine" data-testid="agent-preview-review-fixed">
+				<N8nIcon icon="check" :size="14" />
+				{{ i18n.baseText('agents.builder.review.fixDone') }}
+			</div>
+
+			<footer v-if="!fixing" :class="$style.actions">
 				<N8nDropdownMenu :items="askItems" placement="top-start" width="14rem" @select="onAsk">
 					<template #trigger>
 						<button type="button" :class="$style.button" data-testid="agent-preview-review-ask">
@@ -249,43 +275,63 @@ function openSession() {
 					type="button"
 					:class="$style.button"
 					data-testid="agent-preview-review-wrong"
-					@click="noting = true"
+					@click="notRight"
 				>
 					{{ i18n.baseText('agents.builder.checks.state.flagged') }}
 				</button>
 			</footer>
 
-			<div v-else :class="$style.noteBlock" data-testid="agent-preview-review-note">
-				<textarea
-					v-model="note"
-					:class="$style.textarea"
-					rows="2"
-					:placeholder="i18n.baseText('agents.builder.review.notePlaceholder')"
-					autofocus
-					@keydown.meta.enter.prevent="submitNotRight"
-				/>
+			<div v-else :class="$style.fixPanel" data-testid="agent-preview-review-fix-panel">
 				<div :class="$style.actions">
 					<button
 						type="button"
-						:class="$style.button"
+						:class="[$style.button, $style.primary]"
+						:disabled="
+							fix.status.value === 'starting' || fix.status.value === 'working' || rechecking
+						"
 						data-testid="agent-preview-review-fix"
 						@click="fixWithAssistant"
 					>
 						{{ i18n.baseText('agents.builder.review.fixWithAssistant') }}
 					</button>
-					<span :class="$style.grow" />
-					<button type="button" :class="$style.textButton" @click="noting = false">
-						{{ i18n.baseText('agents.builder.checks.invite.cancel') }}
-					</button>
 					<button
 						type="button"
-						:class="[$style.button, $style.primary]"
-						data-testid="agent-preview-review-save"
-						@click="submitNotRight"
+						:class="$style.button"
+						data-testid="agent-preview-review-edit-prompt"
+						@click="emit('edit-prompt')"
 					>
-						{{ i18n.baseText('agents.builder.review.save') }}
+						{{ i18n.baseText('agents.builder.review.editPrompt') }}
+					</button>
+					<span :class="$style.grow" />
+					<button type="button" :class="$style.textButton" @click="review.skip()">
+						{{ i18n.baseText('agents.builder.review.next') }}
 					</button>
 				</div>
+				<div
+					v-if="fix.status.value !== 'idle' || rechecking"
+					:class="$style.progress"
+					data-testid="agent-preview-review-progress"
+				>
+					<N8nIcon
+						v-if="fix.status.value === 'starting' || fix.status.value === 'working' || rechecking"
+						icon="loader-circle"
+						:size="14"
+						spin
+					/>
+					<N8nIcon v-else-if="fix.status.value === 'failed'" icon="triangle-alert" :size="14" />
+					<span :class="$style.progressText">
+						{{
+							rechecking
+								? i18n.baseText('agents.builder.review.rechecking')
+								: fix.status.value === 'failed'
+									? i18n.baseText('agents.builder.review.fixFailed')
+									: fix.progress.value || i18n.baseText('agents.builder.review.fixing')
+						}}
+					</span>
+				</div>
+				<ul v-if="fix.tasks.value.length > 0" :class="$style.tasks">
+					<li v-for="task in fix.tasks.value.slice(-3)" :key="task.id">{{ task.description }}</li>
+				</ul>
 			</div>
 		</article>
 	</div>
@@ -375,8 +421,7 @@ function openSession() {
 }
 
 .tester {
-	border-style: dashed;
-	border-color: var(--color--warning);
+	background: color-mix(in srgb, var(--color--warning) 18%, var(--background--surface));
 	color: var(--color--warning);
 }
 
@@ -479,10 +524,40 @@ function openSession() {
 	}
 }
 
-.noteBlock {
+.fixPanel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.progress {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border: var(--wireframe--border-width) dashed var(--border-color--strong);
+	border-radius: var(--wireframe--radius);
+	color: var(--text-color--subtler);
+	font-weight: var(--wireframe--body-weight);
+}
+
+.progressText {
+	min-width: 0;
+}
+
+.tasks {
+	margin: 0;
+	padding-left: var(--spacing--md);
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+}
+
+.fixedLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--color--success);
+	font-weight: var(--wireframe--font-weight);
 }
 
 .textarea,

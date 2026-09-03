@@ -92,6 +92,7 @@ defineExpose({ focusInput });
 					:review="review"
 					:reviewers="reviewers"
 					@fix-with-assistant="emit('send-to-assistant', { initialDraft: $event })"
+					@edit-prompt="emit('open-build')"
 				/>
 				<!-- Kept mounted (v-show) so the live session survives a review pass. -->
 				<AgentChatPanel

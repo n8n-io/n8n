@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { CaseInputFlavor } from '@n8n/api-types';
 import { N8nDropdownMenu, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref } from 'vue';
@@ -90,13 +89,6 @@ const badgeLabel = computed(() => {
 	}
 });
 
-const FLAVOR_ICONS: Record<CaseInputFlavor, IconName> = {
-	happy_path: 'circle-check',
-	underspecified: 'circle-help',
-	out_of_scope: 'door-open',
-	adversarial: 'triangle-alert',
-};
-
 // Typed checks were drafted by the Tester; untyped ones were written by a person and need no label.
 function kindLabel(check: AgentCheck) {
 	return check.flavor
@@ -140,8 +132,9 @@ async function submitAdd() {
 <template>
 	<N8nPopover
 		v-model:open="popoverOpen"
-		width="min(30rem, calc(100vw - 2rem))"
-		align="end"
+		width="min(46rem, calc(100vw - 2rem))"
+		align="start"
+		:side-offset="2"
 		:collision-padding="16"
 		:show-arrow="false"
 	>
@@ -153,9 +146,15 @@ async function submitAdd() {
 				data-testid="agent-preview-checks-badge"
 				:data-state="badgeState"
 			>
-				<N8nIcon v-if="isRunning || summary.running > 0" icon="loader-circle" :size="12" spin />
-				<span v-else :class="[$style.badgeDot, { [$style.pulse]: badgeState === 'running' }]" />
+				<span :class="[$style.avatar, $style.evalAgent, $style.barAvatar]">
+					<N8nIcon v-if="isRunning || summary.running > 0" icon="loader-circle" :size="13" spin />
+					<N8nIcon v-else icon="flask-conical" :size="13" />
+				</span>
 				<span :class="$style.badgeLabel">{{ badgeLabel }}</span>
+				<span :class="$style.grow" />
+				<span :class="$style.barHint">
+					<N8nIcon :icon="popoverOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
+				</span>
 			</button>
 		</template>
 		<template #content>
@@ -283,7 +282,9 @@ async function submitAdd() {
 						>
 							<span :class="[$style.dot, $style[`dot_${check.state}`]]" />
 							<span :class="$style.kind">
-								<N8nIcon v-if="check.flavor" :icon="FLAVOR_ICONS[check.flavor]" :size="12" />
+								<span v-if="check.flavor" :class="[$style.authorInitials, $style.testerMini]">
+									<N8nIcon icon="flask-conical" :size="11" />
+								</span>
 								<span v-else :class="$style.authorInitials">{{ initials }}</span>
 								{{ kindLabel(check) }}
 							</span>
@@ -385,62 +386,51 @@ async function submitAdd() {
 
 <style lang="scss" module>
 .badge {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	height: 1.75rem;
-	padding: 0 var(--spacing--2xs) 0 var(--spacing--3xs);
-	border: var(--wireframe--border);
-	border-radius: var(--wireframe--radius);
-	background: var(--background--surface);
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border: 0;
+	border-top: var(--border);
+	border-bottom: var(--wireframe--border);
+	background: var(--wireframe--hover-fill);
 	color: var(--wireframe--ink);
 	font-family: var(--wireframe--font-family);
 	font-weight: var(--wireframe--font-weight);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	letter-spacing: var(--wireframe--letter-spacing);
-	white-space: nowrap;
+	text-align: left;
 	cursor: pointer;
 
 	&:hover,
 	&.active {
-		background: var(--wireframe--hover-fill);
+		filter: brightness(0.97);
 	}
 }
 
-.badgeDot {
-	width: 0.6rem;
-	height: 0.6rem;
-	border-radius: 50%;
-	border: var(--wireframe--border-width) solid var(--border-color--strong);
+.barAvatar {
+	width: 1.5rem;
+	height: 1.5rem;
 	flex-shrink: 0;
 }
 
-.badge_running .badgeDot {
-	border-color: var(--color--warning);
+.barHint {
+	display: inline-flex;
+	color: var(--text-color--subtler);
 }
+
 .badge_needsEye {
-	border-color: var(--color--warning);
+	background: color-mix(in srgb, var(--color--warning) 14%, var(--background--surface));
 	color: var(--color--warning);
-	.badgeDot {
-		background: var(--color--warning);
-		border-color: var(--color--warning);
-	}
 }
 .badge_ok {
-	border-color: var(--color--success);
+	background: color-mix(in srgb, var(--color--success) 14%, var(--background--surface));
 	color: var(--color--success);
-	.badgeDot {
-		background: var(--color--success);
-		border-color: var(--color--success);
-	}
 }
 .badge_flagged {
-	border-color: var(--color--danger);
+	background: color-mix(in srgb, var(--color--danger) 12%, var(--background--surface));
 	color: var(--color--danger);
-	.badgeDot {
-		background: var(--color--danger);
-		border-color: var(--color--danger);
-	}
 }
 
 .offerRow {
@@ -457,7 +447,7 @@ async function submitAdd() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--xs);
 	border-bottom: var(--border);
 }
 
@@ -487,8 +477,12 @@ async function submitAdd() {
 }
 
 .evalAgent {
-	border-style: dashed;
-	border-color: var(--color--warning);
+	background: color-mix(in srgb, var(--color--warning) 18%, var(--background--surface));
+	color: var(--color--warning);
+}
+
+.testerMini {
+	background: color-mix(in srgb, var(--color--warning) 18%, var(--background--surface));
 	color: var(--color--warning);
 }
 
@@ -517,7 +511,7 @@ async function submitAdd() {
 	flex-direction: column;
 	font-family: var(--wireframe--font-family);
 	letter-spacing: var(--wireframe--letter-spacing);
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	color: var(--text-color);
 }
 
@@ -553,15 +547,17 @@ async function submitAdd() {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
+	max-height: 50vh;
+	overflow: auto;
 }
 
 .row {
 	display: grid;
-	grid-template-columns: 0.7rem 8.5rem minmax(0, 1fr) auto;
+	grid-template-columns: 0.7rem 10.5rem minmax(0, 1fr) auto;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	border: 0;
 	border-bottom: var(--border);
 	background: transparent;
@@ -662,7 +658,7 @@ async function submitAdd() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	font-size: var(--font-size--sm);
 }
 

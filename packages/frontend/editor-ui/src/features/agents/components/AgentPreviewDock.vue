@@ -323,15 +323,6 @@ useKeybindings({
 				/>
 
 				<div :class="$style.actions">
-					<AgentPreviewReviewers
-						:project-id="props.projectId"
-						:agent-id="props.agentId"
-						:checks="checks"
-						:review="review"
-						:reviewers="reviewers"
-						@review="review.open()"
-						@open-check="review.open(`check:${$event.rowId}`)"
-					/>
 					<N8nTooltip
 						v-if="!review.active.value && props.hasSession && props.effectiveSessionId"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"
@@ -411,6 +402,17 @@ useKeybindings({
 				</div>
 			</header>
 
+			<!-- Wireframe: checks live in their own strip under the toolbar, tinted by state. -->
+			<AgentPreviewReviewers
+				v-if="!review.active.value"
+				:project-id="props.projectId"
+				:agent-id="props.agentId"
+				:checks="checks"
+				:review="review"
+				:reviewers="reviewers"
+				@review="review.open()"
+				@open-check="review.open(`check:${$event.rowId}`)"
+			/>
 			<AgentPreviewChatPage
 				ref="previewChatPage"
 				:initialized="props.initialized"
