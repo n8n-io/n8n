@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_f85dcf278d453a::t_96a67349ea9cf3 319
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_f85dcf278d453a::t_96a67349ea9cf3 142,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b0ecb7bf5d3dc1630146fc7d40221382df706ba",
+  "prompts": {},
+  "sessions": {
+    "s_f85dcf278d453a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09174d0a-8603-46f4-a838-e4acf8317550",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
