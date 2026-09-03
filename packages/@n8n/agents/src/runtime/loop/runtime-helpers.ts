@@ -43,12 +43,16 @@ If this affects the user's request, briefly let them know which server is unavai
 }
 
 /**
- * Finish reasons that indicate the provider rejected or filtered the request
- * when they arrive with zero output. `stop`/`length` with empty output are the
- * model's own (odd but legal) choice; `tool-calls` always carries calls;
- * `error` surfaces through the SDK's thrown error instead.
+ * Finish reasons that indicate the provider rejected, filtered, or truncated
+ * the request when they arrive with zero output. `tool-calls` always carries
+ * calls; `error` surfaces through the SDK's thrown error instead.
  */
-const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set(['other', 'unknown', 'content-filter']);
+const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set([
+	'length',
+	'other',
+	'unknown',
+	'content-filter',
+]);
 
 /**
  * Whether a turn carries output the user can see or the loop can act on.
@@ -69,6 +73,17 @@ function hasActionableContent(messages: AgentMessage[]): boolean {
 	);
 }
 
+function hasReasoningContent(messages: AgentMessage[]): boolean {
+	return messages.some(
+		(message) =>
+			'content' in message &&
+			Array.isArray(message.content) &&
+			message.content.some(
+				(content) => content.type === 'reasoning' || content.type === 'reasoning-file',
+			),
+	);
+}
+
 /**
  * Classify a turn that produced no output as a recognized failure, or return
  * `undefined` when it doesn't look like a provider rejection. Some providers
@@ -83,10 +98,23 @@ export function classifyModelTurnError(turn: {
 	providerError?: RawProviderError;
 }): ModelTurnError | undefined {
 	if (hasActionableContent(turn.newMessages)) return undefined;
+	if (turn.aiFinishReason === 'stop' && hasReasoningContent(turn.newMessages)) {
+		return {
+			type: 'no_output',
+			message: 'The model finished without returning an answer. Try again or use another model.',
+		};
+	}
 	if (!EMPTY_RESPONSE_ERROR_FINISH_REASONS.has(turn.aiFinishReason)) return undefined;
 
 	const guidance =
 		'This can be a provider-side false positive — try rephrasing the message, clearing the chat history, or switching models.';
+	if (turn.aiFinishReason === 'length') {
+		return {
+			type: 'no_output',
+			message:
+				'The model reached its output token limit before it returned an answer. Reduce the request scope or use another model.',
+		};
+	}
 	if (turn.providerError) {
 		return {
 			type: turn.providerError.type,
@@ -118,6 +146,11 @@ export function isEmptyModelTurn(turn: {
 }): boolean {
 	if (turn.aiFinishReason === 'tool-calls') return false;
 	if (turn.structuredOutput !== undefined) return false;
+	// A reasoning-only stop or a truncated turn cannot recover under the same
+	// conditions. Retrying only consumes more tokens.
+	if (turn.errorReason && (turn.aiFinishReason === 'stop' || turn.aiFinishReason === 'length')) {
+		return false;
+	}
 	// A safety block is the provider's deterministic verdict on this prompt:
 	// re-issuing it earns the same answer and discards the captured reason,
 	// which is the only place the block is explained.
