@@ -1,6 +1,6 @@
 operationId: retryExecution
 tags:
-  - Execution
+  - Executions
 summary: Retry an execution
 description: Retry an execution from your instance.
 x-required-scope: execution:retry
