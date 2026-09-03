@@ -6,6 +6,7 @@ import type { ExecutionRepository } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import type {
+	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -547,6 +548,51 @@ describe('ActiveExecutions', () => {
 				expect.any(ManualExecutionCancelledError),
 			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getRunningExecutionIds and cancelRunningExecutions', () => {
+		const addExecutionWithStatus = async (status: ExecutionStatus) => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(executionId, status);
+			return executionId;
+		};
+
+		beforeEach(() => {
+			let i = 2000;
+			executionPersistence.create.mockImplementation(async () => `${i++}`);
+		});
+
+		test('Should list only the executions with a running status', async () => {
+			const runningExecutionId = await addExecutionWithStatus('running');
+			await addExecutionWithStatus('waiting');
+			await addExecutionWithStatus('new');
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([runningExecutionId]);
+		});
+
+		test('Should cancel only the executions with a running status', async () => {
+			const runningExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(runningExecutionId, workflowExecution);
+			const runningPostExecutePromise = activeExecutions.getPostExecutePromise(runningExecutionId);
+
+			const waitingExecutionId = await addExecutionWithStatus('waiting');
+
+			expect(activeExecutions.cancelRunningExecutions()).toEqual([runningExecutionId]);
+
+			await expect(runningPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
+		});
+
+		test('Should list and cancel nothing when no execution is running', async () => {
+			const waitingExecutionId = await addExecutionWithStatus('waiting');
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([]);
+			expect(activeExecutions.cancelRunningExecutions()).toEqual([]);
+			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
 		});
 	});
 

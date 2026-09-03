@@ -179,22 +179,72 @@ export class ScalingService {
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
+	// Runs at the highest shutdown priority, so both drains finish before the task
+	// runner shuts down and executions can still reach it.
 	private async stopWorker() {
 		await this.pauseQueue();
 
+		// The budget bounds only the in-process wait. The queued-job wait stays
+		// unbounded, so a long queued execution still runs to completion.
+		const drainTimeoutMs =
+			this.globalConfig.generic.gracefulShutdownTimeout * 0.8 * Time.seconds.toMilliseconds;
+
+		const start = Date.now();
+
+		const hasQueuedJobsToDrain = () => this.getRunningJobsCount() !== 0;
+		const hasInProcessExecutionsToDrain = () =>
+			this.activeExecutions.getRunningExecutionIds().length !== 0;
+		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
+
 		let count = 0;
 
-		while (this.getRunningJobsCount() !== 0) {
-			if (count++ % 4 === 0) {
-				const summaries = this.jobProcessor.getRunningJobsSummary();
-				const executionIds = summaries.map((summary) => summary.executionId);
-				this.logger.info(
-					`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
-					{ executionIds },
-				);
-			}
+		// Queued jobs hold the loop open past the budget. In-process stragglers are
+		// therefore cancelled only once the queue is empty.
+		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {
+			if (count++ % 4 === 0) this.logExecutionsToDrain();
 
 			await sleep(500);
+		}
+
+		// Cancel the stragglers instead of leaving them to run. The task runner shuts
+		// down next, and the later wait in `ActiveExecutions.shutdown` has no timeout.
+		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
+			const elapsed = Math.round((Date.now() - start) / Time.seconds.toMilliseconds);
+
+			this.logger.warn(
+				`Drain timeout reached after ${elapsed}s, shutting down with executions still active...`,
+			);
+			this.logExecutionsToDrain();
+
+			const cancelledExecutionIds = this.activeExecutions.cancelRunningExecutions();
+
+			if (cancelledExecutionIds.length > 0) {
+				this.logger.warn(
+					`Cancelled ${cancelledExecutionIds.length} in-process executions that could not finish before shutdown (execution IDs: ${cancelledExecutionIds.join(', ')})`,
+					{ executionIds: cancelledExecutionIds },
+				);
+			}
+		}
+	}
+
+	private logExecutionsToDrain() {
+		const summaries = this.jobProcessor.getRunningJobsSummary();
+		const executionIds = summaries.map((summary) => summary.executionId);
+
+		if (executionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
+				{ executionIds },
+			);
+		}
+
+		const inProcessExecutionIds = this.activeExecutions.getRunningExecutionIds();
+
+		if (inProcessExecutionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${inProcessExecutionIds.length} in-process executions to finish... (execution IDs: ${inProcessExecutionIds.join(', ')})`,
+				{ executionIds: inProcessExecutionIds },
+			);
 		}
 	}
 

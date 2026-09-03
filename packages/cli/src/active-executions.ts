@@ -311,6 +311,22 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
+	getRunningExecutionIds(): string[] {
+		return Object.keys(this.activeExecutions).filter(
+			(executionId) => this.activeExecutions[executionId].status === 'running',
+		);
+	}
+
+	cancelRunningExecutions(): string[] {
+		const executionIds = this.getRunningExecutionIds();
+
+		for (const executionId of executionIds) {
+			this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
+		}
+
+		return executionIds;
+	}
+
 	setStatus(executionId: string, status: ExecutionStatus) {
 		this.getExecutionOrFail(executionId).status = status;
 	}
