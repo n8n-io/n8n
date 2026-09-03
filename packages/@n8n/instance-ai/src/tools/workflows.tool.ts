@@ -27,6 +27,7 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { formatClaimDisclosure } from '../workflow-loop/render-claim';
 import {
 	getObservedWorkflowChecksum,
 	rememberCurrentWorkflowChecksum,
@@ -342,6 +343,14 @@ const publishBaseAction = z.object({
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
+	acknowledgeUnverified: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only after you told the user the workflow is not fully verified and they still ' +
+				'asked to publish. Publishing is refused without this while the latest verification left ' +
+				'nodes unreached or simulated. Never set it to skip the disclosure.',
+		),
 });
 
 const publishExtendedAction = publishBaseAction.extend({
@@ -1450,6 +1459,33 @@ async function resolveSetupScopeNodeNames(
 	}
 }
 
+/**
+ * Coverage disclosure for the workflow's latest verification, or undefined when
+ * it was fully verified or no claim exists. Absent evidence never blocks: a
+ * workflow built before this record, or outside the assistant, is unknown
+ * rather than unverified.
+ */
+async function resolveUnverifiedPublishDisclosure(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		const claim = outcome?.verification?.claim;
+		if (!claim || claim.publishReady) return undefined;
+		return formatClaimDisclosure(claim);
+	} catch (error) {
+		// Fail open: a storage hiccup must not block a publish the user asked for.
+		context.logger.warn('Failed to resolve the verification claim before publishing', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -1861,18 +1897,37 @@ async function handlePublish(
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
+	// Refused before the approval dialog, so the coverage facts reach the model
+	// even on an `always_allow` instance, which never shows the dialog at all.
+	const unverifiedDisclosure = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	if (unverifiedDisclosure && input.acknowledgeUnverified !== true) {
+		return {
+			success: false,
+			denied: true,
+			reason: 'not_verified',
+			verificationDisclosure: unverifiedDisclosure,
+			guidance:
+				`This workflow is not fully verified. ${unverifiedDisclosure} ` +
+				'Tell the user exactly this, and offer a live end-to-end test. Publish only if they still ' +
+				'ask for it, by calling publish again with `acknowledgeUnverified: true`.',
+		};
+	}
+
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const dependencyNote =
 			supportingWorkflowIds.length > 0
 				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
 				: '';
+		const target = input.versionId
+			? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
+			: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`;
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: input.versionId
-				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
-				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
+			// The user has to read this to approve, so the disclosure lands even if
+			// the assistant's own message left it out.
+			message: unverifiedDisclosure ? `${target}\n\n${unverifiedDisclosure}` : target,
 			severity: 'warning' as const,
 		});
 	}

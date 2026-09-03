@@ -1,12 +1,8 @@
+import { describeClaimCoverage, formatClaimHeadline } from './render-claim';
 import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
-}
-
-function formatNodeList(names: readonly string[], max = 8): string {
-	if (names.length <= max) return names.join(', ');
-	return `${names.slice(0, max).join(', ')} and ${String(names.length - max)} more`;
 }
 
 /**
@@ -18,34 +14,15 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	// Inline rather than via isVerifiedClaim: this branch must narrow `claim`.
 	if (claim === undefined || claim.level === 'verified') return 'Workflow verified successfully.';
 
-	const facts: string[] = [
-		`${String(claim.reachedNodeCount)} of ${String(claim.plannedNodeCount)} planned node(s) ran.`,
-	];
-	if (claim.nodesNotReached.length > 0) {
-		facts.push(`Never reached, so UNVERIFIED: ${formatNodeList(claim.nodesNotReached)}.`);
-	}
-	if (claim.simulatedNodes.length > 0) {
-		facts.push(
-			'Output was simulated, so nothing real happened at: ' +
-				`${formatNodeList(claim.simulatedNodes.map((node) => node.nodeName))}.`,
-		);
-	}
-
-	const lead =
-		claim.level === 'unproven'
-			? 'The workflow changed, but it is NOT verified. ' +
-				`The node(s) this change was about were never proven: ${formatNodeList(claim.unprovenTargets)}.`
-			: 'The workflow ran without errors, but it is NOT fully verified.';
-
-	// The verdict block the user sees is rendered from this same claim, so the
-	// model must not write a stronger claim next to it.
+	// The verdict the user sees renders from this same claim, so the model must
+	// not write a stronger claim next to it.
 	const rules = [
 		'Do NOT call the workflow verified, tested, working, or ready to publish.',
 		'Do NOT offer to publish it.',
 		claim.liveTestRecommended ? 'Offer a live end-to-end test instead.' : '',
 	].filter((rule) => rule !== '');
 
-	return [lead, ...facts, ...rules].join(' ');
+	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');
 }
 
 function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {

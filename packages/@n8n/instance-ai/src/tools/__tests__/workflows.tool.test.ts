@@ -2418,6 +2418,138 @@ describe('workflows tool', () => {
 			});
 		});
 
+		function contextWithClaim(claim: unknown) {
+			return createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', verification: { claim } }),
+					},
+				} as never,
+			});
+		}
+
+		const partialClaim = {
+			level: 'partial',
+			plannedNodeCount: 12,
+			reachedNodeCount: 5,
+			nodesNotReached: ['Send Email', 'Log Row'],
+			simulatedNodes: [{ nodeName: 'Create Event', reason: 'Creates a record' }],
+			pinnedNodes: [],
+			unprovenTargets: [],
+			publishReady: false,
+			liveTestRecommended: true,
+		};
+
+		it('should refuse to publish an unverified workflow and disclose the coverage', async () => {
+			const context = contextWithClaim(partialClaim);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			// Refused before the dialog, so an `always_allow` instance is covered too.
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+			const { verificationDisclosure } = result as { verificationDisclosure: string };
+			expect(verificationDisclosure).toContain('NOT fully verified');
+			expect(verificationDisclosure).toContain('Send Email, Log Row');
+			expect(verificationDisclosure).toContain('Create Event');
+		});
+
+		it('should refuse an unverified publish even when approval is not required', async () => {
+			const context = contextWithClaim(partialClaim);
+			context.permissions = { publishWorkflow: 'always_allow' };
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+		});
+
+		it('should disclose the coverage in the approval prompt once acknowledged', async () => {
+			const context = contextWithClaim(partialClaim);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).toContain('Publish');
+			expect(message).toContain('NOT fully verified');
+			expect(message).toContain('Send Email, Log Row');
+		});
+
+		it('should publish once acknowledged and approved', async () => {
+			const context = contextWithClaim(partialClaim);
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
+				versionId: undefined,
+			});
+			expect(result).toMatchObject({ success: true, activeVersionId: 'v2' });
+		});
+
+		it('should not gate a fully verified workflow', async () => {
+			const context = contextWithClaim({ ...partialClaim, level: 'verified', publishReady: true });
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).not.toContain('NOT');
+		});
+
+		it('should fail open when the build outcome cannot be read', async () => {
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockRejectedValue(new Error('storage down')),
+					},
+				} as never,
+				logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never,
+			});
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(result).toMatchObject({ success: true });
+		});
+
 		it('should suspend for confirmation and then publish when approved', async () => {
 			const context = createMockContext();
 			(context.workflowService.publish as Mock).mockResolvedValue({

@@ -59,6 +59,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'Patched',
 				claim: makeClaim({
 					level: 'unproven',
+					plannedNodeCount: 4,
 					reachedNodeCount: 4,
 					unprovenTargets: ['Send Email'],
 					simulatedNodes: [{ nodeName: 'Send Email', reason: 'Sends a message' }],
@@ -68,7 +69,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('Workflow verified successfully');
-			expect(result).toContain('changed, but it is NOT verified');
+			expect(result).toContain('Changed but NOT verified');
 			expect(result).toContain('never proven: Send Email');
 			expect(result).toContain('nothing real happened at: Send Email');
 		});

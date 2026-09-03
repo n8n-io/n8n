@@ -201,6 +201,14 @@ publish-readiness evidence. If the user explicitly asks to publish before a
 live execution succeeds, warn that the live path remains untested, then follow
 the requested publish flow.
 
+`workflows(action="publish")` enforces this. While the latest verification left
+nodes unreached or simulated, the call is refused and returns
+`verificationDisclosure` — the coverage facts, generated from the run. Relay
+those facts to the user and offer a live end-to-end test. Publish only if they
+still ask, by calling publish again with `acknowledgeUnverified: true`. Never
+set that flag to skip the disclosure. The user also sees the same facts in the
+publish approval prompt, so a summary that contradicts them is visible to them.
+
 Execution evidence can come from a run you started or a run the user started.
 If the user says they ran the workflow manually, call
 `executions(action="list", workflowId)`, identify the relevant run, and inspect
