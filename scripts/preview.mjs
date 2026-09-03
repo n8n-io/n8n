@@ -93,6 +93,12 @@ const serveCommand = (head) =>
 		'cd /workspaces/n8n',
 		`git fetch origin ${head.headRefName}`,
 		`git checkout --detach ${head.headRefOid}`,
+		// The serve script comes from the checked-out PR head, so a PR cut before this
+		// tooling landed on master does not have it. Say so, instead of letting pnpm
+		// report a missing script.
+		// An `||` here would also fire when an earlier step in this && chain failed,
+		// reporting the wrong cause. `if` keeps the test self-contained.
+		'if [ ! -f scripts/preview-serve.mjs ]; then echo "This PR predates the preview tooling. Rebase it on master and retry."; exit 1; fi',
 		// Cheap when nothing changed. Skipping it is how a preview ends up running
 		// against stale dependencies after a lockfile change.
 		'pnpm install --frozen-lockfile',
