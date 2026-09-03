@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
+import type { TLicenseManagerConfig } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import type { InstanceSettings } from 'n8n-core';
 import type { MockedClass } from 'vitest';
@@ -11,6 +12,27 @@ import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 
 vi.mock('@n8n_io/license-sdk');
+
+const licenseManagerMock = LicenseManager as MockedClass<typeof LicenseManager>;
+
+// The real constructor stores the config, which `License` reads back
+// (`stopSdkRenewalTimer`, `renewIfDue`), so the automock has to as well.
+const mockManagerStoresConfig = () => {
+	licenseManagerMock.mockImplementation(function (
+		this: LicenseManager,
+		config: TLicenseManagerConfig,
+	) {
+		this.config = config;
+		return this;
+	} as unknown as () => LicenseManager);
+};
+
+const lastConstructedManager = () =>
+	licenseManagerMock.mock.instances[licenseManagerMock.mock.instances.length - 1];
+
+beforeEach(() => {
+	mockManagerStoresConfig();
+});
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -125,6 +147,31 @@ describe('License', () => {
 		await license.renew();
 
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
+	});
+
+	test('stops the SDK renewal timer after init and keeps auto-renewal enabled', async () => {
+		const disableAutoRenewals = vi.mocked(LicenseManager.prototype.disableAutoRenewals);
+		const callsBefore = disableAutoRenewals.mock.calls.length;
+		const globalConfig = mock<GlobalConfig>({
+			license: licenseConfig,
+			multiMainSetup: { enabled: false },
+		});
+		license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+
+		await license.init();
+
+		expect(disableAutoRenewals).toHaveBeenCalledTimes(callsBefore + 1);
+		expect(lastConstructedManager().config.autoRenewEnabled).toBe(true);
+	});
+
+	test('stops the SDK renewal timer again after a reload', async () => {
+		const disableAutoRenewals = vi.mocked(LicenseManager.prototype.disableAutoRenewals);
+		const callsAfterInit = disableAutoRenewals.mock.calls.length;
+
+		await license.reload();
+
+		expect(disableAutoRenewals).toHaveBeenCalledTimes(callsAfterInit + 1);
+		expect(lastConstructedManager().config.autoRenewEnabled).toBe(true);
 	});
 
 	test('check if feature is enabled', () => {
@@ -346,6 +393,7 @@ describe('License', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
+			mockManagerStoresConfig();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -508,6 +556,7 @@ describe('License', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
+			mockManagerStoresConfig();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -593,6 +642,7 @@ describe('License', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
+			mockManagerStoresConfig();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -680,6 +730,7 @@ describe('License', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
+			mockManagerStoresConfig();
 			const globalConfig = mock<GlobalConfig>({
 				license: licenseConfig,
 				multiMainSetup: { enabled: false },
@@ -710,6 +761,94 @@ describe('License', () => {
 
 			expect(expiringDays).toBe(3); // ceiling of 2.3
 			expect(terminatingDays).toBe(6); // ceiling of 5.7
+		});
+	});
+});
+
+describe('License renewal by system task', () => {
+	const newLicense = async ({ isLeader = true, isCli = false } = {}) => {
+		const globalConfig = mock<GlobalConfig>({
+			license: licenseConfig,
+			multiMainSetup: { enabled: false },
+		});
+		const license = new License(
+			mockLogger(),
+			mock<InstanceSettings>({ instanceId: MOCK_INSTANCE_ID, instanceType: 'main', isLeader }),
+			mock(),
+			mock(),
+			globalConfig,
+		);
+		await license.init({ isCli });
+		return license;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockManagerStoresConfig();
+	});
+
+	describe('renewIfDue', () => {
+		it('renews when auto-renewal is enabled and a renewal is due', async () => {
+			const license = await newLicense();
+			vi.mocked(LicenseManager.prototype.isRenewalDue).mockReturnValueOnce(true);
+
+			await license.renewIfDue();
+
+			expect(LicenseManager.prototype._renew).toHaveBeenCalledWith({ cause: 'auto' });
+		});
+
+		it('does nothing when no renewal is due', async () => {
+			const license = await newLicense();
+			vi.mocked(LicenseManager.prototype.isRenewalDue).mockReturnValueOnce(false);
+
+			await license.renewIfDue();
+
+			expect(LicenseManager.prototype._renew).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when auto-renewal is disabled', async () => {
+			const license = await newLicense({ isLeader: false });
+
+			await license.renewIfDue();
+
+			expect(LicenseManager.prototype.isRenewalDue).not.toHaveBeenCalled();
+			expect(LicenseManager.prototype._renew).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when the renewal fails', async () => {
+			const license = await newLicense();
+			vi.mocked(LicenseManager.prototype.isRenewalDue).mockReturnValueOnce(true);
+			vi.mocked(LicenseManager.prototype._renew).mockRejectedValueOnce(new Error('renewal failed'));
+
+			await expect(license.renewIfDue()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('enableAutoRenewals on leader takeover', () => {
+		it('raises the auto-renewal flag without starting the SDK timer', async () => {
+			const license = await newLicense({ isLeader: false });
+			expect(lastConstructedManager().config.autoRenewEnabled).toBe(false);
+
+			license.enableAutoRenewals();
+
+			expect(lastConstructedManager().config.autoRenewEnabled).toBe(true);
+			expect(LicenseManager.prototype.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('delegates to the SDK for a CLI command', async () => {
+			const license = await newLicense({ isCli: true });
+
+			license.enableAutoRenewals();
+
+			expect(LicenseManager.prototype.enableAutoRenewals).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('SDK renewal timer', () => {
+		it('keeps the SDK renewal timer for a CLI command', async () => {
+			await newLicense({ isCli: true });
+
+			expect(LicenseManager.prototype.disableAutoRenewals).not.toHaveBeenCalled();
 		});
 	});
 });

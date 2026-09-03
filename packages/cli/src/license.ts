@@ -45,6 +45,13 @@ export class License implements LicenseProvider {
 
 	private hasWarnedShortDeviceFingerprint = false;
 
+	/**
+	 * Whether the license renewal system task owns the renewal cadence, in
+	 * which case the SDK's internal renewal timer stays stopped. True on every
+	 * instance except a CLI command, which has no system task runner.
+	 */
+	private renewalDrivenBySystemTask = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -97,6 +104,8 @@ export class License implements LicenseProvider {
 
 		const shouldRenew = eligibleToRenew && autoRenewalEnabled;
 
+		this.renewalDrivenBySystemTask = !isCli;
+
 		if (eligibleToRenew && !autoRenewalEnabled) {
 			this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
 		}
@@ -124,6 +133,8 @@ export class License implements LicenseProvider {
 			});
 
 			await this.manager.initialize();
+
+			this.stopSdkRenewalTimer();
 
 			this.logger.debug('License initialized');
 		} catch (error: unknown) {
@@ -241,8 +252,50 @@ export class License implements LicenseProvider {
 			return;
 		}
 		await this.manager.reload();
+		this.stopSdkRenewalTimer();
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
+	}
+
+	/**
+	 * Stops the SDK's internal renewal timer when the renewal system task owns
+	 * the cadence, without turning auto-renewal off. The SDK only clears the
+	 * timer through `disableAutoRenewals`, which also lowers its
+	 * `autoRenewEnabled` flag, so restore the flag afterwards. The flag stays
+	 * authoritative and gates `renewIfDue`.
+	 */
+	private stopSdkRenewalTimer(): void {
+		if (!this.renewalDrivenBySystemTask || !this.manager) {
+			return;
+		}
+
+		const { autoRenewEnabled } = this.manager.config;
+		this.manager.disableAutoRenewals();
+		this.manager.config.autoRenewEnabled = autoRenewEnabled;
+
+		// The SDK call above logs that auto-renewals are disabled, so correct
+		// the record for anyone reading the logs.
+		if (autoRenewEnabled) {
+			this.logger.info('License auto-renewal stays enabled and runs from the license renewal task');
+		}
+	}
+
+	/**
+	 * Runs one auto-renewal pass. Renews the license when auto-renewal is
+	 * enabled and the SDK reports a renewal is due. Never throws: a failed
+	 * renewal is logged as a warning.
+	 */
+	async renewIfDue(): Promise<void> {
+		if (!this.manager?.config.autoRenewEnabled || !this.manager.isRenewalDue()) {
+			return;
+		}
+
+		this.logger.info('Attempting license renewal');
+		try {
+			await this.manager._renew({ cause: 'auto' });
+		} catch (error) {
+			this.logger.warn('License renewal failed', { error });
+		}
 	}
 
 	async renew() {
@@ -543,7 +596,17 @@ export class License implements LicenseProvider {
 
 	@OnLeaderTakeover()
 	enableAutoRenewals() {
-		this.manager?.enableAutoRenewals();
+		if (!this.manager) {
+			return;
+		}
+
+		if (this.renewalDrivenBySystemTask) {
+			// The renewal system task starts on takeover, so raise only the flag
+			// that gates it. The SDK method would also start the internal timer.
+			this.manager.config.autoRenewEnabled = true;
+		} else {
+			this.manager.enableAutoRenewals();
+		}
 	}
 
 	@OnLeaderStepdown()
