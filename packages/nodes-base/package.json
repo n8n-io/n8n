@@ -726,6 +726,7 @@
       "dist/nodes/Brevo/BrevoTrigger.node.js",
       "dist/nodes/StickyNote/StickyNote.node.js",
       "dist/nodes/NoOp/NoOp.node.js",
+      "dist/nodes/GroupPlaceholder/GroupPlaceholder.node.js",
       "dist/nodes/Onfleet/Onfleet.node.js",
       "dist/nodes/Onfleet/OnfleetTrigger.node.js",
       "dist/nodes/Netscaler/ADC/NetscalerAdc.node.js",
