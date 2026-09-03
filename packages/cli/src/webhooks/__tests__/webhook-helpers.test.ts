@@ -46,15 +46,16 @@ import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 
 import {
 	autoDetectResponseMode,
+	executeWebhook,
 	handleFormRedirectionCase,
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
-	executeWebhook,
 	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
@@ -549,6 +550,110 @@ describe('setupResponseNodePromise', () => {
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(responseCallback).not.toHaveBeenCalled();
+	});
+});
+
+describe('executeWebhook', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('maps pending onReceived admission limit errors to HTTP 429', async () => {
+		mockInstance(AuthService);
+		mockInstance(WebhookService, {
+			runWebhook: vi.fn().mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] }),
+		});
+		mockInstance(WorkflowStatisticsService, {
+			emit: vi.fn(),
+		});
+		mockInstance(OwnershipService, {
+			getWorkflowProjectCached: vi.fn().mockResolvedValue(undefined),
+		});
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			{} as IWorkflowExecuteAdditionalData,
+		);
+
+		// Mock WorkflowRunner.run via Container
+		const mockWorkflowRunner = mockInstance(WorkflowRunner);
+		mockWorkflowRunner.run.mockRejectedValue(new AdmissionLimitError());
+
+		const workflowStartNode = mock<INode>({
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 2,
+			parameters: {},
+		});
+		const workflow = mock<Workflow>({
+			id: 'workflow-id',
+			name: 'Webhook workflow',
+			nodes: { [workflowStartNode.name]: workflowStartNode },
+			nodeTypes: {
+				getByNameAndVersion: vi.fn().mockReturnValue({
+					description: { name: 'webhook' },
+				}),
+			},
+			expression: {
+				getSimpleParameterValue: vi
+					.fn()
+					.mockReturnValueOnce('onReceived')
+					.mockReturnValueOnce(200)
+					.mockReturnValue(undefined),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+		const workflowData = mock<IWorkflowBase>({
+			id: 'workflow-id',
+			name: 'Webhook workflow',
+			nodes: [workflowStartNode],
+			connections: {},
+			active: true,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const webhookData = mock<IWebhookData>({
+			httpMethod: 'POST',
+			node: workflowStartNode.name,
+			path: 'test-webhook',
+			webhookDescription: {
+				responseMode: 'onReceived',
+				responseCode: '200',
+				responseData: 'firstEntryJson',
+			},
+			workflowId: workflowData.id,
+			workflowExecuteAdditionalData: {} as IWorkflowExecuteAdditionalData,
+			userId: 'user-id',
+		});
+		const req = mock<WebhookRequest>({
+			method: 'POST',
+			params: { path: 'test-webhook' },
+			headers: {},
+			contentType: '',
+		});
+		const res = mock<express.Response>({
+			headersSent: false,
+		});
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			res,
+			responseCallback,
+		);
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: { message: 'Too many pending onReceived executions' },
+			responseCode: 429,
+		});
 	});
 });
 
