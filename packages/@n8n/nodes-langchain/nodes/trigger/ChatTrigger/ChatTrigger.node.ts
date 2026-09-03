@@ -56,9 +56,10 @@ const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disab
  * Under `n8nUserAuth` the `user` key belongs to the server. The item's `json` starts as
  * the caller's own request body, so any `user` the caller sent is dropped — whether or
  * not a verified one replaces it, since a workflow reading `json.user` must never get an
- * attacker-controlled value in the slot the trusted one occupies. Under the other auth
- * modes no server identity exists, `user` is ordinary body data, and the body passes
- * through untouched.
+ * attacker-controlled value in the slot the trusted one occupies. That holds even when
+ * the rollout flag is off and no verified value is written: the flag can change under a
+ * workflow that already trusts the key. Under the other auth modes no server identity
+ * exists, `user` is ordinary body data, and the body passes through untouched.
  *
  * Only a plain object body is merged into. A string (`text/plain`), a scalar or an array
  * body can carry no `user` key, and object rest would silently shred it into
@@ -1200,12 +1201,17 @@ export class ChatTrigger extends Node {
 		const isMultipart = req.contentType === 'multipart/form-data';
 		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
 
-		// Gated until GA: with the flag off this node behaves exactly as it did before the feature.
-		const userOutputEnabled = isChatOAuth2Enabled() && authentication === 'n8nUserAuth';
-		// The declared `default` only drives the editor. An absent parameter resolves to this
-		// fallback, so it is what decides for a node that never had the key saved.
+		// Ownership of the `user` key follows the auth mode alone, never the rollout flag. A
+		// workflow built while the flag was on keeps trusting `json.user`, and it travels
+		// between instances — export/import, a rollback, drifted env on one main — while the
+		// env var does not. So a claimed `user` is dropped on every `n8nUserAuth` chat.
+		const serverOwnsUserKey = authentication === 'n8nUserAuth';
+		// Only writing the verified identity is gated until GA. The declared `default` drives
+		// the editor alone; an absent parameter resolves to this fallback, so it is what
+		// decides for a node that never had the key saved.
 		const includeUser =
-			userOutputEnabled &&
+			serverOwnsUserKey &&
+			isChatOAuth2Enabled() &&
 			ctx.getNodeParameter('includeUserInOutput', ctx.getNode().typeVersion >= 1.5) !== false;
 
 		// The single merge point for all three emission paths — see `withAuthenticatedUser`.
@@ -1215,7 +1221,7 @@ export class ChatTrigger extends Node {
 			json: withAuthenticatedUser(
 				item.json,
 				includeUser ? authedUser : undefined,
-				userOutputEnabled,
+				serverOwnsUserKey,
 			),
 		};
 

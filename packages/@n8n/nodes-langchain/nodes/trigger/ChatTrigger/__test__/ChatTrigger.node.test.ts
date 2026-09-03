@@ -720,9 +720,10 @@ describe('ChatTrigger Node', () => {
 			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
 		});
 
-		// With the flag off the node must behave exactly as it did before the feature: no
-		// verified user added, and no caller-supplied `user` stripped.
-		it('emits no user and strips nothing when the feature flag is off', async () => {
+		// The flag gates writing the verified user, not ownership of the key. A claimed
+		// `user` is still dropped, so a workflow built while the flag was on cannot be
+		// spoofed if the flag is later turned off.
+		it('emits no user but still strips a claimed one when the feature flag is off', async () => {
 			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
 			mockContext.getBodyData.mockReturnValue({
 				message: 'Hello',
@@ -732,7 +733,7 @@ describe('ChatTrigger Node', () => {
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(emittedJson(result)).toEqual({ message: 'Hello', user: { email: 'ceo@acme.com' } });
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
 		});
 	});
 
@@ -887,6 +888,17 @@ describe('ChatTrigger Node', () => {
 
 		it('strips a caller-supplied user when the toggle is off', async () => {
 			setParams({ includeUserInOutput: false });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
+		});
+
+		// The key's owner is the auth mode, not the rollout flag. An instance that turns the
+		// flag off must not start trusting a claimed `user` in a workflow built while it was on.
+		it('strips a caller-supplied user with the feature flag off', async () => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
+			setParams();
 
 			const result = await chatTrigger.webhook(mockContext);
 
