@@ -133,7 +133,11 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		// reason: 'invalid-subgraph' — grouping rejects a group with more than one
 		// incoming or outgoing main connection (single entry/exit *boundary*).
 		expect(NODE_GROUPS_REFERENCE).toMatch(/single entry and exit/i);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/incoming and one outgoing main connection/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/one member takes main input from outside/i);
+		// The validator counts nodes facing outward, so "one incoming connection" would
+		// rule out a valid group whose entry member is a Merge.
+		expect(NODE_GROUPS_REFERENCE).toMatch(/not on connections/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/several connections may reach that one entry member/i);
 	});
 
 	it('does not claim the extraction-only per-node single-main-port rule', () => {
@@ -216,6 +220,14 @@ describe('GROUPING_GUIDANCE', () => {
 
 		it('tells agents to widen boundaries instead of emitting one-node groups', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes mean the boundaries are too fine/i);
+		});
+
+		it('says how to group a stage whose work fans out', () => {
+			// A stage fanning three validators out of the trigger cannot be one group:
+			// each branch head takes input from outside. Keeping the fan-out source
+			// inside fixes it, and a build proved it once the trigger fed a prep node.
+			expect(GROUPING_GUIDANCE).toMatch(/keep the node they fan out from inside the group/i);
+			expect(GROUPING_GUIDANCE).toMatch(/group from the node where the branches reconverge/i);
 		});
 
 		it('says where to cut when an objective ends in a branch', () => {
