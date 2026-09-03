@@ -1932,6 +1932,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
+	folderExploration?: boolean;
 	// Defaults to a bound project (every production run has one). Pass `null` to
 	// simulate a run with no bound project.
 	projectId?: string | null;
@@ -1997,6 +1998,13 @@ function createWorkflowAdapterForTests(overrides?: {
 		preventTampering: vi.fn(async (data: unknown) => data),
 	};
 	const mockTelemetry = { track: vi.fn() };
+	const mockFolderRepository = {
+		getFolderPathsToRoot: vi.fn().mockResolvedValue(new Map<string, string[]>()),
+		getMany: vi.fn().mockResolvedValue([]),
+	};
+	const mockFolderFinderService = {
+		findFolderFilterIdsWithoutAccessCheck: vi.fn().mockResolvedValue([]),
+	};
 	const mockLogger = {
 		error: vi.fn(),
 		warn: vi.fn(),
@@ -2069,6 +2077,14 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockPolicyEnforcementService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		mockFolderRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[40],
+		mockFolderFinderService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[41],
 	);
 
 	const boundProjectId =
@@ -2076,6 +2092,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	const context = service.createContext(mockUser, {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
+		folderExplorationEnabled: overrides?.folderExploration ?? false,
 	});
 	const adapter = context.workflowService;
 
@@ -2094,6 +2111,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockCollaborationService,
 		mockPolicyEnforcementService,
 		mockTelemetry,
+		mockFolderRepository,
+		mockFolderFinderService,
 		mockLogger,
 		mockUser,
 	};
@@ -2347,6 +2366,69 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
 		expect(result.total).toBe(1);
 		expect(result.totalInScope).toBe(1);
+	});
+
+	describe('folder attribution', () => {
+		it('ignores folder options and adds no folder while folder exploration is off', async () => {
+			const { adapter, mockWorkflowService, mockUser, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests();
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{ ...savedWorkflow, parentFolder: { id: 'f1', name: 'Triggers', parentFolderId: null } },
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list({ folderPath: 'Triggers' });
+
+			expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+				take: 50,
+				filter: { isArchived: false, projectId: 'team-project-id' },
+			});
+			expect(result.workflows[0]).not.toHaveProperty('folder');
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+
+		it('attributes each row to its folder with a root-relative path when on', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true });
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						id: 'wf-nested',
+						parentFolder: { id: 'acme', name: 'Acme', parentFolderId: 'clients' },
+					},
+					{ ...savedWorkflow, id: 'wf-root', parentFolder: null },
+				],
+				count: 2,
+			});
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([['acme', ['Clients', 'Acme']]]),
+			);
+
+			const result = await adapter.list();
+
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledTimes(1);
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledWith(['acme']);
+			expect(result.workflows[0].folder).toEqual({
+				id: 'acme',
+				name: 'Acme',
+				path: 'Clients/Acme',
+			});
+			expect(result.workflows[1].folder).toBeUndefined();
+		});
+
+		it('skips the path lookup when no row on the page is in a folder', async () => {
+			const { adapter, mockFolderRepository } = createWorkflowAdapterForTests({
+				folderExploration: true,
+			});
+
+			await adapter.list();
+
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
 	});
 
 	it('lists archived workflows when requested', async () => {
@@ -4525,6 +4607,39 @@ describe('resolveExperimentGates', () => {
 		const gates = await createAdapter(false).resolveExperimentGates(user);
 
 		expect(gates.mcpConnectionsEnabled).toBe(false);
+	});
+});
+
+describe('isFolderExplorationEnabled', () => {
+	const user = { id: 'user-1' } as unknown as User;
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it('resolves true when the flag is on for the user', async () => {
+		const { service } = createNodeAdapterServiceForTests([]);
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({ '110_instance_ai_folder_exploration': true }),
+		} as unknown as PostHogClient);
+
+		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(true);
+	});
+
+	it('resolves false when the flag is absent', async () => {
+		const { service } = createNodeAdapterServiceForTests([]);
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({}),
+		} as unknown as PostHogClient);
+
+		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(false);
+	});
+
+	it('fails closed when PostHog rejects', async () => {
+		const { service } = createNodeAdapterServiceForTests([]);
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockRejectedValue(new Error('PostHog unreachable')),
+		} as unknown as PostHogClient);
+
+		await expect(service.isFolderExplorationEnabled(user)).resolves.toBe(false);
 	});
 });
 

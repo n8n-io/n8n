@@ -3,6 +3,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -20,6 +21,7 @@ import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
+	FolderRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowEntity,
@@ -43,6 +45,7 @@ import type {
 	DataTableColumnInfo,
 	WorkflowSummary,
 	NodeUsageResult,
+	WorkflowFolderRef,
 	WorkflowDetail,
 	WorkflowNode,
 	WorkflowVersionSummary,
@@ -156,6 +159,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -351,6 +355,10 @@ export class InstanceAiAdapterService {
 		// Appended rather than grouped with the other query services: existing tests construct this
 		// service positionally, so inserting mid-list renames every later argument.
 		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
+		// Optional for the same reason as above. Folder exploration treats a
+		// missing dependency as "folders unsupported" rather than failing the run.
+		private readonly folderRepository?: FolderRepository,
+		readonly folderFinderService?: FolderFinderService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -387,6 +395,10 @@ export class InstanceAiAdapterService {
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
+			/** Per-user folder-exploration gate (via `isFolderExplorationEnabled`).
+			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
+			 *  folder attribution. */
+			folderExplorationEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -404,6 +416,7 @@ export class InstanceAiAdapterService {
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			conversationHistory,
+			folderExplorationEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -421,8 +434,12 @@ export class InstanceAiAdapterService {
 		return {
 			userId: user.id,
 			projectId,
+			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			modelId,
-			workflowService: this.createWorkflowAdapter(user, threadId, projectId, nodeUsageEnabled),
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
+				nodeUsageGateOpen: nodeUsageEnabled === true,
+				folderExploration: folderExplorationEnabled === true,
+			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
@@ -534,6 +551,18 @@ export class InstanceAiAdapterService {
 			Container.get(ModuleRegistry).isActive('mcp-registry') &&
 			this.settingsService.isMcpAccessEnabled()
 		);
+	}
+
+	/** Per-user folder-exploration gate. Resolved once per run by the service
+	 *  and passed into `createContext`. Fails closed: a PostHog error must never
+	 *  turn a context surface on. */
+	async isFolderExplorationEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			return flags?.[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true;
+		} catch {
+			return false;
+		}
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {
@@ -705,8 +734,10 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		nodeUsageGateOpen = false,
+		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
 	): InstanceAiWorkflowService {
+		const foldersOn = options.folderExploration === true;
+		const { folderRepository } = this;
 		const {
 			workflowService,
 			workflowFinderService,
@@ -728,7 +759,8 @@ export class InstanceAiAdapterService {
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
-		const nodeUsageEnabled = nodeUsageGateOpen && workflowDependencyQueryService !== undefined;
+		const nodeUsageEnabled =
+			options.nodeUsageGateOpen === true && workflowDependencyQueryService !== undefined;
 
 		/**
 		 * Which project a read targets. An explicit `projectId` wins, otherwise the thread's own
@@ -837,22 +869,43 @@ export class InstanceAiAdapterService {
 				// would repeat the same project on every row.
 				const attributeProjects = targetProjectId === undefined;
 
+				const rows = workflows.filter((wf): wf is WorkflowEntity => 'versionId' in wf);
+
+				// The repository's default select already joined `parentFolder`; until now
+				// the mapping discarded it. Only the root-relative path needs a lookup,
+				// and only for the folders on this page.
+				const folderPaths =
+					foldersOn && folderRepository
+						? await readFolderPaths(
+								folderRepository,
+								rows.flatMap((wf) => readParentFolder(wf)?.id ?? []),
+							)
+						: new Map<string, string>();
+
 				return {
-					workflows: workflows
-						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-						.map((wf): WorkflowSummary => {
-							const project = attributeProjects ? readHomeProject(wf) : undefined;
-							return {
-								id: wf.id,
-								name: wf.name,
-								versionId: wf.versionId,
-								activeVersionId: wf.activeVersionId ?? null,
-								isArchived: wf.isArchived,
-								createdAt: wf.createdAt.toISOString(),
-								updatedAt: wf.updatedAt.toISOString(),
-								...(project ? { project } : {}),
-							};
-						}),
+					workflows: rows.map((wf): WorkflowSummary => {
+						const project = attributeProjects ? readHomeProject(wf) : undefined;
+						const parent = foldersOn ? readParentFolder(wf) : undefined;
+						const folder: WorkflowFolderRef | undefined = parent
+							? {
+									id: parent.id,
+									name: parent.name,
+									// A root folder's path is its own name; a missing lookup still leaves a usable answer.
+									path: folderPaths.get(parent.id) ?? parent.name,
+								}
+							: undefined;
+						return {
+							id: wf.id,
+							name: wf.name,
+							versionId: wf.versionId,
+							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
+							createdAt: wf.createdAt.toISOString(),
+							updatedAt: wf.updatedAt.toISOString(),
+							...(project ? { project } : {}),
+							...(folder ? { folder } : {}),
+						};
+					}),
 					total: count,
 					totalInScope,
 				};
@@ -4122,6 +4175,32 @@ function readHomeProject(workflow: object): { id: string; name: string } | undef
 	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
 
 	return { id, name };
+}
+
+/** Read the joined parent folder off a listed row. Same defensive shape as
+ *  `readHomeProject`: the relation is present on the default select, absent on
+ *  custom selects, and `null` for a root-level workflow. */
+function readParentFolder(workflow: object): { id: string; name: string } | undefined {
+	const parent = Reflect.get(workflow, 'parentFolder');
+	if (typeof parent !== 'object' || parent === null) return undefined;
+
+	const id = Reflect.get(parent, 'id');
+	const name = Reflect.get(parent, 'name');
+	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
+
+	return { id, name };
+}
+
+/** One recursive CTE for the page's distinct folder ids; none when no row is foldered. */
+async function readFolderPaths(
+	folderRepository: FolderRepository,
+	folderIds: string[],
+): Promise<Map<string, string>> {
+	const distinct = [...new Set(folderIds)];
+	if (distinct.length === 0) return new Map();
+
+	const segments = await folderRepository.getFolderPathsToRoot(distinct);
+	return new Map([...segments].map(([id, names]) => [id, names.join('/')]));
 }
 
 function hasCredentialId(value: unknown): boolean {
