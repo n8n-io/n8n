@@ -3,7 +3,8 @@ import { N8nDropdownMenu, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-sy
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, ref } from 'vue';
+import { useStorage } from '@vueuse/core';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 
 import type { AgentCheck, AgentChecksApi, AgentChecksCadence } from '../composables/useAgentChecks';
 import type { AgentReviewQueue } from '../composables/useAgentReviewQueue';
@@ -30,6 +31,43 @@ const checksApi = props.checks;
 const { checks: checkRows, summary, cadence, isRunning, hasRun, shouldOfferAuto } = checksApi;
 
 const popoverOpen = ref(false);
+
+// First moment: before anything ran, the bar introduces the drafted checks one by
+// one. Stops for good once the user has opened the panel on this agent.
+const introSeen = useStorage<boolean>(
+	computed(() => `N8N_AGENT_CHECKS_INTRO_SEEN:${props.agentId}`),
+	false,
+);
+const introIndex = ref(-1); // -1 = the count line, 0..n-1 = a check
+let introTimer: ReturnType<typeof setInterval> | undefined;
+const introActive = computed(
+	() => !introSeen.value && !hasRun.value && !isRunning.value && checkRows.value.length > 0,
+);
+watch(
+	introActive,
+	(active) => {
+		clearInterval(introTimer);
+		introIndex.value = -1;
+		if (!active) return;
+		introTimer = setInterval(() => {
+			const n = checkRows.value.length;
+			introIndex.value = introIndex.value >= n - 1 ? -1 : introIndex.value + 1;
+		}, 3500);
+	},
+	{ immediate: true },
+);
+onScopeDispose(() => clearInterval(introTimer));
+watch(popoverOpen, (open) => {
+	if (open) introSeen.value = true;
+});
+const introCheck = computed(() =>
+	introIndex.value >= 0 ? (checkRows.value[introIndex.value] ?? null) : null,
+);
+const barLabel = computed(() => {
+	const c = introCheck.value;
+	if (introActive.value && c) return `${kindLabel(c)} · ${c.input}`;
+	return badgeLabel.value;
+});
 
 const wire = props.reviewers;
 // Wireframe: the reviewer page is keyed by a plain token; a real one would be signed.
@@ -67,7 +105,7 @@ const badgeLabel = computed(() => {
 	const s = summary.value;
 	switch (badgeState.value) {
 		case 'needsEye':
-			return i18n.baseText('agents.builder.checks.badge.needsEye', {
+			return i18n.baseText('agents.builder.checks.bar.review', {
 				adjustToNumber: s.needsEye,
 				interpolate: { count: String(s.needsEye) },
 			});
@@ -133,7 +171,7 @@ async function submitAdd() {
 	<N8nPopover
 		v-model:open="popoverOpen"
 		width="min(46rem, calc(100vw - 2rem))"
-		align="start"
+		align="end"
 		:side-offset="2"
 		:collision-padding="16"
 		:show-arrow="false"
@@ -150,9 +188,37 @@ async function submitAdd() {
 					<N8nIcon v-if="isRunning || summary.running > 0" icon="loader-circle" :size="13" spin />
 					<N8nIcon v-else icon="flask-conical" :size="13" />
 				</span>
-				<span :class="$style.badgeLabel">{{ badgeLabel }}</span>
+				<Transition name="wireframe-bar-fade" mode="out-in">
+					<span :key="barLabel" :class="$style.badgeLabel" data-testid="agent-preview-bar-label">{{
+						barLabel
+					}}</span>
+				</Transition>
 				<span :class="$style.grow" />
-				<span :class="$style.barHint">
+				<template v-if="shouldOfferAuto && !popoverOpen">
+					<span :class="$style.offerText">{{
+						i18n.baseText('agents.builder.checks.autoOffer')
+					}}</span>
+					<span
+						:class="$style.ghostButton"
+						role="button"
+						tabindex="0"
+						@click.stop="checksApi.answerAutoOffer(false)"
+						@keydown.enter.stop="checksApi.answerAutoOffer(false)"
+					>
+						{{ i18n.baseText('agents.builder.checks.autoOffer.notNow') }}
+					</span>
+					<span
+						:class="$style.primaryButton"
+						role="button"
+						tabindex="0"
+						data-testid="agent-preview-auto-accept"
+						@click.stop="checksApi.answerAutoOffer(true)"
+						@keydown.enter.stop="checksApi.answerAutoOffer(true)"
+					>
+						{{ i18n.baseText('agents.builder.checks.autoOffer.accept') }}
+					</span>
+				</template>
+				<span v-else :class="$style.barHint">
 					<N8nIcon :icon="popoverOpen ? 'chevron-up' : 'chevron-down'" :size="14" />
 				</span>
 			</button>
@@ -249,26 +315,6 @@ async function submitAdd() {
 							:reviewers="wire"
 						/>
 					</div>
-				</div>
-
-				<div v-if="shouldOfferAuto" :class="$style.offerRow" data-testid="agent-preview-auto-offer">
-					<span>{{ i18n.baseText('agents.builder.checks.autoOffer') }}</span>
-					<span :class="$style.grow" />
-					<button
-						type="button"
-						:class="$style.ghostButton"
-						@click="checksApi.answerAutoOffer(false)"
-					>
-						{{ i18n.baseText('agents.builder.checks.autoOffer.notNow') }}
-					</button>
-					<button
-						type="button"
-						:class="$style.primaryButton"
-						data-testid="agent-preview-auto-accept"
-						@click="checksApi.answerAutoOffer(true)"
-					>
-						{{ i18n.baseText('agents.builder.checks.autoOffer.accept') }}
-					</button>
 				</div>
 
 				<ul :class="$style.rows">
@@ -392,7 +438,7 @@ async function submitAdd() {
 	width: 100%;
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border: 0;
-	border-top: var(--border);
+	border-top: var(--wireframe--border);
 	border-bottom: var(--wireframe--border);
 	background: var(--wireframe--hover-fill);
 	color: var(--wireframe--ink);
@@ -418,6 +464,19 @@ async function submitAdd() {
 .barHint {
 	display: inline-flex;
 	color: var(--text-color--subtler);
+}
+
+.badgeLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.offerText {
+	color: var(--text-color);
+	font-weight: var(--wireframe--body-weight);
+	white-space: nowrap;
 }
 
 .badge_needsEye {
@@ -797,5 +856,14 @@ async function submitAdd() {
 .primaryButton {
 	background: var(--wireframe--ink);
 	color: var(--background--surface);
+}
+
+:global(.wireframe-bar-fade-enter-active),
+:global(.wireframe-bar-fade-leave-active) {
+	transition: opacity 250ms ease;
+}
+:global(.wireframe-bar-fade-enter-from),
+:global(.wireframe-bar-fade-leave-to) {
+	opacity: 0;
 }
 </style>
