@@ -1,7 +1,6 @@
 import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n';
+import type { LocaleMessages } from '@n8n/i18n';
 import { locale as designLocale } from '@n8n/design-system';
-
-type LocaleMessages = Parameters<typeof updateLocaleMessages>[1];
 
 const hot = import.meta.hot;
 const DEFAULT_LOCALE = 'en';
