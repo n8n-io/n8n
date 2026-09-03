@@ -18,6 +18,16 @@ export class McpRegistryModule implements ModuleInterface {
 		}
 	}
 
+	async systemTasks() {
+		const { inE2ETests } = await import('@/constants.js');
+		if (inE2ETests) {
+			return [];
+		}
+
+		const { McpRegistryRefreshTask } = await import('./mcp-registry-refresh.task.js');
+		return [McpRegistryRefreshTask];
+	}
+
 	async entities() {
 		const { McpRegistryServerEntity } = await import('./registry/mcp-registry-server.entity.js');
 		return [McpRegistryServerEntity];
