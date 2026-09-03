@@ -11,6 +11,16 @@ const properties: INodeProperties[] = [
 	teamRLC,
 	channelRLC,
 	{
+		displayName: 'Message ID',
+		name: 'messageId',
+		required: true,
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. 1673355049064',
+		description:
+			'The ID of the message to reply to. The message ID is the number before "?tenantId" in the message URL.',
+	},
+	{
 		displayName: 'Content Type',
 		name: 'contentType',
 		required: true,
@@ -26,7 +36,7 @@ const properties: INodeProperties[] = [
 			},
 		],
 		default: 'text',
-		description: 'Whether the message is plain text or HTML',
+		description: 'Whether the reply is plain text or HTML',
 	},
 	{
 		displayName: 'Message',
@@ -34,7 +44,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		description: 'The content of the message to be sent',
+		description: 'The content of the reply to be sent',
 		typeOptions: {
 			rows: 2,
 		},
@@ -45,25 +55,14 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		options: [
-			includeLinkToWorkflowOption,
-			{
-				displayName: 'Reply to ID',
-				name: 'makeReply',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 1673348720590',
-				description:
-					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL. The Reply operation does the same thing and is easier to find.',
-			},
-		],
+		options: [includeLinkToWorkflowOption],
 	},
 ];
 
 const displayOptions = {
 	show: {
 		resource: ['channelMessage'],
-		operation: ['create'],
+		operation: ['reply'],
 	},
 	hide: {
 		...SP_HIDE,
@@ -75,61 +74,39 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	i: number,
-	nodeVersion: number,
+	_nodeVersion: number,
 	instanceId: string,
 ) {
-	//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
-	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
+	//https://learn.microsoft.com/en-us/graph/api/chatmessage-post-replies?view=graph-rest-beta&tabs=http
 
 	throwIfChannelMessageSendUnsupported.call(this, i);
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const messageId = this.getNodeParameter('messageId', i) as string;
 	const contentType = this.getNodeParameter('contentType', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
-	const options = this.getNodeParameter('options', i);
-
-	let includeLinkToWorkflow = options.includeLinkToWorkflow;
-	if (includeLinkToWorkflow === undefined) {
-		includeLinkToWorkflow = nodeVersion >= 1.1;
-	}
+	// Destructuring default matches `create`: only an unset option falls back to
+	// on, any explicit value keeps its own truthiness.
+	const { includeLinkToWorkflow = true } = this.getNodeParameter('options', i);
 
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
 		contentType,
-		includeLinkToWorkflow as boolean,
+		Boolean(includeLinkToWorkflow),
 		instanceId,
 	);
 
-	if (options.makeReply) {
-		const replyToId = options.makeReply as string;
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages/',
-				{ id: replyToId },
-				'/replies',
-			]),
-			body,
-		);
-	} else {
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages',
-			]),
-			body,
-		);
-	}
+	const endpoint = buildTeamsPath.call(this, [
+		'/beta/teams/',
+		{ id: teamId },
+		'/channels/',
+		{ id: channelId },
+		'/messages/',
+		{ id: messageId },
+		'/replies',
+	]);
+
+	return await microsoftApiRequest.call(this, 'POST', endpoint, body);
 }

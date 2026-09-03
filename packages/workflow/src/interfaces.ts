@@ -3447,6 +3447,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Set when a waiting webhook node is resumed. In that case `data.main` already
+	 * holds the resolved output branches returned by the node's `webhook()` method
+	 * (e.g. `[[], [item], []]`), and the node is flagged as disabled to prevent the
+	 * wait from starting over. The disabled-node handler must then forward every
+	 * output branch instead of only the first one. See `WorkflowExecute.handleDisabledNode`.
+	 */
+	forwardAllOutputs?: boolean;
+
+	/**
 	 * Error from a sub-workflow that finished with an error while its parent was
 	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
 	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
