@@ -639,7 +639,7 @@ export class TaskBroker {
 				type: 'broker:taskcancel',
 				taskId,
 				reason: isCappedByShutdown
-					? 'Task aborted because the instance is shutting down'
+					? 'Task aborted because this n8n instance is shutting down'
 					: 'Task execution timed out',
 			});
 		}
