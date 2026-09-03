@@ -65,6 +65,8 @@ const fixing = ref(false);
 const fix = useAssistantBackgroundFix();
 const rechecking = ref(false);
 const fixedOnce = ref(false);
+// The reply being replaced stays visible, dimmed, until the rechecked one lands.
+const staleReply = ref<string | null>(null);
 const INVITE_ID = '__invite';
 const inviting = ref(false);
 const inviteEmail = ref('');
@@ -109,6 +111,7 @@ async function fixWithAssistant() {
 		async () => {
 			// Stay in the working state until the rechecked reply is actually here.
 			const previousResultId = current.value?.check?.result?.id ?? null;
+			staleReply.value = current.value?.reply ?? null;
 			rechecking.value = true;
 			await props.review.rerun();
 			await new Promise<void>((resolve) => {
@@ -128,6 +131,7 @@ async function fixWithAssistant() {
 				}, 180_000);
 			});
 			rechecking.value = false;
+			staleReply.value = null;
 			fixedOnce.value = true;
 			fixing.value = false;
 		},
@@ -238,8 +242,18 @@ function openSession() {
 
 			<div :class="$style.exchange">
 				<div :class="[$style.bubble, $style.request]">{{ current.request }}</div>
-				<div :class="[$style.bubble, $style.reply]">
-					{{ current.reply ?? i18n.baseText('agents.builder.review.noReply') }}
+				<div
+					:class="[
+						$style.bubble,
+						$style.reply,
+						{ [$style.stale]: rechecking && current.reply === null },
+					]"
+				>
+					{{
+						current.reply ??
+						(rechecking ? staleReply : null) ??
+						i18n.baseText('agents.builder.review.noReply')
+					}}
 				</div>
 			</div>
 
@@ -490,6 +504,10 @@ function openSession() {
 .request {
 	align-self: flex-end;
 	background: var(--wireframe--hover-fill);
+}
+
+.stale {
+	opacity: 0.45;
 }
 
 .reply {
