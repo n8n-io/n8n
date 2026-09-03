@@ -237,6 +237,9 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
+		// Crash through the repository, not `ExecutionCrashService`: `recoverFromLogs`
+		// then fires `workflowExecuteAfter`, which counts this execution in the
+		// workflow statistics. A crash-service call would count it twice.
 		await this.executionRepository.markAsCrashed(executionId);
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {

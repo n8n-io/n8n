@@ -380,11 +380,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
+	/**
+	 * Set in-progress executions to `crashed` in batches. Returns the executions this
+	 * call transitioned, and calls `onBatchTransitioned` after each batch commits.
+	 */
 	async markAsCrashed(
 		executionIds: string | string[],
 		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
 	): Promise<CrashedExecution[]> {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+		// Dedupe so an id that lands in two batches is reported only once.
 		executionIds = [...new Set(executionIds)];
 
 		const crashed: CrashedExecution[] = [];
@@ -395,6 +400,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
 			processed += batch.length;
 
+			// `stoppedAt` doubles as a claim token: the read below matches only the rows
+			// this UPDATE wrote, so concurrent sweeps each report their own rows without
+			// `SELECT ... FOR UPDATE`, which SQLite does not support.
 			const stoppedAt = new Date();
 
 			const transitioned = await this.runInTransaction({}, async (tx) => {
@@ -411,6 +419,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
 					relations: { workflow: true },
 					where: { id: In(batch), status: 'crashed', stoppedAt },
+					// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
 					withDeleted: true,
 				});
 
@@ -423,6 +432,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			});
 
 			crashed.push(...transitioned);
+			// Report each batch as it commits. A later batch that throws must not
+			// discard the batches already written.
 			onBatchTransitioned?.(transitioned);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 		}

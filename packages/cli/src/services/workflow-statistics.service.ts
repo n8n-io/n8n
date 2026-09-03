@@ -129,6 +129,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
 		this.on('executionsCrashed', async ({ executions }) => {
+			// A sweep can crash a full batch of executions. Record them one at a time, to
+			// keep the writes within the database connection pool.
 			for (const { workflowId, workflowName, mode } of executions) {
 				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
 			}
@@ -165,6 +167,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		mode,
 		status,
 	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		// Contain every failure: this runs from an emitter listener that captures
+		// rejections and has no `error` handler, so a rejection would end the process.
 		try {
 			const outcome = { mode, status };
 			const statisticsName = getStatisticsNameForCompletedRun(outcome);

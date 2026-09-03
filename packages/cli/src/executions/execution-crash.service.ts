@@ -4,6 +4,10 @@ import { Service } from '@n8n/di';
 
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
+/**
+ * Marks executions as `crashed`. A crash transition runs no execution lifecycle
+ * hooks, so the workflow statistics are counted from here instead.
+ */
 @Service()
 export class ExecutionCrashService {
 	constructor(
@@ -15,6 +19,7 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			if (batch.length === 0) return;
 
+			// One event for the whole batch, so the listener can pace the statistics writes.
 			this.workflowStatisticsService.emit('executionsCrashed', { executions: batch });
 		});
 	}
