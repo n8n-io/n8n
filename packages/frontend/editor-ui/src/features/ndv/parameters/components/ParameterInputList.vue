@@ -33,7 +33,6 @@ import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/u
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
-import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
 import FilterConditions from './FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from './ImportCurlParameter.vue';
 import MultipleParameter from './MultipleParameter.vue';
@@ -851,16 +850,6 @@ watch(
 					</template>
 				</N8nCallout>
 			</template>
-
-			<div v-else-if="item.parameter.type === 'button'" class="parameter-item">
-				<ButtonParameter
-					:parameter="item.parameter"
-					:path="path"
-					:value="getParameterValue<string>(item.parameter.name)"
-					:is-read-only="isReadOnly"
-					@value-changed="valueChanged"
-				/>
-			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(item.parameter.type)"

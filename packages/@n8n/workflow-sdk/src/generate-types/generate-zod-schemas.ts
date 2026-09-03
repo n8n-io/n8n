@@ -533,9 +533,6 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: 
 		case 'collection':
 			return generateCollectionZodSchema(prop);
 
-		case 'button':
-			return primitiveElement('string', allowExpression);
-
 		case 'icon':
 			return ICON_ZOD_SCHEMA;
 
@@ -753,12 +750,6 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: boolea
 
 		case 'collection':
 			return generateCollectionZodSchema(prop);
-
-		case 'button':
-			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
-			// store the user-typed text; pure-action buttons store the default ''.
-			// In both cases the value is a string.
-			return primitiveElement('string', allowExpression);
 
 		case 'icon':
 			return ICON_ZOD_SCHEMA;
