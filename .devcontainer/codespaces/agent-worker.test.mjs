@@ -198,69 +198,21 @@ test('streams OpenCode CLI events and resumes an OpenCode session', async () => 
 	);
 });
 
-test('starts a new OpenCode session when the previous session used another harness', async () => {
-	let args;
-	let sessionId;
-	const result = await runOpenCode(
-		{
-			message: 'Test message',
-			sessionId: 'legacy-session-id',
-			cwd: '/workspaces/n8n',
-			author: 'Tester',
-		},
-		() => {},
-		(id) => (sessionId = id),
-		{
-			spawnProcess(_command, processArgs) {
-				args = processArgs;
-				return childProcess([
-					JSON.stringify({
-						type: 'text',
-						sessionID: 'ses_new',
-						part: { id: 'prt_1', type: 'text', text: 'New session response' },
-					}),
-				]);
-			},
-		},
+test('rejects sessions from another engine', () => {
+	assert.throws(
+		() =>
+			runOpenCode(
+				{
+					message: 'Test message',
+					sessionId: 'non-opencode-session-id',
+					cwd: '/workspaces/n8n',
+					author: 'Tester',
+				},
+				() => {},
+				() => {},
+			),
+		/does not contain an OpenCode session/,
 	);
-
-	assert.deepEqual(args, ['run', '--format', 'json', '--auto']);
-	assert.equal(sessionId, 'ses_new');
-	assert.equal(result.session_id, 'ses_new');
-});
-
-test('starts a new session when a saved OpenCode session is missing', async () => {
-	let invocations = 0;
-	const result = await runOpenCode(
-		{
-			message: 'Test message',
-			sessionId: 'ses_missing',
-			cwd: '/workspaces/n8n',
-			author: 'Tester',
-		},
-		() => {},
-		() => {},
-		{
-			spawnProcess() {
-				invocations++;
-				if (invocations === 1) {
-					const child = childProcess([], 1);
-					child.stderr.write('Session not found');
-					return child;
-				}
-				return childProcess([
-					JSON.stringify({
-						type: 'text',
-						sessionID: 'ses_replacement',
-						part: { id: 'prt_1', type: 'text', text: 'Replacement session response' },
-					}),
-				]);
-			},
-		},
-	);
-
-	assert.equal(invocations, 2);
-	assert.equal(result.session_id, 'ses_replacement');
 });
 
 test('stops the OpenCode process group at the turn limit', async () => {

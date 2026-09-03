@@ -125,12 +125,13 @@ export function runOpenCode(
 		stopProcess = stopProcessTree,
 		timeout = TURN_TIMEOUT_MS,
 		killDelay = 5000,
-		retryMissingSession = true,
 	} = {},
 ) {
 	const directory = safeCwd(cwd);
-	const requestedSessionId =
-		typeof sessionId === 'string' && sessionId.startsWith('ses_') ? sessionId : '';
+	const requestedSessionId = typeof sessionId === 'string' ? sessionId : '';
+	if (requestedSessionId && !requestedSessionId.startsWith('ses_')) {
+		throw new Error('This thread does not contain an OpenCode session. Start a new session.');
+	}
 	const args = ['run', '--format', 'json', '--auto'];
 	if (requestedSessionId) args.push('--session', requestedSessionId);
 
@@ -198,20 +199,6 @@ export function runOpenCode(
 			}
 			if (code !== 0 || error) {
 				const failureMessage = error || stderr.trim() || `OpenCode exited with ${code}`;
-				if (
-					requestedSessionId &&
-					retryMissingSession &&
-					/session not found/i.test(failureMessage)
-				) {
-					runOpenCode({ message, sessionId: '', cwd, author }, onEvent, onSession, {
-						spawnProcess,
-						stopProcess,
-						timeout,
-						killDelay,
-						retryMissingSession: false,
-					}).then(resolve, reject);
-					return;
-				}
 				reject(new Error(failureMessage));
 				return;
 			}
