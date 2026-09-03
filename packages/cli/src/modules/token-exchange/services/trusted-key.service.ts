@@ -309,14 +309,15 @@ export class TrustedKeyService {
 	/**
 	 * Refreshes only the sources whose `lastRefreshedAt` is older than their
 	 * configured refresh interval. A failed source is marked as error and does
-	 * not stop the cycle.
+	 * not stop the cycle. Stops before the next source once `signal` aborts.
 	 * @throws When the sources cannot be loaded from the database.
 	 */
-	async refreshDueSources(): Promise<void> {
+	async refreshDueSources(signal: AbortSignal): Promise<void> {
 		this.logger.debug('Refreshing due sources');
 		const sources = await this.trustedKeySourceRepository.find();
 		const now = Date.now();
 		for (const source of sources) {
+			if (signal.aborted) return;
 			const intervalMs = this.getRefreshIntervalMs(source);
 			const lastRefresh = source.lastRefreshedAt?.getTime() ?? 0;
 			if (now - lastRefresh >= intervalMs) {

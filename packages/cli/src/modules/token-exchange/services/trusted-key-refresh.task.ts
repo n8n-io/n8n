@@ -25,7 +25,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 
-	async run(): Promise<void> {
-		await this.trustedKeyService.refreshDueSources();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.trustedKeyService.refreshDueSources(signal);
 	}
 }

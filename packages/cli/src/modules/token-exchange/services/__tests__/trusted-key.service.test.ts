@@ -185,7 +185,7 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([recentSource]);
 
-			await service.refreshDueSources();
+			await service.refreshDueSources(new AbortController().signal);
 
 			// Source was recently refreshed — should not trigger a refresh
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
@@ -205,7 +205,7 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([staleSource]);
 
-			await service.refreshDueSources();
+			await service.refreshDueSources(new AbortController().signal);
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
 		});
@@ -224,7 +224,7 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([newSource]);
 
-			await service.refreshDueSources();
+			await service.refreshDueSources(new AbortController().signal);
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
 		});
@@ -234,7 +234,30 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockRejectedValue(new Error('DB error'));
 
-			await expect(service.refreshDueSources()).rejects.toThrow('DB error');
+			await expect(service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'DB error',
+			);
+		});
+
+		it('should stop before the next source when the run is aborted', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+			const controller = new AbortController();
+
+			const staleSource = (id: string) =>
+				Object.assign(new TrustedKeySourceEntity(), {
+					id,
+					type: 'static' as const,
+					config: JSON.stringify([]),
+					status: 'healthy' as const,
+					lastError: null,
+					lastRefreshedAt: null,
+				});
+			sourceRepo.find.mockResolvedValue([staleSource('first'), staleSource('second')]);
+			dbLockService.withLock.mockImplementation(async () => controller.abort());
+
+			await service.refreshDueSources(controller.signal);
+
+			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
 		});
 	});
 });

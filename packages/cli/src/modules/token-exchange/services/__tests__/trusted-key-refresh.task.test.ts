@@ -15,8 +15,11 @@ describe('TrustedKeyRefreshTask', () => {
 	});
 
 	it('should refresh the due sources on run', async () => {
-		await task.run();
+		const { signal } = new AbortController();
+
+		await task.run(signal);
 
 		expect(trustedKeyService.refreshDueSources).toHaveBeenCalledTimes(1);
+		expect(trustedKeyService.refreshDueSources).toHaveBeenCalledWith(signal);
 	});
 });
