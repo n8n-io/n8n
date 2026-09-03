@@ -125,11 +125,32 @@ export function useSetupPanelActions(options: {
 
 	const pendingCredentialBinds = ref(new Map<string, CredentialBind>());
 	const pendingParameterApplies = ref(new Map<string, INodeParameters>());
+	/**
+	 * The workflow the queued writes were captured for. A build settling and a
+	 * re-anchor can land in the same flush (the settle watcher runs first), so
+	 * the flush checks ownership instead of trusting the current anchor.
+	 */
+	let queuedWorkflowId: string | undefined;
 
 	/** Queued writes awaiting the agent lock release. */
 	const pendingApplyCount = computed(
 		() => pendingCredentialBinds.value.size + pendingParameterApplies.value.size,
 	);
+
+	/** Puts a delta back into the queues, keeping any newer entries queued meanwhile. */
+	function requeueDelta(workflowId: string, delta: NodesDelta) {
+		if (toValue(options.workflowId) !== workflowId) return;
+		queuedWorkflowId = workflowId;
+		for (const bind of delta.credentialBinds) {
+			if (!pendingCredentialBinds.value.has(bind.item.id)) {
+				pendingCredentialBinds.value.set(bind.item.id, bind);
+			}
+		}
+		for (const { nodeName, values } of delta.parameterApplies) {
+			const existing = pendingParameterApplies.value.get(nodeName);
+			pendingParameterApplies.value.set(nodeName, { ...values, ...existing });
+		}
+	}
 
 	/**
 	 * Mirrors an applied delta into a live canvas document, if a host has one
@@ -178,7 +199,7 @@ export function useSetupPanelActions(options: {
 	async function patchWorkflowNodes(
 		workflowId: string,
 		delta: NodesDelta,
-	): Promise<Exclude<SetupPanelApplyResult, 'queued'>> {
+	): Promise<SetupPanelApplyResult> {
 		for (let attempt = 0; attempt < 2; attempt++) {
 			let fresh: IWorkflowDb;
 			try {
@@ -193,6 +214,14 @@ export function useSetupPanelActions(options: {
 			const nodes = fresh.nodes;
 			const outcome = applyDeltaToNodes(nodes, delta);
 			if (outcome !== 'changed') return outcome;
+
+			// The agent lock can be re-acquired while the fetch was awaited (a
+			// new build starting is also what a 409 usually means) — a user
+			// write must not land mid-build. Requeue for the release flush.
+			if (toValue(options.isAgentBuilding)) {
+				requeueDelta(workflowId, delta);
+				return 'queued';
+			}
 
 			try {
 				const updated = await workflowsStore.updateWorkflow(workflowId, {
@@ -221,6 +250,7 @@ export function useSetupPanelActions(options: {
 		credential: SetupCredentialRef,
 	): Promise<SetupPanelApplyResult> {
 		if (toValue(options.isAgentBuilding)) {
+			queuedWorkflowId = toValue(options.workflowId);
 			pendingCredentialBinds.value.set(item.id, { item, credential });
 			return 'queued';
 		}
@@ -238,6 +268,7 @@ export function useSetupPanelActions(options: {
 		values: INodeParameters,
 	): Promise<SetupPanelApplyResult> {
 		if (toValue(options.isAgentBuilding)) {
+			queuedWorkflowId = toValue(options.workflowId);
 			const existing = pendingParameterApplies.value.get(nodeName);
 			pendingParameterApplies.value.set(nodeName, { ...existing, ...values });
 			return 'queued';
@@ -255,6 +286,13 @@ export function useSetupPanelActions(options: {
 		// The lock rule holds for manual flushes too — the queue stays intact.
 		if (toValue(options.isAgentBuilding)) return;
 		const workflowId = toValue(options.workflowId);
+		// Queued writes belong to the workflow they were captured for; if the
+		// panel re-anchored since (even in this same flush), drop them.
+		if (workflowId !== queuedWorkflowId) {
+			pendingCredentialBinds.value.clear();
+			pendingParameterApplies.value.clear();
+			return;
+		}
 		const delta: NodesDelta = {
 			credentialBinds: [...pendingCredentialBinds.value.values()],
 			parameterApplies: [...pendingParameterApplies.value.entries()].map(([nodeName, values]) => ({

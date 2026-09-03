@@ -1080,6 +1080,15 @@ describe('instanceAiHandoffContextSchema', () => {
 		).toBe(false);
 	});
 
+	it('rejects a workflowId longer than 64 characters', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({
+				source: 'setup-panel-execute',
+				workflowId: 'w'.repeat(65),
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects an unknown source', () => {
 		expect(
 			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })

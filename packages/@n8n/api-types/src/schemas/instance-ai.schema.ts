@@ -1368,7 +1368,7 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
  */
 export const instanceAiSetupPanelExecuteHandoffContextSchema = z.object({
 	source: z.literal('setup-panel-execute'),
-	workflowId: z.string().min(1).max(128),
+	workflowId: z.string().min(1).max(64),
 });
 export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
 	typeof instanceAiSetupPanelExecuteHandoffContextSchema

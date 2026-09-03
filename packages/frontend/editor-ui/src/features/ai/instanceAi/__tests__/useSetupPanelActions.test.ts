@@ -150,6 +150,30 @@ describe('useSetupPanelActions', () => {
 		expect(updateWorkflow).toHaveBeenCalledTimes(2);
 	});
 
+	it('returns error when the workflow fetch fails', async () => {
+		const { actions, updateWorkflow } = createHarness();
+		vi.mocked(getWorkflow).mockRejectedValue(new Error('network'));
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('refuses to write when the fetched workflow carries no checksum', async () => {
+		const { actions, updateWorkflow } = createHarness();
+		vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ checksum: undefined }));
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('returns error without retrying on a non-conflict PATCH failure', async () => {
+		const { actions, updateWorkflow } = createHarness();
+		updateWorkflow.mockRejectedValue(new Error('boom'));
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
+		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+	});
+
 	it('drops the bind without writing when every target node is gone', async () => {
 		const { actions, updateWorkflow } = createHarness();
 		vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ nodes: [makeNode('Other')] }));
@@ -217,6 +241,57 @@ describe('useSetupPanelActions', () => {
 				],
 			}),
 		);
+	});
+
+	it('queues mid-build parameter values and flushes the merged result on release', async () => {
+		const { actions, building, updateWorkflow } = createHarness({ agentBuilding: true });
+
+		await expect(
+			actions.applyParameterValues('Slack', { channel: '#a', text: 'hi' }),
+		).resolves.toBe('queued');
+		await expect(actions.applyParameterValues('Slack', { channel: '#b' })).resolves.toBe('queued');
+		expect(actions.pendingApplyCount.value).toBe(1);
+
+		building.value = false;
+		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(1));
+
+		expect(updateWorkflow).toHaveBeenCalledWith(
+			WORKFLOW_ID,
+			expect.objectContaining({
+				nodes: [expect.objectContaining({ parameters: { channel: '#b', text: 'hi' } })],
+			}),
+		);
+	});
+
+	it('requeues instead of writing when a build starts during the fetch', async () => {
+		const { actions, building, updateWorkflow } = createHarness();
+		vi.mocked(getWorkflow).mockImplementationOnce(async () => {
+			building.value = true;
+			return makeWorkflow();
+		});
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('queued');
+		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(actions.pendingApplyCount.value).toBe(1);
+
+		building.value = false;
+		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(1));
+		expect(actions.pendingApplyCount.value).toBe(0);
+	});
+
+	it('drops the queue when the artifact re-anchors in the same flush as the build settling', async () => {
+		const { actions, building, workflowId, updateWorkflow } = createHarness({
+			agentBuilding: true,
+		});
+
+		await actions.bindCredential(credentialItem, credential);
+
+		workflowId.value = 'wf-2';
+		building.value = false;
+		await vi.waitFor(() => expect(actions.pendingApplyCount.value).toBe(0));
+
+		expect(getWorkflow).not.toHaveBeenCalled();
+		expect(updateWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('drops queued writes when the panel re-anchors to another workflow', async () => {
