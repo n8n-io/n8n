@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: ''
+      create_attestations:
+        description: 'Create release provenance, VEX, and SBOM attestations'
+        required: false
+        type: boolean
+        default: false
     outputs:
       # Repo name + multi-arch manifest digest per image, so callers can promote what
       # was actually pushed (retag by digest) instead of re-deriving tag strings.
@@ -130,7 +135,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1.0.0-beta
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
@@ -483,7 +488,7 @@ jobs:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_digest != ''
     permissions:
@@ -503,7 +508,7 @@ jobs:
     name: SLSA Provenance (n8n-pc)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_pc_digest != ''
     permissions:
@@ -523,7 +528,7 @@ jobs:
     name: SLSA Provenance (runners)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_digest != ''
     permissions:
@@ -543,7 +548,7 @@ jobs:
     name: SLSA Provenance (runners-distroless)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
     permissions:
@@ -574,7 +579,7 @@ jobs:
       ]
     if: |
       always() &&
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
@@ -661,7 +666,7 @@ jobs:
       ]
     if: |
       always() &&
-      github.event_name == 'pull_request' &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
@@ -673,7 +678,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1.0.0-beta
         with:
           fetch-depth: 1
           persist-credentials: false
