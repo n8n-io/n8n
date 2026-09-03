@@ -21,7 +21,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const authenticationMethod = ref<AuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
 	const ssoManagedByEnv = ref(false);
-	const redirectLoginToSso = ref(true);
+	const redirectLoginToSso = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -65,7 +65,7 @@ export const useSSOStore = defineStore('sso', () => {
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
 		ssoManagedByEnv.value = options.managedByEnv ?? false;
-		redirectLoginToSso.value = options.redirectLoginToSso ?? true;
+		redirectLoginToSso.value = options.redirectLoginToSso ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {

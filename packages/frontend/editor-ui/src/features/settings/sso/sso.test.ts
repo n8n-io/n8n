@@ -238,17 +238,17 @@ describe('SSO store', () => {
 	});
 
 	describe('redirectLoginToSso', () => {
-		it('defaults to true and reflects the initialized value', () => {
-			expect(ssoStore.redirectLoginToSso).toBe(true);
+		it('defaults to false and reflects the initialized value', () => {
+			expect(ssoStore.redirectLoginToSso).toBe(false);
 
 			ssoStore.initialize({
 				authenticationMethod: 'saml' as AuthenticationMethod,
-				redirectLoginToSso: false,
+				redirectLoginToSso: true,
 				config: { saml: { loginEnabled: true } },
 				features: { saml: true, ldap: false, oidc: false },
 			});
 
-			expect(ssoStore.redirectLoginToSso).toBe(false);
+			expect(ssoStore.redirectLoginToSso).toBe(true);
 		});
 
 		it('persists the toggle via the API and updates local state', async () => {
