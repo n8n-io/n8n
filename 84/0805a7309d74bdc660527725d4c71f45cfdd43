@@ -1,0 +1,64 @@
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,48,93-104
+packages/@n8n/db/src/migrations/common/1787741452169-CreateActivityEventTable.ts
+  s_f2ecf78efc7a31::t_15a196c59f9ea7 1-2,11,96-97,100-101
+  s_f2ecf78efc7a31::t_9e13e572c8ce35 3-10,13-23,25-29,31-95,98-99
+  s_f2ecf78efc7a31::t_50f69ed7a299b7 24,30
+packages/@n8n/db/src/entities/activity-event.ts
+  s_f2ecf78efc7a31::t_26e30cd944dbf9 1-5,11-13,20-28,31-94
+  s_f2ecf78efc7a31::t_50f69ed7a299b7 6-10,14-19
+  s_f2ecf78efc7a31::t_48cbf7e4e8f99f 29-30
+packages/cli/src/commands/start.ts
+  s_f2ecf78efc7a31::t_eabeba636f781c 42
+  s_f2ecf78efc7a31::t_73400a46b9f7fe 414
+packages/cli/src/events/relays/activity-log.event-relay.ts
+  s_f2ecf78efc7a31::t_7d964a116855fb 1-5,7-220,222-229,234,237-258,264-279,281-294
+  s_f2ecf78efc7a31::t_0ed498c8a71091 6,259-263,280
+  s_f2ecf78efc7a31::t_34a2fd9bc7caf4 221,230-233,235-236
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_f2ecf78efc7a31::t_55cc0188f996bc 239-254
+packages/cli/src/services/activity-log-pruning.service.ts
+  s_f2ecf78efc7a31::t_1ca33f2e5ee728 1-106
+docs/generated/sqlite-schema/README.md
+  ai_agent 11,147-148,340-352
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,56,106-117
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_f2ecf78efc7a31::t_9fdac40475dd1b 76-80
+packages/cli/src/events/__tests__/activity-log-event-relay.test.ts
+  s_f2ecf78efc7a31::t_60774e377e5e00 1-3,5-14,19,21-23,26-27,29-64,66-111,113,115-148,150-152,154-210
+  s_f2ecf78efc7a31::t_0243a34ef2cfa8 4,65,112,114
+  s_f2ecf78efc7a31::t_42a1831b23f198 15-18,20,24-25,28,149,153
+packages/@n8n/db/src/entities/index.ts
+  s_f2ecf78efc7a31::t_8cd9d4f8c78a6d 1-7,100-104
+packages/cli/src/commands/base-command.ts
+  s_f2ecf78efc7a31::t_3c715e37767e81 36,232-234
+packages/@n8n/db/src/repositories/index.ts
+  s_f2ecf78efc7a31::t_413c9290846962 1-7
+packages/@n8n/config/test/config.test.ts
+  s_f2ecf78efc7a31::t_a9d3e27d49c656 373-375
+packages/cli/test/migration/1787741452169-create-activity-event-table.test.ts
+  s_f2ecf78efc7a31::t_a28228da8ceac2 1-164,166-185,187-194
+  s_f2ecf78efc7a31::t_f5d81cf6796efa 186
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_f2ecf78efc7a31::t_a65d25de14a31c 2,66-74
+  s_f2ecf78efc7a31::t_9c97b8c4319394 1,3-65,75-117
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "840805a7309d74bdc660527725d4c71f45cfdd43",
+  "prompts": {},
+  "sessions": {
+    "s_f2ecf78efc7a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "571634ba-8cae-4e9a-a244-c914fd959e23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

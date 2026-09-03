@@ -1,0 +1,21 @@
+packages/@n8n/decorators/src/system-task/__tests__/system-task-metadata.test.ts
+  s_a210c1160ac692::t_618a65374c0a9f 26
+packages/@n8n/decorators/src/multi-main/__tests__/multi-main-metadata.test.ts
+  s_a210c1160ac692::t_de56507275437d 24-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7a382e2fc95b1b601f831e07d3f00beca1b15d85",
+  "prompts": {},
+  "sessions": {
+    "s_a210c1160ac692": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e0abdc3-655e-4132-9192-fc8b1430caac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

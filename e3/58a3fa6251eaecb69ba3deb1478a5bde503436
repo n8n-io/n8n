@@ -1,0 +1,14 @@
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  h_5d40c27a8fdfd1 3-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e358a3fa6251eaecb69ba3deb1478a5bde503436",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

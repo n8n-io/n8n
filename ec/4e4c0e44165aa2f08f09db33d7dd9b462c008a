@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-reporting/README.md
+  s_eeeebf4357b002::t_baea78da59942d 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ec4e4c0e44165aa2f08f09db33d7dd9b462c008a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eeeebf4357b002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dab58082-7d4a-4188-ac5d-ef827c5194e3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

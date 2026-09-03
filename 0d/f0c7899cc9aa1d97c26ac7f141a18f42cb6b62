@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_6372dc6c26eb1a::t_8ab2879374e814 90-94,99-110
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  h_9b272a633435fb 77-78
+  s_6372dc6c26eb1a::t_edfb3906a1a66a 363-371
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_6372dc6c26eb1a::t_025167f365cfe3 535-539
+  s_6372dc6c26eb1a::t_75d358e2f7f21a 582-583
+  s_6372dc6c26eb1a::t_e8f7f2455343b0 599-604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0df0c7899cc9aa1d97c26ac7f141a18f42cb6b62",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6372dc6c26eb1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "655d9eed-c2d8-4301-a773-66c71efeff38",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_ebd7b9f2821ae5::t_4a881e3c0137d1 5
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_ebd7b9f2821ae5::t_4a881e3c0137d1 4,6,9,29-34,41-46,59,73,80,82
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_ebd7b9f2821ae5::t_d2ee8f91431706 110-122
+  s_ebd7b9f2821ae5::t_cda1a80c85bf18 105-109
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.workflow.json
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-124
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_ebd7b9f2821ae5::t_edef7d5e3aef6c 1,7-8,91
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.test.ts
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-11,45-50
+  s_ebd7b9f2821ae5::t_67051959831273 12-44
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/get.operation.ts
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-49
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflow.json
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-129
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_ebd7b9f2821ae5::t_94c4b024bc1f32 69-71,75,77-81,84,86-89,94,102
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-119
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/sharedGuard.ts
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-24
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.test.ts
+  s_ebd7b9f2821ae5::t_67051959831273 10-42
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-9,43-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0309361963b611249d4526423a6ac99a3d10f4af",
+  "prompts": {},
+  "sessions": {
+    "s_ebd7b9f2821ae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74f2c17b-04a6-4afc-bf2c-d5405449b36a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

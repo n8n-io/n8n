@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "740671efc3606649d904b38b3bda6e3b02b2ab8c",
+  "prompts": {},
+  "sessions": {
+    "s_c08ff1af07eaeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bbca935-0c2a-42a6-bf52-815a6d2dd432",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

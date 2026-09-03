@@ -1,0 +1,19 @@
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  s_2b94ff17155c7a::t_e2b5557df64410 79-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9feb4e45fba381222257a6a5bc615e7b1edf0075",
+  "prompts": {},
+  "sessions": {
+    "s_2b94ff17155c7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "893a4cd9-e1bb-45df-a3d2-8ddb3bff95a7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

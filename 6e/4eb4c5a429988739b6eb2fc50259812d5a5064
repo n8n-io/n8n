@@ -1,0 +1,33 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_6415615520e467::t_fa4a53c7954e97 232-233
+  s_6415615520e467::t_d7211d7b3fd4d5 141-144
+  s_6415615520e467::t_e534b0ccfbb3f8 28-32
+  s_6415615520e467::t_cee0233d5fb4f3 978-981
+  s_6415615520e467::t_c64648597ea82b 449
+  s_6415615520e467::t_ac16ebe35624f9 164-166
+  s_6415615520e467::t_795a7212f0bd7f 959
+  s_6415615520e467::t_224412db5c355c 187-191
+  s_6415615520e467::t_bb4d6378e0d589 388-391
+  s_6415615520e467::t_e59742ad614edc 127-128
+  s_6415615520e467::t_3ed163740c22e5 777
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_6415615520e467::t_849867015595bb 270
+packages/workflow/src/expression.ts
+  s_6415615520e467::t_1e2707dfcdb941 649-650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6e4eb4c5a429988739b6eb2fc50259812d5a5064",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

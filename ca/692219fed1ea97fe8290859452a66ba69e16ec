@@ -1,0 +1,40 @@
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_cc8f33aa5fb3b8::t_22043e3ee1d6df 312
+packages/@n8n/backend-network/src/transport.ts
+  s_cc8f33aa5fb3b8::t_bba4dc4c280ede 29
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_cc8f33aa5fb3b8::t_82dc995a0a085b 296-301
+  s_cc8f33aa5fb3b8::t_8a62f716b9158c 657,660,663-669,672
+  s_cc8f33aa5fb3b8::t_9d504caf73b1a2 679
+  s_cc8f33aa5fb3b8::t_7962a6f774a30d 24-32
+  s_cc8f33aa5fb3b8::t_a3a841da662c6e 629,631-634
+  s_cc8f33aa5fb3b8::t_d8ba23e8ff9031 15-23,33-35
+  s_cc8f33aa5fb3b8::t_a0e3384889ab2b 86-91
+  s_cc8f33aa5fb3b8::t_ba3384dcad315a 305-306,310-313,316,319-325,329,334,336-344,348-371
+  s_cc8f33aa5fb3b8::t_9886f8c7261dde 307-309
+  s_cc8f33aa5fb3b8::t_a0889e455fa97d 694,696,703-708,712
+  s_cc8f33aa5fb3b8::t_c8eebe795d16a9 225-230
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_cc8f33aa5fb3b8::t_e19a01684c3ec5 12-14,21,25,37-50,63,68-77,89-90,102-106,117-127,132-133,138-139,145,148,166,171,179,183,190,192
+packages/@n8n/backend-network/src/http/undici/transport.ts
+  s_cc8f33aa5fb3b8::t_55c0376710134a 26-35
+  s_cc8f33aa5fb3b8::t_ccab07ef7590ee 235-237
+packages/@n8n/ai-utilities/src/index.ts
+  s_cc8f33aa5fb3b8::t_7a243028ece36f 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca692219fed1ea97fe8290859452a66ba69e16ec",
+  "prompts": {},
+  "sessions": {
+    "s_cc8f33aa5fb3b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cca87a9-6bd0-4b06-88cb-4e6a6f922b81",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

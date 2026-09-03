@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_41df6966a3c9ce::t_d054488c1ca16b 812-827
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_41df6966a3c9ce::t_909ab1834341fb 170-172
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_41df6966a3c9ce::t_909ab1834341fb 519-524
+  s_41df6966a3c9ce::t_0bf2b5bd4862f0 525-528
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_41df6966a3c9ce::t_aba68cf6e3955b 452-454,456,460-462,506,508,513-514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "336026a28e79a8e41992327e7b57684c33e9316f",
+  "prompts": {},
+  "sessions": {
+    "s_41df6966a3c9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "993ad4b4-b06f-4d08-b0a7-4c7de28ec904",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

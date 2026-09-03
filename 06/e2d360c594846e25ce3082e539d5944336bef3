@@ -1,0 +1,99 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_ef1105a184535e::t_a33c3cd4b715d9 344
+  s_ef1105a184535e::t_23c91575f7aef7 307,324
+  s_ef1105a184535e::t_f6dd13d1c25be5 103
+  s_ef1105a184535e::t_f7693988f653fd 204,207,223-226,232-240,244-248,250,253-256,260,263-266,268,271-274
+  s_ef1105a184535e::t_18a113196cec78 143
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_ef1105a184535e::t_282cd17c0737db 151-175
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_ef1105a184535e::t_7810d9737bd4c3 3652-3654,3656-3657,3663-3669
+  s_ef1105a184535e::t_e1b0ef562583ef 5875
+  s_ef1105a184535e::t_2603a0b59cd218 813
+  s_ef1105a184535e::t_fb0bfe04fbb52f 4212
+  s_ef1105a184535e::t_f3ffc9b1eecbc3 882
+  s_ef1105a184535e::t_cfc0e17d62408b 1419
+  s_ef1105a184535e::t_923d7cfa84b305 1839-1841
+  s_ef1105a184535e::t_2e6d2045a14252 2640
+  s_ef1105a184535e::t_8ee0b400cbbb6f 5542
+  s_ef1105a184535e::t_282a55b99662c6 1475
+  s_ef1105a184535e::t_8f00f08aec2ef0 1857-1858
+  s_ef1105a184535e::t_6a040ae4dae6a7 185
+  s_ef1105a184535e::t_46d1a1d02ea185 2272-2273
+  s_ef1105a184535e::t_159422fe3a86a6 1850-1851
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_ef1105a184535e::t_975c7a4704156b 322
+  s_ef1105a184535e::t_c55d4c2af876c4 343,345,347,357
+  s_ef1105a184535e::t_ad718ddbfd05e2 1
+  s_ef1105a184535e::t_65945ddf98a540 107
+  s_ef1105a184535e::t_3b6cc1f500cc38 441
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_ef1105a184535e::t_dcf225cb88b79c 493
+  s_ef1105a184535e::t_2644817fbc8449 90
+  s_ef1105a184535e::t_41db3bd4dc7068 27
+  s_ef1105a184535e::t_8103de81baf1d5 71,79
+  s_ef1105a184535e::t_7fb17d0a818058 115,123
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_ef1105a184535e::t_112f1f83e31157 289-296
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_ef1105a184535e::t_246d8eab51c3cd 4109
+  s_ef1105a184535e::t_05beb28f903dbf 3367
+  s_ef1105a184535e::t_5bd9546227d2f5 198
+  s_ef1105a184535e::t_5085495674b83a 4040
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_ef1105a184535e::t_7526b5fe21ff06 45
+  s_ef1105a184535e::t_5a3b515eebe651 367,369
+  s_ef1105a184535e::t_accd9333d0557a 325
+  s_ef1105a184535e::t_55c4e858efd16b 303
+  s_ef1105a184535e::t_6d319a46e7b504 26
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_ef1105a184535e::t_204d6f19ecd6e4 174-177,180
+packages/@n8n/db/src/migrations/common/1787816860559-DropInstanceAiRunSnapshotsTable.ts
+  s_ef1105a184535e::t_ee4af64eecb470 1-41
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_ef1105a184535e::t_d3ec83aaa5d794 6
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_ef1105a184535e::t_5cb3f2ee89836b 879,881,893
+  s_ef1105a184535e::t_378e44e602060f 925
+  s_ef1105a184535e::t_e1715eca3dd85f 874,878,880,885,891-892,894,897,899,924
+  s_ef1105a184535e::t_4a12035d16cad1 353
+  s_ef1105a184535e::t_9f2852031abe83 459-462
+  s_ef1105a184535e::t_aea679fd2d0f0c 129
+  s_ef1105a184535e::t_239fb19ad948f7 595
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_ef1105a184535e::t_fb1208a5d783d5 528,533
+  s_ef1105a184535e::t_e40cd742f800e7 292
+  s_ef1105a184535e::t_b10c0d7c6c4671 211,216
+  s_ef1105a184535e::t_5544793274c87d 255
+  s_ef1105a184535e::t_f4baba237dc9f9 478,497,505,510,512
+  s_ef1105a184535e::t_fc315d0250c26a 445
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_ef1105a184535e::t_b0eb51372c73ad 57,70,72,84,88
+  s_ef1105a184535e::t_25bfe128781a76 22
+  s_ef1105a184535e::t_c94f38e38ccb78 316
+  s_ef1105a184535e::t_79b2bb0e6adf96 335
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  s_ef1105a184535e::t_c596ab5b90ce72 210,218
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_ef1105a184535e::t_018a34b0633853 415,434,441,444,465,485-490,508-509,511-513,518-522
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_ef1105a184535e::t_dfcfaef15ec88d 8
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_ef1105a184535e::t_d307c976ea49e7 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "06e2d360c594846e25ce3082e539d5944336bef3",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

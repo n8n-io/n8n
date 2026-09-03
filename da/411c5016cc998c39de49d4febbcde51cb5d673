@@ -1,0 +1,89 @@
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_3d8ac664679bc8::t_2d38164aab0a2e 233-306,329,336
+  s_3d8ac664679bc8::t_0843734de35650 330-333,335
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_3d8ac664679bc8::t_78b413b9ed66f6 19-20,705-718
+  s_3d8ac664679bc8::t_b15c8e58c5b09d 28,719-726
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3d8ac664679bc8::t_99eb5f798c21e2 1665-1667,1673,1682-1683,1691,1698,1700,2614-2618,2621,2626-2635
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_3d8ac664679bc8::t_0ab5e52fafa302 7,1338,1342
+  s_3d8ac664679bc8::t_ed99211df85a5b 1335-1337,1339-1341,1343-1345
+packages/cli/src/modules/agents/agents.service.ts
+  s_3d8ac664679bc8::t_d56a40c0438504 57-61,75,82,128-130,132
+  s_3d8ac664679bc8::t_a78849919296b3 62-63
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_3d8ac664679bc8::t_5928af7851bbf0 12-13,445-475,479-483,487-515
+  s_3d8ac664679bc8::t_99eb5f798c21e2 476-478,484-486
+packages/@n8n/instance-ai/src/types.ts
+  s_3d8ac664679bc8::t_bccbb7d84969a6 1036-1047
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_3d8ac664679bc8::t_11d7f6f28bfb5f 220,234,255-257,261-266,269,274,276,278-280,292
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_3d8ac664679bc8::t_41741c15b4a88f 1595-1648
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_3d8ac664679bc8::t_3a7260f75f4de2 4697-4700,4704-4707
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3d8ac664679bc8::t_955b5b0303a502 102-110,119
+  ai_agent 426-427
+  s_3d8ac664679bc8::t_77f7b86d1bfdc8 749-754,813-818
+  s_3d8ac664679bc8::t_79fa66157bac5a 768,774,776-777,779,781,783-790,794,796-797,1523,1554-1555
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_3d8ac664679bc8::t_94ea6075abbcd5 27-29,33-41,49-50,63,96-110,125-128,131-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_3d8ac664679bc8::t_09cc08a51eb9c1 264-273,312
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_3d8ac664679bc8::t_54f12dcdddb879 3,6,41,74-88,101
+packages/@n8n/instance-ai/src/index.ts
+  s_3d8ac664679bc8::t_e40bf35e59237d 217-218,220
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_3d8ac664679bc8::t_bd79c103d47a43 934-938
+packages/@n8n/api-types/src/index.ts
+  s_3d8ac664679bc8::t_af3eea676a33ff 381
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_3d8ac664679bc8::t_e64a94537f1628 1209-1212
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.memory.api.ts
+  s_3d8ac664679bc8::t_579409b4e8ec11 11,49,53-59
+  s_3d8ac664679bc8::t_09cc08a51eb9c1 43-48,50-52,60-61
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_3d8ac664679bc8::t_bd79c103d47a43 135
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_3d8ac664679bc8::t_fd2fb841192c5c 93,119,148,2053
+  s_3d8ac664679bc8::t_0691baaf1cfa3f 1493-1511,1514,1516-1525,1529-1532
+  s_3d8ac664679bc8::t_99eb5f798c21e2 1512-1513,1515,1526-1528
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_3d8ac664679bc8::t_cc8ace4b044675 1,3,7,35,38-51,83
+  s_3d8ac664679bc8::t_29de55a0f63b4d 2,4-6,8-34,36-37,52-62,64-65,73-82,84-85,95-96,99-101,106-116,119-122
+  s_3d8ac664679bc8::t_a78849919296b3 63,102-105
+  s_3d8ac664679bc8::t_cacd9b609cc2bf 117-118
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_3d8ac664679bc8::t_710b7e72751cee 1
+  s_3d8ac664679bc8::t_eb1eb5320dac93 3-8,12-37,42-44,48-57,66-112,129-215
+  s_3d8ac664679bc8::t_1cfff0a0a811f8 9-11,58-65
+  s_3d8ac664679bc8::t_632dfc219787a5 46-47
+  s_3d8ac664679bc8::t_774e88a7d217d2 113-128
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_3d8ac664679bc8::t_5fa5576bf1dd9b 13,942-958
+  s_3d8ac664679bc8::t_c8d07c84d6ca04 76
+  s_3d8ac664679bc8::t_0e076de2c9a17b 138
+packages/@n8n/api-types/src/agents/dto.ts
+  s_3d8ac664679bc8::t_0ab5e52fafa302 120-126,129
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_3d8ac664679bc8::t_e9449ba950e6d1 441,452-455,459,470-482,484-486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da411c5016cc998c39de49d4febbcde51cb5d673",
+  "prompts": {},
+  "sessions": {
+    "s_3d8ac664679bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f8ec19e-08e1-4fc1-b49f-bc86da6a6a42",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

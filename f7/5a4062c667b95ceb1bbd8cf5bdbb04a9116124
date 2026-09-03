@@ -1,0 +1,28 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_c49a2c9eccdc63::t_9a343eef7f0c10 37
+  s_c49a2c9eccdc63::t_7099ab71df13a2 111
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 72-77
+packages/@n8n/permissions/src/scope-information.ts
+  s_c49a2c9eccdc63::t_c00d5840547114 136
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_c49a2c9eccdc63::t_09c2be5278355f 62-67
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_c49a2c9eccdc63::t_721c3a134620fd 16-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f75a4062c667b95ceb1bbd8cf5bdbb04a9116124",
+  "prompts": {},
+  "sessions": {
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

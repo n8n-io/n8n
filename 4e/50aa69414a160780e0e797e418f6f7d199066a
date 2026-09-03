@@ -1,0 +1,35 @@
+packages/@n8n/db/src/entities/scheduled-job.ts
+  ai_agent 8,31-34,41-43,49-54,56-57,60-71,74,179-197,199-204
+packages/@n8n/db/src/entities/index.ts
+  ai_agent 42-44,134-136
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 97-100
+packages/@n8n/db/src/migrations/sqlite/1787306400000-GeneralizeScheduledJobOwner.ts
+  ai_agent 1-12
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  ai_agent 1-215
+docs/generated/postgres-schema/README.md
+  ai_agent 107,1308-1311
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 98-101
+docs/generated/postgres-schema/public.workflow_published_version.md
+  ai_agent 10
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  ai_agent 1-390
+docs/generated/sqlite-schema/workflow_published_version.md
+  ai_agent 21
+packages/@n8n/constants/src/scheduler.ts
+  ai_agent 111-135
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 20-23,53-54,65,89-92
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,31-34,46-54,63,86-89
+docs/generated/sqlite-schema/README.md
+  ai_agent 107,1295-1298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e50aa69414a160780e0e797e418f6f7d199066a",
+  "prompts": {}
+}

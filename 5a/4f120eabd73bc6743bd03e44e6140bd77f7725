@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/TimelineActivityIndicator.vue
+  s_b36cc8a5c25f3c::t_e6ef0b2810b202 1-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_b36cc8a5c25f3c::t_368114c6792e13 298-302
+  s_b36cc8a5c25f3c::t_41e73f0f3b552e 26
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/TimelineActivityIndicator.test.ts
+  s_b36cc8a5c25f3c::t_7d6acc4d883250 1-36
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_b36cc8a5c25f3c::t_2408b4f1ac9ec6 38-39
+  s_b36cc8a5c25f3c::t_e92f9ebd80e850 234-235,240,244-257
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_b36cc8a5c25f3c::t_22458cd7a9e066 661-662,665,669-686
+  s_b36cc8a5c25f3c::t_aa6d06f2c91020 399-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a4f120eabd73bc6743bd03e44e6140bd77f7725",
+  "prompts": {},
+  "sessions": {
+    "s_b36cc8a5c25f3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfce4642-4fca-4296-9b96-da2a6d9e3ce9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
