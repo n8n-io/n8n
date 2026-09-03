@@ -18,6 +18,9 @@ const ROOT = '/workspaces';
 const POLL_INTERVAL_MS = 3000;
 const SLACK_UPDATE_INTERVAL_MS = 1500;
 const SLACK_TEXT_LIMIT = 3900;
+const OPENCODE_CONFIG_CONTENT = JSON.stringify({
+	provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+});
 
 function posNum(name, fallback) {
 	const raw = process.env[name];
@@ -40,6 +43,7 @@ export function openCodeEnvironment(environment) {
 	delete childEnvironment.AGENT_WORKER_TOKEN;
 	delete childEnvironment.N8N_DEQUEUE_URL;
 	delete childEnvironment.SLACK_BOT_TOKEN;
+	childEnvironment.OPENCODE_CONFIG_CONTENT = OPENCODE_CONFIG_CONTENT;
 	return childEnvironment;
 }
 

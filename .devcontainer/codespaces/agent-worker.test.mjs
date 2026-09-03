@@ -253,19 +253,21 @@ test('stops the OpenCode process group at the turn limit', async () => {
 });
 
 test('keeps broker credentials out of the OpenCode process', () => {
-	assert.deepEqual(
-		openCodeEnvironment({
-			AGENT_WORKER_TOKEN: 'worker',
-			N8N_DEQUEUE_URL: 'https://example.com',
-			SLACK_BOT_TOKEN: 'slack',
-			ANTHROPIC_API_KEY: 'model',
-			OPENROUTER_API_KEY: 'openrouter',
-			GITHUB_TOKEN: 'github',
-		}),
-		{
-			ANTHROPIC_API_KEY: 'model',
-			OPENROUTER_API_KEY: 'openrouter',
-			GITHUB_TOKEN: 'github',
-		},
-	);
+	const environment = openCodeEnvironment({
+		AGENT_WORKER_TOKEN: 'worker',
+		N8N_DEQUEUE_URL: 'https://example.com',
+		SLACK_BOT_TOKEN: 'slack',
+		ANTHROPIC_API_KEY: 'model',
+		OPENROUTER_API_KEY: 'openrouter',
+		GITHUB_TOKEN: 'github',
+	});
+	assert.deepEqual(JSON.parse(environment.OPENCODE_CONFIG_CONTENT), {
+		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+	});
+	delete environment.OPENCODE_CONFIG_CONTENT;
+	assert.deepEqual(environment, {
+		ANTHROPIC_API_KEY: 'model',
+		OPENROUTER_API_KEY: 'openrouter',
+		GITHUB_TOKEN: 'github',
+	});
 });
