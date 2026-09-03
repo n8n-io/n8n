@@ -6,10 +6,15 @@ vi.mock('../npm-utils', async () => ({
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import { N8N_NODES_API_VERSION } from 'n8n-workflow';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { CommunityPackagesModule } from '@/modules/community-packages/community-packages.module';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
