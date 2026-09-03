@@ -31,4 +31,31 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).authSecret).toBe('');
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_AUTH_SECRET'));
 	});
+
+	it('should leave the control plane base URL empty so the host picks the default', () => {
+		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('');
+	});
+
+	it('should bind the control plane server to loopback by default', () => {
+		const config = Container.get(EngineConfig);
+
+		expect(config.controlPlaneHost).toBe('127.0.0.1');
+		expect(config.controlPlanePort).toBe(3001);
+	});
+
+	it('should read the control plane server bind address', () => {
+		process.env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
+		process.env.N8N_ENGINE_CONTROL_PLANE_PORT = '4001';
+
+		const config = Container.get(EngineConfig);
+
+		expect(config.controlPlaneHost).toBe('0.0.0.0');
+		expect(config.controlPlanePort).toBe(4001);
+	});
+
+	it('should read the control plane base URL', () => {
+		process.env.N8N_ENGINE_CONTROL_PLANE_BASE_URL = 'http://cp.internal:5678';
+
+		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
+	});
 });

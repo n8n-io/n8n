@@ -7,6 +7,7 @@ import {
 	type BuilderRequiredArtifact,
 	type BuilderTurnStream,
 	type InstanceAiBuilderDelegate,
+	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
@@ -16,6 +17,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
@@ -95,6 +98,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -120,6 +124,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		user: User,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
@@ -150,6 +155,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						projectId,
 						message,
 						credentialProvider,
+						credentialService,
 						user,
 						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
@@ -168,6 +174,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.toolCallId,
 						resume.resumeData,
 						credentialProvider,
+						credentialService,
 						user,
 						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
@@ -201,6 +208,21 @@ export class InstanceAiBuilderDelegateAdapterService {
 					published: agent.activeVersionId !== null,
 					updatedAt: agent.updatedAt.toISOString(),
 				}));
+			},
+
+			listAgentCapabilities: async () => {
+				await assertProjectScope('agent:read');
+				// Channels come from the registry (same source the builder's
+				// `list_integration_types` projects); agent-level capabilities and
+				// limitations come from this module's constants, so the registry
+				// and the agent config schema stay the single sources of truth as
+				// channels, tools, or limits are added or removed.
+				const channels = this.agentIntegrationPersistenceService.listChatIntegrations();
+				return {
+					channels,
+					agentCapabilities: [...AGENT_CAPABILITIES],
+					limitations: [...AGENT_LIMITATIONS],
+				};
 			},
 
 			resolveAgentName: async (agentId) => {

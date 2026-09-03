@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -185,6 +185,36 @@ describe('ChainLlm Node', () => {
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should surface a raw TypeError as a NodeOperationError keeping message and cause', async () => {
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
+
+			const error = new TypeError('fetch failed');
+			(executeChainModule.executeChain as Mock).mockRejectedValue(error);
+
+			mockExecuteFunction.continueOnFail.mockReturnValue(false);
+
+			const thrown = await node.execute
+				.call(mockExecuteFunction)
+				.catch((e: NodeOperationError) => e);
+
+			expect(thrown).toBeInstanceOf(NodeOperationError);
+			expect((thrown as NodeOperationError).message).toBe('fetch failed');
+			expect((thrown as NodeOperationError).description).toBe('Original error: TypeError');
+			expect((thrown as NodeOperationError).cause).toBe(error);
+		});
+
+		it('should replace a useless error message with the model fallback message', async () => {
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
+
+			(executeChainModule.executeChain as Mock).mockRejectedValue(new Error('Error'));
+
+			mockExecuteFunction.continueOnFail.mockReturnValue(true);
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0][0].json.error).toBe('Model execution failed');
 		});
 
 		it('should handle multiple response items from executeChain', async () => {

@@ -31,10 +31,10 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
@@ -101,6 +101,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
+		[LICENSE_FEATURES.NODE_TYPE_POLICIES]: false,
 		[LICENSE_FEATURES.SAML]: false,
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
@@ -202,9 +203,9 @@ export class E2EController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
-		private readonly taskBroker: TaskBroker,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -266,7 +267,9 @@ export class E2EController {
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		const count = await this.scheduledJobRepository.countByOwner(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+		);
 		return { count };
 	}
 
@@ -300,7 +303,10 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			0,
+		);
 		return { success: true };
 	}
 
@@ -313,18 +319,11 @@ export class E2EController {
 		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
 	) {
 		const { workflowId, nodeId, secondsAgo } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			secondsAgo,
+		);
 		return { success: true };
-	}
-
-	/**
-	 * Number of task runners currently registered with the broker, so a test can
-	 * wait for a runner to be ready instead of racing its startup.
-	 */
-	@Get('/task-runners/count', { skipAuth: true })
-	countTaskRunners() {
-		const count = this.taskBroker.getKnownRunners().size;
-		return { count };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })

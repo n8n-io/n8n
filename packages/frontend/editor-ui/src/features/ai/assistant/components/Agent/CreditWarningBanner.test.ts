@@ -29,6 +29,30 @@ describe('CreditWarningBanner', () => {
 		mockUserIsTrialing = false;
 	});
 
+	// Most call sites sit above a detached, fully rounded chat input, so the
+	// self-contained card has to be what you get without opting in.
+	describe('variants', () => {
+		it('renders a self-contained card by default', () => {
+			const wrapper = mount(CreditWarningBanner, {
+				props: { creditsRemaining: 0, creditsQuota: 800 },
+			});
+
+			const classes = wrapper.get('[data-test-id="credit-warning-banner"]').classes();
+			expect(classes).toContain('standalone');
+			expect(classes).not.toContain('attached');
+		});
+
+		it('fuses onto the input below when asked to attach', () => {
+			const wrapper = mount(CreditWarningBanner, {
+				props: { creditsRemaining: 0, creditsQuota: 800, variant: 'attached' },
+			});
+
+			const classes = wrapper.get('[data-test-id="credit-warning-banner"]').classes();
+			expect(classes).toContain('attached');
+			expect(classes).not.toContain('standalone');
+		});
+	});
+
 	it('rounds remaining and total credits to two decimal places', () => {
 		const wrapper = mount(CreditWarningBanner, {
 			props: { creditsRemaining: 2.468, creditsQuota: 100.04 },

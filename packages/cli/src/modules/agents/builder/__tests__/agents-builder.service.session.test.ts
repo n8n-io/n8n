@@ -1,6 +1,7 @@
 import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
@@ -203,7 +204,7 @@ function setup(
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-
+	const credentialService = mock<InstanceAiCredentialService>();
 	return {
 		service,
 		logger,
@@ -213,6 +214,7 @@ function setup(
 		agentsBuilderToolsService,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
+		credentialService,
 	};
 }
 
@@ -239,10 +241,18 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('uses the session threadId for stream persistence', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.streamCalls).toHaveLength(1);
@@ -252,15 +262,23 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('forwards session.abortSignal to the SDK stream and resume calls', async () => {
-		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
 		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
 		const abortSignal = new AbortController().signal;
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				abortSignal,
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					abortSignal,
+				},
+			),
 		);
 		await drain(
 			service.resumeBuild(
@@ -270,6 +288,7 @@ describe('AgentsBuilderService session isolation', () => {
 				'tool-call-1',
 				{},
 				credentialProvider,
+				credentialService,
 				user,
 				{ ...baseSession, abortSignal },
 			),
@@ -280,13 +299,21 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				instructionsAddendum: 'Extra sub-agent rules go here.',
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					instructionsAddendum: 'Extra sub-agent rules go here.',
+				},
+			),
 		);
 
 		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
@@ -295,10 +322,18 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('does not append anything to the prompt when instructionsAddendum is absent', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
@@ -306,13 +341,21 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('registers all standard tools returned by the tools service', async () => {
-		const { service, user, credentialProvider } = setup({
+		const { service, user, credentialProvider, credentialService } = setup({
 			json: [fakeTool('resolve_llm'), fakeTool('read_config')],
 			shared: [fakeTool('ask_credential')],
 		});
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
@@ -321,21 +364,29 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('registers the parent MCP tools for an initial builder turn', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 		const notionSearch = fakeTool('notion_search');
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				mcpTools: new Map([[notionSearch.name, notionSearch]]),
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					mcpTools: new Map([[notionSearch.name, notionSearch]]),
+				},
+			),
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
 	});
 
 	it('registers the parent MCP tools for a resumed builder turn', async () => {
-		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
 		const notionSearch = fakeTool('notion_search');
 		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
 
@@ -347,6 +398,7 @@ describe('AgentsBuilderService session isolation', () => {
 				'tool-call-1',
 				{},
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					...baseSession,
@@ -361,16 +413,24 @@ describe('AgentsBuilderService session isolation', () => {
 	it('does not let an MCP tool replace a native builder tool', async () => {
 		const nativeReadConfig = fakeTool('read_config');
 		const mcpReadConfig = fakeTool('read_config');
-		const { service, logger, user, credentialProvider } = setup({
+		const { service, logger, user, credentialProvider, credentialService } = setup({
 			json: [nativeReadConfig],
 			shared: [],
 		});
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+				},
+			),
 		);
 
 		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
@@ -391,20 +451,36 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
 	});
 
 	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.promptCachingCalls).toEqual([
@@ -413,13 +489,21 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
+				},
+			),
 		);
 
 		expect(agentsSdkMocks.promptCachingCalls).toEqual([]);
@@ -431,61 +515,110 @@ describe('AgentsBuilderService session isolation', () => {
 		['OpenAI', 'openai/gpt-5.6-sol'],
 		['Google', 'google/gemini-2.5-pro'],
 	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				modelConfig,
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					modelConfig,
+				},
+			),
 		);
 
 		expect(agentsSdkMocks.reasoningCalls).toEqual(['medium']);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 		const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				telemetry: sentinel,
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					telemetry: sentinel,
+				},
+			),
 		);
 		expect(agentsSdkMocks.telemetryCalls).toEqual([sentinel]);
 
 		agentsSdkMocks.telemetryCalls.length = 0;
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 		expect(agentsSdkMocks.telemetryCalls).toEqual([]);
 	});
 
 	it('registers session.memoryTaskObserver on the builder agent when provided, and omits it otherwise', async () => {
-		const { service, user, credentialProvider } = setup();
+		const { service, user, credentialProvider, credentialService } = setup();
 		const memoryTaskObserver = vi.fn();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				memoryTaskObserver,
-			}),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					...baseSession,
+					memoryTaskObserver,
+				},
+			),
 		);
 		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([memoryTaskObserver]);
 
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([]);
 	});
 
 	it('constructs observer/reflector callbacks on the builder model and claims usage under the host thread/run/target-agent dedupe key', async () => {
-		const { service, user, credentialProvider, instanceAiCreditService } = setup();
+		const { service, user, credentialProvider, credentialService, instanceAiCreditService } =
+			setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
 		);
 
 		expect(agentsSdkMocks.observationalMemoryCalls).toHaveLength(1);

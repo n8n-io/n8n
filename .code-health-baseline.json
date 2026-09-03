@@ -1,7 +1,5 @@
 {
 	"version": 1,
-	"generated": "2026-08-24T09:15:32.266Z",
-	"totalViolations": 184,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{

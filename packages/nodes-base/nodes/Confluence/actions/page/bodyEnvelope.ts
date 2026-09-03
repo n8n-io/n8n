@@ -9,14 +9,18 @@ export interface ConfluenceBodyEnvelope extends IDataObject {
 	value: string;
 }
 
-export function bodyProperties(operations: string[], bodyHint?: string): INodeProperties[] {
+export function bodyProperties(
+	operations: string[],
+	bodyHint?: string,
+	contentNoun = 'Page content',
+): INodeProperties[] {
 	const show = { resource: ['page'], operation: operations };
 	const hint = bodyHint === undefined ? {} : { hint: bodyHint };
 	return [
 		{
 			...bodyFormatOption,
 			default: 'plainText',
-			description: 'How the page content below is interpreted',
+			description: `How the ${contentNoun.toLowerCase()} below is interpreted`,
 			displayOptions: { show },
 			// Same values as the shared selector; write-oriented descriptions
 			options: [
@@ -44,8 +48,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			type: 'string',
 			typeOptions: { rows: 4 },
 			default: '',
-			description:
-				'Page content as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.',
+			description: `${contentNoun} as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.`,
 			displayOptions: { show: { ...show, bodyFormat: ['plainText'] } },
 			...hint,
 		},
@@ -56,7 +59,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			typeOptions: { rows: 4 },
 			default: '',
 			placeholder: '<h2>Heading</h2><p>Text</p>',
-			description: 'Page content in Confluence storage format',
+			description: `${contentNoun} in Confluence storage format`,
 			displayOptions: { show: { ...show, bodyFormat: ['storage'] } },
 			...hint,
 		},
@@ -66,7 +69,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			type: 'json',
 			default: '',
 			placeholder: '{ "type": "doc", "version": 1, "content": [] }',
-			description: 'Page content as an Atlassian Document Format document',
+			description: `${contentNoun} as an Atlassian Document Format document`,
 			displayOptions: { show: { ...show, bodyFormat: ['atlas_doc_format'] } },
 			...hint,
 		},
@@ -131,6 +134,123 @@ export function buildBodyEnvelope(
 
 		default:
 			throw new Error(`Unsupported body format "${format as string}"`);
+	}
+}
+
+// ADF node types that carry no meaning by themselves: only whitespace or children.
+// Unknown types (emoji, mention, media, cards, …) count as content, so an exotic
+// but real comment is never rejected as empty.
+const STRUCTURAL_ADF_TYPES = new Set([
+	'doc',
+	'paragraph',
+	'text',
+	'hardBreak',
+	'heading',
+	'blockquote',
+	'bulletList',
+	'orderedList',
+	'listItem',
+	'codeBlock',
+	'panel',
+	'table',
+	'tableRow',
+	'tableCell',
+	'tableHeader',
+	'expand',
+	'nestedExpand',
+	'taskList',
+	'taskItem',
+	'decisionList',
+	'decisionItem',
+	'layoutSection',
+	'layoutColumn',
+]);
+
+function adfNodeHasContent(node: unknown): boolean {
+	if (node === null || typeof node !== 'object' || Array.isArray(node)) return false;
+	const { type, text, content, attrs } = node as {
+		type?: unknown;
+		text?: unknown;
+		content?: unknown;
+		attrs?: unknown;
+	};
+	if (typeof text === 'string' && text.trim() !== '') return true;
+	if (typeof type === 'string' && !STRUCTURAL_ADF_TYPES.has(type)) return true;
+	// Among structural types, expand/nestedExpand render their attrs.title as visible text
+	const title =
+		attrs !== null && typeof attrs === 'object' ? (attrs as IDataObject).title : undefined;
+	if (typeof title === 'string' && title.trim() !== '') return true;
+	return Array.isArray(content) && content.some(adfNodeHasContent);
+}
+
+// Storage-format tags that render nothing by themselves: only their text does.
+// Unknown tags (ac:* macros, ri:* references, img, hr, …) count as content, so an
+// exotic but real comment is never rejected as empty. Mirrors STRUCTURAL_ADF_TYPES.
+const STRUCTURAL_STORAGE_TAGS = new Set([
+	'p',
+	'br',
+	'div',
+	'span',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'blockquote',
+	'ul',
+	'ol',
+	'li',
+	'pre',
+	'code',
+	'table',
+	'tbody',
+	'thead',
+	'tfoot',
+	'colgroup',
+	'col',
+	'tr',
+	'td',
+	'th',
+	'strong',
+	'b',
+	'em',
+	'i',
+	'u',
+	's',
+	'del',
+	'ins',
+	'sub',
+	'sup',
+]);
+
+function storageHasContent(markup: string): boolean {
+	// CDATA text renders verbatim (even when it looks like markup), and the tag strip
+	// below would swallow it together with its wrapper
+	for (const [, cdata] of markup.matchAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g)) {
+		if (cdata.trim() !== '') return true;
+	}
+	const text = markup
+		.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, ' ')
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&(?:nbsp|#160|#xa0);/gi, ' ')
+		.trim();
+	if (text !== '') return true;
+	for (const [, tagName] of markup.matchAll(/<\/?([a-zA-Z][\w:-]*)/g)) {
+		if (!STRUCTURAL_STORAGE_TAGS.has(tagName.toLowerCase())) return true;
+	}
+	return false;
+}
+
+/** True when the body renders to something a reader can see. An empty ADF document
+ * still serializes to non-blank JSON, and empty storage markup (`<p></p>`) is non-blank
+ * text, so both checks look through the wrapping to the rendered result. */
+export function envelopeHasContent(envelope: ConfluenceBodyEnvelope): boolean {
+	if (envelope.representation !== 'atlas_doc_format') return storageHasContent(envelope.value);
+	try {
+		return adfNodeHasContent(JSON.parse(envelope.value));
+	} catch {
+		return false;
 	}
 }
 

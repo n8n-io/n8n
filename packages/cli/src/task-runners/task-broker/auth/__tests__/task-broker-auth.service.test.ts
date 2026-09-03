@@ -116,6 +116,26 @@ describe('TaskBrokerAuthService', () => {
 			});
 		});
 
+		it('should be valid only once when consumed concurrently', async () => {
+			// Arrange
+			const grantToken = await authService.createGrantToken('runner1');
+
+			// Act
+			const results = await Promise.all([
+				authService.tryConsumeGrantToken(grantToken),
+				authService.tryConsumeGrantToken(grantToken),
+			]);
+
+			// Assert
+			expect(results).toHaveLength(2);
+			expect(results.filter((result) => result.isValid)).toEqual([
+				{ isValid: true, boundRunnerId: 'runner1' },
+			]);
+			expect(results.filter((result) => !result.isValid)).toEqual([
+				{ isValid: false, boundRunnerId: null },
+			]);
+		});
+
 		it('should be invalid for an expired grant token', async () => {
 			// Arrange
 			const grantToken = await authService.createGrantToken();

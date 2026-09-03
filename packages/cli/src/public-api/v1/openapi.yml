@@ -101,24 +101,16 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
   /executions/{id}/retry:
     $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
   /executions/{id}/stop:
     $ref: './handlers/executions/spec/paths/executions.id.stop.yml'
   /executions/stop:
     $ref: './handlers/executions/spec/paths/executions.stop.yml'
-  /executions/{id}/tags:
-    $ref: './handlers/executions/spec/paths/executions.id.tags.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/test-runs:

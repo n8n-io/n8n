@@ -192,6 +192,18 @@ describe('generate-node-defs-cli', () => {
 			const hash2 = computeInputHash('content', '0.1.0');
 			expect(hash1).toBe(hash2);
 		});
+
+		it('should produce different hashes for different schema corpus hashes', () => {
+			const hash1 = computeInputHash('content', '0.1.0', 'schema-hash-a');
+			const hash2 = computeInputHash('content', '0.1.0', 'schema-hash-b');
+			expect(hash1).not.toBe(hash2);
+		});
+
+		it('should default the schema corpus hash to an empty string', () => {
+			const withDefault = computeInputHash('content', '0.1.0');
+			const withExplicitEmpty = computeInputHash('content', '0.1.0', '');
+			expect(withDefault).toBe(withExplicitEmpty);
+		});
 	});
 
 	describe('parallel writes', () => {

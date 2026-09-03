@@ -39,6 +39,7 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
@@ -130,7 +131,6 @@ const usersStore = useUsersStore();
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
 const isCreatingWorkflow = ref(false);
-
 const canCreateWorkflow = computed(() => {
 	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
 
@@ -820,7 +820,27 @@ function handleRowActivate(item: ToolConnectionItem) {
 		if (item.id.startsWith('tool:')) {
 			const localId = item.id.slice('tool:'.length);
 			const entry = workingToolEntries.value.find((e) => e.localId === localId);
-			if (entry) openConfigForToolEntry(entry);
+			if (!entry) return;
+			// Adding another instance of the same service: editing happens via the
+			// capabilities chips, so activating a connected node-tool row adds a
+			// new instance instead of overwriting the existing tool. A connected
+			// n8n Connect managed tool must keep its managed-credential
+			// preselection, so route it through the same managed add path.
+			const { ref } = entry;
+			if (ref.type === 'node') {
+				const nodeType =
+					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
+						(nt) => nt.name === ref.node.nodeType,
+					) ?? nodeTypesStore.getNodeType(ref.node.nodeType);
+				if (nodeType) {
+					const isManaged = Object.values(ref.node.credentials ?? {}).some(
+						(credential) => '__aiGatewayManaged' in credential && credential.__aiGatewayManaged,
+					);
+					void (isManaged ? addManagedNodeTool(nodeType) : handleAddTool(nodeType));
+				}
+				return;
+			}
+			openConfigForToolEntry(entry);
 		}
 		return;
 	}
@@ -866,5 +886,12 @@ function handleRowActivate(item: ToolConnectionItem) {
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
 		@create-workflow="handleCreateWorkflow"
-	/>
+	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+				:action="i18n.baseText('agents.tools.suggestion.action')"
+			/>
+		</template>
+	</ToolsConnectionModal>
 </template>

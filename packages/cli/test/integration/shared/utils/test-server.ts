@@ -125,7 +125,11 @@ export const setupTestServer = ({
 
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
-	mockInstance(PostHogClient);
+	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
+		featureFlags: {},
+		featureFlagPayloads: {},
+	});
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
@@ -198,6 +202,10 @@ export const setupTestServer = ({
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'activeWorkflows':
+						await import('@/controllers/active-workflows.controller.js');
+						break;
+
 					case 'annotationTags':
 						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;
