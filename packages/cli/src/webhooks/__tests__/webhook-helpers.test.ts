@@ -1574,6 +1574,10 @@ describe('executeWebhook getUserById', () => {
 				email: 'user@example.com',
 				firstName: 'Test',
 				lastName: 'User',
+				// Extra entity fields, so the assertion below fails if the projection is dropped.
+				password: 'hashed',
+				mfaSecret: 'totp-secret',
+				disabled: false,
 			}),
 		);
 
