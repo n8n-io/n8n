@@ -367,12 +367,27 @@ export {
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export { ListExecutionsQueryDto } from './executions/list-executions-query.dto';
 export {
 	ExecutionPublicDto,
 	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
 	executionPublicSchema,
 	deletedExecutionPublicSchema,
+	executionListItemPublicSchema,
 } from './executions/execution-public.dto';
+export {
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
+	stoppedExecutionPublicSchema,
+	stoppedExecutionsPublicSchema,
+} from './executions/stopped-execution-public.dto';
+export {
+	StopManyExecutionsPublicDto,
+	STOPPABLE_PUBLIC_EXECUTION_STATUSES,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	type StoppablePublicExecutionStatus,
+} from './executions/stop-many-executions-public.dto';
 export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';

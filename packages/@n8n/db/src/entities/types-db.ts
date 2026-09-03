@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IUserSettings,
 	AnnotationVote,
@@ -143,6 +144,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	featureFlagPayloads?: FeatureFlagPayloads;
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;
