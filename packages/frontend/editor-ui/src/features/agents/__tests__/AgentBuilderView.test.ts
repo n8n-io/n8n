@@ -715,6 +715,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
+	it('opens the preview dock when the channels section requests it', async () => {
+		const wrapper = await renderView();
+		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
+		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		expect(dock.props('isOpen')).toBe(false);
+
+		channels.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(dock.props('isOpen')).toBe(true);
+	});
+
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		createAgentMock.mockResolvedValueOnce(makeAgentResponse());

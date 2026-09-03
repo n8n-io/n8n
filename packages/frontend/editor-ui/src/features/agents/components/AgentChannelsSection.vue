@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -9,6 +9,7 @@ import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -21,6 +22,8 @@ const props = withDefaults(
 		simpleChannelSetup?: boolean;
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
+		/** Backend-computed readiness; the preview can't run until the agent is runnable. */
+		agentRunnable?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 	}>(),
 	{
@@ -29,6 +32,7 @@ const props = withDefaults(
 		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		agentRunnable: false,
 		ensureAgentPersisted: undefined,
 	},
 );
@@ -37,6 +41,7 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'agent-changed': [];
+	'open-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -150,6 +155,17 @@ onBeforeUnmount(() => {
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 });
 
+// Mirrors the header's preview toggle: the draft chat only runs once the
+// backend reports the agent as runnable.
+const isPreviewDisabled = computed(() => !props.agentRunnable);
+const previewDisabledTooltip = computed(() =>
+	i18n.baseText('agents.builder.preview.disabledTooltip'),
+);
+
+function openPreview() {
+	emit('open-preview');
+}
+
 function openChannelModal() {
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
@@ -202,6 +218,29 @@ const remainingChannelOptionLabels = computed(() => {
 		<N8nText size="small" :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.triggers.title') }}
 		</N8nText>
+		<N8nButton
+			variant="subtle"
+			size="medium"
+			:class="$style.previewButton"
+			:disabled="props.disabled || isPreviewDisabled"
+			data-testid="agent-channels-preview-tile"
+			@click="openPreview"
+		>
+			<template #icon>
+				<N8nIcon icon="play" size="small" />
+			</template>
+			<div :class="$style.previewButtonText">
+				<AgentValidationTooltip
+					:disabled="!isPreviewDisabled"
+					:fallback="previewDisabledTooltip"
+					action="preview"
+					:issues="props.validationIssues"
+				>
+					<N8nText step="sm" bold>{{ i18n.baseText('agents.channels.preview.title') }}</N8nText>
+				</AgentValidationTooltip>
+			</div>
+		</N8nButton>
+
 		<div :class="$style.innerRow" :inert="props.disabled || undefined">
 			<button
 				v-for="channel in channelRows"
@@ -222,19 +261,6 @@ const remainingChannelOptionLabels = computed(() => {
 						{{ channel.credentialName }}
 					</N8nText>
 					<div v-else :class="$style.credentialnameSkeleton" />
-				</div>
-			</button>
-			<button
-				:class="$style.channelCard"
-				:disabled="props.disabled"
-				data-testid="agent-channels-preview-tile"
-			>
-				<N8nIcon icon="message-circle" size="large" />
-				<div :class="$style.channelCardText">
-					<N8nText step="sm" bold>{{ i18n.baseText('agents.channels.preview.title') }}</N8nText>
-					<N8nText step="xs" color="text-light">
-						{{ i18n.baseText('agents.channels.preview.description') }}
-					</N8nText>
 				</div>
 			</button>
 			<button
@@ -285,6 +311,21 @@ const remainingChannelOptionLabels = computed(() => {
 	line-height: var(--height--lg);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
+}
+
+.previewButton {
+	--button--radius: var(--radius--full);
+	--button--height: auto;
+	--button--padding: var(--spacing--2xs) var(--spacing--sm);
+	align-self: flex-start;
+	margin-bottom: var(--spacing--xs);
+}
+
+.previewButtonText {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	white-space: nowrap;
 }
 
 .innerRow {

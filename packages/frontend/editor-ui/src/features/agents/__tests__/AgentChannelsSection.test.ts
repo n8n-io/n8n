@@ -37,7 +37,7 @@ vi.mock('../components/AgentChannelModal.vue', () => ({
 	},
 }));
 
-function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
+function mountSection(simpleChannelSetup?: boolean, isPublished = false, agentRunnable = true) {
 	return mount(AgentChannelsSection, {
 		props: {
 			connectedTriggers: [],
@@ -45,6 +45,7 @@ function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
 			agentId: 'agent-id',
 			simpleChannelSetup,
 			isPublished,
+			agentRunnable,
 		},
 		global: {
 			stubs: {
@@ -89,5 +90,26 @@ describe('AgentChannelsSection', () => {
 		expect(
 			wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-is-published'),
 		).toBe('true');
+	});
+
+	describe('preview button', () => {
+		it('emits open-preview when clicked and the agent is runnable', async () => {
+			const wrapper = mountSection();
+
+			await wrapper.find('[data-testid="agent-channels-preview-tile"]').trigger('click');
+
+			expect(wrapper.emitted('open-preview')).toHaveLength(1);
+		});
+
+		it('stays disabled while the agent is not runnable yet', async () => {
+			const wrapper = mountSection(undefined, false, false);
+			const button = wrapper.find('[data-testid="agent-channels-preview-tile"]');
+
+			expect(button.attributes('disabled')).toBeDefined();
+
+			await button.trigger('click');
+
+			expect(wrapper.emitted('open-preview')).toBeUndefined();
+		});
 	});
 });
