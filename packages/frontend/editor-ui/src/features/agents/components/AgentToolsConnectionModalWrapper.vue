@@ -692,13 +692,21 @@ function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem 
 }
 
 function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
+	// An unpublished workflow stays selectable; the note tells the user the
+	// published agent cannot call it until they publish it.
+	const description = [
+		workflow.active === false ? i18n.baseText('agents.tools.workflow.notPublished') : undefined,
+		workflow.description,
+	]
+		.filter(Boolean)
+		.join(' · ');
 	return {
 		id: `workflow:${workflow.id}`,
 		kind: 'workflow',
 		category: 'workflows',
 		workflowId: workflow.id,
 		title: workflow.name,
-		description: workflow.description ?? undefined,
+		description: description || undefined,
 		status: 'none',
 		credentials: [],
 	};

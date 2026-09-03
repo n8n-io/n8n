@@ -128,6 +128,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a 'When Executed by Another Workflow' trigger
+  (n8n-nodes-base.executeWorkflowTrigger) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 

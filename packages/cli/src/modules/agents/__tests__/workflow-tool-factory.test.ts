@@ -1,6 +1,6 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import { UserError, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -10,11 +10,11 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	detectTriggerNode,
-	normalizeTriggerInput,
 	resolveWorkflowTool,
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
@@ -22,41 +22,28 @@ import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeManualTriggerNode(overrides: Partial<INode> = {}): INode {
+const TRIGGER_NAME = 'When Executed by Another Workflow';
+
+function makeExecuteWorkflowTriggerNode(overrides: Partial<INode> = {}): INode {
 	return {
 		id: 'trigger-node-id',
+		name: TRIGGER_NAME,
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		typeVersion: 1.1,
+		position: [0, 0],
+		parameters: { inputSource: 'passthrough' },
+		...overrides,
+	};
+}
+
+function makeManualTriggerNode(): INode {
+	return {
+		id: 'manual-trigger-id',
 		name: 'Manual Trigger',
 		type: 'n8n-nodes-base.manualTrigger',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
-		...overrides,
-	};
-}
-
-function makeFormTriggerNode(overrides: Partial<INode> = {}): INode {
-	return {
-		id: 'trigger-node-id',
-		name: 'Form Trigger',
-		type: 'n8n-nodes-base.formTrigger',
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: { path: 'my-form' },
-		webhookId: 'webhook-abc',
-		...overrides,
-	};
-}
-
-function makeWebhookTriggerNode(overrides: Partial<INode> = {}): INode {
-	return {
-		id: 'webhook-node-id',
-		name: 'Webhook',
-		type: 'n8n-nodes-base.webhook',
-		typeVersion: 2,
-		position: [0, 0],
-		parameters: { responseMode: 'responseNode' },
-		webhookId: 'webhook-abc',
-		...overrides,
 	};
 }
 
@@ -74,7 +61,7 @@ function makeRespondToWebhookNode(overrides: Partial<INode> = {}): INode {
 
 function makeWorkflow(
 	overrides: Partial<WorkflowEntity> = {},
-	triggerNode: INode = makeManualTriggerNode(),
+	triggerNode: INode = makeExecuteWorkflowTriggerNode(),
 ): WorkflowEntity {
 	return {
 		id: 'workflow-123',
@@ -105,6 +92,9 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 	};
 }
 
+// The build-time load may fall back to the draft; the call-time load never does.
+const BUILD_LOAD_OPTIONS = { usePublishedVersion: false, fallbackToDraft: true };
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -114,51 +104,25 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		Container.reset();
 	});
 
-	it('attaches metadata with triggerType "manual" for a manual trigger workflow', async () => {
-		const workflow = makeWorkflow(
-			{ id: 'wf-manual-1', name: 'Manual Workflow' },
-			makeManualTriggerNode(),
-		);
+	it('attaches workflow metadata to the built tool', async () => {
+		const workflow = makeWorkflow({ id: 'wf-1', name: 'Execute Workflow' });
 		const context = makeContext(workflow);
 
 		const tool = await resolveWorkflowTool(
-			{ type: 'workflow', workflow: 'Manual Workflow' },
+			{ type: 'workflow', workflow: 'Execute Workflow' },
 			context,
 		);
 
 		expect(tool.metadata).toEqual({
 			kind: 'workflow',
-			workflowId: 'wf-manual-1',
-			workflowName: 'Manual Workflow',
-			triggerType: 'manual',
-		});
-	});
-
-	it('attaches metadata with triggerType "form" for a form trigger workflow', async () => {
-		const workflow = makeWorkflow(
-			{ id: 'wf-form-2', name: 'Form Workflow' },
-			makeFormTriggerNode(),
-		);
-		const context = makeContext(workflow);
-
-		const tool = await resolveWorkflowTool(
-			{ type: 'workflow', workflow: 'Form Workflow' },
-			context,
-		);
-
-		expect(tool.metadata).toEqual({
-			kind: 'workflow',
-			workflowId: 'wf-form-2',
-			workflowName: 'Form Workflow',
-			triggerType: 'form',
+			workflowId: 'wf-1',
+			workflowName: 'Execute Workflow',
+			triggerType: 'executeWorkflow',
 		});
 	});
 
 	it('resolves a renamed workflow by id', async () => {
-		const workflow = makeWorkflow(
-			{ id: 'wf-id-99', name: 'canonical-name' },
-			makeManualTriggerNode(),
-		);
+		const workflow = makeWorkflow({ id: 'wf-id-99', name: 'canonical-name' });
 		const context = makeContext(workflow);
 
 		const tool = await resolveWorkflowTool(
@@ -186,7 +150,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowName: 'Scoped Workflow' },
-			{ usePublishedVersion: false },
+			BUILD_LOAD_OPTIONS,
 		);
 	});
 
@@ -199,6 +163,32 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowName: 'Published Workflow' },
+			{ usePublishedVersion: true, fallbackToDraft: true },
+		);
+	});
+
+	it('builds the tool from the draft when the published version is missing', async () => {
+		const draft = makeWorkflow({ id: 'wf-draft', name: 'Draft Only' });
+		const context = { ...makeContext(draft), usePublishedWorkflowVersion: true };
+		const notPublished = new UserError(
+			'Workflow "Draft Only" is not published. Publish it before using it in a production agent run.',
+		);
+		context.workflowLoader.loadWorkflow = vi
+			.fn()
+			.mockResolvedValueOnce(draft)
+			.mockRejectedValueOnce(notPublished);
+
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflowId: 'wf-draft', workflow: 'Draft Only' },
+			context,
+		);
+
+		expect(tool.metadata).toMatchObject({ workflowId: 'wf-draft' });
+		await expect(tool.handler?.({}, {})).rejects.toThrow('is not published');
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenNthCalledWith(
+			2,
+			'project-1',
+			{ workflowId: 'wf-draft', workflowName: 'Draft Only' },
 			{ usePublishedVersion: true },
 		);
 	});
@@ -216,16 +206,31 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
-			{ usePublishedVersion: false },
+			BUILD_LOAD_OPTIONS,
 		);
 	});
 
-	it('throws when the workflow is not shared with the project', async () => {
+	it('reports a missing workflow as unavailable with reason not_found', async () => {
 		const context = makeContext(null);
 
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
-		).rejects.toThrow('Workflow "Missing Workflow" not found');
+		).rejects.toMatchObject({
+			constructor: WorkflowToolUnavailableError,
+			reason: 'not_found',
+			message: 'Workflow "Missing Workflow" not found',
+		});
+	});
+
+	it('reports a workflow without the execute-workflow trigger as unavailable with reason incompatible', async () => {
+		const context = makeContext(makeWorkflow({ name: 'Manual Only' }, makeManualTriggerNode()));
+
+		await expect(
+			resolveWorkflowTool({ type: 'workflow', workflow: 'Manual Only' }, context),
+		).rejects.toMatchObject({
+			constructor: WorkflowToolUnavailableError,
+			reason: 'incompatible',
+		});
 	});
 
 	it('loads the current workflow for every invocation', async () => {
@@ -234,13 +239,19 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			id: 'wf-current',
 			name: 'Current Workflow',
 			versionId: 'version-2',
-			nodes: [makeManualTriggerNode(), { ...makeRespondToWebhookNode(), name: 'Version 2' }],
+			nodes: [
+				makeExecuteWorkflowTriggerNode(),
+				{ ...makeRespondToWebhookNode(), name: 'Version 2' },
+			],
 		});
 		const thirdVersion = makeWorkflow({
 			id: 'wf-current',
 			name: 'Current Workflow',
 			versionId: 'version-3',
-			nodes: [makeManualTriggerNode(), { ...makeRespondToWebhookNode(), name: 'Version 3' }],
+			nodes: [
+				makeExecuteWorkflowTriggerNode(),
+				{ ...makeRespondToWebhookNode(), name: 'Version 3' },
+			],
 		});
 		const context = makeContext(initial);
 		const loadWorkflow = vi
@@ -271,25 +282,18 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await tool.handler?.({}, {});
 
 		const expectedReference = { workflowId: 'wf-current', workflowName: 'Current Workflow' };
-		const expectedOptions = { usePublishedVersion: false };
 		expect(loadWorkflow).toHaveBeenNthCalledWith(
 			1,
 			'project-1',
 			expectedReference,
-			expectedOptions,
+			BUILD_LOAD_OPTIONS,
 		);
-		expect(loadWorkflow).toHaveBeenNthCalledWith(
-			2,
-			'project-1',
-			expectedReference,
-			expectedOptions,
-		);
-		expect(loadWorkflow).toHaveBeenNthCalledWith(
-			3,
-			'project-1',
-			expectedReference,
-			expectedOptions,
-		);
+		expect(loadWorkflow).toHaveBeenNthCalledWith(2, 'project-1', expectedReference, {
+			usePublishedVersion: false,
+		});
+		expect(loadWorkflow).toHaveBeenNthCalledWith(3, 'project-1', expectedReference, {
+			usePublishedVersion: false,
+		});
 		expect(context.workflowRunner.run).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({
@@ -317,7 +321,7 @@ describe('workflow tool compatibility', () => {
 	it('rejects workflows with only a schedule trigger', () => {
 		const workflow = makeWorkflow(
 			{},
-			makeManualTriggerNode({ type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeExecuteWorkflowTriggerNode({ type: 'n8n-nodes-base.scheduleTrigger' }),
 		);
 
 		expect(() => detectTriggerNode(workflow)).toThrow('no supported trigger node');
@@ -325,7 +329,7 @@ describe('workflow tool compatibility', () => {
 
 	it('allows Respond to Webhook nodes in workflow tools', () => {
 		const workflow = makeWorkflow({
-			nodes: [makeWebhookTriggerNode(), makeRespondToWebhookNode()],
+			nodes: [makeExecuteWorkflowTriggerNode(), makeRespondToWebhookNode()],
 		});
 
 		expect(() => validateCompatibility(workflow)).not.toThrow();
@@ -335,7 +339,7 @@ describe('workflow tool compatibility', () => {
 	it('allows a reachable Wait node in workflow tools', () => {
 		const workflow = makeWorkflow({
 			nodes: [
-				makeManualTriggerNode(),
+				makeExecuteWorkflowTriggerNode(),
 				{
 					id: 'wait-node-id',
 					name: 'Wait',
@@ -345,7 +349,7 @@ describe('workflow tool compatibility', () => {
 					parameters: { resume: 'webhook' },
 				},
 			],
-			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+			connections: { [TRIGGER_NAME]: { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
 		});
 
 		expect(() => validateCompatibility(workflow)).not.toThrow();
@@ -356,7 +360,7 @@ describe('workflow tool compatibility', () => {
 	it('rejects a reachable Form node in workflow tools', () => {
 		const workflow = makeWorkflow({
 			nodes: [
-				makeManualTriggerNode(),
+				makeExecuteWorkflowTriggerNode(),
 				{
 					id: 'form-node-id',
 					name: 'Form',
@@ -366,58 +370,10 @@ describe('workflow tool compatibility', () => {
 					parameters: {},
 				},
 			],
-			connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+			connections: { [TRIGGER_NAME]: { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
 		});
 
 		expect(() => validateCompatibility(workflow)).toThrow("aren't supported as agent tools");
-	});
-
-	it('attaches metadata with triggerType "webhook" for a webhook trigger workflow', async () => {
-		const workflow = makeWorkflow(
-			{ id: 'wf-webhook-1', name: 'Webhook Workflow' },
-			makeWebhookTriggerNode(),
-		);
-		const context = makeContext(workflow);
-
-		const tool = await resolveWorkflowTool(
-			{ type: 'workflow', workflow: 'Webhook Workflow' },
-			context,
-		);
-
-		expect(tool.metadata).toEqual({
-			kind: 'workflow',
-			workflowId: 'wf-webhook-1',
-			workflowName: 'Webhook Workflow',
-			triggerType: 'webhook',
-		});
-	});
-
-	it('normalizes webhook tool input into the webhook trigger output shape', () => {
-		const triggerNode = makeWebhookTriggerNode();
-		const pinData = normalizeTriggerInput(
-			triggerNode,
-			'webhook',
-			{
-				customerId: '123',
-				priority: 'high',
-			},
-			'integrated',
-		);
-
-		expect(pinData).toEqual({
-			Webhook: [
-				{
-					json: {
-						headers: {},
-						params: {},
-						query: {},
-						body: { customerId: '123', priority: 'high' },
-						webhookUrl: '',
-						executionMode: 'production',
-					},
-				},
-			],
-		});
 	});
 });
 

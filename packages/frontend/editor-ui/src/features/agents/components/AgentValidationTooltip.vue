@@ -4,6 +4,8 @@ import { N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { isWarningIssue } from '../utils/validationIssues';
+
 const props = withDefaults(
 	defineProps<{
 		disabled: boolean;
@@ -51,6 +53,7 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
 };
 
 const CORE_PATH_KEYS: Record<string, BaseTextKey> = {
@@ -72,6 +75,7 @@ const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 	if (issue.capability.kind === 'channel' || issue.capability.kind === 'task') return false;
+	if (isWarningIssue(issue)) return false;
 
 	// Fixed URLs are required for publishing, but the draft preview can still run.
 	return !(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'));

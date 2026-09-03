@@ -146,6 +146,11 @@ const isAmbiguous = computed(
 	() => workflowId.value === undefined && matchingProjectWorkflows.value.length > 1,
 );
 
+/** Target works in preview, but the published agent cannot call it until it is published. */
+const isUnpublished = computed(
+	() => !isLoadingWorkflows.value && !isUnusable.value && targetWorkflow.value?.active === false,
+);
+
 /**
  * Options are keyed by id so same-named workflows remain individually
  * selectable.
@@ -466,6 +471,14 @@ defineExpose({
 						interpolate: { name: workflow },
 					})
 				}}
+			</N8nText>
+			<N8nText
+				v-else-if="isUnpublished"
+				size="xsmall"
+				color="warning"
+				data-test-id="agent-workflow-tool-target-unpublished"
+			>
+				{{ i18n.baseText('agents.toolConfig.workflow.target.notPublished') }}
 			</N8nText>
 		</div>
 

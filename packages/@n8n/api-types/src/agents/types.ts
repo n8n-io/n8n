@@ -1,23 +1,9 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	getChildNodes,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	type IConnections,
-} from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 
-export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-] as const;
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
 /**
  * Body nodes a workflow tool cannot run. The Wait node is absent by design — the

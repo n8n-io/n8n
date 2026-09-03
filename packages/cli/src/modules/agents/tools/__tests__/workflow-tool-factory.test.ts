@@ -29,11 +29,11 @@ vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined)
 
 const triggerNode: INode = {
 	id: 'trigger-1',
-	name: 'Manual Trigger',
-	type: 'n8n-nodes-base.manualTrigger',
-	typeVersion: 1,
+	name: 'When Executed by Another Workflow',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	typeVersion: 1.1,
 	position: [0, 0],
-	parameters: {},
+	parameters: { inputSource: 'passthrough' },
 };
 
 const workflow = {
@@ -68,25 +68,22 @@ describe('executeWorkflow → execution classification', () => {
 		Container.reset();
 	});
 
-	it.each([
-		['manual', 'test'],
-		['integrated', 'production'],
-	] as const)(
-		'runs %s agent workflow tools as %s executions',
-		async (executionMode, publicMode) => {
+	it.each(['manual', 'integrated'] as const)(
+		'runs agent workflow tools as %s executions',
+		async (executionMode) => {
 			const run = vi.fn().mockResolvedValue('exec-1');
 			const context = {
 				...buildContext(run),
 				executionMode,
 			} as WorkflowToolContext;
 
-			await executeWorkflow(workflow, triggerNode, 'webhook', { body: { value: 1 } }, context);
+			await executeWorkflow(workflow, triggerNode, { value: 1 }, context);
 
 			const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 			expect(runData.executionMode).toBe(executionMode);
 			expect(
 				runData.executionData?.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json,
-			).toMatchObject({ executionMode: publicMode });
+			).toEqual({ value: 1 });
 		},
 	);
 
@@ -96,9 +93,7 @@ describe('executeWorkflow → execution classification', () => {
 		subworkflowPolicyChecker.checkForProject.mockRejectedValue(new Error('denied'));
 		const context = buildContext(run, { subworkflowPolicyChecker });
 
-		await expect(executeWorkflow(workflow, triggerNode, 'manual', {}, context)).rejects.toThrow(
-			'denied',
-		);
+		await expect(executeWorkflow(workflow, triggerNode, {}, context)).rejects.toThrow('denied');
 
 		expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
 		expect(run).not.toHaveBeenCalled();
@@ -111,7 +106,7 @@ describe('executeWorkflow → execution classification', () => {
 			pinData: { 'Pinned Node': [{ json: { value: 'editor-only' } }] },
 		} as WorkflowEntity;
 
-		await executeWorkflow(workflowWithPinData, triggerNode, 'manual', { input: 'live' }, {
+		await executeWorkflow(workflowWithPinData, triggerNode, { input: 'live' }, {
 			...buildContext(run),
 			executionMode: 'integrated',
 		} as WorkflowToolContext);
@@ -157,7 +152,7 @@ describe('executeWorkflow → execution classification', () => {
 			getPostExecutePromise: vi.fn().mockResolvedValue(completedRun),
 		} as unknown as ActiveExecutions;
 
-		const result = await executeWorkflow(workflow, triggerNode, 'manual', {}, {
+		const result = await executeWorkflow(workflow, triggerNode, {}, {
 			...buildContext(run),
 			activeExecutions,
 			executionMode: 'integrated',
@@ -209,7 +204,6 @@ describe('executeWorkflow → execution classification', () => {
 		const result = await executeWorkflow(
 			workflow,
 			triggerNode,
-			'manual',
 			{},
 			{
 				...buildContext(run),
@@ -241,7 +235,6 @@ describe('executeWorkflow → eval instrumentation', () => {
 		await executeWorkflow(
 			workflow,
 			triggerNode,
-			'manual',
 			{ input: 'hello' },
 			buildContext(run, { instrumentToolAdditionalData }),
 			false,
@@ -262,7 +255,7 @@ describe('executeWorkflow → eval instrumentation', () => {
 	it('leaves the run data untouched when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
-		await executeWorkflow(workflow, triggerNode, 'manual', {}, buildContext(run), false);
+		await executeWorkflow(workflow, triggerNode, {}, buildContext(run), false);
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
@@ -274,7 +267,6 @@ describe('executeWorkflow → eval instrumentation', () => {
 		await executeWorkflow(
 			workflow,
 			triggerNode,
-			'manual',
 			{},
 			buildContext(run, { instrumentToolAdditionalData: vi.fn() }),
 			false,
@@ -327,7 +319,6 @@ describe('executeWorkflow → webhook response', () => {
 		const result = await executeWorkflow(
 			workflow,
 			triggerNode,
-			'manual',
 			{},
 			buildContext(runnerResolving(relayed)),
 			false,
@@ -347,7 +338,6 @@ describe('executeWorkflow → webhook response', () => {
 		const result = await executeWorkflow(
 			workflow,
 			triggerNode,
-			'manual',
 			{},
 			buildContext(runnerResolving(relayed)),
 			false,

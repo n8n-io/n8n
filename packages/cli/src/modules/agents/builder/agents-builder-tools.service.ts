@@ -1323,7 +1323,9 @@ export class AgentsBuilderToolsService {
 		const listWorkflowsTool = new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
-					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					"Only returns workflows that start with a 'When Executed by Another Workflow' trigger. " +
+					'`active: false` means the workflow is not published; the published agent cannot call it until it is. ' +
+					'Pass `searchTerm` to narrow by workflow name; ' +
 					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
 			.input(

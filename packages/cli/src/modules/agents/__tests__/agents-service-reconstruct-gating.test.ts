@@ -26,7 +26,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
-import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -119,7 +119,6 @@ function makeReconstructionService(
 		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
-		mock<UrlService>(),
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
 		secureRuntime,
 		mock<EphemeralNodeExecutor>(),
@@ -134,6 +133,7 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<Telemetry>(),
 	);
 }
 

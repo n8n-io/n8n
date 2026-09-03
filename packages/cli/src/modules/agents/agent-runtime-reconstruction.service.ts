@@ -29,6 +29,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -43,7 +44,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -85,6 +86,7 @@ import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
+import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -185,6 +187,19 @@ export interface UserToolAccessSnapshot {
 	workflowIds: string[];
 }
 
+/** A configured node/workflow tool that was left out of the runtime, and why. */
+export interface UnavailableTool {
+	toolName: string;
+	toolType: 'workflow' | 'node';
+	reason: 'not_found' | 'incompatible' | 'no_access';
+	message: string;
+}
+
+function toolRefName(ref: AgentJsonToolConfig): string {
+	if (ref.type === 'custom') return ref.id;
+	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
@@ -193,7 +208,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
@@ -208,6 +222,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -237,10 +252,12 @@ export class AgentRuntimeReconstructionService {
 		// execute or lacks credential/workflow access to before the runtime is
 		// built, so denied tools never reach the LLM or the executor.
 		let userToolAccessSnapshot: UserToolAccessSnapshot | undefined;
+		let unavailableTools: UnavailableTool[] = [];
 		if (user && config.tools?.length) {
 			const filtered = await this.filterToolsForUser(config.tools, agentEntity.projectId, user);
 			config = { ...config, tools: filtered.tools };
 			userToolAccessSnapshot = filtered.snapshot;
+			unavailableTools = filtered.unavailable;
 		}
 
 		const toolsByName: Record<string, string> = {};
@@ -274,6 +291,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			unavailableTools,
 		});
 		return {
 			...runtime,
@@ -288,26 +306,40 @@ export class AgentRuntimeReconstructionService {
 	 * than the resolved tools) means a denied ref never reaches
 	 * `makeToolResolver`/`resolveToolRef`, so no inert marker tool is exposed to
 	 * the LLM. Custom tools are untouched — they run n8n-authored code, not a
-	 * caller-chosen node/workflow with baked credentials.
+	 * caller-chosen node/workflow with baked credentials. Every dropped ref is
+	 * reported in `unavailable` so the build can log and track it.
 	 */
 	private async filterToolsForUser(
 		tools: AgentJsonToolConfig[],
 		projectId: string,
 		user: User,
-	): Promise<{ tools: AgentJsonToolConfig[]; snapshot?: UserToolAccessSnapshot }> {
+	): Promise<{
+		tools: AgentJsonToolConfig[];
+		snapshot?: UserToolAccessSnapshot;
+		unavailable: UnavailableTool[];
+	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
 
 		const filtered: AgentJsonToolConfig[] = [];
+		const unavailable: UnavailableTool[] = [];
 		const grantedCredentialIds = new Set<string>();
 		const grantedWorkflowIds = new Set<string>();
 		let keptGatedTool = false;
+		const drop = (
+			ref: Extract<AgentJsonToolConfig, { type: 'workflow' | 'node' }>,
+			reason: UnavailableTool['reason'],
+			message: string,
+		) => unavailable.push({ toolName: toolRefName(ref), toolType: ref.type, reason, message });
 		for (const ref of tools) {
 			if (ref.type === 'custom') {
 				filtered.push(ref);
 				continue;
 			}
 
-			if (!canExecute) continue;
+			if (!canExecute) {
+				drop(ref, 'no_access', 'The user lacks workflow:execute on the project');
+				continue;
+			}
 
 			if (ref.type === 'node') {
 				const credentialIds = Object.values(ref.node.credentials ?? {})
@@ -322,7 +354,10 @@ export class AgentRuntimeReconstructionService {
 							]),
 					),
 				);
-				if (accessibleCredentials.some((credential) => credential === null)) continue;
+				if (accessibleCredentials.some((credential) => credential === null)) {
+					drop(ref, 'no_access', 'The user cannot read a credential the tool uses');
+					continue;
+				}
 
 				for (const id of credentialIds) grantedCredentialIds.add(id);
 				keptGatedTool = true;
@@ -332,14 +367,20 @@ export class AgentRuntimeReconstructionService {
 
 			// ref.type === 'workflow'
 			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
-			if (!workflow) continue;
+			if (!workflow) {
+				drop(ref, 'not_found', `Workflow "${ref.workflow}" not found`);
+				continue;
+			}
 
 			const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				user,
 				['workflow:execute'],
 			);
-			if (!accessibleWorkflow) continue;
+			if (!accessibleWorkflow) {
+				drop(ref, 'no_access', `The user cannot execute workflow "${workflow.name}"`);
+				continue;
+			}
 
 			grantedWorkflowIds.add(workflow.id);
 			keptGatedTool = true;
@@ -348,6 +389,7 @@ export class AgentRuntimeReconstructionService {
 
 		return {
 			tools: filtered,
+			unavailable,
 			...(keptGatedTool
 				? {
 						snapshot: {
@@ -404,11 +446,13 @@ export class AgentRuntimeReconstructionService {
 		params: ReconstructAgentRuntimeParams,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = params.config;
+		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
 			// grant snapshot is not needed here.
 			const filtered = await this.filterToolsForUser(config.tools, params.projectId, params.user);
 			config = { ...config, tools: filtered.tools };
+			unavailableTools = filtered.unavailable;
 		}
 
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
@@ -418,6 +462,7 @@ export class AgentRuntimeReconstructionService {
 			config,
 			credentialIntegrations: [],
 			subAgentDelegation,
+			unavailableTools,
 		});
 	}
 
@@ -445,6 +490,8 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
+		/** Tools the access filter already dropped; reported together with build-time drops. */
+		unavailableTools?: UnavailableTool[];
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -467,6 +514,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			parentWorkspace,
 		} = options;
+		const unavailable = [...(options.unavailableTools ?? [])];
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		const toolResolver = this.makeToolResolver(
@@ -522,7 +570,21 @@ export class AgentRuntimeReconstructionService {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
-				const resolved = await toolResolver(ref);
+				let resolved: BuiltTool | null | undefined;
+				try {
+					resolved = await toolResolver(ref);
+				} catch (error) {
+					// A missing or incompatible workflow costs the agent one tool, not the
+					// whole run. `resolveToolRef` swaps in its inert marker tool for `null`.
+					if (!(error instanceof WorkflowToolUnavailableError)) throw error;
+					unavailable.push({
+						toolName: toolRefName(ref),
+						toolType: 'workflow',
+						reason: error.reason,
+						message: error.message,
+					});
+					return null;
+				}
 				if (resolved) resolvedTools.push(resolved);
 				return resolved;
 			},
@@ -537,6 +599,22 @@ export class AgentRuntimeReconstructionService {
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
 		});
+
+		if (unavailable.length > 0) {
+			this.logger.warn('Agent runtime built without unavailable tools', {
+				agentId: memoryOwnerAgentId,
+				runType,
+				tools: unavailable,
+			});
+			for (const tool of unavailable) {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_DROPPED_UNAVAILABLE_TOOL, {
+					agent_id: memoryOwnerAgentId,
+					run_type: runType,
+					tool_type: tool.toolType,
+					reason: tool.reason,
+				});
+			}
+		}
 
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
@@ -667,7 +745,6 @@ export class AgentRuntimeReconstructionService {
 					projectId,
 					executionMode: workflowToolExecutionMode,
 					usePublishedWorkflowVersion,
-					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
 					agentId,
 					integrationType,

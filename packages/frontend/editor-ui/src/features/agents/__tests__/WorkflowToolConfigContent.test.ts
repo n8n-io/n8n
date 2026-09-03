@@ -65,6 +65,7 @@ function workflow(
 	overrides: {
 		id?: string;
 		isArchived?: boolean;
+		active?: boolean;
 		updatedAt?: string;
 		description?: string;
 	} = {},
@@ -74,6 +75,7 @@ function workflow(
 		name,
 		description: overrides.description ?? '',
 		isArchived: overrides.isArchived ?? false,
+		active: overrides.active ?? true,
 		updatedAt: overrides.updatedAt ?? '2026-07-01T12:00:00.000Z',
 		nodes: [{ type: TRIGGER_TYPE }] as Array<{
 			type: string;
@@ -339,6 +341,17 @@ describe('WorkflowToolConfigContent', () => {
 
 		expect(await findByTestId('agent-workflow-tool-target-unusable')).toBeTruthy();
 		expect(queryByTestId('agent-workflow-tool-target-missing')).toBeNull();
+	});
+
+	it('flags a usable target whose workflow is not published', async () => {
+		setProjectWorkflows([workflow('Notify Sales', { active: false })]);
+
+		const { queryByTestId, findByTestId } = renderComponent({
+			props: { initialRef: createRef() },
+		});
+
+		expect(await findByTestId('agent-workflow-tool-target-unpublished')).toBeTruthy();
+		expect(queryByTestId('agent-workflow-tool-target-unusable')).toBeNull();
 	});
 
 	describe('workflow input bindings', () => {

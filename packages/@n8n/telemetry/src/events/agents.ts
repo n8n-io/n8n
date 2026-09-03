@@ -185,6 +185,17 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
+	AGENT_DROPPED_UNAVAILABLE_TOOL: {
+		name: 'Agent dropped unavailable tool',
+		description:
+			'A configured tool was left out while an agent runtime was built because its workflow was deleted, archived, incompatible, or not accessible to the calling user. Fires once per dropped tool per runtime build; the agent keeps running without the tool.',
+		properties: z.object({
+			agent_id: z.string(),
+			run_type: agentRunType,
+			tool_type: z.enum(['workflow', 'node']),
+			reason: z.enum(['not_found', 'incompatible', 'no_access']),
+		}),
+	},
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:

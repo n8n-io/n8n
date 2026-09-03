@@ -17,6 +17,12 @@ export interface LoadWorkflowOptions {
 	 * workflows. Throws when the workflow has never been published.
 	 */
 	usePublishedVersion?: boolean;
+	/**
+	 * With `usePublishedVersion`, return the draft instead of throwing when the
+	 * workflow has never been published. The build step uses this to register
+	 * the tool from the draft schema; the call-time load stays strict.
+	 */
+	fallbackToDraft?: boolean;
 }
 
 @Service()
@@ -41,12 +47,13 @@ export class WorkflowToolWorkflowLoader {
 
 		if (options.usePublishedVersion) {
 			const published = await this.resolvePublishedContent(workflow);
-			if (!published) {
+			if (published) {
+				Object.assign(workflow, { nodes: published.nodes, connections: published.connections });
+			} else if (!options.fallbackToDraft) {
 				throw new UserError(
 					`Workflow "${workflow.name}" is not published. Publish it before using it in a production agent run.`,
 				);
 			}
-			Object.assign(workflow, { nodes: published.nodes, connections: published.connections });
 		}
 
 		return Object.assign(workflow, { pinData: undefined });

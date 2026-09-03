@@ -103,6 +103,24 @@ describe('WorkflowToolWorkflowLoader', () => {
 		);
 	});
 
+	it('falls back to the draft for a never-published workflow when asked to', async () => {
+		const { service, workflowRepository } = makeService();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			makeWorkflow({
+				versionId: 'draft-version',
+				activeVersion: null,
+			} as unknown as Partial<WorkflowEntity>),
+		);
+
+		const workflow = await service.loadWorkflow('project-1', reference, {
+			usePublishedVersion: true,
+			fallbackToDraft: true,
+		});
+
+		expect(workflow).toMatchObject({ versionId: 'draft-version', nodes: [{ id: 'draft-node' }] });
+		expect(workflow?.pinData).toBeUndefined();
+	});
+
 	it('reads the published version from the publication service when enabled', async () => {
 		const { service, workflowRepository, workflowPublishedDataService } = makeService({
 			useWorkflowPublicationService: true,
