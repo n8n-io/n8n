@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { N8N_NODES_API_VERSION } from 'n8n-workflow';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -18,16 +19,20 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 
 	beforeEach(() => {
 		nodeModulesDir = mkdtempSync(path.join(tmpdir(), 'n8n-scan-'));
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
 		rmSync(nodeModulesDir, { recursive: true, force: true });
 	});
 
-	const writePackage = (name: string) => {
+	const writePackage = (name: string, n8n?: object) => {
 		const dir = path.join(nodeModulesDir, name);
 		mkdirSync(dir);
-		writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name, version: '1.0.0' }));
+		writeFileSync(
+			path.join(dir, 'package.json'),
+			JSON.stringify({ name, version: '1.0.0', ...(n8n ? { n8n } : {}) }),
+		);
 		return dir;
 	};
 
@@ -80,5 +85,38 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 
 		expect(loaders).toHaveLength(1);
 		expect(loaders[0].packageName).toBe('n8n-nodes-good');
+	});
+
+	// A package declaring a node API version newer than the runtime's must not
+	// get a loader at all — without one, its node code is never imported, so an
+	// incompatible package already on disk cannot crash startup.
+	it('registers no loader for a package requiring an unsupported node API version', async () => {
+		writePackage('n8n-nodes-future', {
+			nodes: ['dist/nodes/Future.node.js'],
+			n8nNodesApiVersion: N8N_NODES_API_VERSION + 1,
+		});
+		writePackage('n8n-nodes-good');
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders.map((loader) => loader.packageName)).toEqual(['n8n-nodes-good']);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('n8n-nodes-future'));
+		const [message] = vi.mocked(logger.warn).mock.calls[0];
+		expect(message).toContain(`node API version ${N8N_NODES_API_VERSION + 1}`);
+		expect(message).toContain(`supports up to ${N8N_NODES_API_VERSION}`);
+		expect(message).toContain('Upgrade n8n');
+	});
+
+	it('loads a package declaring a supported node API version alongside a legacy one', async () => {
+		writePackage('n8n-nodes-explicit', { n8nNodesApiVersion: N8N_NODES_API_VERSION });
+		writePackage('n8n-nodes-legacy');
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders.map((loader) => loader.packageName).sort()).toEqual([
+			'n8n-nodes-explicit',
+			'n8n-nodes-legacy',
+		]);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });

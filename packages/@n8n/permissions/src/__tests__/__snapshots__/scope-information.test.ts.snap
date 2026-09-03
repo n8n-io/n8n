@@ -54,6 +54,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "ldap:manage",
   "license:manage",
   "logStreaming:manage",
+  "nodeTypePolicy:manage",
   "orchestration:read",
   "orchestration:list",
   "orchestration:manage",

@@ -230,8 +230,11 @@ export class ScalingService {
 
 		while (this.getRunningJobsCount() !== 0) {
 			if (count++ % 4 === 0) {
+				const summaries = this.jobProcessor.getRunningJobsSummary();
+				const executionIds = summaries.map((summary) => summary.executionId);
 				this.logger.info(
-					`Waiting for ${this.getRunningJobsCount()} active executions to finish...`,
+					`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
+					{ executionIds },
 				);
 			}
 

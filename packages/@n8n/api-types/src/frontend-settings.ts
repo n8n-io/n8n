@@ -197,6 +197,10 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	/**
+	 * @deprecated Gates the AI Transform node's code generation. No longer gates
+	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
+	 */
 	askAi: {
 		enabled: boolean;
 	};
