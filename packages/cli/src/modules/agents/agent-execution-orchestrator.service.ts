@@ -198,6 +198,17 @@ function getMaxIterationsChunks(): StreamChunk[] {
 	];
 }
 
+/**
+ * Record an aborted run as a clean stop rather than a failure, dropping the
+ * teardown error the run raised on its way out.
+ *
+ * A lost connection no longer aborts a chat run, so for the chat controller
+ * this signal means an explicit Stop. It is not the only producer, though:
+ * Instance AI threads its own session signal in through `executeDraftRun`, and
+ * that one also fires on shutdown — so a run killed by a restart still records
+ * as `cancelled` with no error. Carrying the intent on the signal itself
+ * (`abort(reason)`) would make this true by construction.
+ */
 function normalizeAbortedMessageRecord(
 	record: MessageRecord,
 	abortSignal?: AbortSignal,

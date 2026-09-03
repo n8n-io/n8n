@@ -19,6 +19,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+const cancelActiveAgentChatRunMock = vi.fn();
 
 const pushListeners: Array<(event: unknown) => void> = [];
 const pushConnectMock = vi.fn();
@@ -43,6 +44,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
+		cancelActiveAgentChatRun: (...args: unknown[]) => cancelActiveAgentChatRunMock(...args),
 	};
 });
 
@@ -164,6 +166,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		});
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		cancelActiveAgentChatRunMock.mockReset();
+		cancelActiveAgentChatRunMock.mockResolvedValue({ cancelled: true });
 		getTestChatMessagesMock.mockReset();
 	});
 
@@ -2317,6 +2321,8 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		cancelActiveAgentChatRunMock.mockReset();
+		cancelActiveAgentChatRunMock.mockResolvedValue({ cancelled: true });
 		getTestChatMessagesMock.mockReset();
 	});
 
@@ -2391,8 +2397,46 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		await nextTick();
 
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
-		// No backend cancel call — there is no runId/suspension to cancel.
+		// No backend cancel call — there is no runId/suspension to cancel, and no
+		// live run either, so the stop is purely local recovery.
 		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+		expect(cancelActiveAgentChatRunMock).not.toHaveBeenCalled();
+	});
+
+	it('asks the backend to stop a live turn before dropping the connection', async () => {
+		// The run outlives its connection now, so aborting the fetch alone would
+		// leave it going and it would reappear, finished, on the next reload.
+		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse([], init.signal ?? null),
+		) as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('take your time');
+		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
+
+		await hook.stopGenerating();
+		await send;
+
+		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(hook.isStreaming.value).toBe(false);
+		expect(hook.isCancelling.value).toBe(false);
+	});
+
+	it('still settles the chat when the stop request fails', async () => {
+		cancelActiveAgentChatRunMock.mockRejectedValue(new Error('request failed'));
+		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse([], init.signal ?? null),
+		) as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('take your time');
+		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
+
+		await hook.stopGenerating();
+		await send;
+
+		expect(hook.isStreaming.value).toBe(false);
+		expect(hook.isCancelling.value).toBe(false);
 	});
 });
 
