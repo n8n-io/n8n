@@ -106,8 +106,8 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
-	async deleteOlderThan(cutoff: Date): Promise<number> {
-		return await this.deleteInBatches({ createdAt: LessThan(cutoff) });
+	async deleteOlderThan(cutoff: Date, signal?: AbortSignal): Promise<number> {
+		return await this.deleteInBatches({ createdAt: LessThan(cutoff) }, undefined, signal);
 	}
 
 	/**
@@ -115,7 +115,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * more in a day than the window is meant to hold. Finds the oldest entry worth keeping and
 	 * deletes below it, rather than counting rows twice.
 	 */
-	async deleteBeyondNewest(keep: number): Promise<number> {
+	async deleteBeyondNewest(keep: number, signal?: AbortSignal): Promise<number> {
 		// A cap of 0 means unlimited, as it does for `EXECUTIONS_DATA_PRUNE_MAX_COUNT`. Reading it
 		// as "keep nothing" would empty the table on a config typo. Also guards `skip: keep - 1`,
 		// which would otherwise ask the driver for a negative offset.
@@ -129,7 +129,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		});
 		if (!oldestKept) return 0;
 
-		return await this.deleteInBatches({}, LessThan(oldestKept.id));
+		return await this.deleteInBatches({}, LessThan(oldestKept.id), signal);
 	}
 
 	/**
@@ -143,10 +143,14 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 *
 	 * `idBound` is taken apart from `scope` so the per-batch bound can be *added* to it rather
 	 * than replacing it. A caller cannot hand over a batch predicate that drops its own scope.
+	 *
+	 * `signal` stops the walk at a batch boundary. Without it a long backlog holds its caller for
+	 * as many round trips as it takes, which on a sweeper means blocking shutdown and stepdown.
 	 */
 	private async deleteInBatches(
 		scope: Omit<FindOptionsWhere<ActivityEvent>, 'id'>,
 		idBound?: FindOperator<number>,
+		signal?: AbortSignal,
 	): Promise<number> {
 		const scoped: FindOptionsWhere<ActivityEvent> = idBound ? { ...scope, id: idBound } : scope;
 		let total = 0;
@@ -168,6 +172,9 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			total += affected ?? 0;
 
 			if (batch.length < retentionBatchSize) return total;
+			// Checked between passes, so a caller that has to stop — a shutdown, or a leader losing
+			// the role — waits for one bounded delete rather than the whole backlog.
+			if (signal?.aborted) return total;
 		}
 	}
 }

@@ -1209,8 +1209,9 @@ export class CredentialsService {
 			return;
 		}
 
-		// Read before the delete cascades away the `shared_credentials` rows that name it. The
-		// end-user check below reuses it rather than querying for the same row again.
+		// Read before the delete cascades away the `shared_credentials` rows that name it, so this
+		// runs for every credential rather than only the resolvable ones the check below covers.
+		// An instance-scoped credential has no such row and resolves to nothing, which is expected.
 		const owningProject =
 			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 

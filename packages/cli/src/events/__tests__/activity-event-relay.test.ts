@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { ActivityLogConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
 	IWorkflowDb,
@@ -40,13 +40,12 @@ describe('ActivityEventRelay', () => {
 	let eventService: EventService;
 
 	const relayWith = (enabled: boolean) => {
-		const globalConfig = mock<GlobalConfig>({ activityLog: { enabled } });
 		const relay = new ActivityEventRelay(
 			eventService,
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
-			globalConfig,
+			mock<ActivityLogConfig>({ enabled }),
 			logger,
 		);
 		relay.init();
@@ -347,6 +346,23 @@ describe('ActivityEventRelay', () => {
 		 * The repository replaces an over-budget payload wholesale with a truncation marker, which
 		 * would take `source` with it — and provenance is the field this entry exists to carry.
 		 */
+		it('clips an unbounded version name so the pointer survives the budget', async () => {
+			relayWith(true);
+
+			eventService.emit('workflow-version-updated', {
+				user,
+				workflowId: 'workflow1',
+				workflowName: 'Lead enrichment',
+				versionId: 'version1',
+				versionName: 'x'.repeat(2_000),
+			});
+			await flushPromises();
+
+			const { data } = activityEventRepository.record.mock.calls[0][0];
+			expect(JSON.stringify(data).length).toBeLessThanOrEqual(512);
+			expect(data).toEqual({ versionId: 'version1', versionName: 'x'.repeat(64) });
+		});
+
 		it('sheds detail to fit the budget rather than losing provenance to truncation', async () => {
 			relayWith(true);
 
@@ -389,7 +405,7 @@ describe('ActivityEventRelay', () => {
 			);
 		});
 
-		it('swallows a resolution failure instead of failing the operation being recorded', async () => {
+		it('reports a failed lookup once, naming the event, rather than blaming a missing project', async () => {
 			relayWith(true);
 			sharedWorkflowRepository.getWorkflowOwningProject.mockRejectedValue(new Error('db is gone'));
 
@@ -397,9 +413,9 @@ describe('ActivityEventRelay', () => {
 			await flushPromises();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
-			expect(scopedLogger.warn).toHaveBeenCalledWith(
-				'Failed to resolve the project owning a workflow',
-				expect.objectContaining({ workflowId: 'workflow1' }),
+			expect(scopedLogger.warn).toHaveBeenCalledExactlyOnceWith(
+				'Failed to record activity for an event',
+				expect.objectContaining({ event: 'workflow-archived' }),
 			);
 		});
 
@@ -440,6 +456,30 @@ describe('ActivityEventRelay', () => {
 			await flushPromises();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * An instance-scoped credential is stored with no `shared_credentials` row, so it has no
+		 * project and never will. Warning about it every time would be noise no operator can act on.
+		 */
+		it('drops an unattributable credential quietly, unlike an unattributable workflow', async () => {
+			relayWith(true);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+
+			eventService.emit('credentials-updated', {
+				user,
+				credentialType: 'slackApi',
+				credentialId: 'credential1',
+				credentialName: 'Instance chat model',
+			});
+			await flushPromises();
+
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+			expect(scopedLogger.debug).toHaveBeenCalledWith(
+				'Dropped an activity entry with no project to attribute it to',
+				expect.objectContaining({ category: 'credential' }),
+			);
 		});
 
 		it('swallows a failed write, because a full disk must not lose a workflow save', async () => {

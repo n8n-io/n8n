@@ -38,12 +38,13 @@ export class ActivityPruningTask implements SystemTask {
 		this.logger = this.logger.scoped('activity-log');
 	}
 
+	/**
+	 * Deliberately not gated on the write flag. Turning the flag off stops new rows, not the ones
+	 * already there — and disabling the feature is exactly when a leftover backlog of workflow and
+	 * credential names should still age out. Both sweeps cost one indexed read on an empty table.
+	 */
 	async run(signal: AbortSignal): Promise<void> {
-		const { enabled, retentionDays, maxEntries } = this.activityLogConfig;
-
-		// Nothing accrues while the flag is off, so there is nothing to sweep. Whatever a previous
-		// enabled period left behind is pruned when it is turned back on.
-		if (!enabled) return;
+		const { retentionDays, maxEntries } = this.activityLogConfig;
 
 		let deleted = 0;
 
@@ -51,15 +52,11 @@ export class ActivityPruningTask implements SystemTask {
 		// "keep nothing" would empty the table on a config typo.
 		if (retentionDays > 0) {
 			const cutoff = new Date(Date.now() - retentionDays * Time.days.toMilliseconds);
-			deleted += await this.activityEventRepository.deleteOlderThan(cutoff);
+			deleted += await this.activityEventRepository.deleteOlderThan(cutoff, signal);
 		}
 
-		// Checked between the two sweeps rather than inside one: the repository walks its own
-		// batches, and each is short enough that stopping at the boundary is soon enough.
-		if (signal.aborted) return;
-
-		if (maxEntries > 0) {
-			deleted += await this.activityEventRepository.deleteBeyondNewest(maxEntries);
+		if (!signal.aborted && maxEntries > 0) {
+			deleted += await this.activityEventRepository.deleteBeyondNewest(maxEntries, signal);
 		}
 
 		if (deleted > 0) this.logger.debug(`Pruned ${deleted} activity entries`);

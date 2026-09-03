@@ -32,15 +32,18 @@ describe('ActivityPruningTask', () => {
 
 		const [cutoff] = activityEventRepository.deleteOlderThan.mock.calls[0];
 		expect(Date.now() - cutoff.getTime()).toBeCloseTo(14 * Time.days.toMilliseconds, -3);
-		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalledWith(20_000);
+		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalledWith(
+			20_000,
+			expect.any(AbortSignal),
+		);
 		expect(scopedLogger.debug).toHaveBeenCalledWith('Pruned 5 activity entries');
 	});
 
-	it('sweeps nothing while the flag is off, because nothing is accruing', async () => {
+	it('keeps draining the backlog after the flag is turned off', async () => {
 		await taskWith({ enabled: false }).run(new AbortController().signal);
 
-		expect(activityEventRepository.deleteOlderThan).not.toHaveBeenCalled();
-		expect(activityEventRepository.deleteBeyondNewest).not.toHaveBeenCalled();
+		expect(activityEventRepository.deleteOlderThan).toHaveBeenCalled();
+		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalled();
 	});
 
 	it.each([
@@ -65,6 +68,16 @@ describe('ActivityPruningTask', () => {
 		await taskWith().run(controller.signal);
 
 		expect(activityEventRepository.deleteBeyondNewest).not.toHaveBeenCalled();
+	});
+
+	/** Without this the sweep walks the whole backlog, and shutdown and stepdown wait on it. */
+	it('hands the signal to each sweep so a long backlog can be interrupted mid-walk', async () => {
+		const { signal } = new AbortController();
+
+		await taskWith().run(signal);
+
+		expect(activityEventRepository.deleteOlderThan).toHaveBeenCalledWith(expect.any(Date), signal);
+		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalledWith(20_000, signal);
 	});
 
 	/** The runner owns retries, so a failure has to surface rather than be swallowed here. */

@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { ActivityLogConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -11,7 +11,7 @@ import { Service } from '@n8n/di';
 import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 
 /** Carried by nearly every core node type. Dropping it buys room inside the `data` budget. */
@@ -20,8 +20,16 @@ const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
 /** Enough distinct types to show what a user reached for, few enough to leave room for the rest. */
 const maxListedNodeTypes = 5;
 
+/** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
+const maxDetailStringLength = 64;
+
 /** An entry that resolves no project, since one written without a project could never be read. */
 type UnresolvedProject = { projectId: string | undefined };
+
+/** The shape `setupListeners` takes, so wrapping the map keeps each handler's payload type. */
+type ActivityHandlers<EventNames extends keyof RelayEventMap> = {
+	[EventName in EventNames]?: (event: RelayEventMap[EventName]) => Promise<void>;
+};
 
 /**
  * Records recent instance activity to `activity_event`, so a consumer can be handed what has been
@@ -35,9 +43,7 @@ type UnresolvedProject = { projectId: string | undefined };
  *
  * Not recorded, because the events carry too little to render a useful entry: data tables and
  * folders (no name, no acting user), agents (only an id), projects and source control. Executions
- * are not recorded either, by decision — `execution_entity` already holds every run and indexes the
- * read a feed wants, so a row per run would duplicate it at the same cardinality and pay for it
- * with an insert on the execution hot path.
+ * are not recorded either — see `ActivityEvent.category` for why.
  */
 @Service()
 export class ActivityEventRelay extends EventRelay {
@@ -46,7 +52,7 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly globalConfig: GlobalConfig,
+		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -55,38 +61,51 @@ export class ActivityEventRelay extends EventRelay {
 
 	init() {
 		// Checked once, so a disabled instance registers no listeners and pays nothing per event.
-		if (!this.globalConfig.activityLog.enabled) return;
+		if (!this.activityLogConfig.enabled) return;
 
-		this.setupListeners({
-			'workflow-created': this.guard(async (e) => await this.onWorkflowCreated(e)),
-			'workflow-saved': this.guard(async (e) => await this.onWorkflowSaved(e)),
-			'workflow-activated': this.guard(async (e) => await this.onPublishToggled(e, 'published')),
-			'workflow-deactivated': this.guard(
-				async (e) => await this.onPublishToggled(e, 'unpublished'),
-			),
-			'workflow-archived': this.guard(async (e) => await this.onWorkflowFlagged(e, 'archived')),
-			'workflow-unarchived': this.guard(async (e) => await this.onWorkflowFlagged(e, 'unarchived')),
-			'workflow-deleted': this.guard(async (e) => await this.onWorkflowDeleted(e)),
-			'workflow-version-updated': this.guard(async (e) => await this.onWorkflowVersionUpdated(e)),
-			'credentials-created': this.guard(async (e) => await this.onCredentialCreated(e)),
-			'credentials-updated': this.guard(async (e) => await this.onCredentialUpdated(e)),
-			'credentials-deleted': this.guard(async (e) => await this.onCredentialDeleted(e)),
-		});
+		this.setupListeners(
+			this.guarded({
+				'workflow-created': async (e) => await this.onWorkflowCreated(e),
+				'workflow-saved': async (e) => await this.onWorkflowSaved(e),
+				'workflow-activated': async (e) => await this.onPublishToggled(e, 'published'),
+				'workflow-deactivated': async (e) => await this.onPublishToggled(e, 'unpublished'),
+				'workflow-archived': async (e) => await this.onWorkflowFlagged(e, 'archived'),
+				'workflow-unarchived': async (e) => await this.onWorkflowFlagged(e, 'unarchived'),
+				'workflow-deleted': async (e) => await this.onWorkflowDeleted(e),
+				'workflow-version-updated': async (e) => await this.onWorkflowVersionUpdated(e),
+				'credentials-created': async (e) => await this.onCredentialCreated(e),
+				'credentials-updated': async (e) => await this.onCredentialUpdated(e),
+				'credentials-deleted': async (e) => await this.onCredentialDeleted(e),
+			}),
+		);
 	}
 
 	/**
-	 * Wraps a listener so nothing it does can escape. Shaping an entry has to be as safe as writing
-	 * one — a malformed payload throwing while a delta is computed would reject inside an async
-	 * listener that nobody awaits, which is an unhandled rejection rather than a lost row.
+	 * Wraps every listener so nothing one does can escape. Shaping an entry has to be as safe as
+	 * writing one — a malformed payload throwing while a delta is computed would reject inside an
+	 * async listener that nobody awaits, which is an unhandled rejection rather than a lost row.
+	 *
+	 * Wrapping the map rather than each entry is what lets the log name the event it came from.
 	 */
-	private guard<T>(handle: (event: T) => Promise<void>) {
-		return async (event: T) => {
-			try {
-				await handle(event);
-			} catch (error) {
-				this.logger.warn('Failed to handle an event for the activity log', { error });
-			}
-		};
+	private guarded<EventNames extends keyof RelayEventMap>(
+		handlers: ActivityHandlers<EventNames>,
+	): ActivityHandlers<EventNames> {
+		const entries = Object.entries(handlers) as Array<
+			[EventNames, (event: RelayEventMap[EventNames]) => Promise<void>]
+		>;
+
+		const wrapped = entries.map(([event, handle]) => [
+			event,
+			async (payload: RelayEventMap[EventNames]) => {
+				try {
+					await handle(payload);
+				} catch (error) {
+					this.logger.warn('Failed to record activity for an event', { event, error });
+				}
+			},
+		]);
+
+		return Object.fromEntries(wrapped) as ActivityHandlers<EventNames>;
 	}
 
 	// #region Workflows
@@ -205,7 +224,9 @@ export class ActivityEventRelay extends EventRelay {
 			resourceType: 'workflow',
 			resourceId: workflowId,
 			resourceName: workflowName,
-			data: { versionId, ...(versionName ? { versionName } : {}) },
+			// The name is unbounded user input. Left whole it can push `data` past the budget, and an
+			// over-budget payload is replaced entirely — which would take `versionId` with it.
+			data: { versionId, ...(versionName ? { versionName: clip(versionName) } : {}) },
 		});
 	}
 
@@ -252,10 +273,6 @@ export class ActivityEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Instance-scoped credentials are not an exception. What is instance-level is the *assignment*
-	 * of a credential to a use slot, not the credential, which lives in a project like any other.
-	 */
 	private async onCredentialDeleted({
 		user,
 		credentialId,
@@ -281,6 +298,9 @@ export class ActivityEventRelay extends EventRelay {
 	 * Failing to record activity must never fail the thing being recorded — a full disk should not
 	 * lose a workflow save. Logged at warn rather than error: rows are being dropped, which is worth
 	 * knowing about, but a broken activity log is not an incident.
+	 *
+	 * Every entry written here is shape version 1. Changing what any `data` above carries means
+	 * passing a raised `typeVersion` for that category and action, so an older row still reads.
 	 */
 	private async record(input: Omit<ActivityEventInput, 'projectId'> & UnresolvedProject) {
 		const { projectId, ...rest } = input;
@@ -288,7 +308,16 @@ export class ActivityEventRelay extends EventRelay {
 		if (!projectId) {
 			// Writing the row anyway is not an option: every read filters on the project, so an
 			// unattributed entry would be stored and then never shown to anybody.
-			this.logger.warn('Dropped an activity entry with no project to attribute it to', {
+			//
+			// A credential reaching here is ordinary: an instance-scoped one has no owning project,
+			// and no operator action would give it one. A workflow always has one, so its absence
+			// is a fault worth surfacing.
+			const unattributed =
+				rest.category === 'credential'
+					? this.logger.debug.bind(this.logger)
+					: this.logger.warn.bind(this.logger);
+
+			unattributed('Dropped an activity entry with no project to attribute it to', {
 				category: rest.category,
 				action: rest.action,
 				resourceId: rest.resourceId,
@@ -309,27 +338,19 @@ export class ActivityEventRelay extends EventRelay {
 
 	/** One indexed lookup. Only reached for events whose resource still exists. */
 	private async resolveWorkflowProject(workflowId: string): Promise<string | undefined> {
-		try {
-			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
-			return project?.id;
-		} catch (error) {
-			this.logger.warn('Failed to resolve the project owning a workflow', { workflowId, error });
-			return undefined;
-		}
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		return project?.id;
 	}
 
+	/**
+	 * Unlike a workflow, a credential may legitimately have no project: an instance-scoped one is
+	 * stored without a `shared_credentials` row at all. Its events are therefore dropped rather
+	 * than attributed, and the drop is expected rather than a fault — see `record`.
+	 */
 	private async resolveCredentialProject(credentialId: string): Promise<string | undefined> {
-		try {
-			const project =
-				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
-			return project?.id;
-		} catch (error) {
-			this.logger.warn('Failed to resolve the project owning a credential', {
-				credentialId,
-				error,
-			});
-			return undefined;
-		}
+		const project =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+		return project?.id;
 	}
 }
 
@@ -342,7 +363,10 @@ function nodeCount(workflow: Pick<IWorkflowBase, 'nodes'>): number {
  * assistant or the user". `aiBuilderAssisted` comes off the request body, so it is recorded only
  * when set and is the weaker of the two when they disagree.
  */
-function provenance(source: string | undefined, aiBuilderAssisted?: boolean): IDataObject {
+function provenance(
+	source: WorkflowActionSource | undefined,
+	aiBuilderAssisted?: boolean,
+): IDataObject {
 	return {
 		...(source ? { source } : {}),
 		...(aiBuilderAssisted ? { aiBuilderAssisted: true } : {}),
@@ -380,6 +404,11 @@ function listNodeTypes(types: string[], listKey: string, totalKey: string): IDat
 	if (types.length <= maxListedNodeTypes) return { [listKey]: types };
 
 	return { [listKey]: types.slice(0, maxListedNodeTypes), [totalKey]: types.length };
+}
+
+/** Keeps an unbounded string from spending the whole `data` budget on its own. */
+function clip(value: string): string {
+	return value.length > maxDetailStringLength ? value.slice(0, maxDetailStringLength) : value;
 }
 
 function fitsBudget(data: IDataObject): boolean {

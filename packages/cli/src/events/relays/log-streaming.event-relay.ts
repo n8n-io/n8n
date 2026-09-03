@@ -646,31 +646,50 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Credentials
 
 	/**
-	 * These three forward the rest of the payload as-is, so a field added for another consumer
-	 * would silently widen the audit event. Drop the ones the activity relay needs.
+	 * These name every field they publish. The events they read carry more than the audit stream
+	 * should, and spreading the rest would widen it again the next time one gains a field.
 	 */
 	@Redactable()
 	private credentialsCreated({
 		user,
-		credentialName: _credentialName,
-		...rest
+		credentialType,
+		credentialId,
+		publicApi,
+		projectId,
+		projectType,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				publicApi,
+				projectId,
+				projectType,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 
 	@Redactable()
 	private credentialsDeleted({
 		user,
-		credentialName: _credentialName,
-		projectId: _projectId,
-		...rest
+		credentialType,
+		credentialId,
 	}: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, credentialType, credentialId },
 		});
 	}
 
@@ -696,12 +715,26 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private credentialsUpdated({
 		user,
-		credentialName: _credentialName,
-		...rest
+		credentialType,
+		credentialId,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 
