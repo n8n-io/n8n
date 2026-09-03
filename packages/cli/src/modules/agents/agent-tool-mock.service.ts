@@ -23,7 +23,7 @@ import { MAX_TOOL_MOCK_ITEMS_SIZE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createEvalAgent, extractText, HAIKU_MODEL } from '@n8n/instance-ai';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type {
 	IDataObject,
 	NodeSchemaContext,
@@ -199,11 +199,13 @@ export class AgentToolMockService {
 		});
 
 		// Instance-AI billing for now (this is a low-volume preview affordance,
-		// not a customer-facing generation feature). A later change may retarget
-		// this to the agent's own configured model instead — see the pattern in
-		// `agent-eval-case-generation.service.ts:164-233`.
+		// not a customer-facing generation feature). No explicit model: the
+		// instance's own lane (N8N_INSTANCE_AI_EVAL_MODEL → N8N_INSTANCE_AI_MODEL
+		// → default) must resolve, since only that lane carries the custom
+		// endpoint URL/headers gateway-routed instances authenticate with. A
+		// later change may retarget this to the agent's own configured model —
+		// see the pattern in `agent-eval-case-generation.service.ts:164-233`.
 		const agent = createEvalAgent('agent-tool-mock-generator', {
-			model: HAIKU_MODEL,
 			instructions: PIN_DATA_SYSTEM_PROMPT,
 		});
 

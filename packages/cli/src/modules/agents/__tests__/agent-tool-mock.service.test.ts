@@ -1,7 +1,6 @@
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(),
 	extractText: vi.fn(),
-	HAIKU_MODEL: 'anthropic/claude-haiku-4-5-20251001',
 }));
 
 import type { AgentJsonConfig } from '@n8n/api-types';

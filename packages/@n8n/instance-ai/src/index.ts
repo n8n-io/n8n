@@ -409,8 +409,6 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
-export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
-defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 export type Tool = EvalAgentsMod.Tool;
 export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 defineLazyExport('PURE_REPLAY_TOOLS', () => loadTraceReplay().PURE_REPLAY_TOOLS);
