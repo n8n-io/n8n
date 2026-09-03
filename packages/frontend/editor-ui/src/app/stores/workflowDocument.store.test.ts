@@ -22,6 +22,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
+import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -781,6 +782,23 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.pinnedDataByNodeName).toEqual({});
 			expect(store.allGroups).toEqual([]);
 			expect(store.viewport).toBeNull();
+		});
+	});
+
+	describe('isEmptyGroup', () => {
+		it('is true only when the sole member is a group placeholder', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const placeholder = createNode({ type: GROUP_PLACEHOLDER_NODE_TYPE });
+			const real = createNode({ type: 'n8n-nodes-base.set' });
+			workflowDocumentStore.addNode(placeholder);
+			workflowDocumentStore.addNode(real);
+			const empty = workflowDocumentStore.createGroup([placeholder.id], 'Plan');
+			const filled = workflowDocumentStore.createGroup([real.id], 'Done');
+
+			expect(workflowDocumentStore.isEmptyGroup(empty.id)).toBe(true);
+			expect(workflowDocumentStore.getEmptyGroupPlaceholder(empty.id)?.id).toBe(placeholder.id);
+			expect(workflowDocumentStore.isEmptyGroup(filled.id)).toBe(false);
+			expect(workflowDocumentStore.getEmptyGroupPlaceholder(filled.id)).toBeUndefined();
 		});
 	});
 });

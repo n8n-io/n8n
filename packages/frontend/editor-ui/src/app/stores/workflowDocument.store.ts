@@ -12,6 +12,7 @@ import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocume
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
 import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
+import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -37,7 +38,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
@@ -274,6 +275,18 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			if (id) workflowDocumentNodeGroups.removeNodeFromGroups(id);
 		});
 
+		/** The placeholder node of an empty group, if this group is one. */
+		function getEmptyGroupPlaceholder(groupId: string): INodeUi | undefined {
+			const group = workflowDocumentNodeGroups.getGroupById(groupId);
+			if (!group || group.nodeIds.length !== 1) return undefined;
+			const node = workflowDocumentNodes.getNodeById(group.nodeIds[0]);
+			return node?.type === GROUP_PLACEHOLDER_NODE_TYPE ? node : undefined;
+		}
+
+		function isEmptyGroup(groupId: string): boolean {
+			return getEmptyGroupPlaceholder(groupId) !== undefined;
+		}
+
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
@@ -489,6 +502,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
+			getEmptyGroupPlaceholder,
+			isEmptyGroup,
 			removeAllNodes,
 			setHydrated,
 			hydrate,
