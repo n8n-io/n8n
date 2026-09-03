@@ -1080,11 +1080,12 @@ async function onCreateEmptyGroup() {
 	const name = workflowDocumentStore.value.getNextDefaultName(
 		i18n.baseText('canvas.nodeGroup.defaultTitle'),
 	);
+	const id = window.crypto.randomUUID();
 	await onAddNodesAndConnections({
-		nodes: [{ type: GROUP_PLACEHOLDER_NODE_TYPE, name }],
+		nodes: [{ type: GROUP_PLACEHOLDER_NODE_TYPE, name, id }],
 		connections: [],
 	});
-	const placeholder = workflowDocumentStore.value.getNodeByName(name);
+	const placeholder = workflowDocumentStore.value.getNodeById(id);
 	if (!placeholder) return;
 	// ponytail: not one undo step with the node; wrap in a history bulk later.
 	workflowDocumentStore.value.createGroup([placeholder.id], name);
