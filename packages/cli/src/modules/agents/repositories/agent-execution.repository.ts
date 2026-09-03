@@ -126,21 +126,31 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 
 	async findLatestStatusesByThreadIds(
 		threadIds: string[],
-	): Promise<Map<string, AgentExecutionStatus>> {
+	): Promise<Map<string, Pick<AgentExecution, 'status' | 'hitlStatus'>>> {
 		if (threadIds.length === 0) return new Map();
 
 		const tableName = this.metadata.tablePath;
 		const rows = await this.createQueryBuilder('e')
-			.select(['e."threadId" AS "threadId"', 'e."status" AS "status"'])
+			.select([
+				'e."threadId" AS "threadId"',
+				'e."status" AS "status"',
+				'e."hitlStatus" AS "hitlStatus"',
+			])
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere(
 				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
 					'WHERE e2."threadId" = e."threadId" ' +
 					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
 			)
-			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+			.getRawMany<{
+				threadId: string;
+				status: AgentExecutionStatus;
+				hitlStatus: AgentExecution['hitlStatus'];
+			}>();
 
-		return new Map(rows.map((row) => [row.threadId, row.status]));
+		return new Map(
+			rows.map(({ threadId, status, hitlStatus }) => [threadId, { status, hitlStatus }]),
+		);
 	}
 
 	async findFailureSummariesByThreadIds(

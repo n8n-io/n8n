@@ -1504,6 +1504,7 @@
 	"agentSessions.status.cancelled": "Canceled",
 	"agentSessions.status.interrupted": "Interrupted",
 	"agentSessions.status.running": "Running",
+	"agentSessions.status.waiting": "Waiting for input",
 	"agentSessions.duration": "Duration",
 	"agentSessions.sessionId": "Session ID",
 	"agentSessions.detail.selectMessage": "Click an assistant message to view details",

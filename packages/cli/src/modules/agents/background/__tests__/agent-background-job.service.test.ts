@@ -179,7 +179,7 @@ describe('listForThread', () => {
 			.mockResolvedValueOnce([stale])
 			.mockResolvedValueOnce([settledView]);
 		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
-			new Map([['child-thread-1', 'interrupted']]),
+			new Map([['child-thread-1', { status: 'interrupted', hitlStatus: null }]]),
 		);
 
 		const jobs = await service.listForThread('thread-1');
@@ -352,7 +352,7 @@ describe('reconcile', () => {
 		const { service, jobRepository, executionRepository } = setup();
 		jobRepository.findRunningJobs.mockResolvedValue([makeJob()]);
 		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
-			new Map([['child-thread-1', 'error']]),
+			new Map([['child-thread-1', { status: 'error', hitlStatus: null }]]),
 		);
 
 		await service.reconcile();
@@ -367,7 +367,7 @@ describe('reconcile', () => {
 		const { service, jobRepository, executionRepository } = setup();
 		jobRepository.findRunningJobs.mockResolvedValue([makeJob()]);
 		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
-			new Map([['child-thread-1', 'running']]),
+			new Map([['child-thread-1', { status: 'running', hitlStatus: null }]]),
 		);
 
 		await service.reconcile();

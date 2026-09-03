@@ -15,7 +15,7 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
+import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -623,12 +623,15 @@ export class AgentExecutionService {
 }
 
 function toSessionStatus(
-	latestStatus: AgentExecutionStatus | undefined,
+	latest: Pick<AgentExecution, 'status' | 'hitlStatus'> | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
-	if (!latestStatus) return null;
-	if (latestStatus === 'success') return hasFailureSummary ? 'error' : 'succeeded';
-	return latestStatus;
+	if (!latest) return null;
+	if (latest.status !== 'success') return latest.status;
+	// A resumed turn is a separate row, so a suspended latest row means the
+	// thread still waits for a human.
+	if (latest.hitlStatus === 'suspended') return 'waiting';
+	return hasFailureSummary ? 'error' : 'succeeded';
 }
 
 function cleanUserMessage(message: string | null, agentName: string): string | null {
