@@ -12,16 +12,7 @@ import {
 	type VueParserServices,
 } from './a11y-utils.js';
 
-const INTERACTION_EVENTS = new Set([
-	'click',
-	'dblclick',
-	'mousedown',
-	'mouseup',
-	'pointerdown',
-	'pointerup',
-	'touchend',
-	'touchstart',
-]);
+const INTERACTION_EVENTS = new Set(['click', 'dblclick']);
 
 function isPropagationOnlyHandler(attribute: VAttribute | VDirective): boolean {
 	if (!attribute.directive || attribute.key.name.name !== 'on') return false;
@@ -43,6 +34,16 @@ function isInteractionHandler(attribute: VAttribute | VDirective): boolean {
 
 function hasInteractionHandler(node: VElement): boolean {
 	return node.startTag.attributes.some(isInteractionHandler);
+}
+
+function hasCaptureInteractionHandler(node: VElement): boolean {
+	return node.startTag.attributes.some(function isCaptureInteractionHandler(attribute) {
+		if (!attribute.directive || !isInteractionHandler(attribute)) return false;
+		const modifiers = attribute.key.modifiers.map(function getModifierName(modifier) {
+			return modifier.name;
+		});
+		return modifiers.includes('capture') && !modifiers.includes('self');
+	});
 }
 
 export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -69,7 +70,12 @@ export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDo
 				)
 					return;
 				const roleAttribute = getAttribute(node, 'role');
-				if (isDynamicAttribute(roleAttribute) || INTERACTIVE_ROLES.has(getRole(node) ?? '')) return;
+				if (
+					isDynamicAttribute(roleAttribute) ||
+					INTERACTIVE_ROLES.has(getRole(node) ?? '') ||
+					hasCaptureInteractionHandler(node)
+				)
+					return;
 				const handler = node.startTag.attributes.find(isInteractionHandler);
 				context.report({ node: toESTreeNode(handler ?? node), messageId: 'staticInteraction' });
 			},

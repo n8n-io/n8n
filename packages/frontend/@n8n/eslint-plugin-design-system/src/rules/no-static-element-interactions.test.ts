@@ -23,6 +23,8 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		{ filename: 'Component.vue', code: vue('<component :is="tag" @click="save" />') },
 		{ filename: 'Component.vue', code: vue('<div @click.stop />') },
 		{ filename: 'Component.vue', code: vue('<div @keydown.capture="delegateKeydown" />') },
+		{ filename: 'Component.vue', code: vue('<div @mouseup="finishDrag" />') },
+		{ filename: 'Component.vue', code: vue('<div @click.capture="delegateClick" />') },
 	],
 	invalid: [
 		{
@@ -32,7 +34,22 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		},
 		{
 			filename: 'Component.vue',
-			code: vue('<section><p @pointerdown="start">Drag</p></section>'),
+			code: vue('<section><p @dblclick="open">Open</p></section>'),
+			errors: [{ messageId: 'staticInteraction' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<div @click.capture.self="toggle" />'),
+			errors: [{ messageId: 'staticInteraction' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<div role="group" @click="toggle" @keydown="handleKeydown" />'),
+			errors: [{ messageId: 'staticInteraction' }],
+		},
+		{
+			filename: 'Component.vue',
+			code: vue('<div role="presentation" @click="toggle" @keydown="handleKeydown" />'),
 			errors: [{ messageId: 'staticInteraction' }],
 		},
 	],
