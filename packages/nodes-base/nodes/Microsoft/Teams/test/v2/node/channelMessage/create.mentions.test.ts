@@ -31,7 +31,7 @@ describe('Test MicrosoftTeamsV2, channelMessage => create with mentions', () => 
 		.post('/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages', {
 			body: {
 				contentType: 'html',
-				content: 'new sale <at id="0">Jane Smith</at> <at id="1">Bob Jones</at>',
+				content: '<at id="0">Jane Smith</at> <at id="1">Bob Jones</at> new sale',
 			},
 			mentions: [
 				{
@@ -66,7 +66,7 @@ describe('Test MicrosoftTeamsV2, channelMessage => create with mentions', () => 
 			locale: 'en-us',
 			body: {
 				contentType: 'html',
-				content: 'new sale <at id="0">Jane Smith</at> <at id="1">Bob Jones</at>',
+				content: '<at id="0">Jane Smith</at> <at id="1">Bob Jones</at> new sale',
 			},
 			channelIdentity: {
 				teamId: '1111-2222-3333',

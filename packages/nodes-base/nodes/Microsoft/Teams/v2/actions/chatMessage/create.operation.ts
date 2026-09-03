@@ -2,7 +2,8 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { chatRLC, mentionsField } from '../../descriptions';
+import { chatRLC, mentionPlacementOption, mentionsField } from '../../descriptions';
+import type { MentionPlacement } from '../../helpers/utils';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
@@ -55,6 +56,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
 			},
+			mentionPlacementOption,
 		],
 	},
 ];
@@ -93,6 +95,7 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		includeLinkToWorkflow,
 		instanceId,
 		mentions,
+		(options.mentionPlacement as MentionPlacement) || 'start',
 	);
 
 	return await microsoftApiRequest.call(
