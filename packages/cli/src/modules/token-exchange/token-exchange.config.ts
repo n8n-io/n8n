@@ -1,4 +1,4 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env, positiveIntSchema } from '@n8n/config';
 
 @Config
 export class TokenExchangeConfig {
@@ -31,8 +31,8 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
 	keyRefreshIntervalSeconds: number = 300;
 
-	/** Interval in seconds between JTI cleanup runs. Must be a positive integer. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
+	/** Interval in seconds between JTI cleanup runs. */
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS', positiveIntSchema)
 	jtiCleanupIntervalSeconds: number = 60;
 
 	/** Maximum number of expired JTI rows to delete per cleanup run. */
