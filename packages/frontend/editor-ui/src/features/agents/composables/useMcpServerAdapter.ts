@@ -257,7 +257,6 @@ export function mcpServerToNode(
 			: undefined;
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
-	console.log('server', server, nodeTypeDescription);
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
 		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
 		: server.authentication;
