@@ -270,6 +270,10 @@ const [cmd, pr] = args.filter((arg) => !arg.startsWith('--'));
 async function requirePr() {
 	const noPrSpecified = !/^\d+$/.test(pr ?? '')
 
+	if (pr && noPrSpecified) {
+		fail(`Invalid PR number format. Usage example: \`pnpm preview ${cmd} 1234\``)
+	}
+
 	if (noPrSpecified) {
 		const prInfoForCurrentBranch = ghJson(['pr', 'view', "--json", "number"]);
 		if (prInfoForCurrentBranch && Number.isInteger(prInfoForCurrentBranch.number)) {
