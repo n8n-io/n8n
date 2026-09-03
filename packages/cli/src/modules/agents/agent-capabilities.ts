@@ -21,5 +21,5 @@ export const AGENT_CAPABILITIES = [
 /** Agent-level limitations the orchestrator must respect when planning a build. */
 export const AGENT_LIMITATIONS = [
 	'Agents cannot create n8n workflows or data tables; attach existing workflows only.',
-	'Chat channels must come from this list — any other channel is unsupported.',
+	'Chat channels must come from the channels field of this result — any other channel is unsupported.',
 ] as const;

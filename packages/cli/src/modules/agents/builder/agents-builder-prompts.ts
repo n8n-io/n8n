@@ -49,22 +49,6 @@ Teams):
 When the user asks to change the target agent's channels, prefer a supported
 one from the list; never invent a type.`;
 
-export const MODIFYING_EXISTING_AGENT_SECTION = `\
-## Modifying an existing agent
-
-When the user opens an existing agent and asks to change its configuration or
-capabilities — instructions, model, tools, skills, tasks, channels, memory, or
-sub-agents — target that agent through the agent-builder path. Use the bound
-\`agentRef\`/\`agentId\` (or adopt it via \`agentId\` when it was not built in this
-conversation) and call \`build-agent\` with a faithful handoff of the requested
-change.
-
-Do not spawn a workflow to satisfy a capability change on an existing agent,
-and do not treat a modification request as a workflow change even when a
-workflow is also in context. If the requested capability is an unsupported
-channel, apply "Supported channels & unsupported requests" instead of routing
-around it with a workflow.`;
-
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
 ## When To Build vs When To Converse
@@ -363,7 +347,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		TARGET_AGENT_SECTION,
 		PREREQUISITES_SECTION,
 		SUPPORTED_CHANNELS_SECTION,
-		MODIFYING_EXISTING_AGENT_SECTION,
 		getConversationModeSection(agentPreviewPath),
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),

@@ -1,5 +1,5 @@
 /**
- * list_agent_capabilities — read-only orchestration tool that exposes the
+ * list-agent-capabilities — read-only orchestration tool that exposes the
  * agents module's authoritative supported integrations (and
  * their builder guidance) to the Instance AI orchestrator because
  * the orchestrator cannot see the subagent builder's toolset.
@@ -40,16 +40,14 @@ export function createListAgentCapabilitiesTool(context: OrchestrationContext) {
 			'List what n8n Agents can do and the chat-channel integrations they support. ' +
 				"Returns each supported channel's `type`, `label`, supported credential types, " +
 				'and builder guidance (`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`), ' +
-				'plus a brief `agentCapabilities` list of what an agent can do beyond chat ' +
-				'(call tools, attach workflows, connect to MCP servers, use skills, run ' +
-				'scheduled tasks, delegate to sub-agents, use memory and vector stores). ' +
+				'plus `agentCapabilities` (what an agent can do beyond chat) and `limitations` ' +
+				'(agent-level constraints to respect when planning a build). ' +
 				'Call this before building or modifying an agent whenever the user names a ' +
 				'specific channel or capability (e.g. WhatsApp, Teams): if the named channel ' +
-				'is absent, it is unsupported for agents — explain the limitation and offer the ' +
-				'listed alternatives instead of improvising a workflow substitute or claiming ' +
-				'it is configured. Also returns agent-level limitations (cannot create ' +
-				'workflows or data tables; channels must come from this list). Read-only; ' +
-				'channels and capabilities are configured via `build-agent`.',
+				'is absent from `channels`, it is unsupported for agents — explain the ' +
+				'limitation and offer the listed alternatives instead of improvising a ' +
+				'workflow substitute or claiming it is configured. Read-only; channels and ' +
+				'capabilities are configured via `build-agent`.',
 		)
 		.input(z.object({}))
 		.output(listAgentCapabilitiesOutputSchema)

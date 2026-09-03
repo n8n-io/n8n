@@ -30,18 +30,20 @@ on the Agent.
 
 ## Supported channels & unsupported requests
 
-`list_agent_capabilities` returns every chat channel n8n Agents support, each
+`list-agent-capabilities` returns every chat channel n8n Agents support, each
 with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
 authoritative source the orchestrator can read before building; a channel
 absent from its result is unsupported for agents.
 
 When the user asks for a channel that is not supported (e.g. WhatsApp,
 Microsoft Teams), do not forward it to the builder as a channel to configure
-and do not improvise a workflow substitute. Explain the channel is unsupported
-for agents, offer the supported alternatives, and ask which to use — or whether
-the user wants a workflow path after the limitation is stated. Only forward a
-channel to `build-agent` once it is a supported type or the user has chosen an
-alternative.
+and do not fake it by adding the platform as an agent tool. Explain the channel
+is unsupported for agents, offer the supported alternatives, and ask which to
+use — or whether the user explicitly wants that unsupported platform as the
+conversation surface, in which case offer the `agent-entrypoint` workflow
+bridge described in Prerequisites (it connects the platform trigger to Message
+an Agent; it is not a channel config). Only forward a channel to `build-agent`
+once it is a supported type or the user has chosen an alternative.
 
 ## Faithful handoff
 

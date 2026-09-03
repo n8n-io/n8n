@@ -260,7 +260,7 @@ continuity for that primitive.
 
 **Unsupported capabilities**: when the user names a specific channel or
 capability for an agent (e.g. "WhatsApp", "Teams"), call
-`list_agent_capabilities` before classifying. If the named channel is
+`list-agent-capabilities` before classifying. If the named channel is
 absent, it is unsupported for agents — do not classify the request as a
 workflow substitute, do not improvise workflow nodes to fake the channel,
 and do not claim it can be configured. Explain that it is unavailable for
@@ -365,7 +365,7 @@ instead.
   rules exist or this needs judgment-based triage.
 - "Build me an agent my team can @mention on WhatsApp to triage customer
   messages." -> **agent-anchored** (explicit agent artifact + chat
-  interaction), but call `list_agent_capabilities` first: WhatsApp is absent,
+  interaction), but call `list-agent-capabilities` first: WhatsApp is absent,
   so do not build. Explain WhatsApp is unsupported for agents, offer the
   supported chat channels the tool returned, with their
   `capabilities`, and ask which to use — or whether the user wants a
@@ -404,7 +404,7 @@ instead.
   workflow-anchored pipeline. A Chat Trigger workflow is correct only when
   chat is merely the manual trigger for a fixed graph.
 - Never improvise a workflow substitute for an unsupported agent channel or
-  capability. When the user names a channel not in `list_agent_capabilities`,
+  capability. When the user names a channel not in `list-agent-capabilities`,
   explain the limitation and offer supported alternatives — do not add
   workflow nodes that fake the channel or silently translate the request
   into a workflow change.
