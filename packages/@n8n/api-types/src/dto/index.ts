@@ -369,11 +369,14 @@ export {
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export { ListExecutionsQueryDto } from './executions/list-executions-query.dto';
 export {
 	ExecutionPublicDto,
 	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
 	executionPublicSchema,
 	deletedExecutionPublicSchema,
+	executionListItemPublicSchema,
 } from './executions/execution-public.dto';
 export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 

@@ -37,10 +37,25 @@ function makeManagedWorkflow(): WorkflowJSON {
 	};
 }
 
-function makeContext(workflow: WorkflowJSON): InstanceAiContext {
+function makeContext(workflow: WorkflowJSON, files: Map<string, string>): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
 	context.threadId = undefined;
 	context.threadMemory = undefined;
+	context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+	// get-as-code writes the source into the bound workspace file; back it with a map.
+	context.workspace = {
+		filesystem: {
+			readFile: vi.fn(async (path: string) => {
+				const content = files.get(path);
+				if (content === undefined) throw new Error(`ENOENT ${path}`);
+				return await Promise.resolve(content);
+			}),
+			writeFile: vi.fn(async (path: string, content: string | Buffer) => {
+				files.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+				await Promise.resolve();
+			}),
+		},
+	} as unknown as InstanceAiContext['workspace'];
 	context.workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue(workflow);
 	context.workflowService.get = vi.fn().mockResolvedValue({
 		id: 'wf-managed',
@@ -59,7 +74,8 @@ function makeContext(workflow: WorkflowJSON): InstanceAiContext {
 
 describe('workflows get-as-code integration', () => {
 	it('returns real TypeScript for a managed credential and refreshes its binding', async () => {
-		const context = makeContext(makeManagedWorkflow());
+		const files = new Map<string, string>();
+		const context = makeContext(makeManagedWorkflow(), files);
 		const filePath = 'src/workflows/managed.workflow.ts';
 		await saveWorkflowSourceFileBinding(context, {
 			filePath,
@@ -78,6 +94,9 @@ describe('workflows get-as-code integration', () => {
 		expect(result.code).not.toBe('');
 		expect(result.code).toContain("newCredential('Gateway credits')");
 		expect(result.code).not.toContain("newCredential('Gateway credits',");
+		// The source lands in the file the workflow is already bound to, ready to build.
+		expect(files.get(filePath)).toBe(result.code);
+		expect(files.get(filePath)).toMatch(/^import \{[^}]+\} from '@n8n\/workflow-sdk';\n/);
 		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
 			workflowVersionId: 'v-current',
 			workflowChecksum: 'checksum-current',
