@@ -201,6 +201,9 @@ export class Server extends AbstractServer {
 		registry.register(Container.get(ApiKeyAuthStrategy));
 		registry.register(Container.get(SessionCookieAuthStrategy));
 
+		// Parse cookies for easier access
+		this.app.use(cookieParser());
+
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
@@ -213,9 +216,6 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 		}
-
-		// Parse cookies for easier access
-		this.app.use(cookieParser());
 
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {

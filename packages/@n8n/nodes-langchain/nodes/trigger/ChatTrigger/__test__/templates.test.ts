@@ -619,8 +619,10 @@ describe('ChatTrigger Templates Security', () => {
 				authentication: 'n8nUserAuth',
 			});
 
-			expect(result).toContain(`window.location.href = '${customBasePath}signin?redirect='`);
-			expect(result).toContain(`fetch('${customBasePath}rest/login'`);
+			expect(result).toContain(
+				`window.location.href = ${escapeForScriptContext(`${customBasePath}signin?redirect=`)}`,
+			);
+			expect(result).toContain(`fetch(${escapeForScriptContext(`${customBasePath}rest/login`)}`);
 		});
 
 		it('should add a trailing slash to instanceBaseUrl when input does not end with one', () => {
@@ -630,8 +632,10 @@ describe('ChatTrigger Templates Security', () => {
 				authentication: 'n8nUserAuth',
 			});
 
-			expect(result).toContain(`window.location.href = '/custom/path/signin?redirect='`);
-			expect(result).toContain(`fetch('/custom/path/rest/login'`);
+			expect(result).toContain(
+				`window.location.href = ${escapeForScriptContext('/custom/path/signin?redirect=')}`,
+			);
+			expect(result).toContain(`fetch(${escapeForScriptContext('/custom/path/rest/login')}`);
 		});
 
 		it('should handle an absolute instanceBaseUrl without trailing slash', () => {
@@ -642,9 +646,30 @@ describe('ChatTrigger Templates Security', () => {
 			});
 
 			expect(result).toContain(
-				`window.location.href = 'http://localhost:5678/custom-path/signin?redirect='`,
+				`window.location.href = ${escapeForScriptContext(
+					'http://localhost:5678/custom-path/signin?redirect=',
+				)}`,
 			);
-			expect(result).toContain(`fetch('http://localhost:5678/custom-path/rest/login'`);
+			expect(result).toContain(
+				`fetch(${escapeForScriptContext('http://localhost:5678/custom-path/rest/login')}`,
+			);
+		});
+
+		it('should escape quote-containing instanceBaseUrl values inside scripts', () => {
+			const instanceBaseUrl = "http://localhost:5678/custom'path";
+			const result = createPage({
+				...defaultParams,
+				instanceBaseUrl,
+				authentication: 'n8nUserAuth',
+			});
+
+			expect(result).toContain(
+				`fetch(${escapeForScriptContext(`${instanceBaseUrl}/rest/login`)}`,
+			);
+			expect(result).toContain(
+				`window.location.href = ${escapeForScriptContext(`${instanceBaseUrl}/signin?redirect=`)}`,
+			);
+			expect(result).not.toContain(`fetch('${instanceBaseUrl}/rest/login'`);
 		});
 
 		it('should use default instanceBaseUrl when not provided', () => {
@@ -654,7 +679,9 @@ describe('ChatTrigger Templates Security', () => {
 				authentication: 'n8nUserAuth',
 			});
 
-			expect(result).toContain(`window.location.href = '/signin?redirect='`);
+			expect(result).toContain(
+				`window.location.href = ${escapeForScriptContext('/signin?redirect=')}`,
+			);
 		});
 
 		it('should properly encode redirect URL', () => {
@@ -773,8 +800,8 @@ describe('createPage inside the shell frame', () => {
 	// couldn't render.
 	it('takes the visitor from the server instead of fetching the login endpoint', () => {
 		expect(inner).toContain('const metadata = { user: {"id":"user-1"');
-		expect(inner).not.toContain("fetch('/rest/login'");
-		expect(inner).not.toContain("'/signin?redirect='");
+		expect(inner).not.toContain(`fetch(${escapeForScriptContext('/rest/login')}`);
+		expect(inner).not.toContain(escapeForScriptContext('/signin?redirect='));
 	});
 
 	it('still renders the author own styling', () => {
@@ -801,8 +828,8 @@ describe('createPage inside the shell frame', () => {
 
 		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.
 		it('keeps the login bootstrap the flag-off render depends on', () => {
-			expect(plain).toContain("fetch('/rest/login'");
-			expect(plain).toContain("'/signin?redirect='");
+			expect(plain).toContain(`fetch(${escapeForScriptContext('/rest/login')}`);
+			expect(plain).toContain(escapeForScriptContext('/signin?redirect='));
 		});
 	});
 

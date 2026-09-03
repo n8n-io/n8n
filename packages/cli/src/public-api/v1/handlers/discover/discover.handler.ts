@@ -18,6 +18,11 @@ function firstString(value: unknown): string | undefined {
 	return undefined;
 }
 
+function resolveSpecUrl(req: GetDiscoverRequest): string {
+	const publicApiBasePath = req.baseUrl || '/api/v1';
+	return `${publicApiBasePath}/openapi.yml`;
+}
+
 type DiscoverHandlers = {
 	getDiscover: PublicAPIEndpoint<GetDiscoverRequest>;
 };
@@ -35,6 +40,7 @@ const discoverHandlers: DiscoverHandlers = {
 				includeSchemas,
 				resource: firstString(req.query.resource),
 				operation: firstString(req.query.operation),
+				specUrl: resolveSpecUrl(req),
 			});
 			return res.json({ data: response });
 		},

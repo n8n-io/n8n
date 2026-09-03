@@ -58,10 +58,14 @@ export class PathResolvingService {
 		return path.startsWith('/') ? path.slice(1) : path;
 	}
 
+	private trimSlashes(path: string) {
+		return path.replace(/^\/+|\/+$/g, '');
+	}
+
 	private resolveConfiguredEndpoint(endpoint: string, path: string = ''): string {
 		const normalizedPath = this.stripLeadingSlash(path);
 		return this.resolveEndpoint(
-			normalizedPath ? `${this.stripLeadingSlash(endpoint)}/${normalizedPath}` : endpoint,
+			normalizedPath ? `${this.trimSlashes(endpoint)}/${normalizedPath}` : this.trimSlashes(endpoint),
 		);
 	}
 

@@ -135,6 +135,23 @@ describe('PathResolvingService', () => {
 			});
 			expect(service.resolveRestEndpoint('workflows')).toBe('/custom-path/api/workflows');
 		});
+
+		it('should trim a trailing slash from the configured REST endpoint at root', () => {
+			const service = createService({
+				endpoints: { rest: '/rest/' } as GlobalConfig['endpoints'],
+			});
+
+			expect(service.resolveRestEndpoint('push')).toBe('/rest/push');
+		});
+
+		it('should trim a trailing slash from the configured REST endpoint under a subpath', () => {
+			const service = createService({
+				basePath: '/custom-path',
+				endpoints: { rest: '/rest/' } as GlobalConfig['endpoints'],
+			});
+
+			expect(service.resolveRestEndpoint('push')).toBe('/custom-path/rest/push');
+		});
 	});
 
 	describe('resolveWebhookEndpoint', () => {

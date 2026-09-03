@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
@@ -31,6 +30,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
@@ -53,7 +53,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
-		private readonly endpointsConfig: EndpointsConfig,
+		private readonly pathResolvingService: PathResolvingService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -127,10 +127,20 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * Redirecting in that case would loop back to this same handler forever.
 	 */
 	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response): boolean {
-		const location = req.originalUrl.replace(
-			`/${this.endpointsConfig.webhookWaiting}/`,
-			`/${this.endpointsConfig.formWaiting}/`,
-		);
+		const webhookWaitingPrefix = this.pathResolvingService.resolveWebhookWaitingEndpoint();
+		const formWaitingPrefix = this.pathResolvingService.resolveFormWaitingEndpoint();
+		const suffix =
+			req.originalUrl === webhookWaitingPrefix
+				? ''
+				: req.originalUrl.startsWith(`${webhookWaitingPrefix}/`)
+					? req.originalUrl.slice(webhookWaitingPrefix.length)
+					: undefined;
+
+		if (suffix === undefined) {
+			return false;
+		}
+
+		const location = `${formWaitingPrefix}${suffix}`;
 		if (location === req.originalUrl) {
 			return false;
 		}

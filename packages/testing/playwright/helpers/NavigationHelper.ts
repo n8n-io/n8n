@@ -24,12 +24,12 @@ export class NavigationHelper {
 		private page: Page,
 		private basePath: string = '',
 	) {
-		this.instanceAi = new InstanceAiPage(page);
+		this.instanceAi = new InstanceAiPage(page, basePath);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 	}
 
-	private async goto(path: string): Promise<void> {
-		await this.page.goto(this.basePath ? `${this.basePath}${path}` : path);
+	private async goto(path: string, options?: Parameters<Page['goto']>[1]): Promise<void> {
+		await this.page.goto(this.basePath ? `${this.basePath}${path}` : path, options);
 	}
 
 	/**
@@ -123,7 +123,7 @@ export class NavigationHelper {
 		projectId: string,
 		options?: Parameters<Page['goto']>[1],
 	): Promise<void> {
-		await this.page.goto(`/projects/${projectId}/executions`, options);
+		await this.goto(`/projects/${projectId}/executions`, options);
 	}
 
 	/**
@@ -133,7 +133,7 @@ export class NavigationHelper {
 	 */
 	async toExecution(workflowId: string, executionId: string): Promise<void> {
 		const url = `/workflow/${workflowId}/executions/${executionId}`;
-		await this.page.goto(url);
+		await this.goto(url);
 	}
 
 	/**

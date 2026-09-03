@@ -60,5 +60,28 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should prefix the push endpoint with the base path', () => {
+			const globalConfig = mock<GlobalConfig>({
+				endpoints: { rest: 'rest' },
+			});
+			const pathResolvingService = mock<PathResolvingService>({
+				getBasePath: () => '/my-n8n',
+			});
+			const service = new AuthService(
+				globalConfig,
+				mock(),
+				mock(),
+				mock<JwtService>(),
+				mock<UrlService>(),
+				mock<UserRepository>(),
+				mock<InvalidAuthTokenRepository>(),
+				mock<MfaService>(),
+				pathResolvingService,
+			);
+			const skipEndpoints = service['skipBrowserIdCheckEndpoints'];
+
+			expect(skipEndpoints).toContain('/my-n8n/rest/push');
+		});
 	});
 });
