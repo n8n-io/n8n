@@ -274,7 +274,7 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 });
 
 const parameterType = computed(() => props.parameter.type);
-const { contributedComponent, chrome: contributedChrome } =
+const { contributedComponent, capabilities: contributedCapabilities } =
 	useParameterInputContribution(parameterType);
 
 /**
@@ -284,7 +284,7 @@ const { contributedComponent, chrome: contributedChrome } =
  */
 const showContributedComponent = computed<boolean>(() => {
 	if (!contributedComponent.value) return false;
-	if (contributedChrome.value.ownsExpressionRendering) return true;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
 
 	return !isModelValueExpression.value && !props.forceShowExpression;
 });
@@ -791,7 +791,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		contributedChrome.value.disableDrop ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(

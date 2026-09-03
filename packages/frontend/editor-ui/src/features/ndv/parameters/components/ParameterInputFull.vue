@@ -110,13 +110,15 @@ const activeNode = computed(() => {
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
-// A module-contributed input declares the same chrome the built-in
+// A module-contributed input declares the same capabilities the built-in
 // resource-locator family behaves with, so both go through one value here.
-const { chrome: inputChrome } = useParameterInputContribution(computed(() => props.parameter.type));
+const { capabilities: inputCapabilities } = useParameterInputContribution(
+	computed(() => props.parameter.type),
+);
 
 const canCreateContentOverride = computed(() => {
 	// An input that owns the from-AI override handles it separately
-	if (props.disableFromAi || !activeNode.value || inputChrome.value.ownsFromAiOverride)
+	if (props.disableFromAi || !activeNode.value || inputCapabilities.value.ownsFromAiOverride)
 		return false;
 
 	return canBeContentOverride(props, activeNode.value);
@@ -140,7 +142,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
 		props.isReadOnly ||
-		inputChrome.value.disableDrop ||
+		inputCapabilities.value.disableDrop ||
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
@@ -157,7 +159,7 @@ const parameterTooltipText = computed(() =>
 const showExpressionSelector = computed(() => {
 	if (props.optionsOverrides?.hideExpressionSelector) return false;
 
-	if (inputChrome.value.ownsExpressionRendering) {
+	if (inputCapabilities.value.ownsExpressionRendering) {
 		// The input handles overrides itself, so we use this hack to
 		// infer whether it's overridden and we should hide the toggle
 		const value =

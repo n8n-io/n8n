@@ -54,12 +54,12 @@ describe('FrontendModuleDescription', () => {
 				{
 					type: 'resourceLocator',
 					component: async () => await Promise.resolve({ name: 'ResourceLocator' }),
-					chrome: { ownsExpressionRendering: true, disableDrop: true },
+					capabilities: { ownsExpressionRendering: true, disableDrop: true },
 				},
 			],
 		};
 
 		expect(descriptor.parameterInputs?.[0]?.type).toBe('resourceLocator');
-		expect(descriptor.parameterInputs?.[0]?.chrome?.ownsFromAiOverride).toBeUndefined();
+		expect(descriptor.parameterInputs?.[0]?.capabilities?.ownsFromAiOverride).toBeUndefined();
 	});
 });

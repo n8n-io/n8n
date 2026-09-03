@@ -17,7 +17,7 @@ const contributingModule: FrontendModuleDescription = {
 		{
 			type: 'resourceLocator',
 			component: { render: () => null },
-			chrome: { ownsExpressionRendering: true },
+			capabilities: { ownsExpressionRendering: true },
 		},
 	],
 };
@@ -43,7 +43,7 @@ describe('registerModuleParameterInputs', () => {
 
 		registerModuleParameterInputs();
 
-		expect(parameterInputRegistry.get('resourceLocator')?.chrome).toEqual({
+		expect(parameterInputRegistry.get('resourceLocator')?.capabilities).toEqual({
 			ownsExpressionRendering: true,
 		});
 	});

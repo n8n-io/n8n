@@ -252,10 +252,10 @@ describe('ParameterInputFull.vue', () => {
 		expect(emitted().hover).toEqual([[true], [false]]);
 	});
 
-	// Guards the three chrome reads in this component. Each test pairs a baseline
+	// Guards the three capability reads in this component. Each test pairs a baseline
 	// with the flag set, so reverting a read back to the literal
 	// `isResourceLocator` list flips the flagged case and fails here.
-	describe('module-contributed chrome', () => {
+	describe('module-contributed capabilities', () => {
 		const contributedInput = { render: () => null };
 
 		const asAiToolNode = () => {
@@ -283,7 +283,7 @@ describe('ParameterInputFull.vue', () => {
 				parameterInputRegistry.register({
 					type: 'string',
 					component: contributedInput,
-					chrome: { ownsFromAiOverride: true },
+					capabilities: { ownsFromAiOverride: true },
 				});
 
 				const { queryByTestId } = renderComponent();
@@ -323,7 +323,7 @@ describe('ParameterInputFull.vue', () => {
 				parameterInputRegistry.register({
 					type: 'string',
 					component: contributedInput,
-					chrome: { disableDrop: true },
+					capabilities: { disableDrop: true },
 				});
 
 				const { container } = renderComponent();
@@ -356,7 +356,7 @@ describe('ParameterInputFull.vue', () => {
 				parameterInputRegistry.register({
 					type: 'string',
 					component: contributedInput,
-					chrome: { ownsExpressionRendering: true },
+					capabilities: { ownsExpressionRendering: true },
 				});
 
 				const { queryByTestId } = renderComponent({

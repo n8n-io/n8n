@@ -14,7 +14,7 @@ describe('parameterInputRegistry', () => {
 	const resourceLocator: ParameterInputContribution = {
 		type: 'resourceLocator',
 		component: resourceLocatorComponent,
-		chrome: { ownsExpressionRendering: true, ownsFromAiOverride: true, disableDrop: true },
+		capabilities: { ownsExpressionRendering: true, ownsFromAiOverride: true, disableDrop: true },
 	};
 
 	const workflowSelector: ParameterInputContribution = {

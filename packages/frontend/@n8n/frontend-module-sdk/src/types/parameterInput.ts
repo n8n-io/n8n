@@ -54,15 +54,15 @@ export type ParameterInputEmits = {
 };
 
 /**
- * Chrome the input takes over from `ParameterInputFull` / `ParameterInputWrapper`.
+ * Capabilities the input takes over from `ParameterInputFull` / `ParameterInputWrapper`.
  *
  * These exist because `parameter.type` drives behaviour outside the render
  * branch too — the expression toggle, the drop target and the from-AI override.
  * An input that wins only the render branch would render correctly and still get
- * the wrong chrome. Every default keeps today's behaviour, so an input that
+ * the wrong capabilities. Every default keeps today's behaviour, so an input that
  * needs none of it declares nothing.
  */
-export type ParameterInputChrome = {
+export type ParameterInputCapabilities = {
 	/**
 	 * The input draws its own expression editor, so the shell does not swap in
 	 * `ExpressionParameterInput` and does not show the expression selector for a
@@ -95,5 +95,5 @@ export type ParameterInputContribution = {
 	 * as a loader and never renders.
 	 */
 	component: ParameterInputComponent | (() => Promise<ParameterInputComponent>);
-	chrome?: ParameterInputChrome;
+	capabilities?: ParameterInputCapabilities;
 };

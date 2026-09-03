@@ -1941,7 +1941,7 @@ describe('ParameterInput.vue', () => {
 			parameterInputRegistry.register({
 				type: 'string',
 				component: ContributedInput,
-				chrome: { ownsExpressionRendering: true },
+				capabilities: { ownsExpressionRendering: true },
 			});
 
 			const { getByTestId } = renderComponent({

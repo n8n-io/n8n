@@ -1,11 +1,11 @@
 import { computed, defineAsyncComponent, type Component, type Ref } from 'vue';
 import type { NodePropertyTypes } from 'n8n-workflow';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
-import type { ParameterInputChrome } from '@n8n/frontend-module-sdk';
+import type { ParameterInputCapabilities } from '@n8n/frontend-module-sdk';
 
 import { isResourceLocatorParameterType } from '@/features/ndv/shared/ndv.utils';
 
-type ResolvedChrome = Required<ParameterInputChrome>;
+type ResolvedCapabilities = Required<ParameterInputCapabilities>;
 
 /**
  * `defineAsyncComponent` wrappers, kept per factory. A fresh wrapper on every
@@ -27,10 +27,10 @@ function resolveComponent(component: Component | (() => Promise<Component>)): Co
 }
 
 /**
- * Resolves a module-contributed input for `parameter.type`, and the chrome the
+ * Resolves a module-contributed input for `parameter.type`, and the capabilities the
  * surrounding components must hand over to it.
  *
- * The built-in resource-locator family reports the same chrome it behaves with
+ * The built-in resource-locator family reports the same capabilities it behaves with
  * today, so a type that no module claims keeps its current behaviour. That is
  * also what keeps this correct while the family is moving into a module: the
  * flags are keyed on the type, not on who renders it.
@@ -42,8 +42,8 @@ export function useParameterInputContribution(type: Ref<NodePropertyTypes>) {
 		contribution.value ? resolveComponent(contribution.value.component) : undefined,
 	);
 
-	const chrome = computed<ResolvedChrome>(() => {
-		const declared = contribution.value?.chrome;
+	const capabilities = computed<ResolvedCapabilities>(() => {
+		const declared = contribution.value?.capabilities;
 		const isBuiltInResourceLocator = isResourceLocatorParameterType(type.value);
 
 		return {
@@ -54,5 +54,5 @@ export function useParameterInputContribution(type: Ref<NodePropertyTypes>) {
 		};
 	});
 
-	return { contribution, contributedComponent, chrome };
+	return { contribution, contributedComponent, capabilities };
 }

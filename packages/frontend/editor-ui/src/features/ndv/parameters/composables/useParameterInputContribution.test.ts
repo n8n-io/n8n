@@ -50,11 +50,11 @@ describe('useParameterInputContribution', () => {
 		expect(contributedComponent.value).toBe(stubComponent);
 	});
 
-	describe('chrome', () => {
+	describe('capabilities', () => {
 		it('defaults every flag to false for an unclaimed non-resource-locator type', () => {
-			const { chrome } = useParameterInputContribution(ref<NodePropertyTypes>('string'));
+			const { capabilities } = useParameterInputContribution(ref<NodePropertyTypes>('string'));
 
-			expect(chrome.value).toEqual({
+			expect(capabilities.value).toEqual({
 				ownsExpressionRendering: false,
 				ownsFromAiOverride: false,
 				disableDrop: false,
@@ -62,11 +62,11 @@ describe('useParameterInputContribution', () => {
 		});
 
 		it.each<NodePropertyTypes>(['resourceLocator', 'workflowSelector', 'agentSelector'])(
-			'reports the built-in chrome for %s with no module registered',
+			'reports the built-in capabilities for %s with no module registered',
 			(type) => {
-				const { chrome } = useParameterInputContribution(ref(type));
+				const { capabilities } = useParameterInputContribution(ref(type));
 
-				expect(chrome.value).toEqual({
+				expect(capabilities.value).toEqual({
 					ownsExpressionRendering: true,
 					ownsFromAiOverride: true,
 					disableDrop: true,
@@ -78,24 +78,26 @@ describe('useParameterInputContribution', () => {
 			parameterInputRegistry.register({
 				type: 'string',
 				component: stubComponent,
-				chrome: { disableDrop: true },
+				capabilities: { disableDrop: true },
 			});
 
-			const { chrome } = useParameterInputContribution(ref<NodePropertyTypes>('string'));
+			const { capabilities } = useParameterInputContribution(ref<NodePropertyTypes>('string'));
 
-			expect(chrome.value).toEqual({
+			expect(capabilities.value).toEqual({
 				ownsExpressionRendering: false,
 				ownsFromAiOverride: false,
 				disableDrop: true,
 			});
 		});
 
-		it('keeps the built-in chrome when a module claims a resource-locator type', () => {
+		it('keeps the built-in capabilities when a module claims a resource-locator type', () => {
 			parameterInputRegistry.register({ type: 'resourceLocator', component: stubComponent });
 
-			const { chrome } = useParameterInputContribution(ref<NodePropertyTypes>('resourceLocator'));
+			const { capabilities } = useParameterInputContribution(
+				ref<NodePropertyTypes>('resourceLocator'),
+			);
 
-			expect(chrome.value.disableDrop).toBe(true);
+			expect(capabilities.value.disableDrop).toBe(true);
 		});
 	});
 });
