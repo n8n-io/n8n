@@ -656,8 +656,7 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 				resolveRegistryConnection: async () => ({
 					nodeTypeName: '@n8n/mcp-registry.databricksGenie',
 					credentialType: 'databricksGenieMcpOAuth2Api',
-					endpointUrl: templatedUrl,
-					endpointHostname: '',
+					urlTemplate: templatedUrl,
 					transport: 'httpStreamable',
 					isTemplated: true,
 				}),

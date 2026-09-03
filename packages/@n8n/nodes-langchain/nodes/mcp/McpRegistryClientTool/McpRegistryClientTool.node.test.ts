@@ -97,9 +97,14 @@ describe('McpRegistryClientTool', () => {
 			prepareConnection: ({ connection }) => ({
 				ok: true,
 				value: {
-					...connection,
+					nodeTypeName: connection.nodeTypeName,
+					credentialType: connection.credentialType,
+					transport: connection.transport,
+					endpointUrl: connection.isTemplated
+						? 'https://mcp.notion.com/mcp'
+						: connection.endpointUrl,
 					headers: { authorization: 'Bearer test' },
-					allowedDomains: connection.endpointHostname,
+					allowedDomains: connection.isTemplated ? 'mcp.notion.com' : connection.endpointHostname,
 				},
 			}),
 		});

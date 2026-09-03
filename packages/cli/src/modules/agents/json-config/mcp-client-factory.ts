@@ -156,30 +156,39 @@ export async function buildMcpClientForServer(
 
 	// An unresolved credential fails at connect time so the real reason travels
 	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
-	// connecting unauthenticated returns an opaque 401/403 instead. Rejecting
-	// rather than throwing keeps both `promise-function-async` and
-	// `require-await` satisfied.
-	const authFetch: typeof fetch = credentialError
-		? async () =>
-				await Promise.reject(
-					new OperationalError(
-						`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
-					),
-				)
-		: createAuthFetch({
-				baseFetch: proxyFetch,
-				initialHeaders,
-				onUnauthorized,
-				allowedDomains,
-			});
+	// connecting unauthenticated returns an opaque 401/403 instead.
+	//
+	// The url and the fetch are chosen together on purpose. A templated registry
+	// URL is still an unresolved `$self`-expression when the credential fails,
+	// and the SDK rejects that URL before it ever calls fetch, so the real cause
+	// would be replaced by an opaque "Invalid URL". The placeholder keeps the
+	// connect on the path where the rejecting fetch reports the real reason, and
+	// is only ever paired with that fetch, which sends no request.
+	const { url, fetch: authFetch } = credentialError
+		? {
+				url: UNRESOLVED_CREDENTIAL_URL,
+				// Rejecting rather than throwing keeps both `promise-function-async`
+				// and `require-await` satisfied.
+				fetch: (async () =>
+					await Promise.reject(
+						new OperationalError(
+							`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
+						),
+					)) as typeof fetch,
+			}
+		: {
+				url: runtimeUrl,
+				fetch: createAuthFetch({
+					baseFetch: proxyFetch,
+					initialHeaders,
+					onUnauthorized,
+					allowedDomains,
+				}),
+			};
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,
-		// A templated registry URL is still an unresolved `$self`-expression when
-		// the credential fails, and the SDK rejects it with an opaque "Invalid URL"
-		// before `authFetch` runs, hiding the real cause. A parseable placeholder
-		// keeps the connect on the path where `authFetch` reports it.
-		url: credentialError ? UNRESOLVED_CREDENTIAL_URL : runtimeUrl,
+		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
 		toolFilter: server.toolFilter,

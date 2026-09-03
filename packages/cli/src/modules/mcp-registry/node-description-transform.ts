@@ -11,6 +11,7 @@ import {
 	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
@@ -53,22 +54,6 @@ function getMcpRegistryCredentialHeader(
 	};
 }
 
-type CredentialRemote =
-	| { endpointUrl: string; hostname: string; isTemplated: false }
-	| { endpointUrl: string; isTemplated: true };
-
-/**
- * Picks the server's remote endpoint. A templated remote has no hostname to
- * parse yet, it resolves per-credential at runtime.
- */
-function resolveCredentialRemote(server: McpRegistryServer): CredentialRemote | null {
-	const connection = resolveMcpRegistryConnection(server);
-	if (!connection) return null;
-	return connection.isTemplated
-		? { endpointUrl: connection.endpointUrl, isTemplated: true }
-		: { endpointUrl: connection.endpointUrl, hostname: connection.endpointHostname, isTemplated: false };
-}
-
 /**
  * Locks the synthetic credential's HTTP requests to the MCP server's hostname.
  */
@@ -96,7 +81,7 @@ function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
  * unsupported here and drop the row, same as an unparseable URL.
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
-	const remote = resolveCredentialRemote(server);
+	const remote = resolveMcpRegistryConnection(server);
 	if (!remote || remote.isTemplated) return null;
 
 	return {
@@ -113,7 +98,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				displayName: 'Server URL',
 				name: 'serverUrl',
 				type: 'hidden',
-				default: remote.endpointUrl,
+				default: getConfiguredEndpointUrl(remote),
 			},
 			{
 				displayName: 'Resource URL',
@@ -121,7 +106,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				type: 'hidden',
 				default: '',
 			},
-			...buildDomainRestrictionProperties(remote.hostname),
+			...buildDomainRestrictionProperties(remote.endpointHostname),
 		],
 	};
 }
@@ -165,7 +150,7 @@ function serverToExtendedCredentialDescription(
 	const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
 	if (!validated) return null;
 
-	const remote = resolveCredentialRemote(server);
+	const remote = resolveMcpRegistryConnection(server);
 	if (!remote) return null;
 
 	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
@@ -181,13 +166,13 @@ function serverToExtendedCredentialDescription(
 		displayName: 'Server URL',
 		name: 'serverUrl',
 		type: 'hidden',
-		default: remote.endpointUrl,
+		default: getConfiguredEndpointUrl(remote),
 	};
 	const serverUrlOverride = remote.isTemplated ? [serverUrlProperty] : [];
 
 	const allowedDomainsDefault = remote.isTemplated
 		? '={{$self["host"].extractDomain()}}'
-		: remote.hostname;
+		: remote.endpointHostname;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -321,7 +306,7 @@ export function serverToNodeDescription(
 	description.properties = withRemoteDefaults(
 		description.properties,
 		connection.transport,
-		connection.endpointUrl,
+		getConfiguredEndpointUrl(connection),
 	);
 	description.builderHint = {
 		...description.builderHint,

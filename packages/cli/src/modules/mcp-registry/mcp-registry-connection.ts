@@ -1,5 +1,6 @@
 import { camelCase } from 'change-case';
 import {
+	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
@@ -8,6 +9,8 @@ import {
 } from 'n8n-workflow';
 
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+
+export { getConfiguredEndpointUrl };
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -39,8 +42,7 @@ export function resolveMcpRegistryConnection(
 		return {
 			nodeTypeName,
 			credentialType,
-			endpointUrl: remote.url,
-			endpointHostname: '',
+			urlTemplate: remote.url,
 			transport: 'httpStreamable',
 			isTemplated: true,
 		};
@@ -79,9 +81,15 @@ export function prepareMcpRegistryConnection({
 		};
 	}
 
+	const { nodeTypeName, credentialType, transport } = connection;
+
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
-		if (typeof serverUrl !== 'string' || serverUrl.length === 0) {
+		// An unresolved expression is still a non-empty string, so the URL has to
+		// be parsed here. Otherwise it travels on and fails far from its cause.
+		const endpoint =
+			typeof serverUrl === 'string' && serverUrl.length > 0 ? parseUrl(serverUrl) : undefined;
+		if (!endpoint) {
 			return {
 				ok: false,
 				error: {
@@ -90,22 +98,41 @@ export function prepareMcpRegistryConnection({
 				},
 			};
 		}
-		const allowedDomains =
-			typeof credentialData.allowedDomains === 'string' ? credentialData.allowedDomains : '';
 		return {
 			ok: true,
-			value: { ...connection, endpointUrl: serverUrl, headers, allowedDomains },
+			value: {
+				nodeTypeName,
+				credentialType,
+				transport,
+				endpointUrl: endpoint.toString(),
+				headers,
+				// Pinned to the host actually being called, so the restriction can
+				// never guard a different host than the request goes to.
+				allowedDomains: endpoint.hostname,
+			},
 		};
 	}
 
 	return {
 		ok: true,
 		value: {
-			...connection,
+			nodeTypeName,
+			credentialType,
+			transport,
+			endpointUrl: connection.endpointUrl,
 			headers,
 			allowedDomains: connection.endpointHostname,
 		},
 	};
+}
+
+function parseUrl(value: string): URL | undefined {
+	try {
+		const url = new URL(value);
+		return /^https?:$/.test(url.protocol) ? url : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export function toAgentMcpTransport(

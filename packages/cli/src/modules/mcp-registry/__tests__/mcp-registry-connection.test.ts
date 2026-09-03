@@ -18,8 +18,7 @@ const connection: McpRegistryConnection = {
 const templatedConnection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
 	credentialType: 'exampleMcpOAuth2Api',
-	endpointUrl: '={{$self["host"]}}/api/2.0/mcp/genie',
-	endpointHostname: '',
+	urlTemplate: '={{$self["host"]}}/api/2.0/mcp/genie',
 	transport: 'httpStreamable',
 	isTemplated: true,
 };
@@ -57,8 +56,7 @@ describe('resolveMcpRegistryConnection', () => {
 		expect(result).toEqual({
 			nodeTypeName: '@n8n/mcp-registry.notion',
 			credentialType: 'notionMcpOAuth2Api',
-			endpointUrl: '={{$self["host"]}}/api/2.0/mcp/genie',
-			endpointHostname: '',
+			urlTemplate: '={{$self["host"]}}/api/2.0/mcp/genie',
 			transport: 'httpStreamable',
 			isTemplated: true,
 		});
@@ -73,7 +71,7 @@ describe('resolveMcpRegistryConnection', () => {
 			],
 		});
 
-		expect(result).toMatchObject({ isTemplated: true, endpointUrl: '={{$self["host"]}}/mcp' });
+		expect(result).toMatchObject({ isTemplated: true, urlTemplate: '={{$self["host"]}}/mcp' });
 	});
 });
 
@@ -103,30 +101,56 @@ describe('prepareMcpRegistryConnection', () => {
 		expect(result).toEqual({
 			ok: true,
 			value: {
-				...connection,
+				nodeTypeName: connection.nodeTypeName,
+				credentialType: connection.credentialType,
+				transport: connection.transport,
+				endpointUrl: 'https://example.com/mcp',
 				headers: { Authorization: 'Bearer refreshed-token' },
 				allowedDomains: 'example.com',
 			},
 		});
 	});
 
-	it('resolves a templated connection from the credential serverUrl and allowedDomains', () => {
+	it('resolves a templated connection and pins the domain to the resolved host', () => {
 		const result = prepareMcpRegistryConnection({
 			connection: templatedConnection,
 			credentialData: {
 				oauthTokenData: { access_token: 'token' },
 				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
-				allowedDomains: 'acme.cloud.databricks.com',
+				// Deliberately disagrees with serverUrl: the pin follows the URL
+				// actually called, never a separate field that can drift from it.
+				allowedDomains: 'attacker.test',
 			},
 		});
 
 		expect(result).toEqual({
 			ok: true,
 			value: {
-				...templatedConnection,
+				nodeTypeName: templatedConnection.nodeTypeName,
+				credentialType: templatedConnection.credentialType,
+				transport: templatedConnection.transport,
 				headers: { Authorization: 'Bearer token' },
 				endpointUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
 				allowedDomains: 'acme.cloud.databricks.com',
+			},
+		});
+	});
+
+	it.each([
+		['an unresolved template', '={{$self["host"]}}/api/2.0/mcp/genie'],
+		['a non-URL string', 'not-a-url'],
+		['a non-HTTP scheme', 'file:///etc/passwd'],
+	])('rejects a templated connection whose serverUrl is %s', (_label, serverUrl) => {
+		const result = prepareMcpRegistryConnection({
+			connection: templatedConnection,
+			credentialData: { oauthTokenData: { access_token: 'token' }, serverUrl },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'unresolved_server_url',
+				message: 'Credential type "exampleMcpOAuth2Api" did not resolve a server URL',
 			},
 		});
 	});

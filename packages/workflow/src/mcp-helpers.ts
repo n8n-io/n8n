@@ -5,19 +5,40 @@ import type { ICredentialDataDecryptedObject } from './interfaces';
 /** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
 export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
 
-export interface McpRegistryConnection {
+interface McpRegistryConnectionBase {
 	nodeTypeName: string;
 	credentialType: McpOAuth2CredentialType;
+	transport: 'httpStreamable' | 'sse';
+}
+
+/** A row whose endpoint is a literal URL, known before any credential is read. */
+export interface LiteralMcpRegistryConnection extends McpRegistryConnectionBase {
+	isTemplated?: false;
 	endpointUrl: string;
 	endpointHostname: string;
-	transport: 'httpStreamable' | 'sse';
-	/**
-	 * `true` when `endpointUrl` is an unresolved `$self`-expression template
-	 * (e.g. `={{$self["host"]}}/api/2.0/mcp/genie`) rather than a literal URL.
-	 * `endpointHostname` is empty in that case; `prepareMcpRegistryConnection`
-	 * resolves the real endpoint and domain from the credential's own data.
-	 */
-	isTemplated: boolean;
+}
+
+/**
+ * A row whose endpoint is a `$self`-expression (e.g.
+ * `={{$self["host"]}}/api/2.0/mcp/genie`) rather than a URL. It only becomes
+ * one once `prepareMcpRegistryConnection` resolves it against the credential,
+ * so it deliberately has no `endpointUrl` to read by mistake.
+ */
+export interface TemplatedMcpRegistryConnection extends McpRegistryConnectionBase {
+	isTemplated: true;
+	urlTemplate: string;
+}
+
+export type McpRegistryConnection = LiteralMcpRegistryConnection | TemplatedMcpRegistryConnection;
+
+/**
+ * The endpoint as the registry configured it: a literal URL, or the unresolved
+ * template for a templated row. Only for describing the row (node defaults,
+ * search results). Anything that opens a connection needs the resolved URL from
+ * `prepareMcpRegistryConnection`.
+ */
+export function getConfiguredEndpointUrl(connection: McpRegistryConnection): string {
+	return connection.isTemplated ? connection.urlTemplate : connection.endpointUrl;
 }
 
 export interface PrepareMcpRegistryConnectionInput {
@@ -29,8 +50,14 @@ export interface PrepareMcpRegistryConnectionInput {
 export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: true;
-			value: McpRegistryConnection & {
+			value: {
+				nodeTypeName: string;
+				credentialType: McpOAuth2CredentialType;
+				transport: 'httpStreamable' | 'sse';
+				/** Always a literal URL, templated or not. */
+				endpointUrl: string;
 				headers: Record<string, string>;
+				/** Host the credential is pinned to, taken from `endpointUrl`. */
 				allowedDomains: string;
 			};
 	  }

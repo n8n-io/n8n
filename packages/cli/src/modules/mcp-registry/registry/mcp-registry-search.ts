@@ -7,7 +7,11 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { resolveMcpRegistryConnection, toAgentMcpTransport } from '../mcp-registry-connection';
+import {
+	getConfiguredEndpointUrl,
+	resolveMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '../mcp-registry-connection';
 
 export interface McpRegistrySearchResult {
 	slug: string;
@@ -30,7 +34,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,
-		url: connection.endpointUrl,
+		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
 		authentication: connection.credentialType,
 		credentialType: connection.credentialType,
