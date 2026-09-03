@@ -17,6 +17,7 @@ describe('ScalingService queue recovery', () => {
 	let scalingService: ScalingService;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflow: WorkflowEntity;
+	let isPostgres: boolean;
 	const originalSkipStatisticsEvents = process.env.SKIP_STATISTICS_EVENTS;
 
 	beforeAll(async () => {
@@ -28,6 +29,7 @@ describe('ScalingService queue recovery', () => {
 		Container.get(WorkflowStatisticsService);
 
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
+		isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 
 		scalingService = new ScalingService(
 			mockLogger(),
@@ -47,7 +49,12 @@ describe('ScalingService queue recovery', () => {
 	beforeEach(async () => {
 		vi.spyOn(scalingService, 'findJobsByStatus').mockResolvedValue([]);
 
-		await testDb.truncate(['WorkflowEntity', 'WorkflowStatistics', 'ExecutionEntity']);
+		await testDb.truncate([
+			'WorkflowEntity',
+			'WorkflowStatistics',
+			'WorkflowStatisticsDelta',
+			'ExecutionEntity',
+		]);
 
 		workflow = await createWorkflow();
 	});
@@ -65,8 +72,29 @@ describe('ScalingService queue recovery', () => {
 		target: WorkflowEntity = workflow,
 	) => await createExecution({ status: 'running', finished: false, stoppedAt: null, mode }, target);
 
-	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) =>
-		await workflowStatisticsRepository.findOneBy({ workflowId, name });
+	/**
+	 * On Postgres, recording a statistic appends to the delta table and a separate rollup folds
+	 * the increments into the counter out of band. Fold whatever is pending before every read, so
+	 * a read sees the same materialized counter that the SQLite upsert path writes directly.
+	 * No-op on SQLite.
+	 */
+	const foldPendingIncrements = async () => {
+		if (!isPostgres) return;
+		await workflowStatisticsRepository.rollupIncrements(
+			workflowStatisticsRepository.manager,
+			10_000,
+		);
+	};
+
+	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) => {
+		await foldPendingIncrements();
+		return await workflowStatisticsRepository.findOneBy({ workflowId, name });
+	};
+
+	const findAllStatistics = async (workflowId: string) => {
+		await foldPendingIncrements();
+		return await workflowStatisticsRepository.findBy({ workflowId });
+	};
 
 	it('records a production error against the workflow for an execution recovered as crashed', async () => {
 		const execution = await createDanglingExecution('trigger');
@@ -113,7 +141,7 @@ describe('ScalingService queue recovery', () => {
 			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({ count: 1 });
 		});
 
-		expect(await workflowStatisticsRepository.findBy({ workflowId: chatWorkflow.id })).toEqual([]);
+		expect(await findAllStatistics(chatWorkflow.id)).toEqual([]);
 	});
 
 	it('excludes an execution already `crashed` from a later, sequential sweep', async () => {

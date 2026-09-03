@@ -290,7 +290,9 @@ describe('ExecutionRepository', () => {
 				finished: false,
 				createdAt: new Date(),
 			});
-			const runningId = identifiers[0].id as string;
+			// The inserted id comes back as a number on Postgres and as a string on SQLite,
+			// while the repository always returns it as a string.
+			const runningId = String(identifiers[0].id);
 			await executionRepo.softDelete(runningId);
 
 			const crashed = await executionRepo.markAsCrashed([runningId]);
