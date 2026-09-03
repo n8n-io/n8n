@@ -347,7 +347,7 @@ describe('Jira -> GenericFunctions', () => {
 				).rejects.toBeTruthy();
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
-				// cloudId lookup only — no second (forced-refresh) call
+				// cloudId lookup only. No second, forced-refresh call.
 				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 			});
 		});

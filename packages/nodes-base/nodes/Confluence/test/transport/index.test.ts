@@ -230,7 +230,7 @@ describe('confluenceApiRequest', () => {
 
 		await captureRejection('/wiki/api/v2/pages/999');
 
-		// cloudId lookup + first attempt + forced refresh + retry — no more
+		// cloudId lookup, first attempt, forced refresh, retry. No more than that.
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 	});
 
@@ -580,7 +580,7 @@ describe('confluenceApiRequestUpload', () => {
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('404');
-		// cloudId lookup + the single failed attempt — no forced refresh, no retry
+		// cloudId lookup, then the single failed attempt. No forced refresh, no retry.
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 

@@ -102,20 +102,17 @@ export async function jiraSoftwareCloudApiRequest(
 		delete options.qs;
 	}
 
-	// A formData body (e.g. issue attachment upload) can carry a stream that's consumed
-	// by the first attempt — never safe to replay, so it skips the forced-refresh retry.
+	// A formData body (e.g. issue attachment upload) can carry a stream. The first
+	// attempt consumes it, so it's never safe to replay. Skip the forced-refresh retry then.
 	const canRetryOnExpiry =
 		GATEWAY_OAUTH2_CREDENTIAL_TYPES.includes(credentialType) && options.formData === undefined;
+	const makeRequest = async () =>
+		await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	try {
 		return canRetryOnExpiry
-			? await retryOnceIfTokenExpired(
-					this,
-					credentialType,
-					async () =>
-						await this.helpers.requestWithAuthentication.call(this, credentialType, options),
-				)
-			: await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+			? await retryOnceIfTokenExpired(this, credentialType, makeRequest)
+			: await makeRequest();
 	} catch (error) {
 		if (error.description?.includes?.("Field 'priority' cannot be set")) {
 			throw new NodeApiError(this.getNode(), error as JsonObject, {

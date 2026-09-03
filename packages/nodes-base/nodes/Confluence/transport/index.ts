@@ -156,13 +156,11 @@ export async function confluenceApiRequest(
 		json: true,
 	};
 
+	const makeRequest = async () =>
+		await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
+
 	try {
-		return await retryOnceIfTokenExpired(
-			this,
-			credentialType,
-			async () =>
-				await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options),
-		);
+		return await retryOnceIfTokenExpired(this, credentialType, makeRequest);
 	} catch (error) {
 		throw toConfluenceApiError.call(this, error);
 	}
@@ -189,14 +187,12 @@ export async function confluenceApiRequestBinary(
 		sendCredentialsOnCrossOriginRedirect: false,
 	};
 
+	const makeRequest = async () =>
+		await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
+
 	let data: unknown;
 	try {
-		data = await retryOnceIfTokenExpired(
-			this,
-			credentialType,
-			async () =>
-				await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options),
-		);
+		data = await retryOnceIfTokenExpired(this, credentialType, makeRequest);
 	} catch (error) {
 		throw toConfluenceApiError.call(this, error);
 	}

@@ -224,12 +224,13 @@ function extractHttpStatus(error: unknown): string | undefined {
 
 /**
  * The gateway (api.atlassian.com/ex/{product}/{cloudId}) answers 404 on v2
- * paths and 403 on v1 paths for an expired token — never the 401 n8n's OAuth2
- * helper waits for before refreshing. `accessible-resources` does return 401
- * on real expiry, so forcing that call first refreshes the token, then the
- * request is retried once. A page/issue that's genuinely gone still 404s on
- * the retry, so this can't loop. Only wrap a request whose body is safe to
- * send twice (never a multipart upload — its stream is already consumed).
+ * paths and 403 on v1 paths for an expired token. It never answers 401, the
+ * status n8n's OAuth2 helper waits for before refreshing. `accessible-resources`
+ * does return 401 on real expiry, so forcing that call first refreshes the
+ * token, then the request is retried once. A page or issue that's genuinely
+ * gone still 404s on the retry, so this can't loop. Only wrap a request whose
+ * body is safe to send twice. Never wrap a multipart upload: its stream is
+ * already consumed.
  */
 export async function retryOnceIfTokenExpired<T>(
 	ctx: AtlassianContext,
