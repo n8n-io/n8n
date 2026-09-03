@@ -1838,6 +1838,51 @@ describe('Workflow Builder', () => {
 			// pinData should not exist or be undefined when no nodes have pinData
 			expect(json.pinData).toBeUndefined();
 		});
+
+		it('should collect pinData from a branching node passed as a builder', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'Route', pinData: [{ decision: 'pinned' }] },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+			const wf = workflow('test-id', 'Test').add(t).to(ifNode.onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Route']).toEqual([{ decision: 'pinned' }]);
+		});
+
+		it('should collect pinData from source-chain nodes of a builder', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const prep = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Prep', pinData: [{ result: 'pinned' }] },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'Route' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+			const wf = workflow('test-id', 'Test').add(t).to(prep.to(ifNode).onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Prep']).toEqual([{ result: 'pinned' }]);
+		});
 	});
 
 	describe('Switch fluent API', () => {

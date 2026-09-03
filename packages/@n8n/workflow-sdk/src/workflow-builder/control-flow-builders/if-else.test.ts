@@ -495,4 +495,72 @@ export default workflow('test-id', 'Test')
 		expect(json.connections['Inner IF'].main[0]![0].node).toBe('Done');
 		expect(json.connections['Inner IF'].main[1]![0].node).toBe('Retry');
 	});
+
+	it('connects the prefix node to the IF node when the chain tail is an existing builder', () => {
+		// t.to(builder) makes the builder the chain tail; .onFalse then returns that
+		// same builder with the chain as its source chain. The chain-internal edge
+		// must land on the IF node, not resolve back to the chain head (self-loop).
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const ifNode = node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: { name: 'Route' },
+		}) as IfNode;
+		const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+		const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+		const builder = ifNode.onTrue!(yes);
+		const wf = workflow('test-id', 'Test').add(t.to(builder).onFalse!(no));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['No', 'Route', 'Start', 'Yes']);
+
+		expect(json.connections['Start'].main[0]![0].node).toBe('Route');
+		expect(json.connections['Route'].main[0]![0].node).toBe('Yes');
+		expect(json.connections['Route'].main[1]![0].node).toBe('No');
+	});
+
+	it('merges branches into the renamed IF node when its name collides with an existing node', () => {
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const existingCheck = node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: { name: 'Check' },
+		});
+		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const check = node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: { name: 'Check' },
+		}) as IfNode;
+		const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
+		const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingCheck)
+			.add(prep.to(check).onTrue!(yes).onFalse(no));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Check', 'Check 1', 'No', 'Prep', 'Start', 'Yes']);
+
+		// The chain's IF node was renamed to 'Check 1'; the branches belong to it
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Check 1');
+		expect(json.connections['Check 1'].main[0]![0].node).toBe('Yes');
+		expect(json.connections['Check 1'].main[1]![0].node).toBe('No');
+		// The pre-existing 'Check' must not receive the builder branches
+		expect(json.connections['Check']).toBeUndefined();
+	});
 });

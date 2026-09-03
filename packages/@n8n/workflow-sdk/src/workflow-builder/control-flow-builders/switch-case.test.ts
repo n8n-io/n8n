@@ -335,4 +335,119 @@ describe('inline chains that end in a Switch node', () => {
 		expect(json.connections['My Switch'].main[0]![0].node).toBe('Case A');
 		expect(json.connections['My Switch'].main[1]![0].node).toBe('Case B');
 	});
+
+	it('connects the prefix node to the Switch node when the chain tail is an existing builder', () => {
+		// t.to(builder) makes the builder the chain tail; .onCase then returns that
+		// same builder with the chain as its source chain. The chain-internal edge
+		// must land on the Switch node, not resolve back to the chain head (self-loop).
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const switchNode = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'My Switch' },
+		}) as SwitchNode;
+		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
+		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+
+		const builder = switchNode.onCase!(0, caseA);
+		const wf = workflow('test-id', 'Test').add(t.to(builder).onCase!(1, caseB));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Case A', 'Case B', 'My Switch', 'Start']);
+
+		expect(json.connections['Start'].main[0]![0].node).toBe('My Switch');
+		expect(json.connections['My Switch'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['My Switch'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('serializes an incoming connection to the renamed chain head after a name collision', () => {
+		// The chain head 'Prep' collides with an existing node and is renamed 'Prep 1'.
+		// A workflow-level .to() must resolve the composite entry to the renamed key.
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const existingPrep = node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { name: 'Prep' },
+		});
+		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const switchNode = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router' },
+		}) as SwitchNode;
+		const handler = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: 'Handler' },
+		});
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingPrep)
+			.to(prep.to(switchNode).onCase!(0, handler));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Handler', 'Prep', 'Prep 1', 'Router', 'Start']);
+
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Prep 1');
+		expect(json.connections['Prep 1'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Handler');
+	});
+
+	it('serializes a node-declared connection to the renamed chain head after a name collision', () => {
+		// Same collision, but the edge into the composite is declared on a node
+		// (source.to(composite)) instead of at the workflow level.
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const existingPrep = node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { name: 'Prep' },
+		});
+		const source = node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { name: 'Source' },
+		});
+		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const switchNode = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router' },
+		}) as SwitchNode;
+		const handler = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: 'Handler' },
+		});
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingPrep)
+			.add(source.to(prep.to(switchNode).onCase!(0, handler)));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Handler', 'Prep', 'Prep 1', 'Router', 'Source', 'Start']);
+
+		expect(json.connections['Source'].main[0]![0].node).toBe('Prep 1');
+		expect(json.connections['Prep 1'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Handler');
+	});
 });

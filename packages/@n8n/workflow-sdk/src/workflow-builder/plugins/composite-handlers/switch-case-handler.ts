@@ -60,6 +60,16 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 		input: SwitchCaseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
+		// Collect from source-chain nodes (a.to(b).to(switchNode).onCase(...)).
+		// Skip the input itself: the chain contains the builder when its tail is the builder.
+		const sourceChain = (input as { sourceChain?: NodeChain }).sourceChain;
+		if (sourceChain) {
+			for (const chainNode of sourceChain.allNodes) {
+				if (chainNode && chainNode !== (input as unknown)) {
+					collector(chainNode);
+				}
+			}
+		}
 		// Collect from Switch node
 		collector(input.switchNode);
 
@@ -105,8 +115,11 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 
 			// Add the Switch node with connections to cases
 			// If the node already exists (e.g., added by merge handler via addBranchToGraph),
-			// merge the connections rather than overwriting
-			const existingNode = ctx.nodes.get(builder.switchNode.name);
+			// merge the connections rather than overwriting.
+			// Resolve through nameMapping first: addBranchToGraph may have added the Switch
+			// node under a deduped name, and the plain name can belong to a different node.
+			const switchNodeKey = ctx.nameMapping?.get(builder.switchNode.id) ?? builder.switchNode.name;
+			const existingNode = ctx.nodes.get(switchNodeKey);
 			if (existingNode) {
 				// Merge switchMainConns into existing connections
 				const existingMainConns =
@@ -129,7 +142,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 				// Node doesn't exist, add it fresh
 				const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 				switchConns.set('main', switchMainConns);
-				ctx.nodes.set(builder.switchNode.name, {
+				ctx.nodes.set(switchNodeKey, {
 					instance: builder.switchNode,
 					connections: switchConns,
 				});
@@ -146,7 +159,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 				fixupBranchConnectionTargets(switchMainConns, targetNodeIds, ctx.nameMapping);
 			}
 
-			return builder.switchNode.name;
+			return switchNodeKey;
 		}
 
 		// SwitchCaseComposite: add cases first, then use results for connections

@@ -145,6 +145,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Collect pinData from a composite (builder) via its handler, including branch
+	 * targets and source-chain nodes.
+	 */
+	private collectPinDataFromComposite(
+		composite: unknown,
+	): Record<string, IDataObject[]> | undefined {
+		const registry = this._registry ?? pluginRegistry;
+		const handler = registry.findCompositeHandler(composite);
+		if (!handler?.collectPinData) {
+			return this._pinData;
+		}
+		let pinData = this._pinData;
+		handler.collectPinData(composite, (node) => {
+			pinData = this.collectPinDataFromNode(node, pinData);
+		});
+		return pinData;
+	}
+
+	/**
 	 * Collect pinData from all nodes in a chain
 	 */
 	private collectPinDataFromChain(chain: NodeChain): Record<string, IDataObject[]> | undefined {
@@ -224,6 +243,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (addHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = addHandler.addNodes(node, ctx);
+			this._pinData = this.collectPinDataFromComposite(node);
 			this._currentNode = headName;
 			this._currentOutput = 0;
 			return this;
@@ -350,6 +370,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				}
 			}
 
+			this._pinData = this.collectPinDataFromComposite(nodeOrComposite);
 			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
 			this._currentNode = continuation?.currentNode ?? headName;
 			this._currentOutput = continuation?.currentOutput ?? 0;

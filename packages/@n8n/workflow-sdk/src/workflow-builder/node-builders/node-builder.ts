@@ -403,6 +403,31 @@ class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput
 }
 
 /**
+ * Retarget declared connections that point at a builder object onto its branching node.
+ *
+ * When a chain ends in a builder (a.to(ifBuilder).onFalse(x)), the chain-internal edge
+ * declared by a targets the builder object. Connection resolution treats a builder as its
+ * composite entry (the source-chain head), which for this shape is a itself and produces
+ * a self-loop. The edge means "connect to the branching node", so rewrite it to that node.
+ * getConnections() returns a copied array of shared connection objects, so the rewrite
+ * reaches the declared connection.
+ */
+function retargetDeclaredConnections(
+	nodes: Array<NodeInstance<string, string, unknown>>,
+	from: unknown,
+	to: NodeInstance<string, string, unknown>,
+): void {
+	for (const node of nodes) {
+		if (!node || node === from || typeof node.getConnections !== 'function') continue;
+		for (const conn of node.getConnections()) {
+			if (conn.target === from) {
+				conn.target = to;
+			}
+		}
+	}
+}
+
+/**
  * Internal NodeChain implementation
  *
  * Proxies NodeInstance properties to the tail node while tracking all nodes in the chain.
@@ -548,8 +573,12 @@ class NodeChainImpl<
 			throw new Error(`.onTrue() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
 		const builder = this.tail.onTrue(target);
+		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
 		// Pass this chain to the builder so workflow-builder can add all chain nodes
-		(builder as IfElseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		builderImpl.sourceChain = this;
+		// When the tail is the builder itself, chain-internal edges point at the builder;
+		// they must land on the IF node, not on the composite entry (which is this chain's head)
+		retargetDeclaredConnections(this.allNodes, builder, builderImpl.ifNode);
 		return builder;
 	}
 
@@ -562,8 +591,12 @@ class NodeChainImpl<
 			throw new Error(`.onFalse() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
 		const builder = this.tail.onFalse(target);
+		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
 		// Pass this chain to the builder so workflow-builder can add all chain nodes
-		(builder as IfElseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		builderImpl.sourceChain = this;
+		// When the tail is the builder itself, chain-internal edges point at the builder;
+		// they must land on the IF node, not on the composite entry (which is this chain's head)
+		retargetDeclaredConnections(this.allNodes, builder, builderImpl.ifNode);
 		return builder;
 	}
 
@@ -576,8 +609,12 @@ class NodeChainImpl<
 			throw new Error(`.onCase() is only available on Switch nodes (${NODE_TYPES.SWITCH})`);
 		}
 		const builder = this.tail.onCase(index, target);
+		const builderImpl = builder as SwitchCaseBuilderImpl<TTail['_outputType']>;
 		// Pass this chain to the builder so workflow-builder can add all chain nodes
-		(builder as SwitchCaseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		builderImpl.sourceChain = this;
+		// When the tail is the builder itself, chain-internal edges point at the builder;
+		// they must land on the Switch node, not on the composite entry (this chain's head)
+		retargetDeclaredConnections(this.allNodes, builder, builderImpl.switchNode);
 		return builder;
 	}
 
