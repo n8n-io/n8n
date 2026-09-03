@@ -8,8 +8,17 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey } from '@/app/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import {
+	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
+	CanvasKey,
+	MODAL_CONFIRM,
+} from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
@@ -38,6 +47,9 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -51,9 +63,9 @@ import type {
 } from '@vue-flow/core';
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
-import type { CanvasRenderData } from '../canvas.utils';
+import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -84,11 +96,20 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
+import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import {
+	useAddNodesToChat,
+	type AddNodesToChatSource,
+} from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const $style = useCssModule();
 
@@ -196,7 +217,11 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const message = useMessage();
+const toast = useToast();
+const i18n = useI18n();
 
 const renderData = toRef(props, 'renderData');
 provide(CanvasRenderDataKey, renderData);
@@ -204,6 +229,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const { addSelectedNodesToChat, isNodeContextEnabled } = useAddNodesToChat();
+const instanceAiStore = useInstanceAiStore();
+const instanceAiCapability = useInstanceAiEditorCapability();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -228,6 +258,7 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	onNodesInitialized,
+	onNodesChange,
 	findNode,
 	viewport,
 	dimensions,
@@ -241,6 +272,14 @@ const {
 	onNodeMouseEnter,
 	onNodeMouseLeave,
 } = vueFlow;
+
+const agentNodeGeometry = useCanvasAgentNodeGeometry({
+	canvasId: props.id,
+	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+	setNodePosition: (id, position) =>
+		workflowDocumentStore.value.setNodePositionById(id, [position.x, position.y]),
+	onNodesChange,
+});
 const {
 	getIncomingNodes,
 	getOutgoingNodes,
@@ -260,6 +299,7 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
+const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -306,6 +346,9 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
+		// A selection that unambiguously targets a group renames the group;
+		// anything else falls through to node rename.
+		if (renameSelectedGroup()) return;
 		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
@@ -400,10 +443,38 @@ const {
 	groupNodes,
 	groupSelection,
 	renameGroup,
+	updateGroupDescription,
 	ungroup,
 	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
+});
+
+const { isSelectionExtractable } = useSelectionValidation();
+
+// Groups that can be extracted to sub-workflows
+const extractableGroupIds = computed(() => {
+	const ids = new Set<string>();
+	if (settingsStore.isSubworkflowConversionDisabled) return ids;
+	for (const group of workflowDocumentStore.value.allGroups) {
+		if (isSelectionExtractable(group.nodeIds).valid) {
+			ids.add(group.id);
+		}
+	}
+	return ids;
+});
+
+const soleSelectedGroupId = computed<string | null>(() => {
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return null;
+
+	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
+	if (!groupId) return null;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return null;
+
+	const memberIds = new Set(group.nodeIds);
+	return selectedNodes.value.every((node) => memberIds.has(node.id)) ? groupId : null;
 });
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -480,18 +551,31 @@ const keyMap = computed(() => {
 		},
 		shift_s: () => emit('create:sticky'),
 		shift_f: () => emit('toggle:focus-panel'),
-		ctrl_alt_n: () => emit('create:workflow'),
+		ctrl_alt_n: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => emit('create:workflow'),
+		},
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
 		// also triggers manual save when autosave is disabled
-		ctrl_s: () => emit('save:workflow'),
+		ctrl_s: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => emit('save:workflow'),
+		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
-		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		alt_x: {
+			disabled: () => settingsStore.isSubworkflowConversionDisabled,
+			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		},
 		c: () => emit('start-chat'),
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
-		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
+		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
+		// exclusive (Focus AI requires !instanceAi), so they share the same key.
+		alt_i: emitWithSelectedNodes((ids) =>
+			isNodeContextEnabled.value ? onAddNodesToChat(ids) : onAddSelectedNodesToAi(ids),
+		),
 	};
 
 	fullKeymap.ctrl_g = {
@@ -535,6 +619,33 @@ const selectedNodeIdsWithGroupMembers = computed(() => {
 	return [...ids];
 });
 
+function buildNodeContextWorkflow(): NodeContextWorkflow {
+	const s = workflowDocumentStore.value;
+	return {
+		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+		connections: s.connectionsBySourceNode,
+		groupsById: new Map(s.allGroups.map((g) => [g.id, { id: g.id, name: g.name }])),
+		nodeIdToGroupId: s.nodeIdToGroupId,
+	};
+}
+
+async function onAddNodesToChat(
+	ids: string[] = selectedNodeIdsWithGroupMembers.value,
+	source: AddNodesToChatSource = 'keyboard',
+) {
+	const doc = workflowDocumentStore.value;
+	await addSelectedNodesToChat({
+		workflowId: doc.workflowId,
+		selectedNodeIds: ids,
+		workflow: buildNodeContextWorkflow(),
+		isInsideThread: !instanceAiCapability.openWorkflow,
+		onStaged: () => instanceAiStore.requestComposerFocus(),
+		workflowName: doc.name,
+		workflowSnapshot: doc.getSnapshot(),
+		source,
+	});
+}
+
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
@@ -558,6 +669,24 @@ watch(selectedNodes, (nodes) => {
 		lastSelectedNode.value = nodes[nodes.length - 1];
 	}
 });
+
+// Report a multi-selection once it settles. Debouncing keeps a rubber-band drag from emitting an
+// event for every node it sweeps over; keying the watch on the selected ids (not just the count)
+// means swapping one settled selection for a different one of the same size still reports.
+watchDebounced(
+	() => selectedNodeIds.value.join(','),
+	() => {
+		const nodeCount = selectedNodeIds.value.length;
+		if (nodeCount >= 2) {
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.MULTIPLE_NODES_SELECTED, {
+				workflow_id: workflowDocumentStore.value.workflowId,
+				node_count: nodeCount,
+				push_ref: rootStore.pushRef,
+			});
+		}
+	},
+	{ debounce: 500 },
+);
 
 watch(selectedNodeIds, (newIds) => {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
@@ -661,7 +790,11 @@ function onNodeDrag(event: NodeDragEvent) {
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	const moves = groupDrag.processNodeDragStop(event);
+	const moves = agentNodeGeometry.snapDraggedNodeMoves(
+		event.node,
+		groupDrag.processNodeDragStop(event),
+		event.nodes,
+	);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
@@ -713,8 +846,114 @@ function onCanvasGroupToggle(
 	}
 }
 
+function isGroupNameTaken(groupId: string, name: string): boolean {
+	return workflowDocumentStore.value.allGroups.some(
+		(other) => other.id !== groupId && other.name === name,
+	);
+}
+
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
+	if (isGroupNameTaken(groupId, name)) {
+		toast.showToast({
+			title: i18n.baseText('canvas.nodeGroup.renameBlocked.title'),
+			message: i18n.baseText('canvas.nodeGroup.duplicateName'),
+			type: 'error',
+			duration: 5000,
+		});
+		autofocusGroupTitleId.value = groupId;
+		return;
+	}
 	renameGroup(groupId, name);
+}
+
+// Collapsed groups have no inline title editor, so they rename through a
+// prompt (mirroring node rename); expanded groups focus the inline editor.
+function openGroupRename(groupId: string) {
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		void onOpenGroupRenameModal(groupId);
+	} else {
+		autofocusGroupTitleId.value = groupId;
+	}
+}
+
+// Space renames a selected group the same way it renames a selected node.
+// Only an unambiguous target acts (see soleSelectedGroupId). Loose nodes or
+// multiple groups fall through to node rename. Returns whether the rename
+// was handled.
+function renameSelectedGroup(): boolean {
+	if (disableKeyBindings.value) return false;
+
+	const activeElement = document.activeElement;
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) return false;
+
+	const groupId = soleSelectedGroupId.value;
+	if (!groupId) return false;
+
+	openGroupRename(groupId);
+	return true;
+}
+
+async function onOpenGroupRenameModal(groupId: string) {
+	if (props.readOnly || props.suppressInteraction) return;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+
+	if (disableKeyBindings.value || document.querySelector('.rename-prompt')) return;
+
+	try {
+		const promptResponsePromise = message.prompt(
+			i18n.baseText('nodeView.prompt.newName') + ':',
+			i18n.baseText('canvas.nodeGroup.prompt.renameGroup') + `: ${group.name}`,
+			{
+				customClass: 'rename-prompt',
+				confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+				cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
+				inputValue: group.name,
+				inputValidator: (value: string) => {
+					const trimmed = value.trim();
+					if (!trimmed) {
+						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					if (isGroupNameTaken(groupId, trimmed)) {
+						return i18n.baseText('canvas.nodeGroup.duplicateName');
+					}
+					return true;
+				},
+			},
+		);
+
+		// Wait till input is displayed
+		await nextTick();
+
+		// Focus and select input content
+		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
+		nameInput?.focus();
+		nameInput?.select();
+
+		// Stop propagation for space key to prevent VueFlow from intercepting it
+		// when modifier keys (like Shift) are pressed.
+		// See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
+		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
+
+		if (promptResponse.action === MODAL_CONFIRM) {
+			renameGroup(groupId, promptResponse.value.trim());
+		}
+	} catch (e) {}
+}
+
+function onCanvasGroupDescriptionUpdate(groupId: string, description: string) {
+	updateGroupDescription(groupId, description);
 }
 
 function onCanvasGroupUngroup(
@@ -738,6 +977,20 @@ function onCanvasGroupUngroup(
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);
 	}
+}
+
+// Same downstream path as extracting the members through Alt+X or the
+// context menu, so collapsed and expanded groups behave identically.
+function onCanvasGroupExtract(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	emit('extract-workflow', [...group.nodeIds]);
+}
+
+function onCanvasGroupAddNodesToChat(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	void onAddNodesToChat([...group.nodeIds], 'group_title_bar');
 }
 
 // Expand or collapse groups through the same path as the single toggle so
@@ -764,6 +1017,22 @@ function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventS
 		expanded,
 		source,
 	);
+}
+
+// Pin or unpin the descriptions of every group that has one — the workflow-wide
+// counterpart to the per-group pin toggle in the title bar.
+function onSetAllDescriptionsVisible(visible: boolean) {
+	if (!injectedNodeGroupDescriptionVisibility) return;
+	const groupIds = workflowDocumentStore.value.allGroups
+		.filter((group) => !!group.description?.trim())
+		.map((group) => group.id);
+	injectedNodeGroupDescriptionVisibility.setVisibleForGroups(groupIds, visible);
+}
+
+// Pin or unpin a single group's description, from its own context menu.
+function onSetGroupDescriptionVisible(groupId: string | undefined, visible: boolean) {
+	if (!injectedNodeGroupDescriptionVisibility || !groupId) return;
+	injectedNodeGroupDescriptionVisibility.setVisible(groupId, visible);
 }
 
 // Distinct groups behind a context menu target: the carried group when a
@@ -814,9 +1083,29 @@ function onDeleteSelection() {
 	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
+// Last header-click toggle, for double-click suppression in onNodeClick.
+let lastHeaderToggle: { groupId: string; at: number } | undefined;
+
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	// Title bars have their own click handlers
-	if (isCanvasGroupNode(node)) return;
+	if (isCanvasGroupNode(node)) {
+		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
+		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+		// A plain click both selects the title bar (VueFlow selected it before
+		// emitting this event) and toggles collapse. Staying selected pairs the
+		// click with Space-to-rename, like nodes.
+		const groupId = parseCanvasGroupNodeId(node.id);
+		if (groupId) {
+			const isRepeatClick =
+				lastHeaderToggle?.groupId === groupId &&
+				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;
+			if (!isRepeatClick) {
+				lastHeaderToggle = { groupId, at: event.timeStamp };
+				onCanvasGroupToggle(groupId, 'group-header');
+			}
+		}
+		return;
+	}
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -858,6 +1147,11 @@ function onSetNodeDeactivated(id: string) {
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
+
+watch(
+	() => instanceAiStore.clearCanvasSelectionRequest,
+	() => clearSelectedNodes(),
+);
 
 function onSelectAllNodes() {
 	addSelectedNodes(selectableNodesAndGroups.value);
@@ -1284,7 +1578,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		}
 		case 'rename_group': {
 			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
-				autofocusGroupTitleId.value = groupId;
+				openGroupRename(groupId);
 			}
 			return;
 		}
@@ -1302,12 +1596,24 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), true, 'context-menu');
 		case 'collapse_selected_groups':
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), false, 'context-menu');
+		case 'show_all_group_descriptions':
+			return onSetAllDescriptionsVisible(true);
+		case 'hide_all_group_descriptions':
+			return onSetAllDescriptionsVisible(false);
+		case 'show_group_description':
+			return onSetGroupDescriptionVisible(groupId, true);
+		case 'hide_group_description':
+			return onSetGroupDescriptionVisible(groupId, false);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
 		case 'focus_ai_on_selected': {
 			focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
 			void chatPanelStore.open({ mode: 'builder' });
+			return;
+		}
+		case 'add_nodes_to_chat': {
+			void onAddNodesToChat(nodeIds, 'context_menu');
 			return;
 		}
 	}
@@ -1592,10 +1898,14 @@ defineExpose({
 				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
+				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
+				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@extract="onCanvasGroupExtract"
+				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
@@ -1627,6 +1937,7 @@ defineExpose({
 					@focus="onFocusNode"
 					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
+					@add-nodes-to-chat="onAddNodesToChat([$event], 'node_toolbar')"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
@@ -1660,13 +1971,16 @@ defineExpose({
 			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
 		</slot>
 
+		<!-- A selection that is exactly one group acts through the group's own
+		toolbar; the selection toolbar would only duplicate it and cover it. -->
 		<CanvasSelectionToolbar
-			v-if="showNodeGroups"
+			v-if="showNodeGroups && soleSelectedGroupId === null"
 			:selected-nodes="selectedNodes"
 			:selection-bounds="selectionBoxBounds"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
+			@add-nodes-to-chat="onAddNodesToChat($event, 'selection_toolbar')"
 		/>
 
 		<Transition name="minimap">
@@ -1698,7 +2012,6 @@ defineExpose({
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
-			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 			@toggle-zoom-mode="onToggleZoomMode"
 		/>

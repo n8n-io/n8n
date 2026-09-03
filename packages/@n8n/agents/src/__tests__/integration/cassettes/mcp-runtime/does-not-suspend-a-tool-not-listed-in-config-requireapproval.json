@@ -36,7 +36,8 @@
 							}
 						},
 						"required": ["message"]
-					}
+					},
+					"strict": false
 				},
 				{
 					"name": "tools_add",
@@ -54,7 +55,8 @@
 							}
 						},
 						"required": ["a", "b"]
-					}
+					},
+					"strict": false
 				},
 				{
 					"name": "tools_image",
@@ -68,7 +70,8 @@
 							}
 						},
 						"required": ["caption"]
-					}
+					},
+					"strict": false
 				}
 			],
 			"tool_choice": {
@@ -169,7 +172,8 @@
 							}
 						},
 						"required": ["message"]
-					}
+					},
+					"strict": false
 				},
 				{
 					"name": "tools_add",
@@ -187,7 +191,8 @@
 							}
 						},
 						"required": ["a", "b"]
-					}
+					},
+					"strict": false
 				},
 				{
 					"name": "tools_image",
@@ -201,7 +206,8 @@
 							}
 						},
 						"required": ["caption"]
-					}
+					},
+					"strict": false
 				}
 			],
 			"tool_choice": {

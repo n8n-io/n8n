@@ -26,8 +26,11 @@ export function createListFilesTool(filesystem: WorkspaceFilesystem): BuiltTool 
 					.describe('List of file entries'),
 			}),
 		)
-		.handler(async (input) => {
-			const entries = await filesystem.readdir(input.path, { recursive: input.recursive });
+		.handler(async (input, ctx) => {
+			const entries = await filesystem.readdir(input.path, {
+				recursive: input.recursive,
+				abortSignal: ctx.abortSignal,
+			});
 			return { entries };
 		})
 		.build();

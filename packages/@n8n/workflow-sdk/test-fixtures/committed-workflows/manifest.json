@@ -109,6 +109,24 @@
 			"id": 10,
 			"name": "Node groups - linear chain with a grouped section",
 			"success": true
+		},
+		{
+			"id": 11,
+			"name": "Lint: Code node network call",
+			"success": true,
+			"expectedLintIssues": [{ "code": "CODE_NODE_NETWORK_CALL" }]
+		},
+		{
+			"id": 12,
+			"name": "Lint: unsolicited sticky note",
+			"success": true,
+			"expectedLintIssues": [{ "code": "SDK_UNSOLICITED_STICKY" }]
+		},
+		{
+			"id": 13,
+			"name": "Lint: Python Code node network import",
+			"success": true,
+			"expectedLintIssues": [{ "code": "CODE_NODE_NETWORK_CALL" }]
 		}
 	]
 }

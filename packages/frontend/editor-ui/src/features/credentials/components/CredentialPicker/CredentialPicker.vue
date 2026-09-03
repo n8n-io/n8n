@@ -11,7 +11,7 @@ import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { ButtonProps, SelectSize } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -27,6 +27,7 @@ const props = defineProps<{
 	projectId?: string;
 	suggestedCredentialName?: string;
 	teleported?: boolean;
+	credentialModalAppendToBody?: boolean;
 	size?: SelectSize;
 	buttonSize?: ButtonProps['size'];
 }>();
@@ -122,14 +123,21 @@ const createNewCredential = () => {
 		props.suggestedCredentialName,
 		undefined,
 		undefined,
-		{ closeOnSave: true },
+		{
+			closeOnSave: true,
+			...(props.credentialModalAppendToBody ? { appendToBody: true } : {}),
+		},
 	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
-	uiStore.openExistingCredential(props.selectedCredentialId);
+	if (props.credentialModalAppendToBody) {
+		uiStore.openExistingCredential(props.selectedCredentialId, { appendToBody: true });
+	} else {
+		uiStore.openExistingCredential(props.selectedCredentialId);
+	}
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', props.selectedCredentialId);
 };

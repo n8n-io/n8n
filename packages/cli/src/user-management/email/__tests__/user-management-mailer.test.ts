@@ -191,7 +191,7 @@ describe('UserManagementMailer', () => {
 			expect(callBody).toContain('Test 123');
 			expect(callBody).toContain('aaa5');
 			expect(callBody).toContain('Jan Ostrówka');
-			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2} \d{4}/);
+			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2,3} \d{4}/);
 		});
 
 		it('falls back to the revoker email when no name is set', async () => {
@@ -216,6 +216,32 @@ describe('UserManagementMailer', () => {
 
 			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
 			expect(callBody).toContain('jan@acme.test');
+		});
+
+		it('should send mcp client revoked notifications', async () => {
+			const revoker = mock<User>({
+				firstName: 'Jan',
+				lastName: 'Ostrówka',
+				email: 'jan@acme.test',
+			});
+
+			const result = await userManagementMailer.notifyMcpClientRevoked({
+				clientName: 'Claude Code',
+				owner: { email: 'owner@example.com', firstName: 'Maria' },
+				revoker,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				emailRecipients: 'owner@example.com',
+				subject: 'Your n8n MCP client access was revoked',
+				body: expect.stringContaining('href="https://n8n.url/settings/mcp"'),
+			});
+
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
+			expect(callBody).toContain('Claude Code');
+			expect(callBody).toContain('Jan Ostrówka');
+			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2,3} \d{4}/);
 		});
 
 		it('should send project share notifications', async () => {

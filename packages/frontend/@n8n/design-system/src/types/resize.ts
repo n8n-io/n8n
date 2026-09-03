@@ -1,8 +1,8 @@
 export const directionsCursorMaps = {
-	right: 'ew-resize',
-	top: 'ns-resize',
-	bottom: 'ns-resize',
-	left: 'ew-resize',
+	right: 'col-resize',
+	top: 'row-resize',
+	bottom: 'row-resize',
+	left: 'col-resize',
 	topLeft: 'nw-resize',
 	topRight: 'ne-resize',
 	bottomLeft: 'sw-resize',

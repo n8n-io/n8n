@@ -1,8 +1,7 @@
 <script setup lang="ts" generic="T = string, D = never">
 import { useCssModule } from 'vue';
 
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-
+import N8nLoading from '../N8nLoading';
 import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 

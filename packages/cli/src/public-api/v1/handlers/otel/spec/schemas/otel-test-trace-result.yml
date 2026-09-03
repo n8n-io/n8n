@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+description: The outcome of the test connection to the OTLP collector.
+required:
+  - success
+properties:
+  success:
+    type: boolean
+    description: Whether the test span was accepted by the collector.
+    example: true
+  error:
+    type: string
+    description: >
+      The error reported by the collector or exporter. Present only when `success` is false.
+    example: 'Failed to connect: 401 Unauthorized'

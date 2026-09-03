@@ -10,6 +10,14 @@ export const MCP_APPS_FLAG = '087_mcp_apps';
 export const MCP_APPS_VARIANT_CONTROL = 'control';
 export const MCP_APPS_VARIANT_ENABLED = 'variant';
 
+// PostHog boolean rollout flag id gating Canvas node-group support in the MCP
+// workflow-builder tools (group docs in the SDK reference, group handling in
+// the create/validate/update tools). `true` enables; anything else keeps the
+// current behaviour.
+export const MCP_CANVAS_GROUPS_FLAG = '102_mcp_canvas_groups';
+
+export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] as const;
+
 /**
  * OAuth scopes a user can grant to an MCP client on the consent screen for
  * the instance-level MCP server. Each scope gates a set of MCP tools; the
@@ -21,11 +29,65 @@ export const MCP_INSTANCE_SCOPES = [
 	'workflow:write',
 	'workflow:execute',
 	'execution:read',
+	...MCP_AGENT_SCOPES,
 	'credential:read',
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
+	'project:write',
 	'tag:read',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
+
+export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
+
+/** Known client brands, used by the FE to pick the logo shown next to a client. */
+export type McpClientBrandName = 'claude' | 'cursor' | 'vscode' | 'openai';
+
+/**
+ * Client names are free-form (self-reported at OAuth registration), so known
+ * clients are recognized by name patterns. First match wins: more specific
+ * patterns (e.g. "Claude Code") must come before broader ones ("Claude").
+ * Shared FE/BE so the type shown in the clients table and the server-side
+ * type filter cannot drift.
+ */
+export const MCP_CLIENT_BRAND_MATCHERS: ReadonlyArray<{
+	pattern: RegExp;
+	brand: McpClientBrandName;
+	type: McpClientType;
+}> = [
+	{ pattern: /claude[ -]?code/i, brand: 'claude', type: 'cli' },
+	{ pattern: /claude/i, brand: 'claude', type: 'assistant' },
+	{ pattern: /cursor/i, brand: 'cursor', type: 'ide' },
+	{ pattern: /(visual studio code|vs ?code)/i, brand: 'vscode', type: 'editor' },
+	{ pattern: /codex/i, brand: 'openai', type: 'cli' },
+	{ pattern: /chatgpt|openai/i, brand: 'openai', type: 'assistant' },
+];
+
+export function getMcpClientType(clientName: string): McpClientType | null {
+	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.type ?? null;
+}
+
+export function getMcpClientBrand(clientName: string): McpClientBrandName | null {
+	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? null;
+}
+
+/**
+ * Client-type buckets offered by the connected-clients filter (per design),
+ * coarser than the derived brand types shown in the table rows.
+ */
+export const MCP_CLIENT_TYPE_FILTERS = ['ide', 'cli', 'web'] as const;
+
+export type McpClientTypeFilter = (typeof MCP_CLIENT_TYPE_FILTERS)[number];
+
+export const MCP_CLIENT_TYPE_FILTER_BUCKETS: Record<McpClientTypeFilter, McpClientType[]> = {
+	ide: ['ide', 'editor'],
+	cli: ['cli'],
+	web: ['assistant'],
+};
+
+/** Date buckets for the "Connected" filter, applied to the consent's grantedAt. */
+export const MCP_CLIENT_CONNECTED_PERIODS = ['last7', 'last30', 'older'] as const;
+
+export type McpClientConnectedPeriod = (typeof MCP_CLIENT_CONNECTED_PERIODS)[number];

@@ -1,14 +1,57 @@
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import type { INodeType } from 'n8n-workflow';
+import type { INodeType, Workflow } from 'n8n-workflow';
 
 import {
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
+	satisfiesToolCapability,
 	setMicrosoftObservabilityDefaults,
 	containsExpression,
 	stripToolSuffix,
+	withExpressionIsolate,
 } from '../utils';
+
+describe('withExpressionIsolate', () => {
+	const acquireIsolate = vi.fn();
+	const releaseIsolate = vi.fn();
+	const workflow = { expression: { acquireIsolate, releaseIsolate } } as unknown as Workflow;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should acquire before the callback and release after when newly acquired', async () => {
+		acquireIsolate.mockResolvedValue(true);
+		const fn = vi.fn().mockResolvedValue('result');
+
+		await expect(withExpressionIsolate(workflow, fn)).resolves.toBe('result');
+
+		expect(acquireIsolate.mock.invocationCallOrder[0]).toBeLessThan(fn.mock.invocationCallOrder[0]);
+		expect(releaseIsolate.mock.invocationCallOrder[0]).toBeGreaterThan(
+			fn.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('should release when the callback throws', async () => {
+		acquireIsolate.mockResolvedValue(true);
+		const error = new Error('boom');
+
+		await expect(
+			withExpressionIsolate(workflow, async () => await Promise.reject(error)),
+		).rejects.toThrow(error);
+
+		expect(releaseIsolate).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not release an isolate the caller already held', async () => {
+		acquireIsolate.mockResolvedValue(false);
+
+		await withExpressionIsolate(workflow, async () => await Promise.resolve());
+
+		expect(releaseIsolate).not.toHaveBeenCalled();
+	});
+});
 
 describe('stripToolSuffix', () => {
 	it.each([
@@ -21,6 +64,28 @@ describe('stripToolSuffix', () => {
 	])('strips %s -> %s', (input, expected) => {
 		expect(stripToolSuffix(input)).toBe(expected);
 	});
+});
+
+describe('satisfiesToolCapability', () => {
+	const nodeWith = (usableAsTool: boolean | undefined) =>
+		({ description: { usableAsTool } }) as INodeType;
+
+	it('exempts HITL tool names from the capability requirement', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailHitlTool', nodeWith(undefined))).toBe(true);
+	});
+
+	it('accepts a tool name when the resolved node declares usableAsTool', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(true))).toBe(true);
+	});
+
+	it.each([undefined, false])(
+		'rejects a tool name when the resolved node has usableAsTool: %s',
+		(usableAsTool) => {
+			expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(usableAsTool))).toBe(
+				false,
+			);
+		},
+	);
 });
 
 describe('shouldAssignExecuteMethod', () => {

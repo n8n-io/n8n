@@ -12,13 +12,18 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
-import { synthesizeBinaryFixture } from 'n8n-core';
+import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
+import {
+	applyProviderShapeNormalizers,
+	findProviderShapeViolation,
+	type ProviderRequestInfo,
+} from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
@@ -119,6 +124,8 @@ interface MockResponseSpec {
 	contentType?: string;
 	filename?: string;
 	sizeHint?: FixtureSizeHint;
+	/** Extra response headers, set only by endpoint normalizers (never model-authored) — e.g. the Drive resumable-session `location`. */
+	headers?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +271,7 @@ function buildMockCacheKey(
 }
 
 /** True for the fallback body `generateMockResponse` returns when all attempts failed. */
-function isMockErrorSentinel(response: EvalMockHttpResponse): boolean {
+export function isMockErrorSentinel(response: EvalMockHttpResponse): boolean {
 	const body = response.body;
 	return (
 		typeof body === 'object' && body !== null && !Array.isArray(body) && '_evalMockError' in body
@@ -406,6 +413,10 @@ async function generateMockResponse(
 				dateConstraints,
 			);
 			applyEndpointNormalizers(request, spec);
+			applyProviderShapeNormalizers(
+				{ method: requestMethod, pathname: requestPath, hostname: requestHostname },
+				spec,
+			);
 			const response = materializeSpec(spec);
 			// Mark soft-fallback responses so the handler's cache evicts them.
 			if (softOnly) softFallbackResponses.add(response);
@@ -641,10 +652,13 @@ interface SubmitCapture {
 	softOnly?: boolean;
 	/** Set after the one-shot date-filter rejection — a resubmission is then accepted as-is. */
 	dateFilterWarned?: boolean;
+	/** Set after the one-shot provider-shape rejection — a resubmission is then accepted as-is. */
+	shapeWarned?: boolean;
 }
 
 function createSubmitResponseTool(
 	capture: SubmitCapture,
+	requestInfo: ProviderRequestInfo,
 	dateConstraints: DateFilterConstraint[] = [],
 ) {
 	return new Tool('submit_response')
@@ -694,6 +708,21 @@ function createSubmitResponseTool(
 				return reject(
 					'Invalid: type="error" takes either body (JSON error) or textBody (text/XML error document), not both. Resubmit with exactly one.',
 				);
+			}
+			// One-shot deterministic provider-shape check: some nodes read one exact
+			// path off the response and CRASH when it's missing (e.g. OpenAI images
+			// `data[].b64_json`, Gemini `candidates[].content.parts`). Nudge the model
+			// to produce full-fidelity data before the normalizer's minimal-envelope
+			// fallback kicks in; keep the submission as a soft fallback so a
+			// never-resubmitting agent can't dead-lock the generation.
+			if (input.type === 'json' && !capture.shapeWarned) {
+				const violation = findProviderShapeViolation(requestInfo, input.body);
+				if (violation) {
+					capture.shapeWarned = true;
+					capture.spec = input;
+					capture.softOnly = true;
+					return reject(violation);
+				}
 			}
 			// One-shot deterministic check: prompt rules alone don't reliably stop
 			// mocks from returning records outside the request's date window (the
@@ -762,7 +791,17 @@ async function callLlm(
 				requestInfo.hostname,
 			),
 		)
-		.tool(createSubmitResponseTool(capture, dateConstraints));
+		.tool(
+			createSubmitResponseTool(
+				capture,
+				{
+					method: requestInfo.method,
+					pathname: requestInfo.pathname,
+					hostname: requestInfo.hostname,
+				},
+				dateConstraints,
+			),
+		);
 
 	const result = await agent.generate(userPrompt, {
 		abortSignal: AbortSignal.timeout(timeoutMs),
@@ -806,10 +845,47 @@ async function callLlm(
  * only mechanical encodings that models can't produce reliably belong here.
  */
 function applyEndpointNormalizers(
-	request: { url: string; qs?: Record<string, unknown> },
+	request: { url: string; qs?: Record<string, unknown>; method?: string },
 	spec: MockResponseSpec,
 ): void {
 	normalizeGmailRawMessage(request, spec);
+	normalizeDriveResumableInit(request, spec);
+}
+
+/**
+ * Google Drive resumable uploads read the session URI from the initiation
+ * response's `location` HEADER (the body is empty) — the model can only author
+ * bodies, so the node ends up PUTting to `undefined`. Serve the canonical
+ * empty-body + Location response deterministically; the follow-up PUT to the
+ * minted session URI is mocked as a normal turn (file resource JSON).
+ */
+function normalizeDriveResumableInit(
+	request: { url: string; qs?: Record<string, unknown>; method?: string },
+	spec: MockResponseSpec,
+): void {
+	const url = request.url;
+	if (!/\/upload\/drive\/v[23]\/files/i.test(url)) return;
+	// The chunk upload itself PUTs to the minted session URI — leave it alone.
+	if ((request.method ?? 'GET').toUpperCase() === 'PUT') return;
+	if (url.includes('upload_id=')) return;
+	const uploadType = request.qs?.uploadType ?? extractQueryParam(url, 'uploadType');
+	if (uploadType !== 'resumable') return;
+
+	spec.type = 'json';
+	spec.body = {};
+	spec.statusCode = 200;
+	spec.headers = {
+		...spec.headers,
+		location: `${url}${url.includes('?') ? '&' : '?'}upload_id=eval-resumable-upload`,
+	};
+}
+
+function extractQueryParam(url: string, name: string): string | undefined {
+	try {
+		return new URL(url).searchParams.get(name) ?? undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -832,7 +908,64 @@ function normalizeGmailRawMessage(
 	if (typeof body.raw !== 'string' || body.raw.length === 0) return;
 	if (!looksLikeRfc822(body.raw)) return;
 
-	body.raw = Buffer.from(body.raw, 'utf8').toString('base64url');
+	body.raw = Buffer.from(substituteBinaryMimeParts(body.raw), 'utf8').toString('base64url');
+}
+
+/** Binary attachment MIME types the harness substitutes real bytes for. */
+const BINARY_PART_RE =
+	/(content-type:\s*(application\/pdf|image\/(?:png|jpeg|jpg|gif|webp))[^]*?\r?\n\r?\n)([^]*?)(?=\r?\n--|$)/gi;
+
+const BASE64_BODY_RE = /^[A-Za-z0-9+/=\s]+$/;
+
+/**
+ * Replace binary attachment part bodies inside an RFC822 source with real
+ * encoded bytes. The model authors the MIME structure and the document's
+ * CONTENT but cannot author valid binary: a PDF part's body (plaintext per the
+ * quirk guidance, or a garbage base64 stub) becomes a real PDF carrying that
+ * text; image parts get the standard decodable fixture. Downstream parsers
+ * (Extract PDF Text via pdfjs, Edit Image via GraphicsMagick) then run on
+ * structurally valid bytes instead of crashing.
+ */
+export function substituteBinaryMimeParts(rfc822: string): string {
+	return rfc822.replace(
+		BINARY_PART_RE,
+		(_match, headerBlock: string, mime: string, partBody: string) => {
+			const lowerMime = mime.toLowerCase();
+			const bytes =
+				lowerMime === 'application/pdf'
+					? buildPdfWithText(recoverIntendedText(partBody))
+					: synthesizeBinaryFixture(lowerMime, `attachment.${lowerMime.split('/')[1]}`);
+
+			// Chunk to 76 columns per MIME convention; ensure the part headers
+			// declare base64 so the mail parser decodes what we wrote.
+			const encoded = bytes.toString('base64').replace(/(.{76})/g, '$1\n');
+			const header = /content-transfer-encoding:/i.test(headerBlock)
+				? headerBlock.replace(
+						/content-transfer-encoding:[^\r\n]*/i,
+						'Content-Transfer-Encoding: base64',
+					)
+				: headerBlock.replace(/(\r?\n\r?\n)$/, '\nContent-Transfer-Encoding: base64$1');
+			return `${header}${encoded}`;
+		},
+	);
+}
+
+/**
+ * Best-effort recovery of the text a PDF part was meant to carry: plaintext
+ * bodies (the quirk-guided path) pass through; base64 stubs are decoded and
+ * kept only when they decode to printable text rather than binary garbage.
+ */
+function recoverIntendedText(partBody: string): string {
+	const trimmed = partBody.trim();
+	if (trimmed.length === 0) return 'Mock PDF document';
+	const looksBase64 = BASE64_BODY_RE.test(trimmed) && !/\s[a-z]+\s/i.test(trimmed);
+	if (!looksBase64) return trimmed;
+	const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+	// Printable ASCII (plus whitespace) and not itself a PDF stub → treat as the intended text.
+	if (decoded.length > 0 && !decoded.startsWith('%PDF') && /^[\x20-\x7e\s]+$/.test(decoded)) {
+		return decoded;
+	}
+	return 'Mock PDF document';
 }
 
 /**
@@ -854,7 +987,7 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 			// empty payload for 204/202 endpoints, which the schema explicitly allows).
 			return {
 				body: spec.body === undefined ? { ok: true } : spec.body,
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...spec.headers },
 				statusCode: 200,
 			};
 

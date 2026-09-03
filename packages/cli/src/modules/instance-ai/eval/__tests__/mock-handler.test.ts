@@ -551,6 +551,59 @@ describe('createLlmMockHandler', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Provider-shape normalization — deterministic backstop wired into the handler
+// ---------------------------------------------------------------------------
+
+describe('provider-shape normalization', () => {
+	const geminiRequest = {
+		url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+		method: 'POST',
+	} as IHttpRequestOptions;
+	const geminiNode = { name: 'Gemini', type: 'n8n-nodes-base.httpRequest' } as INode;
+
+	const imagesRequest = {
+		url: 'https://api.openai.com/v1/images/generations',
+		method: 'POST',
+	} as IHttpRequestOptions;
+	const imagesNode = { name: 'OpenAI', type: 'n8n-nodes-base.httpRequest' } as INode;
+
+	it('coerces a shape-wrong Gemini payload into the candidates envelope end-to-end', async () => {
+		llmSubmits({ type: 'json', body: { text: 'the answer' } });
+		const handler = createLlmMockHandler();
+
+		const result = await callHandler(handler, geminiRequest, geminiNode);
+
+		const body = result.body as {
+			candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+		};
+		expect(body.candidates[0].content.parts[0].text).toBe('the answer');
+	});
+
+	it('guarantees data[].b64_json for a url-only OpenAI images payload end-to-end', async () => {
+		llmSubmits({ type: 'json', body: { data: [{ url: 'https://x/y.png' }] } });
+		const handler = createLlmMockHandler();
+
+		const result = await callHandler(handler, imagesRequest, imagesNode);
+
+		const body = result.body as { data: Array<Record<string, unknown>> };
+		expect(typeof body.data[0].b64_json).toBe('string');
+	});
+
+	it('rejects a shape-wrong provider body via submit_response before it returns', async () => {
+		llmSubmits({ type: 'json', body: { data: [{ b64_json: 'AAAA' }] } });
+		const handler = createLlmMockHandler();
+		await handler(imagesRequest, imagesNode);
+
+		const submitHandler = submitCapture.handler;
+		if (!submitHandler) throw new Error('submit_response handler was not captured');
+
+		await expect(
+			submitHandler({ type: 'json', body: { url: 'https://x/y.png' } }),
+		).resolves.toContain('b64_json');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Prompt construction — verify request details reach the agent
 // ---------------------------------------------------------------------------
 
@@ -932,5 +985,160 @@ describe('get_endpoint_quirks tool', () => {
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();
 		expect(result).toContain('No specific quirks');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Endpoint normalizers — binary fidelity (Drive resumable init, Gmail raw attachments)
+// ---------------------------------------------------------------------------
+
+describe('normalizeDriveResumableInit', () => {
+	const driveNode = { name: 'Drive', type: 'n8n-nodes-base.googleDrive' } as INode;
+
+	it('serves the resumable initiation deterministically with a location header', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files',
+				method: 'POST',
+				qs: { uploadType: 'resumable', supportsAllDrives: true },
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({});
+		expect(result.statusCode).toBe(200);
+		expect(result.headers.location).toBe(
+			'https://www.googleapis.com/upload/drive/v3/files?upload_id=eval-resumable-upload',
+		);
+	});
+
+	it('leaves the chunk PUT to the minted session URI to the model', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123', name: 'x.png' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=eval-resumable-upload',
+				method: 'PUT',
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({ id: 'file123', name: 'x.png' });
+		expect(result.headers.location).toBeUndefined();
+	});
+
+	it('does not touch multipart uploads', async () => {
+		llmSubmits({ type: 'json', body: { id: 'file123' } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(
+			handler,
+			{
+				url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+				method: 'POST',
+			} as IHttpRequestOptions,
+			driveNode,
+		);
+
+		expect(result.body).toEqual({ id: 'file123' });
+		expect(result.headers.location).toBeUndefined();
+	});
+});
+
+describe('substituteBinaryMimeParts (gmail raw attachments)', () => {
+	const gmailNode = { name: 'Get Invoice Email', type: 'n8n-nodes-base.gmail' } as INode;
+	const gmailRequest = {
+		url: 'https://www.googleapis.com/gmail/v1/users/me/messages/m1',
+		method: 'GET',
+		qs: { format: 'raw' },
+	} as IHttpRequestOptions;
+
+	const rawWithPdfPart = [
+		'From: billing@acme.test',
+		'To: me@example.test',
+		'Subject: Invoice INV-88',
+		'MIME-Version: 1.0',
+		'Content-Type: multipart/mixed; boundary="b1"',
+		'',
+		'--b1',
+		'Content-Type: text/plain; charset="UTF-8"',
+		'',
+		'Invoice attached.',
+		'--b1',
+		'Content-Type: application/pdf; name="invoice.pdf"',
+		'Content-Disposition: attachment; filename="invoice.pdf"',
+		'Content-Transfer-Encoding: base64',
+		'',
+		'Invoice INV-88 total USD 42.50',
+		'--b1--',
+	].join('\n');
+
+	it('replaces a plaintext-authored PDF part with real bytes carrying that text', async () => {
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithPdfPart } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const raw = (result.body as { raw: string }).raw;
+		const decoded = Buffer.from(raw, 'base64url').toString('utf8');
+		expect(decoded).toContain('Invoice attached.'); // text part untouched
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const pdf = Buffer.from(partB64, 'base64');
+		expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+		expect(pdf.toString('latin1')).toContain('(Invoice INV-88 total USD 42.50) Tj');
+	});
+
+	it('replaces a garbage base64 PDF stub with a valid document', async () => {
+		const rawWithStub = rawWithPdfPart.replace('Invoice INV-88 total USD 42.50', 'JVBERi0xLjQ=');
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithStub } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const pdf = Buffer.from(partB64, 'base64');
+		expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+		expect(pdf.toString('latin1')).toContain('%%EOF');
+	});
+
+	it('substitutes image attachment parts with the standard fixture bytes', async () => {
+		const rawWithImage = rawWithPdfPart
+			.replace(
+				'Content-Type: application/pdf; name="invoice.pdf"',
+				'Content-Type: image/png; name="chart.png"',
+			)
+			.replace(
+				'Content-Disposition: attachment; filename="invoice.pdf"',
+				'Content-Disposition: attachment; filename="chart.png"',
+			);
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawWithImage } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		const partB64 = decoded
+			.split('Content-Transfer-Encoding: base64')[1]
+			.split('--b1--')[0]
+			.replace(/\s/g, '');
+		const png = Buffer.from(partB64, 'base64');
+		expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+	});
+
+	it('adds the base64 transfer-encoding header when the part lacked one', async () => {
+		const rawNoEncoding = rawWithPdfPart.replace('Content-Transfer-Encoding: base64\n', '');
+		llmSubmits({ type: 'json', body: { id: 'm1', raw: rawNoEncoding } });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler, gmailRequest, gmailNode);
+
+		const decoded = Buffer.from((result.body as { raw: string }).raw, 'base64url').toString('utf8');
+		expect(decoded).toContain('Content-Transfer-Encoding: base64');
 	});
 });

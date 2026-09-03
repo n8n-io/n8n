@@ -8,10 +8,10 @@ import {
 } from 'reka-ui';
 import { computed, ref, useAttrs, watch } from 'vue';
 
+import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import { n8nHtml as vN8nHtml } from '../../directives';
 import N8nButton from '../N8nButton';
-import type { N8nTooltipProps } from './Tooltip.types';
 
 defineOptions({
 	name: 'N8nTooltip',
@@ -147,7 +147,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: var.$index-popper;
+	z-index: var.$index-tooltip;
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);

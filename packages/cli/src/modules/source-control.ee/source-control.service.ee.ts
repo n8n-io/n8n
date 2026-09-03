@@ -318,6 +318,56 @@ export class SourceControlService {
 		);
 	}
 
+	/**
+	 * Resolves which resources a push may act on. The status service is the single source of
+	 * truth for what the user may push: it scopes resources to the user's projects and derives
+	 * each resource's file path and status on the server. The client only selects resources by
+	 * (id, type); file path and status are always taken from the matching authorized entry, so
+	 * an authorized (id, type) cannot be pointed at another resource's file.
+	 */
+	private async resolveAuthorizedFilesToPush(
+		user: User,
+		requestedFiles: SourceControlledFile[],
+	): Promise<SourceControlledFile[]> {
+		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		});
+
+		// No explicit selection: push everything the user is allowed to.
+		let filesToPush = allowedResources;
+
+		if (requestedFiles.length) {
+			const allowedKeys = new Set(
+				allowedResources.map((allowed) => `${allowed.type}:${allowed.id}`),
+			);
+			const requestedKeys = new Set<string>();
+			for (const requested of requestedFiles) {
+				const key = `${requested.type}:${requested.id}`;
+				if (!allowedKeys.has(key)) {
+					throw new ForbiddenError('You are not allowed to push these changes');
+				}
+				requestedKeys.add(key);
+			}
+			// Keep every authorized record for the requested resources. Filtering rather than
+			// mapping each request to a single record means a server-reported conflict for a
+			// (type, id) is never dropped by de-duplication, so the conflict check in the caller
+			// still sees it.
+			filesToPush = allowedResources.filter((allowed) =>
+				requestedKeys.has(`${allowed.type}:${allowed.id}`),
+			);
+		}
+
+		// Defense in depth: every path we act on must stay inside the git work folder.
+		// Server-derived paths already are, but this guards against a regression producing
+		// a path outside it.
+		return filesToPush.map((file) => ({
+			...file,
+			file: normalizeAndValidateSourceControlledFilePath(this.gitFolder, file.file),
+		}));
+	}
+
 	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkFolderRequestDto,
@@ -334,41 +384,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
-			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
-				this.gitFolder,
-				file.file,
-			);
-
-			return {
-				...file,
-				file: normalizedPath,
-			};
-		});
-
-		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
-			direction: 'push',
-			verbose: false,
-			preferLocalVersion: true,
-		});
-
-		// Fallback to all allowed resources if no fileNames are provided
-		if (!filesToPush.length) {
-			filesToPush = allowedResources;
-		}
-
-		// If fileNames are provided, we need to check if they are allowed
-		if (
-			filesToPush !== allowedResources &&
-			filesToPush.some(
-				(file) =>
-					!allowedResources.some((allowed) => {
-						return allowed.id === file.id && allowed.type === file.type;
-					}),
-			)
-		) {
-			throw new ForbiddenError('You are not allowed to push these changes');
-		}
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
@@ -579,12 +595,39 @@ export class SourceControlService {
 			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
 
-		for (const { id, publishingError } of workflowImportResults) {
-			if (!publishingError) continue;
-
+		for (const {
+			id,
+			publishingError,
+			publishingErrorDetails,
+			contentImportPolicy,
+		} of workflowImportResults) {
 			const statusItem = statusByWorkflowId.get(id);
+
+			if (contentImportPolicy?.violations.length) {
+				this.logger.warn(
+					`Workflow ${id} has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			if (contentImportPolicy?.checkErrors.length) {
+				this.logger.warn(
+					`Workflow ${id} has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors: contentImportPolicy.checkErrors },
+				);
+			}
+
+			if (contentImportPolicy && statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+
+			if (!publishingError && !publishingErrorDetails) continue;
+
 			if (statusItem) {
 				statusItem.publishingError = publishingError;
+				if (publishingErrorDetails) {
+					statusItem.publishingErrorDetails = publishingErrorDetails;
+				}
 			}
 		}
 

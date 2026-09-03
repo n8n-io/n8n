@@ -11,7 +11,7 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -31,9 +31,6 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
@@ -42,11 +39,16 @@ import { DataTableSizeValidator } from './data-table-size-validator.service';
 import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
+import { DataTableAccessDeniedError } from './errors/data-table-access-denied.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { EventService } from '@/events/event.service';
+import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -60,6 +62,8 @@ export class DataTableService {
 		private readonly roleService: RoleService,
 		private readonly csvImportService: DataTableCsvImportService,
 		private readonly eventService: EventService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -78,6 +82,38 @@ export class DataTableService {
 		}
 
 		return dataTable.projectId;
+	}
+
+	async getOne(dataTableId: string, projectId: string): Promise<DataTable> {
+		const dataTable = await this.dataTableRepository.findOne({
+			where: { id: dataTableId, project: { id: projectId } },
+			relations: ['project', 'columns'],
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable;
+	}
+
+	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
+		if (!projectId) {
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return personalProject.id;
+		}
+
+		const existingProject = await this.projectService.findProject(projectId);
+		if (!existingProject) {
+			throw new ProjectNotFoundError(projectId);
+		}
+
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'dataTable:create',
+		]);
+		if (!project) throw new DataTableAccessDeniedError('create');
+
+		return project.id;
 	}
 
 	/**
@@ -395,6 +431,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
@@ -496,6 +539,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
@@ -556,6 +606,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async deleteRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | true>;
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
@@ -688,7 +745,10 @@ export class DataTableService {
 		return validationResult.newValue as DataTableColumnJsType;
 	}
 
-	private async validateDataTableExists(dataTableId: string, projectId: string) {
+	/**
+	 * Performs no authorization — callers must pass an already-authorized `projectId`.
+	 */
+	async validateDataTableExists(dataTableId: string, projectId: string) {
 		const existingTable = await this.dataTableRepository.findOneBy({
 			id: dataTableId,
 			project: {

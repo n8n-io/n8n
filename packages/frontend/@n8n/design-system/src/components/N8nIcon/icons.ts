@@ -2,6 +2,7 @@ import Anthropic from './custom/anthropic.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
+import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
@@ -159,12 +160,15 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
+import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLayers from '~icons/lucide/layers';
 import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
+import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListOrdered from '~icons/lucide/list-ordered';
 import IconLucideListPlus from '~icons/lucide/list-plus';
 import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
@@ -198,6 +202,7 @@ import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
 import IconLucidePencilOff from '~icons/lucide/pencil-off';
+import IconLucidePictureInPicture2 from '~icons/lucide/picture-in-picture-2';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -230,6 +235,7 @@ import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSplit from '~icons/lucide/split';
 import IconLucideSquare from '~icons/lucide/square';
+import IconLucideSquareArrowOutUpRight from '~icons/lucide/square-arrow-out-up-right';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -252,6 +258,7 @@ import IconLucideTrendingDown from '~icons/lucide/trending-down';
 import IconLucideTrendingUp from '~icons/lucide/trending-up';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
+import IconLucideUnderline from '~icons/lucide/underline';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUngroup from '~icons/lucide/ungroup';
 import IconLucideUnlink from '~icons/lucide/unlink';
@@ -269,6 +276,7 @@ import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
 import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
+import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWorkflow from '~icons/lucide/workflow';
@@ -305,6 +313,7 @@ export const deprecatedIconSet = {
 	slack: Slack,
 	linear: Linear,
 	telegram: Telegram,
+	discord: Discord,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -525,6 +534,7 @@ export const updatedIconSet = {
 	slack: Slack,
 	linear: Linear,
 	telegram: Telegram,
+	discord: Discord,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -657,14 +667,17 @@ export const updatedIconSet = {
 	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
+	laptop: IconLucideLaptop,
 	layers: IconLucideLayers,
 	'layout-template': IconLucideLayoutTemplate,
+	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
 	'list-plus': IconLucideListPlus,
 	'list-tree': IconLucideListTree,
+	'list-ordered': IconLucideListOrdered,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,
@@ -694,6 +707,7 @@ export const updatedIconSet = {
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
 	'pencil-off': IconLucidePencilOff,
+	'picture-in-picture-2': IconLucidePictureInPicture2,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
@@ -726,6 +740,7 @@ export const updatedIconSet = {
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
 	square: IconLucideSquare,
+	'square-arrow-out-up-right': IconLucideSquareArrowOutUpRight,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
@@ -763,6 +778,7 @@ export const updatedIconSet = {
 	video: IconLucideVideo,
 	'volume-2': IconLucideVolume2,
 	'volume-x': IconLucideVolumeX,
+	wallet: IconLucideWallet,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	workflow: IconLucideWorkflow,
@@ -776,6 +792,7 @@ export const updatedIconSet = {
 	'loader-circle': IconLucideLoaderCircle,
 	quote: IconLucideQuote,
 	'quick-connect': IconLucideFlame,
+	underline: IconLucideUnderline,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

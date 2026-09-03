@@ -1,9 +1,11 @@
+import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
@@ -17,7 +19,11 @@ import { packageManifestSchema } from '../spec/manifest.schema';
 import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
-import { serializedProjectSchema } from '../spec/serialized/project.schema';
+import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
+import {
+	serializedVariableSchema,
+	type SerializedVariable,
+} from '../spec/serialized/variable.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -28,7 +34,11 @@ import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
  */
 @Service()
 export class N8nPackageParser {
-	constructor(private readonly workflowSerializer: WorkflowSerializer) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowSerializer: WorkflowSerializer,
+	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
 		try {
@@ -85,6 +95,18 @@ export class N8nPackageParser {
 		return projects;
 	}
 
+	/** Bundled variable files, keyed by manifest target. */
+	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
+		const manifest = await this.getManifest(reader);
+		const variables = new Map<string, SerializedVariable>();
+
+		for (const entry of manifest.variables ?? []) {
+			variables.set(entry.target, await this.readVariable(reader, entry));
+		}
+
+		return variables;
+	}
+
 	private async readWorkflow(
 		reader: PackageReader,
 		entry: ManifestEntry,
@@ -107,13 +129,30 @@ export class N8nPackageParser {
 		}
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
+		this.normalizeNodeGroups(entity, path);
 
 		return {
 			entity,
 			sourceWorkflowId: entry.id,
 			sourcePublished: wire.isPublished,
 			parentFolderId,
+			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
+	}
+
+	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
+	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
+		const dropped = WorkflowHelpers.dropInvalidWorkflowGroups(
+			entity,
+			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+		);
+		for (const { groupName, message } of dropped) {
+			this.logger.warn(`Package workflow file at ${path} dropped group "${groupName}": ${message}`);
+		}
+
+		for (const warning of WorkflowHelpers.sanitizeNodeGroupDescriptions(entity)) {
+			this.logger.warn(`Package workflow file at ${path}: ${warning}`);
+		}
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
@@ -180,20 +219,61 @@ export class N8nPackageParser {
 		const path = `${entry.target}/project.json`;
 		const wire = await this.readJson(reader, path, 'project');
 
+		let project: SerializedProject;
 		try {
-			const project = serializedProjectSchema.parse(wire);
-			return {
-				sourceProjectId: project.id,
-				name: project.name,
-				...(project.description !== undefined ? { description: project.description } : {}),
-				...(project.icon !== undefined ? { icon: project.icon } : {}),
-			};
+			project = serializedProjectSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package project file at ${path} failed schema validation.`, { cause });
 			}
 			throw cause;
 		}
+
+		// Project contents scope by manifest id, but the project is created/matched under project.json's
+		// id — a mismatch would import folders and workflows into the wrong project.
+		if (project.id !== entry.id) {
+			throw new UserError(
+				`Package project at ${path} declares id "${project.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceProjectId: project.id,
+			name: project.name,
+			...(project.description !== undefined ? { description: project.description } : {}),
+			...(project.icon !== undefined ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags !== undefined
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
+		};
+	}
+
+	private async readVariable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedVariable> {
+		const path = `${entry.target}/variable.json`;
+		const wire = await this.readJson(reader, path, 'variable');
+
+		let variable: SerializedVariable;
+		try {
+			variable = serializedVariableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package variable file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		if (variable.name !== entry.name) {
+			throw new UserError(
+				`Package variable at ${path} declares name "${variable.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		return variable;
 	}
 
 	private async readJson<T = unknown>(

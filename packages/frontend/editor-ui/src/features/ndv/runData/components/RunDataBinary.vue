@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
@@ -44,16 +45,18 @@ function isDownloadable(index: number, key: string | number): boolean {
 }
 
 async function downloadBinaryData(index: number, key: string | number) {
-	const { id, data, fileName, fileExtension, mimeType } = binaryData[index][key];
+	const entry = binaryData[index][key];
+	const { id, data, fileName, mimeType } = entry;
+	const name = getBinaryDataFileName(entry);
 
 	if (id) {
 		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		saveAs(url, [fileName, fileExtension].join('.'));
+		saveAs(url, name);
 		return;
 	} else {
 		const bufferString = 'data:' + mimeType + ';base64,' + data;
 		const blob = await fetch(bufferString).then(async (d) => await d.blob());
-		saveAs(blob, fileName);
+		saveAs(blob, name);
 	}
 }
 

@@ -21,6 +21,7 @@ import { Container } from '@n8n/di';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
@@ -35,11 +36,8 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import {
-	FolderConflictPolicy,
-	DataTableMatchingMode,
-	DataTableMissingMode,
-	DataTableSchemaConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -57,48 +55,13 @@ import {
 import { streamToBuffer } from './utils/tar-support';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
-type ImportPackageParams = Omit<
-	ImportPackageRequest,
-	| 'credentialMatchingMode'
-	| 'credentialMissingMode'
-	| 'bindings'
-	| 'workflowConflictPolicy'
-	| 'workflowPublishingPolicy'
-	| 'workflowIdPolicy'
-	| 'folderConflictPolicy'
-	| 'dataTableMatchingMode'
-	| 'dataTableMissingMode'
-	| 'dataTableSchemaConflictPolicy'
-> &
-	Partial<
-		Pick<
-			ImportPackageRequest,
-			| 'credentialMatchingMode'
-			| 'credentialMissingMode'
-			| 'bindings'
-			| 'workflowConflictPolicy'
-			| 'workflowPublishingPolicy'
-			| 'workflowIdPolicy'
-			| 'folderConflictPolicy'
-			| 'dataTableMatchingMode'
-			| 'dataTableMissingMode'
-			| 'dataTableSchemaConflictPolicy'
-		>
-	>;
+type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
+	Partial<ImportPackageRequest>;
 
 async function importPackage(params: ImportPackageParams) {
-	return await Container.get(N8nPackagesService).importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
-		workflowIdPolicy: WorkflowIdPolicy.New,
-		folderConflictPolicy: FolderConflictPolicy.Merge,
-		dataTableMatchingMode: DataTableMatchingMode.ById,
-		dataTableMissingMode: DataTableMissingMode.Create,
-		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		...params,
-	});
+	return await Container.get(N8nPackagesService).importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 /**
@@ -1187,6 +1150,11 @@ describe('Package import event emission', () => {
 					created: 2,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1196,6 +1164,22 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					created: 0,
+					stubbed: 0,
+					updated: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					reconciled: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1258,14 +1242,18 @@ describe('Package import event emission', () => {
 			);
 			expect(importedPayload.credentialIds.matched).toHaveLength(2);
 			expect(importedPayload.credentialIds.created).toHaveLength(1);
-			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
-			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.created[0]).toBe('missing-cred');
 			expect(importedPayload.credentialIds.updated).toEqual([]);
 			expect(importedPayload.counts).toEqual({
 				workflows: {
 					created: 3,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 2,
@@ -1275,6 +1263,22 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					created: 0,
+					stubbed: 0,
+					updated: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					reconciled: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1314,6 +1318,11 @@ describe('Package import event emission', () => {
 					created: 1,
 					updated: 0,
 					skipped: 1,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1323,6 +1332,22 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					created: 0,
+					stubbed: 0,
+					updated: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					reconciled: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1364,6 +1389,11 @@ describe('Package import event emission', () => {
 					created: 0,
 					updated: 1,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1373,6 +1403,22 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					created: 0,
+					stubbed: 0,
+					updated: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					reconciled: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -2041,8 +2087,7 @@ describe('credential-missing-mode: create-stub', () => {
 		});
 
 		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
-		expect(result.bindings.credentials['missing-cred']).toEqual(expect.any(String));
-		expect(result.bindings.credentials['missing-cred']).not.toBe('missing-cred');
+		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
 			where: { name: 'Stubbed cred workflow' },
@@ -2166,7 +2211,7 @@ describe('credential-missing-mode: create-stub', () => {
 		const result = await importPackage({
 			user: owner,
 			credentialMissingMode: 'create-stub',
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[
@@ -2236,7 +2281,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2264,7 +2309,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2293,7 +2338,7 @@ describe('Package import workflow publishing policy', () => {
 					isPublished: false,
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
 		});
 
@@ -2335,7 +2380,7 @@ describe('Package import workflow publishing policy', () => {
 					],
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
 		});
 
@@ -2370,7 +2415,7 @@ describe('Package import workflow publishing policy', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2409,7 +2454,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2426,5 +2471,329 @@ describe('Package import workflow publishing policy', () => {
 
 		// No (re)activation was triggered for the imported draft.
 		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+	});
+
+	const webhookNodes = (id: string, path: string, httpMethod?: string) => [
+		{
+			id,
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			webhookId: id,
+			parameters: httpMethod ? { path, httpMethod } : { path },
+		},
+	];
+
+	it('"publish-all" publishes one of two workflows sharing a webhook path and reports the other as failed', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-a',
+					name: 'Webhook A',
+					isPublished: false,
+					nodes: webhookNodes('wh-a', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-b',
+					name: 'Webhook B',
+					isPublished: false,
+					nodes: webhookNodes('wh-b', '/test'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.map(({ status, publishing, activeVersionId }) => ({
+				status,
+				publishing,
+				activeVersionId,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					status: 'created',
+					publishing: { state: 'published' },
+					activeVersionId: expect.any(String),
+				},
+				{
+					status: 'created',
+					publishing: { state: 'failed', error: 'There is a conflict with one of the webhooks.' },
+					activeVersionId: null,
+				},
+			]),
+		);
+	});
+
+	it('"publish-all" publishes both workflows when they share a webhook path under different methods', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-get',
+					name: 'Webhook GET',
+					isPublished: false,
+					nodes: webhookNodes('wh-get', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-post',
+					name: 'Webhook POST',
+					isPublished: false,
+					nodes: webhookNodes('wh-post', '/test', 'POST'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows.map(({ publishing }) => publishing)).toEqual([
+			{ state: 'published' },
+			{ state: 'published' },
+		]);
+	});
+});
+
+describe('Package import missing node type mode', () => {
+	const sourceId = 'missing-node-type-mode-test';
+
+	const scheduleTriggerNode = () => ({
+		id: 'schedule-trigger',
+		name: 'Schedule Trigger',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	});
+
+	const unknownNode = () => ({
+		id: 'unknown-node',
+		name: 'Unknown Node',
+		type: 'n8n-nodes-community.chatBot',
+		typeVersion: 1,
+		position: [200, 0] as [number, number],
+		parameters: {},
+	});
+
+	const unresolvableCredentialNode = () => ({
+		id: 'http-node',
+		name: 'HTTP Request',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [400, 0] as [number, number],
+		parameters: {},
+		credentials: {
+			[PACKAGE_GITHUB_CREDENTIAL_TYPE]: { id: 'missing-cred', name: 'Missing GitHub' },
+		},
+	});
+
+	it('fail (default) lists every missing pair and writes nothing', async () => {
+		const owner = await createOwner();
+
+		const importPromise = importPackage({
+			user: owner,
+			// create-stub so the rollback assertion below proves no stub was written either.
+			credentialMissingMode: 'create-stub',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-alpha',
+						name: 'Alpha',
+						nodes: [scheduleTriggerNode(), unknownNode()],
+					}),
+					serializedWorkflow({
+						id: 'wf-beta',
+						name: 'Beta',
+						nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
+					}),
+					serializedWorkflow({
+						id: 'wf-gamma',
+						name: 'Gamma',
+						// Known node type at a version this instance does not have.
+						nodes: [{ ...serializedWorkflow().nodes[0], typeVersion: 9 }],
+					}),
+				],
+				{ sourceId },
+			),
+		});
+		await expect(importPromise).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expect(importPromise).rejects.toMatchObject({
+			meta: {
+				issues: expect.arrayContaining([
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-community.chatBot',
+						typeVersion: 1,
+						usedByWorkflows: ['wf-alpha', 'wf-beta'],
+					},
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 9,
+						usedByWorkflows: ['wf-gamma'],
+					},
+				]),
+			},
+		});
+
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	it.each<WorkflowPublishingPolicyValue>([
+		WorkflowPublishingPolicy.PublishAll,
+		WorkflowPublishingPolicy.MatchSource,
+	])(
+		'import-anyway blocks publishing only the affected workflows under "%s"',
+		async (workflowPublishingPolicy) => {
+			const owner = await createOwner();
+
+			const result = await importPackage({
+				user: owner,
+				missingNodeTypeMode: 'import-anyway',
+				// The affected workflow also gets a stubbed credential: the reported
+				// reason must still be missing-node-type (it takes precedence).
+				credentialMissingMode: 'create-stub',
+				workflowPublishingPolicy,
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflow({
+							id: 'wf-ok',
+							name: 'Publishable',
+							isPublished: true,
+							nodes: [scheduleTriggerNode()],
+						}),
+						serializedWorkflow({
+							id: 'wf-broken',
+							name: 'Missing node type',
+							isPublished: true,
+							nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
+						}),
+					],
+					{ sourceId },
+				),
+			});
+
+			const ok = result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === 'wf-ok');
+			const broken = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-broken',
+			);
+
+			expect(ok?.activeVersionId).toEqual(expect.any(String));
+			expect(ok?.publishing).toEqual({ state: 'published' });
+			expect(broken?.activeVersionId).toBeNull();
+			expect(broken?.publishing).toEqual({
+				state: 'blocked',
+				blockedReason: 'missing-node-type',
+			});
+		},
+	);
+
+	it.each(['fail', 'import-anyway'] as const)(
+		'"%s" imports normally and respects the publishing policy when nothing is missing',
+		async (missingNodeTypeMode) => {
+			const owner = await createOwner();
+
+			const result = await importPackage({
+				user: owner,
+				missingNodeTypeMode,
+				workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-fine', name: 'Fine', nodes: [scheduleTriggerNode()] })],
+					{ sourceId },
+				),
+			});
+
+			expect(result.workflows[0]?.publishing).toEqual({ state: 'published' });
+			expect(result.workflows[0]?.activeVersionId).toEqual(expect.any(String));
+		},
+	);
+
+	it('import-anyway keeps the prior published version active when an update has missing node types', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Published workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, {
+			sourceWorkflowId: 'wf-broken-update',
+		});
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const result = await importPackage({
+			user: owner,
+			missingNodeTypeMode: 'import-anyway',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-broken-update',
+						name: 'Published workflow updated',
+						isPublished: true,
+						nodes: [scheduleTriggerNode(), unknownNode()],
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-broken-update',
+		);
+
+		expect(summary?.status).toBe('updated');
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+		expect(summary?.publishing).toEqual({
+			state: 'unchanged',
+			skippedPublishReason: 'missing-node-type',
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+	});
+
+	it('fail ignores missing node types in workflows the conflict policy skips', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await createWorkflow({ name: 'Already there' }, personalProject);
+		await Container.get(WorkflowRepository).update(existing.id, {
+			sourceWorkflowId: 'wf-skipped-broken',
+		});
+
+		const result = await importPackage({
+			user: owner,
+			workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-skipped-broken',
+						name: 'Already there',
+						nodes: [scheduleTriggerNode(), unknownNode()],
+					}),
+					serializedWorkflow({ id: 'wf-clean', name: 'Clean', nodes: [scheduleTriggerNode()] }),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === 'wf-skipped-broken')
+				?.status,
+		).toBe('skipped');
+		expect(
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === 'wf-clean')?.status,
+		).toBe('created');
 	});
 });

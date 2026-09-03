@@ -1,17 +1,44 @@
-import { IconBodyLoaderKey, N8nPlugin } from '@n8n/design-system';
-import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+// Import from the subpath entries, not the '@n8n/design-system' barrel: preview.ts
+// is a TurboSnap global, and the barrel's `export * from './components'` would make
+// every component a global dep, forcing a full snapshot on any component change.
+// Both specifiers are published `exports` keys, so they resolve outside this
+// monorepo alias too.
+import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
-import { withThemeByDataAttribute } from '@storybook/addon-themes';
-import { setup } from '@storybook/vue3';
+import { DecoratorHelpers } from '@storybook/addon-themes';
+import { setup, type Decorator } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
+import { applyN8nTheme } from './applyN8nTheme';
+import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
-import { allModes } from './modes';
-// import '../src/css/tailwind/index.css';
+
+const { initializeThemeState, pluckThemeFromContext } = DecoratorHelpers;
+
+const THEME_NAMES = ['light', 'dark'] as const;
+const DEFAULT_THEME = 'light';
+
+initializeThemeState([...THEME_NAMES], DEFAULT_THEME);
+
+function themeOverrideFromParameters(parameters: Record<string, unknown>): string | undefined {
+	const themes = parameters.themes;
+	if (typeof themes !== 'object' || themes === null || !('themeOverride' in themes)) {
+		return undefined;
+	}
+
+	const override = themes.themeOverride;
+	return typeof override === 'string' ? override : undefined;
+}
+
+function hasAppliedTheme(): boolean {
+	const current = document.body.dataset.theme;
+	return current === 'light' || current === 'dark';
+}
 
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
@@ -42,75 +69,40 @@ export const parameters = {
 		},
 	},
 	backgrounds: {
-		default: '--color--background--light-3',
-		values: [
-			{
-				name: '--color--background--shade-2',
-				value: 'var(--color--background--shade-2)',
-			},
-			{
-				name: '--color--background',
-				value: 'var(--color--background)',
-			},
-			{
-				name: '--color--background--light-2',
-				value: 'var(--color--background--light-2)',
-			},
-			{
-				name: '--color--background--light-3',
-				value: 'var(--color--background--light-3)',
-			},
-		],
-	},
-	themes: {
-		default: 'light',
-		list: [
-			{
-				name: 'light',
-				class: 'theme-light',
-				color: '#fff',
-			},
-			{
-				name: 'dark',
-				class: 'theme-dark-beta',
-				color: '#000',
-			},
-		],
+		disable: true,
 	},
 	options: {
 		storySort: {
-			order: [
-				'Docs',
-				'Styleguide',
-				'Core',
-				'Instance Settings',
-				'Assistant',
-				'Chat',
-				'Tables',
-				'Utilities',
-				'Experimental',
-			],
+			method: 'alphabetical',
+			order: ['Style Guide', 'Core', 'Areas', 'Experimental'],
+			includeNames: false,
 		},
 	},
+	docs: {
+		container: ThemedDocsContainer,
+	},
 	chromatic: {
-		modes: {
-			light: allModes['light'],
-			dark: allModes['dark'],
-		},
 		disableSnapshot: false,
 	},
 };
 
-export const decorators = [
-	withThemeByDataAttribute({
-		themes: {
-			light: 'light',
-			dark: 'dark',
-		},
-		defaultTheme: 'light',
-		attributeName: 'data-theme',
-		parentSelector: 'body',
-	}),
-];
+const withN8nTheme: Decorator = (storyFn, context) => {
+	const selected = pluckThemeFromContext(context);
+	const theme =
+		themeOverrideFromParameters(context.parameters) ?? (selected?.length ? selected : undefined);
+
+	// Docs remounts every embedded story on a toolbar change. Those stories can
+	// render before `globals.theme` is set; falling back to light paints the
+	// page white after it already went dark.
+	if (theme) {
+		applyN8nTheme(theme);
+	} else if (!hasAppliedTheme()) {
+		applyN8nTheme(DEFAULT_THEME);
+	}
+
+	return storyFn();
+};
+
+export const decorators = [withN8nTheme];
 
 export const tags = ['autodocs'];

@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.31.0",
+  "version": "2.37.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -62,7 +62,7 @@
     "@types/xml2js": "catalog:",
     "fast-check": "catalog:",
     "nock": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
@@ -70,6 +70,7 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
+    "@n8n/constants": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",

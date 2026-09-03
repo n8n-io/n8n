@@ -4,7 +4,7 @@ import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
 
 describe('Microsoft Excel (SharePoint) Transport', () => {
 	let ctx: Mocked<IExecuteFunctions>;
@@ -156,5 +156,51 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 
 		expect(thrown).toBeInstanceOf(NodeApiError);
 		expect(thrown?.message).not.toContain('MARKER-do-not-leak');
+	});
+
+	describe('microsoftApiRequestAllItems', () => {
+		it('returns every item from a single page', async () => {
+			mockHttpRequestWithAuthentication.mockResolvedValue({ value: ['a', 'b'] });
+
+			const result = await microsoftApiRequestAllItems.call(ctx, '/v1.0/sites/s/workbook/tables', {
+				$select: 'id,name',
+			});
+
+			expect(result).toEqual(['a', 'b']);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftOAuth2Api',
+				expect.objectContaining({
+					url: 'https://graph.microsoft.com/v1.0/sites/s/workbook/tables',
+					qs: { $select: 'id,name', $top: 100 },
+				}),
+			);
+		});
+
+		it('accumulates every page, following @odata.nextLink verbatim on later pages', async () => {
+			const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/workbook/tables?$skiptoken=abc';
+			mockHttpRequestWithAuthentication
+				.mockResolvedValueOnce({ value: ['a'], '@odata.nextLink': nextLink })
+				.mockResolvedValueOnce({ value: ['b'] });
+
+			const result = await microsoftApiRequestAllItems.call(ctx, '/v1.0/sites/s/workbook/tables');
+
+			expect(result).toEqual(['a', 'b']);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+				1,
+				'microsoftOAuth2Api',
+				expect.objectContaining({
+					url: 'https://graph.microsoft.com/v1.0/sites/s/workbook/tables',
+					qs: { $top: 100 },
+				}),
+			);
+			// The 2nd page is requested via the exact nextLink, with no rebuilt query params
+			expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'microsoftOAuth2Api',
+				expect.objectContaining({ url: nextLink, qs: {} }),
+			);
+		});
 	});
 });

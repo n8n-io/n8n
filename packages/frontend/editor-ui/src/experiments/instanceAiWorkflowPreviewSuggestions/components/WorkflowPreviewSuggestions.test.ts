@@ -6,8 +6,13 @@ import WorkflowPreviewSuggestions from './WorkflowPreviewSuggestions.vue';
 
 const telemetryTrack = vi.fn();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
+}));
+
+const websiteTemplateRepositoryURL = 'https://n8n.io/workflows?utm_instance=test';
+vi.mock('@/features/workflows/templates/templates.store', () => ({
+	useTemplatesStore: () => ({ websiteTemplateRepositoryURL }),
 }));
 
 const renderComponent = createComponentRenderer(WorkflowPreviewSuggestions, {
@@ -47,5 +52,24 @@ describe('WorkflowPreviewSuggestions', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith('AI Assistant suggestion button clicked', {
 			suggestion_id: suggestion.id,
 		});
+	});
+
+	it('links "see all" to the templates website URL with instance parameters', () => {
+		const { container } = renderComponent();
+
+		const link = container.querySelector('a');
+		expect(link).toHaveAttribute('href', websiteTemplateRepositoryURL);
+	});
+
+	it('tracks a telemetry event when "see all" is clicked', async () => {
+		const { container } = renderComponent();
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		if (!link) throw new Error('Missing see-all link');
+
+		await fireEvent.click(link);
+
+		expect(telemetryTrack).toHaveBeenCalledWith('AI Assistant examples see all button clicked');
 	});
 });

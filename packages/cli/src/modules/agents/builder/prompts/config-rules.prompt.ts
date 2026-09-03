@@ -1,4 +1,4 @@
-import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
@@ -41,7 +41,7 @@ const BuilderPromptMemoryConfigSchema = z.object({
 		.optional(),
 });
 
-const BuilderPromptAgentJsonConfigSchema = RunnableAgentJsonConfigSchema.extend({
+const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	memory: BuilderPromptMemoryConfigSchema.optional(),
 });
 
@@ -49,8 +49,8 @@ export function getConfigRulesSection(): string {
 	return `\
 #### Agent Config Rules
 
-- \`model\` must be "provider/model-name".
-- \`credential\` must be the id returned by \`resolve_llm\`.
+- \`model\` must be "provider/model-name", or \`""\` while LLM setup is pending.
+- A non-empty \`credential\` must be the id returned by \`resolve_llm\`.
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
@@ -62,8 +62,9 @@ export function getConfigRulesSection(): string {
   \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
   sub-config.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
-- Fresh agents need a real model, credential, and instructions
-  before config is written.`;
+- Fresh agents need real \`instructions\` before config is written. \`model\`
+  may be \`""\` and \`credential\` omitted in a draft while LLM setup is
+  pending; fill both from a \`resolve_llm\` result before publishing.`;
 }
 
 export function getSchemaReferenceSection(): string {

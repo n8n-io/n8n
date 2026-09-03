@@ -5,6 +5,7 @@
  * The node schema is the canonical `workflowSetupNodeSchema` from @n8n/api-types.
  */
 import {
+	credentialDestinationDecisionSchema,
 	instanceAiConfirmationSeveritySchema,
 	workflowSetupNodeSchema,
 	type InstanceAiWorkflowSetupNode,
@@ -24,8 +25,12 @@ export const setupSuspendSchema = z.object({
 
 export const setupResumeSchema = z.object({
 	approved: z.boolean(),
+	credentialDestination: credentialDestinationDecisionSchema.optional(),
 	action: z.enum(['apply', 'test-trigger']).optional(),
 	credentials: z.record(z.record(z.string())).optional(),
 	nodeParameters: z.record(z.record(z.unknown())).optional(),
+	/** Node names whose cards the user actively skipped, so the tool can tell a declined
+	 *  card apart from one that is merely still unconfigured. */
+	skippedNodes: z.array(z.string()).optional(),
 	testTriggerNode: z.string().optional(),
 });

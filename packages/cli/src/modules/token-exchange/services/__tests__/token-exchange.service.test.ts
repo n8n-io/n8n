@@ -36,6 +36,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	key: 'test-public-key',
 	issuer: 'https://issuer.example.com',
 	allowedRoles: ['global:member', 'global:admin'],
+	requireVerifiedEmail: false,
 };
 
 const mockUser = mock<User>({
@@ -94,7 +95,11 @@ describe('TokenExchangeService', () => {
 			expect(identityResolutionService.resolve).toHaveBeenCalledWith(
 				validClaims,
 				resolvedKey.allowedRoles,
-				{ kid: resolvedKey.kid, issuer: resolvedKey.issuer },
+				{
+					kid: resolvedKey.kid,
+					issuer: resolvedKey.issuer,
+					requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
+				},
 			);
 		});
 

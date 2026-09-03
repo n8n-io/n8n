@@ -44,6 +44,36 @@ const SECRET_HEADER_PATTERN = /^(authorization|x-api-key|proxy-authorization|coo
 
 const REDACTED = '<redacted>';
 
+/**
+ * Well-known secret VALUE shapes (provider API keys, OAuth/bot tokens, bearer
+ * values), for text where key-based redaction can't see them — e.g. a secret
+ * pasted into message content. Conservative on purpose: distinctive prefixes
+ * plus length floors, so prose never matches.
+ */
+const SECRET_VALUE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+	{ pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/g, replacement: REDACTED }, // OpenAI / Anthropic
+	{ pattern: /\bxox[a-z]-[A-Za-z0-9-]{10,}\b/g, replacement: REDACTED }, // Slack
+	{ pattern: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, replacement: REDACTED }, // GitHub tokens
+	{ pattern: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, replacement: REDACTED }, // GitHub fine-grained PATs
+	{ pattern: /\bAKIA[0-9A-Z]{16}\b/g, replacement: REDACTED }, // AWS access key ids
+	{ pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g, replacement: REDACTED }, // Google API keys
+	{ pattern: /\bya29\.[0-9A-Za-z_-]{20,}\b/g, replacement: REDACTED }, // Google OAuth access tokens
+	{ pattern: /\bbearer\s+[A-Za-z0-9._~+/-]{20,}=*/gi, replacement: REDACTED },
+	// Bare JWTs (three dot-separated base64url segments, header always eyJ…)
+	{
+		pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\b/g,
+		replacement: REDACTED,
+	},
+	// Prose-form assignments a key-based redactor can't see inside content
+	// text (`api_key=…`, `API key: …`, `password: …`). Keeps the key, scrubs
+	// the value; multi-word key names accept space/underscore/hyphen.
+	{
+		pattern:
+			/\b(api[\s_-]?key|access[\s_-]?token|refresh[\s_-]?token|client[\s_-]?secret|secret|password|passwd)\b(["']?\s*[=:]\s*["']?)[^\s"',;]{6,}/gi,
+		replacement: `$1$2${REDACTED}`,
+	},
+];
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -78,6 +108,15 @@ export function redactSecretKeys(value: unknown): unknown {
  * Appends a note when truncation occurs so the LLM knows the data is incomplete.
  * Logs a warning the first time a large body is encountered.
  */
+/** Redact well-known secret VALUE shapes anywhere in a text blob. */
+export function redactSecretValuePatterns(text: string): string {
+	let result = text;
+	for (const { pattern, replacement } of SECRET_VALUE_PATTERNS) {
+		result = result.replace(pattern, replacement);
+	}
+	return result;
+}
+
 export function truncateForLlm(serialized: string, maxLength = MAX_BODY_LENGTH): string {
 	if (serialized.length <= maxLength) return serialized;
 

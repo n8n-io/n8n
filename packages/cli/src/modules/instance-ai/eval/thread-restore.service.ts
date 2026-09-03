@@ -1,11 +1,21 @@
-import type { InstanceAiEvalSeedDataTable, InstanceAiEvalSeedWorkflow } from '@n8n/api-types';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import {
+	AgentJsonConfigSchema,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedWorkflow,
+} from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { SharedWorkflowRepository, WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -29,26 +39,55 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/** Recreates the data tables and workflows a conversation seed references, so a
- *  restored message history's ids resolve. Used by the eval restore endpoint. */
+/** Empty every `credential`/`credentialId` string and `credentials` map, at any
+ *  depth — they address the instance the seed came from. Emptied rather than
+ *  deleted: both are required fields, and empty is the unconfigured state the
+ *  config schema already models. */
+function blankCredentialValues(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(blankCredentialValues);
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => {
+			if ((key === 'credential' || key === 'credentialId') && typeof entry === 'string')
+				return [key, ''];
+			if (key === 'credentials' && isRecord(entry)) return [key, {}];
+			return [key, blankCredentialValues(entry)];
+		}),
+	);
+}
+
+/** Recreates the data tables, workflows and agents a conversation seed references,
+ *  so a restored message history's ids resolve. Used by the eval restore endpoint. */
 @Service()
 export class EvalThreadRestoreService {
 	constructor(
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly sharedWorkflowRepo: SharedWorkflowRepository,
 		private readonly dataTableService: DataTableService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	/**
-	 * Recreate each seed data table (schema only — no rows) and map its seed id to
-	 * the freshly created one. Tables are created under a uniquified name (names
-	 * are unique per project; the id, which the workflow references, is what
-	 * matters). Rolls back tables already created if a later one fails.
+	 * Recreate each seed data table and map its seed id to the freshly created
+	 * one. Tables are created under a uniquified name (names are unique per
+	 * project; the id, which the workflow references, is what matters). A table
+	 * declaring `rows` is seeded with them against its declared column types
+	 * (TRUST-311) — free-text `dataSetup` can't declare types, so a string id
+	 * like `row_001` would otherwise be rejected by a `number` column. Rolls back
+	 * tables already created if a later table (or its rows) fails.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each name to dodge
+	 * the per-project unique-name constraint — safe when the seed workflow
+	 * references tables by id (id-remap). Pass false to keep the EXACT declared
+	 * name, so a freshly-built workflow's by-name references resolve (TRUST-311
+	 * scenario seeding).
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
 		projectId: string,
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<Map<string, string>> {
+		const uniquifyNames = options.uniquifyNames ?? true;
 		const idMap = new Map<string, string>();
 		try {
 			for (const table of dataTables) {
@@ -59,19 +98,45 @@ export class EvalThreadRestoreService {
 						`Seed data table id "${table.id}" is too short to remap safely (need ≥8 chars)`,
 					);
 				}
-				const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
-				const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				let name = table.name;
+				if (uniquifyNames) {
+					const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
+					name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				}
 				const created = await this.dataTableService.createDataTable(projectId, {
 					name,
 					columns: table.columns,
 				});
+				// Map before seeding rows so a row-insert failure rolls this table back too.
 				idMap.set(table.id, created.id);
+				if (table.rows && table.rows.length > 0) {
+					await this.dataTableService.insertRows(created.id, projectId, table.rows);
+				}
 			}
 		} catch (error) {
 			await this.deleteDataTables([...idMap.values()], projectId);
 			throw error;
 		}
 		return idMap;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
+	 * Used for the per-scenario row seeding of a case whose tables were created
+	 * empty before the build turn (TRUST-311 follow-up): the table already exists
+	 * (the built workflow bound its id), so we only swap the rows a scenario
+	 * declares — clearing whatever a prior scenario or a build-time execution
+	 * left. Rows are validated against each column's type by `insertRows`.
+	 */
+	async reseedDataTableRows(
+		tableId: string,
+		projectId: string,
+		rows: NonNullable<InstanceAiEvalSeedDataTable['rows']>,
+	): Promise<void> {
+		await this.dataTableService.clearRows(tableId, projectId);
+		if (rows.length > 0) {
+			await this.dataTableService.insertRows(tableId, projectId, rows);
+		}
 	}
 
 	/** Best-effort delete (rollback of a failed restore). */
@@ -83,6 +148,82 @@ export class EvalThreadRestoreService {
 				// best-effort
 			}
 		}
+	}
+
+	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
+	 *  a single row, so there are no skill files to write. Rolls back on failure.
+	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
+	async restoreAgents(
+		agents: InstanceAiEvalSeedAgent[],
+		projectId: string,
+		dataTableIdMap: Map<string, string> = new Map(),
+	): Promise<string[]> {
+		if (agents.length === 0) return [];
+		const agentsService = this.agentsService();
+		const created: string[] = [];
+		try {
+			for (const agent of agents) {
+				// An agent's node tools carry data-table ids from the instance the seed
+				// was authored on — same rewrite the workflow restore does.
+				const config = AgentJsonConfigSchema.safeParse(
+					blankCredentialValues(this.remapDataTableIds(agent.config, dataTableIdMap)),
+				);
+				if (!config.success) {
+					throw new BadRequestError(
+						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
+					);
+				}
+				// `create` refuses a colliding id rather than overwriting, so a seed can
+				// never clobber an agent that already exists.
+				await agentsService.create(projectId, config.data.name, {
+					id: agent.id,
+					schema: config.data,
+					...(agent.skills ? { skills: agent.skills } : {}),
+				});
+				created.push(agent.id);
+			}
+		} catch (error) {
+			await this.deleteAgents(created, projectId);
+			throw error;
+		}
+		return created;
+	}
+
+	/** Rewrite the seed's authored data-table ids to the ones the restore just
+	 *  created. Whole-document replace: a table id can sit anywhere in a node's
+	 *  parameters or an agent tool's config. */
+	private remapDataTableIds(value: unknown, dataTableIdMap: Map<string, string>): unknown {
+		if (dataTableIdMap.size === 0) return value;
+		let serialized = JSON.stringify(value);
+		// Longest source id first: if one seeded id prefixes another ("dt1234567" /
+		// "dt12345678"), rewriting the short one first would eat the long one's
+		// prefix and leave it addressing a table that does not exist.
+		const byLongest = [...dataTableIdMap].sort(([a], [b]) => b.length - a.length);
+		for (const [oldId, newId] of byLongest) {
+			serialized = serialized.replaceAll(oldId, newId);
+		}
+		return jsonParse<unknown>(serialized);
+	}
+
+	/** Best-effort delete (rollback of a failed restore). Resolved per id so a
+	 *  rollback can never throw over the failure that triggered it. */
+	async deleteAgents(agentIds: string[], projectId: string): Promise<void> {
+		for (const id of agentIds) {
+			try {
+				await this.agentsService().delete(id, projectId);
+			} catch {
+				// best-effort
+			}
+		}
+	}
+
+	/** Lazy: constructor-injecting this would break every seeded restore — workflows
+	 *  and data tables included — on an instance where the agents module is off. */
+	private agentsService(): AgentsService {
+		if (!Container.get(ModuleRegistry).isActive('agents')) {
+			throw new BadRequestError('Seeding an agent requires the agents module to be enabled');
+		}
+		return Container.get(AgentsService);
 	}
 
 	/** Recreate the seed workflows; returns the ids actually created (newly), and
@@ -128,14 +269,8 @@ export class EvalThreadRestoreService {
 		projectId: string,
 		dataTableIdMap: Map<string, string>,
 	): Promise<boolean> {
-		const remapDataTableIds = (value: unknown): unknown => {
-			if (dataTableIdMap.size === 0) return value;
-			let serialized = JSON.stringify(value);
-			for (const [oldId, newId] of dataTableIdMap) {
-				serialized = serialized.replaceAll(oldId, newId);
-			}
-			return jsonParse<unknown>(serialized);
-		};
+		const remapDataTableIds = (value: unknown): unknown =>
+			this.remapDataTableIds(value, dataTableIdMap);
 
 		const nodes: INode[] = workflow.nodes.map((node, index) => {
 			if (!isWorkflowNode(node)) {
@@ -166,20 +301,67 @@ export class EvalThreadRestoreService {
 			);
 		}
 
-		await this.workflowRepo.save(
-			this.workflowRepo.create({
-				id: workflow.id,
-				name: workflow.name,
-				nodes,
-				connections,
-				active: false,
-				versionId: randomUUID(),
-			}),
-		);
-		if (!owningProject) {
-			await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId);
-			return true;
+		// A seed re-applied to its own project updates that row, so the check must
+		// see the stored content and the write must go through the id-bound seal.
+		const stored = owningProject ? await this.findStoredWorkflow(workflow.id) : null;
+
+		const entity = this.workflowRepo.create({
+			id: workflow.id,
+			name: workflow.name,
+			nodes,
+			connections,
+			active: false,
+			versionId: randomUUID(),
+		});
+		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId);
+
+		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
+			if (stored) {
+				const { name, nodes, connections, active, versionId } = entity;
+				await this.workflowRepo.updateContent(
+					workflow.id,
+					{ name, nodes, connections, active, versionId },
+					ctx,
+				);
+				return;
+			}
+			await this.workflowRepo.createContent(entity, ctx);
+			await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId, em);
+		});
+		return stored === null;
+	}
+
+	private async findStoredWorkflow(id: string): Promise<PolicedWorkflow | null> {
+		const [stored] = await this.workflowRepo.findByIds([id], { fields: ['id', 'name', 'nodes'] });
+		return stored ? { id: stored.id, name: stored.name, nodes: stored.nodes } : null;
+	}
+
+	/**
+	 * The caller holds `instanceAi:eval`, but the nodes come from an exported
+	 * conversation, so they are policed like any authored save into the thread's
+	 * project. A refusal is rethrown naming the seed, so a multi-workflow restore
+	 * says which one policy blocked.
+	 */
+	private async enforceSeedWorkflowSave(
+		seed: InstanceAiEvalSeedWorkflow,
+		entity: WorkflowEntity,
+		stored: PolicedWorkflow | null,
+		projectId: string,
+	): Promise<PolicyCleared<'workflowSave'>> {
+		try {
+			return await this.policyEnforcementService.enforceWorkflowSave({
+				workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
+				storedWorkflow: stored,
+				projectId,
+			});
+		} catch (error) {
+			if (error instanceof PolicyViolationError && hasViolations(error.violations)) {
+				throw new PolicyViolationError(
+					error.violations,
+					`Seed workflow ${seed.id} ("${seed.name}") was refused by policy: ${error.message}`,
+				);
+			}
+			throw error;
 		}
-		return false;
 	}
 }

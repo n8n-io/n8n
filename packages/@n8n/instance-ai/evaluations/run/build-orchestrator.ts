@@ -1,0 +1,707 @@
+// ---------------------------------------------------------------------------
+// Build orchestrator — the build phase of an eval run behind an explicit seam
+// (TRUST-261). Owns the per-(iteration, fileSlug) build cache, lane
+// acquisition/retry against transient transport failures, and the per-build
+// side-band capture (transcript, expectation verdicts, agent context, run
+// debug) that reshape/target consume later. Deliberately LangSmith-blind: the
+// traceable lane wrappers are constructed by the caller and injected as
+// `LaneState`, so tracing stays a caller concern.
+// ---------------------------------------------------------------------------
+
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import { sleep } from '@n8n/utils/sleep';
+
+import type { LaneAllocator } from './lane-allocator';
+import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { collectExpectations } from '../build-expectations/collect';
+import { selectAuthorExpectations } from '../build-expectations/select';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
+import type { CliArgs } from '../cli/args';
+import {
+	buildWorkflowViaMcp,
+	stageLaneMcpConfig,
+	unlinkStagedMcpConfig,
+	type McpBuildResult,
+	type McpBuildSettings,
+} from '../cli/mcp-builder';
+import { N8nClient } from '../clients/n8n-client';
+import {
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
+	type executeAgentScenario,
+} from '../harness/agent-execution';
+import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import { attributionForExpectation } from '../harness/attribution';
+import {
+	buildFailedOnInfra,
+	leakHaystackFor,
+	redactLocalRunSecrets,
+	searchableBuildText,
+	scrubLocalSecretsFromBuild,
+	type BuildResult,
+} from '../harness/build-workflow';
+import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import {
+	credentialSetupExpectationTexts,
+	runCredentialSetupChecks,
+} from '../harness/credential-setup-checks';
+import type { EvalLogger } from '../harness/logger';
+import {
+	fetchPrebuiltBuild,
+	pickPrebuiltWorkflowId,
+	type PrebuiltManifest,
+} from '../harness/prebuilt-workflows';
+import type { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
+import {
+	extractErrorMessage,
+	findProviderOutage,
+	isRequestAbort,
+	isTransientNetworkError,
+	MAX_PROVIDER_BUILD_ATTEMPTS,
+	providerRetryBackoffMs,
+} from '../harness/transient-error';
+import type {
+	BuildExpectationResult,
+	ExecutionScenario,
+	TestCaseCredential,
+	TranscriptTurn,
+	WorkflowTestCase,
+} from '../types';
+import { conversationUserTurnsAsText } from '../utils/conversation-text';
+
+/** Attempts (initial + retries) for a build hitting transient network errors. */
+export const MAX_BUILD_ATTEMPTS = 3;
+
+export interface Lane {
+	client: N8nClient;
+	/** Base URL the client was constructed with, forwarded for the HTML report. */
+	baseUrl: string;
+	preRunWorkflowIds: Set<string>;
+	/** Data tables present before any build here — the scenario-table eviction's
+	 *  allowlist, so it can't delete a concurrent iteration's live table. */
+	preRunDataTableIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	/** Credentials created for test cases on this lane; cleaned up after the run. */
+	createdCredentialIds: Set<string>;
+	/** Workflows built/fetched on THIS lane to delete after the run (opt-in). Kept
+	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
+	 *  deleting them via another lane's client would 404. */
+	workflowIdsToDelete: Set<string>;
+	/** Pool of invited member users for `--build-via-mcp` — each build claims one
+	 *  so its MCP credential/workflow view is isolated to that user. */
+	mcpUserPool?: LaneUserPool;
+}
+
+/** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
+ *  McpBuildResult: cost and turns are summed across every attempt of the
+ *  build, so totals are the run's true spend (failed attempts cost money too). */
+export interface McpBuildSpend {
+	costUsd: number;
+	turns: number;
+}
+
+export type BuildArgs = Pick<
+	WorkflowTestCase,
+	| 'conversation'
+	| 'messageBudget'
+	| 'credentials'
+	| 'seed'
+	| 'executionScenarios'
+	| 'outcomeExpectations'
+	// Load-bearing, not metadata: the credential-setup lane is selected from
+	// this, and a build that never receives it silently runs without a browser —
+	// the case then fails as if the AGENT had misbehaved. `wrap()` erases the
+	// callback's parameter type, so tsc cannot catch a dropped field here; the
+	// orchestrator test pins it.
+	| 'credentialFixture'
+> & {
+	timeoutMs: number;
+	/** Which case this build is, and which repeat of it. Not used by the build
+	 *  itself — it rides to `ensureThread` as sourceContext so the LangSmith
+	 *  trace carries `source_context.evalCase` / `evalIteration`. Without it
+	 *  every build in a traced project is an anonymous conversation. */
+	fileSlug: string;
+	iteration: number;
+};
+
+/** A lane plus the allocator-managed counters and the caller-provided (traced)
+ *  build/execute wrappers. `runner` is the underlying Lane (n8n client,
+ *  credential state) — named distinctly so it doesn't shadow loop variables. */
+export interface LaneState {
+	runner: Lane;
+	laneNum: number;
+	activeBuilds: number;
+	inflightKeys: Set<string>;
+	tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
+	tracedExecute: (execArgs: {
+		workflowId: string;
+		scenario: ExecutionScenario;
+		workflowJsons: BuildResult['workflowJsons'];
+		buildTrace?: BuildResult['buildTrace'];
+		timeoutMs: number;
+		seedContext?: ScenarioSeedContext;
+	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
+	tracedExecuteAgent: (execArgs: {
+		agentId: string;
+		scenario: ExecutionScenario;
+		agentContext: string;
+		buildTrace?: BuildResult['buildTrace'];
+		timeoutMs: number;
+		testCaseName?: string;
+	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
+}
+
+/** Map eval CLI args to the shared MCP builder's settings. */
+function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
+	return {
+		serverName: args.mcpServerName,
+		model: args.buildModel,
+		maxAttempts: args.buildMaxAttempts,
+		mcpTimeoutMs: args.buildMcpTimeoutMs,
+		buildTimeoutMs: args.buildTimeoutMs,
+		buildCwd: args.buildCwd,
+	};
+}
+
+/**
+ * Build a workflow on `lane` by driving that lane's MCP server with `claude -p`,
+ * then adapt it into a BuildResult by fetching it back (prebuilt-style) — so the
+ * verify path is identical to `--prebuilt-workflows`. Never throws: a failed
+ * build resolves to an unsuccessful BuildResult. The workflow lives on `lane`,
+ * so the caller must verify it on that same lane.
+ *
+ * Each build runs as its own member user with the declared credentials seeded
+ * into that user's personal project (see lane-users.ts); the lane owner's
+ * global scopes cover the fetch-back and verification.
+ */
+async function buildWorkflowViaMcpOnLane(config: {
+	lane: Lane;
+	conversation: WorkflowTestCase['conversation'];
+	credentials?: TestCaseCredential[];
+	slug: string;
+	iteration: number;
+	args: CliArgs;
+	logDir: string;
+	logger: EvalLogger;
+	/** Run-wide spend collector; every attempt is recorded, success or not. */
+	buildSpend: McpBuildSpend[];
+}): Promise<BuildResult> {
+	const { lane, conversation, credentials, slug, iteration, args, logDir, logger, buildSpend } =
+		config;
+	const failure = (error: string): BuildResult => ({
+		success: false,
+		error,
+		workflowJsons: [],
+		createdWorkflowIds: [],
+		createdDataTableIds: [],
+	});
+	if (!lane.mcpUserPool) {
+		return failure(`Lane ${lane.baseUrl} has no MCP build user pool — cannot build via MCP`);
+	}
+
+	let mcpApiKey: string;
+	try {
+		mcpApiKey = await provisionCaseBuildUser({
+			pool: lane.mcpUserPool,
+			memberClient: new N8nClient(lane.baseUrl),
+			credentials,
+			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
+			logger,
+		});
+	} catch (error) {
+		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
+	}
+
+	const mcpConfigPath = stageLaneMcpConfig({
+		serverName: args.mcpServerName,
+		url: `${lane.baseUrl}/mcp-server/http`,
+		apiKey: mcpApiKey,
+	});
+
+	let result: McpBuildResult;
+	try {
+		result = await buildWorkflowViaMcp({
+			conversation: conversation ?? [],
+			slug,
+			iteration,
+			mcpConfigPath,
+			settings: mcpBuildSettingsFromArgs(args),
+			logDir,
+			log: (message) => logger.info(message),
+		});
+	} finally {
+		unlinkStagedMcpConfig(mcpConfigPath);
+	}
+
+	// Record spend whether or not the build produced a workflow — failed builds
+	// cost money too, and this is the run's spend record.
+	buildSpend.push({ costUsd: result.cost, turns: result.turns });
+
+	// Register for cleanup the moment the id exists. If the fetch-back below
+	// fails, the failure BuildResult carries no workflowId, so success-guarded
+	// bookkeeping at the call sites would never see it and the workflow would
+	// survive the run despite cleanup being on. On this path cleanup is exactly
+	// !keepWorkflows (--delete-prebuilt-workflows is rejected with --build-via-mcp).
+	if (result.workflowId && !args.keepWorkflows) {
+		lane.workflowIdsToDelete.add(result.workflowId);
+	}
+
+	if (!result.workflowId) {
+		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
+	}
+
+	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+}
+
+// Direct fetch (not N8nClient) so a hung lane can't stall the probe.
+export async function laneHealthy(lane: LaneState): Promise<boolean> {
+	try {
+		const res = await fetch(`${lane.runner.baseUrl}/healthz/readiness`, {
+			signal: AbortSignal.timeout(5_000),
+		});
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
+export interface CachedBuild {
+	build: BuildResult;
+	lane: LaneState;
+	buildDurationMs: number;
+	/** `claude` spend for this case's build (`--build-via-mcp` only) — feeds the
+	 *  per-row build_cost_usd/build_turns feedback and eval-results.json. */
+	buildSpend?: McpBuildSpend;
+}
+
+export interface BuildOrchestratorDeps {
+	args: CliArgs;
+	logger: EvalLogger;
+	laneStates: LaneState[];
+	allocator: LaneAllocator<LaneState>;
+	testCaseByFileSlug: Map<string, WorkflowTestCase>;
+	prebuiltManifest?: PrebuiltManifest;
+	cleanupBuiltWorkflows: boolean;
+	mcpBuildLogDir?: string;
+	mcpBuildSpend: McpBuildSpend[];
+	// Side-band sinks owned by the caller: reshape/target read them after the
+	// build phase, keyed by threadId or the `iteration:fileSlug` build key.
+	transcriptByThreadId: Map<string, TranscriptTurn[]>;
+	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
+	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	agentContextByKey: Map<string, Promise<string>>;
+	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
+	sleep?: (ms: number) => Promise<void>;
+}
+
+export interface BuildOrchestrator {
+	getOrBuild: (iteration: number, fileSlug: string) => Promise<CachedBuild>;
+	/** Live cache — `releaseCaseRow` deletes cleaned entries; the end-of-run pass drains the rest. */
+	buildCache: Map<string, Promise<CachedBuild>>;
+	/** Transport-evicted builds whose artifacts still need the end-of-run drain. */
+	orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }>;
+	buildDurations: Map<string, number>;
+}
+
+export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrchestrator {
+	const {
+		args,
+		logger,
+		laneStates,
+		allocator,
+		testCaseByFileSlug,
+		prebuiltManifest,
+		cleanupBuiltWorkflows,
+		mcpBuildLogDir,
+		mcpBuildSpend,
+		transcriptByThreadId,
+		buildExpectationsByKey,
+		runDebugByThreadId,
+		agentContextByKey,
+	} = deps;
+	const delay = deps.sleep ?? sleep;
+
+	// A build that sat out its timeout against a dead lane reports "Run timed
+	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	// A request abort counts too; the chat loop's own overrun ("Run timed out after
+	// Nms") does not — that is the agent being slow on a healthy lane.
+	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
+		if (build.success) return false;
+		if (
+			build.error !== undefined &&
+			(isTransientNetworkError(build.error) || isRequestAbort(build.error))
+		) {
+			return true;
+		}
+		return !(await laneHealthy(lane));
+	}
+
+	/**
+	 * Classify a finished build and stamp the failure fields the row layer reads.
+	 * A provider outage is transient even though the lane is perfectly healthy —
+	 * the failure is upstream of it — so it has to be detected before the health
+	 * probe gets a vote (TRUST-374).
+	 */
+	async function classifyBuildFailure(
+		build: BuildResult,
+		lane: LaneState,
+		since: number,
+	): Promise<{ transient: boolean; providerOutage?: string }> {
+		if (build.success) return { transient: false };
+		const providerOutage = findProviderOutage(build);
+		if (providerOutage !== undefined) {
+			build.providerOutage = providerOutage;
+			build.transportFailure = true;
+			return { transient: true, providerOutage };
+		}
+		const transient =
+			(await isTransportFailure(build, lane)) || allocator.wasQuarantinedSince(lane, since);
+		build.transportFailure = transient;
+		return { transient };
+	}
+
+	const buildCache = new Map<string, Promise<CachedBuild>>();
+	// Transport-evicted builds leave buildCache before any cleanup pass sees
+	// them, but their artifacts (restored workflows, data tables, thread — and
+	// with it the sandbox) are real. Stash them for the end-of-run drain; the
+	// lane may be mid-restart at eviction time, so immediate cleanup can't work.
+	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
+	const buildDurations = new Map<string, number>();
+
+	function stashTranscript(build: BuildResult): void {
+		scrubLocalSecretsFromBuild(build);
+		if (build.threadId && build.transcript) {
+			transcriptByThreadId.set(build.threadId, build.transcript);
+		}
+	}
+
+	// Agent config + skills, fetched once per build and shared by every
+	// scenario row of the case (the agent analog of the cached workflow JSON).
+	function stashAgentContext(key: string, client: N8nClient, build: BuildResult): void {
+		const agentRef = findAgentArtifactRef(build.artifactRefs);
+		if (!agentRef) return;
+		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
+	}
+
+	function stashRunDebug(client: N8nClient, build: BuildResult): void {
+		if (!build.threadId) return;
+		// Re-read from n8n AFTER the build was scrubbed, so it arrives raw and the
+		// run-debug report would render a local run's real key verbatim.
+		runDebugByThreadId.set(
+			build.threadId,
+			captureThreadRunDebug(client, build.threadId, logger)
+				.then((debug) => redactLocalRunSecrets(debug, build.credentialSetup))
+				// Drop the payload rather than ship it or kill the run: run debug is
+				// diagnostic, and an unscrubable local run must not reach the report.
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Dropped run debug for thread ${build.threadId ?? '?'}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [];
+				}),
+		);
+	}
+
+	// Judge author expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by the build-cache key,
+	// and target() embeds them in run outputs so baseline fetches can score them.
+	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
+	// builds (no transcript) judge only outcome expectations against the workflow,
+	// with the authored conversation as request context — mirroring the direct loop.
+	function stashBuildExpectations(
+		key: string,
+		fileSlug: string,
+		client: N8nClient,
+		build: BuildResult,
+		isPrebuilt: boolean,
+	): void {
+		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
+		// already redacted a local run's transcript and kept the pre-scrub text
+		// off-build for exactly this check.
+		// Hermetic mode scrubs nothing, so there is no snapshot — but the surfaces
+		// scanned must be the same ones, hence the shared builder.
+		const searchableRunText =
+			(build.credentialSetup && leakHaystackFor(build.credentialSetup)) ??
+			searchableBuildText(build);
+		const testCase = testCaseByFileSlug.get(fileSlug);
+		if (!testCase) return;
+		// Staging never landed, so the case has no premise to be judged against. The row
+		// itself is short-circuited in `case-pipeline`, but expectations are counted
+		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
+		// does not reach them. A priorRuns case is usually expectation-only, so without
+		// this the single graded unit still lands in the builder's baseline as a red.
+		if (build.priorRunFailed) {
+			buildExpectationsByKey.set(
+				key,
+				Promise.resolve(
+					allFailVerdicts(
+						collectExpectations(testCase),
+						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+					),
+				),
+			);
+			return;
+		}
+		// Deterministic credential-setup verdicts, started EAGERLY: per-build
+		// cleanup deletes artifacts later, and a credential read that lost that
+		// race would report "not created" for a run that did create one.
+		const injected = build.credentialSetup
+			? runCredentialSetupChecks({
+					client,
+					facts: build.credentialSetup,
+					searchableRunText,
+					logger,
+				}).catch((error: unknown) => {
+					const reason = error instanceof Error ? error.message : String(error);
+					logger.warn(`  Credential-setup checks failed: ${reason}`);
+					// Incomplete, not dropped: an empty array let the case pass on
+					// authored expectations with nothing deterministic behind it.
+					return allFailVerdicts(
+						credentialSetupExpectationTexts(build.credentialSetup?.credentialType),
+						`Credential-setup checks could not run: ${reason}`,
+					);
+				})
+			: undefined;
+		const { expectations, transcript, unjudged } = selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt,
+			logger,
+		});
+		// Attributed here, where we still know WHY the build ended: a build that
+		// died on infra produced nothing to judge, so its expectations are unowned
+		// rather than the agent's miss. Both readers of this map (the row outputs
+		// and reshape's side band) then carry the same verdict (TRUST-375).
+		const infraFailed = buildFailedOnInfra(build);
+		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+		// The lane's deterministic verdicts ride along on EVERY path, including the
+		// unjudged one: they describe what the run actually did to the provider and
+		// to n8n, which stays true whether or not the author expectations got judged.
+		// Deliberately not passed through `attribute` — that answers "is this the
+		// agent's miss or infra's", and these are measurements, not judgements.
+		const withInjected = async (
+			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
+		): Promise<BuildExpectationResult[]> =>
+			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
+		// Recorded as incomplete rather than dropped, so the case keeps its unit
+		// count and the report says why they weren't graded.
+		if (unjudged.length > 0) {
+			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
+			return;
+		}
+		if (expectations.length === 0) {
+			if (injected) buildExpectationsByKey.set(key, injected);
+			return;
+		}
+		buildExpectationsByKey.set(
+			key,
+			withInjected(
+				(async () =>
+					await verifyBuildExpectations(expectations, {
+						transcript,
+						workflowJson: build.workflowJsons[0],
+						metrics: build.conversationMetrics,
+						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+						// with "(no <type> produced)" fallbacks, so outcome expectations can
+						// judge artifact existence, absence and content — parity with the
+						// retired direct loop, which always threaded resolveArtifactContext.
+						artifactContext: await resolveArtifactContext({
+							artifactRefs: build.artifactRefs ?? [],
+							client,
+							logger,
+						}),
+					}))()
+					.catch((error: unknown) =>
+						allFailVerdicts(
+							expectations,
+							`judge error: ${error instanceof Error ? error.message : String(error)}`,
+						),
+					)
+					.then(attribute),
+			),
+		);
+	}
+
+	async function getOrBuild(iteration: number, fileSlug: string): Promise<CachedBuild> {
+		// Cache key on (iteration, fileSlug) — every scenario in a test-case file
+		// shares this build, and prebuilt + orchestrator-built paths use the same key.
+		const key = `${String(iteration)}:${fileSlug}`;
+		const existing = buildCache.get(key);
+		if (existing) return await existing;
+		const promise = (async () => {
+			if (args.buildViaMcp) {
+				// Fused MCP build: acquire a lane (work-stealing, capped per-lane),
+				// drive its MCP server with `claude` to build the workflow, then
+				// verify on that SAME lane. This is what lets N lanes parallelize the
+				// whole build+verify pipeline in one process (no manifest, no merge).
+				const entry = testCaseByFileSlug.get(fileSlug);
+				if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+				const lane = await allocator.acquire(fileSlug);
+				const start = Date.now();
+				let build: BuildResult;
+				// Local collector so this case's spend stays attributable to its own
+				// rows; drained into the run-wide record right after the build.
+				const caseSpend: McpBuildSpend[] = [];
+				try {
+					build = await buildWorkflowViaMcpOnLane({
+						lane: lane.runner,
+						conversation: entry.conversation,
+						credentials: entry.credentials,
+						slug: fileSlug,
+						iteration,
+						args,
+						logDir: mcpBuildLogDir ?? process.cwd(),
+						logger,
+						buildSpend: caseSpend,
+					});
+				} finally {
+					// Release as soon as the build (incl. fetch-back) is done — the
+					// LLM-judged bookkeeping below needs only the fetched JSON, and
+					// holding the slot through it would idle the lane's build capacity.
+					allocator.release(lane, fileSlug);
+				}
+				mcpBuildSpend.push(...caseSpend);
+				{
+					const { transient } = await classifyBuildFailure(build, lane, start);
+					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				}
+				const buildDurationMs = Date.now() - start;
+				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
+				// as `claude` reports the id), so even a failed fetch-back is covered.
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				// isPrebuilt=true: MCP builds have no build transcript, so only
+				// outcome expectations are judged (against the workflow), like prebuilt.
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				stashRunDebug(lane.runner.client, build);
+				if (build.success && !build.workflowChecks) {
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
+						agentText: undefined,
+						logger,
+					});
+				}
+				// One collector entry per buildWorkflowViaMcpOnLane call (attempts are
+				// summed inside buildWorkflowViaMcp), so [0] is this build's whole spend.
+				return { build, lane, buildDurationMs, buildSpend: caseSpend[0] };
+			}
+			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
+			if (prebuiltId !== undefined) {
+				// Prebuilt path: no orchestrator concurrency to manage — just
+				// fetch the workflow. main() rejects multi-lane + prebuilt at
+				// startup, so laneStates always has exactly one entry here.
+				const lane = laneStates[0];
+				const start = Date.now();
+				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
+				if (cleanupBuiltWorkflows && build.success && build.workflowId) {
+					lane.runner.workflowIdsToDelete.add(build.workflowId);
+				}
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				stashRunDebug(lane.runner.client, build);
+				if (build.success && !build.workflowChecks) {
+					// No transcript in prebuilt mode, but the authored conversation still
+					// carries the user's request — feed it so prompt-aware checks (e.g.
+					// fulfills_user_request) grade against real intent instead of "".
+					const prebuiltCase = testCaseByFileSlug.get(fileSlug);
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: conversationUserTurnsAsText(
+							prebuiltCase?.conversation ?? [],
+							prebuiltCase?.seed,
+						),
+						agentText: undefined,
+						logger,
+					});
+				}
+				return { build, lane, buildDurationMs };
+			}
+			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
+			// the build cache dedupes scenarios within one file.
+			const entry = testCaseByFileSlug.get(fileSlug);
+			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+			if (timeoutMs !== args.timeoutMs) {
+				logger.info(
+					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+				);
+			}
+			// Transport failures are not agent verdicts — retry on a different lane
+			// instead of recording 0-score rows for every scenario of the case.
+			let lane = await allocator.acquire(fileSlug);
+			let build: BuildResult;
+			let buildDurationMs: number;
+			for (let attempt = 1; ; attempt++) {
+				const start = Date.now();
+				try {
+					build = await lane.tracedBuild({
+						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
+						credentials: entry.credentials,
+						seed: entry.seed,
+						executionScenarios: entry.executionScenarios,
+						outcomeExpectations: entry.outcomeExpectations,
+						credentialFixture: entry.credentialFixture,
+						timeoutMs,
+						fileSlug,
+						iteration,
+					});
+				} finally {
+					allocator.release(lane, fileSlug);
+				}
+				buildDurationMs = Date.now() - start;
+				const { transient, providerOutage } = await classifyBuildFailure(build, lane, start);
+				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				const maxAttempts = providerOutage ? MAX_PROVIDER_BUILD_ATTEMPTS : MAX_BUILD_ATTEMPTS;
+				if (!transient || attempt >= maxAttempts) break;
+				// A provider outage is upstream of every lane, so an instant retry just
+				// re-hits it — and the queue then drains at the speed of the failures.
+				const backoffMs = providerOutage ? providerRetryBackoffMs(attempt) : 0;
+				logger.warn(
+					providerOutage
+						? `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} hit a provider outage (${providerOutage}); waiting ${String(Math.round(backoffMs / 1000))}s before retrying`
+						: `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
+				);
+				if (backoffMs > 0) await delay(backoffMs);
+				lane = await allocator.acquire(fileSlug, { not: lane });
+			}
+			buildDurations.set(key, buildDurationMs);
+			stashTranscript(build);
+			stashAgentContext(key, lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
+			stashRunDebug(lane.runner.client, build);
+			logger.info(
+				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
+			);
+			// Only the pairwise flow reads captured events — drop the largest chunk
+			// of each BuildResult from the run-long cache.
+			build.events = undefined;
+			return { build, lane, buildDurationMs };
+		})();
+		buildCache.set(key, promise);
+		// Evict transport-failed builds so a later scenario rebuilds. Agent build
+		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
+		// Provider outages also stay cached: the retry budget (with its backoff) is
+		// already spent, every scenario of the case would hit the same upstream, and
+		// recovery is the run dispatcher's job, not another local rebuild.
+		void promise.then(
+			({ build, lane }) => {
+				if (build.transportFailure && !build.providerOutage) {
+					orphanedBuilds.push({ build, client: lane.runner.client });
+					buildCache.delete(key);
+				}
+			},
+			() => buildCache.delete(key),
+		);
+		return await promise;
+	}
+
+	return { getOrBuild, buildCache, orphanedBuilds, buildDurations };
+}

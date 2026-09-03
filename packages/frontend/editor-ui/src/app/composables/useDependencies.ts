@@ -11,6 +11,18 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 const dependenciesMap = ref<Record<string, ResolvedDependenciesResult>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 
+// The backend rejects requests with more than 100 resource ids
+// (see GetResourceDependencyCountsDto), so batch larger id lists.
+const BATCH_SIZE = 100;
+
+function toBatches(resourceIds: string[]): string[][] {
+	const batches: string[][] = [];
+	for (let i = 0; i < resourceIds.length; i += BATCH_SIZE) {
+		batches.push(resourceIds.slice(i, i + BATCH_SIZE));
+	}
+	return batches;
+}
+
 export function useDependencies() {
 	const rootStore = useRootStore();
 
@@ -19,20 +31,22 @@ export function useDependencies() {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 	): Promise<void> {
-		if (resourceIds.length === 0) return;
-
-		try {
-			const result = await workflowDependenciesApi.getResourceDependencyCounts(
-				rootStore.restApiContext,
-				resourceIds,
-				resourceType,
-			);
-			for (const [id, counts] of Object.entries(result)) {
-				countsMap.value[id] = counts;
-			}
-		} catch {
-			// Counts are supplementary — silently ignore errors
-		}
+		await Promise.all(
+			toBatches(resourceIds).map(async (batch) => {
+				try {
+					const result = await workflowDependenciesApi.getResourceDependencyCounts(
+						rootStore.restApiContext,
+						batch,
+						resourceType,
+					);
+					for (const [id, counts] of Object.entries(result)) {
+						countsMap.value[id] = counts;
+					}
+				} catch {
+					// Counts are supplementary — silently ignore errors
+				}
+			}),
+		);
 	}
 
 	/** Fetch full resolved dependencies for any resource type. */
@@ -40,20 +54,22 @@ export function useDependencies() {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 	): Promise<void> {
-		if (resourceIds.length === 0) return;
-
-		try {
-			const result = await workflowDependenciesApi.getResourceDependencies(
-				rootStore.restApiContext,
-				resourceIds,
-				resourceType,
-			);
-			for (const [id, entry] of Object.entries(result)) {
-				dependenciesMap.value[id] = entry;
-			}
-		} catch {
-			// Dependencies are supplementary — silently ignore errors
-		}
+		await Promise.all(
+			toBatches(resourceIds).map(async (batch) => {
+				try {
+					const result = await workflowDependenciesApi.getResourceDependencies(
+						rootStore.restApiContext,
+						batch,
+						resourceType,
+					);
+					for (const [id, entry] of Object.entries(result)) {
+						dependenciesMap.value[id] = entry;
+					}
+				} catch {
+					// Dependencies are supplementary — silently ignore errors
+				}
+			}),
+		);
 	}
 
 	function getDependencies(resourceId: string): ResolvedDependenciesResult | undefined {

@@ -1,15 +1,15 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
+import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -18,7 +18,7 @@ export function useSettingsItems() {
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 	const { balance } = useAiGateway();
-	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
+	const { openTopUp } = useAiGatewayTopUp();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -58,11 +58,17 @@ export function useSettingsItems() {
 			{
 				id: 'settings-n8n-connect',
 				icon: 'plug-zap',
-				label: i18n.baseText('settings.n8nConnect'),
+				label: i18n.baseText(
+					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
+				),
 				position: 'top',
 				available:
-					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
-				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+					settingsStore.isAiGatewayEnabled &&
+					(settingsStore.isAiGatewayCloudUbbEnabled ||
+						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
+				route: settingsStore.isAiGatewayCloudUbbEnabled
+					? undefined
+					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
 						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
@@ -112,6 +118,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-git-connections',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.gitConnections.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
+				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
@@ -125,7 +139,7 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
 				available:
-					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
@@ -167,17 +181,6 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
-			id: 'settings-opentelemetry',
-			icon: 'telescope',
-			label: i18n.baseText('settings.opentelemetry'),
-			position: 'top',
-			available:
-				settingsStore.isModuleActive('otel') &&
-				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
-			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
-		});
-
-		menuItems.push({
 			id: 'settings-community-nodes',
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),
@@ -205,5 +208,11 @@ export function useSettingsItems() {
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
 
-	return { settingsItems: visibleSettingsItems };
+	const handleSettingsItemSelect = async (itemId: string) => {
+		if (itemId === 'settings-n8n-connect' && settingsStore.isAiGatewayCloudUbbEnabled) {
+			await openTopUp({ source: 'settings_page' });
+		}
+	};
+
+	return { settingsItems: visibleSettingsItems, handleSettingsItemSelect };
 }

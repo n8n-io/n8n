@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
@@ -10,7 +10,7 @@ import ExecutionsFilter from '../components/ExecutionsFilter.vue';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterType } from '../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { MockInstance } from 'vitest';
 import * as restApiClient from '@n8n/rest-api-client';
@@ -38,17 +38,9 @@ vi.mock('@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue', () =>
 	},
 }));
 
-vi.mock('@/features/shared/tags/components/WorkflowTagsDropdown.vue', () => ({
-	default: {
-		name: 'WorkflowTagsDropdown',
-		template: '<div data-test-id="executions-filter-tags-select"></div>',
-	},
-}));
-
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
-	tags: [],
 	annotationTags: [],
 	startDate: '',
 	endDate: '',

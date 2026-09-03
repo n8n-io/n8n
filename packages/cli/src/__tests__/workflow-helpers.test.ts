@@ -2,9 +2,11 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
+	INodeCredentialsDetails,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
@@ -27,12 +29,18 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
+	const ownershipService = mockInstance(OwnershipService);
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: '1', name: 'project' }),
+	);
+
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
@@ -62,12 +70,6 @@ describe('workflow-helpers', () => {
 				] as Variables[];
 			},
 		});
-
-		mockInstance(OwnershipService, {
-			async getWorkflowProjectCached(_workflowId: string) {
-				return { id: '1', name: 'project' } as unknown as Project;
-			},
-		});
 	});
 
 	describe('getVariables', () => {
@@ -94,6 +96,12 @@ describe('workflow-helpers', () => {
 		it('should let a project variable override a same-key global regardless of order', async () => {
 			const variables = await getVariables(undefined, '1');
 			expect(variables.VAR2).toBe('value1Project');
+		});
+
+		it('should reject when the owning project cannot be resolved', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('not found'));
+
+			await expect(getVariables('1')).rejects.toThrow('not found');
 		});
 	});
 });
@@ -291,6 +299,70 @@ describe('replaceInvalidCredentials', () => {
 		});
 	});
 
+	it('should reuse a shared credential cache across workflows', async () => {
+		const credential = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(credential);
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).not.toBe(
+			secondWorkflow.nodes[0].credentials!.httpHeaderAuth,
+		);
+	});
+
+	it('should cache a name fallback for the stale credential id and name', async () => {
+		const credential = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValue([credential]);
+		const cache = new Map<string, INodeCredentialsDetails>();
+
+		for (let index = 0; index < 2; index++) {
+			await replaceInvalidCredentials(
+				makeWorkflow({ httpHeaderAuth: { id: 'cred-stale', name: 'My Cred' } }),
+				'project-1',
+				cache,
+			);
+		}
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledTimes(1);
+	});
+
+	it('should resolve the same stale credential id independently when names differ', async () => {
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject
+			.mockResolvedValueOnce([{ id: 'resolved-First', name: 'First' } as CredentialsEntity])
+			.mockResolvedValueOnce([{ id: 'resolved-Second', name: 'Second' } as CredentialsEntity]);
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'First' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'Second' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-First',
+			name: 'First',
+		});
+		expect(secondWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-Second',
+			name: 'Second',
+		});
+	});
+
 	it('should skip credential types that resolve to object internal keys', async () => {
 		// JSON.parse keeps `__proto__` as an own enumerable key, unlike an object literal.
 		const credentials = JSON.parse(
@@ -470,10 +542,18 @@ describe('validateWorkflowStructure', () => {
 	});
 });
 
-describe('validateWorkflowNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+// Shared by both node-group suites: the connection fixtures below key off the
+// `Node <id>` naming, so the two must stay defined together.
+const makeNode = (id: string) =>
+	({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+const regularNodeType = { group: ['transform'] } as never;
+// Two nodes connected n1 → n2 form a groupable chain.
+const connectedNodes = [makeNode('n1'), makeNode('n2')];
+const chainConnections = {
+	'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+} as never;
 
+describe('validateWorkflowNodeGroups', () => {
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
@@ -522,6 +602,18 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
+	it('should throw when a group has no members', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+				},
+				null,
+			),
+		).toThrow('Group "My Group" has no members.');
+	});
+
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
@@ -534,7 +626,7 @@ describe('validateWorkflowNodeGroups', () => {
 				},
 				null,
 			),
-		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+		).toThrow('Node "Node n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
@@ -569,12 +661,8 @@ describe('validateWorkflowNodeGroups', () => {
 
 	describe('full validation', () => {
 		const triggerType = { group: ['trigger'] } as never;
-		const regularType = { group: ['transform'] } as never;
-		// Two nodes connected n1 → n2 form a groupable chain.
-		const connectedNodes = [makeNode('n1'), makeNode('n2')];
-		const connections = {
-			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
-		} as never;
+		const regularType = regularNodeType;
+		const connections = chainConnections;
 
 		it('passes for a valid connected group', () => {
 			expect(() =>
@@ -599,7 +687,7 @@ describe('validateWorkflowNodeGroups', () => {
 					},
 					() => triggerType,
 				),
-			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+			).toThrow('Node group "Has trigger" cannot contain trigger nodes');
 		});
 
 		it('does not run full checks when getNodeType is null (basic-only)', () => {
@@ -615,6 +703,113 @@ describe('validateWorkflowNodeGroups', () => {
 				),
 			).not.toThrow();
 		});
+
+		describe('sticky notes', () => {
+			const makeStickyNode = (id: string) =>
+				({
+					id,
+					name: `Sticky ${id}`,
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: {},
+				}) as never;
+			const stickyType = { name: STICKY_NODE_TYPE, group: ['input'] } as never;
+			const getNodeType = (node: { type: string }) =>
+				node.type === STICKY_NODE_TYPE ? stickyType : regularType;
+
+			it('passes for a group containing a sticky alongside a connected chain', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [...connectedNodes, makeStickyNode('s1')],
+							connections,
+							nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('passes for a sticky-only group', () => {
+				// Groups can degenerate to sticky-only when their last connectable
+				// node is deleted; such groups must keep saving.
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeStickyNode('s1'), makeStickyNode('s2')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s1', 's2'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('still rejects disconnected connectable nodes when a sticky is present', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeNode('n1'), makeNode('n2'), makeStickyNode('s1')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Disconnected', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).toThrow(
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
+				);
+			});
+		});
+	});
+});
+
+describe('sanitizeNodeGroupDescriptions', () => {
+	it('returns no warnings and leaves descriptions within the cap untouched', () => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
+		};
+		expect(sanitizeNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(workflow.nodeGroups[0].description).toBe('short');
+	});
+
+	it('truncates an over-cap description and returns a warning', () => {
+		const workflow = {
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Group 1',
+					nodeIds: [],
+					description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 10),
+				},
+			],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		expect(warnings).toEqual([
+			`Group "Group 1" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+		]);
+	});
+
+	it.each([
+		['a number', 123],
+		['an object', { a: 1 }],
+		['an array', Array.from({ length: GROUP_DESCRIPTION_MAX_LENGTH + 10 }, (_, i) => i)],
+	])('removes a non-string description (%s) and returns a warning', (_label, description) => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: description as never }],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toBeUndefined();
+		expect(warnings).toEqual(['Group "Group 1" description was not plain text and was removed.']);
+	});
+
+	it('handles missing nodeGroups and groups without a description', () => {
+		expect(sanitizeNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(
+			sanitizeNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+		).toEqual([]);
 	});
 });
 

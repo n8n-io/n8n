@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import { isSecretKey, redactSecretKeys, truncateForLlm } from '../request-sanitizer';
+import {
+	isSecretKey,
+	redactSecretKeys,
+	redactSecretValuePatterns,
+	truncateForLlm,
+} from '../request-sanitizer';
 
 // ---------------------------------------------------------------------------
 // Mock logger to verify warning behavior
@@ -19,6 +24,36 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 // isSecretKey
 // ---------------------------------------------------------------------------
+describe('redactSecretValuePatterns', () => {
+	it.each([
+		['an OpenAI key', 'my key is sk-proj-abcdefghijklmnopqrstuvwx ok', /sk-proj/],
+		['a Slack token', 'use xoxb-1234567890-abcdef please', /xoxb-/],
+		[
+			'an uppercase bearer value',
+			'Authorization: Bearer abcdefghijklmnopqrstuv',
+			/abcdefghijklmnop/,
+		],
+		[
+			'a lowercase bearer value',
+			'authorization: bearer abcdefghijklmnopqrstuv',
+			/abcdefghijklmnop/,
+		],
+		['a prose api_key assignment', 'set api_key=supersecretvalue and retry', /supersecretvalue/],
+		['a spaced API key phrase', 'my Notion API key: ntn9x8y7z6w5v4 thanks', /ntn9x8y7z6w5v4/],
+		['a prose password assignment', 'password: hunter22222 works', /hunter22222/],
+		['a JSON-in-string secret', 'config is {"client_secret": "abc123def456"}', /abc123def456/],
+	])('scrubs %s', (_name, input, leaked) => {
+		const result = redactSecretValuePatterns(input);
+		expect(result).not.toMatch(leaked);
+		expect(result).toContain('<redacted>');
+	});
+
+	it('leaves ordinary prose untouched', () => {
+		const text = 'The secret to good soup is patience; keywords stay, and skis are fine.';
+		expect(redactSecretValuePatterns(text)).toBe(text);
+	});
+});
+
 describe('isSecretKey', () => {
 	describe('should classify secret keys', () => {
 		const secretKeys = [

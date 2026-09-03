@@ -33,9 +33,9 @@ flowchart LR
   workflows + their folder shells + credential deps into a target project) → `WorkflowPackageImporter`.
 - `WorkflowPackageImporter` resolves the target scope from the request, then delegates the plan/gate/apply
   work to `ImportOrchestrator` (brings folders + workflows + credential deps into one project scope).
-  `ProjectPackageImporter` creates the project shells; reusing `ImportOrchestrator` for a project's own
-  contents is a follow-up. Don't split folder vs workflow: they share target resolution, credential
-  resolution, and publishing.
+  `ProjectPackageImporter` creates the project shells, then reuses `ImportOrchestrator` per project to
+  bring each one's own folders + workflows + credential deps into scope. Don't split folder vs workflow:
+  they share target resolution, credential resolution, and publishing.
 
 ### Adding an IMPORT property
 

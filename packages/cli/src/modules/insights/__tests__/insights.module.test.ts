@@ -47,6 +47,7 @@ describe('InsightsModule', () => {
 				Container.get(LicenseState),
 				mockInstanceSettings,
 				Container.get(Logger),
+				mock(),
 			),
 		);
 		insightsModule = Container.get(InsightsModule);

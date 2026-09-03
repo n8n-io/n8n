@@ -27,7 +27,13 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { findMcpSupportedTrigger } from '../mcp.utils';
+import { findEnabledEligibleTriggers, isMcpSupportedTriggerType } from '../mcp.utils';
+import {
+	getExpectedInputsDescription,
+	triggerRequiresInputs,
+	workflowInputsSchema,
+	type WorkflowInputs,
+} from './workflow-inputs';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -45,41 +51,21 @@ const inputSchema = z.object({
 		.describe(
 			'Required execution intent. Use "manual" for testing or validating the current workflow, including tests against live external services. Use "production" only when intentionally running the published workflow as a live execution.',
 		),
-	inputs: z
-		.discriminatedUnion('type', [
-			z.object({
-				type: z.literal('chat'),
-				chatInput: z.string().describe('Input for chat-based workflows'),
-			}),
-			z.object({
-				type: z.literal('form'),
-				formData: z.record(z.unknown()).describe('Input data for form-based workflows'),
-			}),
-			z.object({
-				type: z.literal('webhook'),
-				webhookData: z
-					.object({
-						method: z
-							.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-							.optional()
-							.default('GET')
-							.describe('HTTP method (defaults to GET)'),
-						query: z.record(z.string()).optional().describe('Query string parameters'),
-						body: z
-							.record(z.unknown())
-							.optional()
-							.describe('Request body data (main webhook payload)'),
-						headers: z
-							.record(z.string())
-							.optional()
-							.describe('HTTP headers (e.g., authorization, content-type)'),
-					})
-					.describe('Input data for webhook-based workflows'),
-			}),
-		])
+	triggerNodeName: z
+		.string()
 		.optional()
-		.describe('Inputs to provide to the workflow.'),
+		.describe(
+			'Name of the trigger node to execute. Required when providing inputs. If omitted, the workflow must have exactly one trigger that does not require inputs (Schedule Trigger, or Manual Trigger in manual mode). Use get_workflow_details to see available trigger names.',
+		),
+	inputs: workflowInputsSchema
+		.optional()
+		.describe(
+			'Trigger payload. Required for webhook, chat, and form triggers. Must be omitted for schedule and manual triggers. Use get_workflow_details to see the expected payload for each trigger.',
+		),
 });
+
+type ExecuteWorkflowInput = z.infer<typeof inputSchema>;
+type ExecutionMode = ExecuteWorkflowInput['executionMode'];
 
 type ExecuteWorkflowOutput = {
 	executionId: string | null;
@@ -105,7 +91,7 @@ export const createExecuteWorkflowTool = (
 	name: 'execute_workflow',
 	config: {
 		description:
-			'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			"Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description; pass detailLevel 'execution' to that tool when running the workflow is all you need, since the full graph is not required here.",
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -116,11 +102,15 @@ export const createExecuteWorkflowTool = (
 			openWorldHint: true, // Can access external systems via workflows
 		},
 	},
-	handler: async ({ workflowId, executionMode, inputs }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, executionMode, triggerNodeName, inputs }: ExecuteWorkflowInput) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'execute_workflow',
-			parameters: { workflowId, executionMode, inputs: getInputMetaData(inputs) },
+			parameters: {
+				workflowId,
+				executionMode,
+				inputs: getInputMetaData(inputs, triggerNodeName),
+			},
 		};
 		try {
 			const output = await executeWorkflow(
@@ -133,6 +123,7 @@ export const createExecuteWorkflowTool = (
 				workflowId,
 				inputs,
 				executionMode,
+				triggerNodeName,
 			);
 
 			telemetryPayload.results = {
@@ -188,9 +179,7 @@ export const createExecuteWorkflowTool = (
 
 /**
  * Executes a workflow for the given user with provided inputs.
- * In order to "synchronously" execute the workflow,
- * it is mapping mcp tool inputs to trigger node pin data and starting execution from there.
- * LIMITATION: Does not properly support workflows with multiple triggers.
+ * Maps MCP tool inputs to trigger node pin data and starts execution from there.
  */
 export const executeWorkflow = async (
 	user: User,
@@ -200,8 +189,9 @@ export const executeWorkflow = async (
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	workflowId: string,
-	inputs: z.infer<typeof inputSchema>['inputs'],
-	executionMode: z.infer<typeof inputSchema>['executionMode'],
+	inputs: ExecuteWorkflowInput['inputs'],
+	executionMode: ExecutionMode,
+	triggerNodeName?: string,
 ): Promise<ExecuteWorkflowOutput> => {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -219,6 +209,7 @@ export const executeWorkflow = async (
 		mcpService,
 		workflowsConfig,
 		workflowPublishedDataService,
+		triggerNodeName,
 	);
 
 	const executionId = await workflowRunner.run(runData);
@@ -232,7 +223,7 @@ export const executeWorkflow = async (
 const getVersionDataForExecution = async (
 	workflow: FoundWorkflow,
 	workflowId: string,
-	executionMode: z.infer<typeof inputSchema>['executionMode'],
+	executionMode: ExecutionMode,
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 ) => {
@@ -276,11 +267,12 @@ const buildRunData = async (
 	workflow: FoundWorkflow,
 	userId: string,
 	workflowId: string,
-	executionMode: z.infer<typeof inputSchema>['executionMode'],
-	inputs: z.infer<typeof inputSchema>['inputs'],
+	executionMode: ExecutionMode,
+	inputs: ExecuteWorkflowInput['inputs'],
 	mcpService: McpService,
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
+	triggerNodeName?: string,
 ): Promise<IWorkflowExecutionDataProcess> => {
 	const { nodes, connections } = await getVersionDataForExecution(
 		workflow,
@@ -289,14 +281,7 @@ const buildRunData = async (
 		workflowsConfig,
 		workflowPublishedDataService,
 	);
-	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
-
-	if (!triggerNode) {
-		throw new WorkflowAccessError(
-			`Only workflows with the following trigger nodes can be executed: ${getSupportedTriggerNamesForMode(executionMode).join(', ')}.`,
-			'unsupported_trigger',
-		);
-	}
+	const triggerNode = resolveExecuteWorkflowTrigger(nodes, executionMode, triggerNodeName, inputs);
 
 	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
 	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -347,6 +332,123 @@ const buildRunData = async (
 	return runData;
 };
 
+const resolveExecuteWorkflowTrigger = (
+	nodes: INode[],
+	executionMode: ExecutionMode,
+	triggerNodeName: string | undefined,
+	inputs: ExecuteWorkflowInput['inputs'],
+): INode => {
+	const eligible = findEnabledEligibleTriggers(nodes, (node) =>
+		isMcpSupportedTriggerType(node.type, executionMode),
+	);
+	const available = formatTriggerNames(eligible);
+
+	if (inputs && !triggerNodeName) {
+		// Checked here too: with no eligible trigger, `available` is "none", so asking
+		// for a name would leave the caller nothing to act on.
+		if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
+		throw new WorkflowAccessError(
+			`Provide triggerNodeName when passing inputs. Available triggers: ${available}.`,
+			'invalid_inputs',
+		);
+	}
+
+	if (triggerNodeName) {
+		const named = nodes.find((node) => node.name === triggerNodeName);
+		if (!named) {
+			throw new WorkflowAccessError(
+				`Trigger node "${triggerNodeName}" was not found. Available triggers: ${available}.`,
+				'unsupported_trigger',
+			);
+		}
+		if (named.disabled) {
+			throw new WorkflowAccessError(
+				`Trigger node "${triggerNodeName}" is disabled. Enable it or choose another trigger: ${available}.`,
+				'unsupported_trigger',
+			);
+		}
+		if (!isMcpSupportedTriggerType(named.type, executionMode)) {
+			if (named.type === MANUAL_TRIGGER_NODE_TYPE && executionMode === 'production') {
+				throw new WorkflowAccessError(
+					`Trigger node "${triggerNodeName}" cannot be used in production mode. Use a webhook, form, chat, or schedule trigger, or execute in manual mode.`,
+					'unsupported_trigger',
+				);
+			}
+			throw new WorkflowAccessError(
+				`Trigger node "${triggerNodeName}" is not supported for MCP execution. Available triggers: ${available}.`,
+				'unsupported_trigger',
+			);
+		}
+
+		validateInputsForTrigger(named, inputs);
+		return named;
+	}
+
+	const noPayloadTriggers = eligible.filter((node) => !triggerRequiresInputs(node.type));
+	if (eligible.length === 1 && noPayloadTriggers.length === 1) {
+		return noPayloadTriggers[0];
+	}
+
+	if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
+
+	if (eligible.every((node) => triggerRequiresInputs(node.type))) {
+		throw new WorkflowAccessError(
+			`Provide triggerNodeName and inputs to execute this workflow. Available triggers: ${available}.`,
+			'invalid_inputs',
+		);
+	}
+
+	throw new WorkflowAccessError(
+		`This workflow has multiple triggers. Provide triggerNodeName to specify which one to execute. Available triggers: ${available}.`,
+		'unsupported_trigger',
+	);
+};
+
+const validateInputsForTrigger = (node: INode, inputs: ExecuteWorkflowInput['inputs']): void => {
+	if (!triggerRequiresInputs(node.type)) {
+		if (inputs) {
+			throw new WorkflowAccessError(
+				`Trigger node "${node.name}" does not accept inputs. Omit inputs.`,
+				'invalid_inputs',
+			);
+		}
+		return;
+	}
+
+	if (!inputs || !inputsMatchTrigger(node.type, inputs)) {
+		throw new WorkflowAccessError(
+			`Trigger node "${node.name}" requires inputs matching ${getExpectedInputsDescription(node.type)}.`,
+			'invalid_inputs',
+		);
+	}
+};
+
+const inputsMatchTrigger = (nodeType: string, inputs: WorkflowInputs): boolean => {
+	switch (nodeType) {
+		case CHAT_TRIGGER_NODE_TYPE:
+			return 'chatInput' in inputs;
+		case FORM_TRIGGER_NODE_TYPE:
+			return 'formData' in inputs;
+		case WEBHOOK_NODE_TYPE:
+			return 'webhookData' in inputs;
+		default:
+			return false;
+	}
+};
+
+const formatTriggerNames = (nodes: INode[]): string =>
+	nodes.length > 0 ? nodes.map((node) => node.name).join(', ') : 'none';
+
+/**
+ * Raised when the workflow holds no trigger this mode can drive. Names the supported
+ * types rather than the workflow's own triggers, since there are none to list.
+ */
+const noEligibleTriggerError = (executionMode: ExecutionMode): WorkflowAccessError =>
+	new WorkflowAccessError(
+		`This workflow has no trigger that can be executed in ${executionMode} mode. Supported triggers: ${getSupportedTriggerNamesForMode(executionMode).join(', ')}.`,
+		'unsupported_trigger',
+	);
+
 /**
  * Gets the execution mode based on the trigger node type.
  */
@@ -367,10 +469,11 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 
 /**
  * Constructs pin data for the trigger node based on provided inputs.
+ * Callers must validate inputs against the trigger before this runs.
  */
 const getPinDataForTrigger = async (
 	node: INode,
-	inputs: z.infer<typeof inputSchema>['inputs'],
+	inputs: ExecuteWorkflowInput['inputs'],
 ): Promise<IPinData> => {
 	switch (node.type) {
 		case MANUAL_TRIGGER_NODE_TYPE:
@@ -378,8 +481,7 @@ const getPinDataForTrigger = async (
 				[node.name]: [{ json: {} }],
 			};
 		case WEBHOOK_NODE_TYPE: {
-			// For webhook triggers, provide default empty values if no inputs or wrong type
-			const webhookData = inputs?.type === 'webhook' ? inputs.webhookData : undefined;
+			const webhookData = inputs && 'webhookData' in inputs ? inputs.webhookData : undefined;
 			return {
 				[node.name]: [
 					{
@@ -392,34 +494,35 @@ const getPinDataForTrigger = async (
 				],
 			};
 		}
-		case CHAT_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'chat') return { [node.name]: [{ json: {} }] };
+		case CHAT_TRIGGER_NODE_TYPE: {
+			const chatInput = inputs && 'chatInput' in inputs ? inputs.chatInput : '';
 			return {
 				[node.name]: [
 					{
 						json: {
 							sessionId: `mcp-session-${Date.now()}`,
 							action: 'sendMessage',
-							chatInput: inputs.chatInput,
+							chatInput,
 						},
 					},
 				],
 			};
-		case FORM_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'form') return { [node.name]: [{ json: {} }] };
+		}
+		case FORM_TRIGGER_NODE_TYPE: {
+			const formData = inputs && 'formData' in inputs ? inputs.formData : {};
 			return {
 				[node.name]: [
 					{
 						json: {
 							submittedAt: new Date().toISOString(),
 							formMode: 'mcp',
-							...(inputs.formData ?? {}),
+							...formData,
 						},
 					},
 				],
 			};
+		}
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
-			// For schedule triggers, we don't map any inputs but we can add expected datetime info
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			const moment = (await import('moment-timezone')).default;
 			const momentTz = moment.tz(timezone);
@@ -448,9 +551,7 @@ const getPinDataForTrigger = async (
 	}
 };
 
-const getSupportedTriggerNamesForMode = (
-	executionMode: z.infer<typeof inputSchema>['executionMode'],
-): string[] => {
+const getSupportedTriggerNamesForMode = (executionMode: ExecutionMode): string[] => {
 	return executionMode === 'production'
 		? Object.values(SUPPORTED_PRODUCTION_MCP_TRIGGERS)
 		: Object.values(SUPPORTED_MCP_TRIGGERS);
@@ -460,32 +561,33 @@ const getSupportedTriggerNamesForMode = (
  * Reduce inputs to metadata that will be sent to telemetry.
  */
 const getInputMetaData = (
-	inputs: z.infer<typeof inputSchema>['inputs'],
+	inputs: ExecuteWorkflowInput['inputs'],
+	triggerNodeName?: string,
 ): ExecuteWorkflowsInputMeta | undefined => {
-	if (!inputs) {
+	if (!inputs && !triggerNodeName) {
 		return undefined;
 	}
-	switch (inputs.type) {
-		case 'chat':
-			return {
-				type: 'chat',
-				parameter_count: 1,
-			};
-		case 'form':
-			return {
-				type: 'form',
-				parameter_count: Object.keys(inputs.formData ?? {}).length,
-			};
-		case 'webhook':
-			return {
-				type: 'webhook',
-				parameter_count: [
-					inputs.webhookData?.body ? Object.keys(inputs.webhookData.body).length : 0,
-					inputs.webhookData?.query ? Object.keys(inputs.webhookData.query).length : 0,
-					inputs.webhookData?.headers ? Object.keys(inputs.webhookData.headers).length : 0,
-				].reduce((a, b) => a + b, 0),
-			};
-		default:
-			return undefined;
+
+	const metadata: ExecuteWorkflowsInputMeta = {};
+	if (triggerNodeName) {
+		metadata.triggerNodeName = triggerNodeName;
 	}
+	if (!inputs) {
+		return metadata;
+	}
+	if ('chatInput' in inputs) {
+		metadata.type = 'chat';
+		metadata.parameter_count = 1;
+	} else if ('formData' in inputs) {
+		metadata.type = 'form';
+		metadata.parameter_count = Object.keys(inputs.formData ?? {}).length;
+	} else if ('webhookData' in inputs) {
+		metadata.type = 'webhook';
+		metadata.parameter_count = [
+			inputs.webhookData?.body ? Object.keys(inputs.webhookData.body).length : 0,
+			inputs.webhookData?.query ? Object.keys(inputs.webhookData.query).length : 0,
+			inputs.webhookData?.headers ? Object.keys(inputs.webhookData.headers).length : 0,
+		].reduce((a, b) => a + b, 0);
+	}
+	return metadata;
 };

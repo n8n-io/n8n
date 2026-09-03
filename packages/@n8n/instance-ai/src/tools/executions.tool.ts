@@ -5,6 +5,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
@@ -52,6 +53,17 @@ const runAction = z.object({
 				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
+		),
+	triggerNodeName: z
+		.string()
+		.optional()
+		.describe(
+			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+				"triggers' branches never run. To run each branch, call run once per trigger. " +
+				"Trigger names come from build-workflow's `triggerNodes` or " +
+				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				'workflow to reach a branch — use this instead.',
 		),
 	timeout: z
 		.number()
@@ -142,12 +154,8 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+/** Includes `scope` for "always allow" session grants (see handler). */
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -189,7 +197,7 @@ async function findAllowedWorkflowByName(
 	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
 
 	for (const allowedName of allowList) {
-		const workflows = await context.workflowService.list({ query: allowedName, limit: 10 });
+		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
 		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
 		if (match) return { id: match.id, name: match.name };
 	}
@@ -202,6 +210,7 @@ async function handleRun(
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -292,6 +301,8 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		triggerNodeName: input.triggerNodeName,
+		abortSignal,
 	});
 }
 
@@ -347,7 +358,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);

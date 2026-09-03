@@ -14,6 +14,8 @@ const HTTPS_PORT = 8443;
 const KEYCLOAK_TEST_REALM = 'test';
 const KEYCLOAK_TEST_CLIENT_ID = 'n8n-e2e';
 const KEYCLOAK_TEST_CLIENT_SECRET = 'n8n-test-secret';
+/** Audience the realm stamps into access tokens, for relying parties to verify. */
+const KEYCLOAK_TEST_AUDIENCE = 'n8n';
 const KEYCLOAK_TEST_USER_EMAIL = 'test@n8n.io';
 const KEYCLOAK_TEST_USER_PASSWORD = 'testpassword';
 const KEYCLOAK_TEST_USER_FIRSTNAME = 'Test';
@@ -35,6 +37,7 @@ export interface KeycloakMeta {
 	hostPort: number;
 	clientId: string;
 	clientSecret: string;
+	audience: string;
 	testUser: {
 		email: string;
 		password: string;
@@ -76,6 +79,20 @@ function generateRealmJson(callbackUrl: string): string {
 				directAccessGrantsEnabled: true,
 				publicClient: false,
 				protocol: 'openid-connect',
+				protocolMappers: [
+					{
+						// Without this Keycloak only puts its own `account` service in `aud`,
+						// so access tokens name no audience a relying party could check.
+						name: 'n8n-audience',
+						protocol: 'openid-connect',
+						protocolMapper: 'oidc-audience-mapper',
+						config: {
+							'included.custom.audience': KEYCLOAK_TEST_AUDIENCE,
+							'access.token.claim': 'true',
+							'id.token.claim': 'false',
+						},
+					},
+				],
 			},
 		],
 		users: [
@@ -299,6 +316,7 @@ export const keycloak: Service<KeycloakResult> = {
 					hostPort: allocatedHostPort,
 					clientId: KEYCLOAK_TEST_CLIENT_ID,
 					clientSecret: KEYCLOAK_TEST_CLIENT_SECRET,
+					audience: KEYCLOAK_TEST_AUDIENCE,
 					testUser: {
 						email: KEYCLOAK_TEST_USER_EMAIL,
 						password: KEYCLOAK_TEST_USER_PASSWORD,
@@ -357,6 +375,10 @@ export class KeycloakHelper {
 
 	get clientId(): string {
 		return this.meta.clientId;
+	}
+
+	get audience(): string {
+		return this.meta.audience;
 	}
 
 	get clientSecret(): string {

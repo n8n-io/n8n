@@ -100,8 +100,14 @@ function makeAgentSpawned(
 	parentId: string,
 	role = 'sub-agent',
 	tools = ['tool-a'],
+	targetResource?: Extract<InstanceAiEvent, { type: 'agent-spawned' }>['payload']['targetResource'],
 ): Extract<InstanceAiEvent, { type: 'agent-spawned' }> {
-	return { type: 'agent-spawned', runId, agentId, payload: { parentId, role, tools } };
+	return {
+		type: 'agent-spawned',
+		runId,
+		agentId,
+		payload: { parentId, role, tools, targetResource },
+	};
 }
 
 function makeAgentCompleted(
@@ -129,6 +135,11 @@ function makeConfirmationRequest(
 			args: {},
 			severity: 'warning',
 			message: 'Are you sure?',
+			targetApproval: {
+				toolName: 'delete_record',
+				displayName: 'Delete record',
+				args: { id: 'record-1' },
+			},
 		},
 	};
 }
@@ -150,6 +161,29 @@ function makeTasksUpdate(
 		runId,
 		agentId,
 		payload: { tasks: { tasks: [{ id: 't1', description: 'Do thing', status: 'todo' }] } },
+	};
+}
+
+function makeSetupItems(
+	runId: string,
+	agentId: string,
+	workflowId: string,
+	credentialType: string,
+): Extract<InstanceAiEvent, { type: 'setup-items' }> {
+	return {
+		type: 'setup-items',
+		runId,
+		agentId,
+		payload: {
+			workflowId,
+			items: [
+				{
+					id: `${workflowId}:credential:${credentialType}`,
+					kind: 'credential',
+					credentialType,
+				},
+			],
+		},
 	};
 }
 
@@ -636,6 +670,29 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].error).toBe('failed');
 		});
 
+		it('agent-completed with status cancelled yields cancelled without error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, {
+				type: 'agent-completed',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: { role: 'sub-agent', result: '', status: 'cancelled' },
+			});
+
+			expect(state.agentsById['sub-1'].status).toBe('cancelled');
+			expect(state.agentsById['sub-1'].error).toBeUndefined();
+		});
+
+		it('agent-completed without status still derives error from legacy error field', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', '', 'Cancelled by user'));
+
+			expect(state.agentsById['sub-1'].status).toBe('error');
+			expect(state.agentsById['sub-1'].error).toBe('Cancelled by user');
+		});
+
 		it('agent-completed clears isLoading on agent tool calls', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
@@ -686,6 +743,11 @@ describe('agent-run-reducer', () => {
 				requestId: 'req-1',
 				severity: 'warning',
 				message: 'Are you sure?',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
 			});
 		});
 
@@ -716,6 +778,39 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('confirmation-request passes through credential destination metadata when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflows'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-destination',
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'setup' },
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch data'],
+					},
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-destination',
+				severity: 'warning',
+				message: 'Review where this credential will be used',
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch data'],
+				},
+			});
+		});
+
 		it('confirmation-request passes through projectId when present', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));
@@ -742,6 +837,33 @@ describe('agent-run-reducer', () => {
 				projectId: 'proj-456',
 			});
 		});
+
+		it('confirmation-request preserves explicit credential selection on replay', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-2',
+					toolCallId: 'tc-1',
+					toolName: 'setup-credentials',
+					args: {},
+					severity: 'info',
+					message: 'Select credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-2',
+				severity: 'info',
+				message: 'Select credentials',
+				requireUserSelection: true,
+			});
+		});
 	});
 
 	describe('tasks-update', () => {
@@ -751,6 +873,60 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].tasks).toBeDefined();
 			expect(state.agentsById['root'].tasks!.tasks).toHaveLength(1);
+		});
+	});
+
+	describe('setup-items', () => {
+		it('folds the latest snapshot per workflowId onto the root node', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-2', 'gmailOAuth2'));
+
+			const byWorkflowId = state.agentsById['root'].setupItemsByWorkflowId!;
+			expect(byWorkflowId['wf-1']).toHaveLength(1);
+			expect(byWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'notionApi' });
+			expect(byWorkflowId['wf-2'][0]).toMatchObject({ credentialType: 'gmailOAuth2' });
+		});
+
+		it('folds onto the root node even when a sub-agent emits', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeSetupItems('run-1', 'sub-1', 'wf-1', 'slackApi'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+			expect(state.agentsById['sub-1'].setupItemsByWorkflowId).toBeUndefined();
+		});
+
+		it('survives a tree snapshot round trip (history restore)', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+
+			// Serialize in between: toAgentTree returns the live root and adoption
+			// is by reference, so without it this would compare a node to itself.
+			const snapshot = deepCopy(toAgentTree(state));
+			const restored = stateFromAgentTree(snapshot);
+
+			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0]).toMatchObject({
+				credentialType: 'slackApi',
+			});
+		});
+
+		it('is preserved across a follow-up run-start when it is the only content', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
+		it('ignores an unsafe workflowId key', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', '__proto__', 'slackApi'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
+			expectStateMapsNotPolluted(state);
 		});
 	});
 
@@ -1030,6 +1206,91 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].children).toHaveLength(1);
 			expect(state.agentsById['sub-1'].textContent).toBe('kept');
+		});
+
+		it('republished agent-spawned for the same target upserts targetResource without a second node', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
+		});
+
+		it('an unnamed replayed agent-spawned does not erase a known targetResource name', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			expect(state.agentsById['sub-1'].targetResource?.name).toBe('Support Bot');
+		});
+
+		it('a replayed agent-spawned for a different target resource leaves the node untouched', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-2',
+					projectId: 'proj-1',
+					name: 'Other Agent',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
 		});
 	});
 

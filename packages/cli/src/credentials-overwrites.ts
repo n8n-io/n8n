@@ -28,6 +28,13 @@ export class CredentialsOverwrites {
 		private readonly cipher: Cipher,
 	) {}
 
+	/** Registered by FrontendService to regenerate credential types after overwrites change, without this module depending on it. */
+	private reloadHandler?: () => Promise<void>;
+
+	registerReloadHandler(handler: () => Promise<void>) {
+		this.reloadHandler = handler;
+	}
+
 	async init() {
 		const data = this.globalConfig.credentials.overwrite.data;
 		if (data) {
@@ -126,15 +133,8 @@ export class CredentialsOverwrites {
 		}
 
 		if (reloadFrontend) {
-			await this.reloadFrontendService();
+			await this.reloadHandler?.();
 		}
-	}
-
-	private async reloadFrontendService() {
-		// FrontendService has CredentialOverwrites injected via the constructor
-		// to break the circular dependency we need to use the container to get the instance
-		const { FrontendService } = await import('./services/frontend.service.js');
-		await Container.get(FrontendService)?.generateTypes();
 	}
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
@@ -166,8 +166,8 @@ export class CredentialsOverwrites {
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {
-			// @ts-ignore
-			if ([null, undefined, ''].includes(returnData[key])) {
+			const current = returnData[key];
+			if (current === null || current === undefined || current === '') {
 				returnData[key] = overwrites[key];
 			}
 		}
@@ -228,6 +228,32 @@ export class CredentialsOverwrites {
 
 	supportsManagedAuth(type: string): boolean {
 		return this.get(type) !== undefined;
+	}
+
+	/**
+	 * OAuth credential type whose client this instance provides via overwrites
+	 * (clientId + clientSecret), excluding skip-list types where managed
+	 * creation is disabled. These types support one-click connect in the editor.
+	 */
+	isManagedOAuthType(type: string): boolean {
+		if (!this.credentialTypes.recognizes(type)) return false;
+
+		// OAuth2 identifies its client with clientId/clientSecret, OAuth1 with
+		// consumerKey/consumerSecret. Detect the version so the right pair is checked
+		// (checking clientId/clientSecret for both would never match an OAuth1 client).
+		const parentTypes = this.credentialTypes.getParentTypes(type);
+		const extendsBase = (base: string) => type === base || parentTypes.includes(base);
+		const clientFields = extendsBase('oAuth2Api')
+			? (['clientId', 'clientSecret'] as const)
+			: extendsBase('oAuth1Api')
+				? (['consumerKey', 'consumerSecret'] as const)
+				: undefined;
+		if (!clientFields) return false;
+
+		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) return false;
+
+		const overwrites = this.get(type);
+		return !!overwrites && clientFields.every((field) => field in overwrites);
 	}
 
 	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {

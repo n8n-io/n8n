@@ -10,32 +10,50 @@ import {
 	type IHeaders,
 	type KafkaMessage,
 	type RecordBatchEntry,
+	type RetryOptions,
 } from 'kafkajs';
-import { NodeOperationError, type IRun } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	TriggerCloseError,
+	UnexpectedError,
+	type INodeTypeBaseDescription,
+	type IRun,
+} from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from '../KafkaTrigger.node';
+import { KafkaTriggerV1 } from '../v1/KafkaTriggerV1.node';
+import { KafkaTriggerV2 } from '../v2/KafkaTriggerV2.node';
 import type { Mock, Mocked } from 'vitest';
-import type * as _importType0 from 'n8n-workflow';
 
 vi.mock('kafkajs');
 vi.mock('@kafkajs/confluent-schema-registry');
-vi.mock('n8n-workflow', async () => {
-	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn().mockResolvedValue(undefined),
-	};
-});
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
+
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Kafka Trigger',
+	name: 'kafkaTrigger',
+	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
+	group: ['trigger'],
+	defaultVersion: 1.3,
+	description: 'Consume messages from a Kafka topic',
+};
 
 describe('KafkaTrigger Node', () => {
+	const expectedRetryConfig = {
+		restartOnFailure: expect.any(Function) as RetryOptions['restartOnFailure'],
+	};
+
 	let mockKafka: Mocked<Kafka>;
 	let mockRegistry: Mocked<SchemaRegistry>;
 	let mockConsumerConnect: Mock;
 	let mockConsumerSubscribe: Mock;
 	let mockConsumerRun: Mock;
 	let mockConsumerDisconnect: Mock;
+	let mockConsumerStop: Mock;
 	let mockConsumerCreate: Mock;
 	let mockRegistryDecode: Mock;
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
@@ -62,12 +80,14 @@ describe('KafkaTrigger Node', () => {
 			}
 		});
 		mockConsumerDisconnect = vi.fn();
+		mockConsumerStop = vi.fn(async () => {});
 		mockConsumerCreate = vi.fn(() =>
 			mock<Consumer>({
 				connect: mockConsumerConnect,
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
+				stop: mockConsumerStop,
 				on: vi.fn((event: string, handler: (event: unknown) => unknown) => {
 					consumerEventHandlers[event] = handler;
 					return vi.fn();
@@ -172,7 +192,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should connect to Kafka and subscribe to topic', async () => {
-		const { close, emit } = await testTriggerNode(KafkaTrigger, {
+		const { close, emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -207,6 +227,7 @@ describe('KafkaTrigger Node', () => {
 			sessionTimeout: 30000,
 			heartbeatInterval: 3000,
 			rebalanceTimeout: 600000,
+			retry: expectedRetryConfig,
 		});
 
 		expect(mockConsumerConnect).toHaveBeenCalled();
@@ -250,7 +271,7 @@ describe('KafkaTrigger Node', () => {
 		};
 
 		const startTrigger = async () =>
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -308,7 +329,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle authentication when credentials are provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -343,7 +364,7 @@ describe('KafkaTrigger Node', () => {
 
 	it('should throw an error if authentication is enabled but credentials are missing', async () => {
 		await expect(
-			testTriggerNode(KafkaTrigger, {
+			testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					parameters: {
@@ -362,7 +383,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use schema registry when enabled', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -386,9 +407,9 @@ describe('KafkaTrigger Node', () => {
 			headers: { 'content-type': Buffer.from('application/json') },
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'http://localhost:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'http://localhost:8081/' }),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -403,7 +424,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use the schema registry credential when selected', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				credentials: {
@@ -438,10 +459,12 @@ describe('KafkaTrigger Node', () => {
 			value: Buffer.from('test-message'),
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://schema-registry.local:8081',
-			auth: { username: 'registry-user', password: 'registry-password' },
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://schema-registry.local:8081/',
+				auth: { username: 'registry-user', password: 'registry-password' },
+			}),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -456,7 +479,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use the schema registry credential without auth when authentication is none', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				credentials: {
@@ -485,9 +508,9 @@ describe('KafkaTrigger Node', () => {
 			},
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://unauthenticated-registry.local:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'https://unauthenticated-registry.local:8081/' }),
+		);
 	});
 
 	it('should emit the original message and log a sanitized warning when decoding fails', async () => {
@@ -500,7 +523,7 @@ describe('KafkaTrigger Node', () => {
 			),
 		);
 
-		const { emit, logger } = await testTriggerNode(KafkaTrigger, {
+		const { emit, logger } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -541,7 +564,7 @@ describe('KafkaTrigger Node', () => {
 
 	it('should fail activation when the schema registry credential is missing the password', async () => {
 		await expect(
-			testTriggerNode(KafkaTrigger, {
+			testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					credentials: {
@@ -575,7 +598,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should parse JSON message when jsonParseMessage is true', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -607,7 +630,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should include headers when returnHeaders is true', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -657,26 +680,29 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle manual trigger mode', async () => {
-		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
-			mode: 'manual',
-			node: {
-				typeVersion: 1,
-				parameters: {
-					topic: 'test-topic',
-					groupId: 'test-group',
-					useSchemaRegistry: false,
-					options: {
-						parallelProcessing: true,
+		const { emit, manualTriggerFunction } = await testTriggerNode(
+			new KafkaTriggerV1(baseDescription),
+			{
+				mode: 'manual',
+				node: {
+					typeVersion: 1,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						options: {
+							parallelProcessing: true,
+						},
 					},
 				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
 			},
-			credential: {
-				brokers: 'localhost:9092',
-				clientId: 'n8n-kafka',
-				ssl: false,
-				authentication: false,
-			},
-		});
+		);
 
 		await manualTriggerFunction?.();
 
@@ -692,24 +718,27 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use immediate emit in manual mode even when resolveOffset is onCompletion (v1.3)', async () => {
-		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
-			mode: 'manual',
-			node: {
-				typeVersion: 1.3,
-				parameters: {
-					topic: 'test-topic',
-					groupId: 'test-group',
-					useSchemaRegistry: false,
-					resolveOffset: 'onCompletion',
+		const { emit, manualTriggerFunction } = await testTriggerNode(
+			new KafkaTriggerV1(baseDescription),
+			{
+				mode: 'manual',
+				node: {
+					typeVersion: 1.3,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'onCompletion',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
 				},
 			},
-			credential: {
-				brokers: 'localhost:9092',
-				clientId: 'n8n-kafka',
-				ssl: false,
-				authentication: false,
-			},
-		});
+		);
 
 		await manualTriggerFunction?.();
 
@@ -722,26 +751,29 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use immediate emit in manual mode even when parallelProcessing is false (v1.1)', async () => {
-		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
-			mode: 'manual',
-			node: {
-				typeVersion: 1.1,
-				parameters: {
-					topic: 'test-topic',
-					groupId: 'test-group',
-					useSchemaRegistry: false,
-					options: {
-						parallelProcessing: false,
+		const { emit, manualTriggerFunction } = await testTriggerNode(
+			new KafkaTriggerV1(baseDescription),
+			{
+				mode: 'manual',
+				node: {
+					typeVersion: 1.1,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						options: {
+							parallelProcessing: false,
+						},
 					},
 				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
 			},
-			credential: {
-				brokers: 'localhost:9092',
-				clientId: 'n8n-kafka',
-				ssl: false,
-				authentication: false,
-			},
-		});
+		);
 
 		await manualTriggerFunction?.();
 
@@ -754,7 +786,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle sequential processing when parallelProcessing is false', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.1,
@@ -794,7 +826,7 @@ describe('KafkaTrigger Node', () => {
 	it('should keep binary data when keepBinaryData is enabled in v1.2', async () => {
 		const messageBuffer = Buffer.from('binary-avro-data');
 
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -835,7 +867,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should not keep binary data in v1.0 and v1.1 even if option is set', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.1,
@@ -875,7 +907,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should convert to string when keepBinaryData is false in v1.2', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -917,7 +949,7 @@ describe('KafkaTrigger Node', () => {
 		const jsonData = { foo: 'bar', nested: { value: 123 } };
 		const messageBuffer = Buffer.from(JSON.stringify(jsonData));
 
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -959,7 +991,7 @@ describe('KafkaTrigger Node', () => {
 		const decodedData = { userId: 123, userName: 'test-user' };
 		mockRegistryDecode.mockResolvedValue(decodedData);
 
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -1003,7 +1035,7 @@ describe('KafkaTrigger Node', () => {
 		const jsonData = { result: 'success', data: [1, 2, 3] };
 		const messageBuffer = Buffer.from(JSON.stringify(jsonData));
 
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -1043,7 +1075,7 @@ describe('KafkaTrigger Node', () => {
 	it('should keep binary data with returnHeaders enabled', async () => {
 		const messageBuffer = Buffer.from('test-data');
 
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -1089,7 +1121,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use custom rebalanceTimeout when provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -1118,6 +1150,7 @@ describe('KafkaTrigger Node', () => {
 			sessionTimeout: 20000,
 			heartbeatInterval: 2000,
 			rebalanceTimeout: 300000,
+			retry: expectedRetryConfig,
 		});
 	});
 
@@ -1144,7 +1177,7 @@ describe('KafkaTrigger Node', () => {
 			}),
 		);
 
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1200,8 +1233,6 @@ describe('KafkaTrigger Node', () => {
 			.mockReturnValueOnce(mockRemoveListener8)
 			.mockReturnValueOnce(mockRemoveListener9);
 
-		const mockConsumerStop = vi.fn();
-
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
 				connect: mockConsumerConnect,
@@ -1224,7 +1255,7 @@ describe('KafkaTrigger Node', () => {
 			}),
 		);
 
-		const { close } = await testTriggerNode(KafkaTrigger, {
+		const { close } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1259,8 +1290,220 @@ describe('KafkaTrigger Node', () => {
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
 	});
 
+	it('should still disconnect and reject with TriggerCloseError when consumer.stop() fails on close', async () => {
+		const teardownError = new Error('The group is rebalancing, so a rejoin is needed');
+		mockConsumerStop.mockRejectedValueOnce(teardownError);
+
+		const { close } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const error = await close().then(
+			() => null,
+			(e: unknown) => e,
+		);
+
+		expect(error).toBeInstanceOf(TriggerCloseError);
+		expect((error as TriggerCloseError).cause).toBe(teardownError);
+		expect((error as TriggerCloseError).level).toBe('warning');
+		// A failed stop() must not leave the broker connection open
+		expect(mockConsumerDisconnect).toHaveBeenCalled();
+	});
+
+	it('should reject with TriggerCloseError when consumer.disconnect() fails on close', async () => {
+		const teardownError = new Error('The coordinator is not aware of this member');
+		mockConsumerDisconnect.mockRejectedValueOnce(teardownError);
+
+		const { close } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const error = await close().then(
+			() => null,
+			(e: unknown) => e,
+		);
+
+		expect(error).toBeInstanceOf(TriggerCloseError);
+		expect((error as TriggerCloseError).cause).toBe(teardownError);
+		expect((error as TriggerCloseError).level).toBe('warning');
+	});
+
+	it('should configure a restartOnFailure callback that vetoes consumer restarts only after close', async () => {
+		const { close } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		expect(mockConsumerCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				groupId: 'test-group',
+				retry: expectedRetryConfig,
+			}),
+		);
+		const { retry } = mockConsumerCreate.mock.calls[0][0] as {
+			retry: { restartOnFailure: NonNullable<RetryOptions['restartOnFailure']> };
+		};
+
+		await expect(retry.restartOnFailure(new Error('retriable crash'))).resolves.toBe(true);
+
+		await close();
+
+		await expect(retry.restartOnFailure(new Error('retriable crash'))).resolves.toBe(false);
+	});
+
+	it('should crash the consumer non-retriably when a batch arrives after close', async () => {
+		const { close, emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await close();
+
+		const error = await publishMessage({ value: Buffer.from('late-message') }).then(
+			() => null,
+			(e: unknown) => e,
+		);
+
+		expect(error).toBeInstanceOf(UnexpectedError);
+		expect(error).toMatchObject({
+			message: 'Kafka trigger consumer received messages after close',
+			retriable: false,
+		});
+		expect(emit).not.toHaveBeenCalled();
+	});
+
+	it('should unblock a pending onCompletion execution wait when the trigger is closed', async () => {
+		const { close, emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.3,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					resolveOffset: 'onCompletion',
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishPromise = publishMessage({ value: Buffer.from('in-flight') });
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(emit).toHaveBeenCalled();
+
+		await close();
+		await publishPromise;
+	});
+
+	it('should not block on disconnect when stop() times out, then disconnect once stop settles', async () => {
+		vi.useFakeTimers();
+		try {
+			let resolveStop!: () => void;
+			mockConsumerStop.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						resolveStop = resolve;
+					}),
+			);
+
+			const { close } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+				mode: 'trigger',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const closeResult = close().then(
+				() => null,
+				(e: unknown) => e,
+			);
+
+			await vi.advanceTimersByTimeAsync(30_000);
+			const error = await closeResult;
+
+			expect(error).toBeInstanceOf(TriggerCloseError);
+			expect((error as TriggerCloseError).cause).toMatchObject({
+				message: 'Kafka consumer did not stop in time',
+			});
+			// A still-pending stop() means disconnect() would join the same shared promise
+			expect(mockConsumerDisconnect).not.toHaveBeenCalled();
+
+			resolveStop();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(mockConsumerDisconnect).toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('should use default values for consumer config when options are not provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -1284,11 +1527,12 @@ describe('KafkaTrigger Node', () => {
 			sessionTimeout: 30000,
 			heartbeatInterval: 3000,
 			rebalanceTimeout: 600000,
+			retry: expectedRetryConfig,
 		});
 	});
 
 	it('should handle batch processing when batchSize > 1', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1326,7 +1570,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should process messages in chunks when batch has more messages than batchSize', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1376,7 +1620,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should use fetchMaxBytes and fetchMinBytes when provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -1406,11 +1650,12 @@ describe('KafkaTrigger Node', () => {
 			rebalanceTimeout: 600000,
 			maxBytesPerPartition: 2097152,
 			minBytes: 1024,
+			retry: expectedRetryConfig,
 		});
 	});
 
 	it('should use partitionsConsumedConcurrently when provided', async () => {
-		await testTriggerNode(KafkaTrigger, {
+		await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1438,7 +1683,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle batch processing with sequential processing', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.1,
@@ -1479,7 +1724,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle batch processing with JSON parsing', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				parameters: {
@@ -1516,7 +1761,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle batch processing with headers', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1,
@@ -1572,7 +1817,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should keep binary data in batch processing when keepBinaryData is enabled in v1.2', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 			mode: 'trigger',
 			node: {
 				typeVersion: 1.2,
@@ -1618,7 +1863,7 @@ describe('KafkaTrigger Node', () => {
 
 	describe('version 1.3', () => {
 		it('should use default sessionTimeout and heartbeatInterval', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1643,11 +1888,12 @@ describe('KafkaTrigger Node', () => {
 				sessionTimeout: 30000,
 				heartbeatInterval: 10000,
 				rebalanceTimeout: 600000,
+				retry: expectedRetryConfig,
 			});
 		});
 
 		it('should use resolveOffset "immediately" and emit without waiting', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1675,7 +1921,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use resolveOffset "onCompletion" and wait for execution', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1706,7 +1952,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use resolveOffset "onSuccess" and wait for successful execution', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1737,7 +1983,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should return success false when resolveOffset is "onSuccess" and execution fails', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1770,7 +2016,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use sessionTimeout and heartbeatInterval options when provided', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1799,11 +2045,12 @@ describe('KafkaTrigger Node', () => {
 				sessionTimeout: 20000,
 				heartbeatInterval: 2000,
 				rebalanceTimeout: 600000,
+				retry: expectedRetryConfig,
 			});
 		});
 
 		it('should use resolveOffset "onStatus" and resolve when status matches allowed statuses', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1836,7 +2083,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use resolveOffset "onStatus" and fail when status does not match allowed statuses', async () => {
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1871,7 +2118,7 @@ describe('KafkaTrigger Node', () => {
 
 		it('should throw error when resolveOffset is "onStatus" but no statuses are selected', async () => {
 			await expect(
-				testTriggerNode(KafkaTrigger, {
+				testTriggerNode(new KafkaTriggerV1(baseDescription), {
 					mode: 'trigger',
 					node: {
 						typeVersion: 1.3,
@@ -1901,7 +2148,7 @@ describe('KafkaTrigger Node', () => {
 				}
 			});
 
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -1993,7 +2240,7 @@ describe('KafkaTrigger Node', () => {
 				}
 			});
 
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2078,7 +2325,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use default auto commit settings (autoCommit true, eachBatchAutoResolve false)', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2106,7 +2353,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should enable eachBatchAutoResolve when option is set', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2137,7 +2384,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use default auto commit settings with onStatus resolveOffset', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2166,7 +2413,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		it('should use default auto commit settings with immediately resolveOffset', async () => {
-			await testTriggerNode(KafkaTrigger, {
+			await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2201,7 +2448,7 @@ describe('KafkaTrigger Node', () => {
 				}
 			});
 
-			const { emit } = await testTriggerNode(KafkaTrigger, {
+			const { emit } = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
 				mode: 'trigger',
 				node: {
 					typeVersion: 1.3,
@@ -2279,5 +2526,41 @@ describe('KafkaTrigger Node', () => {
 			expect(mockResolveOffset).toHaveBeenNthCalledWith(2, '1');
 			expect(mockResolveOffset).toHaveBeenNthCalledWith(3, '2');
 		});
+	});
+});
+
+describe('KafkaTrigger (versioned entry point)', () => {
+	const kafkaTrigger = new KafkaTrigger();
+	const expectedV1Description = new KafkaTriggerV1(baseDescription).description;
+	const expectedV2Description = new KafkaTriggerV2(baseDescription).description;
+	const v1Versions = [1, 1.1, 1.2, 1.3];
+	const allVersions = [...v1Versions, 2];
+
+	it('maps exactly versions 1, 1.1, 1.2, 1.3 to KafkaTriggerV1 and 2 to KafkaTriggerV2', () => {
+		expect(
+			Object.keys(kafkaTrigger.nodeVersions)
+				.map(Number)
+				.sort((a, b) => a - b),
+		).toEqual(allVersions);
+		for (const version of v1Versions) {
+			expect(kafkaTrigger.nodeVersions[version]).toBeInstanceOf(KafkaTriggerV1);
+		}
+		expect(kafkaTrigger.nodeVersions[2]).toBeInstanceOf(KafkaTriggerV2);
+	});
+
+	it('resolves each v1.x version to a consistent, correctly-merged description', () => {
+		for (const version of v1Versions) {
+			expect(kafkaTrigger.nodeVersions[version].description).toEqual(expectedV1Description);
+		}
+	});
+
+	it('resolves version 2 to a consistent, correctly-merged description', () => {
+		expect(kafkaTrigger.nodeVersions[2].description).toEqual(expectedV2Description);
+	});
+
+	it('defaults new workflows to version 1.3', () => {
+		expect(kafkaTrigger.description.defaultVersion).toBe(1.3);
+		expect(kafkaTrigger.currentVersion).toBe(1.3);
+		expect(kafkaTrigger.getNodeType()).toBe(kafkaTrigger.nodeVersions[1.3]);
 	});
 });

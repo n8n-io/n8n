@@ -27,7 +27,7 @@ export interface RawActionToolOperation {
 export type RawActionToolInput = {
 	action?: IntegrationAction;
 	input?: Record<string, unknown>;
-	actions?: RawActionToolOperation[];
+	actions?: Array<{ action: IntegrationAction; input?: Record<string, unknown> }>;
 };
 
 export const MAX_BATCH_OPERATIONS = 20;
@@ -38,7 +38,7 @@ export function buildContextInputSchema(definitions: IntegrationContextQueryDefi
 	const operationSchema = z
 		.object({
 			query: querySchema,
-			input: z.record(z.string(), z.unknown()),
+			input: z.record(z.string(), z.unknown()).optional(),
 		})
 		.strict();
 
@@ -58,20 +58,29 @@ export function buildContextInputSchema(definitions: IntegrationContextQueryDefi
 					});
 				}
 				input.queries.forEach((operation, index) => {
-					validateOperationSchema(definitionsByName, operation, ctx, ['queries', index]);
+					validateOperationSchema(
+						definitionsByName,
+						{ query: operation.query, input: operation.input ?? {} },
+						ctx,
+						['queries', index],
+					);
 				});
 				return;
 			}
 
-			if (input.query === undefined || input.input === undefined) {
+			if (input.query === undefined) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Provide query and input, or provide queries for a batch.',
+					message: 'Provide a query, or provide queries for a batch.',
 				});
 				return;
 			}
 
-			validateOperationSchema(definitionsByName, { query: input.query, input: input.input }, ctx);
+			validateOperationSchema(
+				definitionsByName,
+				{ query: input.query, input: input.input ?? {} },
+				ctx,
+			);
 		});
 }
 
@@ -81,7 +90,7 @@ export function buildActionInputSchema(definitions: IntegrationActionDefinition[
 	const operationSchema = z
 		.object({
 			action: actionSchema,
-			input: z.record(z.string(), z.unknown()),
+			input: z.record(z.string(), z.unknown()).optional(),
 		})
 		.strict();
 
@@ -101,35 +110,44 @@ export function buildActionInputSchema(definitions: IntegrationActionDefinition[
 					});
 				}
 				input.actions.forEach((operation, index) => {
-					validateOperationSchema(definitionsByName, operation, ctx, ['actions', index]);
+					validateOperationSchema(
+						definitionsByName,
+						{ action: operation.action, input: operation.input ?? {} },
+						ctx,
+						['actions', index],
+					);
 				});
 				return;
 			}
 
-			if (input.action === undefined || input.input === undefined) {
+			if (input.action === undefined) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Provide action and input, or provide actions for a batch.',
+					message: 'Provide an action, or provide actions for a batch.',
 				});
 				return;
 			}
 
-			validateOperationSchema(definitionsByName, { action: input.action, input: input.input }, ctx);
+			validateOperationSchema(
+				definitionsByName,
+				{ action: input.action, input: input.input ?? {} },
+				ctx,
+			);
 		});
 }
 
 export function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
-	if (input.query === undefined || input.input === undefined) {
+	if (input.query === undefined) {
 		throw new Error('Integration context tool input was not validated.');
 	}
-	return { query: input.query, input: input.input };
+	return { query: input.query, input: input.input ?? {} };
 }
 
 export function toSingleActionOperation(input: RawActionToolInput): RawActionToolOperation {
-	if (input.action === undefined || input.input === undefined) {
+	if (input.action === undefined) {
 		throw new Error('Integration action tool input was not validated.');
 	}
-	return { action: input.action, input: input.input };
+	return { action: input.action, input: normalizeActionInput(input.input ?? {}) };
 }
 
 function validateOperationSchema<TName extends string>(
@@ -150,8 +168,16 @@ function validateOperationSchema<TName extends string>(
 		});
 		return;
 	}
-	const result = definition.inputSchema.safeParse(operation);
+	const normalizedOperation =
+		'action' in operation
+			? { ...operation, input: normalizeActionInput(operation.input) }
+			: operation;
+	const result = definition.inputSchema.safeParse(normalizedOperation);
 	if (!result.success) addSchemaIssues(ctx, result.error, pathPrefix);
+}
+
+function normalizeActionInput(input: Record<string, unknown>): Record<string, unknown> {
+	return typeof input.message === 'string' ? { ...input, message: { text: input.message } } : input;
 }
 
 function addSchemaIssues(

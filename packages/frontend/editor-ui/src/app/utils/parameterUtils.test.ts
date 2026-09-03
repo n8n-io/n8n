@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import type { INodeParameters } from 'n8n-workflow';
 import { setParameterValue } from './parameterUtils';
 
 describe('parameterUtils', () => {
@@ -60,6 +61,40 @@ describe('parameterUtils', () => {
 			const target = { foo: 'bar' };
 			setParameterValue(target, 'foo[abc]', undefined);
 			expect(target).toEqual({ foo: 'bar' });
+		});
+	});
+
+	describe('dot-notation paths that name inherited members', () => {
+		// Guard the shared prototype so a regression in one test cannot cascade to others.
+		const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+
+		afterEach(() => {
+			if (!hadOwnCall) {
+				delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+			}
+		});
+
+		it('keeps built-in object prototypes intact for a top-level inherited key', () => {
+			const target: INodeParameters = {};
+
+			setParameterValue(target, 'toString.call', 'x');
+
+			// The shared prototype member must be untouched.
+			expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+			expect(Object.prototype.toString.call([])).toBe('[object Array]');
+			// The value lands as a plain own property on the target instead.
+			expect(Object.prototype.hasOwnProperty.call(target, 'toString')).toBe(true);
+			expect((target as { toString: { call: unknown } }).toString.call).toBe('x');
+		});
+
+		it('keeps built-in object prototypes intact for a nested inherited key', () => {
+			const target: INodeParameters = {};
+
+			setParameterValue(target, 'a.toString.call', 'y');
+
+			expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+			expect(Object.prototype.toString.call({})).toBe('[object Object]');
+			expect((target as { a: { toString: { call: unknown } } }).a.toString.call).toBe('y');
 		});
 	});
 });

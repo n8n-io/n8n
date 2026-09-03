@@ -33,6 +33,21 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
+  includeVariableValues:
+    type: boolean
+    default: true
+    description: >-
+      Whether values of variables referenced by the exported workflows are
+      bundled into the package. When `false`, variables still travel as
+      name/type files and are listed in the package requirements, but no
+      values travel with the package.
+  includeTags:
+    type: boolean
+    default: true
+    description: >-
+      Whether tags assigned to the exported workflows are bundled into the
+      package. When `false`, no tag files, tag references, or tag
+      requirements travel with the package.
   missingWorkflowDependencyPolicy:
     type: string
     enum:
@@ -40,8 +55,44 @@ properties:
       - reference-only
       - include-in-package
     description: >-
-      Policy for missing static sub-workflow dependencies. Currently only
-      `fail` is supported; `reference-only` and `include-in-package` are
-      reserved for upcoming export modes.
+      Policy for missing static sub-workflow dependencies. `fail` aborts the
+      export when any static sub-workflow is missing from the package;
+      `include-in-package` automatically adds missing static sub-workflows.
+      `reference-only` keeps missing static sub-workflows out of the package
+      and lists them in the package requirements as workflows expected to
+      already exist on the target.
     example: fail
     default: fail
+  workflowVersionPolicy:
+    type: string
+    enum:
+      - published-strict
+      - prefer-published
+      - ignore-unpublished
+      - latest
+    description: >-
+      Which version of each workflow travels in the package. `latest` exports
+      the latest version, published or not. `published-strict` exports the
+      published version and aborts the export if any workflow has none.
+      `prefer-published` falls back to the latest version where there is no
+      published one. `ignore-unpublished` leaves unpublished workflows out of
+      the package entirely. The chosen version decides which credentials, data
+      tables, variables and sub-workflows are bundled alongside it; the
+      workflow's name, settings and tags are not versioned and always come from
+      the latest version.
+    example: latest
+    default: latest
+  credentialExportPolicy:
+    type: string
+    enum:
+      - expression-values-only
+      - no-values
+    description: >-
+      Whether expression values from credential data are bundled into the
+      package. `expression-values-only` includes credential fields whose value
+      is an n8n expression (for example `={{ $secrets.apiKey }}`); literal
+      values never travel either way. `no-values` keeps credential data out of
+      the package entirely, so each credential file carries only its id, name
+      and type.
+    example: expression-values-only
+    default: expression-values-only

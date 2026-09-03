@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
+import Tooltip from '../N8nTooltip/Tooltip.vue';
 
 const createItems = (count: number): DropdownMenuItemProps[] => {
 	return Array.from({ length: count }, (_, i) => ({
@@ -322,6 +323,56 @@ describe('N8nDropdownMenu', () => {
 			});
 		});
 
+		it('should keep the dropdown open after selecting a keepOpen item', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'toggle', label: 'Toggle', keepOpen: true }];
+
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items,
+				},
+			});
+
+			const trigger = wrapper.container.querySelector('button')!;
+			await userEvent.click(trigger);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			const menuItem = document.querySelector('[role="menuitem"]')!;
+			await userEvent.click(menuItem);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['toggle']);
+			});
+			// Still open — the selection did not close the menu.
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('should render a header item as a non-interactive label', async () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'section', label: 'Section title', header: true },
+				{ id: 'option-1', label: 'Option 1' },
+			];
+
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items,
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			// The header text renders...
+			expect(document.body.textContent).toContain('Section title');
+			// ...but it is not a selectable menu item (only the real option is).
+			expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
+		});
+
 		it('should not emit select event for disabled items', async () => {
 			const items: DropdownMenuItemProps[] = [
 				{ id: 'disabled-item', label: 'Disabled', disabled: true },
@@ -540,6 +591,36 @@ describe('N8nDropdownMenu', () => {
 	});
 
 	describe('teleported prop', () => {
+		it('should render a teleported tooltip outside the dropdown content', async () => {
+			render({
+				components: { DropdownMenu, Tooltip },
+				setup() {
+					return {
+						items: [{ id: 'item', label: 'Item' }],
+					};
+				},
+				template: `
+					<DropdownMenu :items="items" :model-value="true">
+						<template #item-label="{ item }">
+							<Tooltip content="Item details" :visible="true" teleported>
+								<span>{{ item.label }}</span>
+							</Tooltip>
+						</template>
+					</DropdownMenu>
+				`,
+			});
+
+			const { dropdown } = await getDropdownContent();
+			const tooltip = await waitFor(() => {
+				const element = document.querySelector('[data-test-id="tooltip-content"]');
+				expect(element).toBeInTheDocument();
+				return element as HTMLElement;
+			});
+
+			expect(dropdown).not.toContainElement(tooltip);
+			expect(document.body).toContainElement(tooltip);
+		});
+
 		it('should teleport to body by default', async () => {
 			const { container } = render(DropdownMenu, {
 				props: {
@@ -630,6 +711,77 @@ describe('N8nDropdownMenu', () => {
 				const searchInput = document.querySelector('input[type="text"]');
 				expect(searchInput).toHaveAttribute('placeholder', 'Search items...');
 			});
+		});
+
+		it('should keep the dropdown open when a keepOpen item is selected with the keyboard', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'toggle', label: 'Toggle', keepOpen: true }];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			await userEvent.keyboard('{ArrowDown}'); // highlight the item
+			await userEvent.keyboard('{Enter}'); // select via keyboard
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['toggle']);
+			});
+			// Still open — keyboard select honors keepOpen, matching click.
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('should close the dropdown when a normal item is selected with the keyboard', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'plain', label: 'Plain' }];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			await userEvent.keyboard('{ArrowDown}');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['plain']);
+			});
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should skip section headers during keyboard navigation and never select them', async () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'section', label: 'Section', header: true },
+				{ id: 'option', label: 'Option' },
+			];
+
+			const wrapper = render(DropdownMenu, {
+				props: { items, modelValue: true, searchable: true },
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector('input[type="text"]')).toBeInTheDocument();
+			});
+
+			(document.querySelector('input[type="text"]') as HTMLElement).focus();
+			// First ArrowDown skips the header and lands on the real option.
+			await userEvent.keyboard('{ArrowDown}');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['option']);
+			});
+			// The header id is never emitted as a selection.
+			expect(wrapper.emitted('select')?.flat()).not.toContain('section');
 		});
 	});
 

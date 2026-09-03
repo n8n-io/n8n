@@ -28,23 +28,6 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 				);
 			};
 		},
-		getEventsAfter(threadId, afterId) {
-			return (storeByThread.get(threadId) ?? []).filter((event) => event.id > afterId);
-		},
-		getEventsForRun(threadId, runId) {
-			return (storeByThread.get(threadId) ?? [])
-				.map((event) => event.event)
-				.filter((event) => 'runId' in event && event.runId === runId);
-		},
-		getEventsForRuns(threadId, runIds) {
-			const runIdSet = new Set(runIds);
-			return (storeByThread.get(threadId) ?? [])
-				.map((event) => event.event)
-				.filter((event) => 'runId' in event && runIdSet.has(event.runId));
-		},
-		async getNextEventId(threadId) {
-			return await Promise.resolve((storeByThread.get(threadId) ?? []).length + 1);
-		},
 	};
 }
 

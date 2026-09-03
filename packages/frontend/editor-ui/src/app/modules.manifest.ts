@@ -5,7 +5,9 @@ import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
-import { OtelModule } from '@/features/settings/otel/module.descriptor';
+import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
+import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
+import { OtelModule } from '@n8n/frontend-module-otel';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
@@ -18,4 +20,6 @@ export const modules: FrontendModuleDescription[] = [
 	InstanceAiModule,
 	AgentsModule,
 	OtelModule,
+	WorkflowReviewsModule,
+	InstanceRegistryModule,
 ];

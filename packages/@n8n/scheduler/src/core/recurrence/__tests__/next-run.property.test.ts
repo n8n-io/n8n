@@ -45,6 +45,7 @@ describe('computeNextRunAt (fast-check)', () => {
 		'0 0 0 * * *',
 		'0 30 9 * * 1-5',
 		'0 0 0 1 * *',
+		'30 9 * * 1-5', // 5-field (no seconds): the strictly-after guarantee must hold here too.
 	);
 	const arbTimezone = fc.constantFrom(
 		'UTC',

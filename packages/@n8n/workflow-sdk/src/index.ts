@@ -143,6 +143,11 @@ export {
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
+export {
+	dropInvalidWorkflowJsonGroups,
+	toEngineConnections,
+	toGroupValidationNodes,
+} from './utils/workflow-json-engine-helpers';
 
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
@@ -159,16 +164,39 @@ export {
 	type ValidationErrorCode,
 	validateNodeConfig,
 	type SchemaValidationResult,
+	type IssueSeverity,
+	isInformationalIssue,
+	partitionValidationIssues,
+	validateWorkflowBuilder,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation';
+
+// Code-node source lint — the host re-runs the Python rules with the executing
+// runner's real import policy, which the sandbox CLI cannot see.
+//
+// Deliberately imported from the leaf modules, not the `./lint` barrel: the barrel
+// reaches `lint-workflow-source` and `code-node/js`, which pull acorn and the SDK
+// AST interpreter into the root entry that every consumer of this package loads.
+// `code-node/python` needs only `lint/types`.
+export { lintPythonCode } from './lint/code-node/python';
+export type { SourceLintIssue } from './lint/types';
+export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
 export {
 	emitInstanceAi,
+	buildImports,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
 } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
+export {
+	locateNodeDeclarations,
+	type NodeDeclarationLocation,
+} from './codegen/locate-node-declarations';
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';
@@ -221,3 +249,12 @@ export {
 	isWebhookType,
 	isDataTableType,
 } from './constants';
+
+// Canvas geometry — the same values the layout engine and the editor's canvas use.
+// Exported so consumers that place nodes themselves stay on the same grid.
+export {
+	GRID_SIZE,
+	DEFAULT_NODE_SIZE,
+	NODE_X_SPACING,
+	NODE_Y_SPACING,
+} from './workflow-builder/constants';

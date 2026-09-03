@@ -42,6 +42,15 @@ export const baseConfig = tseslint.config(
 		},
 		settings: {
 			'import-x/resolver-next': [createTypeScriptImportResolver()],
+			// Neutralize the string-based parser mapping added by import-x's TS preset.
+			// A string parser path makes import-x re-`require('@typescript-eslint/parser')`
+			// when parsing imported modules, which resolves a parser copy peered to the
+			// leaf package's tsgo `typescript` (no programmatic API in TS7) and crashes
+			// reading `ts.Extension.Cjs`. ESLint deep-merges settings, so we can't drop
+			// the key — instead empty its extension list so import-x matches nothing here
+			// and falls back to the already-loaded parser object from languageOptions
+			// (backed by TS6).
+			'import-x/parsers': { '@typescript-eslint/parser': [] },
 		},
 		rules: {
 			// ******************************************************************
@@ -435,6 +444,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

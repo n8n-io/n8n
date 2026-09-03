@@ -11,6 +11,8 @@ const workflowEntityWriteFields = [
 	'nodes',
 	'connections',
 	'settings',
+	// Only reachable via the public API, which documents it (CreateWorkflowPublicDto).
+	// The internal DTOs deliberately omit it — see `baseWorkflowShape`.
 	'staticData',
 	'meta',
 	'pinData',

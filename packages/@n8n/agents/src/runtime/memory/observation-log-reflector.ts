@@ -1,6 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
@@ -11,10 +12,10 @@ import type {
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import { getStoredObservationTokenCount } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -171,7 +172,7 @@ export async function runObservationLogReflector(
 		observationScopeId,
 		order: 'asc',
 	});
-	const tokenCount = countObservationTokens(activeObservationLog, tokenCounter);
+	const tokenCount = countObservationTokens(activeObservationLog);
 	if (tokenCount <= reflectorThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -188,15 +189,23 @@ export async function runObservationLogReflector(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
-	const reflection = normalizeObservationLogReflection(
+	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
+	const reflection: ObservationLogReflection = {
+		...normalized,
+		merge: await Promise.all(
+			normalized.merge.map(async (merge) => {
+				const text = redactText(merge.text).text;
+				return { ...merge, text, tokenCount: await tokenCounter(text) };
+			}),
+		),
+	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
 		await memory.getActiveObservationLog({ observationScopeId }),
-		tokenCounter,
 	);
 	const overBudgetAfterReflection = remainingTokenCount > reflectorThresholdTokens;
 	if (overBudgetAfterReflection) {
@@ -344,16 +353,8 @@ function withCreatedAt(reflection: ObservationLogReflection, now: Date): Observa
 	};
 }
 
-function countObservationTokens(
-	entries: ObservationLogEntry[],
-	tokenCounter: TokenCounter,
-): number {
-	return entries.reduce((total, entry) => total + observationTokenCount(entry, tokenCounter), 0);
-}
-
-function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCounter): number {
-	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
-	return tokenCounter(entry.text);
+function countObservationTokens(entries: ObservationLogEntry[]): number {
+	return entries.reduce((total, entry) => total + getStoredObservationTokenCount(entry), 0);
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {

@@ -14,6 +14,8 @@ import type {
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
+import { createCohereV2ChatClient } from './cohereV2Client';
+
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
 	promptTokens: number;
@@ -168,7 +170,9 @@ export class LmChatCohere implements INodeType {
 		};
 
 		const model = new ChatCohere({
-			apiKey: credentials.apiKey,
+			// Route chat requests through the `/v2/chat` endpoint; current Cohere
+			// models reject the legacy `/v1/chat` endpoint ChatCohere uses by default.
+			client: createCohereV2ChatClient({ apiKey: credentials.apiKey }),
 			model: modelName,
 			temperature: options.temperature,
 			maxRetries: options.maxRetries ?? 2,

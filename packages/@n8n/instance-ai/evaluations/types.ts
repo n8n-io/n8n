@@ -2,10 +2,17 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { EvalAttribution } from './harness/attribution';
+import type { CaseSeed } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -182,11 +189,20 @@ export interface ExecutionScenario {
 	dataSetup: string;
 	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
+	/** Typed data tables to create + row-seed before the scenario executes
+	 *  (TRUST-311). Seeded under their exact declared names so the built
+	 *  workflow's by-name data-table references resolve. */
+	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
 export interface ConversationTurn {
 	role: 'user' | 'assistant';
 	text: string;
+	/** Hand the agent a seeded workflow with this turn (opening turn only), the way
+	 *  the editor does when a user opens the assistant with a workflow in front of
+	 *  them. `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id. See `ConversationTurnSchema`. */
+	attach?: { workflow: string };
 }
 
 export interface TestCaseCredential {
@@ -194,6 +210,26 @@ export interface TestCaseCredential {
 	type: string;
 	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
 	name?: string;
+	/** Defaults to true. false models a credential that was already broken before
+	 *  the conversation started (expired/revoked/scope-changed) — left off the
+	 *  connection-test bypass list, so its real test runs and fails. Distinct from
+	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
+	 *  passes. */
+	valid?: boolean;
+	/** Defaults to false. true models a credential the user saved without filling
+	 *  anything in — seeded with no field values, and kept off the connection-test
+	 *  bypass so nothing resolves it as working. The shape behind a re-offered
+	 *  empty generic-auth credential.
+	 *
+	 *  DOES NOT SURVIVE A LANG-TRACER PUSH yet. Its case-write schema validates
+	 *  each credential against a non-strict `z.object({ type, name, valid })`
+	 *  (lang-tracer `packages/server/src/lib/case-writes.ts`), so this key is
+	 *  silently stripped and the suite copy seeds a FILLED credential instead —
+	 *  a case relying on it then fails in CI for a reason unrelated to the
+	 *  product. `eval:langtracer-push` catches it (`did not store credentials`,
+	 *  non-zero exit); until lang-tracer declares the field, a case using it
+	 *  lives on disk. */
+	blank?: boolean;
 }
 
 export interface WorkflowTestCase {
@@ -202,7 +238,7 @@ export interface WorkflowTestCase {
 	/**
 	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
 	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
-	 * Required unless `seedThread` is set, in which case it's optional and
+	 * Required unless `seed.mode` is `replay`, in which case it's optional and
 	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
 	conversation?: ConversationTurn[];
@@ -229,18 +265,17 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Synthetic seed file (messages + workflows) restored before the live turn.
-	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
-	seedFile?: string;
-	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with `seedFile`. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
-	 *  and send that live. Commits only the thread id (workspace auto-discovered;
-	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
-	 *  turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
+	/** Opts into the credential-setup BROWSER lane and picks what it talks to:
+	 *  a shipped fixture id (hermetic lookalike) or `local` (the REAL provider
+	 *  site in the developer's own Chrome). Omitted → no browser lane; absence
+	 *  never means real internet. */
+	credentialFixture?: string;
+	/** History restored before the live turn, in one slot so the modes can't
+	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
+	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
+	 *  LangSmith trace at run time and supplies the live turn itself, which is why
+	 *  `conversation` is optional for it. See `harness/schema.ts`. */
+	seed?: CaseSeed;
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -253,18 +288,47 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Set when the scenario ran against a first-class Agent instead of a workflow. */
+	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
+	/** Agent the scenario executed, for agent-artifact cases. */
+	agentId?: string;
 	/** Workflow actually executed for this scenario, after multi-workflow routing. */
 	workflowId?: string;
 	score: number;
 	reasoning: string;
-	/** Root cause category when the scenario fails */
+	/** Root cause category when the scenario fails. Free-form on purpose: it
+	 *  carries whatever the LLM verifier picked, and older harness commits used
+	 *  a different spelling. Read `attribution` for the meaning. */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Who owns this failure — the harness's own verdict, and what LangTracer
+	 *  stores. Undefined on a pass. See `harness/attribution.ts`. */
+	attribution?: EvalAttribution;
 	/** Verifier returned no verdict after all attempts (infra failure, not a
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+}
+
+/**
+ * A seeded workflow to run BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance, so a case can ask about "the last
+ * run" and the honest answer requires the agent to go and read it. Without this,
+ * execution history is unreachable as a premise: the harness only ever executes a
+ * workflow *after* a build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
+	workflow: string;
+	/**
+	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is
+	 * how a prior run is made to fail in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to find out how.
+	 */
+	hints?: string;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the
@@ -275,6 +339,9 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Who owns a failed expectation. Stamped where the verdicts are attached to
+	 *  a row (the only place that also knows whether the build died on infra). */
+	attribution?: EvalAttribution;
 }
 
 export interface WorkflowTestCaseResult {
@@ -282,6 +349,10 @@ export interface WorkflowTestCaseResult {
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
 	fileSlug?: string;
 	workflowId?: string;
+	/** Agent the case's scenarios executed (agent-artifact cases). */
+	agentId?: string;
+	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	agentArtifactContext?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
@@ -293,6 +364,10 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
+	/** `claude` build spend in USD for this iteration's build (--build-via-mcp only). */
+	buildCostUsd?: number;
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns?: number;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];
@@ -339,7 +414,10 @@ export type ToolInteraction =
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
-			skippedNodes: SetupWizardSkippedNode[];
+			/** Left unconfigured — nobody has filled these in yet. */
+			nodesStillNeedingSetup: SetupWizardSkippedNode[];
+			/** Actively dismissed by the user, which the assistant must not ask about again. */
+			skippedByUser?: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
 	| {
@@ -426,6 +504,15 @@ export interface BuildExpectationAggregation {
 	passHatK: number[];
 }
 
+/**
+ * Whether a case produced any scoreable verdict across its runs.
+ * - `verified`  — at least one scenario or build expectation was evaluated.
+ * - `notVerified` — every measured unit came back incomplete / was skipped (no
+ *   transcript for process expectations, verifier gaps for scenarios), so nothing
+ *   could actually be checked. Such a case MUST NOT roll up as a silent pass.
+ */
+export type CaseVerificationStatus = 'verified' | 'notVerified';
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
@@ -433,6 +520,9 @@ export interface TestCaseAggregation {
 	executionScenarios: ExecutionScenarioAggregation[];
 	/** Build expectations aggregated as measured units (counted in the pass rate). */
 	buildExpectations: BuildExpectationAggregation[];
+	/** `notVerified` when no unit (scenario or expectation) was evaluated across
+	 *  all runs — nothing could be checked, so the case is not a pass. */
+	status: CaseVerificationStatus;
 }
 
 export interface MultiRunEvaluation {

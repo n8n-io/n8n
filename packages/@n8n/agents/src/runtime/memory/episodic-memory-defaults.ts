@@ -538,7 +538,7 @@ export function createEpisodicMemoryExtractFn(
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
 			model: createModel(model),
-			system: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
+			instructions: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 			prompt: buildEpisodicMemoryExtractorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryExtractionSchema }),
 		});
@@ -564,7 +564,7 @@ export function createEpisodicMemoryReflectFn(
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
 			model: createModel(model),
-			system: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
+			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
 		});

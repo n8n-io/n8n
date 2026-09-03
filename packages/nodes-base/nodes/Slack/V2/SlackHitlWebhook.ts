@@ -60,6 +60,7 @@ async function extractSlackResponder(
 async function notifyNotAuthorized(
 	context: IWebhookFunctions,
 	payload: SlackInteractionPayload,
+	text: string,
 ): Promise<void> {
 	const channel = payload.channel?.id;
 	const user = payload.user?.id;
@@ -68,7 +69,7 @@ async function notifyNotAuthorized(
 		await slackApiRequest.call(context, 'POST', '/chat.postEphemeral', {
 			channel,
 			user,
-			text: 'You are not authorized to respond to this request.',
+			text,
 		});
 	} catch {
 		// Missing chat:write scope, or the user left the channel. Nothing more we can do.
@@ -180,7 +181,14 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 		this.logHitlResponse({ approved, authorized: false });
 		// Acknowledge the interaction before the best-effort notification so Slack does not time out and retry the click.
 		this.getResponseObject().status(200).send('');
-		await notifyNotAuthorized(this, payload);
+		await notifyNotAuthorized(
+			this,
+			payload,
+			this.getNodeParameter(
+				'unauthorizedReplyText',
+				'You are not authorized to respond to this request.',
+			) as string,
+		);
 		return { noWebhookResponse: true };
 	}
 
@@ -193,20 +201,29 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 	const actionMs = actionTs ? Number(actionTs) * 1000 : NaN;
 	const respondedAt = new Date(Number.isFinite(actionMs) ? actionMs : Date.now()).toISOString();
 
-	// Rebuild the message: keep everything except the buttons, then add the outcome line.
-	const keptBlocks = (payload.message?.blocks ?? []).filter(
-		(block) => (block as { type?: string }).type !== 'actions',
-	);
-	const lockedBlocks = [
-		...keptBlocks,
-		...buildDecisionBlocks(approved, responder),
-	] as IDataObject[];
-	await lockSlackMessage(
-		this,
-		payload,
-		lockedBlocks,
-		approved ? 'Request approved' : 'Request declined',
-	);
+	// After-decision behavior: showOutcome (default) drops the buttons and appends the outcome
+	// line; removeButtons only strips the buttons; keepMessage leaves the message untouched.
+	const postDecisionBehavior = this.getNodeParameter('postDecisionBehavior', 'showOutcome') as
+		| 'showOutcome'
+		| 'removeButtons'
+		| 'keepMessage';
+	if (postDecisionBehavior !== 'keepMessage') {
+		// Rebuild the message: keep everything except the buttons, then (showOutcome) add the outcome line.
+		const keptBlocks = (payload.message?.blocks ?? []).filter(
+			(block) => (block as { type?: string }).type !== 'actions',
+		);
+		const lockedBlocks = (
+			postDecisionBehavior === 'showOutcome'
+				? [...keptBlocks, ...buildDecisionBlocks(approved, responder)]
+				: keptBlocks
+		) as IDataObject[];
+		await lockSlackMessage(
+			this,
+			payload,
+			lockedBlocks,
+			approved ? 'Request approved' : 'Request declined',
+		);
+	}
 
 	return {
 		webhookResponse: '',

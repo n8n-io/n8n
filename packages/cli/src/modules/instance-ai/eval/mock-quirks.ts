@@ -63,9 +63,9 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		service: 'Openai',
 		guidance:
 			'OpenAI endpoints commonly seen in workflows:\n' +
-			'  * `POST /v1/responses` (Responses API) → JSON `{ "id": "resp_abc123", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "type": "message", "id": "msg_abc123", "status": "completed", "role": "assistant", "content": [{ "type": "output_text", "text": "<answer>", "annotations": [] }] }], "usage": { "input_tokens": 100, "output_tokens": 50, "total_tokens": 150 } }`. The `output` ARRAY is REQUIRED — consumers read `output[].content[].text` and crash without it. NEVER return `{ "content": ... }` or a chat-completions `choices` shape for this endpoint.\n' +
+			'  * `POST /v1/responses` (Responses API) → JSON `{ "id": "resp_abc123", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "type": "message", "id": "msg_abc123", "status": "completed", "role": "assistant", "content": [{ "type": "output_text", "text": "<answer>", "annotations": [] }] }], "usage": { "input_tokens": 100, "output_tokens": 50, "total_tokens": 150 } }`. The `output` ARRAY is REQUIRED — consumers read `output[].content[].text` and crash without it. NEVER return `{ "content": ... }` or a chat-completions `choices` shape for this endpoint. `text` MUST be a STRING: when the request asks for JSON output (`json_object`/`json_schema` format), the real API returns the JSON **encoded into the string** (e.g. `"{\\"quotes\\":[...]}"`) — never embed a parsed object as `text`; downstream code does `JSON.parse(text)` and gets "[object Object]" otherwise. The same string rule applies to chat-completions `choices[].message.content`.\n' +
 			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +
-			'  * `POST /v1/images/generations` → ALWAYS `type: "json"`, NEVER a binary/Buffer response (this endpoint returns a JSON envelope, not raw image bytes — a Buffer crashes the node with "data is not iterable"). Body: `{ "created": <unix>, "data": [ ... ] }` where `data` is an ARRAY of image OBJECTS (never a flat byte array). The per-image shape depends on the request `model`: the `gpt-image-1` family (`gpt-image-1`, `gpt-image-1-mini`) ALWAYS returns base64 and NEVER a url (it does not support `response_format`), so each `data[]` entry MUST be `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` — never `{ "url": ... }`. For `dall-e-2`/`dall-e-3`, return `{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }` by default, or `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` when the request body has `response_format: "b64_json"`. The literal base64 value `iVBORw0KGgo` is fine — the eval harness does not decode it.\n' +
+			'  * `POST /v1/images/generations` → ALWAYS `type: "json"`, NEVER a binary/Buffer response (this endpoint returns a JSON envelope, not raw image bytes — a Buffer crashes the node with "data is not iterable"). Body: `{ "created": <unix>, "data": [ ... ] }` where `data` is an ARRAY of image OBJECTS (never a flat byte array). The per-image shape depends on the request `model`: the `gpt-image-1` family (`gpt-image-1`, `gpt-image-1-mini`) ALWAYS returns base64 and NEVER a url (it does not support `response_format`), so each `data[]` entry MUST be `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` — never `{ "url": ... }`. For `dall-e-2`/`dall-e-3`, return `{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }` by default, or `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` when the request body has `response_format: "b64_json"`. Any short placeholder string is fine for `b64_json` — the harness substitutes real decodable image bytes (workflows often pipe generated images into image-processing nodes).\n' +
 			'  * `GET /v1/files/{file_id}/content` → BINARY (`type: "binary"`). Use `contentType` matching the file MIME if known, else `application/octet-stream`. The metadata sibling `GET /v1/files/{file_id}` is JSON.\n' +
 			'  * Chat completions, embeddings, moderations, files-list, models-list → JSON only.',
 		rationale:
@@ -93,7 +93,8 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'  * `GET /drive/v3/files/{id}?alt=media` → BINARY. Use `mimeType` from the request query/headers if provided, else default `application/pdf`. Set a sensible `filename` ending in the correct extension.\n' +
 			'  * `GET /drive/v3/files/{id}/export?mimeType=<mime>` → BINARY with the requested `mimeType` (Google Docs/Sheets/Slides export).\n' +
 			'  * `GET /drive/v3/files/{id}` (no `alt=media`) → JSON metadata.\n' +
-			'  * `POST /upload/drive/v3/files?uploadType=...` → JSON metadata about the uploaded file (the upload body is redacted multipart — just synthesize a plausible `{ id, name, mimeType, ... }`). NEVER binary.\n' +
+			'  * `POST /upload/drive/v3/files?uploadType=multipart|media` → JSON metadata about the uploaded file (the upload body is redacted multipart — just synthesize a plausible `{ id, name, mimeType, ... }`). NEVER binary.\n' +
+			'  * `uploadType=resumable` session initiation (POST/PATCH without `upload_id`) → handled deterministically by the harness (empty body + `Location` header); keep your body `{}`. The follow-up `PUT` carrying `upload_id=` in the URL is the chunk upload → return the complete created file resource JSON `{ "id", "name", "mimeType", ... }` — the node reads `id` from it.\n' +
 			'  * Sheets/Calendar/Gmail endpoints under `/sheets/v4`, `/calendar/v3`, `/gmail/v1` → JSON.',
 		rationale:
 			'Drive file download uses `alt=media` on the same URL as metadata; the LLM otherwise treats every `/files/{id}` as metadata JSON and breaks the download path.',
@@ -113,7 +114,7 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		endpoint: 'GET /gmail/v1/users/*/messages/*',
 		guidance:
 			'Gmail messages.get — the response shape depends on the `format` query param, and the n8n Gmail node crashes on the wrong one:\n' +
-			'  * `format=raw` (what the node sends whenever "Simplify" is off): the message JSON MUST include `raw` containing the FULL RFC822 email source — header lines (`From:`, `To:`, `Subject:`, `Date:`, `Content-Type:`), a blank line, then the body — alongside `id`, `threadId`, `labelIds`, `sizeEstimate`. Write `raw` as PLAIN multi-line text; the harness applies the base64 transport encoding for you. Prefer a simple single-part `Content-Type: text/plain; charset="UTF-8"` message unless the scenario needs attachments. NEVER answer a `format=raw` request with a `payload`-only message — the node decodes `raw` unconditionally.\n' +
+			'  * `format=raw` (what the node sends whenever "Simplify" is off): the message JSON MUST include `raw` containing the FULL RFC822 email source — header lines (`From:`, `To:`, `Subject:`, `Date:`, `Content-Type:`), a blank line, then the body — alongside `id`, `threadId`, `labelIds`, `sizeEstimate`. Write `raw` as PLAIN multi-line text; the harness applies the base64 transport encoding for you. Prefer a simple single-part `Content-Type: text/plain; charset="UTF-8"` message unless the scenario needs attachments. When the scenario needs a binary attachment (e.g. a PDF invoice), add a `multipart/mixed` part with the proper `Content-Type` (e.g. `application/pdf; name="invoice.pdf"`) and `Content-Disposition: attachment` headers, and write the part body as the document\'s PLAINTEXT content — the exact text the workflow should extract from the file; the harness replaces it with real encoded bytes of a document carrying that text. NEVER attempt to write base64 file bytes yourself. NEVER answer a `format=raw` request with a `payload`-only message — the node decodes `raw` unconditionally.\n' +
 			'  * `format=metadata` → `{ id, threadId, labelIds, snippet, sizeEstimate, payload: { headers: [{ name, value }, ...] } }` — headers array only, no body data, no `raw`.\n' +
 			'  * `format=full` → `payload` tree where EVERY leaf part carries `body: { size: <n>, data: "<base64url>" }`; multipart containers use `mimeType: "multipart/..."`, `body: { size: 0 }`, and a `parts` array. Never emit a leaf part whose `body` has only `size` — nodes decode `body.data` and crash on undefined.',
 		rationale:
@@ -181,6 +182,43 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		rationale:
 			'The Gemini node parses candidates[].content.parts; bare payload objects yield empty output that downstream IF/parse nodes then misroute. Observed as mock_issue rows in run 29012884140 (whatsapp-faq-assistant, weekly-social-content-scheduler).',
 		addedAt: '2026-07-09',
+	},
+	{
+		service: 'Reddit',
+		// Authenticated Reddit uses oauth.reddit.com (service extracts to "Oauth");
+		// unauthenticated reads hit www.reddit.com ("Reddit"). Match on hostname so
+		// both resolve.
+		hostnames: ['*.reddit.com', 'reddit.com'],
+		guidance:
+			'Reddit WRITE endpoints wrap the created resource in a `{ "json": { "errors": [], "data": { ... } } }` envelope — the n8n Reddit node reads `response.json.data`, so a bare resource object (no `json` wrapper) yields nothing.\n' +
+			'  * `POST /api/submit` (create post) → `{ "json": { "errors": [], "data": { "id": "t3_abc", "name": "t3_abc", "url": "https://www.reddit.com/..." } } }`.\n' +
+			'  * `POST /api/comment` (add comment/reply) → the comment lives DEEPER, under `json.data.things[0].data`: `{ "json": { "errors": [], "data": { "things": [{ "kind": "t1", "data": { "id": "t1_xyz", "body": "...", "author": "..." } }] } } }` — the node reads `response.json.data.things[0].data`.\n' +
+			'READ listings are different (`GET r/{subreddit}.json` → `{ "kind": "Listing", "data": { "children": [{ "kind": "t3", "data": { ... } }], "after": null } }`); apply the `json`/`things` envelope ONLY to the write endpoints above.',
+		rationale:
+			'The Reddit node reads response.json.data for api/submit and response.json.data.things[0].data for api/comment; a flat resource object crashes/empties those reads. No quirk existed for Reddit before (TRUST-309).',
+		addedAt: '2026-07-16',
+	},
+	{
+		service: 'Hubapi',
+		// api.hubapi.com → service extracts to "Hubapi"; keep the hostname pattern as
+		// a backstop for any regional/legacy host.
+		hostnames: ['*.hubapi.com', 'hubapi.com'],
+		endpoint: 'POST /contacts/v1/contact/createOrUpdate/email/*',
+		guidance:
+			'HubSpot legacy contacts upsert `POST /contacts/v1/contact/createOrUpdate/email/{email}` → `{ "vid": <NUMBER>, "isNew": <boolean> }`. The n8n HubSpot node reads `response.vid` (a NUMBER — it interpolates it into a follow-up `GET /contacts/v1/contact/vid/{vid}/profile`) and `response.isNew`. NEVER return the CRM v3 shape (`{ "id": "...", "properties": { ... } }`) or a nested `{ "contact": { ... } }` — the node reads `response.vid` at the top level and crashes/misfires without it. `vid` MUST be numeric (e.g. `3234574`), not a hash or email.',
+		rationale:
+			'The HubSpot node reads responseData.vid and then GETs /contact/vid/{vid}/profile; a v3-shaped or nested body leaves vid undefined and breaks the follow-up. No quirk existed for HubSpot before (TRUST-309).',
+		addedAt: '2026-07-16',
+	},
+	{
+		service: 'Docs',
+		hostnames: ['docs.googleapis.com'],
+		endpoint: 'POST /v1/documents/*',
+		guidance:
+			'Google Docs `POST /v1/documents/{documentId}:batchUpdate` → `{ "documentId": "<id>", "replies": [ ... ] }`. The `replies` ARRAY is REQUIRED and MUST have one entry per request in the batch (the n8n Google Docs node reads `response.replies[0]` and calls `Object.keys` on it — a missing or empty `replies` crashes it). Many request types (e.g. `insertText`, `deleteContentRange`) produce an EMPTY reply object `{}`, so `replies: [{}]` is valid; request types that return data (e.g. `createNamedRange`) put it under the operation key, e.g. `replies: [{ "createNamedRange": { "namedRangeId": "..." } }]`. Return one reply element for each request you were sent.',
+		rationale:
+			'The Google Docs node reads responseData.replies[0] unconditionally; a body without a non-empty replies array throws. No quirk existed for Google Docs before (TRUST-309).',
+		addedAt: '2026-07-16',
 	},
 ];
 

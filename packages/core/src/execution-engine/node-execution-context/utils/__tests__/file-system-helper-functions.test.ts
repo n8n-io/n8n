@@ -209,6 +209,24 @@ describe('isFilePathBlocked', () => {
 		},
 	);
 
+	it.each(['/tmp/foo.git', '/tmp/.github', '/tmp/.git-credentials', '/tmp/a.git/b'])(
+		'should per default allow access to %s',
+		async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
+		},
+	);
+
+	it('should evaluate the default pattern without degradation on paths with many segments', async () => {
+		const manySegments = `/tmp/${'a/'.repeat(2000)}x`;
+
+		const start = performance.now();
+		const blocked = isFilePathBlocked(await resolvePath(manySegments));
+		const elapsed = performance.now() - start;
+
+		expect(blocked).toBe(false);
+		expect(elapsed).toBeLessThan(1000);
+	});
+
 	it('should allow access when pattern matching is disabled', async () => {
 		securityConfig.blockFilePatterns = '';
 		expect(isFilePathBlocked(await resolvePath('/tmp/.git'))).toBe(false);
@@ -222,7 +240,7 @@ describe('isFilePathBlocked', () => {
 	describe('cross-platform path handling', () => {
 		beforeEach(() => {
 			// Use default .git blocking pattern
-			securityConfig.blockFilePatterns = '^(.*\\/)*\\.git(\\/.*)*$';
+			securityConfig.blockFilePatterns = originalBlockedFilePatterns;
 		});
 
 		it('should handle Windows-style paths for .git directory', async () => {
@@ -310,21 +328,33 @@ describe('getFileSystemHelperFunctions', () => {
 			).rejects.toThrow(`The file "${filePath}" could not be accessed.`);
 		});
 
-		it('should throw when file access is blocked', async () => {
+		it('should explain that a blocked file is outside the allowed paths', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed');
+			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
-		it('should not reveal if file exists if it is within restricted path', async () => {
+		it('should not reveal if a blocked file exists', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed');
+			).rejects.toThrow('Access to the file is not allowed.');
+		});
+
+		it('should omit allowed paths from blocked access errors when none are configured', async () => {
+			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+			const blockedPath = await helperFunctions.resolvePath(
+				join(instanceSettings.n8nFolder, 'config'),
+			);
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+
+			await expect(helperFunctions.createReadStream(blockedPath)).rejects.toThrow(
+				'Access to the file is not allowed.',
+			);
 		});
 
 		it('should create a read stream if file access is permitted', async () => {
@@ -394,7 +424,20 @@ describe('getFileSystemHelperFunctions', () => {
 					'content',
 					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
-			).rejects.toThrow('not writable');
+			).rejects.toThrow('Access to the file is not allowed.');
+		});
+
+		it('should explain that a blocked file is outside the allowed paths', async () => {
+			securityConfig.restrictFileAccessTo = '/allowed/path';
+			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath('/blocked/path'),
+					'content',
+					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
+				),
+			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
 		it('should reject symlinks with ELOOP error', async () => {

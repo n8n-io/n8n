@@ -39,6 +39,31 @@ export class AgentsConfig {
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
 	/**
+	 * Whether agent runs emit OpenTelemetry spans. Rides along with the OTel
+	 * module (endpoint, headers, sampling and transport are inherited from
+	 * `N8N_OTEL_*`) — spans go nowhere when no OTel provider is registered,
+	 * since the tracer falls back to OTel's no-op implementation, but the
+	 * runtime still does the work of building span attributes either way.
+	 * Lets operators run workflow OTel without agent spans.
+	 */
+	@Env('N8N_AGENTS_TRACING_ENABLED')
+	tracingEnabled: boolean = true;
+
+	/**
+	 * Whether agent tracing records inputs (prompts, tool arguments).
+	 * Defaults to true. Set to false to exclude sensitive input data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_INPUTS')
+	tracingRecordInputs: boolean = true;
+
+	/**
+	 * Whether agent tracing records outputs (responses, tool results).
+	 * Defaults to true. Set to false to exclude sensitive output data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_OUTPUTS')
+	tracingRecordOutputs: boolean = true;
+
+	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
 	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
@@ -46,21 +71,28 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
-	/** Enable Daytona sandbox for agent knowledge base operations. */
+	/**
+	 * Enable durable background jobs for agents: spawning sub-agents that outlive
+	 * the parent's turn, and detached tracking of waiting workflow tools. Must be
+	 * set to the same value on mains and workers — workers settle workflow jobs.
+	 */
+	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
+	backgroundTasksEnabled: boolean = false;
+
+	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
-
-	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
-	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
-	sandboxProvider: string = '';
 
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
-	/** Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable. */
+	/**
+	 * Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable,
+	 * except when Daytona is reached through the AI service proxy, which only accepts snapshots.
+	 */
 	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
-	sandboxSnapshot: string = '';
+	sandboxSnapshot: string = 'daytonaio/sandbox:0.8.0';
 
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
@@ -70,11 +102,12 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 
-	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
-	@Env('DAYTONA_API_URL')
-	daytonaApiUrl: string = '';
-
-	/** Daytona API key for authentication. */
-	@Env('DAYTONA_API_KEY')
-	daytonaApiKey: string = '';
+	/**
+	 * How often (seconds) each main checks that the channels of its published
+	 * agents are actually running, and retries the ones that are not. Set to 0 to
+	 * stop checking, which leaves a channel that failed to start down until the
+	 * agent is republished or the instance restarts.
+	 */
+	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
+	channelReconcileIntervalSeconds: number = 60;
 }

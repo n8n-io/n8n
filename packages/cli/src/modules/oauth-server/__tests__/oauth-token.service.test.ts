@@ -1,10 +1,11 @@
+import { InvalidTargetError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { Mocked } from 'vitest';
-import { Logger } from '@n8n/backend-common';
+import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -19,6 +20,7 @@ import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -28,11 +30,13 @@ let userRepository: Mocked<UserRepository>;
 let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let service: OAuthTokenService;
-let mockTransactionManager: any;
+let txRunner: MockProxy<TransactionRunner>;
+const workflowFinderService = mock<WorkflowFinderService>();
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
 const LEGACY_AUDIENCE = 'mcp-server-api';
+const OTHER_RESOURCE_URL = `${TEST_BASE_URL}/mcp/workflow-b`;
 
 const registry = new ProtectedResourceRegistry(mock<Logger>());
 registry.register({
@@ -51,21 +55,12 @@ describe('OAuthTokenService', () => {
 		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
 		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
 
-		mockTransactionManager = {
-			insert: vi.fn().mockResolvedValue(mock()),
-			remove: vi.fn().mockResolvedValue(mock()),
-			findOne: vi.fn(),
-			delete: vi.fn(),
-		};
-
-		const mockManager: any = {
-			transaction: vi.fn(async (cb: any) => await cb(mockTransactionManager)),
-		};
-
-		(accessTokenRepository as any).manager = mockManager;
-		(accessTokenRepository as any).target = 'AccessToken';
-		(refreshTokenRepository as any).manager = mockManager;
-		(refreshTokenRepository as any).target = 'RefreshToken';
+		// The runner just invokes the work with the (root) context — repositories are mocked,
+		// so no real transaction is opened.
+		txRunner = mock<TransactionRunner>();
+		txRunner.run.mockImplementation(
+			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
+		);
 
 		service = new OAuthTokenService(
 			logger,
@@ -74,6 +69,8 @@ describe('OAuthTokenService', () => {
 			accessTokenRepository,
 			refreshTokenRepository,
 			registry,
+			txRunner,
+			workflowFinderService,
 		);
 	});
 
@@ -137,6 +134,21 @@ describe('OAuthTokenService', () => {
 			expect(decoded.scope).toBe('');
 		});
 
+		it('should return the resolved audience so the grant can be persisted', () => {
+			const withResource = service.generateTokenPair(
+				'user-123',
+				'client-456',
+				OTHER_RESOURCE_URL,
+				[],
+			);
+			expect(withResource.audience).toBe(OTHER_RESOURCE_URL);
+
+			// Resource-less grants resolve to the default resource, so the returned
+			// audience is always a concrete URL.
+			const withoutResource = service.generateTokenPair('user-123', 'client-456', undefined, []);
+			expect(withoutResource.audience).toBe(TEST_RESOURCE_URL);
+		});
+
 		it('should generate different tokens on each call', () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -156,25 +168,33 @@ describe('OAuthTokenService', () => {
 			const clientId = 'client-123';
 			const userId = 'user-456';
 
-			await service.saveTokenPair(accessToken, refreshToken, clientId, userId, ['workflow:read']);
-
-			const mockManager = accessTokenRepository.manager as any;
-			expect(mockManager.transaction).toHaveBeenCalled();
-			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
-
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith('AccessToken', {
-				token: accessToken,
+			await service.saveTokenPair(
+				accessToken,
+				refreshToken,
 				clientId,
 				userId,
-			});
+				['workflow:read'],
+				TEST_RESOURCE_URL,
+			);
 
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith('RefreshToken', {
-				token: refreshToken,
-				clientId,
-				userId,
-				expiresAt: expect.any(Number),
-				scope: ['workflow:read'],
-			});
+			expect(txRunner.run).toHaveBeenCalled();
+
+			expect(accessTokenRepository.insertToken).toHaveBeenCalledWith(
+				{ token: accessToken, clientId, userId },
+				expect.anything(),
+			);
+
+			expect(refreshTokenRepository.insertToken).toHaveBeenCalledWith(
+				{
+					token: refreshToken,
+					clientId,
+					userId,
+					expiresAt: expect.any(Number),
+					scope: ['workflow:read'],
+					resource: TEST_RESOURCE_URL,
+				},
+				expect.anything(),
+			);
 		});
 	});
 
@@ -188,10 +208,11 @@ describe('OAuthTokenService', () => {
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000, // Valid
 				scope: [],
+				resource: TEST_RESOURCE_URL,
 			});
 
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+			refreshTokenRepository.findByToken.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(1);
 
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
@@ -203,14 +224,12 @@ describe('OAuthTokenService', () => {
 				scope: '',
 			});
 
-			// Verify transaction was used
-			const mockManager = refreshTokenRepository.manager as any;
-			expect(mockManager.transaction).toHaveBeenCalled();
-
-			// Verify all operations happened inside the transaction
-			expect(mockTransactionManager.findOne).toHaveBeenCalled();
-			expect(mockTransactionManager.delete).toHaveBeenCalled();
-			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
+			// The work ran through the runner, and all operations went through the repositories.
+			expect(txRunner.run).toHaveBeenCalled();
+			expect(refreshTokenRepository.findByToken).toHaveBeenCalled();
+			expect(refreshTokenRepository.deleteValidByToken).toHaveBeenCalled();
+			expect(accessTokenRepository.insertToken).toHaveBeenCalledTimes(1);
+			expect(refreshTokenRepository.insertToken).toHaveBeenCalledTimes(1);
 		});
 
 		it('should honor resource when rotating refresh token', async () => {
@@ -222,10 +241,11 @@ describe('OAuthTokenService', () => {
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000,
 				scope: [],
+				resource: TEST_RESOURCE_URL,
 			});
 
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+			refreshTokenRepository.findByToken.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(1);
 
 			const result = await service.validateAndRotateRefreshToken(
 				refreshToken,
@@ -248,23 +268,24 @@ describe('OAuthTokenService', () => {
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000,
 				scope: ['workflow:read', 'execution:read'],
+				resource: TEST_RESOURCE_URL,
 			} as RefreshToken;
 
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+			refreshTokenRepository.findByToken.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(1);
 
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
 			expect(result.scope).toBe('workflow:read execution:read');
 			expect(jwtService.decode(result.access_token).scope).toBe('workflow:read execution:read');
-			expect(mockTransactionManager.insert).toHaveBeenCalledWith(
-				expect.anything(),
+			expect(refreshTokenRepository.insertToken).toHaveBeenCalledWith(
 				expect.objectContaining({ scope: ['workflow:read', 'execution:read'] }),
+				expect.anything(),
 			);
 		});
 
 		it('should throw error when refresh token not found', async () => {
-			mockTransactionManager.findOne.mockResolvedValue(null);
+			refreshTokenRepository.findByToken.mockResolvedValue(null);
 
 			await expect(
 				service.validateAndRotateRefreshToken('invalid-token', 'client-123'),
@@ -279,12 +300,126 @@ describe('OAuthTokenService', () => {
 				expiresAt: Date.now() - 1000, // Expired
 			});
 
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 0 }); // Atomic delete fails due to expiry
+			refreshTokenRepository.findByToken.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(0); // Atomic delete fails due to expiry
 
 			await expect(
 				service.validateAndRotateRefreshToken('expired-token', 'client-123'),
 			).rejects.toThrow('Invalid refresh token');
+		});
+	});
+
+	describe('refresh-token resource binding', () => {
+		const GRANTED_URL = `${TEST_BASE_URL}/mcp/granted`;
+		// Second URL the same resource is reachable by, e.g. through the instance hostname.
+		const GRANTED_ALIAS_URL = 'https://alias.example.com/mcp/granted';
+		const ANOTHER_URL = `${TEST_BASE_URL}/mcp/another`;
+		const REFRESH_TOKEN = 'stored-refresh-token';
+		const CLIENT_ID = 'client-123';
+
+		let boundService: OAuthTokenService;
+
+		beforeAll(() => {
+			const boundRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			boundRegistry.register({
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
+				scopes: [],
+				isDefault: true,
+				authorize: async () => true,
+			});
+			boundRegistry.register({
+				id: 'granted-resource',
+				getResourceUrl: () => GRANTED_URL,
+				getResourceUrls: () => [GRANTED_URL, GRANTED_ALIAS_URL],
+				getAudiences: () => [GRANTED_URL, GRANTED_ALIAS_URL],
+				scopes: [],
+				authorize: async () => true,
+			});
+			boundRegistry.register({
+				id: 'another-resource',
+				getResourceUrl: () => ANOTHER_URL,
+				getAudiences: () => [ANOTHER_URL],
+				scopes: [],
+				authorize: async () => true,
+			});
+
+			boundService = new OAuthTokenService(
+				logger,
+				jwtService,
+				userRepository,
+				accessTokenRepository,
+				refreshTokenRepository,
+				boundRegistry,
+				txRunner,
+				workflowFinderService,
+			);
+		});
+
+		beforeEach(() => {
+			refreshTokenRepository.findByToken.mockResolvedValue({
+				token: REFRESH_TOKEN,
+				clientId: CLIENT_ID,
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+				scope: [] as string[],
+				resource: GRANTED_URL,
+			} as RefreshToken);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(1);
+		});
+
+		it('reuses the granted resource when the request names none', async () => {
+			const result = await boundService.validateAndRotateRefreshToken(REFRESH_TOKEN, CLIENT_ID);
+
+			// Not the default resource, which is what a resource-less mint would fall back to.
+			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+		});
+
+		it('accepts a request naming the granted resource', async () => {
+			const result = await boundService.validateAndRotateRefreshToken(
+				REFRESH_TOKEN,
+				CLIENT_ID,
+				GRANTED_URL,
+			);
+
+			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+		});
+
+		it('accepts an equivalent spelling of the granted resource', async () => {
+			const result = await boundService.validateAndRotateRefreshToken(
+				REFRESH_TOKEN,
+				CLIENT_ID,
+				GRANTED_ALIAS_URL,
+			);
+
+			// Minted from the stored spelling, which the resource also accepts.
+			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+		});
+
+		it('rejects a request naming a different resource, leaving the token usable', async () => {
+			await expect(
+				boundService.validateAndRotateRefreshToken(REFRESH_TOKEN, CLIENT_ID, ANOTHER_URL),
+			).rejects.toThrow(InvalidTargetError);
+
+			expect(refreshTokenRepository.deleteValidByToken).not.toHaveBeenCalled();
+			expect(refreshTokenRepository.insertToken).not.toHaveBeenCalled();
+			expect(accessTokenRepository.insertToken).not.toHaveBeenCalled();
+		});
+
+		it('rejects a request naming the default resource for a grant made elsewhere', async () => {
+			await expect(
+				boundService.validateAndRotateRefreshToken(REFRESH_TOKEN, CLIENT_ID, TEST_RESOURCE_URL),
+			).rejects.toThrow(InvalidTargetError);
+		});
+
+		it('carries the granted resource onto the rotated refresh token', async () => {
+			await boundService.validateAndRotateRefreshToken(REFRESH_TOKEN, CLIENT_ID, GRANTED_ALIAS_URL);
+
+			expect(refreshTokenRepository.insertToken).toHaveBeenCalledWith(
+				expect.objectContaining({ resource: GRANTED_URL }),
+				expect.anything(),
+			);
 		});
 	});
 
@@ -452,7 +587,9 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
+			// The caller carries the client the token was issued to, handed back so
+			// callers can attribute activity per client and not only per user.
+			expect(result).toEqual({ user, caller: { authType: 'oauth', clientId }, scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -484,6 +621,48 @@ describe('OAuthTokenService', () => {
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toMatchObject({ user: null });
+		});
+	});
+
+	describe('authorizeSealedGrant', () => {
+		const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+		it('returns false when the user no longer exists', async () => {
+			userRepository.findOne.mockResolvedValue(null);
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('returns false when the user is disabled', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: true }));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('grants when the user still holds workflow:execute on the bound workflow', async () => {
+			const user = mock<User>({ id: 'user-123', disabled: false });
+			userRepository.findOne.mockResolvedValue(user);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf']));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(true);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: 'user-123' },
+				relations: ['role'],
+			});
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf'],
+				user,
+				['workflow:execute'],
+			);
+		});
+
+		it('denies when the user no longer holds workflow:execute on the bound workflow', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
 		});
 	});
 
@@ -596,6 +775,8 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				multiResourceRegistry,
+				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -677,6 +858,8 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				scopedRegistry,
+				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -687,10 +870,11 @@ describe('OAuthTokenService', () => {
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000,
 				scope: ['workflow:read'],
+				resource: TEST_RESOURCE_URL,
 			} as RefreshToken;
 
-			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
-			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+			refreshTokenRepository.findByToken.mockResolvedValue(refreshTokenRecord);
+			refreshTokenRepository.deleteValidByToken.mockResolvedValue(1);
 
 			const result = await scopedService.validateAndRotateRefreshToken(
 				'scoped-refresh-token',
@@ -779,6 +963,8 @@ describe('OAuthTokenService', () => {
 				mock<McpSettingsService>(),
 				mcpConfig,
 				mock<GlobalConfig>(),
+				mock<ModuleRegistry>(),
+				mock<LicenseState>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
@@ -791,6 +977,8 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				configuredRegistry,
+				txRunner,
+				workflowFinderService,
 			);
 		});
 

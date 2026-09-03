@@ -13,6 +13,8 @@ import {
 	snapPositionToGrid,
 	calculateNodeSize,
 	GRID_SIZE,
+	NODE_X_SPACING,
+	HORIZONTAL_NODE_STEP,
 	doRectsOverlap,
 	canUsePosition,
 } from './nodeViewUtils';
@@ -679,5 +681,20 @@ describe('getNodeViewTab', () => {
 	it('should return null for unrecognized routes', () => {
 		const route = createRouteLocation({ name: 'SomeOtherView' });
 		expect(getNodeViewTab(route)).toBeNull();
+	});
+});
+
+describe('horizontal spacing constants', () => {
+	it('should keep the placement step in lockstep with the auto-layout node step', () => {
+		// The plus button / connection-drop places a node HORIZONTAL_NODE_STEP to the
+		// right of its source; the cleanup auto-layout leaves NODE_X_SPACING between
+		// adjacent node edges. They must agree so a freshly placed node lands exactly
+		// where cleanup would put it (see CAT-2395).
+		expect(HORIZONTAL_NODE_STEP).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+	});
+
+	it('should resolve to the canonical 8-dot step (224px on a 16px grid)', () => {
+		expect(NODE_X_SPACING).toBe(GRID_SIZE * 8);
+		expect(HORIZONTAL_NODE_STEP).toBe(224);
 	});
 });

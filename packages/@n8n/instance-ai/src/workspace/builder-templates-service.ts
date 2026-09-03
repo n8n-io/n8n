@@ -45,6 +45,7 @@
  *
  * Never throws.
  */
+import { sleep } from '@n8n/utils/sleep';
 import workflowSdkPackage from '@n8n/workflow-sdk/package.json';
 import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
@@ -540,10 +541,6 @@ function parseSha256(raw: string): string | null {
 function isRetryableStatus(status: number): boolean {
 	if (status >= 500) return true;
 	return status === 408 || status === 429;
-}
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function atomicWriteFile(target: string, contents: Buffer | string): Promise<void> {

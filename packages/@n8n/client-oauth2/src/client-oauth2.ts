@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { SsrfBridge } from '@n8n/backend-network';
+import {
+	createHttpProxyAgent,
+	createHttpsProxyAgent,
+	resolveProxyUrl,
+} from '@n8n/backend-network/proxy';
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { Agent } from 'https';
 import * as qs from 'querystring';
 
 import type { ClientOAuth2TokenData } from './client-oauth2-token';
@@ -15,7 +20,7 @@ import type {
 	OAuth2AuthenticationMethod,
 	OAuth2ClientCredentialType,
 } from './types';
-import { getAuthError } from './utils';
+import { getAuthError, tryParseUrl } from './utils';
 
 export interface ClientOAuth2RequestObject {
 	url: string;
@@ -44,6 +49,14 @@ export interface ClientOAuth2Options {
 	query?: qs.ParsedUrlQuery;
 	resource?: string;
 	ignoreSSLIssues?: boolean;
+	/**
+	 * When provided, token endpoint requests are validated against the host's
+	 * outbound network policy before dispatch, at DNS resolution time, and on
+	 * every redirect. Omit to leave the request unchecked. Narrowed to the
+	 * methods this client uses so node-facing filters (`NodeEgressFilter`)
+	 * qualify as well as the full bridge.
+	 */
+	ssrfBridge?: Pick<SsrfBridge, 'validateUrl' | 'validateRedirectSync' | 'createSecureLookup'>;
 }
 
 export class ResponseError extends Error {
@@ -56,8 +69,6 @@ export class ResponseError extends Error {
 		super(message);
 	}
 }
-
-const sslIgnoringAgent = new Agent({ rejectUnauthorized: false });
 
 /**
  * Construct an object that can handle the multiple OAuth 2.0 flows.
@@ -105,14 +116,55 @@ export class ClientOAuth2 {
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
-			// Disable axios's built-in proxy handling so requests are routed
-			// through n8n's global proxy agents (HttpProxyManager / HttpsProxyManager)
-			// instead of being double-proxied in corporate proxy-chain environments.
+			// In the shipped artifact this package resolves its own axios copy, which
+			// n8n's shared axios defaults (including the 300s timeout) do not reach —
+			// so bound the request explicitly. Matches the shared default.
+			timeout: 300_000,
+			// Disable axios's built-in proxy handling; the agents built below own
+			// env-proxy routing, avoiding double-proxying in corporate proxy-chain
+			// environments.
 			proxy: false,
 		};
 
-		if (options.ignoreSSLIssues) {
-			requestConfig.httpsAgent = sslIgnoringAgent;
+		const { ssrfBridge } = this.options;
+
+		if (ssrfBridge) {
+			const parsed = tryParseUrl(url);
+			if (parsed) {
+				const result = await ssrfBridge.validateUrl(parsed);
+				if (!result.ok) throw result.error;
+			}
+
+			requestConfig.beforeRedirect = (redirected) => {
+				ssrfBridge.validateRedirectSync(String(redirected.href));
+			};
+		}
+
+		const proxyUrl = resolveProxyUrl(url);
+
+		// Resolution is re-checked on the agent, so a hostname that resolves to a
+		// different address between validation and connect is still caught. Only for
+		// direct connections though: through a proxy the agent resolves the proxy host,
+		// not the final target, so applying the lookup there would check the wrong host.
+		const lookup = proxyUrl ? undefined : ssrfBridge?.createSecureLookup();
+
+		// Agents are built per request whenever a proxy applies (not only for the
+		// `lookup` and relaxed-TLS cases). Whether this package's axios shares the
+		// instance that n8n's agent-injecting interceptor patches depends on package
+		// layout: the shipped artifact materialises its own copy, so without these
+		// agents a process lacking the global env-proxy agents connects directly and
+		// bypasses the proxy.
+		if (options.ignoreSSLIssues || lookup || proxyUrl) {
+			requestConfig.httpsAgent = createHttpsProxyAgent(url, undefined, {
+				...(options.ignoreSSLIssues ? { rejectUnauthorized: false } : {}),
+				...(lookup ? { lookup } : {}),
+			});
+		}
+
+		if (lookup || proxyUrl) {
+			requestConfig.httpAgent = createHttpProxyAgent(url, undefined, {
+				...(lookup ? { lookup } : {}),
+			});
 		}
 
 		const response = await axios.request(requestConfig);

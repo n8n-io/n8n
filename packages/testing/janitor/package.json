@@ -50,7 +50,7 @@
     "@vitest/coverage-v8": "catalog:",
     "fast-check": "catalog:",
     "tsx": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   }
 }

@@ -59,6 +59,9 @@
         "OwnerId": {
             "type": "string"
         },
+        "PhotoUrl": {
+            "type": "string"
+        },
         "ShippingGeocodeAccuracy": {
             "type": "null"
         },
@@ -69,5 +72,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

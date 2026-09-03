@@ -38,6 +38,7 @@
     "@types/eslint": "^9.6.1",
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
     "@typescript-eslint/rule-tester": "^8.35.0",
     "@typescript-eslint/utils": "^8.35.0",
     "@typescript/native": "catalog:typescript-tooling",
@@ -58,5 +59,8 @@
   "peerDependencies": {
     "eslint": "catalog:"
   },
-  "license": "LicenseRef-n8n-sustainable-use"
+  "license": "LicenseRef-n8n-sustainable-use",
+  "dependencies": {
+    "@n8n/eslint-plugin-design-system": "workspace:*"
+  }
 }

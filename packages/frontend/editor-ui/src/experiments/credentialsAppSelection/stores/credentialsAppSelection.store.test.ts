@@ -4,14 +4,14 @@ import { CREDENTIALS_APP_SELECTION_EXPERIMENT } from '@/app/constants/experiment
 import type { CredentialsResource } from '@/Interface';
 
 const mockTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),
 }));
 
 const storageRef = ref<string | null>(null);
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: vi.fn(() => storageRef),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 let mockUserIsTrialing = false;
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({
 		get userIsTrialing() {
 			return mockUserIsTrialing;

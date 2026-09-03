@@ -132,12 +132,12 @@ describe('nodes tool', () => {
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: 'http',
-				n8nConnectOnly: undefined,
+				gatewayCreditsOnly: undefined,
 			});
 			expect(result).toEqual({ nodes });
 		});
 
-		it('should forward n8nConnectOnly to nodeService.listAvailable', async () => {
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
 			const nodes = [
 				{
 					name: 'n8n-nodes-base.openAi',
@@ -154,13 +154,13 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'list', n8nConnectOnly: true } as never,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
 				{} as never,
 			);
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: undefined,
-				n8nConnectOnly: true,
+				gatewayCreditsOnly: true,
 			});
 			expect(result).toEqual({ nodes });
 		});
@@ -238,6 +238,39 @@ describe('nodes tool', () => {
 					expect.objectContaining({
 						name: 'n8n-nodes-base.slackTool',
 						discriminators: { resource: ['message'] },
+					}),
+				],
+			});
+		});
+
+		it('surfaces aiGateway meta from searchable nodes through the search handler', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.firecrawl',
+					displayName: 'Firecrawl',
+					description: 'Scrape and crawl the web',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					aiGateway: { supported: true, minVersion: 1 },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'firecrawl', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					expect.objectContaining({
+						name: 'n8n-nodes-base.firecrawl',
+						aiGateway: { supported: true, minVersion: 1 },
 					}),
 				],
 			});
@@ -436,6 +469,46 @@ describe('nodes tool', () => {
 						version: 'v23',
 						content: 'export type IfNode = unknown;',
 						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
+			});
+		});
+
+		it('should mark a retired node type as deprecated', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						version: '1.1',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'type-definition',
+					nodeTypes: ['@n8n/n8n-nodes-langchain.toolHttpRequest'],
+				} as never,
+				{} as never,
+			);
+
+			// The definition is still returned. The caller decides what to do with it.
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						version: '1.1',
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
 					},
 				],
 			});

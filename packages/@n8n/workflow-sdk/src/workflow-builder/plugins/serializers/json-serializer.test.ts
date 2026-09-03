@@ -113,6 +113,58 @@ describe('jsonSerializer', () => {
 			expect(result.nodes[0]?.parameters).toEqual({});
 		});
 
+		it('omits null and undefined optional top-level node keys', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Request',
+					notes: null as unknown as string,
+					webhookId: null as unknown as string,
+					executeOnce: null as unknown as boolean,
+					onError: null as unknown as 'continueRegularOutput',
+					credentials: {
+						httpBasicAuth: { id: null as unknown as string, name: 'Basic Auth' },
+					},
+				},
+			});
+			const stickyNote = {
+				id: 'sticky-1',
+				name: 'Sticky Note',
+				type: 'n8n-nodes-base.stickyNote',
+				version: '1',
+				config: {
+					_originalName: undefined,
+					parameters: {},
+				},
+			} as unknown as GraphNode['instance'];
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([
+					['HTTP Request', { instance: httpNode, connections: new Map() }],
+					['Sticky Note', { instance: stickyNote, connections: new Map() }],
+				]),
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			for (const serializedNode of result.nodes) {
+				for (const [key, value] of Object.entries(serializedNode)) {
+					if (key === 'parameters') continue;
+					expect(value).not.toBeNull();
+					expect(value).not.toBeUndefined();
+				}
+			}
+
+			expect(result.nodes[0]).not.toHaveProperty('notes');
+			expect(result.nodes[0]).not.toHaveProperty('webhookId');
+			expect(result.nodes[0]).not.toHaveProperty('executeOnce');
+			expect(result.nodes[0]).not.toHaveProperty('onError');
+			expect(result.nodes[0]?.credentials).toEqual({
+				httpBasicAuth: { id: null, name: 'Basic Auth' },
+			});
+			expect(result.nodes[1]).not.toHaveProperty('name');
+		});
+
 		describe('node groups', () => {
 			it('omits nodeGroups when the context has none', () => {
 				const result = jsonSerializer.serialize(createMockSerializerContext());

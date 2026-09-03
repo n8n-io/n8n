@@ -10,7 +10,8 @@
 
 			// Type-only deep import of a type LangChain doesn't re-export publicly.
 			// exports-map-aware resolution can't reach dist/, so map straight to the
-			// declaration file (erased at runtime — never resolved by Node).
+			// declaration file. Safe as `.d.cts` because these are `import type`
+			// (erased at runtime — never resolved by Node or a paths-honoring loader).
 			"@langchain/classic/dist/experimental/openai_assistant/schema": [
 				"./node_modules/@langchain/classic/dist/experimental/openai_assistant/schema.d.cts"
 			],
@@ -25,6 +26,8 @@
 			// reach @langchain/core through the import condition (.d.ts). This
 			// package resolves core via require (.d.cts); pin the subpath it shares
 			// with Oracle to .d.cts so both agree on a single VectorStore identity.
+			// Must stay `.d.cts` (not extensionless): the base resolves to the ESM
+			// `.d.ts` and reintroduces the "two unrelated VectorStore types" error.
 			"@langchain/core/vectorstores": ["./node_modules/@langchain/core/dist/vectorstores.d.cts"]
 		},
 		"emitDecoratorMetadata": true,

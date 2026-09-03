@@ -279,4 +279,44 @@ describe('ExecutionRepository', () => {
 			expect(successExec?.status).toBe('success');
 		});
 	});
+
+	describe('getWorkflowIdsWithExecutionsSince', () => {
+		const insertExecution = async (workflowId: string, startedAt: Date) =>
+			await Container.get(ExecutionRepository).insert({
+				workflowId,
+				mode: 'manual',
+				startedAt,
+				status: 'success',
+				finished: true,
+				createdAt: startedAt,
+			});
+
+		it('should return distinct workflow ids for executions started at or after the date', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const [workflow1, workflow2] = await Promise.all([createWorkflow(), createWorkflow()]);
+			const since = new Date('2024-01-01T00:00:00.000Z');
+
+			await insertExecution(workflow1.id, since); // inclusive boundary
+			await insertExecution(workflow1.id, new Date('2024-06-01T00:00:00.000Z')); // same workflow again
+			await insertExecution(workflow2.id, new Date('2024-03-01T00:00:00.000Z'));
+
+			const result = await executionRepository.getWorkflowIdsWithExecutionsSince(since);
+
+			expect(result).toHaveLength(2);
+			expect(result).toEqual(expect.arrayContaining([workflow1.id, workflow2.id]));
+		});
+
+		it('should exclude workflows whose executions all started before the date', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+
+			await insertExecution(workflow.id, new Date('2023-12-31T23:59:59.000Z'));
+
+			const result = await executionRepository.getWorkflowIdsWithExecutionsSince(
+				new Date('2024-01-01T00:00:00.000Z'),
+			);
+
+			expect(result).toEqual([]);
+		});
+	});
 });

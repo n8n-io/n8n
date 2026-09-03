@@ -72,12 +72,27 @@ describe('InsightsDateFilterDto', () => {
 					projectId: '2gQLpmP5V4wOY627',
 				},
 			},
+			{
+				name: 'valid IANA timeZone',
+				request: {
+					timeZone: 'Europe/Berlin',
+				},
+				parsedResult: {
+					timeZone: 'Europe/Berlin',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = InsightsDateFilterDto.safeParse(request);
 			expect(result.success).toBe(true);
 			if (parsedResult) {
 				expect(result.data).toMatchObject(parsedResult);
 			}
+		});
+
+		test('should silently drop an invalid timeZone to undefined', () => {
+			const result = InsightsDateFilterDto.safeParse({ timeZone: 'Not/AZone' });
+			expect(result.success).toBe(true);
+			expect(result.data?.timeZone).toBeUndefined();
 		});
 	});
 

@@ -33,24 +33,28 @@ describe('Test GmailV2, message => sendAndWait', () => {
 		vi.clearAllMocks();
 	});
 
-	const setupParameters = () => {
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message'); // resource
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION); // operation
+	const setupParameters = (overrides: Record<string, unknown> = {}) => {
+		const params: Record<string, unknown> = {
+			resource: 'message',
+			operation: SEND_AND_WAIT_OPERATION,
+			sendTo: 'to@mail.com',
+			message: 'my message',
+			subject: 'my subject',
+			'approvalOptions.values': {},
+			options: {},
+			responseType: 'approval',
+			...overrides,
+		};
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(parameterName: string, _itemIndex?: unknown, fallback?: any) =>
+				params[parameterName] ?? fallback,
+		);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.2 }));
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
-
-		// createEmail
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('to@mail.com'); // sendTo
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message'); // message
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject'); // subject
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
 			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 		);
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval'); // responseType
-
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // configureWaitTillDate
 	};
 
 	it('should route API errors to error output when continueOnFail is true', async () => {
@@ -81,5 +85,23 @@ describe('Test GmailV2, message => sendAndWait', () => {
 
 		await expect(gmail.execute.call(mockExecuteFunctions)).rejects.toThrow('invalid_recipient');
 		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should send the raw email and wait', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		setupParameters();
+
+		(genericFunctions.googleApiRequest as Mock).mockResolvedValueOnce({});
+
+		const result = await gmail.execute.call(mockExecuteFunctions);
+
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/gmail/v1/users/me/messages/send',
+			{ raw: expect.any(String) },
+		);
+		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalled();
+		expect(result).toEqual([items]);
 	});
 });

@@ -14,7 +14,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with Anthropic AI models',
+	description: 'Message Claude, analyze documents and images, manage files, and work with prompts',
 	defaults: {
 		name: 'Anthropic',
 	},

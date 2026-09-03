@@ -1,22 +1,32 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-vi.mock('@n8n/instance-ai', () => ({
-	wrapUntrustedData(content: string, source: string, label?: string): string {
-		const esc = (s: string) =>
-			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		const safeLabel = label ? ` label="${esc(label)}"` : '';
-		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
-		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
-	},
-	builderTemplatesOptionsFromEnv: () => ({}),
-	BuilderTemplatesService: class {
-		async getBundle() {
-			return { files: [], indexTxt: '', version: null };
-		}
-		getVersion() {
-			return null;
-		}
-	},
-}));
+vi.mock('@n8n/instance-ai', async () => {
+	const { WorkflowNotFoundError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
+	);
+	return {
+		WorkflowNotFoundError,
+		wrapUntrustedData(content: string, source: string, label?: string): string {
+			const esc = (s: string) =>
+				s
+					.replace(/&/g, '&amp;')
+					.replace(/"/g, '&quot;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+			const safeLabel = label ? ` label="${esc(label)}"` : '';
+			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+		},
+		builderTemplatesOptionsFromEnv: () => ({}),
+		BuilderTemplatesService: class {
+			async getBundle() {
+				return { files: [], indexTxt: '', version: null };
+			}
+			getVersion() {
+				return null;
+			}
+		},
+	};
+});
 
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -47,15 +57,17 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { RoleService } from '@/services/role.service';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
@@ -101,7 +113,7 @@ const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 const folderService = mock<FolderService>();
 const projectService = mock<ProjectService>();
 const tagService = mock<TagService>();
-const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
+const instanceWriteAccess = mock<InstanceWriteAccessService>();
 const settingsService = mock<InstanceAiSettingsService>();
 const workflowHistoryService = mock<WorkflowHistoryService>();
 const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
@@ -119,6 +131,9 @@ const nodeResourceExplorerService = new NodeResourceExplorerService(
 	projectRepository,
 	nodeTypes,
 );
+
+const policyEnforcementService = mock<PolicyEnforcementService>();
+policyEnforcementService.enforceWorkflowSave.mockResolvedValue(mock());
 
 const service = new InstanceAiAdapterService(
 	logger,
@@ -142,7 +157,7 @@ const service = new InstanceAiAdapterService(
 	folderService,
 	projectService,
 	tagService,
-	sourceControlPreferencesService,
+	instanceWriteAccess,
 	settingsService,
 	workflowHistoryService,
 	enterpriseWorkflowService,
@@ -152,10 +167,11 @@ const service = new InstanceAiAdapterService(
 	roleService,
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
-	mock<SsrfProtectionService>(),
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
+	mock<CollaborationService>(),
+	policyEnforcementService,
 );
 
 const user = mock<User>({
@@ -169,9 +185,7 @@ const user = mock<User>({
 beforeEach(() => {
 	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
-	sourceControlPreferencesService.getPreferences.mockReturnValue({
-		branchReadOnly: false,
-	} as never);
+	instanceWriteAccess.isReadOnly.mockReturnValue(false);
 	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
@@ -241,6 +255,43 @@ describe('exploreResources — credential ownership check', () => {
 			undefined,
 			undefined,
 		);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Cross-project workflow reads: narrowing only, never widening
+// ---------------------------------------------------------------------------
+
+describe('workflow list — caller-supplied projectId', () => {
+	it('passes the project as a filter on the user-scoped query rather than resolving access itself', async () => {
+		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.list({ projectId: 'project-other' });
+
+		// Unlike credentials (a write capability, hard-locked to the bound project),
+		// workflow *reads* may be widened — `scope: 'instance'` already returns
+		// everything the user can read. So the project id is only ever a filter on a
+		// query that still resolves readability from this user's own roles: it can
+		// narrow that set, never extend it to a project they cannot read.
+		expect(workflowService.getMany).toHaveBeenCalledWith(user, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'project-other' },
+		});
+	});
+
+	it('does not let a cross-project read move where the thread writes', async () => {
+		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.workflowService.list({ projectId: 'project-other' });
+		await ctx.credentialService.list({});
+
+		// The bound project is what write-adjacent surfaces keep resolving to.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
 	});
 });
 

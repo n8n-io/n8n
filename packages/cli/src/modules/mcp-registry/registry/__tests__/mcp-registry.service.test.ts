@@ -6,6 +6,9 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
+import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../../node-description-transform';
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
@@ -45,6 +48,10 @@ function createService(options: CreateServiceOptions = {}) {
 		const entities = servers.map(toMockEntity);
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
+			if (Array.isArray(where)) {
+				const slugs = new Set(where.map((condition) => condition.slug));
+				return entities.filter((e) => slugs.has(e.slug));
+			}
 			if (where && 'status' in where) {
 				return entities.filter((e) => e.status === where.status);
 			}
@@ -79,6 +86,7 @@ function createService(options: CreateServiceOptions = {}) {
 		apiClient,
 		push,
 		publisher,
+		loadNodesAndCredentials,
 	};
 }
 
@@ -148,6 +156,33 @@ describe('McpRegistryService', () => {
 
 			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
+		});
+
+		it('maps resolveBySlugs into the same shape as search', async () => {
+			const { service } = createService();
+
+			const resolved = await service.resolveBySlugs(['notion']);
+			const searched = await service.search(['notion']);
+
+			expect(resolved).toEqual(searched);
+		});
+
+		it('omits unknown slugs from resolveBySlugs', async () => {
+			const { service } = createService({ storedServers: [notionMockServer, linearMockServer] });
+
+			const results = await service.resolveBySlugs(['notion', 'made-up']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('omits deprecated servers from resolveBySlugs, as search does', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, { ...linearMockServer, status: 'deprecated' }],
+			});
+
+			const results = await service.resolveBySlugs(['notion', 'linear']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 	});
 
@@ -287,6 +322,25 @@ describe('McpRegistryService', () => {
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 
 			service.shutdown();
+		});
+	});
+
+	describe('getConnection', () => {
+		it('returns the connection from the registry node loader', async () => {
+			const { service, loadNodesAndCredentials } = createService();
+			const connection = resolveMcpRegistryConnection(notionMockServer);
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.getConnection = vi.fn().mockReturnValue(connection);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toEqual(connection);
+			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion');
+		});
+
+		it('returns undefined when the registry loader is not registered', async () => {
+			const { service } = createService();
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toBeUndefined();
 		});
 	});
 

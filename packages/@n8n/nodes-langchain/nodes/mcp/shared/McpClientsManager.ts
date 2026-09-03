@@ -15,11 +15,16 @@ interface CachedClient {
 	client: Client;
 	mcpTools: McpTool[];
 	lastUsedAt: number;
+	/** Guards late-firing handlers against acting on a replacement under the same key. */
+	epoch: number;
+	detachLifecycle: () => void;
 }
 
 interface GetOrConnectOpts {
 	logger?: McpCacheLogger;
+	/** Lifecycle callbacks are registered on connect and on cache hits; concurrent waiters' opts are ignored. */
 	onExecutionCancellation?: (handler: () => void) => void;
+	onExecutionFinish?: (handler: () => void) => void;
 }
 
 /**
@@ -28,14 +33,11 @@ interface GetOrConnectOpts {
  * transport open between Agent V3 tool calls preserves the server-side
  * session that would otherwise be torn down per call.
  *
- * Lifecycle:
- *   - `getOrConnect` returns a cached entry or runs the factory once
- *     (with concurrent-miss dedup via in-flight Promise map).
- *   - Transport `onclose`/`onerror` evict the entry automatically.
- *   - Idle entries (older than TTL on `lastUsedAt`) are swept periodically, and
- *     the cache is capped at max size (oldest evicted) on insert and on sweep.
- *   - On process exit, cached clients are dropped (close is best-effort only,
- *     since async work cannot complete during the `exit` event).
+ * Entries are closed when their execution ends or is cancelled — the cache
+ * key embeds the execution id, so an entry is dead weight afterwards. The
+ * idle-TTL sweep is the backstop for paused (waiting) executions and
+ * contexts without lifecycle hooks. On process exit, close is best-effort
+ * only, since async work cannot complete during the `exit` event.
  */
 @Service()
 export class McpClientsManager {
@@ -47,6 +49,8 @@ export class McpClientsManager {
 	>();
 
 	private readonly cleanupTimer: NodeJS.Timeout;
+
+	private connectionEpoch = 0;
 
 	private readonly exitHandler = () => this.shutdown();
 
@@ -75,6 +79,7 @@ export class McpClientsManager {
 		if (cached) {
 			opts.logger?.debug('McpClientsManager: cache hit', { cacheKey: key });
 			cached.lastUsedAt = Date.now();
+			this.registerLifecycleCleanup(key, cached.epoch, opts);
 			return { client: cached.client, mcpTools: cached.mcpTools };
 		}
 
@@ -89,21 +94,16 @@ export class McpClientsManager {
 		this.pendingConnections.set(key, pending);
 		try {
 			const result = await pending;
+			const epoch = ++this.connectionEpoch;
 			this.activeClients.set(key, {
 				client: result.client,
 				mcpTools: result.mcpTools,
 				lastUsedAt: Date.now(),
+				epoch,
+				detachLifecycle: this.attachTransportLifecycle(result.client, key, epoch, opts.logger),
 			});
 			this.enforceMaxSize();
-			this.attachTransportLifecycle(result.client, key, opts.logger);
-			// Close on cancellation, but only if this entry still holds the client we
-			// just connected — a later reconnect under the same key (after eviction)
-			// registers its own handler and owns cleanup of its own client.
-			opts.onExecutionCancellation?.(() => {
-				if (this.activeClients.get(key)?.client === result.client) {
-					this.remove(key, opts.logger);
-				}
-			});
+			this.registerLifecycleCleanup(key, epoch, opts);
 			return result;
 		} finally {
 			this.pendingConnections.delete(key);
@@ -122,9 +122,31 @@ export class McpClientsManager {
 		if (!entry) return;
 
 		this.activeClients.delete(key);
+		entry.detachLifecycle();
 		void entry.client.close().catch((error: unknown) => {
 			logger?.warn('McpClientsManager: failed to close cached client', { cacheKey: key, error });
 		});
+	}
+
+	/**
+	 * Close the entry when its execution is cancelled or finishes. Must run on
+	 * cache hits too: a resumed (previously waiting) execution gets fresh
+	 * lifecycle hooks, and the finish handler registered by the run that
+	 * connected intentionally skipped the `waiting` transition and never fires
+	 * again. Duplicate registrations within one run are harmless — the handler
+	 * is epoch-guarded and `remove` is idempotent.
+	 */
+	private registerLifecycleCleanup(key: string, epoch: number, opts: GetOrConnectOpts): void {
+		const closeIfCurrent = () => this.removeIfCurrent(key, epoch, opts.logger);
+		opts.onExecutionCancellation?.(closeIfCurrent);
+		opts.onExecutionFinish?.(closeIfCurrent);
+	}
+
+	/** A later reconnect under the same key owns its own cleanup — evict only while `epoch` is current. */
+	private removeIfCurrent(key: string, epoch: number, logger?: McpCacheLogger): void {
+		if (this.activeClients.get(key)?.epoch === epoch) {
+			this.remove(key, logger);
+		}
 	}
 
 	/** Evict idle entries (TTL on lastUsedAt) and enforce max cache size. */
@@ -144,7 +166,7 @@ export class McpClientsManager {
 	/** Evict oldest entries until the cache is within `cacheMaxSize`. */
 	private enforceMaxSize(): void {
 		// Map iteration follows insertion order, so the oldest entries come first.
-		let excess = this.activeClients.size - this.config.cacheMaxSize;
+		let excess = this.activeClients.size - Math.max(1, this.config.cacheMaxSize);
 		for (const [key] of this.activeClients) {
 			if (excess <= 0) break;
 			this.remove(key);
@@ -158,21 +180,33 @@ export class McpClientsManager {
 	 * back to subsequent tool calls. The MCP SDK's Protocol class exposes
 	 * `onclose`/`onerror` as plain assignable fields (no setter side effects),
 	 * so chaining via captured `prev*` is safe.
+	 *
+	 * Returns a detach function restoring the original handlers; it must run
+	 * before any close, because closing aborts the open listener stream, which
+	 * the SDK reports via `onerror` — a still-attached handler would log a
+	 * spurious transport error and re-enter the manager.
 	 */
-	private attachTransportLifecycle(client: Client, key: string, logger?: McpCacheLogger): void {
-		// Only evict if this entry still holds `client`; a late-firing handler from a
-		// client already replaced by a reconnect under the same key must not drop the
-		// live replacement.
-		const evictIfCurrent = () => {
-			if (this.activeClients.get(key)?.client === client) {
-				this.activeClients.delete(key);
-			}
+	private attachTransportLifecycle(
+		client: Client,
+		key: string,
+		epoch: number,
+		logger?: McpCacheLogger,
+	): () => void {
+		const prevOnClose = client.onclose;
+		const prevOnError = client.onerror;
+		const detach = () => {
+			// Restore only handlers that are still ours — never clobber ones chained on later.
+			if (client.onclose === onClose) client.onclose = prevOnClose;
+			if (client.onerror === onError) client.onerror = prevOnError;
 		};
 
-		const prevOnClose = client.onclose;
-		client.onclose = () => {
+		const onClose = () => {
 			logger?.debug('McpClientsManager: transport closed, evicting cache entry', { cacheKey: key });
-			evictIfCurrent();
+			detach();
+			// The transport is already closed — evict without re-closing.
+			if (this.activeClients.get(key)?.epoch === epoch) {
+				this.activeClients.delete(key);
+			}
 			try {
 				prevOnClose?.();
 			} catch (error: unknown) {
@@ -180,13 +214,13 @@ export class McpClientsManager {
 			}
 		};
 
-		const prevOnError = client.onerror;
-		client.onerror = (error: Error) => {
-			logger?.warn('McpClientsManager: transport error, evicting cache entry', {
+		const onError = (error: Error) => {
+			logger?.warn('McpClientsManager: transport error, closing client', {
 				cacheKey: key,
 				error,
 			});
-			if (this.activeClients.get(key)?.client === client) {
+			detach();
+			if (this.activeClients.get(key)?.epoch === epoch) {
 				// `remove` deletes the entry and closes the client.
 				this.remove(key, logger);
 			} else {
@@ -205,6 +239,10 @@ export class McpClientsManager {
 				logger?.warn('McpClientsManager: chained onerror threw', { error: chained });
 			}
 		};
+
+		client.onclose = onClose;
+		client.onerror = onError;
+		return detach;
 	}
 
 	shutdown(): void {
