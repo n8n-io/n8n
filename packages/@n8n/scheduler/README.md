@@ -57,8 +57,10 @@ path during rollout.
 ## The moving parts
 
 The scheduler runs four small background routines, each on its own repeating
-timer. Each one is a separate submodule with a single responsibility. Their code
-names are in parentheses; the rest of this document uses the plain names.
+timer, plus an optional fifth when owner reconciliation is configured (see
+[The reconciliation sweep](#the-reconciliation-sweep)). Each one is a separate
+submodule with a single responsibility. Their code names are in parentheses; the
+rest of this document uses the plain names.
 
 ```mermaid
 flowchart TD
@@ -74,6 +76,8 @@ flowchart TD
     RE["Recovery<br/><i>(reaper)</i>"] -.->|"rescues runs stranded<br/>by a crashed server"| T
     T -.->|"finished runs,<br/>past their window"| C["Cleanup<br/><i>(retention)</i>"]
     C -.->|deletes| T
+
+    RC["Reconciliation<br/><i>(owner sweep, optional)</i>"] -.->|"quarantines rules<br/>whose owner is gone"| J
 
     classDef store fill:#2d3748,stroke:#4a5568,color:#fff;
     class J,T store;
@@ -124,9 +128,9 @@ Successful and failed runs can be kept for different lengths of time.
   is the next run? It handles cron expressions, intervals, one-offs, and the
   "every N periods" variant described below, including timezone and daylight-saving
   behaviour.
-- **Lifecycle** is the set of repeating loops that drive the four passes above,
-  each on its own interval with a little randomness ("jitter") so multiple servers
-  don't all fire their passes in lockstep.
+- **Lifecycle** is the set of repeating loops that drive the four passes above
+  (five with reconciliation), each on its own interval with a little randomness
+  ("jitter") so multiple servers don't all fire their passes in lockstep.
 
 ## Schedule kinds
 
@@ -304,6 +308,12 @@ The resolvers feed a periodic sweep, the safety net behind obligation 1. It exis
 what synchronous deprovisioning cannot cover: a process killed between two writes, a
 teardown path written before it knew about scheduled jobs, an owner deleted straight
 from storage.
+
+It runs as a fifth lifecycle loop, composed only when the host passes `reconciliation`
+to `createScheduler`, so a deployment without it pays nothing. It follows the same
+jittered cadence as the other passes, every fifteen minutes by default with a five
+minute timeout, and pages through live jobs in bounded batches so one pass never scans
+the whole table.
 
 Because it acts on an answer from code it does not own, it never deletes on first
 sight:
@@ -536,7 +546,7 @@ A few things that are not obvious from the code but save a lot of confusion.
   to stop already-queued runs, unless the rule-writing path withdraws them (which
   provisioning does).
 
-- **Each background pass runs on its own timer, with jitter.** The four passes are
+- **Each background pass runs on its own timer, with jitter.** The passes are
   independent and slightly randomised, so several servers do not all run their
   passes in lockstep, and one slow pass does not stall the others.
 
