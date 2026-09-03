@@ -396,11 +396,17 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
+		expect(result).toMatchObject({ visitor: user, authToken: 'as-token' });
 		// Converted from the cookie's absolute expiry here, on the clock that wrote it,
 		// so no server timestamp reaches the shell.
 		expect(result?.expiresIn).toBeGreaterThan(3590);
 		expect(result?.expiresIn).toBeLessThanOrEqual(3600);
 		expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+		expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
+			'as-token',
+			resourceUrl,
+			user.id,
+		);
 		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
 		expect(mockContext.refreshN8nOAuth2Flow).not.toHaveBeenCalled();
 	});
@@ -435,13 +441,21 @@ describe('establishChatSessionIdentity', () => {
 			refreshToken: 'rotated-token',
 			expiresIn: 3600,
 		});
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
 		expect(mockContext.refreshN8nOAuth2Flow).toHaveBeenCalledWith('refresh-token', resourceUrl);
 		// The AS's own duration, handed on untouched — the shell schedules off its own clock.
-		expect(result).toEqual({ expiresIn: 3600 });
+		expect(result).toEqual({ visitor: user, authToken: 'fresh-token', expiresIn: 3600 });
 		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+		// A refresh result names no user, so the fresh token is validated to recover the
+		// visitor the connect panel is rendered for.
+		expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
+			'fresh-token',
+			resourceUrl,
+			user.id,
+		);
 		// Both cookies are rewritten: the frame's next GET needs the new access token,
 		// and the rotated refresh token replaces the one just consumed.
 		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(

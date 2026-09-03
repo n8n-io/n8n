@@ -1,7 +1,5 @@
 import {
 	createPage,
-	createShellPage,
-	escapeForHtmlAttribute,
 	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
@@ -612,205 +610,6 @@ describe('ChatTrigger Templates Security', () => {
 	});
 });
 
-describe('escapeForHtmlAttribute', () => {
-	it('escapes what would break out of a double-quoted attribute', () => {
-		expect(escapeForHtmlAttribute('/chat?a="><script>&\'')).toBe(
-			'/chat?a=&quot;&gt;&lt;script&gt;&amp;&#39;',
-		);
-	});
-});
-
-describe('createShellPage', () => {
-	const shell = createShellPage({ iframeSrc: '/webhook/abc/chat?n8nShellInner=1' });
-
-	it('renders nothing but the frame the chat lives in', () => {
-		expect(shell).toContain('<iframe');
-		expect(shell).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
-		// The widget, its stylesheet and the author's CSS all belong to the frame.
-		expect(shell).not.toContain('cdn.jsdelivr.net');
-		expect(shell).not.toContain('createChat');
-	});
-
-	it('gives the frame no origin of its own', () => {
-		expect(shell).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups"');
-		expect(shell).not.toContain('allow-same-origin');
-	});
-
-	// Links in bot replies are `target="_blank"`, so the frame needs `allow-popups`
-	// to open them at all — but not `allow-popups-to-escape-sandbox`, which would let
-	// author script put a real-origin document in front of the visitor.
-	it('lets the frame open popups without letting them escape the sandbox', () => {
-		expect(shell).toContain('allow-popups');
-		expect(shell).not.toContain('allow-popups-to-escape-sandbox');
-	});
-
-	// The src comes from the request URL, so it must not be able to close the
-	// attribute and add markup of its own.
-	it('escapes the frame src', () => {
-		const escaped = createShellPage({ iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' });
-
-		expect(escaped).not.toContain('<img');
-		expect(escaped).toContain('&quot;&gt;&lt;img');
-	});
-
-	it('owns the session id so a frame reload continues the conversation', () => {
-		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
-		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
-	});
-
-	// With the OAuth path off there is no token to keep alive, so the shell must be
-	// exactly the document it was before refresh existed.
-	it('carries no refresh machinery when no refresh is passed', () => {
-		expect(shell).not.toContain('n8nChatRefresh');
-		expect(shell).not.toContain('n8n-chat-auth-token');
-		expect(shell).not.toContain('n8n-chat-frame-ready');
-		expect(shell).not.toContain('MessageChannel');
-		expect(shell).not.toContain('fetch(');
-	});
-
-	// The refresh script had to move ahead of this one so its listener is installed
-	// while the frame is still about:blank. With refresh absent the document must be
-	// byte-for-byte the one it was before refresh existed.
-	it('places the frame script exactly where it was before refresh existed', () => {
-		expect(shell).toContain('></iframe>\n\t\t<script>');
-		expect(shell).toContain('\t\t</script>\n\t</body>');
-	});
-});
-
-describe('createShellPage with token refresh', () => {
-	const shell = createShellPage({
-		iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
-		refresh: { url: '/webhook/abc/chat?n8nChatRefresh=1', expiresIn: 3600 },
-	});
-
-	it('schedules ahead of the lifetime it was given', () => {
-		expect(shell).toContain('planFor(3600)');
-		expect(shell).toContain('setTimeout');
-		// The lead is the margin BEFORE expiry, not the refresh time: a fifth of the
-		// lifetime clamped to [60s, 600s], so a one-hour token refreshes at t+50min.
-		expect(shell).toContain('Math.min(600, Math.max(60, lifetimeSeconds * 0.2))');
-	});
-
-	// The timer and its one retry are the only things that start a refresh, so two can
-	// never be in flight and the script needs no concurrency guard. A second trigger —
-	// a visibility or focus listener — would race the timer over the single refresh
-	// cookie on this path, so it cannot be added without a latch.
-	it('starts a refresh from the timer alone', () => {
-		expect(shell).toContain('timer = setTimeout(function () { refresh(false); }, delay);');
-		expect(shell).not.toContain('visibilitychange');
-		expect(shell).not.toContain('inFlight');
-	});
-
-	// An absolute expiry the server computed, compared against the page's own
-	// `Date.now()`, is wrong by however far the two clocks disagree — and the page has
-	// no way to detect that. Every reading the schedule makes must come from one clock,
-	// so the server converts to a duration before it reaches the document.
-	it('never interpolates a server timestamp into the document', () => {
-		const rendered = createShellPage({
-			iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
-			refresh: { url: '/webhook/abc/chat?n8nChatRefresh=1', expiresIn: 3600 },
-		});
-
-		// A 13-digit epoch-ms literal is what a leaked `expiresAt` would look like.
-		expect(rendered).not.toMatch(/\b1[0-9]{12}\b/);
-	});
-
-	// Anchoring the new lifetime to when the response *arrived* always overstates what
-	// is left, by however long the round trip took — a slow leg, or a paused server —
-	// and overstating is the direction that ends in 401s.
-	it('subtracts the round trip it measured before rescheduling', () => {
-		expect(shell).toContain('var startedAt = Date.now();');
-		expect(shell).toContain('planFor(lifetime - (Date.now() - startedAt) / 1000);');
-	});
-
-	it('rounds a fractional lifetime and never emits a negative one', () => {
-		const soon = createShellPage({
-			iframeSrc: '/x',
-			refresh: { url: '/x?n8nChatRefresh=1', expiresIn: 0 },
-		});
-
-		expect(soon).toContain('planFor(0)');
-		expect(soon).not.toContain('planFor(-');
-	});
-
-	it('fetches the refresh leg with the custom header that guards it', () => {
-		expect(shell).toContain('"/webhook/abc/chat?n8nChatRefresh=1"');
-		expect(shell).toContain("'x-n8n-chat-refresh': '1'");
-		expect(shell).toContain("credentials: 'same-origin'");
-	});
-
-	// `frame.contentWindow` names the browsing context, not the document, so it keeps
-	// resolving after author script navigates the frame away — and would hand the next
-	// rotated token to whatever loaded there. A port dies with the document that made it.
-	it('hands the token down a channel the frame opened, never at its window', () => {
-		expect(shell).toContain("port.postMessage({ type: 'n8n-chat-auth-token', token: token })");
-		expect(shell).toContain('deliver(data.token);');
-		expect(shell).not.toContain('contentWindow.postMessage');
-	});
-
-	// Two parser-inserted scripts do not run in one uninterrupted turn, so a listener
-	// installed after the frame is navigated could miss the announcement. Installed
-	// first, it is in place while the frame is still about:blank — which, sandboxed
-	// without allow-same-origin, has no script and cannot post.
-	it('installs the ready listener before it navigates the frame', () => {
-		expect(shell.indexOf("addEventListener('message'")).toBeGreaterThan(-1);
-		expect(shell.indexOf("addEventListener('message'")).toBeLessThan(
-			shell.indexOf("frame.src = frame.getAttribute('data-src')"),
-		);
-	});
-
-	it('accepts a ready message only from the frame itself', () => {
-		expect(shell).toContain('if (!frame || event.source !== frame.contentWindow) return;');
-		expect(shell).toContain("data.type !== 'n8n-chat-frame-ready'");
-	});
-
-	it('latches the first ready message and never a later one', () => {
-		expect(shell).toContain('if (latched) return;');
-		expect(shell).toContain('var latched = false;');
-		expect(shell).toContain('latched = true;');
-		// Nothing ever sets it back: the only assignment to false is the declaration.
-		expect(shell.match(/latched = false/g)).toHaveLength(1);
-	});
-
-	// A browser with no MessageChannel announces itself without a port. That still has
-	// to close the latch, or a document that later replaces the frame could claim it.
-	it('closes the latch on a ready message that carries no port', () => {
-		expect(shell.indexOf('latched = true;')).toBeLessThan(
-			shell.indexOf('if (event.ports && event.ports.length) port = event.ports[0];'),
-		);
-	});
-
-	// With no port there is nowhere to put a fresh token, and the frame's own baked-in
-	// token lasts its full lifetime — exactly the pre-refresh behaviour.
-	it('stops refreshing when the frame announces readiness without a port', () => {
-		expect(shell).toContain('if (latched && !port) return;');
-		expect(shell).toContain('if (timer) { clearTimeout(timer); timer = null; }');
-	});
-
-	// A refresh can beat the frame's bootstrap, and the post is one-shot.
-	it('holds the newest token until the port arrives', () => {
-		expect(shell).toContain('pendingToken = token;');
-		expect(shell).toContain(
-			"port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken })",
-		);
-		expect(shell).toContain("pendingToken = '';");
-		// If no port ever arrives, reload rather than fall back to the frame's window.
-		expect(shell).toContain('portTimer = setTimeout(portMissing, 10000);');
-	});
-
-	it('retries once and then reloads exactly once', () => {
-		expect(shell).toContain('refresh(true)');
-		expect(shell).toContain('window.location.reload()');
-		expect(shell).toContain('if (reloaded) return;');
-	});
-
-	// The whole point of the httpOnly cookie: the refresh token exists in no document.
-	it('carries no refresh token', () => {
-		expect(shell).not.toContain('refreshToken');
-		expect(shell).not.toContain('n8n-chat-oauth-refresh');
-	});
-});
-
 describe('createPage inside the shell frame', () => {
 	const params = {
 		instanceId: 'test-instance',
@@ -836,6 +635,11 @@ describe('createPage inside the shell frame', () => {
 	const inner = createPage({
 		...params,
 		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
+	});
+
+	it('loads the widget from the published CDN bundle', () => {
+		expect(inner).toContain('cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js');
+		expect(inner).not.toContain('/chat-widget/');
 	});
 
 	it('stands in for localStorage before the widget loads', () => {

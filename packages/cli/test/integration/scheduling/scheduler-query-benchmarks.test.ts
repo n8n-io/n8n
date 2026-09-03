@@ -11,6 +11,8 @@ import { DataSource } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { performance } from 'node:perf_hooks';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * Query-level performance profiling for `ScheduledJobRepository` and
  * `ScheduledTaskRepository`.
@@ -156,8 +158,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			const due = enabled && i % 3 === 0;
 			rows.push({
 				name: `seed-job-${i}`,
-				workflowId: null,
-				nodeId: null,
+				...selfOwned(`seed-job-${i}`),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -181,8 +182,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 		const anchorJob = await jobRepository.save(
 			jobRepository.create({
 				name: 'query-bench-anchor',
-				workflowId: null,
-				nodeId: null,
+				...selfOwned('query-bench-anchor'),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -452,8 +452,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			const insertManyLatency = await measureWrite(async (iter) => {
 				const newJobs = Array.from({ length: WRITE_JOB_BATCH }, (_, i) => ({
 					name: `write-bench-job-${iter}-${i}`,
-					workflowId: null,
-					nodeId: null,
+					...selfOwned(`write-bench-job-${iter}-${i}`),
 					taskType: TASK_TYPE,
 					payload: {},
 					kind: 'interval' as const,

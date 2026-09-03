@@ -373,6 +373,7 @@ export {
 	executionPublicSchema,
 	deletedExecutionPublicSchema,
 } from './executions/execution-public.dto';
+export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
