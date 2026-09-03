@@ -685,6 +685,12 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					messages = messages.filter((m) => !alreadyTracked.has(m.id));
 				}
 
+				// Reaching an id no poll has handled proves the window is not wedged, so
+				// the run starts over even if every fetch below fails.
+				if (messages.length > 0 && nodeStaticData.noProgressTicks) {
+					nodeStaticData.noProgressTicks = 0;
+				}
+
 				if (!messages.length && !allFetchedMessages.length) {
 					// No-progress valve: the scan was stopped short, yet every id it
 					// reached is already tracked. One such poll proves little — a slow

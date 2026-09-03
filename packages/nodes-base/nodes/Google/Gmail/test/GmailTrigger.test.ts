@@ -2772,6 +2772,37 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
 		});
 
+		it('should clear the no-progress count when a scan reaches new ids that all fail', async () => {
+			// The scan found an id no poll has handled, so the window is not wedged.
+			// The valve must not count this poll towards a give-up, and must not keep
+			// a count an earlier poll left behind, even though every fetch failed.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					noProgressTicks: 2,
+				},
+			};
+
+			mockLabels();
+			// Page 2 is not mocked: the spent budget must stop the scan at page 1.
+			mockList(listPage(['N1'], 'token-1'));
+			mockGetError('N1');
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(0);
+			// Nothing was delivered, so the cursor stays and the id waits in the
+			// set-aside list.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['N1', 1]]);
+		});
+
 		it('should give up once consecutive ticks keep making no progress', async () => {
 			// Repeated no-progress ticks are no longer one unlucky sample: the
 			// window is wedged, so give up loudly rather than hold forever.
