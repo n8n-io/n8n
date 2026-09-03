@@ -121,11 +121,54 @@ jobs:
             --push-enabled "$PUSH_ENABLED" \
             --include-arm64 "$INCLUDE_ARM64"
 
-  build-and-push-docker:
-    name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
+  build-app:
+    name: Build application for Docker images
     needs: determine-build-context
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          # The image compiles native bindings against this Node version later.
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: pnpm build:n8n
+        env:
+          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # Keep pnpm symlinks and executable modes intact across the job boundary.
+      - name: Package Docker build context
+        run: |
+          tar -cf "$RUNNER_TEMP/docker-build-context.tar" \
+            compiled \
+            dist/task-runner-javascript
+
+      - name: Upload Docker build context
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: docker-build-context
+          path: ${{ runner.temp }}/docker-build-context.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  build-and-push-docker:
+    name: Build and Push Docker Image (${{ matrix.platform }})
+    needs: [determine-build-context, build-app]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+      packages: write
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
@@ -149,17 +192,20 @@ jobs:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
+      - name: Set up Docker Buildx
+        uses: useblacksmith/setup-docker-builder@a5256a73e30f09e37e3eceb8ca36043d17621d24 # v2.1.0
         with:
-          # The image copies native bindings from the host build, so both need the same Node.
-          node-version: ${{ env.NODE_VERSION }}
-          build-command: pnpm build:n8n
-          enable-docker-cache: 'true'
-          docker-cache-key: n8n-io/n8n
-        env:
-          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Blacksmith stores a separate Sticky Disk variant per architecture.
+          cache-key: n8n-io/n8n
+
+      - name: Download Docker build context
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: docker-build-context
+          path: ${{ runner.temp }}/docker-build-context
+
+      - name: Restore Docker build context
+        run: tar -xf "$RUNNER_TEMP/docker-build-context/docker-build-context.tar"
 
       - name: Determine Docker tags for all images
         id: determine-tags
@@ -229,6 +275,9 @@ jobs:
     name: Create Multi-Arch Manifest
     needs: [determine-build-context, build-and-push-docker]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
@@ -258,12 +307,13 @@ jobs:
 
       - name: Create GHCR multi-arch manifests
         env:
+          BUILD_MATRIX: ${{ needs.determine-build-context.outputs.build_matrix }}
           N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
           N8N_PC_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_date_manifest_tag }}
           RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
           RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+          HAS_ARM64="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.includes('arm64')))")"
 
           # Function to create manifest for an image
           create_manifest() {
@@ -277,16 +327,15 @@ jobs:
 
             echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
 
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
-            else
+            if [[ "$HAS_ARM64" == "true" ]]; then
               docker buildx imagetools create \
                 --tag "$MANIFEST_TAG" \
                 "${MANIFEST_TAG}-amd64" \
                 "${MANIFEST_TAG}-arm64"
+            else
+              docker buildx imagetools create \
+                --tag "$MANIFEST_TAG" \
+                "${MANIFEST_TAG}-amd64"
             fi
           }
 
@@ -317,15 +366,14 @@ jobs:
       # can be asserted. Docker Hub merges separately below and is asserted there.
       - name: Assert merged GHCR manifests are OCI image indexes
         env:
-          RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+          BUILD_MATRIX: ${{ needs.determine-build-context.outputs.build_matrix }}
           N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
           N8N_PC_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           RUNNERS_DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: |
           set -euo pipefail
-          # Branch builds are amd64-only; everything else is amd64 + arm64.
-          if [[ "$RELEASE_TYPE" == "branch" ]]; then EXPECT=1; else EXPECT=2; fi
+          EXPECT="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.length))")"
 
           for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG"; do
             [[ -n "$TAG" ]] || continue
@@ -413,11 +461,146 @@ jobs:
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
+  # This checks the cached release path. docker-build-smoke.yml remains the
+  # no-cache sanity check for fresh native compilation and prebuild selection.
+  verify-images:
+    name: Verify published images (${{ matrix.platform }})
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.determine-build-context.outputs.push_enabled == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
+    runs-on: ${{ matrix.platform == 'arm64' && 'blacksmith-2vcpu-ubuntu-2204-arm' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      N8N_IMAGE: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+      N8N_PC_IMAGE: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
+      RUNNERS_IMAGE: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+      RUNNERS_DISTROLESS_IMAGE: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Install Docker smoke-test dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: ''
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      - name: Pull images for runtime verification
+        run: |
+          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE" "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
+            [[ -n "$image" ]] || continue
+            docker pull "$image"
+          done
+
+      - name: Create a token for the Cloud chart smoke check
+        id: cloud-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n-cloud
+          permission-contents: read
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Verify n8n images against Cloud
+        env:
+          GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
+          SMOKE_RUNNERS_IMAGES: ${{ env.RUNNERS_IMAGE }},${{ env.RUNNERS_DISTROLESS_IMAGE }}
+        run: |
+          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE"; do
+            [[ -n "$image" ]] || continue
+            SMOKE_IMAGE="$image" pnpm build:docker:smoke
+          done
+
+      - name: Execute native modules and agent-browser
+        run: |
+          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE"; do
+            [[ -n "$image" ]] || continue
+            docker run --rm --entrypoint node "$image" -e \
+              "require('/usr/local/lib/node_modules/n8n/node_modules/isolated-vm'); require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3')"
+
+            # The package expects its postinstall to set the executable bit.
+            # Run as root so this check tests binary compatibility only.
+            docker run --rm --user root --entrypoint sh "$image" -c '
+              set -- $(find /usr/local/lib/node_modules/n8n -type f -path "*/agent-browser/bin/agent-browser.js")
+              if [ "$#" -eq 0 ]; then
+                echo "agent-browser launcher not found" >&2
+                exit 1
+              fi
+              node "$1" --version
+            '
+          done
+
+      - name: Execute task runner launchers
+        run: |
+          for image in "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
+            [[ -n "$image" ]] || continue
+            output="$(docker run --rm \
+              --env N8N_RUNNERS_AUTH_TOKEN=release-verification \
+              --entrypoint /usr/local/bin/task-runner-launcher \
+              "$image" release-verification-invalid-runner 2>&1 || true)"
+            if ! grep -q 'does not contain requested runner type: release-verification-invalid-runner' <<< "$output"; then
+              echo "::error::Task runner launcher did not start in $image"
+              echo "$output"
+              exit 1
+            fi
+          done
+
+      - name: Verify image architecture
+        run: |
+          for image in "$N8N_IMAGE" "$N8N_PC_IMAGE" "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
+            [[ -n "$image" ]] || continue
+            actual="$(docker image inspect --format '{{.Architecture}}' "$image")"
+            if [[ "$actual" != "${{ matrix.platform }}" ]]; then
+              echo "::error::$image has architecture $actual, expected ${{ matrix.platform }}"
+              exit 1
+            fi
+          done
+
   call-success-url:
     name: Call Success URL
-    needs: [create_multi_arch_manifest]
+    needs:
+      [
+        determine-build-context,
+        build-app,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        verify-images,
+        provenance-n8n,
+        provenance-n8n-pc,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
     runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
+    if: |
+      always() &&
+      needs.determine-build-context.result == 'success' &&
+      needs.build-app.result == 'success' &&
+      needs.build-and-push-docker.result == 'success' &&
+      (needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped') &&
+      (needs.verify-images.result == 'success' || needs.verify-images.result == 'skipped') &&
+      (needs.provenance-n8n.result == 'success' || needs.provenance-n8n.result == 'skipped') &&
+      (needs.provenance-n8n-pc.result == 'success' || needs.provenance-n8n-pc.result == 'skipped') &&
+      (needs.provenance-runners.result == 'success' || needs.provenance-runners.result == 'skipped') &&
+      (needs.provenance-runners-distroless.result == 'success' || needs.provenance-runners-distroless.result == 'skipped')
     steps:
       - name: Call Success URL
         env:
@@ -706,11 +889,26 @@ jobs:
   notify-on-failure:
     name: Notify Cats on nightly build failure
     runs-on: ubuntu-latest
-    needs: [build-and-push-docker, sbom-attestation]
+    needs:
+      [
+        determine-build-context,
+        build-app,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        verify-images,
+        provenance-n8n,
+        provenance-n8n-pc,
+        provenance-runners,
+        provenance-runners-distroless,
+        vex-attestation,
+        sbom-attestation,
+        security-scan,
+        security-scan-pc,
+        security-scan-runners,
+      ]
     if: |
       always() && github.event_name == 'schedule' &&
-      (needs.build-and-push-docker.result == 'failure' ||
-       needs.sbom-attestation.result == 'failure')
+      (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -722,4 +920,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#team-catalysts' \
-            --text 'Nightly Docker build failed (build=${{ needs.build-and-push-docker.result }}, sbom=${{ needs.sbom-attestation.result }}) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            --text 'Nightly Docker pipeline failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

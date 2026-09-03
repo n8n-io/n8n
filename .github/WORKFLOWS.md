@@ -248,7 +248,6 @@ parallelism). See the `--build-via-mcp` section in
 
 | Workflow                    | Purpose                                                 |
 |-----------------------------|---------------------------------------------------------|
-| `docker-cross-arch-cache-canary.yml` | Verify one AMD64 app build in native AMD64 and ARM64 images |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
@@ -325,7 +324,10 @@ test-workflows-pr-comment.yml
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
 │  │   └─ npm publish (tag: rc or latest)                                    │
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
-│  │   └─ Multi-arch: amd64 + arm64                                          │
+│  │   ├─ Build the application once on amd64                                │
+│  │   ├─ Build/push images on native amd64 + arm64 runners                  │
+│  │   └─ Merge manifests, then provenance + image verification in parallel  │
+│  │       └─ VEX/SBOM attestations follow provenance                         │
 │  ├─ create-github-release                                                  │
 │  ├─ create-sentry-release (sourcemaps)                                     │
 │  ├─ generate-sbom ────────────────▶ sbom-generation-callable.yml           │
