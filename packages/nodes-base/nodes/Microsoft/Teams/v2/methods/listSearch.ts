@@ -79,13 +79,13 @@ export async function getChats(
 	}
 
 	for (const chat of value) {
+		if (excludeOneOnOne && chat.chatType === 'oneOnOne') continue;
 		if (!chat.topic) {
 			chat.topic = (chat.members as IDataObject[])
 				.filter((member: IDataObject) => member.displayName)
 				.map((member: IDataObject) => member.displayName)
 				.join(', ');
 		}
-		if (excludeOneOnOne && chat.chatType === 'oneOnOne') continue;
 		const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
 		const chatId = chat.id;
 		const url = chat.webUrl as string;
