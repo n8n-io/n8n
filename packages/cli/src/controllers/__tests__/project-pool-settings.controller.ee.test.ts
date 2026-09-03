@@ -2,8 +2,8 @@ import { UpdateProjectPoolSettingsDto } from '@n8n/api-types';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ProjectPoolSettingsController } from '@/controllers/project-pool-settings.controller';
-import type { PoolConfigService } from '@/scaling/pool-config.service';
+import { ProjectPoolSettingsController } from '@/controllers/project-pool-settings.controller.ee';
+import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 
 describe('ProjectPoolSettingsController', () => {
 	const poolConfigService = mock<PoolConfigService>();

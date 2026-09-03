@@ -4,7 +4,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { Body, Get, Licensed, Param, Patch, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { PoolConfigService } from '@/scaling/pool-config.service';
+import { PoolConfigService } from '@/scaling/pool-config.service.ee';
 
 @RestController('/projects/:projectId/pool-settings')
 export class ProjectPoolSettingsController {
