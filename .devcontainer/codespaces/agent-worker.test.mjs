@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -10,6 +11,14 @@ const turn = {
 	turnId: 'turn-1',
 	slack: { channel: 'C123', thread_ts: '123.456' },
 };
+
+test('reloads Codespaces secrets before the worker starts', () => {
+	const postStart = readFileSync(new URL('./post-start.mjs', import.meta.url), 'utf8');
+	assert.match(
+		postStart,
+		/bash -lc "\. \/usr\/local\/lib\/codespaces-env\.sh; .*node \/workspaces\/n8n\/\.devcontainer\/codespaces\/agent-worker\.mjs/,
+	);
+});
 
 function slackRecorder() {
 	const calls = [];
