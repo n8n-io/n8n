@@ -5,9 +5,17 @@ on:
     types: [closed]
     branches: ['1.x']
 
+# Least privilege by default; each job opts into exactly what it needs.
+permissions: {}
+
 jobs:
   sync-security-fix:
-    if: github.repository == 'n8n-io/n8n-private' && github.event.pull_request.merged == true
+    # Only a bundle cut is publishable. Anything else merged into 1.x is a mistake — it
+    # would be cherry-picked into a public PR under its own title, which names the fix.
+    if: |
+      github.repository == 'n8n-io/n8n-private' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'bundle/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,22 +48,32 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git cherry-pick "$COMMIT_TO_PUBLISH"
           git push public-repo "$BRANCH_NAME"
-          gh pr create \
+          PUBLIC_PR_URL=$(gh pr create \
             --repo n8n-io/n8n \
             --base 1.x \
             --head "$BRANCH_NAME" \
             --title "$PR_TITLE" \
-            --body "Cherry-picked from n8n-private. Original PR: $PR_URL"
+            --body "Cherry-picked from n8n-private. Original PR: $PR_URL")
+
+          # Record the cut for sec-sync-public-to-private.yml: the ref name carries the public
+          # PR to wait for, its value the bundle tip that was squashed. The branch is reset
+          # onto the base once that PR is merged and mirrored back. A ref rather than a
+          # repository variable, so this needs no permission beyond the push it already does.
+          git push origin "$CUT_SHA:refs/bundle-cut/${HEAD_REF#bundle/}/pr-${PUBLIC_PR_URL##*/}"
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          CUT_SHA: ${{ github.event.pull_request.head.sha }}
 
   notify-on-failure:
     name: Notify Slack on failure
     needs: [sync-security-fix]
     if: ${{ always() && needs.sync-security-fix.result == 'failure' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -69,3 +87,31 @@ jobs:
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-security' \
             --text 'Security fix PR creation failed (1.x). Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+
+  # Nothing was published, but a fix has reached the branch the mirror pushes to public
+  # outside a batch. The mirror halts on it too (it refuses to sync while 1.x is ahead by
+  # a non-`chore: Bundle` commit); this says so at once. Link only — the PR title names the fix.
+  report-unbatched-merge:
+    name: Report a merge that is not a bundle cut
+    if: |
+      github.repository == 'n8n-io/n8n-private' &&
+      github.event.pull_request.merged == true &&
+      !startsWith(github.event.pull_request.head.ref, 'bundle/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: master
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text "<${PR_URL}|A PR that is not a bundle cut was merged into 1.x>. It was not published, and the public mirror stays halted until 1.x matches public again."

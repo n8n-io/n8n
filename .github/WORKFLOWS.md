@@ -416,7 +416,7 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
-| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, reset a published `bundle/*` |
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
@@ -571,15 +571,17 @@ Scripts in `.github/scripts/`:
 
 ### Branch Replay Scripts
 
-Both keep a long-lived branch that is "base + its own commits" in sync by rebasing those
-commits onto the base and force-pushing, sharing the merge-tree content guard that makes the
-rewrite safe.
+These keep a long-lived branch that is "base + its own commits" in sync with that base, all
+sharing the merge-tree content guard that makes a rewrite safe: whatever route a script takes,
+the tree it pushes must be exactly the tree a merge of the two sides produces.
 
 | Script                     | Purpose                                                              | Called By                          |
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
-| `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
+| `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan, guarded replay | the scripts below                |
 | `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
 | `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
+| `reset-bundle-after-cut.mjs` | `bundle/*` → the base, in place, once the cut it carried is published back | `sec-sync-public-to-private.yml` |
+| `restack-bundle-prs.mjs`   | the open fix branches → the reset `bundle/*`; skips stacks, fail-loud  | `sec-restack-bundle-prs.yml`       |
 
 ### Slack Scripts
 
@@ -877,15 +879,70 @@ via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushe
 forcing. Every push is verified to carry exactly the tree a merge of the two sides would
 produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
 
-**`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
-PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
-PR branches already contain: every such PR's merge base regresses to an old base commit, so
-GitHub shows it carrying everyone else's fixes, in the commit list *and* in the diff (which
-can then trip required checks like *PR Size Limit*). It compounds — each refresh between
-rewrites picks up another duplicate generation of the same fixes and starts conflicting with
-itself. To refresh a fix branch, use GitHub's **Update branch** button or
+**`bundle/*` is append-only between cuts — never rebase it, never force-push it.** These
+branches receive PRs, and rewriting a branch that receives PRs orphans the copies of its
+commits that the open PR branches already contain: every such PR's merge base regresses to an
+old base commit, so GitHub shows it carrying everyone else's fixes, in the commit list *and*
+in the diff (which can then trip required checks like *PR Size Limit*). It compounds — each
+refresh between rewrites picks up another duplicate generation of the same fixes and starts
+conflicting with itself. To refresh a fix branch, use GitHub's **Update branch** button or
 `git merge origin/bundle/2.x`; squash-merging a fix *into* the bundle branch leaves every
 sibling PR's merge base untouched, which is why only a rewrite breaks this.
+
+**A `bundle/*` branch must never be deleted.** Deleting it makes GitHub retarget every open PR
+based on it onto the base, and re-creating a branch of the same name never re-points them —
+the pending fixes end up queued against the branch the cut publishes *from*, where merging one
+publishes it on its own, under its own title. A bypass-free ruleset on `refs/heads/bundle/*`
+refuses the deletion, including the auto-delete that follows merging the cut PR. If a branch
+does go missing, `sec-sync-public-to-private.yml` says so in `#alerts-security` and the daily
+sync re-creates it — but the PRs it stranded have to be reclaimed by hand, with
+`sec-restack-bundle-prs.yml` dispatched with `adopt-stranded`.
+
+#### Resetting a bundle branch after a cut
+
+A bundle branch carries the pending fixes as separate commits and the cut squashes them into
+one, so once the batch is published the branch's own commits are redundant — and merging the
+base back in would keep every published fix in its log forever. The branch is therefore
+**reset onto the base in place**: the same end state as deleting and re-creating it, reached
+without the branch ever ceasing to exist. This is the one sanctioned rewrite of a bundle
+branch, and it is safe only because the open fix branches are replayed onto the new tip
+immediately afterwards.
+
+```mermaid
+sequenceDiagram
+    participant B as bundle/2.x
+    participant M as private master
+    participant P as public master
+    B->>M: cut PR squash-merges
+    Note over M: sec-publish-fix records refs/bundle-cut/2.x/pr-N
+    M->>P: public PR opened and merged
+    P->>M: hourly mirror resets master to public master
+    M->>B: reset-bundle-after-cut replays onto the new base
+    B->>B: restack-bundle-prs replays every open fix branch
+```
+
+`sec-publish-fix.yml` records the cut as a ref — `refs/bundle-cut/<2.x|1.x>/pr-<public PR>`,
+pointing at the bundle tip that was squashed. A ref, not a repository variable, so the flow
+needs no permission beyond the push it already makes. `reset-bundle-after-cut.mjs` then runs
+on every hourly mirror and does nothing until that public PR is merged *and* its commit has
+reached the freshly synced base; resetting earlier would drop the whole batch. It replays
+anything that landed on the branch during the window onto the new base, force-pushes with a
+lease, and deletes the marker only after the push lands, so a premature run is a free no-op.
+
+`sec-restack-bundle-prs.yml` then replays each open fix branch from the cut onto the new tip.
+The commits it inherited from the published batch replay empty and drop, leaving the PR
+showing exactly its own work. Three things to know about it:
+
+- It **force-pushes contributors' branches**, so `dismiss_stale_reviews_on_push` costs one
+  round of approvals per cut. Any refresh mechanism pays this; a merge would too.
+- It **skips stacks**. A PR that another open PR is based on cannot be rewritten on its own —
+  the child keeps the old parent commits. Those chains are reported for a human to restack in
+  order, root first.
+- A conflicted branch is left untouched, reported on its own PR, and **fails the run**.
+
+Only a `bundle/*` head may be published: `sec-publish-fix.yml` skips anything else merged into
+private `master`/`1.x` and reports it, because cherry-picking such a merge would open a public
+PR under a title that names the fix.
 
 The costs of merging are deliberate and paid for: a merge commit per run, and fixes that have
 already been published staying in the branch's log (the old rebase dropped them as empty

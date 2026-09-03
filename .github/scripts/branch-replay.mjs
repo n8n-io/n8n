@@ -9,8 +9,10 @@
  * merge landed on the content it was supposed to.
  *
  * Callers: `sync-master-to-3x.mjs` (master → 3.x, rebased, with mechanical conflict
- * resolution and a conflict PR) and `sync-bundle-branch.mjs` (base → bundle/*, merged
- * because those branches receive PRs, fail-loud).
+ * resolution and a conflict PR), `sync-bundle-branch.mjs` (base → bundle/*, merged because
+ * those branches receive PRs, fail-loud), `reset-bundle-after-cut.mjs` (bundle/* → the base
+ * once its batch is published) and `restack-bundle-prs.mjs` (the open fix branches → the
+ * reset bundle branch).
  *
  * Requires git 2.38+ (`merge-tree --write-tree`).
  */
@@ -105,4 +107,33 @@ export function assertNoMarkers(git, rev = 'HEAD') {
 		throw new Error(`Refusing to continue: conflict markers present in ${rev}:\n${found.out}`);
 	if (found.out.includes('fatal:'))
 		throw new Error(`Could not scan ${rev} for conflict markers:\n${found.out}`);
+}
+
+/**
+ * Replay `from..branch` onto `onto`, then prove the result is the tree merging the two sides
+ * yields. Commits whose content `onto` already carries replay empty and are dropped — that is
+ * how a branch built on a batch that has since been squashed into `onto` sheds the duplicates
+ * instead of re-proposing them.
+ *
+ * Never leaves a rebase in progress: a stall aborts, so the caller can report and move on to
+ * the next branch. `ok: false` with `conflictedPaths` means the two sides genuinely clash.
+ * `branch` must already exist locally at the revision to replay.
+ */
+export function replayOnto(git, { branch, onto, from }) {
+	const head = git(['rev-parse', branch]);
+	const merged = mergeTree(git, head, onto);
+	if (!merged.ok) return { ok: false, conflictedPaths: merged.conflictedPaths, out: merged.out };
+
+	git(['checkout', '--force', '-B', branch, head]);
+	const replay = attempt(git, ['rebase', '--empty=drop', '--onto', onto, from, branch]);
+	if (!replay.ok) {
+		// A stall the merge tree did not predict (delete/modify leaves no markers, so
+		// merge-tree can call it clean while the replay still stops).
+		attempt(git, ['rebase', '--abort']);
+		return { ok: false, conflictedPaths: [], out: replay.out };
+	}
+
+	assertTreeMatches(git, merged.tree);
+	assertNoMarkers(git);
+	return { ok: true, sha: git(['rev-parse', 'HEAD']) };
 }

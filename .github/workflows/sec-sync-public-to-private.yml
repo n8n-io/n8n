@@ -8,7 +8,11 @@
 #
 # A skipped branch or a hard failure is reported to #alerts-build.
 #
-# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml. This
+# workflow only touches them right after a cut has been published: once the batch a bundle
+# branch carried comes back from public, the branch is RESET onto the base in place (never
+# deleted and re-created — that retargets every open fix PR onto master and no re-creation
+# brings them back) and the open fix branches are replayed onto the new tip.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -23,6 +27,8 @@ on:
         type: boolean
         default: true
 
+permissions: {}
+
 jobs:
   sync-from-public:
     if: github.repository == 'n8n-io/n8n-private'
@@ -30,6 +36,11 @@ jobs:
     permissions:
       contents: write
       actions: write
+    outputs:
+      reset_2x: ${{ steps.reset-2x.outputs.status }}
+      cut_sha_2x: ${{ steps.reset-2x.outputs.cut_sha }}
+      reset_1x: ${{ steps.reset-1x.outputs.status }}
+      cut_sha_1x: ${{ steps.reset-1x.outputs.cut_sha }}
 
     steps:
       - name: Generate App Token
@@ -102,7 +113,44 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
-      - name: Re-create missing bundle branches
+      # Answering "has the cut come back from public yet?" needs to see a PR in the public
+      # repo, and nothing more. Kept apart from the token above, which force-pushes here.
+      - name: Generate a read-only token for the public repo
+        id: public-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n
+          permission-contents: read
+          permission-pull-requests: read
+
+      # No-ops until the batch this branch carried is merged in public AND mirrored back, so
+      # a run between the cut and the round-trip costs nothing and the next hour retries.
+      - name: Reset bundle/2.x after a published cut
+        id: reset-2x
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUBLIC_GH_TOKEN: ${{ steps.public-token.outputs.token }}
+          BUNDLE_BRANCH: bundle/2.x
+          BASE_BRANCH: master
+        run: node .github/scripts/reset-bundle-after-cut.mjs
+
+      - name: Reset bundle/1.x after a published cut
+        id: reset-1x
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUBLIC_GH_TOKEN: ${{ steps.public-token.outputs.token }}
+          BUNDLE_BRANCH: bundle/1.x
+          BASE_BRANCH: '1.x'
+        run: node .github/scripts/reset-bundle-after-cut.mjs
+
+      # A bundle branch must never go missing: the `bundle/*` ruleset forbids deleting one,
+      # because every open PR based on it is retargeted onto the base the moment it does.
+      # Recovery still belongs to the daily sync, which re-creates it at the base.
+      - name: Check the bundle branches exist
+        id: missing-bundles
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -120,8 +168,21 @@ jobs:
             exit 0
           fi
 
-          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
+          echo "missing=${MISSING[*]}" >> "$GITHUB_OUTPUT"
+          echo "::warning::Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
           gh workflow run sec-sync-bundle-branches.yml --ref master
+
+      - name: Notify Slack on a missing bundle branch
+        continue-on-error: true
+        if: ${{ !cancelled() && steps.missing-bundles.outputs.missing }}
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          MISSING: ${{ steps.missing-bundles.outputs.missing }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text "<${RUN_URL}|A bundle branch is missing>: ${MISSING}. It is being re-created, but every PR that targeted it has been retargeted onto its base and must be reclaimed."
 
       - name: Notify Slack on failure
         if: failure()
@@ -156,3 +217,31 @@ jobs:
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-build' \
             --text "<${RUN_URL}|Public → private sync skipped>: ${DETAILS} of public. Re-run with force once resolved."
+
+  # Replaying the heads is what makes the reset above safe: until it runs, every open fix PR
+  # still carries the batch that was just published and shows itself re-proposing it.
+  restack-2x:
+    name: Restack bundle/2.x PRs
+    needs: sync-from-public
+    if: needs.sync-from-public.outputs.reset_2x == 'reset'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/sec-restack-bundle-prs.yml
+    with:
+      bundle: bundle/2.x
+      cut-sha: ${{ needs.sync-from-public.outputs.cut_sha_2x }}
+    secrets: inherit
+
+  restack-1x:
+    name: Restack bundle/1.x PRs
+    needs: sync-from-public
+    if: needs.sync-from-public.outputs.reset_1x == 'reset'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/sec-restack-bundle-prs.yml
+    with:
+      bundle: bundle/1.x
+      cut-sha: ${{ needs.sync-from-public.outputs.cut_sha_1x }}
+    secrets: inherit

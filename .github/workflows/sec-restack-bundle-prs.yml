@@ -1,0 +1,120 @@
+# Replays the open fix branches of n8n-io/n8n-private onto a bundle branch that was just
+# reset onto its base.
+#
+# This is the second half of the post-cut reset, not a tidy-up. Resetting a branch that
+# receives PRs is only safe when the heads follow it: until they do, every open fix PR carries
+# the batch that was just published in its ancestry and shows itself re-proposing everyone
+# else's fixes. See reset-bundle-after-cut.mjs for the first half, and restack-bundle-prs.mjs
+# for what a replay does and does not touch.
+#
+# Called by sec-sync-public-to-private.yml right after a reset. Dispatch it by hand to
+# rehearse (dry run), to retry after a conflict was resolved, or with adopt-stranded to
+# reclaim PRs that an earlier cut left targeting the base.
+#
+# A conflicted branch is reported on its own PR and FAILS the run: a branch still carrying a
+# published batch must not hide behind a green tick.
+
+name: 'Security: Restack bundle PRs'
+run-name: "Restack ${{ inputs.bundle }} PRs${{ inputs['dry-run'] && ' (dry run)' || '' }}"
+
+on:
+  workflow_call:
+    inputs:
+      bundle:
+        description: Bundle branch the PRs should sit on.
+        required: true
+        type: string
+      cut-sha:
+        description: The bundle tip the cut squashed; empty replays from each merge base.
+        required: false
+        type: string
+        default: ''
+      dry-run:
+        required: false
+        type: boolean
+        default: false
+      adopt-stranded:
+        description: Also reclaim PRs left targeting the base by an earlier cut.
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      bundle:
+        description: Bundle branch the PRs should sit on.
+        required: true
+        type: choice
+        options:
+          - bundle/2.x
+          - bundle/1.x
+      cut-sha:
+        description: The bundle tip the cut squashed; empty replays from each merge base.
+        required: false
+        type: string
+        default: ''
+      dry-run:
+        description: Report the planned rewrites and push nothing.
+        required: false
+        type: boolean
+        default: true
+      adopt-stranded:
+        description: Also reclaim PRs left targeting the base by an earlier cut.
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  restack:
+    name: Restack PRs onto ${{ inputs.bundle }}
+    if: github.repository == 'n8n-io/n8n-private'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency: # never two restacks of the same branch at once
+      group: restack-${{ inputs.bundle }}
+      cancel-in-progress: false
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write # force-push the replayed fix branches
+          permission-pull-requests: write # comment on a conflict, retarget a stranded PR
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Always run the script from the default branch, never from a bundle or fix branch —
+          # it holds a contents:write token and fetches every ref it needs itself.
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false # we push with an explicit token URL instead
+
+      - name: Restack the open fix branches
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BUNDLE_BRANCH: ${{ inputs.bundle }}
+          BASE_BRANCH: ${{ inputs.bundle == 'bundle/1.x' && '1.x' || 'master' }}
+          CUT_SHA: ${{ inputs['cut-sha'] }}
+          DRY_RUN: ${{ inputs['dry-run'] }}
+          ADOPT_STRANDED: ${{ inputs['adopt-stranded'] }}
+        run: node .github/scripts/restack-bundle-prs.mjs
+
+      # Branch names hint at the vulnerability and Slack reaches a wider audience than the
+      # private repo, so this carries a run link and nothing else. The affected PR already
+      # has the detail, posted on itself.
+      - name: Notify Slack on failure
+        if: failure()
+        continue-on-error: true
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text "<${RUN_URL}|A fix branch could not be replayed onto its bundle branch>. It is untouched and still carries the published batch; the run says which."
