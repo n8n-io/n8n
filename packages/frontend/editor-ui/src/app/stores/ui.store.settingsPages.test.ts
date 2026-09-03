@@ -94,6 +94,25 @@ describe('uiStore.settingsSidebarItems', () => {
 			expect(otelItem(registerOtel())?.label).toBe(i18n.baseText('settings.opentelemetry'));
 		});
 
+		it('should prefer the key over a resolved label', () => {
+			const uiStore = useUIStore();
+			const settingsStore = useSettingsStore();
+			settingsStore.settings = { ...settingsStore.settings, activeModules: ['both'] };
+
+			uiStore.registerSettingsPages('both', [
+				{
+					id: 'settings-both',
+					label: 'stale',
+					labelKey: 'settings.opentelemetry',
+					route: { to: { name: 'Both' } },
+				},
+			]);
+
+			expect(uiStore.settingsSidebarItems.find((item) => item.id === 'settings-both')?.label).toBe(
+				i18n.baseText('settings.opentelemetry'),
+			);
+		});
+
 		it('should re-resolve the label after a locale change', () => {
 			const uiStore = registerOtel();
 			const english = otelItem(uiStore)?.label;

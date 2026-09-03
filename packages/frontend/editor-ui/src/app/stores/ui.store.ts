@@ -298,6 +298,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 		return {
 			...item,
+			// `ModuleSettingsPage` requires one of `label` / `labelKey`, so this is a string.
 			label: resolveContributionLabel(page) ?? '',
 			// A page may declare both gates, and then it has to pass both. An undeclared
 			// `available` defaults to true, which is what the shell assumed before.

@@ -86,4 +86,19 @@ describe('FrontendModuleDescription', () => {
 
 		expect(descriptor.settingsPages?.[0]?.label).toBe('Half moved');
 	});
+
+	it('rejects a settings page that declares neither a label nor a label key', () => {
+		const descriptor: FrontendModuleDescription = {
+			id: 'unlabelled',
+			name: 'Unlabelled',
+			description: 'A descriptor whose page would render a blank row',
+			icon: 'box',
+			settingsPages: [
+				// @ts-expect-error one of `label` / `labelKey` is required
+				{ id: 'settings-unlabelled', route: { to: { name: 'SettingsUnlabelled' } } },
+			],
+		};
+
+		expect(descriptor.settingsPages).toHaveLength(1);
+	});
 });
