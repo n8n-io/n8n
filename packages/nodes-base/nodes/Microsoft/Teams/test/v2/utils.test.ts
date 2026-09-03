@@ -310,21 +310,85 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(error.context.itemIndex).toBe(3);
 	});
 
+	const notFound = () =>
+		new NodeApiError(node, {
+			code: 'Request_ResourceNotFound',
+			message: 'Resource not found',
+			statusCode: 404,
+		});
+
 	it('names the row and the item when Graph cannot find the user', async () => {
 		setRows('jane@example.com', 'ghost@example.com');
 		apiRequest.mockResolvedValueOnce({ id: 'guid-1', displayName: 'Jane Smith' });
-		apiRequest.mockRejectedValueOnce(
-			new NodeApiError(node, {
-				code: 'Request_ResourceNotFound',
-				message: 'Resource not found',
-				statusCode: 404,
-			}),
-		);
+		apiRequest.mockRejectedValueOnce(notFound());
+		apiRequest.mockResolvedValueOnce({ value: [] }); // the mail fallback finds nothing either
 
 		const error = (await resolveMentions.call(ctx, 3).catch((e) => e)) as NodeOperationError;
 
 		expect(error.message).toBe('Could not find the user for mention 2');
 		expect(error.context.itemIndex).toBe(3);
+	});
+
+	// Graph resolves /users/{id} by object id or principal name only. Guests always have a
+	// different `mail`, so By Email has to fall back or it 404s on the address people actually know.
+	it('falls back to a mail lookup when the address is not a principal name', async () => {
+		setRows('alex@contoso.com');
+		apiRequest.mockRejectedValueOnce(notFound());
+		apiRequest.mockResolvedValueOnce({
+			value: [
+				{
+					id: 'guid-guest',
+					displayName: 'Alex Guest',
+					userPrincipalName: 'alex_contoso.com#EXT#@tenant.onmicrosoft.com',
+				},
+			],
+		});
+
+		const mentions = await resolveMentions.call(ctx, 0);
+
+		expect(mentions[0].mentioned.user.id).toBe('guid-guest');
+		expect(mentions[0].mentionText).toBe('Alex Guest');
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/v1.0/users',
+			{},
+			{
+				$filter: "mail eq 'alex@contoso.com'",
+				$select: 'id,displayName,userPrincipalName',
+				$top: 2,
+			},
+		);
+	});
+
+	it('doubles a single quote in the mail filter so the OData literal stays closed', async () => {
+		setRows("o'brien@contoso.com");
+		apiRequest.mockRejectedValueOnce(notFound());
+		apiRequest.mockResolvedValueOnce({ value: [{ id: 'g', displayName: 'O Brien' }] });
+
+		await resolveMentions.call(ctx, 0);
+
+		expect(apiRequest.mock.calls[1][3].$filter).toBe("mail eq 'o''brien@contoso.com'");
+	});
+
+	it('treats an ambiguous mail match as not found rather than guessing', async () => {
+		setRows('shared@contoso.com');
+		apiRequest.mockRejectedValueOnce(notFound());
+		apiRequest.mockResolvedValueOnce({ value: [{ id: 'a' }, { id: 'b' }] });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
+			'Could not find the user for mention 1',
+		);
+	});
+
+	it('does not attempt a mail lookup for a GUID', async () => {
+		setRows('11111111-1111-1111-1111-111111111111');
+		apiRequest.mockRejectedValueOnce(notFound());
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
+			'Could not find the user for mention 1',
+		);
+		expect(apiRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('passes a permission failure through with the item index', async () => {

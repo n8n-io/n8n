@@ -75,6 +75,31 @@ const mentionMessages = (row: number): UserTargetMessages => ({
  * Rows are walked in order, one request each: a realistic list is 1-3 entries, and sequential
  * keeps a failing row unambiguous and the resolved array in row order.
  */
+/**
+ * `GET /users/{id}` resolves an object id or a principal name, never a `mail` address, and the two
+ * differ for every guest (27 of 137 users on the QA tenant). So a 404 on something that looks like
+ * an address gets one more try against `mail` before we give up, which keeps By Email agreeing
+ * with From List, whose `$search` already matches on mail. Live-verified 2026-09-03.
+ */
+async function findUserByMail(
+	this: IExecuteFunctions,
+	address: string,
+): Promise<IDataObject | undefined> {
+	// OData string literals escape a single quote by doubling it.
+	const literal = address.replace(/'/g, "''");
+	const response = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		'/v1.0/users',
+		{},
+		{ $filter: `mail eq '${literal}'`, $select: 'id,displayName,userPrincipalName', $top: 2 },
+	)) as IDataObject;
+	const found = Array.isArray(response.value) ? (response.value as IDataObject[]) : [];
+	// Exactly one match only: an ambiguous address should fall through to the not-found error
+	// rather than silently mentioning the wrong person.
+	return found.length === 1 ? found[0] : undefined;
+}
+
 export async function resolveMentions(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -105,15 +130,21 @@ export async function resolveMentions(
 			)) as IDataObject;
 		} catch (error) {
 			if (error instanceof NodeApiError && error.httpCode === '404') {
-				throw new NodeOperationError(node, `Could not find the user for mention ${index + 1}`, {
-					itemIndex,
-					description:
-						'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
-				});
+				// Only an address can be a `mail` value, so a GUID goes straight to the error.
+				const byMail = value.includes('@') ? await findUserByMail.call(this, value) : undefined;
+				if (!byMail) {
+					throw new NodeOperationError(node, `Could not find the user for mention ${index + 1}`, {
+						itemIndex,
+						description:
+							'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
+					});
+				}
+				user = byMail;
+			} else {
+				// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their
+				// own message; only the item index is added.
+				throw stampItemIndexOnError(error, itemIndex);
 			}
-			// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their own
-			// message; only the item index is added.
-			throw stampItemIndexOnError(error, itemIndex);
 		}
 
 		// Directory objects with no display name exist (some guests, some service accounts);
