@@ -91,7 +91,7 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 // Outside the describe.each above: the trigger carries its own separately-worded
 // description, which this contract does not cover.
 describe('Microsoft Teams action (v2) generic credential scope hint', () => {
-	it('names User.Read.All in the microsoftOAuth2Api option', () => {
+	it('names ChatMember.ReadWrite and User.Read.All in the microsoftOAuth2Api option', () => {
 		const authProperty = versionDescription.properties.find(
 			(property) => property.name === 'authentication',
 		);
@@ -101,6 +101,7 @@ describe('Microsoft Teams action (v2) generic credential scope hint', () => {
 
 		expect(genericOption).toBeDefined();
 		const description = (genericOption as INodePropertyOptions).description ?? '';
+		expect(description).toContain('ChatMember.ReadWrite');
 		expect(description).toContain('User.Read.All');
 	});
 });

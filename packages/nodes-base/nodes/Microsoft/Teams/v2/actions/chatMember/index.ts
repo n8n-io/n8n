@@ -2,9 +2,10 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as add from './add.operation';
 import * as getAll from './getAll.operation';
+import * as remove from './remove.operation';
 import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
 
-export { add, getAll };
+export { add, getAll, remove };
 
 export const description: INodeProperties[] = [
 	{
@@ -46,10 +47,17 @@ export const description: INodeProperties[] = [
 				description: 'Get many members of a chat',
 				action: 'Get many chat members',
 			},
+			{
+				name: 'Remove',
+				value: 'remove',
+				description: 'Remove a member from a chat',
+				action: 'Remove chat member',
+			},
 		],
 		default: 'add',
 	},
 
 	...add.description,
 	...getAll.description,
+	...remove.description,
 ];
