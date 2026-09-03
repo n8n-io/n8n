@@ -77,6 +77,7 @@ import type {
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
+	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
 	BuilderTemplatesService,
@@ -176,6 +177,11 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import {
+	FOLDER_SCAN_LIMIT,
+	resolveRequestedFolder,
+	type FolderInScope,
+} from './instance-ai-folder-scope';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
@@ -358,7 +364,7 @@ export class InstanceAiAdapterService {
 		// Optional for the same reason as above. Folder exploration treats a
 		// missing dependency as "folders unsupported" rather than failing the run.
 		private readonly folderRepository?: FolderRepository,
-		readonly folderFinderService?: FolderFinderService,
+		private readonly folderFinderService?: FolderFinderService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -737,7 +743,7 @@ export class InstanceAiAdapterService {
 		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
 	): InstanceAiWorkflowService {
 		const foldersOn = options.folderExploration === true;
-		const { folderRepository } = this;
+		const { folderRepository, folderFinderService, projectService } = this;
 		const {
 			workflowService,
 			workflowFinderService,
@@ -786,6 +792,39 @@ export class InstanceAiAdapterService {
 				if (error instanceof LockedError) throw new WorkflowEditorLockedError(workflowId);
 				throw error;
 			}
+		};
+
+		/**
+		 * The folders the caller may name, per project. Access is checked with the
+		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * never revealed through a project the user cannot list folders in.
+		 * Returns undefined when folders cannot be read at all (unlicensed or
+		 * missing dependency), which the resolver reports as `unsupported`.
+		 */
+		const readFoldersInScope = async (
+			projectIds: string[],
+		): Promise<FolderInScope[] | undefined> => {
+			if (!license.isLicensed('feat:folders') || !folderRepository) return undefined;
+
+			const folders: FolderInScope[] = [];
+			for (const projectId of projectIds) {
+				if (!(await userHasScopes(user, ['folder:list'], false, { projectId }))) continue;
+				const rows = await folderRepository.getMany({
+					filter: { projectId },
+					take: FOLDER_SCAN_LIMIT,
+				});
+				for (const row of rows) {
+					folders.push({ id: row.id, name: row.name, path: row.name, projectId });
+				}
+			}
+
+			// Paths are needed for exact-path and suffix matching, and for the candidates
+			// listed on a miss. One CTE for all scanned folders.
+			const paths = await readFolderPaths(
+				folderRepository,
+				folders.map((folder) => folder.id),
+			);
+			return folders.map((folder) => ({ ...folder, path: paths.get(folder.id) ?? folder.name }));
 		};
 
 		/** Tells open editors to reload, mirroring what the REST controller does after a write. */
@@ -838,6 +877,35 @@ export class InstanceAiAdapterService {
 				// caller could already read, never widen it. Writes keep using
 				// `resolveBoundProjectId` and stay locked to the bound project.
 				const targetProjectId = resolveTargetProjectId(options);
+
+				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
+				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
+				let folderIds: string[] | undefined;
+				if (foldersOn && (options?.folderPath || options?.folderId)) {
+					const requested = options.folderPath ?? options.folderId ?? '';
+					const projectIds = targetProjectId
+						? [targetProjectId]
+						: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
+					const foldersInScope = await readFoldersInScope(projectIds);
+					const resolved = resolveRequestedFolder(
+						{ folderPath: options.folderPath, folderId: options.folderId },
+						foldersInScope,
+					);
+					if (!('folderId' in resolved)) {
+						const folderResolution: FolderResolutionFailure = { requested, ...resolved };
+						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
+					}
+					// Expanded here, not in the repository: the plain list query treats
+					// `parentFolderId` as an exact match, so relying on it would silently
+					// return only the folder's top level.
+					folderIds = folderFinderService
+						? await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
+								resolved.folderId,
+								options.recursive !== false,
+							)
+						: [resolved.folderId];
+				}
+
 				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(targetProjectId ? { projectId: targetProjectId } : {}),
@@ -846,6 +914,7 @@ export class InstanceAiAdapterService {
 					...(nodeUsageEnabled && options?.nodeTypes?.length
 						? { nodeTypes: options.nodeTypes }
 						: {}),
+					...(folderIds ? { parentFolderIds: folderIds } : {}),
 				};
 				const filter = {
 					...scopeFilter,

@@ -2005,6 +2005,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	const mockFolderFinderService = {
 		findFolderFilterIdsWithoutAccessCheck: vi.fn().mockResolvedValue([]),
 	};
+	const mockProjectService = {
+		getAccessibleProjects: vi.fn().mockResolvedValue([{ id: 'team-project-id' }, { id: 'p2' }]),
+	};
 	const mockLogger = {
 		error: vi.fn(),
 		warn: vi.fn(),
@@ -2041,7 +2044,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		mockProjectService as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
 			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
@@ -2056,7 +2059,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isLicensed: vi.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
-				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
+				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? true;
 				return false;
 			}),
 			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
@@ -2113,6 +2116,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry,
 		mockFolderRepository,
 		mockFolderFinderService,
+		mockProjectService,
 		mockLogger,
 		mockUser,
 	};
@@ -2428,6 +2432,133 @@ describe('createWorkflowAdapter', () => {
 			await adapter.list();
 
 			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('folder scoping', () => {
+		const folders = [
+			{
+				id: 'clients',
+				name: 'Clients',
+				parentFolderId: null,
+				homeProject: { id: 'team-project-id' },
+			},
+			{
+				id: 'acme',
+				name: 'Acme',
+				parentFolderId: 'clients',
+				homeProject: { id: 'team-project-id' },
+			},
+		];
+		const paths = new Map([
+			['clients', ['Clients']],
+			['acme', ['Clients', 'Acme']],
+		]);
+
+		function withFolders(overrides?: { foldersLicensed?: boolean }) {
+			const fixture = createWorkflowAdapterForTests({ folderExploration: true, ...overrides });
+			fixture.mockFolderRepository.getMany.mockResolvedValue(folders);
+			fixture.mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(paths);
+			fixture.mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue([
+				'acme',
+				'acme-child',
+			]);
+			return fixture;
+		}
+
+		it('scopes the listing to the resolved folder and its subtree by default', async () => {
+			const { adapter, mockWorkflowService, mockUser, mockFolderFinderService } = withFolders();
+			mockWorkflowService.getMany
+				.mockResolvedValueOnce({ workflows: [], count: 0 })
+				.mockResolvedValueOnce({ workflows: [], count: 0 });
+
+			await adapter.list({ folderPath: 'Clients/Acme', query: 'inbound' });
+
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'acme',
+				true,
+			);
+			expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(1, mockUser, {
+				take: 50,
+				filter: {
+					isArchived: false,
+					projectId: 'team-project-id',
+					parentFolderIds: ['acme', 'acme-child'],
+					query: 'inbound',
+				},
+			});
+			// The "in scope" re-count stays folder-scoped, so totalInScope describes the folder.
+			expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+				take: 1,
+				filter: {
+					isArchived: false,
+					projectId: 'team-project-id',
+					parentFolderIds: ['acme', 'acme-child'],
+				},
+			});
+		});
+
+		it('reads one level only with recursive: false', async () => {
+			const { adapter, mockFolderFinderService } = withFolders();
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['acme']);
+
+			await adapter.list({ folderId: 'acme', recursive: false });
+
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'acme',
+				false,
+			);
+		});
+
+		it('returns no rows and a folderResolution when the folder does not resolve', async () => {
+			const { adapter, mockWorkflowService } = withFolders();
+
+			const result = await adapter.list({ folderPath: 'Globex' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflows: [],
+				total: 0,
+				totalInScope: 0,
+				folderResolution: {
+					requested: 'Globex',
+					reason: 'not-found',
+					candidates: ['Clients', 'Clients/Acme'],
+				},
+			});
+		});
+
+		it('reports folders as unsupported when the instance is not licensed for them', async () => {
+			const { adapter, mockFolderRepository } = withFolders({ foldersLicensed: false });
+
+			const result = await adapter.list({ folderPath: 'Clients' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients',
+				reason: 'unsupported',
+				candidates: [],
+			});
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+		});
+
+		it('scans only the named project for folders when projectId is given', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+
+			await adapter.list({ projectId: 'p2', folderPath: 'Clients' });
+
+			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(1);
+			expect(mockFolderRepository.getMany).toHaveBeenCalledWith({
+				filter: { projectId: 'p2' },
+				take: 200,
+			});
+		});
+
+		it('scans every accessible project for folders on an instance-wide listing', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+
+			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(2);
 		});
 	});
 
