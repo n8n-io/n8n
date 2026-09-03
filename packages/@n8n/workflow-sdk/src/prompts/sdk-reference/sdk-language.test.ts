@@ -221,8 +221,14 @@ describe('GROUPING_GUIDANCE', () => {
 		it('says where to cut when an objective ends in a branch', () => {
 			// A build grouped an IF with its stop branch and lost both groups to
 			// `Output Edge From Non-Leaf Node`: the IF continued inside and exited too.
-			expect(GROUPING_GUIDANCE).toMatch(/end the group before the branch node/i);
 			expect(GROUPING_GUIDANCE).toMatch(/both continues inside it and exits it/i);
+			// A branch node whose paths both leave is a leaf with one exit, so keeping it
+			// inside is valid and costs the fewest top-level items.
+			expect(GROUPING_GUIDANCE).toMatch(
+				/keep the branch node inside and leave both its paths outside/i,
+			);
+			expect(GROUPING_GUIDANCE).toMatch(/end the group before the branch node/i);
+			expect(GROUPING_GUIDANCE).toMatch(/leave the branch node and its stop path outside/i);
 		});
 
 		it('breaks ties toward fewer, larger groups', () => {

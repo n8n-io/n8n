@@ -26,6 +26,13 @@ type IODirection = 'inputs' | 'outputs';
 export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
 
 /**
+ * How many boxes a reader should see on the canvas with every group collapsed:
+ * the trigger, each group, and each ungrouped node. Shared by the grouping
+ * guidance and the build-time check so the number cannot drift between them.
+ */
+export const TOP_LEVEL_ITEM_CEILING = 7;
+
+/**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
  */
 export function normalizeGroupDescription(description: unknown): string | undefined {

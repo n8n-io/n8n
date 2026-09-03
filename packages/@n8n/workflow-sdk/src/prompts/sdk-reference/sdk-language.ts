@@ -2,7 +2,11 @@
  * Builder-facing SDK language reference, rendered from the interpreter's own
  * tables so guidance cannot drift from what the parser accepts.
  */
-import { GROUP_DESCRIPTION_MAX_LENGTH, NODE_GROUPING_RULES } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	NODE_GROUPING_RULES,
+	TOP_LEVEL_ITEM_CEILING,
+} from 'n8n-workflow';
 
 import {
 	SDK_METHODS,
@@ -120,9 +124,9 @@ Node groups are named visual frames on the canvas.
 
 Every workflow needs an explicit grouping decision, taken while you write the code: declare groups, or conclude this one does not warrant any. Deciding against groups is fine; skipping the decision is not.
 
-- **When:** count top-level items with no groups (trigger + every node or existing group). More than 7 → you must group. A linear pipeline is the normal case for grouping, not an exemption: stages run in sequence (ingest → transform → deliver). 7 or fewer serving one objective → leave it ungrouped.
-- **How many:** one per stage or high-level objective, typically 3-5, aiming for at most 7 top-level items after grouping (trigger + groups + nodes left outside). Staying above 7 is only acceptable when every item still at the top level is either a group already, or a node that cannot join one without breaking a validity rule — check each one before you settle. Never break a validity rule or split one objective to hit the number. When in doubt, fewer and larger.
-- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them. Where an objective ends in a branch that stops one way and continues the other, end the group before the branch node, or leave that node and its stop path outside: a group cannot hold a node that both continues inside it and exits it.
+- **When:** count top-level items with no groups (trigger + every node or existing group). More than ${TOP_LEVEL_ITEM_CEILING} → you must group. A linear pipeline is the normal case for grouping, not an exemption: stages run in sequence (ingest → transform → deliver). ${TOP_LEVEL_ITEM_CEILING} or fewer serving one objective → leave it ungrouped.
+- **How many:** one per stage or high-level objective, typically 3-5, aiming for at most ${TOP_LEVEL_ITEM_CEILING} top-level items after grouping (trigger + groups + nodes left outside). Staying above ${TOP_LEVEL_ITEM_CEILING} is only acceptable when every item still at the top level is either a group already, or a node that cannot join one without breaking a validity rule — check each one before you settle. Never break a validity rule or split one objective to hit the number. When in doubt, fewer and larger.
+- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them. Where an objective ends in a branch that stops one way and continues the other, a group cannot hold a node that both continues inside it and exits it. You have three ways out, best first: keep the branch node inside and leave both its paths outside, end the group before the branch node, or leave the branch node and its stop path outside.
 - **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is separately executed and reusable. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 
 Groups are created collapsed, so title + description is all the user sees.
