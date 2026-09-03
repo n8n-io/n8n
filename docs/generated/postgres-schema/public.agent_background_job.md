@@ -10,7 +10,10 @@
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
+| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent agent consumed this settled job |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
+| parentPrincipalHash | varchar(64) |  | true |  |  | Sandbox principal hash of the parent agent run |
+| parentResourceId | varchar(255) |  | true |  |  | Memory resource of the parent agent run |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -63,7 +66,10 @@ erDiagram
   text error
   varchar_36_ id
   varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   text result
   timestamp_3__with_time_zone settledAt

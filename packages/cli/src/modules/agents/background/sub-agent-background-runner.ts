@@ -28,7 +28,7 @@ export interface BackgroundSpawnRequest {
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
 	parentResourceId: string;
-	parentSandboxPrincipalHash?: string;
+	parentSandboxPrincipalHash: string;
 }
 
 /**
@@ -71,6 +71,8 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			parentResourceId: request.parentResourceId,
+			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
@@ -110,9 +112,7 @@ export class SubAgentBackgroundRunner {
 						: {}),
 					parentThreadId: request.parentThreadId,
 					parentResourceId: request.parentResourceId,
-					...(request.parentSandboxPrincipalHash !== undefined
-						? { parentSandboxPrincipalHash: request.parentSandboxPrincipalHash }
-						: {}),
+					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,
 					taskPath,
 				},

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_background_job_kind" CHECK ("kind" IN ('subagent', 'workflow')), CONSTRAINT "CHK_agent_background_job_status" CHECK ("status" IN ('running', 'completed', 'failed', 'cancelled')), CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255), "parentPrincipalHash" varchar(64), CONSTRAINT "CHK_agent_background_job_kind" CHECK (("kind" IN ('subagent', 'workflow'))), CONSTRAINT "CHK_agent_background_job_status" CHECK (("status" IN ('running', 'completed', 'failed', 'cancelled'))), CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,7 +21,10 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | error | TEXT |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
+| notifiedAt | datetime(3) |  | true |  |  |  |
 | parentAgentId | varchar(36) |  | false |  | [agents](agents.md) |  |
+| parentPrincipalHash | varchar(64) |  | true |  |  |  |
+| parentResourceId | varchar(255) |  | true |  |  |  |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | result | TEXT |  | true |  |  |  |
 | settledAt | datetime(3) |  | true |  |  |  |
@@ -36,8 +39,8 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("kind" IN ('subagent', 'workflow')) |
-| - | CHECK | CHECK ("status" IN ('running', 'completed', 'failed', 'cancelled')) |
+| - | CHECK | CHECK (("kind" IN ('subagent', 'workflow'))) |
+| - | CHECK | CHECK (("status" IN ('running', 'completed', 'failed', 'cancelled'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_background_job_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -67,7 +70,10 @@ erDiagram
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
+  datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   TEXT result
   datetime_3_ settledAt

@@ -925,4 +925,25 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
+
+	it('injects no background tools for task runtimes when the flag is on', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const { service, credentialProvider } = setupWithRoster();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(undefined, { subAgents }),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			undefined,
+			false,
+		);
+
+		const toolNames = getInjectedToolNames();
+		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+	});
 });
