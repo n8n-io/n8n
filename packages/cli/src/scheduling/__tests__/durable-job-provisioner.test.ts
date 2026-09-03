@@ -13,6 +13,7 @@ import type { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
@@ -58,6 +59,7 @@ describe('DurableJobProvisioner', () => {
 	const tasks = mock<ScheduledTaskRepository>();
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner();
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -83,6 +85,7 @@ describe('DurableJobProvisioner', () => {
 			tasks,
 			globalConfig,
 			workflowOwner,
+			systemTaskOwner,
 			tracing,
 		);
 	};

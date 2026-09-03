@@ -14,6 +14,7 @@ import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 // Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
@@ -52,6 +53,7 @@ describe('DurableScheduler', () => {
 		const tasks = mock<ScheduledTaskRepository>();
 		tasks.readDbTime.mockResolvedValue(new Date());
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
+		const systemTaskOwner = new SystemTaskScheduledJobOwner();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -86,8 +88,9 @@ describe('DurableScheduler', () => {
 			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 			workflowOwner,
+			systemTaskOwner,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner };
+		return { scheduler, inner, logger, tracing, tasks, workflowOwner, systemTaskOwner };
 	}
 
 	describe('composition', () => {
@@ -337,6 +340,15 @@ describe('DurableScheduler', () => {
 				quarantineGraceSeconds: 86_400,
 				batchSize: 500,
 			});
+		});
+
+		it('composes the reconciliation pass over a registry declaring the system-task owner', () => {
+			const { systemTaskOwner } = makeScheduler();
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.SystemTask)).toBe(
+				systemTaskOwner,
+			);
 		});
 
 		it('composes no reconciliation pass when it is disabled', () => {

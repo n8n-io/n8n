@@ -30,6 +30,7 @@ import { Tracing } from 'n8n-core';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
@@ -124,13 +125,14 @@ export class DurableJobProvisioner {
 		private readonly tasks: ScheduledTaskRepository,
 		private readonly globalConfig: GlobalConfig,
 		workflowOwner: WorkflowScheduledJobOwner,
+		systemTaskOwner: SystemTaskScheduledJobOwner,
 		tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 		this.provisioner = createJobProvisioner<ProvisionScope, DeprovisionScope>({
 			provisionTransaction: (scope) => this.provisionTransaction(scope),
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
-			owners: createScheduledJobOwnerRegistry(workflowOwner),
+			owners: createScheduledJobOwnerRegistry(workflowOwner, systemTaskOwner),
 			tracer: createSchedulerTracer(tracing),
 		});
 		this.materializerOptions = {
