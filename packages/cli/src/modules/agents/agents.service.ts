@@ -16,16 +16,18 @@ import { v4 as uuid } from 'uuid';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
+import type { AgentTask } from './entities/agent-task.entity';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
 	type AgentSummary,
@@ -33,7 +35,6 @@ import {
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
-import { EventService } from '@/events/event.service';
 
 @Service()
 export class AgentsService {
@@ -72,15 +73,26 @@ export class AgentsService {
 			defaultModel,
 			schema,
 			skills,
+			tools,
+			tasks,
 		}: {
 			availableInMCP?: boolean;
 			id?: string;
 			adoptUnconfiguredOnCollision?: boolean;
 			defaultModel?: { model: string; credential: string };
 			/** Create with this config instead of the empty draft below, so eval thread
-			 *  seeding can recreate an already-built agent in one insert. */
+			 *  seeding and package import can recreate an already-built agent in one insert. */
 			schema?: AgentJsonConfig;
 			skills?: Record<string, AgentSkill>;
+			tools?: Agent['tools'];
+			/** Task bodies to create alongside, ids preserved (package import). */
+			tasks?: Array<{
+				id: string;
+				name: string;
+				objective: string;
+				cronExpression: string;
+				timezone: string | null;
+			}>;
 		} = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
@@ -110,6 +122,7 @@ export class AgentsService {
 			schema: schemaConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
+			...(tools ? { tools } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});
@@ -130,9 +143,25 @@ export class AgentsService {
 			return existing;
 		}
 
+		if (tasks?.length) {
+			await this.agentTaskRepository.save(
+				tasks.map((task) => this.agentTaskRepository.create({ ...task, agentId: saved.id })),
+			);
+		}
+
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
 		return saved;
+	}
+
+	async getTasks(agentId: string): Promise<AgentTask[]> {
+		return await this.agentTaskRepository.findByAgentId(agentId);
+	}
+
+	/** Which of the given ids exist at all, regardless of access. */
+	async findExistingAgentIds(agentIds: string[]): Promise<Set<string>> {
+		const rows = await this.agentRepository.find({ where: { id: In(agentIds) }, select: ['id'] });
+		return new Set(rows.map(({ id }) => id));
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {

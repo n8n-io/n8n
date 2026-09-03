@@ -93,6 +93,7 @@ const scope = (input: {
 		removedWorkflows: input.removedWorkflows ?? [],
 		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
+		agentResult: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
@@ -262,6 +263,7 @@ describe('emitPackageImportedEvent', () => {
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },
 			// T2 and its requirement appear in both scopes but count once (unique tag ids).
 			tags: { matched: 1, created: 1, renamed: 1, reconciled: 1, skipped: 1, requirements: 5 },
+			agents: { created: 0 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
 		expect(payload.options.variableMissingMode).toBe('create-stub');

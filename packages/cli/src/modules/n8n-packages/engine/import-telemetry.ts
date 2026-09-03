@@ -172,6 +172,9 @@ export function emitPackageImportedEvent(
 				skipped: uniqueTagIds((plan) => plan.dropped),
 				requirements: tagRequirements,
 			},
+			agents: {
+				created: scopes.reduce((total, { imported }) => total + imported.agentResult.length, 0),
+			},
 		},
 	});
 }

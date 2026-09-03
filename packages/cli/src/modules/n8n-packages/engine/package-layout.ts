@@ -26,6 +26,13 @@ export function workflowsInScope(
 	);
 }
 
+export function agentsInScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix = '',
+): ManifestEntry[] {
+	return (entries ?? []).filter((entry) => entry.target.startsWith(`${basePrefix}agents/`));
+}
+
 export function needsBundledVariableValues(
 	request: ImportVariableProperties,
 	hasRequirements: boolean,

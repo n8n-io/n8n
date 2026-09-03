@@ -8,7 +8,13 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
+import {
+	agentsInScope,
+	deriveParentFolderId,
+	foldersInScope,
+	workflowsInScope,
+} from './package-layout';
+import type { PreparedAgent, PreparedAgentFile } from '../entities/agent/agent.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
@@ -16,6 +22,7 @@ import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
+import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
@@ -71,6 +78,17 @@ export class N8nPackageParser {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;
+	}
+
+	/** Agents in scope, with their file payloads loaded. */
+	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
+		const manifest = await this.getManifest(reader);
+
+		const agents: PreparedAgent[] = [];
+		for (const entry of agentsInScope(manifest.agents, basePrefix)) {
+			agents.push(await this.readAgent(reader, entry));
+		}
+		return agents;
 	}
 
 	/** Reads the package's data table schemas. */
@@ -153,6 +171,59 @@ export class N8nPackageParser {
 		for (const warning of WorkflowHelpers.sanitizeNodeGroupDescriptions(entity)) {
 			this.logger.warn(`Package workflow file at ${path}: ${warning}`);
 		}
+	}
+
+	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
+		const path = `${entry.target}/agent.json`;
+		const wire = await this.readJson(reader, path, 'agent');
+
+		let agent: SerializedAgent;
+		try {
+			agent = serializedAgentSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package agent file at ${path} failed schema validation.`, { cause });
+			}
+			throw cause;
+		}
+
+		// Agents are created under agent.json's id, but the manifest is the package's
+		// index — a mismatch would import an agent under an undeclared identity.
+		if (agent.id !== entry.id) {
+			throw new UserError(
+				`Package agent at ${path} declares id "${agent.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		const files: PreparedAgentFile[] = [];
+		for (const file of agent.files) {
+			let content: Buffer;
+			try {
+				content = await reader.readFile(file.target);
+			} catch (cause) {
+				throw new UserError(
+					`Package agent at ${path} references a missing knowledge file at ${file.target}.`,
+					{ cause },
+				);
+			}
+			files.push({
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				fileSizeBytes: file.fileSizeBytes,
+				content,
+			});
+		}
+
+		return {
+			sourceAgentId: agent.id,
+			name: agent.name,
+			config: agent.config,
+			tools: agent.tools,
+			skills: agent.skills,
+			tasks: agent.tasks,
+			availableInMCP: agent.availableInMCP,
+			files,
+		};
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {

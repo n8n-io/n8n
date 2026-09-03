@@ -1,6 +1,8 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { AgentsService } from '@/modules/agents/agents.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -8,8 +10,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ManifestEntry } from '../../spec/manifest.schema';
+import { AgentExporter } from '../agent/agent.exporter';
+import type { AgentExportResult } from '../agent/agent.exporter';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
@@ -30,6 +34,7 @@ interface ProjectExportResult {
 	entries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	workflowEntries: ManifestEntry[];
+	agentEntries: ManifestEntry[];
 	requirements: WorkflowExportRequirements;
 	projectTargetsById: Map<string, string>;
 }
@@ -43,6 +48,9 @@ export class ProjectExporter {
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly folderExporter: FolderExporter,
 		private readonly workflowExporter: WorkflowExporter,
+		private readonly agentExporter: AgentExporter,
+		private readonly agentsService: AgentsService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async export(request: ProjectExportRequest): Promise<ProjectExportResult> {
@@ -78,11 +86,13 @@ export class ProjectExporter {
 		await this.exportProjectShell(project, target, request.writer);
 		const folders = await this.exportProjectFolders(project.id, target, request);
 		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
+		const agents = await this.exportProjectAgents(project.id, target, request);
 
 		return {
 			entries: [{ id: project.id, name: project.name, target }],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
+			agentEntries: agents.entries,
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
 			projectTargetsById: new Map([[project.id, target]]),
 		};
@@ -142,11 +152,39 @@ export class ProjectExporter {
 		});
 	}
 
+	/**
+	 * A project's agents ride along with it. Their workflow tools are the
+	 * project's own workflows, which the folder and root exports already carry;
+	 * a reference into another project is not followed.
+	 */
+	private async exportProjectAgents(
+		projectId: string,
+		target: string,
+		request: ProjectExportRequest,
+	): Promise<AgentExportResult> {
+		if (!this.moduleRegistry.isActive('agents')) {
+			return { entries: [], referencedWorkflowIds: [] };
+		}
+
+		const agents = await this.agentsService.findByProjectId(projectId);
+		if (agents.length === 0) {
+			return { entries: [], referencedWorkflowIds: [] };
+		}
+
+		return await this.agentExporter.export({
+			user: request.user,
+			agentIds: agents.map(({ id }) => id),
+			writer: request.writer,
+			basePrefix: target,
+		});
+	}
+
 	private mergeProjectExportResults(results: ProjectExportResult[]): ProjectExportResult {
 		return {
 			entries: results.flatMap((result) => result.entries),
 			folderEntries: results.flatMap((result) => result.folderEntries),
 			workflowEntries: results.flatMap((result) => result.workflowEntries),
+			agentEntries: results.flatMap((result) => result.agentEntries),
 			requirements: mergeRequirements(...results.map((result) => result.requirements)),
 			projectTargetsById: new Map(results.flatMap((result) => [...result.projectTargetsById])),
 		};

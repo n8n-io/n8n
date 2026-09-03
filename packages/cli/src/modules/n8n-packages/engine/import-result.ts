@@ -12,6 +12,7 @@ import type {
 	ImportBindingMap,
 	ImportCredentialSummary,
 	ImportDataTableSummary,
+	ImportedAgentSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -67,6 +68,7 @@ export function buildImportResult(input: {
 	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
+	agents: ImportedAgentSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
 	dataTables: ImportDataTableSummary;
@@ -80,6 +82,7 @@ export function buildImportResult(input: {
 		removedFolders: input.removedFolders,
 		folders: input.folders,
 		projects: input.projects,
+		agents: input.agents,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
 		dataTables: input.dataTables,

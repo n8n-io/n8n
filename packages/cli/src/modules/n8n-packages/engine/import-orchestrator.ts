@@ -3,6 +3,10 @@ import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
 
+import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableWritesAllowed } from './import-gates';
+import { AgentImporter } from '../entities/agent/agent-importer';
+import type { AgentImportPlan, AgentImportRequest } from '../entities/agent/agent.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -16,12 +20,12 @@ import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 } from '../entities/data-table/data-table.types';
+import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type {
 	FolderImportContext,
 	FolderImportPlan,
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
-import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
 import { FolderRemover } from '../entities/folder/folder-remover';
@@ -47,15 +51,16 @@ import type {
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
-import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
-import { WorkflowRemover } from '../entities/workflow/workflow-remover';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
+import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
+import { WorkflowRemover } from '../entities/workflow/workflow-remover';
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
 	ImportBindingMap,
 	ImportContext,
+	ImportedAgentSummary,
 	ImportedFolderSummary,
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
@@ -66,8 +71,6 @@ import type {
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
-import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -77,6 +80,7 @@ export interface ImportOrchestrationInput {
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	tagRequest: TagImportRequest;
+	agentRequest: AgentImportRequest;
 	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
@@ -100,6 +104,7 @@ export interface ImportContentResult {
 	variablePlan: VariableImportPlan;
 	variableResult: VariableApplyResult;
 	tagPlan: TagImportPlan;
+	agentResult: ImportedAgentSummary[];
 }
 
 export interface ImportPlan {
@@ -111,6 +116,7 @@ export interface ImportPlan {
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
 	tagPlan: TagImportPlan;
+	agentPlan: AgentImportPlan;
 	removalPlan: WorkflowRemovalPlan;
 	folderRemovalPlan: FolderRemovalPlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
@@ -131,6 +137,7 @@ export class ImportOrchestrator {
 		private readonly folderImporter: FolderImporter,
 		private readonly folderRemover: FolderRemover,
 		private readonly workflowImporter: WorkflowImporter,
+		private readonly agentImporter: AgentImporter,
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
@@ -198,6 +205,7 @@ export class ImportOrchestrator {
 			dataTableRequest,
 			variableRequest,
 			tagRequest,
+			agentRequest,
 			options,
 		} = input;
 
@@ -220,6 +228,7 @@ export class ImportOrchestrator {
 		);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
+		const agentPlan = await this.agentImporter.plan(context, agentRequest);
 
 		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
 		const removalPlan = await this.workflowRemover.plan(context, {
@@ -257,6 +266,7 @@ export class ImportOrchestrator {
 			variableRequest,
 			variablePlan,
 			tagPlan,
+			agentPlan,
 			removalPlan,
 			folderRemovalPlan,
 			missingNodeTypes,
@@ -272,6 +282,7 @@ export class ImportOrchestrator {
 			dataTablePlan,
 			variablePlan,
 			tagPlan,
+			agentPlan,
 			removalPlan,
 			folderRemovalPlan,
 			missingNodeTypes,
@@ -338,6 +349,10 @@ export class ImportOrchestrator {
 			}),
 		);
 
+		// After the workflows: agent workflow-tool references rebind through the
+		// bindings the workflow write just produced.
+		const agentResult = await this.agentImporter.apply(context, plan.agentPlan, bindings);
+
 		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
 		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
 		// publish sweep, which evaluates trigger parameters against variable values.
@@ -363,6 +378,7 @@ export class ImportOrchestrator {
 			variablePlan,
 			variableResult,
 			tagPlan,
+			agentResult,
 		};
 	}
 
@@ -375,6 +391,7 @@ export class ImportOrchestrator {
 		variableRequest,
 		variablePlan,
 		tagPlan,
+		agentPlan,
 		removalPlan,
 		folderRemovalPlan,
 		missingNodeTypes,
@@ -388,6 +405,7 @@ export class ImportOrchestrator {
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
 		tagPlan: TagImportPlan;
+		agentPlan: AgentImportPlan;
 		removalPlan: WorkflowRemovalPlan;
 		folderRemovalPlan: FolderRemovalPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
@@ -414,6 +432,9 @@ export class ImportOrchestrator {
 			),
 			...dataTablePlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
+			),
+			...agentPlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'agent-unresolved', ...failure }),
 			),
 			...tagPlan.failures.map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
 			...this.credentialImporter

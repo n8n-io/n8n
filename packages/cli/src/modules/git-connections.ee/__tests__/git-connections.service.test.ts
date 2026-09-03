@@ -288,6 +288,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 							dataTables: 0,
 							variables: 0,
 							tags: 0,
+							agents: 0,
 						},
 					};
 				},
@@ -344,6 +345,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					dataTables: 0,
 					variables: 0,
 					tags: 0,
+					agents: 0,
 				},
 				commitSha: 'newsha',
 			});

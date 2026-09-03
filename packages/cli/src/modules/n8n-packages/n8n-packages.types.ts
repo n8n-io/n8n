@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
+import type { AgentResolutionFailure } from './entities/agent/agent.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
@@ -222,6 +223,7 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	agentIds?: string[];
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
@@ -376,6 +378,9 @@ export type ImportPackageEventCounts = {
 		skipped: number;
 		requirements: number;
 	};
+	agents: {
+		created: number;
+	};
 };
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
@@ -386,6 +391,7 @@ export type ExportPackageEventCounts = {
 	dataTables: number;
 	variables: number;
 	tags: number;
+	agents: number;
 };
 
 /**
@@ -464,6 +470,15 @@ export interface ImportedProjectSummary {
 	status: 'created' | 'updated' | 'skipped';
 }
 
+export interface ImportedAgentSummary {
+	sourceAgentId: string;
+	localId: string;
+	name: string;
+	status: 'created';
+	/** Knowledge files written for this agent. */
+	files: number;
+}
+
 /**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
@@ -489,6 +504,7 @@ export type BlockingIssue =
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'agent-unresolved' } & AgentResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
 	| ({ type: 'variable-conflict' } & VariableConflict)
@@ -620,6 +636,7 @@ export interface ImportResult {
 	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
+	agents: ImportedAgentSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 	dataTables: ImportDataTableSummary;

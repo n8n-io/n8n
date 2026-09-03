@@ -1,17 +1,19 @@
+import { N8nPdfLoader } from '@n8n/ai-utilities';
 import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
 } from '@n8n/api-types';
-import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -71,6 +73,61 @@ export class AgentKnowledgeService {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		return files.map((file) => toAgentFileDto(file));
+	}
+
+	/** Every knowledge file's row and stored bytes, for package export. */
+	async getFilesWithContent(agentId: string): Promise<Array<{ file: AgentFile; content: Buffer }>> {
+		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const result: Array<{ file: AgentFile; content: Buffer }> = [];
+		for (const file of files) {
+			const content = await this.agentKnowledgeFileStore.readAsBuffer({
+				storedAt: file.storedAt,
+				storageKey: file.storageKey,
+			});
+			if (!content) {
+				throw new UnexpectedError('Knowledge file content is missing from storage', {
+					extra: { agentId, fileId: file.id },
+				});
+			}
+			result.push({ file, content });
+		}
+		return result;
+	}
+
+	/**
+	 * Writes an already-prepared file's bytes and row, for package import. The
+	 * bytes come from another instance's store, so no PDF extraction runs here;
+	 * `fileSizeBytes` carries the source row's value.
+	 */
+	async importFile(
+		agentId: string,
+		meta: { fileName: string; mimeType: string; fileSizeBytes: number },
+		content: Buffer,
+	): Promise<AgentFile> {
+		const fileId = generateNanoId();
+		const stored = await this.agentKnowledgeFileStore.write({ agentId, fileId }, content, {
+			fileName: storageFileNameForOriginalFileName(meta.fileName),
+			mimeType: meta.mimeType,
+		});
+
+		try {
+			const agentFile = this.agentFileRepository.create({
+				id: fileId,
+				agentId,
+				storedAt: stored.storedAt,
+				storageKey: stored.storageKey,
+				fileName: meta.fileName,
+				mimeType: meta.mimeType,
+				fileSizeBytes: meta.fileSizeBytes,
+			});
+			return await this.agentFileRepository.save(agentFile);
+		} catch (error) {
+			await this.agentKnowledgeFileStore.delete([stored]).catch(() => {});
+			if (isUniqueConstraintError(error)) {
+				throw this.duplicateFileNameError(meta.fileName);
+			}
+			throw error;
+		}
 	}
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {

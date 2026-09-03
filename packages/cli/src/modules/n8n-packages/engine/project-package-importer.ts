@@ -17,6 +17,7 @@ import type {
 	RemovedWorkflowSummary,
 	BlockingIssue,
 	ImportBindingMap,
+	ImportedAgentSummary,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ResolvedImportRequest,
@@ -160,6 +161,7 @@ export class ProjectPackageImporter {
 		const removedWorkflows: RemovedWorkflowSummary[] = [];
 		const removedFolders: RemovedFolderSummary[] = [];
 		const folders: ImportedFolderSummary[] = [];
+		const agents: ImportedAgentSummary[] = [];
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
@@ -181,6 +183,7 @@ export class ProjectPackageImporter {
 			removedWorkflows.push(...content.removedWorkflows);
 			removedFolders.push(...content.removedFolders);
 			folders.push(...content.folderSummaries);
+			agents.push(...content.agentResult);
 			scopedBindings.push(content.bindings);
 			matched.push(...content.credentialResult.matched);
 			stubbed.push(...content.credentialResult.stubbed);
@@ -210,6 +213,7 @@ export class ProjectPackageImporter {
 			removedFolders,
 			folders,
 			projects: projectSummaries,
+			agents,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
 			dataTables: { matched: dataTablesMatched, created: dataTablesCreated },
@@ -292,6 +296,7 @@ export class ProjectPackageImporter {
 			dataTableRequest,
 			variableRequest,
 			tagRequest,
+			agentRequest: { agents: await this.packageParser.getAgents(reader, basePrefix) },
 			options: request,
 			projectPendingCreation,
 			importSource,
