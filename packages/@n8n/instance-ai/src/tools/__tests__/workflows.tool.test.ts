@@ -925,7 +925,7 @@ describe('workflows tool', () => {
 			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
 
 			expect(vi.mocked(generateWorkflowCode)).toHaveBeenCalledWith(
-				expect.objectContaining({ includeNodeIds: true }),
+				expect.objectContaining({ includeNodeIds: true, includePositions: false }),
 			);
 		});
 	});

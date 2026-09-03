@@ -674,8 +674,14 @@ async function handleGetAsCode(
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
 	const toCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
-		// and carrying the ids through is what keeps node identity stable.
-		const body = generateWorkflowCode({ workflow: json, includeNodeIds: true });
+		// and carrying the ids through is what keeps node identity stable. Positions stay
+		// out: build-workflow restores the saved layout by id, so a position in the file
+		// is only an invitation to edit layout.
+		const body = generateWorkflowCode({
+			workflow: json,
+			includeNodeIds: true,
+			includePositions: false,
+		});
 		// The file must build as-is, so it carries the import line codegen omits.
 		const importLine = buildImports(body);
 		return importLine ? `${importLine}\n\n${body}` : body;

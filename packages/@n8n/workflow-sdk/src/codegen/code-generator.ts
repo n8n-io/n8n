@@ -68,6 +68,8 @@ export interface GenerateCodeOptions extends ExecutionContextOptions {
 	 * surfaces that round-trip code back into a saved workflow should opt in.
 	 */
 	includeNodeIds?: boolean;
+	/** Emit saved node positions. On by default; see `GenerateWorkflowCodeOptions`. */
+	includePositions?: boolean;
 }
 
 /**
@@ -90,6 +92,8 @@ interface GenerationContext {
 	pinnedNodes?: Set<string>;
 	/** Graph node names allowed to emit their id; absent when id emission is off */
 	nodesWithEmittableId?: ReadonlySet<string>;
+	/** Leave `position` out of every node, subnode, and sticky note. */
+	omitPositions?: boolean;
 }
 
 /**
@@ -165,7 +169,7 @@ function generateSubnodeCall(
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, subnodeNode);
@@ -357,7 +361,7 @@ function generateSubnodeCallWithVarRefs(
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, subnodeNode);
@@ -491,7 +495,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, node);
@@ -651,7 +655,7 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		options.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
@@ -694,7 +698,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, node);
@@ -1415,6 +1419,7 @@ export function generateCode(
 		nodesWithEmittableId: executionContext?.includeNodeIds
 			? collectNodesWithEmittableId(graph)
 			: undefined,
+		omitPositions: executionContext?.includePositions === false,
 	};
 
 	// Pre-register all node variable names to detect and resolve collisions.

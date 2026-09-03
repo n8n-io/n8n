@@ -534,10 +534,11 @@ every reported error and warning before calling `build-workflow`.
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
-- When editing a pre-loaded workflow, remove every `position` array — from node
-  configs and from `sticky()` options alike. Positions are auto-calculated, and
-  the saved workflow's own layout is restored on save, so nothing you drop here
-  is lost. Leaving some in place is worse than dropping all of them.
+- When editing a saved workflow, leave layout alone. The source `get-as-code`
+  writes carries no `position` arrays: the saved layout is restored on save by
+  node `id`, and nodes you add are placed by the layout engine. Do not add a
+  `position` to any node, and never run a whole-file substitution (for example
+  `sed`) over the source to change layout.
 - When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
   `get-as-code` produced it, on the node it came with. `id` is the node's
   permanent identity in n8n — execution logs, poll cursors, deduplication state
@@ -545,8 +546,8 @@ every reported error and warning before calling `build-workflow`.
   Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
   renumber or reuse an `id`, and never copy one from a template, another workflow
   or another node. **Omit `id` entirely for any node you are adding** — one is
-  assigned on save. Deleting a node means deleting its `id` line with it. This is
-  the opposite of `position`: drop every `position`, keep every `id`.
+  assigned on save. Deleting a node means deleting its `id` line with it. Like
+  `position`, `id` is saved state: never write one by hand.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one

@@ -2,6 +2,79 @@ import { generateWorkflowCode } from './index';
 import { parseWorkflowCode } from './parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
+describe('includePositions', () => {
+	const workflow: WorkflowJSON = {
+		name: 'Positions',
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			},
+			{
+				id: 'agent',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1.7,
+				position: [300, 200],
+				parameters: {},
+			},
+			{
+				id: 'model',
+				name: 'Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				position: [300, 400],
+				parameters: {},
+			},
+			{
+				id: 'merge',
+				name: 'Merge',
+				type: 'n8n-nodes-base.merge',
+				typeVersion: 3,
+				position: [500, 200],
+				parameters: {},
+			},
+			{
+				id: 'note',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, 600],
+				parameters: { content: 'hello' },
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			Agent: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		},
+	};
+
+	it('emits positions by default', () => {
+		const code = generateWorkflowCode({ workflow, includeNodeIds: true });
+		expect(code).toContain('position: [100, 200]');
+		expect(code).toContain('position: [300, 400]');
+		expect(code).toContain('position: [500, 200]');
+		expect(code).toContain('position: [0, 600]');
+	});
+
+	it('leaves positions out of nodes, subnodes, merges, and sticky notes when disabled', () => {
+		const code = generateWorkflowCode({ workflow, includeNodeIds: true, includePositions: false });
+		expect(code).not.toContain('position');
+		expect(code).toContain("id: 'trigger'");
+		expect(code).toContain("sticky('hello'");
+		expect(
+			parseWorkflowCode(code)
+				.nodes.map((n) => n.name)
+				.sort(),
+		).toEqual(['Agent', 'Merge', 'Model', 'Note', 'Start']);
+	});
+});
+
 describe('generateWorkflowCode', () => {
 	it('never emits pinData from the source workflow', () => {
 		// Intentional (INS-1216): pinned data must not round-trip through

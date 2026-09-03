@@ -85,6 +85,8 @@ interface SubnodeGenerationContext {
 	graph: SemanticGraph;
 	nodeNameToVarName: Map<string, string>;
 	expressionAnnotations?: Map<string, string>;
+	/** Leave `position` out of subnode configs; set by the code generator. */
+	omitPositions?: boolean;
 }
 
 /**
@@ -271,7 +273,7 @@ function generateSubnodeConfigParts(
 	}
 
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
