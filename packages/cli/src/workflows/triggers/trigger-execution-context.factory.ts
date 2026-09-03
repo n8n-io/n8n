@@ -116,8 +116,15 @@ export class TriggerExecutionContextFactory {
 	 * The done promise needs no help here: {@link settleDonePromise} rejects it
 	 * from the returned promise chain.
 	 */
-	private assertEngineV2Supported(emit: EngineV2ActiveTriggerEmit): void {
+	private async assertEngineV2Supported(
+		data: INodeExecutionData[][],
+		emit: EngineV2ActiveTriggerEmit,
+	): Promise<void> {
 		try {
+			// Files first, because this check deletes what it refuses: a refusal for
+			// any other reason would otherwise leave the stored files behind, owned by
+			// no execution.
+			await this.engineV2ActiveTriggers.assertPayloadSupported(data);
 			this.engineV2ActiveTriggers.assertSupported(emit);
 		} catch (error) {
 			emit.responsePromise?.reject(ensureError(error));
@@ -202,7 +209,7 @@ export class TriggerExecutionContextFactory {
 						// Checked against the fresh data, so this agrees with the dispatcher,
 						// which decides on the same copy.
 						if (this.engineV2ActiveTriggers.handles(freshWorkflowData, mode)) {
-							this.assertEngineV2Supported({ responsePromise, donePromise });
+							await this.assertEngineV2Supported(data, { responsePromise, donePromise });
 						}
 
 						return await this.workflowExecutionService.runWorkflow(
@@ -365,6 +372,11 @@ export class TriggerExecutionContextFactory {
 				// retried. Reads the registration's copy of the workflow rather than the
 				// fresh one for the same reason: the fresh read comes too late.
 				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
+					// Detached because `__emit` is synchronous. The poll may have stored
+					// attachments, and no execution will ever own them.
+					void this.engineV2ActiveTriggers
+						.discardFiles(data)
+						.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
 					this.engineV2ActiveTriggers.assertPollSupported();
 				}
 

@@ -5,12 +5,18 @@ import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
-import type { ErrorReporter, IGetExecutePollFunctions, StorageConfig } from 'n8n-core';
+import type {
+	BinaryDataService,
+	ErrorReporter,
+	IGetExecutePollFunctions,
+	StorageConfig,
+} from 'n8n-core';
 import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
 import type {
 	Cron,
 	CronExpression,
 	ExecutionError,
+	IBinaryData,
 	IConnections,
 	IExecuteResponsePromiseData,
 	INode,
@@ -41,6 +47,7 @@ import type {
 	WorkflowPublishedDataService,
 } from '@/workflows/workflow-published-data.service';
 import type { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -68,7 +75,11 @@ describe('TriggerExecutionContextFactory', () => {
 	// The real service over a mocked dispatcher: `engineV2Dispatcher.handlesWorkflow`
 	// is the only input, and the refusals under test stay the production ones.
 	const engineV2Dispatcher = mock<EngineV2Dispatcher>();
-	const engineV2ActiveTriggers = new EngineV2ActiveTriggers(engineV2Dispatcher);
+	const binaryDataService = mock<BinaryDataService>();
+	const engineV2ActiveTriggers = new EngineV2ActiveTriggers(
+		engineV2Dispatcher,
+		new EngineV2PayloadGuard(binaryDataService, mock<Logger>()),
+	);
 
 	let factory: TriggerExecutionContextFactory;
 	let errorReporter: ErrorReporter;
@@ -1678,6 +1689,9 @@ describe('TriggerExecutionContextFactory', () => {
 	});
 
 	describe('on engine 2.0', () => {
+		/** An attachment already written to storage, so it has an id to delete. */
+		const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
+
 		const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const mode: WorkflowExecuteMode = 'trigger';
@@ -1748,6 +1762,34 @@ describe('TriggerExecutionContextFactory', () => {
 				await refused;
 			});
 
+			test('refuses an emit carrying a file, and deletes what it stored', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				triggerContext().emit(data);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				// No execution will ever own the file, so nothing else would reclaim it.
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
+
+			test('deletes the files even when the emit is refused for waiting on its run', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+				const donePromise = createDeferredPromise<IRun>();
+
+				triggerContext().emit(data, undefined, donePromise);
+				const refused = expect(donePromise.promise).rejects.toThrow(UserError);
+
+				await sleep(0);
+
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+				await refused;
+			});
+
 			test('rejects the response promise too, so the node does not wait forever', async () => {
 				const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 				const donePromise = createDeferredPromise<IRun>();
@@ -1766,9 +1808,22 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		describe('a poll trigger', () => {
-			test('refuses the emit and commits no cursor', () => {
+			beforeEach(() => {
 				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			});
 
+			test('deletes the attachments the refused poll stored', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				expect(() => pollContext().__emit(data)).toThrow(UserError);
+				await sleep(0);
+
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
+
+			test('refuses the emit and commits no cursor', () => {
 				expect(() => pollContext().__emit([[{ json: {} }]])).toThrow(
 					'Engine 2.0 cannot run polling triggers yet.',
 				);
