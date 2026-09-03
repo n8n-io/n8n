@@ -318,6 +318,13 @@ done-ness is always derived client-side. Durable; the reducer folds the
 latest snapshot per `workflowId` onto the ROOT agent node regardless of the
 emitting agent, so it survives refresh via `GET /messages`.
 
+Emitted only while the setup panel flag is on, through the host-wired
+`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+snapshot on every successful save (open credential slots fanned out to their
+nodes, slots already bound to a stored credential, and nodes with unresolved
+parameters); `credentials(action="setup")` merges its announced types into the
+last snapshot. The emitter drops a snapshot whose content did not change.
+
 ```json
 {
   "type": "setup-items",

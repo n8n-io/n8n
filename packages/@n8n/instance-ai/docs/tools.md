@@ -662,6 +662,7 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint? }` |
+| `workflowId` | string | no | The workflow the credentials are for, when one exists |
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
 
@@ -680,6 +681,14 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `credentials(action="setup")` again to select the created
 credential.
+
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+to a workflow (`workflowId`, or a workflow this run created) and the stage is
+not `finalize`, the tool does not suspend. It merges the credential types into
+the workflow's durable `setup-items` snapshot and returns
+`{ success: true, announced: true, workflowId, credentials: [{ credentialType,
+existingCredentials }], message }` so the build continues while the user
+connects credentials from the panel. Standalone setup keeps the card.
 
 ### `credentials(action="test")`
 

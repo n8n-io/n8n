@@ -23,6 +23,10 @@ import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	N8N_CONNECT_DISPLAY_NAME,
 } from './workflows/credential-utils';
+import {
+	buildSetupItemsFromCredentialRequests,
+	isSetupPanelEnabled,
+} from './workflows/setup-items';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -402,6 +406,12 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'The workflow these credentials are for, when one exists (e.g. the id returned by build-workflow). Lets the setup panel list them against that workflow.',
+		),
 	requireUserSelection: z
 		.boolean()
 		.optional()
@@ -717,6 +727,65 @@ async function handleSearchTypes(
 	return { results };
 }
 
+/**
+ * The workflow a setup announcement belongs to: the one the agent named, else
+ * the workflow this run created most recently. Undefined outside any workflow
+ * context, where the card remains the right surface.
+ */
+function resolveSetupPanelWorkflowId(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+): string | undefined {
+	if (input.workflowId) return input.workflowId;
+	let latest: string | undefined;
+	for (const workflowId of context.aiCreatedWorkflowIds ?? []) latest = workflowId;
+	return latest;
+}
+
+async function announceSetupItems(
+	context: InstanceAiContext & {
+		setupItemsEmitter: NonNullable<InstanceAiContext['setupItemsEmitter']>;
+	},
+	input: Extract<Input, { action: 'setup' }>,
+	workflowId: string,
+) {
+	const credentials = input.credentials ?? [];
+	const items = buildSetupItemsFromCredentialRequests(workflowId, credentials);
+	// A merge, not a replace: a build snapshot for this workflow may already
+	// list more (bound nodes, parameters) than this call knows about.
+	context.setupItemsEmitter.merge(workflowId, items);
+
+	const existingByType = await Promise.all(
+		credentials.map(async (req: { credentialType: string }) => {
+			const existing =
+				req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+					? []
+					: await context.credentialService.list({
+							type: req.credentialType,
+							...(context.projectId ? { projectId: context.projectId } : {}),
+						});
+			return {
+				credentialType: req.credentialType,
+				existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+			};
+		}),
+	);
+	const typeNames = credentials.map((c: { credentialType: string }) => c.credentialType).join(', ');
+
+	return {
+		success: true,
+		announced: true,
+		workflowId,
+		credentials: existingByType,
+		message:
+			`Listed ${typeNames} in the setup panel next to the chat. No card is open and nothing is waiting on ` +
+			'you: continue the build. The user can connect these at any time while you work — the build ' +
+			'attaches a matching stored credential automatically and the panel tracks what remains. Do not ' +
+			'ask the user to connect them now, do not describe a card, and do not call setup again for these ' +
+			'types unless the services the workflow needs change.',
+	};
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -772,6 +841,14 @@ async function handleSetup(
 				message: INVALID_SETUP_HINT_MESSAGE,
 				problems: hintProblems,
 			};
+		}
+
+		// Setup panel v2: a workflow's credential needs are announced to the
+		// persistent panel and the turn continues — no card, no suspension. The
+		// finalize stage and standalone setup (no workflow) keep the card.
+		const panelWorkflowId = isFinalize ? undefined : resolveSetupPanelWorkflowId(context, input);
+		if (isSetupPanelEnabled(context) && panelWorkflowId !== undefined) {
+			return await announceSetupItems(context, input, panelWorkflowId);
 		}
 
 		const credentialRequests = await Promise.all(
