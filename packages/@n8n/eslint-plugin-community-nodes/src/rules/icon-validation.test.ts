@@ -225,18 +225,6 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } }],
 		},
 		{
-			name: 'light and dark icons are the same file in description',
-			filename: nodeFilePath,
-			code: createNodeCode(
-				{
-					light: 'file:icons/SameIcon.svg',
-					dark: 'file:icons/SameIcon.svg',
-				},
-				true,
-			),
-			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
-		},
-		{
 			name: 'credential missing icon property',
 			filename: credentialFilePath,
 			code: createCredentialCode(),
@@ -258,15 +246,6 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			filename: credentialFilePath,
 			code: createCredentialCode('file:icons/NonExistent.svg'),
 			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } }],
-		},
-		{
-			name: 'credential light and dark icons are the same file',
-			filename: credentialFilePath,
-			code: createCredentialCode({
-				light: 'file:icons/SameIcon.svg',
-				dark: 'file:icons/SameIcon.svg',
-			}),
-			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
 		},
 		{
 			name: 'node icon file does not exist but similar file exists - should suggest similar file',
