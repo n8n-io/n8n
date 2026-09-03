@@ -67,7 +67,7 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 		throw new NodeOperationError(node, 'A required ID is empty', {
 			// Teams wording; make it injectable (UserTargetMessages pattern in
 			// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
-			description: 'Set the team, channel, plan, bucket or task ID and try again.',
+			description: 'Set the team, channel, plan, bucket, task, user or member ID and try again.',
 		});
 	}
 	let value: string;
@@ -197,6 +197,24 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			: defaultCredentialType;
 	}
 
+	/**
+	 * Resolves the Graph host the node's credential is bound to (sovereign clouds
+	 * included), trailing slashes stripped. `microsoftApiRequest` must compute its
+	 * `baseUrl` ONLY through this: the same value feeds the same-origin guard below,
+	 * so a second copy of this logic would let an operation that builds an absolute
+	 * Graph URL (e.g. `user@odata.bind`) drift from the host the request goes to.
+	 */
+	async function getGraphBaseUrl(
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	): Promise<string> {
+		const credentials = await this.getCredentials(getCredentialType.call(this));
+		return (
+			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+				? credentials.graphApiBaseUrl
+				: 'https://graph.microsoft.com'
+		).replace(/\/+$/, '');
+	}
+
 	async function microsoftApiRequest(
 		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 		method: IHttpRequestMethods,
@@ -208,12 +226,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	): Promise<any> {
 		const credentialType = getCredentialType.call(this);
 		const isServicePrincipal = credentialType === SERVICE_PRINCIPAL_AUTH;
-		const credentials = await this.getCredentials(credentialType);
-		const baseUrl = (
-			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-				? credentials.graphApiBaseUrl
-				: 'https://graph.microsoft.com'
-		).replace(/\/+$/, '');
+		const baseUrl = await getGraphBaseUrl.call(this);
 		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim,
 		// but it must stay on the credential's Graph host: the bearer token must
 		// never travel to an unexpected origin. Graph's own @odata.nextLink is
@@ -347,5 +360,5 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		return returnData;
 	}
 
-	return { getCredentialType, microsoftApiRequest, microsoftApiRequestAllItems };
+	return { getCredentialType, getGraphBaseUrl, microsoftApiRequest, microsoftApiRequestAllItems };
 }
