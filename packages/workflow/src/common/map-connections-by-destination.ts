@@ -2,6 +2,11 @@
 
 import type { IConnections, NodeConnectionType } from '../interfaces';
 
+// Connection indexes address node outputs, which are single digits in
+// practice. Cap the padding so a corrupt or hostile stored workflow cannot
+// turn a few bytes into gigabytes of empty buckets (#37783).
+const MAX_CONNECTION_INDEX = 10_000;
+
 export function mapConnectionsByDestination(connections: IConnections) {
 	const returnConnection: IConnections = {};
 
@@ -31,6 +36,11 @@ export function mapConnectionsByDestination(connections: IConnections) {
 					}
 
 					maxIndex = returnConnection[connectionInfo.node][connectionInfo.type].length - 1;
+					if (connectionInfo.index > MAX_CONNECTION_INDEX) {
+						throw new Error(
+							`Connection index ${connectionInfo.index} exceeds the maximum of ${MAX_CONNECTION_INDEX}`,
+						);
+					}
 					for (let j = maxIndex; j < connectionInfo.index; j++) {
 						returnConnection[connectionInfo.node][connectionInfo.type].push([]);
 					}

@@ -110,3 +110,28 @@ describe('getConnectionsByDestination', () => {
 		});
 	});
 });
+
+describe('connection index cap (#37783)', () => {
+	it('should throw instead of allocating buckets for an absurd index', () => {
+		const connections: IConnections = {
+			Node1: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 500_000 }],
+				],
+			},
+		};
+
+		expect(() => mapConnectionsByDestination(connections)).toThrow(/exceeds the maximum/);
+	});
+
+	it('should still map ordinary indexes', () => {
+		const connections: IConnections = {
+			Node1: {
+				[NodeConnectionTypes.Main]: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 2 }]],
+			},
+		};
+
+		const result = mapConnectionsByDestination(connections);
+		expect(result.Node2[NodeConnectionTypes.Main]).toHaveLength(3);
+	});
+});
