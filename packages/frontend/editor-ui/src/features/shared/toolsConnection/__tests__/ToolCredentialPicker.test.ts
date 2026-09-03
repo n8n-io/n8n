@@ -160,7 +160,7 @@ describe('ToolCredentialPicker', () => {
 		expect(getAllByTestId('tool-credential-picker-trigger-connect')).toHaveLength(1);
 	});
 
-	it('lets the user choose which credential type to create', async () => {
+	it('opens one create action with all supported credential types', async () => {
 		const openNewCredential = vi.fn();
 		const credentials = [
 			{ authType: 'githubOAuth2Api', displayName: 'OAuth2' },
@@ -181,11 +181,13 @@ describe('ToolCredentialPicker', () => {
 
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
 		const createActions = await findAllByTestId('tool-credential-picker-create');
-		expect(createActions).toHaveLength(2);
-		expect(createActions[0]).toHaveTextContent('OAuth2');
-		expect(createActions[1]).toHaveTextContent('Access Token');
+		expect(createActions).toHaveLength(1);
+		expect(createActions[0]).toHaveTextContent('Create credential');
 
-		await fireEvent.click(createActions[1]);
-		expect(openNewCredential).toHaveBeenCalledWith('githubApi', baseMcpItem);
+		await fireEvent.click(createActions[0]);
+		expect(openNewCredential).toHaveBeenCalledWith('githubOAuth2Api', baseMcpItem, [
+			'githubOAuth2Api',
+			'githubApi',
+		]);
 	});
 });

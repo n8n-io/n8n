@@ -139,8 +139,19 @@ async function runConnect(attempt: () => Promise<unknown>) {
 	}
 }
 
-async function connect(row: CardRow, credentialType: string) {
-	await runConnect(async () => await connectServer({ slug: row.serverSlug, credentialType }));
+async function connect(
+	row: CardRow,
+	credentialType: string,
+	credentialTypes?: readonly string[],
+) {
+	await runConnect(
+		async () =>
+			await connectServer({
+				slug: row.serverSlug,
+				credentialType,
+				credentialTypes,
+			}),
+	);
 }
 
 async function handleSelectCredential(row: CardRow, credentialId: string) {
@@ -152,9 +163,9 @@ async function handleSelectCredential(row: CardRow, credentialId: string) {
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		const row = rows.value.find((candidate) => candidate.item.id === item.id);
-		if (row) void connect(row, authType);
+		if (row) void connect(row, authType, credentialTypes);
 	}),
 );
 

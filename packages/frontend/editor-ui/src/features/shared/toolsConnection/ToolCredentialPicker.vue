@@ -100,7 +100,12 @@ function createCredential(authType: string, source: 'direct' | 'dropdown') {
 	} else {
 		emit('new-credential-connect', props.item);
 	}
-	adapter?.openNewCredential(authType, props.item);
+	const credentialTypes =
+		creatableCredentials.value.length > 1
+			? creatableCredentials.value.map((credential) => credential.authType)
+			: undefined;
+
+	adapter?.openNewCredential(authType, props.item, credentialTypes);
 	isOpen.value = false;
 }
 
@@ -203,7 +208,10 @@ function editCredential(credentialId: string) {
 				>
 					<span :class="$style.rowLabel">
 						{{ cred.name }}
-						<small v-if="cred.authDisplayName" :class="$style.authLabel">
+						<small
+							v-if="creatableCredentials.length > 1 && cred.authDisplayName"
+							:class="$style.authLabel"
+						>
 							{{ cred.authDisplayName }}
 						</small>
 					</span>
@@ -225,19 +233,14 @@ function editCredential(credentialId: string) {
 				</li>
 			</ul>
 			<button
-				v-for="credential in creatableCredentials"
-				:key="credential.authType"
+				v-if="creatableCredentials[0]"
 				type="button"
 				:class="$style.createRow"
 				data-test-id="tool-credential-picker-create"
-				:data-auth-type="credential.authType"
-				@click="createCredential(credential.authType, 'dropdown')"
+				@click="createCredential(creatableCredentials[0].authType, 'dropdown')"
 			>
 				<N8nIcon icon="plus" :size="14" />
-				<span>
-					{{ i18n.baseText('tools.connection.credentialPicker.create') }}
-					{{ credential.displayName ?? credential.authType }}
-				</span>
+				<span>{{ i18n.baseText('tools.connection.credentialPicker.create') }}</span>
 			</button>
 		</template>
 	</N8nPopover>

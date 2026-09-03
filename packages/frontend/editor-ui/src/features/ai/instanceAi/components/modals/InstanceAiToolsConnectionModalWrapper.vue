@@ -302,7 +302,7 @@ watch(
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		void (async () => {
 			const server = item.kind === 'mcp-server' ? findServerForItem(item) : undefined;
 			if (!server) {
@@ -311,7 +311,13 @@ provide(
 				uiStore.openNewCredential(authType);
 				return;
 			}
-			showConnectedServer(await connectServer({ slug: server.slug, credentialType: authType }));
+			showConnectedServer(
+				await connectServer({
+					slug: server.slug,
+					credentialType: authType,
+					credentialTypes,
+				}),
+			);
 		})();
 	}),
 );
