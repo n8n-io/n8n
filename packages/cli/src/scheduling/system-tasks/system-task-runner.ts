@@ -14,8 +14,11 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
+import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { DurableScheduler } from '../durable-scheduler';
 import { SystemTaskHandler } from './system-task-handler';
+import { systemTaskProvisionRequest } from './system-task-job';
+import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
@@ -67,6 +70,8 @@ export class SystemTaskRunner {
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
 		private readonly durableScheduler: DurableScheduler,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly errorReporter: ErrorReporter,
@@ -91,6 +96,43 @@ export class SystemTaskRunner {
 			if (this.instanceSettings.isLeader) {
 				this.startTimers();
 			}
+		}
+	}
+
+	/**
+	 * Provision the durable jobs of every task routed so far, one task at a time.
+	 * The caller owns the timing, and calls this once every task has registered.
+	 */
+	async provisionDurableJobs(): Promise<void> {
+		for (const routed of this.durableTasks()) {
+			await this.provisionOne(routed);
+		}
+	}
+
+	/** Never throws: one task that cannot be provisioned must not stop the rest. */
+	private async provisionOne({ task }: RoutedTask): Promise<void> {
+		try {
+			const summary = await this.durableJobProvisioner.provision(
+				systemTaskProvisionRequest(
+					task,
+					this.systemTaskOwner,
+					this.globalConfig.generic.timezone,
+					new Date(),
+				),
+			);
+			this.logger.debug('Provisioned the durable job of a system task', {
+				name: task.name,
+				inserted: summary.inserted.length,
+				redefined: summary.redefined.length,
+				unchanged: summary.unchanged.length,
+				removed: summary.removed.length,
+			});
+		} catch (error) {
+			this.reportFailure(
+				'Could not provision a durable system task, so it will not run',
+				task,
+				error,
+			);
 		}
 	}
 
@@ -130,6 +172,10 @@ export class SystemTaskRunner {
 		return [...this.routedTasksByName.values()].filter(
 			(routed): routed is RoutedTask & { timer: SystemTaskTimer } => routed.timer !== undefined,
 		);
+	}
+
+	private durableTasks(): RoutedTask[] {
+		return [...this.routedTasksByName.values()].filter((routed) => this.runsDurably(routed.task));
 	}
 
 	private inFlightRuns(): Array<Promise<void>> {
@@ -193,12 +239,7 @@ export class SystemTaskRunner {
 					this.reportFailure('A durable system task run failed', task, error),
 				),
 			);
-			// Warn rather than debug while nothing provisions the occurrences: an
-			// operator who turns the flag on otherwise sees the task simply stop.
-			this.logger.warn(
-				'System task handed to the durable scheduler, which does not provision its occurrences yet, so it will not run',
-				{ name: task.name },
-			);
+			this.logger.debug('System task will run on the durable scheduler', { name: task.name });
 		} else {
 			routed.timer = this.createTimer(routed);
 			this.logger.debug('System task will run on an in-memory timer', { name: task.name });
