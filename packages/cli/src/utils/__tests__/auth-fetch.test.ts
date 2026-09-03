@@ -194,6 +194,25 @@ describe('createAuthFetch — allowedDomains', () => {
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
 	});
 
+	it('withholds auth headers after a redirect hop crosses origins', async () => {
+		baseFetchMock
+			.mockResolvedValueOnce(makeRedirect('https://other.test/moved'))
+			.mockResolvedValueOnce(makeOk());
+
+		const fetchFn = createAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer A' },
+			allowedDomains: { mode: 'domains', domains: 'example.test,other.test' },
+		});
+		await fetchFn('https://example.test/mcp');
+
+		expect(baseFetchMock).toHaveBeenCalledTimes(2);
+		expect(new Headers(baseFetchMock.mock.calls[0][1].headers).get('authorization')).toBe(
+			'Bearer A',
+		);
+		expect(new Headers(baseFetchMock.mock.calls[1][1].headers).get('authorization')).toBeNull();
+	});
+
 	it('blocks all requests when mode is none', async () => {
 		const fetchFn = createAuthFetch({
 			baseFetch,

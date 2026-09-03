@@ -1,16 +1,18 @@
 import { DynamicTool } from '@langchain/classic/tools';
 import {
+	type ExecuteWorkflowData,
 	type INode,
 	type ISupplyDataFunctions,
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	type ExecuteWorkflowData,
 	type IWorkflowDataProxyData,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from './constants';
 
 import { ToolWorkflow } from './ToolWorkflow.node';
 import type { ToolWorkflowV1 } from './v1/ToolWorkflowV1.node';
@@ -305,5 +307,57 @@ describe('ToolWorkflowV1', () => {
 			'ai-tool-called',
 			JSON.stringify({ query: 'hello', response: result }),
 		);
+	});
+
+	it('should return a placeholder when the sub-workflow is waiting with no items', async () => {
+		const { ctx } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
+
+		expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
+		expect(result).not.toContain('The workflow did not return a response');
+	});
+
+	it('should ignore the passthrough payload and return the placeholder when the sub-workflow is waiting', async () => {
+		const { ctx } = createContext();
+		// Wait / Send-and-Wait nodes park with their input passed through as run data.
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [[{ json: { query: 'hello' } }]],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
+
+		expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
+	});
+
+	it('should return the missing-response error when the sub-workflow is not waiting', async () => {
+		const { ctx } = createContext();
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [],
+			executionId: 'test-execution',
+		});
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('hello');
+
+		expect(result).toContain('The workflow did not return a response');
 	});
 });
