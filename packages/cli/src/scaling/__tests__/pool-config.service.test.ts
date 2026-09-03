@@ -38,13 +38,15 @@ describe('PoolConfigService', () => {
 	describe('resolvePoolForExecution', () => {
 		const projectId = 'project-123';
 
-		it("resolves to the project's default pool when it is live", async () => {
+		it("resolves to the project's default pool without checking worker registration", async () => {
 			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
-			workerPoolsService.getAvailablePools.mockResolvedValue(['gpu', 'cpu']);
 
 			const result = await service.resolvePoolForExecution({ projectId });
 
+			// The pool queue is used even when no worker has registered the pool: executions
+			// wait on the queue, matching plain queue mode with no workers deployed.
 			expect(result).toEqual({ queueName: 'jobs-gpu', poolName: 'gpu' });
+			expect(workerPoolsService.getAvailablePools).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the default queue when worker pools are not licensed', async () => {
@@ -60,15 +62,6 @@ describe('PoolConfigService', () => {
 
 		it('falls back to the default queue when the project has no pool set', async () => {
 			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue(null);
-
-			const result = await service.resolvePoolForExecution({ projectId });
-
-			expect(result).toEqual({ queueName: 'jobs', poolName: undefined });
-		});
-
-		it('falls back to the default queue when the configured pool is not registered by any worker', async () => {
-			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
-			workerPoolsService.getAvailablePools.mockResolvedValue(['cpu']);
 
 			const result = await service.resolvePoolForExecution({ projectId });
 
