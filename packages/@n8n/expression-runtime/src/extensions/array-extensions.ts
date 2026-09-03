@@ -51,6 +51,37 @@ function reverse(value: unknown[]): unknown[] {
 	return [...value].reverse();
 }
 
+// TODO(CAT-4266): reconsider this approach — copy-on-write proxy traps would
+// make these shims unnecessary.
+// Copy-first shims for native in-place mutators, like reverse(): the VM engine's
+// data proxies are read-only (the natives would throw), and mutations from
+// expressions must not leak into workflow data.
+function sort(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const [comparator] = extraArgs as [((a: unknown, b: unknown) => number)?];
+	return value.slice().sort(comparator);
+}
+
+function splice(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const copy = value.slice();
+	return copy.splice(...(extraArgs as [number, number, ...unknown[]]));
+}
+
+function fill(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return value.slice().fill(...(extraArgs as [unknown, number?, number?]));
+}
+
+function copyWithin(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return value.slice().copyWithin(...(extraArgs as [number, number, number?]));
+}
+
+function shift(value: unknown[]): unknown {
+	return value.slice().shift();
+}
+
+function unshift(value: unknown[], extraArgs: unknown[]): number {
+	return value.slice().unshift(...extraArgs);
+}
+
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionExtensionError('arguments must be passed to pluck');
@@ -764,6 +795,12 @@ export const arrayExtensions: ExtensionMap = {
 		first,
 		last,
 		reverse,
+		sort,
+		splice,
+		fill,
+		copyWithin,
+		shift,
+		unshift,
 		pluck,
 		randomItem,
 		sum,
