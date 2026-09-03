@@ -2313,6 +2313,38 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(decrypted).toEqual({ accessToken: '={{ $secrets.github.token }}' });
 	});
 
+	it('rejects seeded external-secret data when the user lacks externalSecret:list', async () => {
+		const member = await createMember();
+
+		await expect(
+			importPackage({
+				user: member,
+				credentialMissingMode: 'create-with-values',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-seeded',
+							name: 'Seeded cred workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{
+						sourceId,
+						credentials: [
+							{
+								id: 'missing-cred',
+								name: 'Missing GitHub',
+								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+								data: { accessToken: '={{ $secrets.github.token }}' },
+							},
+						],
+					},
+				),
+			}),
+		).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+	});
+
 	it('publishes workflows with seeded credentials but blocks those with fallback stubs', async () => {
 		const owner = await createOwner();
 

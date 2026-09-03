@@ -43,20 +43,32 @@ describe('selectCredentialDataForExport', () => {
 			expect(result).toEqual({ formula: '=SUM({{A1}})' });
 		});
 
-		it('recurses into objects and arrays, pruning emptied containers', async () => {
+		it('recurses into objects and prunes literal keys, keeping surviving expressions', async () => {
 			const result = await selectCredentialDataForExport(
 				'expression-values-only',
 				dataThunk({
 					nested: { deep: { token: '={{ $secrets.t }}', literal: 'x' } },
-					headers: [{ name: 'Authorization', value: '={{ $secrets.h }}' }],
+					allExpressions: ['={{ $secrets.a }}', '={{ $secrets.b }}'],
 					allLiteral: { a: 'x', b: [1, 2] },
 				}),
 			);
 
 			expect(result).toEqual({
 				nested: { deep: { token: '={{ $secrets.t }}' } },
-				headers: [{ value: '={{ $secrets.h }}' }],
+				allExpressions: ['={{ $secrets.a }}', '={{ $secrets.b }}'],
 			});
+		});
+
+		it('drops an array whose entry mixes a literal field with an expression', async () => {
+			const result = await selectCredentialDataForExport(
+				'expression-values-only',
+				dataThunk({
+					headers: [{ name: 'Authorization', value: '={{ $secrets.h }}' }],
+					token: '={{ $secrets.t }}',
+				}),
+			);
+
+			expect(result).toEqual({ token: '={{ $secrets.t }}' });
 		});
 
 		it('omits an array when any entry filters out, so surviving entries never shift position', async () => {

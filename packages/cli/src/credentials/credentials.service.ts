@@ -1738,13 +1738,15 @@ export class CredentialsService {
 	/**
 	 * Creates a credential placeholder for package import — empty, or seeded with
 	 * the caller-supplied data. Skips field validation so every known type can be
-	 * stubbed; {@link save} still enforces `credential:create` on the target project.
+	 * stubbed; {@link save} still enforces `credential:create` on the target project,
+	 * and seeded data referencing external secrets still requires `externalSecret:list`.
 	 */
 	async createStubCredential(
 		opts: { name: string; type: string; projectId: string; data?: ICredentialDataDecryptedObject },
 		user: User,
 	): Promise<CredentialsEntity> {
 		const data = opts.data ?? {};
+		await validateExternalSecretsPermissions({ user, projectId: opts.projectId, dataToSave: data });
 		const encryptedCredential = await this.createEncryptedData({
 			id: null,
 			name: opts.name,
