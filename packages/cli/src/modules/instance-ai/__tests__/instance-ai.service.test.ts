@@ -906,6 +906,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };

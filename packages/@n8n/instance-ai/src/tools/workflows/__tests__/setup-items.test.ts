@@ -122,6 +122,32 @@ describe('createSetupItemsEmitter', () => {
 		]);
 	});
 
+	it('retries an identical snapshot after a failed publish', () => {
+		const published: InstanceAiEvent[] = [];
+		let failNext = true;
+		const emitter = createSetupItemsEmitter({
+			eventBus: {
+				publish: (_threadId, event) => {
+					if (failNext) {
+						failNext = false;
+						throw new Error('bus down');
+					}
+					published.push(event);
+				},
+			},
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+		});
+		const items = [
+			{ id: 'wf-1:credential:slackApi', kind: 'credential' as const, credentialType: 'slackApi' },
+		];
+
+		expect(() => emitter.emit('wf-1', items)).toThrow('bus down');
+		expect(emitter.emit('wf-1', items)).toBe(true);
+		expect(published).toHaveLength(1);
+	});
+
 	it('merges partial announcements into the last snapshot instead of replacing it', () => {
 		const { emitter, published } = makeEmitter();
 		emitter.emit('wf-1', [

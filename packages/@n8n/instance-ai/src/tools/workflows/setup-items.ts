@@ -42,13 +42,15 @@ export function createSetupItemsEmitter(options: {
 	const emit = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
 		const next = fingerprint(items);
 		if (lastSnapshots.get(workflowId)?.fingerprint === next) return false;
-		lastSnapshots.set(workflowId, { fingerprint: next, items });
 		eventBus.publish(threadId, {
 			type: 'setup-items',
 			runId,
 			agentId,
 			payload: { workflowId, items },
 		});
+		// Cache only what was published, so a failed publish is retried by the
+		// next identical snapshot instead of being treated as already sent.
+		lastSnapshots.set(workflowId, { fingerprint: next, items });
 		return true;
 	};
 
