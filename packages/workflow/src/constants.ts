@@ -74,7 +74,13 @@ export const ADD_FORM_NOTICE = 'addFormPage';
  * Nodes whose parameter values may refer to other nodes without expressions.
  * Their content may need to be updated when the referenced node is renamed.
  */
-export const NODES_WITH_RENAMABLE_CONTENT = new Set([CODE_NODE_TYPE]);
+export const NODES_WITH_RENAMABLE_CONTENT = new Set([
+	CODE_NODE_TYPE,
+	// The AI Transform node is removed in v3, but unmigrated ones survive in stored
+	// workflows until the `ai-transform-deprecated` migration rewrites them. Keep
+	// renaming their `jsCode`, or the migration produces dangling references.
+	'n8n-nodes-base.aiTransform',
+]);
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
 export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
 	MAILGUN_NODE_TYPE,

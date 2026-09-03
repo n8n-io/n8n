@@ -116,8 +116,6 @@ const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
 );
-const resetValueLabel = computed(() => i18n.baseText('parameterInput.resetValue'));
-
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
 		return props.customActions;
@@ -133,7 +131,7 @@ const actions = computed(() => {
 	}
 
 	const resetAction = {
-		label: resetValueLabel.value,
+		label: i18n.baseText('parameterInput.resetValue'),
 		value: 'resetValue',
 		disabled: isDefault.value,
 	};

@@ -42,7 +42,6 @@ describe('ButtonParameter', () => {
 			typeOptions: {
 				buttonConfig: {
 					label: 'Generate',
-					action: 'testAction',
 					hasInputField: true,
 					inputFieldMaxLength: 10,
 				},

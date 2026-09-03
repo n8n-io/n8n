@@ -21,7 +21,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'AI Transform node removed',
 			description:
-				'The AI Transform node is no longer supported. Its generated code runs unchanged in a Code node.',
+				'The AI Transform node is no longer supported. Migrate it to a Code node, which runs its generated code unchanged.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 		};
@@ -53,7 +53,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			issues: affectedNodes.map((node) => ({
 				title: `AI Transform node '${node.name}' is no longer supported`,
 				description:
-					'The AI Transform node is removed. Migrate it to a Code node to keep its generated code running.',
+					'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
 				level: 'error',
 				nodeId: node.id,
 				nodeName: node.name,
