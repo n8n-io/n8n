@@ -117,8 +117,8 @@ export type ScheduledJobMisfirePolicy =
  * How late an occurrence may be before its schedule's misfire policy applies,
  * for a job provisioned without an explicit grace.
  *
- * Migrations pin their own copy of this value: a column's default at migration
- * time must stay fixed even if this constant changes later.
+ * Consumers that must freeze a historical default pin their own copy of this
+ * value: changing this constant only affects jobs provisioned from now on.
  */
 export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
 
@@ -139,7 +139,7 @@ export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof Sche
 /** All statuses as a runtime list. */
 export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
 
-/** Statuses of finished work: the only rows retention may delete. */
+/** Statuses of finished work: the only tasks retention may delete. */
 export const TerminalTaskStatusList = [
 	ScheduledTaskStatus.Succeeded,
 	ScheduledTaskStatus.Failed,
@@ -148,3 +148,28 @@ export const TerminalTaskStatusList = [
 ] as const;
 
 export type TerminalTaskStatus = (typeof TerminalTaskStatusList)[number];
+
+/**
+ * Well-known owners of scheduled jobs. Every job names its owner
+ * (`ownerType` + `ownerId`), so the scheduler can tear a job down without
+ * knowing what the owner is.
+ *
+ * Deliberately not an exhaustive union: `ownerType` is a plain string, so a
+ * new part of the product can own jobs without an edit here. These are the
+ * ones that exist today.
+ */
+export const ScheduledJobOwnerType = {
+	/** A published workflow; `ownerId` is its id, `ownerMemberId` the trigger node's. */
+	Workflow: 'workflow',
+	/** An instance-level maintenance job, self-owned: `ownerId` is the job's own name. */
+	SystemTask: 'system-task',
+} as const;
+
+/** Longest accepted `ownerType`. */
+export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
+
+/** Longest accepted `ownerId`. */
+export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
+
+/** Longest accepted `ownerMemberId`. */
+export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = 36;

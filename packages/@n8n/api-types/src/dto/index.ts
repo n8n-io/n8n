@@ -182,6 +182,10 @@ export {
 	WorkflowPublishBlockedErrorPublicDto,
 	workflowPublishBlockedErrorPublicSchema,
 } from './workflows/workflow-publish-blocked-error-public.dto';
+export {
+	WorkflowPublishForbiddenErrorPublicDto,
+	workflowPublishForbiddenErrorPublicSchema,
+} from './workflows/workflow-publish-forbidden-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -369,6 +373,7 @@ export {
 	executionPublicSchema,
 	deletedExecutionPublicSchema,
 } from './executions/execution-public.dto';
+export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';

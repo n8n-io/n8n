@@ -10,6 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
+import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -102,6 +103,8 @@ const statusIconMap: Record<
 };
 
 // --- Artifacts ---
+const buildingArtifactIds = useBuildingArtifactIds();
+
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
@@ -284,6 +287,15 @@ async function dismissContext(key: string) {
 					>
 						<span :class="$style.artifactIconWrap">
 							<N8nIcon
+								v-if="buildingArtifactIds.has(artifact.id)"
+								icon="spinner"
+								spin
+								size="large"
+								:class="$style.artifactIcon"
+								data-test-id="instance-ai-artifact-building-spinner"
+							/>
+							<N8nIcon
+								v-else
 								:icon="artifactIconMap[artifact.type] ?? 'file'"
 								size="large"
 								:class="$style.artifactIcon"

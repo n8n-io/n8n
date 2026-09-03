@@ -3,10 +3,11 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ICredentialType } from 'n8n-workflow';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -59,12 +60,16 @@ function credentialItem(
 
 describe('useWorkflowSetupItems', () => {
 	let pinia: TestingPinia;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.allNodeTypes = [mockNodeTypeDescription()];
 		credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([]);
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
@@ -162,6 +167,21 @@ describe('useWorkflowSetupItems', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(isWorkflowAvailable.value).toBe(false);
+	});
+
+	// Without node types the derivation would drop type-defined credentials and
+	// read parameters as issue-free, so everything would falsely show as done.
+	it('loads node types and stays unavailable until they are in', () => {
+		nodeTypesStore.allNodeTypes = [];
+		hydrateWorkflow([createTestNode({ name: 'Slack' })]);
+
+		const { isWorkflowAvailable } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+		expect(isWorkflowAvailable.value).toBe(false);
+
+		nodeTypesStore.allNodeTypes = [mockNodeTypeDescription()];
+		expect(isWorkflowAvailable.value).toBe(true);
 	});
 
 	it("refetches this workflow's usable slice when a credential changes elsewhere", async () => {

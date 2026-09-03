@@ -292,6 +292,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -1047,8 +1055,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
