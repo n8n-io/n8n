@@ -43,10 +43,11 @@ pnpm session rm           # delete the codespace
 
 ## Agent worker (drive a session from n8n)
 
-`agent-worker.mjs` lets an n8n workflow drive a Claude Code session on the
+`agent-worker.mjs` lets an n8n workflow drive an OpenCode session on the
 codespace. This is how Slack (the Flaky bot) steers a session that runs here.
-Each turn is one headless `claude -p`. The session state is on disk. So
-`--resume` continues a conversation across turns, and across a stop/start.
+Each turn runs `opencode run --format json --auto`. The session state is on
+disk. So the returned session ID continues a conversation across turns and
+across a stop/start.
 
 **The worker polls outward. Nothing inbound is exposed.** GitHub sets every
 forwarded port to private on start. It gives no API to make a port public. So
@@ -56,16 +57,25 @@ It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
 The worker starts on each container start (`postStartCommand`). It needs two
-secrets. Add them at
+secrets and uses one optional secret. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
 
 - `AGENT_WORKER_TOKEN` — the shared bearer token. The worker sends it on each poll.
 - `N8N_DEQUEUE_URL` — the n8n webhook that returns a pending turn.
+- `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
+
+The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
+worker posts one placeholder in that thread. It then updates the message after
+OpenCode completes each tool call, at most once every 1.5 seconds. It does not
+send reasoning text. The worker replaces the placeholder with the final answer.
+If the Slack API fails, the turn still completes through the n8n resume URL.
+The worker removes its dequeue and Slack credentials from the OpenCode process.
+Interactive cloud sessions remove the same credentials before they start.
 
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a
-secret or `$GITHUB_USER` is missing.
+required secret or `$GITHUB_USER` is missing.
 
 A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
@@ -79,8 +89,8 @@ report back in — the turn's resume URL continues one waiting n8n execution and
 then spent, so nothing on the box can post to the thread unprompted. A session
 that backgrounds a build and signs off with "I'll verify once it finishes" is
 therefore describing something that cannot happen. The worker states this in
-`--append-system-prompt` on every turn (`turnContract`), together with a pointer
-to this file for the box-specific parts. This is only the n8n/Slack path: an
+each OpenCode prompt (`turnContract`), together with a pointer to this file for
+the box-specific parts. This is only the n8n/Slack path: an
 interactive session (`pnpm session`, tmux) is long-lived, so background work,
 monitors and notifications behave normally there.
 

@@ -71,7 +71,8 @@ function ensureCodespace() {
 // The preludes go inside tmux's '…' argument: do not use single quotes in them.
 // tmux commands are not login shells. Source the shared secrets so Claude Code
 // finds ${FLAKY_MCP_TOKEN} in its process env.
-const SECRETS = '. /usr/local/lib/codespaces-env.sh 2>/dev/null || true';
+const SECRETS =
+	'. /usr/local/lib/codespaces-env.sh 2>/dev/null || true; unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN';
 // Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
 // (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
 const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CACHE_DIR" ] || cp -r /workspaces/n8n/.turbo/cache "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"';

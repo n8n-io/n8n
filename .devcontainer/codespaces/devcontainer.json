@@ -44,6 +44,9 @@
 		"N8N_DEQUEUE_URL": {
 			"description": "n8n webhook the poll worker calls to claim a pending turn"
 		},
+		"SLACK_BOT_TOKEN": {
+			"description": "Slack bot token for agent progress messages. It needs the chat:write scope."
+		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
 		},
