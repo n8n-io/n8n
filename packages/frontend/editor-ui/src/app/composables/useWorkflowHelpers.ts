@@ -56,6 +56,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	deriveHomeProject,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -781,6 +782,11 @@ export function useWorkflowHelpers() {
 
 			node.credentials = Object.entries(node.credentials).reduce<INodeCredentials>(
 				(acc, [credentialType, credential]) => {
+					if (credential.__aiGatewayManaged && credential.id === null) {
+						acc[credentialType] = credential;
+						return acc;
+					}
+
 					const isUsableCredential = usableCredentials.some(
 						(ownCredential) => `${ownCredential.id}` === `${credential.id}`,
 					);
@@ -865,7 +871,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 		if (workflowData.checksum) {
 			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}

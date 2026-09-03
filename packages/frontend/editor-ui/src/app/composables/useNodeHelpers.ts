@@ -21,7 +21,6 @@ import type {
 	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
-	IRunData,
 	IBinaryKeyData,
 	INode,
 	INodeCredentialsDetails,
@@ -50,6 +49,7 @@ import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -72,6 +72,7 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
@@ -454,6 +455,7 @@ export function useNodeHelpers() {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
+				{ isChatOAuth2Enabled: envFeatureFlag.value('CHAT_TRIGGER_OAUTH2') },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		};
@@ -789,19 +791,10 @@ export function useNodeHelpers() {
 	}
 
 	function getBinaryData(
-		workflowRunData: IRunData | null,
-		node: string | null,
-		runIndex: number,
+		runDataOfNode: ITaskDataConnections | undefined,
 		outputIndex: number,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
-		if (node === null) {
-			return [];
-		}
-
-		const runData: IRunData | null = workflowRunData;
-
-		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
 		if (!runDataOfNode) {
 			return [];
 		}

@@ -11,7 +11,7 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import { createRunExecutionData, ExpressionError } from 'n8n-workflow';
+import { createRunExecutionData, ExpressionError, UnexpectedError } from 'n8n-workflow';
 import type {
 	IRunExecutionData,
 	ITaskData,
@@ -24,6 +24,9 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+
+import { LifecycleMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -488,6 +491,50 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 	};
+
+	describe('module lifecycle handlers', () => {
+		const vetoed = new UnexpectedError('vetoed by a module');
+
+		type HandlerClass = Parameters<LifecycleMetadata['register']>[0]['handlerClass'];
+
+		class ThrowingHandler {
+			async onWorkflowExecuteBefore() {
+				throw vetoed;
+			}
+		}
+
+		let registered: LifecycleMetadata;
+
+		beforeEach(() => {
+			// A fresh registry, so this handler is not visible to the handler-count assertions
+			// in the other suites.
+			registered = new LifecycleMetadata();
+			registered.register({
+				handlerClass: ThrowingHandler as unknown as HandlerClass,
+				methodName: 'onWorkflowExecuteBefore',
+				eventName: 'workflowExecuteBefore',
+			});
+			Container.set(ThrowingHandler, new ThrowingHandler());
+		});
+
+		it('lets a throw abort the hook run instead of swallowing it', async () => {
+			const original = Container.get(LifecycleMetadata);
+			Container.set(LifecycleMetadata, registered);
+
+			try {
+				const hooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData },
+					executionId,
+				);
+
+				await expect(
+					hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]),
+				).rejects.toThrow(vetoed);
+			} finally {
+				Container.set(LifecycleMetadata, original);
+			}
+		});
+	});
 
 	describe('getLifecycleHooksForRegularMain', () => {
 		const createHooks = (

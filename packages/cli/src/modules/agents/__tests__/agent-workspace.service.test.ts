@@ -28,13 +28,14 @@ function makeService() {
 	const agentsConfig = mock<AgentsConfig>({ checkpointTtlSeconds: 60 });
 	filesystem.readdir.mockResolvedValue([]);
 	checkpointStorage.getActiveRunIdsForSandbox.mockResolvedValue(new Set());
-	runtimeService.acquireWorkspaceSandbox.mockResolvedValue({
-		provider: 'daytona',
+	const runtime = {
+		provider: 'daytona' as const,
 		sandbox,
 		filesystem,
 		workspaceRoot: '/home/daytona/workspace',
 		cacheKey: 'daytona:agent:sandbox-id',
-	});
+	};
+	runtimeService.acquireWorkspaceSandbox.mockResolvedValue(runtime);
 
 	return {
 		service: new AgentWorkspaceService(
@@ -45,26 +46,42 @@ function makeService() {
 		),
 		filesystem,
 		sandbox,
+		runtime,
 		runtimeService,
 		checkpointStorage,
 	};
 }
 
-describe('AgentWorkspaceService', () => {
-	it('eagerly creates a scoped workspace with only the core workspace tools', async () => {
-		const { service, filesystem, runtimeService } = makeService();
+function getFilesystemInitHook(
+	runtimeService: ReturnType<typeof makeService>['runtimeService'],
+	callIndex = 0,
+) {
+	const options = runtimeService.acquireWorkspaceSandbox.mock.calls[callIndex][3];
+	const hook = options?.onFilesystemInit;
+	if (!hook) throw new Error('Expected an onFilesystemInit hook to be passed');
+	return hook;
+}
 
-		const workspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
+describe('AgentWorkspaceService', () => {
+	it('creates a scoped workspace with only the core workspace tools without touching the filesystem', async () => {
+		const { service, filesystem, runtime, runtimeService, checkpointStorage } = makeService();
+
+		const { workspace, handle } = await service.getAgentWorkspace(
+			projectId,
+			agentId,
+			principalHash,
+		);
 
 		expect(runtimeService.acquireWorkspaceSandbox).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 			principalHash,
+			{ onFilesystemInit: expect.any(Function) },
 		);
 		expect(runtimeService.acquireKnowledgeSandbox).not.toHaveBeenCalled();
-		expect(filesystem.mkdir).toHaveBeenCalledWith('/home/daytona/workspace', {
-			recursive: true,
-		});
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+		expect(checkpointStorage.getActiveRunIdsForSandbox).not.toHaveBeenCalled();
+		expect(handle).toBe(runtime);
 		expect(workspace.filesystem?.basePath).toBe('/home/daytona/workspace');
 		expect(workspace.getTools().map(({ name }) => name)).toEqual([
 			'workspace_read_file',
@@ -75,8 +92,59 @@ describe('AgentWorkspaceService', () => {
 		]);
 	});
 
-	it('returns the workspace without waiting for reconciliation and deduplicates concurrent sweeps', async () => {
-		const { service, checkpointStorage } = makeService();
+	it('scopes a delegated workspace to a per-delegation subdirectory without acquiring a sandbox', async () => {
+		const { service, filesystem, runtime, runtimeService } = makeService();
+
+		const workspace = service.getDelegatedAgentWorkspace(runtime, 'thread-9');
+
+		expect(runtimeService.acquireWorkspaceSandbox).not.toHaveBeenCalled();
+		expect(workspace.filesystem?.basePath).toBe('/home/daytona/workspace/subagents/thread-9');
+		expect(workspace.getTools().map(({ name }) => name)).toEqual([
+			'workspace_read_file',
+			'workspace_read_tool_result',
+			'workspace_str_replace_file',
+			'workspace_write_file',
+			'workspace_execute_command',
+		]);
+
+		await workspace.filesystem?.writeFile('notes.md', 'hello');
+
+		expect(filesystem.mkdir).toHaveBeenCalledWith('/home/daytona/workspace/subagents/thread-9', {
+			recursive: true,
+		});
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/subagents/thread-9/notes.md',
+			'hello',
+			undefined,
+		);
+	});
+
+	it('kicks reconciliation on filesystem init and creates the root on first workspace I/O', async () => {
+		const { service, filesystem, runtimeService, checkpointStorage } = makeService();
+
+		const { workspace } = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		await getFilesystemInitHook(runtimeService)({ filesystem });
+
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+		expect(checkpointStorage.getActiveRunIdsForSandbox).toHaveBeenCalledWith(
+			agentId,
+			principalHash,
+		);
+
+		await workspace.filesystem?.writeFile('notes.md', 'hi');
+
+		expect(filesystem.mkdir).toHaveBeenCalledWith('/home/daytona/workspace', {
+			recursive: true,
+		});
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/notes.md',
+			'hi',
+			undefined,
+		);
+	});
+
+	it('does not block filesystem init on reconciliation and deduplicates concurrent sweeps', async () => {
+		const { service, filesystem, runtimeService, checkpointStorage } = makeService();
 		let resolveReconciliation!: (activeRunIds: Set<string>) => void;
 		checkpointStorage.getActiveRunIdsForSandbox.mockReturnValue(
 			new Promise((resolve) => {
@@ -84,11 +152,13 @@ describe('AgentWorkspaceService', () => {
 			}),
 		);
 
-		const firstWorkspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
-		const secondWorkspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		const first = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		const second = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		await getFilesystemInitHook(runtimeService, 0)({ filesystem });
+		await getFilesystemInitHook(runtimeService, 1)({ filesystem });
 
-		expect(firstWorkspace.filesystem?.basePath).toBe('/home/daytona/workspace');
-		expect(secondWorkspace.filesystem?.basePath).toBe('/home/daytona/workspace');
+		expect(first.workspace.filesystem?.basePath).toBe('/home/daytona/workspace');
+		expect(second.workspace.filesystem?.basePath).toBe('/home/daytona/workspace');
 		expect(checkpointStorage.getActiveRunIdsForSandbox).toHaveBeenCalledOnce();
 
 		resolveReconciliation(new Set());
@@ -96,12 +166,14 @@ describe('AgentWorkspaceService', () => {
 	});
 
 	it('skips orphan reconciliation when checkpoint protection overflows', async () => {
-		const { service, filesystem, checkpointStorage } = makeService();
+		const { service, filesystem, runtimeService, checkpointStorage } = makeService();
 		checkpointStorage.getActiveRunIdsForSandbox.mockResolvedValue(
 			CHECKPOINT_RECONCILIATION_OVERFLOW,
 		);
 
 		await service.getAgentWorkspace(projectId, agentId, principalHash);
+		await getFilesystemInitHook(runtimeService)({ filesystem });
+		await new Promise(setImmediate);
 
 		expect(filesystem.readdir).not.toHaveBeenCalled();
 	});

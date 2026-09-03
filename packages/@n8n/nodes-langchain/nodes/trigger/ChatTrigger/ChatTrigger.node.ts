@@ -10,6 +10,8 @@ import {
 	assertParamIsString,
 	getHighlightedInputKey,
 	HIGHLIGHTED_SESSION_KEY,
+	CHAT_TRIGGER_PATH_SUFFIX,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -20,27 +22,30 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
-	IUser,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { generateChatUserAuthToken } from './auth-token';
+import { buildChatShellViewModel, connectBarText } from './connect-panel';
 import { cssVariables } from './constants';
-import { validateAuth } from './GenericFunctions';
 import {
-	buildAbsoluteChatUrl,
+	establishChatSessionIdentity,
+	handleChatTokenRefresh,
+	resolveInnerFrameIdentity,
+	validateAuth,
+} from './GenericFunctions';
+import {
+	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
 	isChatOAuth2Enabled,
+	isChatRefreshRequest,
 	isShellInnerRequest,
-	readAuthCookie,
 } from './shell';
-import { createPage, createShellPage } from './templates';
-import { assertValidLoadPreviousSessionOption } from './types';
-
-const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+import { createPage } from './templates';
+import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
@@ -327,7 +332,7 @@ export class ChatTrigger extends Node {
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideUrl: true,
 			},
 			{
@@ -335,7 +340,7 @@ export class ChatTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode:
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideMethod: true,
 				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
@@ -438,6 +443,21 @@ export class ChatTrigger extends Node {
 					propertyHint:
 						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
 				},
+			},
+			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 			},
 			{
 				displayName: 'Initial Message(s)',
@@ -831,8 +851,8 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
-		// Allow execution in manual mode (test) even when not public
-		if (!isPublic && mode !== 'test') {
+		// Only the editor's session-scoped canvas test route may execute a non-public chat
+		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -871,10 +891,10 @@ export class ChatTrigger extends Node {
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {
-			// The editor's canvas chat can't supply webhook credentials, and test webhooks
-			// are only ever registered through an authenticated editor session, so auth is
-			// only enforced for production executions.
-			if (mode !== 'test') {
+			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+			// test route (flagged by the backend at registration) is exempt from auth. Every
+			// other request — production or sessionless test — enforces the configured auth.
+			if (mode !== 'test' || !ctx.isChatSessionTest()) {
 				await validateAuth(ctx);
 			}
 		} catch (error) {
@@ -919,45 +939,82 @@ export class ChatTrigger extends Node {
 				// An n8n-controlled shell on the real origin, with the author's chat in a frame
 				// that has no origin. The connect experience needs the real origin (OAuth popup,
 				// success channel, `localStorage`), so nothing author-shaped may live there.
-				let shellInner = false;
-				let authToken: string | undefined;
-				let visitor: IUser | undefined;
+				let frameIdentity: ChatFrameIdentity | undefined;
 
 				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
-					shellInner = isShellInnerRequest(req);
-
-					// The frame can't fetch `/rest/login` for itself, so resolve the visitor here.
-					// Same-site either way: the frame's first GET is issued by the shell, before
-					// any opaque document exists.
-					const authCookie = readAuthCookie(req);
-					if (authCookie) {
-						try {
-							visitor = await ctx.validateCookieAuth(authCookie);
-						} catch {}
+					const resourceUrl = ctx.getWebhookResourceUrl('default');
+					if (!resourceUrl) {
+						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
-					if (!visitor) {
-						res.writeHead(302, {
-							Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
+					// The shell's token-refresh leg, ahead of any render: it answers with JSON,
+					// not a page, and authenticates itself from its own httpOnly cookie rather
+					// than from the handshake below. A GET because a POST to this path reaches
+					// the `default` webhook — the chat message endpoint — instead.
+					if (isChatRefreshRequest(req)) {
+						await handleChatTokenRefresh(ctx, resourceUrl);
+						return { noWebhookResponse: true };
+					}
+
+					if (!isShellInnerRequest(req)) {
+						// Outer shell: the AS handshake runs here — a normal top-level document with
+						// real cookies, unlike the sandboxed, opaque-origin frame this shell is about
+						// to create. It is the only gate: a visitor without an editor session is
+						// authenticated by the flow rather than bounced to sign-in ahead of it.
+						const outerIdentity = await establishChatSessionIdentity(ctx, resourceUrl);
+						if (!outerIdentity) {
+							return { noWebhookResponse: true };
+						}
+
+						let credentialStatus: CredentialCheckResult | undefined;
+						try {
+							credentialStatus = await ctx.checkTriggerCredentialStatus();
+						} catch {
+							// No error object: may carry decrypted credential context.
+							ctx.logger.error('Chat trigger credential readiness check failed');
+							// `send` ends the response itself.
+							res.status(503).send('Chat is unavailable right now. Please try again later.');
+							return { noWebhookResponse: true };
+						}
+
+						const connect = credentialStatus?.credentials.length
+							? buildChatShellViewModel(credentialStatus.credentials, outerIdentity.visitor.email)
+							: undefined;
+
+						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+						// Express defaults to 200 for `render`; stated so the success status is
+						// not implicit next to the 503 branch above.
+						res.status(200).render('chat-shell', {
+							iframeSrc: buildInnerFrameSrc(req),
+							sandbox: CHAT_FRAME_SANDBOX,
+							refreshUrl: buildChatRefreshUrl(req),
+							refreshExpiresIn: Math.max(0, Math.round(outerIdentity.expiresIn)),
+							testMode: mode === 'test',
+							visitorEmail: outerIdentity.visitor.email,
+							hasCredentials: !!connect,
+							// Not forced in test mode: the send gate refuses builders too.
+							ready: connect ? connect.connectedCount >= connect.total : false,
+							barText: connect ? connectBarText(connect, mode === 'test') : '',
+							...connect,
 						});
+						return { noWebhookResponse: true };
+					}
+
+					// Inner frame: pick up the AS token the outer shell already obtained, via the
+					// one-hop cookie. Never runs the OAuth2 handshake itself — this opaque-origin
+					// document can't receive the AS's session-cookie check, so a redirect to
+					// sign-in/consent would render editor-ui inside the sandboxed frame.
+					const identity = await resolveInnerFrameIdentity(ctx, resourceUrl);
+					if (!identity) {
+						res.status(401).send('Session expired. Please reload the page.');
 						res.end();
 						return { noWebhookResponse: true };
 					}
-
-					if (!shellInner) {
-						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-						res
-							.status(200)
-							.send(createShellPage({ iframeSrc: buildInnerFrameSrc(req) }))
-							.end();
-						return { noWebhookResponse: true };
-					}
+					frameIdentity = identity;
 
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
-					// Cookies aren't sent from an opaque origin; messages carry this instead.
-					authToken = generateChatUserAuthToken(ctx.getNode(), visitor);
 				}
 
 				const page = createPage({
@@ -975,9 +1032,7 @@ export class ChatTrigger extends Node {
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
 					enableStreaming,
-					shellInner,
-					authToken,
-					visitor,
+					frameIdentity,
 				});
 
 				res.status(200).send(page).end();
@@ -1003,6 +1058,21 @@ export class ChatTrigger extends Node {
 				return {
 					webhookResponse: { data: [] },
 				};
+			}
+		} else {
+			let readiness: CredentialCheckResult | undefined;
+			try {
+				readiness = await ctx.checkTriggerCredentialStatus();
+			} catch {
+				// No error object: may carry decrypted credential context.
+				ctx.logger.error('Chat trigger credential readiness check failed');
+				res.status(503).json({ status: 'credential_readiness_check_failed' });
+				return { noWebhookResponse: true };
+			}
+
+			if (readiness && !readiness.readyToExecute) {
+				res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+				return { noWebhookResponse: true };
 			}
 		}
 

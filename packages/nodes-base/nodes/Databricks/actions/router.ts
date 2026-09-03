@@ -4,6 +4,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import * as databricksSql from './databricksSql/DatabricksSql.resource';
 import * as files from './files/Files.resource';
 import * as genie from './genie/Genie.resource';
+import { makePermissionErrorLegible } from './helpers';
 import * as modelServing from './modelServing/ModelServing.resource';
 import * as unityCatalog from './unityCatalog/UnityCatalog.resource';
 import * as vectorSearch from './vectorSearch/VectorSearch.resource';
@@ -67,6 +68,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			const result = await operationModule.execute.call(this, i);
 			returnData.push(...result);
 		} catch (error) {
+			makePermissionErrorLegible(error);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
 				continue;

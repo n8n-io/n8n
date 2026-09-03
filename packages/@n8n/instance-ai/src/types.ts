@@ -5,7 +5,6 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -46,6 +45,7 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -351,13 +351,13 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -498,6 +498,11 @@ export interface InstanceAiCredentialService {
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
+	/** Whether a stored credential carries any values at all — `blank` when every
+	 *  text field its type declares is empty. Non-secret: only the verdict crosses
+	 *  the boundary, never the data. Tells an empty binding from a real one for the
+	 *  types that declare no connection test (generic auth). */
+	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
@@ -597,7 +602,7 @@ export interface UnavailableLocatorValue {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -701,7 +706,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -1014,6 +1019,8 @@ export interface BuilderDelegateSession {
 export interface BuilderTurnStream {
 	fullStream: AsyncIterable<unknown>;
 	text: Promise<string>;
+	/** Structured host artifacts the embedded builder reported during this turn. */
+	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
 }
 
 /** Reference to a suspended builder tool call awaiting user input. */
@@ -1433,6 +1440,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1689,8 +1698,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

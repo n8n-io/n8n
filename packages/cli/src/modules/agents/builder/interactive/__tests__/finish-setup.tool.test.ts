@@ -1,6 +1,8 @@
-import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { CredentialListItem } from '@n8n/agents';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
 import { buildFinishSetupTool } from '../finish-setup.tool';
@@ -19,11 +21,17 @@ function makeCtx(overrides?: { resumeData?: unknown; suspendPayload?: unknown })
 	};
 }
 
-function makeProvider(creds: CredentialListItem[]): CredentialProvider {
-	return {
-		list: vi.fn(async () => creds),
-		resolve: vi.fn(async () => ({})),
-	};
+function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
+	const credentialService = mock<InstanceAiCredentialService>();
+	credentialService.list.mockImplementation(async (options) =>
+		options?.type ? creds.filter((c) => c.type === options.type) : creds,
+	);
+	credentialService.get.mockImplementation(async (id: string) => {
+		const found = creds.find((c) => c.id === id);
+		if (!found) throw new Error(`Credential ${id} not found`);
+		return { id: found.id, name: found.name, type: found.type };
+	});
+	return credentialService;
 }
 
 const BASE_DEPS = {
@@ -39,7 +47,7 @@ describe('finish_setup tool', () => {
 	});
 
 	it('auto-resolves single-credential and channel-matching slots, excluding them from the credential phase', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
 			{ id: 'c2', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c3', name: 'Notion A', type: 'notionApi' },
@@ -47,7 +55,7 @@ describe('finish_setup tool', () => {
 		]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			listIntegrationCredentialIds: async () => ['c2'],
 		});
 		const ctx = makeCtx();
@@ -82,13 +90,44 @@ describe('finish_setup tool', () => {
 		});
 	});
 
+	it('suspends a sole generic auth credential instead of auto-resolving it', async () => {
+		const credentialService = makeCredentialService([
+			{ id: 'c1', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+		]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialService,
+		});
+		const ctx = makeCtx();
+
+		const payload = (await tool.handler!(
+			{
+				credentialRequests: [
+					{ credentialType: 'httpBearerAuth', purpose: 'Authenticate the MCP server' },
+				],
+			},
+			ctx as never,
+		)) as Record<string, unknown>;
+
+		expect(payload.credentialRequests).toEqual([
+			{
+				credentialType: 'httpBearerAuth',
+				reason: 'Authenticate the MCP server',
+				existingCredentials: [{ id: 'c1', name: 'Bearer Auth account' }],
+			},
+		]);
+		expect(
+			(payload.finishSetupChain as { collected: { credentials?: unknown } }).collected.credentials,
+		).toBeUndefined();
+	});
+
 	it('returns completed without suspending when every credential slot auto-resolves and there is nothing else pending', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
 		]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const ctx = makeCtx();
 
@@ -105,10 +144,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('drops credential slots already covered by an n8n Connect managed credential', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			// The agent's node tools already run pdfcoApi on n8n credits.
 			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
@@ -125,10 +164,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('still shows a card for an uncovered slot when another slot is managed-covered', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
 		const ctx = makeCtx();
@@ -150,10 +189,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('chains through questions and credentials to a merged result', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const input = {
 			questions: [
@@ -223,10 +262,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('marks the credential slot skipped when the credential phase is skipped', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const input = {
 			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
@@ -265,7 +304,7 @@ describe('finish_setup tool', () => {
 	it('throws for an unknown credential type', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 			isCredentialTypeKnown: (credentialType) => credentialType === 'airtableApi',
 		});
 		const ctx = makeCtx();
@@ -282,7 +321,7 @@ describe('finish_setup tool', () => {
 	it('rejects an input with no pending setup items', () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 
 		expect((tool.inputSchema as unknown as z.ZodTypeAny).safeParse({}).success).toBe(false);
@@ -291,7 +330,7 @@ describe('finish_setup tool', () => {
 	it('chains through questions, credentials, and multiple channels to a merged result', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 		const input = {
 			questions: [
@@ -374,7 +413,7 @@ describe('finish_setup tool', () => {
 	it('throws for an unsupported channel type', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 		const ctx = makeCtx();
 

@@ -1,12 +1,20 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { BUILTIN_NODES_PACKAGES, LICENSE_FEATURES, Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	checkNodesApiVersion,
+	jsonParse,
+	N8N_NODES_API_VERSION,
+	UnexpectedError,
+	UserError,
+	type NodesApiVersionPackageJson,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -45,6 +53,9 @@ const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
+/** Built-in package names cannot be installed as community packages. */
+const RESERVED_PACKAGE_NAMES = new Set<string>(BUILTIN_NODES_PACKAGES);
+
 type PackageJson = {
 	name: 'installed-nodes';
 	private: true;
@@ -73,7 +84,7 @@ export class CommunityPackagesService {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed, n8n-controlled host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
@@ -159,6 +170,10 @@ export class CommunityPackagesService {
 
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
 
+		if (RESERVED_PACKAGE_NAMES.has(packageName)) {
+			throw new UserError(`Package name "${packageName}" is reserved for n8n built-in packages`);
+		}
+
 		return { packageName, scope, version, rawString };
 	}
 
@@ -242,13 +257,24 @@ export class CommunityPackagesService {
 		return null;
 	}
 
+	/** Reads a package's on-disk `package.json`, or `null` if absent or unreadable. */
+	private async readInstalledPackageJson(
+		packageName: string,
+	): Promise<(NodesApiVersionPackageJson & { version?: string }) | null> {
+		const packageJsonPath = `${this.resolvePackageDirectory(packageName)}/package.json`;
+		try {
+			const content = await readFile(packageJsonPath, 'utf-8');
+			return jsonParse<(NodesApiVersionPackageJson & { version?: string }) | null>(content, {
+				fallbackValue: null,
+			});
+		} catch {
+			return null;
+		}
+	}
+
 	/** Reads the version a package actually has on disk, or `null` if absent or unreadable. */
 	private async readInstalledPackageVersion(packageName: string): Promise<string | null> {
-		const packageJsonPath = `${this.resolvePackageDirectory(packageName)}/package.json`;
-		const content = await readFile(packageJsonPath, 'utf-8').catch(() => null);
-		if (content === null) return null;
-
-		return jsonParse<{ version: string } | null>(content, { fallbackValue: null })?.version ?? null;
+		return (await this.readInstalledPackageJson(packageName))?.version ?? null;
 	}
 
 	/**
@@ -284,16 +310,34 @@ export class CommunityPackagesService {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
-		installedPackages.forEach((installedPackage) => {
+		for (const installedPackage of installedPackages) {
 			// Same rule as `withLoadStatus`, so the UI and this check can't disagree.
-			if (this.areNodesLoaded(installedPackage.installedNodes)) return;
+			if (this.areNodesLoaded(installedPackage.installedNodes)) continue;
+
+			// Not loaded does not mean missing. A package the startup guard skipped
+			// because of its node API version is still on disk: reinstalling the same
+			// version can never fix it, and `loadPackage` would import its node code.
+			// An unreadable package.json stays "missing" — that is the repair path for
+			// partial or corrupt installs.
+			const packageJson = await this.readInstalledPackageJson(installedPackage.packageName);
+			const apiVersionCheck = packageJson && checkNodesApiVersion(packageJson);
+			if (apiVersionCheck && !apiVersionCheck.compatible) {
+				const requirement =
+					apiVersionCheck.reason === 'malformed'
+						? `an invalid n8nNodesApiVersion (${JSON.stringify(apiVersionCheck.declared)})`
+						: `node API version ${String(apiVersionCheck.declared)}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
+				this.logger.warn(
+					`Not reinstalling package "${installedPackage.packageName}": it requires ${requirement}. Upgrade n8n to use this package, or uninstall it in Settings > Community nodes.`,
+				);
+				continue;
+			}
 
 			// Leave the list ready for installing in case we need.
 			missingPackages.add({
 				packageName: installedPackage.packageName,
 				version: installedPackage.installedVersion,
 			});
-		});
+		}
 
 		if (missingPackages.size === 0) return;
 
@@ -467,7 +511,7 @@ export class CommunityPackagesService {
 				await this.downloadPackage(packageName, packageVersion, authToken);
 			} catch (error) {
 				// No reload here: the previous package was not unloaded before the download
-				await this.restoreFailedPackageInstallation(packageName, {
+				await this.restorePackageFiles(packageName, {
 					backupDirectory,
 					previousVersion,
 				});
@@ -486,7 +530,6 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: true,
 				});
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
@@ -507,7 +550,6 @@ export class CommunityPackagesService {
 					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
 						previousVersion,
-						reloadPackage: true,
 					});
 
 					throw new UnexpectedError('Failed to save installed package', {
@@ -542,7 +584,6 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: true,
 				});
 
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
@@ -677,33 +718,13 @@ export class CommunityPackagesService {
 	}
 
 	/**
-	 * Puts the backup back in place and, if asked, reloads what was restored. Kept apart
-	 * from the ledger rollback below because a follower must not touch the ledger: its
-	 * entry is justified by the leader's database record, not by this instance's disk.
+	 * Puts the backup back in place. Kept apart from the ledger rollback below because a
+	 * follower must not touch the ledger: its entry is justified by the leader's database
+	 * record, not by this instance's disk.
 	 */
-	private async restorePackageDirectory(
-		packageName: string,
-		backupDirectory?: string,
-		reloadPackage = false,
-	) {
+	private async restorePackageDirectory(packageName: string, backupDirectory?: string) {
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
-
-			// Reload only if the restore above succeeded, otherwise there's nothing
-			// valid on disk to load and we'd just unload a working loader for nothing.
-			if (backupDirectory && reloadPackage) {
-				try {
-					await this.loadNodesAndCredentials.unloadPackage(packageName);
-					await this.loadNodesAndCredentials.loadPackage(packageName);
-					await this.loadNodesAndCredentials.postProcessLoaders();
-					this.loadNodesAndCredentials.releaseTypes();
-				} catch (cleanupError) {
-					this.logger.warn('Failed to reload community package after failed installation', {
-						error: ensureError(cleanupError),
-						packageName,
-					});
-				}
-			}
 		} catch (cleanupError) {
 			// `backupDirectory` is the only pointer to the files if the rename half failed: the
 			// loader skips `.backup-<ts>` directories, so nothing finds them again on its own.
@@ -715,13 +736,46 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async restoreFailedPackageInstallation(
-		packageName: string,
-		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
-	) {
-		const { backupDirectory, previousVersion, reloadPackage = false } = options;
+	/**
+	 * Unloads the version that failed and loads back whatever the rollback left on disk.
+	 * Only for callers that already unloaded the previous version.
+	 */
+	private async restoreLoadedPackage(packageName: string) {
+		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			// Check the disk instead of assuming the rollback restored something: a rename
+			// that failed halfway leaves no directory to load.
+			if (await this.packageDirectoryExists(packageName)) {
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+			}
+		} catch (cleanupError) {
+			this.logger.warn('Failed to reload community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
 
-		await this.restorePackageDirectory(packageName, backupDirectory, reloadPackage);
+		// Runs even when the load above failed: `known` is only ever rebuilt here, so
+		// skipping it leaves node types advertised with no loader behind them, which
+		// `withLoadStatus` then reports as a healthy package.
+		try {
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+		} catch (cleanupError) {
+			this.logger.warn('Failed to refresh node types after failed community package install', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+	}
+
+	private async restorePackageFiles(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		const { backupDirectory, previousVersion } = options;
+
+		await this.restorePackageDirectory(packageName, backupDirectory);
 
 		// Independent of the restore above: a failed restore must not leave package.json
 		// pointing at the version that failed to install.
@@ -737,6 +791,15 @@ export class CommunityPackagesService {
 				packageName,
 			});
 		}
+	}
+
+	/** Full rollback, for callers that already unloaded the package before failing. */
+	private async restoreFailedPackageInstallation(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		await this.restorePackageFiles(packageName, options);
+		await this.restoreLoadedPackage(packageName);
 	}
 
 	/**

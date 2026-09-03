@@ -1,12 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -116,8 +110,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
-			mock<SsrfProtectionConfig>({ enabled: true }),
-			mock<SsrfProtectionService>(),
 		);
 
 		return {
@@ -206,7 +198,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:1',
 				toolFilter: { mode: 'allow', tools: ['issues'] },
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'linear', userId: user.id },
+				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[1]).toEqual(
@@ -217,7 +209,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:2',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'linear', userId: user.id },
+				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[2]).toEqual(
@@ -228,7 +220,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:3',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
-				metadata: { serverSlug: 'notion', userId: user.id },
+				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
@@ -261,7 +253,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		await service.getRegistryMcpServers(user);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith(
-			expect.not.objectContaining({ ssrf: 'disabled' }),
+			expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 		);
 	});
 
@@ -390,7 +382,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('credential domain restrictions', () => {
-		it('returns a fetch that blocks when credential mode is "none" (block all)', async () => {
+		it('pins registry requests to the MCP hostname when credential mode is "none"', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -411,11 +403,13 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
-		it('returns a fetch that blocks when endpoint URL is not in the credential allowlist', async () => {
+		it('pins registry requests independently of the credential allowlist', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -437,8 +431,10 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
 		it('allows connection when endpoint URL matches the credential allowlist', async () => {
@@ -912,6 +908,27 @@ describe('InstanceAiMcpRegistryService', () => {
 			const uniqueErr = new QueryFailedError('insert', [], new Error('uniq'));
 			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
 				code: 'SQLITE_CONSTRAINT_UNIQUE',
+			};
+			connectionRepository.save.mockRejectedValue(uniqueErr);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+		});
+
+		it('translates unique-index violations reported under the base SQLite code into ConflictError', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			const uniqueErr = new QueryFailedError(
+				'insert',
+				[],
+				new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: connection.serverSlug'),
+			);
+			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
+				code: 'SQLITE_CONSTRAINT',
 			};
 			connectionRepository.save.mockRejectedValue(uniqueErr);
 

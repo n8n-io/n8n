@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
+import type { SsrfProtectionService } from '../../ssrf';
 import { httpRequest } from '../axios/request';
 import { OutboundHttp } from '../outbound-http';
 
@@ -18,8 +19,8 @@ function makeService(): SsrfProtectionService {
 	return mock<SsrfProtectionService>();
 }
 
-function makeFacade(service: SsrfProtectionService = makeService()): OutboundHttp {
-	return new OutboundHttp(service, mock<Logger>());
+function makeFacade(service: SsrfProtectionService = makeService(), enabled = true): OutboundHttp {
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled }), mock<Logger>());
 }
 
 const REQUEST: IHttpRequestOptions = { url: 'https://example.test/x', method: 'GET' };
@@ -48,17 +49,16 @@ describe('OutboundHttp.requests', () => {
 		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, service);
 	});
 
-	it('passes an explicit SSRF bridge through to the request', async () => {
-		const bridge = mock<SsrfBridge>();
-		const client = makeFacade().requests({ ssrf: bridge });
+	it('omits the bridge when the instance disables SSRF protection', async () => {
+		const client = makeFacade(makeService(), false).requests();
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, bridge);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined);
 	});
 
 	it('omits the bridge when SSRF protection is disabled', async () => {
-		const client = makeFacade().requests({ ssrf: 'disabled' });
+		const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 		await client.request(REQUEST);
 

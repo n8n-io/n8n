@@ -533,7 +533,6 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
@@ -612,7 +611,6 @@ function handleShelfSuggestionInsert(payload: {
 					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
