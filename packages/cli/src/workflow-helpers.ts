@@ -3,27 +3,26 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
-	validateNodeSelectionForGrouping,
+	validateWorkflowGroups,
 	type IDataObject,
-	type INode,
 	type INodeCredentialsDetails,
-	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
-	type IWorkflowGroup,
 	type IWorkflowSettings,
-	type NodeGroupValidationResult,
 	type RelatedExecution,
+	type GetNodeTypeForGrouping,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -33,6 +32,8 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
+
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -148,72 +149,14 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Resolves a node to its type description, or `null` for unknown node types.
- * Used by the grouping validator to detect trigger nodes.
- */
-type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
-
-/**
- * Builds the `getNodeType` callback that the grouping validator needs to resolve
- * a node to its type description (used to detect trigger nodes). Returns `null`
- * for unknown node types so validation degrades gracefully rather than throwing.
- */
-export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
-	return (node: INode) => {
-		try {
-			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {
-			return null;
-		}
-	};
-}
-
-/**
- * Maps a failed `validateNodeSelectionForGrouping` result to an actionable
- * `BadRequestError` that names the offending group and the rule it broke.
- */
-function nodeGroupValidationError(
-	group: IWorkflowGroup,
-	result: Extract<NodeGroupValidationResult, { valid: false }>,
-): BadRequestError {
-	const label = `Node group "${group.name}" (${group.id})`;
-	switch (result.reason) {
-		case 'trigger-selected':
-			return new BadRequestError(
-				`${label} cannot contain trigger nodes: ${result.triggers.join(', ')}.`,
-			);
-		case 'invalid-subgraph':
-			return new BadRequestError(
-				`${label} must form a single connected subgraph with a single entry and exit.`,
-			);
-		case 'multiple-input-branches':
-			return new BadRequestError(`${label} has multiple input branches at node "${result.node}".`);
-		case 'multiple-output-branches':
-			return new BadRequestError(`${label} has multiple output branches at node "${result.node}".`);
-		case 'node-already-grouped':
-			return new BadRequestError(
-				`${label} contains nodes that already belong to another group: ${result.nodeIds.join(', ')}.`,
-			);
-		case 'non-main-boundary':
-			return new BadRequestError(
-				`${label} cannot cross the "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`,
-			);
-	}
-}
-
-/**
- * Validates nodeGroups.
+ * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
  *
- * Basic checks (always run): unique group IDs, unique group names, at least one
- * member, all referenced node IDs exist, and each node belongs to at most one group.
- *
- * Full checks (run only when `getNodeType` is non-null): each group must satisfy
- * the same grouping rules the canvas enforces — no triggers, a single connected
- * subgraph, and no non-main connection crossing the group boundary — validated
- * against the other groups as existing groups. Pass the `getNodeType` callback to
- * run the full checks (on create, and on an update that changed the graph or the
- * groups); pass `null` to run basic checks only (e.g. a git import, so
- * legacy-invalid groups don't block the import).
+ * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
+ * single source of truth shared with validate-time surfaces; this wrapper throws
+ * the first violation, preserving the historical throw-on-first behavior. See
+ * that function for the basic-vs-full checks contract (`getNodeType: null` runs
+ * basic checks only, e.g. a git import, so legacy-invalid groups don't block
+ * the import).
  *
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
@@ -224,65 +167,14 @@ export function validateWorkflowNodeGroups(
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
 ) {
-	const { nodeGroups, nodes } = workflow;
-	if (!nodeGroups || nodeGroups.length === 0) return;
-
-	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
-	const seenGroupIds = new Set<string>();
-	const seenGroupNames = new Set<string>();
-	const nodeToGroup = new Map<string, string>();
-
-	for (const group of nodeGroups) {
-		// Unique group IDs
-		if (seenGroupIds.has(group.id)) {
-			throw new BadRequestError(`Duplicate node group ID "${group.id}".`);
-		}
-		seenGroupIds.add(group.id);
-
-		// Unique group names
-		if (seenGroupNames.has(group.name)) {
-			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
-		}
-		seenGroupNames.add(group.name);
-
-		if (group.nodeIds.length === 0) {
-			throw new BadRequestError(`Group "${group.name}" has no members.`);
-		}
-
-		for (const nodeId of group.nodeIds) {
-			// All referenced nodes must exist
-			if (!nodeIds.has(nodeId)) {
-				throw new BadRequestError(
-					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
-				);
-			}
-			// A node can only belong to one group
-			const existingGroup = nodeToGroup.get(nodeId);
-			if (existingGroup) {
-				throw new BadRequestError(
-					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
-				);
-			}
-			nodeToGroup.set(nodeId, group.name);
-		}
-	}
-
-	if (!getNodeType) return;
-
-	const nodeById = new Map(nodes.map((node) => [node.id, node]));
-	const connectionsBySourceNode = workflow.connections ?? {};
-
-	for (const group of nodeGroups) {
-		const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
-		const result = validateNodeSelectionForGrouping({
-			nodes: groupNodes,
-			connectionsBySourceNode,
-			getNodeType,
-			existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
-		});
-		if (!result.valid) {
-			throw nodeGroupValidationError(group, result);
-		}
+	const result = validateWorkflowGroups({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+	if (!result.valid) {
+		throw new BadRequestError(result.violations[0].message);
 	}
 }
 
@@ -405,17 +297,20 @@ export function removeDefaultValues(
 	return cleanedSettings;
 }
 
+export type ReplaceInvalidCredentialsCache = Map<string, INodeCredentialsDetails>;
+
+function credentialCacheKey(parts: readonly string[]): string {
+	return JSON.stringify(parts) ?? '';
+}
+
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	workflow: T,
 	projectId: string,
+	cache: ReplaceInvalidCredentialsCache = new Map(),
 ): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
-
-	// caching
-	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
-	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
@@ -442,11 +337,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
-				// init cache for type
-				if (!credentialsByName[nodeCredentialType]) {
-					credentialsByName[nodeCredentialType] = {};
-				}
-				if (credentialsByName[nodeCredentialType][name] === undefined) {
+				const cacheKey = credentialCacheKey(['name', nodeCredentialType, name]);
+				const cachedCredential = cache.get(cacheKey);
+				if (cachedCredential === undefined) {
 					const credentials = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
 						name,
 						nodeCredentialType,
@@ -454,47 +347,57 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 					);
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
-						credentialsByName[nodeCredentialType][name] = {
+						const resolvedCredential = {
 							id: credentials[0].id,
 							name: credentials[0].name,
 						};
-						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+						cache.set(cacheKey, resolvedCredential);
+						node.credentials[nodeCredentialType] = { ...resolvedCredential };
 						continue;
 					}
 
 					// nothing found - add invalid credentials to cache to prevent further DB checks
-					credentialsByName[nodeCredentialType][name] = {
+					cache.set(cacheKey, {
 						id: null,
 						name,
-					};
+					});
 				} else {
 					// get credentials from cache
-					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+					node.credentials[nodeCredentialType] = { ...cachedCredential };
 				}
 				continue;
 			}
 
 			// Node has credentials with an ID
 
-			// init cache for type
-			if (!credentialsById[nodeCredentialType]) {
-				credentialsById[nodeCredentialType] = {};
+			const idCacheKey = credentialCacheKey(['id', nodeCredentialType, nodeCredentials.id]);
+			const idAndNameCacheKey = credentialCacheKey([
+				'idAndName',
+				nodeCredentialType,
+				nodeCredentials.id,
+				nodeCredentials.name,
+			]);
+			const cachedFallback = cache.get(idAndNameCacheKey);
+			if (cachedFallback !== undefined) {
+				node.credentials[nodeCredentialType] = { ...cachedFallback };
+				continue;
 			}
 
 			// check if credentials for ID-type are not yet cached
-			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
+			const cachedById = cache.get(idCacheKey);
+			if (cachedById === undefined) {
 				// check first if ID-type combination exists
 				const credentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
 				if (credentials) {
-					credentialsById[nodeCredentialType][nodeCredentials.id] = {
+					const resolvedCredential = {
 						id: credentials.id,
 						name: credentials.name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][nodeCredentials.id];
+					cache.set(idCacheKey, resolvedCredential);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
@@ -506,23 +409,26 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache
-					credentialsById[nodeCredentialType][credsByName[0].id] = {
+					const resolvedCredential = {
 						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][credsByName[0].id];
+					cache.set(idAndNameCacheKey, resolvedCredential);
+					cache.set(
+						credentialCacheKey(['id', nodeCredentialType, credsByName[0].id]),
+						resolvedCredential,
+					);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 
 				// nothing found - add invalid credentials to cache to prevent further DB checks
-				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+				cache.set(idAndNameCacheKey, { ...nodeCredentials });
 				continue;
 			}
 
 			// get credentials from cache
-			node.credentials[nodeCredentialType] =
-				credentialsById[nodeCredentialType][nodeCredentials.id];
+			node.credentials[nodeCredentialType] = { ...cachedById };
 		}
 	}
 

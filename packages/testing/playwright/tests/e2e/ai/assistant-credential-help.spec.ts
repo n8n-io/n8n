@@ -101,7 +101,14 @@ test.describe(
 
 				await n8n.ndv.clickCreateNewCredential();
 
-				// Default is managed OAuth (click to connect) — no assistant button
+				// The modal defaults to the node's requested auth type — for Slack that
+				// is "Access Token" (its default `authentication`), not managed OAuth2.
+				await expect(n8n.canvas.credentialModal.getModeDropdownTrigger()).toHaveText(
+					/Access Token/,
+				);
+
+				// Managed OAuth (click to connect) has no fields to fill — no assistant button
+				await n8n.canvas.credentialModal.selectAuthTypeFromDropdown('Managed OAuth2 (recommended)');
 				await expect(n8n.canvas.credentialModal.oauthConnectButton).toHaveCount(1);
 				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(3);
 				await expect(n8n.aiAssistant.getCredentialEditAssistantButton()).toHaveCount(0);

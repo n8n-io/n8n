@@ -24,6 +24,7 @@ import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
+import type { WorkflowScheduledJobOwner } from '../../workflow-scheduled-job-owner';
 import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar';
 
 /** Flatten a schedule into the per-kind columns a row stores; absent fields are null. */
@@ -54,6 +55,7 @@ const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE
 
 describe('ScheduleTriggerJobRegistrar deviations', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
+	const owner = mock<WorkflowScheduledJobOwner>();
 
 	const makeRegistrar = (triggerNodeMode: 'legacy' | 'new') =>
 		new ScheduleTriggerJobRegistrar(
@@ -64,6 +66,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			jobProvisioner,
+			owner,
 		);
 
 	/** Collect one rule and return the row view the reconciliation would persist. */
@@ -72,7 +75,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 		const session = makeRegistrar(mode).createSession();
 		session.createCollector(workflow, scheduleNode).registerCron(cron, vi.fn());
 		await session.commit(WORKFLOW_ID, NODE_ID);
-		const desired = jobProvisioner.provision.mock.calls.at(-1)![4][0];
+		const desired = jobProvisioner.provision.mock.calls.at(-1)![0].desired[0];
 		return { ...flatten(desired.schedule), nextRunAt: desired.firstRunAt };
 	};
 
@@ -256,6 +259,48 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 					NOW,
 				),
 			).toThrow();
+		});
+	});
+
+	describe('D6: a non-dividing minutes cadence is an interval job in both modes', () => {
+		// every 50 minutes (50 does not divide 60): the node compiles an
+		// every-minute cron gated by an elapsed-time recurrence, which
+		// recurring_cron can't express (no minutes unit).
+		const cron: Cron = {
+			expression: '7 * * * * *' as CronExpression,
+			recurrence: { activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+			source: { field: 'minutes', size: 50 },
+		};
+
+		it('persists as a steady 50-minute interval in `legacy` and `new` mode', async () => {
+			const legacy = await collect('legacy', cron);
+			const fresh = await collect('new', cron);
+
+			for (const row of [legacy, fresh]) {
+				expect(row.kind).toBe('interval');
+				expect(row.intervalSeconds).toBe(50 * 60);
+			}
+
+			// legacy seeds the first fire from the cron (the in-memory engine fires
+			// ungated at its next minute tick); new anchors to activation + 50 min
+			expect(legacy.nextRunAt).toEqual(new Date('2026-01-05T12:01:07.000Z'));
+			expect(fresh.nextRunAt).toEqual(new Date('2026-01-05T12:50:07.000Z'));
+
+			// steady cadence after the seed: every gap is exactly 50 minutes
+			expect(gaps([legacy.nextRunAt!, ...fires(scheduleOf(legacy), legacy.nextRunAt!, 3)])).toEqual(
+				Array(3).fill(50 * 60 * 1000),
+			);
+		});
+
+		it('a dividing minutes cadence stays a clock-aligned cron in `legacy` mode', async () => {
+			const dividing: Cron = {
+				expression: '7 */30 * * * *' as CronExpression,
+				recurrence: { activated: false },
+				source: { field: 'minutes', size: 30 },
+			};
+			const legacy = await collect('legacy', dividing);
+			expect(legacy.kind).toBe('cron');
+			expect(legacy.cronExpression).toBe('7 */30 * * * *');
 		});
 	});
 });

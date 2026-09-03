@@ -1,10 +1,11 @@
-import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { JwtService } from '@/services/jwt.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -17,6 +18,7 @@ const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-s
 let owner: User;
 let member: User;
 let jwtService: JwtService;
+let supportedScopes: string[];
 
 const createSessionToken = (payload: OAuthSessionPayload): string => {
 	return jwtService.sign(payload, { expiresIn: '10m' });
@@ -24,10 +26,14 @@ const createSessionToken = (payload: OAuthSessionPayload): string => {
 let oauthClientRepository: OAuthClientRepository;
 
 beforeAll(async () => {
+	// The suite drives resource-less consent, which targets the default protected
+	// resource — the instance MCP server, which must be available to grant on.
+	await Container.get(McpSettingsService).setEnabled(true);
 	owner = await createOwner();
 	member = await createMember();
 	jwtService = Container.get(JwtService);
 	oauthClientRepository = Container.get(OAuthClientRepository);
+	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
 
 afterEach(async () => {
@@ -63,10 +69,11 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
-			scopes: [...MCP_INSTANCE_SCOPES],
+			scopes: supportedScopes,
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),
+			isFirstParty: false,
 		});
 	});
 
@@ -109,6 +116,7 @@ describe('GET /rest/consent/details', () => {
 			resourceName: 'My Named Workflow',
 			redirectUri: 'https://example.com/callback',
 			scopes: [],
+			isFirstParty: false,
 		});
 	});
 
@@ -285,6 +293,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('code')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should handle consent denial and return error redirect URL', async () => {
@@ -304,6 +315,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('error')).toBe('access_denied');
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should clear session cookie after processing consent', async () => {

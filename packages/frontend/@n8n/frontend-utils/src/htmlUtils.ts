@@ -1,11 +1,26 @@
 import { toValue, type MaybeRef } from 'vue';
-import xss, { escapeAttrValue } from 'xss';
+import xss from 'xss';
 
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './constants/sanitization';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
 */
+
+// `xss` is CJS with no `exports` map, so Node's lexer cannot see these as named
+// exports and `import { ... }` throws at link time under native ESM.
+const { escapeAttrValue, escapeHtml } = xss as unknown as {
+	escapeAttrValue: (str: string) => string;
+	escapeHtml: (str: string) => string;
+};
+
+/**
+ * Escapes HTML entities in a string to prevent HTML injection.
+ * This should be used for user input that will be displayed in HTML contexts.
+ * Unlike sanitizeHtml, this completely escapes all HTML entities.
+ */
+export { escapeHtml };
+
 export function sanitizeHtml(dirtyHtml: string) {
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {

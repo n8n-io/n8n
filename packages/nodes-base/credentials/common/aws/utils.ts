@@ -411,6 +411,40 @@ function resolveServiceAndRegion(
 }
 
 /**
+ * Applies AWS's S3 `UriEncode` canonicalization to a URL pathname: each segment is
+ * decoded, then percent-encoded so that only RFC 3986 unreserved characters and the
+ * `/` separators stay literal — the form S3 computes server-side when verifying
+ * SigV4 signatures, and the form the AWS SDK sends on the wire. A segment that is
+ * not valid percent-encoding (a stray `%`) is treated as raw text, so the key still
+ * round-trips unchanged. An encoded slash collapses to `/` (S3 keys are flat, so
+ * `%2F` and `/` address the same key — aws4 did the same). A literal `+` becomes
+ * `%2B` (AWS SDK behavior); the legacy aws4 signer read a path `+` as a space.
+ */
+export function uriEncodeS3Pathname(pathname: string): string {
+	return pathname
+		.split('/')
+		.map((segment) => {
+			// Decode runs of percent-escapes rather than the whole segment: a stray `%`
+			// (not valid encoding) then stays literal text and is encoded below, instead
+			// of poisoning the valid escapes around it.
+			const decoded = segment.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
+				try {
+					return decodeURIComponent(run);
+				} catch {
+					// e.g. malformed UTF-8 byte sequences — keep the run as literal text
+					return run;
+				}
+			});
+			return encodeURIComponent(decoded).replace(
+				/[!'()*]/g,
+				(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+			);
+		})
+		.join('/')
+		.replace(/%2F/g, '/');
+}
+
+/**
  * Prepares AWS request options for signing by constructing the proper endpoint URL,
  * handling query parameters, and setting up the request body for AWS4 signature.
  *
@@ -524,7 +558,17 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		body = '';
 	}
 
-	path = endpoint.pathname + endpoint.search;
+	const signingService = getAwsSigningService(service);
+
+	// S3 verifies the signature against the strictly encoded object path, and
+	// uriEscapePath is off for S3 so smithy signs this string verbatim. WHATWG URL
+	// leaves characters like ( ) + & = : @ raw in the pathname, so encode it once
+	// here — the same string becomes both the signed path and the wire URL below.
+	// The legacy signer must keep the raw path: it canonicalizes internally, and
+	// the rollback flag has to reproduce pre-migration wire bytes exactly.
+	const encodeS3Path = signingService === 's3' && process.env.N8N_AWS_LEGACY_SIGNER !== 'true';
+	path =
+		(encodeS3Path ? uriEncodeS3Pathname(endpoint.pathname) : endpoint.pathname) + endpoint.search;
 
 	// ! aws4.sign *must* have the body to sign, but we might have .form instead of .body
 	const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
@@ -544,7 +588,6 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		contentTypeHeader = 'application/x-www-form-urlencoded';
 	}
 
-	const signingService = getAwsSigningService(service);
 	const signOpts = {
 		...requestOptions,
 		headers: {

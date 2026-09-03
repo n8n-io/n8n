@@ -7,6 +7,8 @@ import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 
+import CharacterCount from '@/app/components/CharacterCount.vue';
+
 defineProps<{
 	disabled?: boolean;
 	versionNameTestId?: string;
@@ -24,7 +26,6 @@ const emit = defineEmits<{
 }>();
 
 const focusInput = () => {
-	// highlight the value in the input
 	nameInputRef.value?.select();
 };
 
@@ -53,7 +54,12 @@ defineExpose({
 				size="large"
 				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
 				:data-test-id="versionNameTestId"
-				@keydown.enter="handleEnterKey"
+				@keydown.enter.prevent="handleEnterKey"
+			/>
+			<CharacterCount
+				:value="versionName"
+				:max="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+				data-test-id="workflow-version-name-character-count"
 			/>
 		</N8nInputLabel>
 		<N8nInputLabel
@@ -69,6 +75,11 @@ defineExpose({
 				size="large"
 				:maxlength="WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH"
 				:data-test-id="descriptionTestId"
+			/>
+			<CharacterCount
+				:value="description"
+				:max="WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH"
+				data-test-id="workflow-version-description-character-count"
 			/>
 		</N8nInputLabel>
 	</div>

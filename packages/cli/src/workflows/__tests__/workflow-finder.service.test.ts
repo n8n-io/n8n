@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
 import type {
 	FolderRepository,
 	SharedWorkflow,
@@ -19,13 +20,15 @@ function makeService(rows?: FolderRow[]) {
 		sharedWorkflowRepository.find.mockResolvedValue(rows as unknown as SharedWorkflow[]);
 	}
 	const workflowRepository = mock<WorkflowRepository>();
+	const folderRepository = mock<FolderRepository>();
+	const roleService = mock<RoleService>();
 	const service = new WorkflowFinderService(
 		sharedWorkflowRepository,
-		mock<FolderRepository>(),
-		mock<RoleService>(),
+		folderRepository,
+		roleService,
 		workflowRepository,
 	);
-	return { service, sharedWorkflowRepository, workflowRepository };
+	return { service, sharedWorkflowRepository, workflowRepository, folderRepository, roleService };
 }
 
 describe('WorkflowFinderService', () => {
@@ -83,16 +86,235 @@ describe('WorkflowFinderService', () => {
 			const result = await service.findExistingWorkflowIds([]);
 
 			expect(result.size).toBe(0);
-			expect(workflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
 		});
 
 		it('returns the ids that exist in the database, unscoped by access', async () => {
 			const { service, workflowRepository } = makeService();
-			workflowRepository.find.mockResolvedValue([{ id: 'wf-1' }] as never);
+			workflowRepository.findByIds.mockResolvedValue([{ id: 'wf-1' }] as never);
 
 			const result = await service.findExistingWorkflowIds(['wf-1', 'wf-missing']);
 
 			expect(result).toEqual(new Set(['wf-1']));
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-missing'], {
+				fields: ['id'],
+			});
+		});
+	});
+
+	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
+		it('merges workflows returned from different chunks', async () => {
+			const { service, sharedWorkflowRepository } = makeService();
+			sharedWorkflowRepository.find
+				.mockResolvedValueOnce([{ workflow: { id: 'first' } }] as never)
+				.mockResolvedValueOnce([{ workflow: { id: 'last' } }] as never);
+			const sourceWorkflowIds = Array.from({ length: 10_001 }, (_, index) => `source-${index}`);
+
+			const result = await service.findOwnedWorkflowsBySourceWorkflowIds(
+				'project-1',
+				sourceWorkflowIds,
+			);
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledTimes(2);
+			expect(result.map(({ id }) => id)).toEqual(['first', 'last']);
+			const secondChunkWhere = sharedWorkflowRepository.find.mock.calls[1][0]?.where as Array<{
+				workflow: { id?: { value: string[] }; sourceWorkflowId?: { value: string[] } };
+			}>;
+			expect(secondChunkWhere[0].workflow.sourceWorkflowId?.value).toEqual(['source-10000']);
+			expect(secondChunkWhere[1].workflow.id?.value).toEqual(['source-10000']);
+		});
+	});
+
+	describe('findWorkflowsForUser', () => {
+		const user = {
+			id: 'user-1',
+			role: { slug: 'global:member', scopes: [] },
+		} as never;
+
+		function setup() {
+			const ctx = makeService();
+			ctx.roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:admin'] : ['workflow:owner'],
+			);
+			ctx.workflowRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+				workflows: [],
+				count: 0,
+			});
+			return ctx;
+		}
+
+		it('resolves the roles for the requested scopes instead of materialising workflow ids', async () => {
+			const { service, workflowRepository, sharedWorkflowRepository, roleService } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], { offset: 0, limit: 10 });
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				{
+					scopes: ['workflow:read'],
+					projectRoles: ['project:admin'],
+					workflowRoles: ['workflow:owner'],
+				},
+				expect.objectContaining({ skip: 0, take: 10 }),
+			);
+			// The whole point: no `shared_workflow` scan feeding a `WHERE id IN (...)`.
+			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowRepository.getManyAndCount).not.toHaveBeenCalled();
+		});
+
+		it('passes tag names through ListQuery filters', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { tagNames: ['prod'] },
+				offset: 0,
+				limit: 10,
+			});
+
+			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({
+					filter: expect.objectContaining({ tags: ['prod'] }),
+				}),
+			);
+		});
+
+		it('passes projectId through as a filter', async () => {
+			const { service, workflowRepository, folderRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { projectId: 'project-1' },
+			});
+
+			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({ filter: { projectId: 'project-1' } }),
+			);
+			expect(folderRepository.getAllFolderIdsInHierarchy).not.toHaveBeenCalled();
+		});
+
+		it('expands folderId into the folder hierarchy as a parentFolderIds filter', async () => {
+			const { service, workflowRepository, folderRepository } = setup();
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['folder-2', 'folder-3']);
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { folderId: 'folder-1', projectId: 'project-1' },
+			});
+
+			expect(folderRepository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith(
+				'folder-1',
+				'project-1',
+			);
+			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({
+					filter: {
+						projectId: 'project-1',
+						parentFolderIds: ['folder-1', 'folder-2', 'folder-3'],
+					},
+				}),
+			);
+		});
+
+		it('passes name/active/pagination and select through to the repository', async () => {
+			const { service, workflowRepository } = setup();
+			workflowRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+				workflows: [{ id: 'wf-1' }] as never,
+				count: 1,
+			});
+
+			const result = await service.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { name: 'Invoice', active: true },
+				offset: 20,
+				limit: 5,
+				includePinnedData: false,
+				includeTags: true,
+				includeActiveVersion: true,
+			});
+
+			expect(workflowRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({
+					filter: { name: 'Invoice', active: true },
+					skip: 20,
+					take: 5,
+					select: expect.objectContaining({
+						tags: true,
+						nodes: true,
+						activeVersion: true,
+					}),
+				}),
+			);
+			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
+			assert(options);
+			expect(options.select).not.toHaveProperty('pinData');
+			expect(result.count).toBe(1);
+		});
+
+		it('selects bare share rows by default and the home project on request', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includeProjects: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			expect(first[2].select).toMatchObject({ shared: true });
+			expect(first[2].select).not.toHaveProperty('ownedBy');
+			expect(second[2].select).toMatchObject({ ownedBy: true });
+			expect(second[2].select).not.toHaveProperty('shared');
+		});
+
+		it('sorts by id by default for public-list compatibility', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+
+			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
+			assert(options);
+			expect(options.sortBy).toBe('id:asc');
+		});
+
+		it('omits pinned data unless asked for it', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includePinnedData: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			expect(first[2].select).not.toHaveProperty('pinData');
+			expect(second[2].select).toMatchObject({ pinData: true });
+		});
+
+		it('omits the activeVersion join unless asked for it', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includeActiveVersion: true });
+
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			assert(first?.[2] && second?.[2]);
+			// Callers that never read it shouldn't pay for its nodes/connections.
+			expect(first[2].select).not.toHaveProperty('activeVersion');
+			expect(second[2].select).toMatchObject({ activeVersion: true });
+		});
+
+		it('omits pagination when no limit is given', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read']);
+
+			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
+			assert(options);
+			expect(options).not.toHaveProperty('skip');
+			expect(options).not.toHaveProperty('take');
 		});
 	});
 });

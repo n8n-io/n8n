@@ -1,3 +1,5 @@
+import { isAbortError } from '@n8n/agents';
+
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
 import {
@@ -7,6 +9,7 @@ import {
 	writeFileViaSandbox,
 	type SandboxWorkspace,
 } from './sandbox-fs';
+import { isQuotaExhaustedError } from '../utils/quota-error';
 
 export interface WorkspaceFileTarget {
 	filesystem?: {
@@ -40,6 +43,12 @@ function decodeWorkspaceFileContent(content: string | Buffer): string {
 	return Buffer.isBuffer(content) ? content.toString('utf-8') : content;
 }
 
+function selectWriteFailureCause(writeError: unknown, fallbackError: unknown): unknown {
+	if (isQuotaExhaustedError(writeError)) return writeError;
+	if (isQuotaExhaustedError(fallbackError)) return fallbackError;
+	return writeError;
+}
+
 /**
  * Read a UTF-8 workspace file. Tries the workspace filesystem when available,
  * otherwise falls back to sandbox shell commands.
@@ -70,6 +79,7 @@ export async function readWorkspaceFile(
 			if (isTransientSandboxIoError(error)) {
 				throw new Error(
 					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+					{ cause: error },
 				);
 			}
 			options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
@@ -88,6 +98,7 @@ export async function readWorkspaceFile(
 		if (isTransientSandboxIoError(error)) {
 			throw new Error(
 				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+				{ cause: error },
 			);
 		}
 		options?.logger.debug(`${resourceLabel(options)} command read missed`, {
@@ -124,6 +135,7 @@ export async function writeWorkspaceFile(
 			);
 			return;
 		} catch (error) {
+			if (isAbortError(error)) throw error;
 			try {
 				await writeFileViaSandbox(workspace, filePath, content, options);
 				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
@@ -132,12 +144,12 @@ export async function writeWorkspaceFile(
 				});
 				return;
 			} catch (fallbackError) {
-				// Keep the underlying error as `cause`: quota-exhausted proxy failures
-				// carry their machine-readable code there, which terminal-error
-				// classification reads to surface the out-of-credits message.
+				if (isAbortError(fallbackError)) throw fallbackError;
+				// Preserve whichever path carries quota metadata so callers can
+				// classify the combined failure correctly.
 				throw new Error(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
-					{ cause: fallbackError },
+					{ cause: selectWriteFailureCause(error, fallbackError) },
 				);
 			}
 		}
@@ -146,6 +158,7 @@ export async function writeWorkspaceFile(
 	try {
 		await writeFileViaSandbox(workspace, filePath, content, options);
 	} catch (error) {
+		if (isAbortError(error)) throw error;
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
 			{ cause: error },

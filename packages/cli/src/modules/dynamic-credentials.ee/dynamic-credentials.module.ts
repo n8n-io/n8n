@@ -3,8 +3,6 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
-
 /**
  * Superset capability: external/custom credential resolvers (OAuth/Slack) plus
  * their management surfaces and identity-extractor hooks. The base "private
@@ -18,15 +16,6 @@ function isExternalResolversEnabled(): boolean {
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
 		await import('./dynamic-credentials.controller.js');
-
-		// Import the n8n oauth extractor and seeder
-		const { N8nOAuthIdentitySeeder } = await import(
-			'./context-establishment-hooks/n8n-oauth/index.js'
-		);
-
-		Container.get(TriggerAuthIdentitySeederProxy).registerSeeder(
-			Container.get(N8nOAuthIdentitySeeder),
-		);
 
 		// System resolver powers private credentials; OAuth/Slack resolvers and
 		// their management/identity-extractor surfaces are external-only.

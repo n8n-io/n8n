@@ -1,5 +1,7 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import { createPinia, setActivePinia } from 'pinia';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
@@ -21,6 +23,7 @@ const mockRootStore = {
 	setExecutionTimeout: vi.fn(),
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
+	setPublicApiPath: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
 	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
@@ -71,7 +74,33 @@ const mockSettings = mock<FrontendSettings>({
 	telemetry: {
 		enabled: false,
 	},
+	publicApi: {
+		enabled: true,
+		latestVersion: 1,
+		path: 'api',
+		swaggerUi: { enabled: true },
+	},
 });
+
+const publicSettingsResponse = {
+	settingsMode: 'public',
+	defaultLocale: 'en',
+	userManagement: {
+		authenticationMethod: 'email',
+		showSetupOnFirstLoad: false,
+		smtpSetup: false,
+		passwordMinLength: 8,
+	},
+	sso: {
+		saml: { loginEnabled: false },
+		ldap: { loginEnabled: false, loginLabel: '' },
+		oidc: { loginEnabled: false, loginUrl: '' },
+	},
+	authCookie: { secure: true },
+	previewMode: false,
+	enterprise: { saml: true, ldap: true, oidc: true },
+	communityNodesEnabled: true,
+} as unknown as FrontendSettings;
 
 describe('settings.store', () => {
 	beforeEach(() => {
@@ -114,6 +143,74 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isExecuteWorkflowNodeExcluded', () => {
+		it('should return true when executeWorkflow is in excludeNodes', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
+		});
+
+		it('should return false when executeWorkflow is not excluded', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeCommand'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
+		});
+
+		it('should return false when only executeWorkflowTrigger is excluded', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
+		});
+	});
+
+	describe('isSubworkflowConversionDisabled', () => {
+		it.each([
+			[['n8n-nodes-base.executeWorkflow']],
+			[['n8n-nodes-base.executeWorkflowTrigger']],
+			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
+		])('should return true when %j is excluded', async (excludeNodes) => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
+		});
+
+		it('should return false when both sub-workflow nodes are available', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeCommand'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
 		});
 	});
 
@@ -164,6 +261,82 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+	});
+
+	describe('insecure connection warning', () => {
+		let writeSpy: MockInstance<(...text: string[]) => void>;
+
+		beforeEach(() => {
+			writeSpy = vi.spyOn(document, 'write').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('should render the localized warning over an insecure, non-localhost origin', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'n8n.example.com' });
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: true } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).toHaveBeenCalledTimes(1);
+			const markup = writeSpy.mock.calls[0][0];
+			expect(markup).toContain(i18n.baseText('settings.authCookie.insecureConnection.title'));
+			expect(markup).toContain('N8N_SECURE_COOKIE');
+			expect(markup).toContain('http://localhost:5678');
+		});
+
+		it('should not render the warning over localhost in a non-Safari browser', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'localhost' });
+			vi.stubGlobal('navigator', {
+				userAgent:
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0',
+			});
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: true } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not render the warning when the cookie is not secure', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'n8n.example.com' });
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: false } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('reading every getter at once', () => {
+		it('should not throw before settings have been fetched', () => {
+			const settingsStore = useSettingsStore();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
+		});
+
+		it('should not throw after reset', async () => {
+			getSettings.mockResolvedValueOnce(mockSettings);
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			settingsStore.reset();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
+		});
+
+		it('should not throw for public settings', async () => {
+			getSettings.mockResolvedValueOnce(publicSettingsResponse);
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
 		});
 	});
 
@@ -239,9 +412,25 @@ describe('settings.store', () => {
 				expect(mockRootStore.setMaxExecutionTimeout).not.toHaveBeenCalled();
 				expect(mockRootStore.setN8nMetadata).not.toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).not.toHaveBeenCalled();
 
 				// side effects
 				expect(sessionStarted).not.toHaveBeenCalled();
+			});
+
+			it('should expose license- and security-derived getters without throwing when the public response omits them', async () => {
+				getSettings.mockResolvedValueOnce(publicSettingsResponse);
+				const settingsStore = useSettingsStore();
+
+				await settingsStore.getSettings();
+
+				expect(settingsStore.planName).toBe('Community');
+				expect(settingsStore.isCommunityPlan).toBe(true);
+				expect(settingsStore.consumerId).toBeUndefined();
+				expect(settingsStore.security).toEqual({
+					blockFileAccessToN8nFiles: undefined,
+					secureCookie: true,
+				});
 			});
 
 			it('should store full settings if settingsMode is not "minimal"', async () => {
@@ -278,6 +467,9 @@ describe('settings.store', () => {
 				expect(mockRootStore.setN8nMetadata).toHaveBeenCalled();
 				expect(mockRootStore.setDefaultLocale).toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).toHaveBeenCalledWith(
+					`${mockSettings.publicApi.path}/v${mockSettings.publicApi.latestVersion}`,
+				);
 
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();

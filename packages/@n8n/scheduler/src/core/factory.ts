@@ -7,7 +7,11 @@ import {
 	measureClockSkew,
 	type ClockSkewOptions,
 } from './clock-skew';
-import { InvalidLifecycleOptionsError } from './errors';
+import {
+	InvalidLifecycleOptionsError,
+	InvalidReconciliationOptionsError,
+	InvalidSchedulerDepsError,
+} from './errors';
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
 	Executor,
@@ -17,10 +21,18 @@ import {
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
 import { DEFAULT_LIFECYCLE_OPTIONS, pollLookaheadSeconds, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
-import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
+import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
 import type { ReaperOptions, ReaperTaskStore } from './reaper';
+import { DEFAULT_RECONCILIATION_OPTIONS, reconcile } from './reconciliation';
+import type {
+	ReconciliationCursor,
+	ReconciliationJobStore,
+	ReconciliationOptions,
+	ReconciliationSummary,
+	ScheduledJobOwnerRegistry,
+} from './reconciliation';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
@@ -73,6 +85,19 @@ export interface SchedulerDeps {
 	executor?: Partial<ExecutorOptions>;
 	reaper?: Partial<ReaperOptions>;
 	retention?: Partial<RetentionOptions>;
+
+	/**
+	 * Enables the owner reconciliation pass. Absent, no loop is composed and
+	 * `reconcile()` returns a no-op summary. Requires {@link now}: the pass's
+	 * settle and grace windows are judged on the shared clock.
+	 */
+	reconciliation?: {
+		jobStore: ReconciliationJobStore;
+		/** The claimed liveness resolvers, populated by the host before `start`. */
+		owners: ScheduledJobOwnerRegistry;
+		/** The default timezone is shared with the materializer's. */
+		options?: Partial<Omit<ReconciliationOptions, 'defaultTimezone'>>;
+	};
 
 	/** Tuning for the start-time clock-skew check (only used when {@link now} is set). */
 	clockSkew?: Partial<ClockSkewOptions>;
@@ -136,6 +161,10 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
 	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
+	const reconciliationOptions = withDefaults<ReconciliationOptions>(
+		DEFAULT_RECONCILIATION_OPTIONS,
+		deps.reconciliation?.options,
+	);
 	const lifecycleOptions = withDefaults(DEFAULT_LIFECYCLE_OPTIONS, deps.lifecycle);
 	const clockSkewOptions = withDefaults(DEFAULT_CLOCK_SKEW_OPTIONS, deps.clockSkew);
 	const dispatchLagWarnThresholdSeconds =
@@ -155,10 +184,12 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		'executorIntervalSeconds',
 		'reaperIntervalSeconds',
 		'retentionIntervalSeconds',
+		'reconciliationIntervalSeconds',
 		'materializerTimeoutSeconds',
 		'executorTimeoutSeconds',
 		'reaperTimeoutSeconds',
 		'retentionTimeoutSeconds',
+		'reconciliationTimeoutSeconds',
 	] as const;
 	for (const key of durationKeys) {
 		const value = lifecycleOptions[key];
@@ -183,6 +214,28 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		throw new InvalidLifecycleOptionsError(
 			`maxConcurrentPasses must be a positive integer, got ${maxConcurrentPasses}`,
 		);
+	}
+
+	for (const key of ['settleSeconds', 'quarantineGraceSeconds'] as const) {
+		const value = reconciliationOptions[key];
+		if (!(Number.isFinite(value) && value > 0)) {
+			throw new InvalidReconciliationOptionsError(
+				'Reconciliation windows must be a positive number of seconds',
+				key,
+				value,
+			);
+		}
+	}
+
+	for (const key of ['batchSize', 'maxPagesPerPass'] as const) {
+		const value = reconciliationOptions[key];
+		if (!(Number.isInteger(value) && value > 0)) {
+			throw new InvalidReconciliationOptionsError(
+				'Reconciliation paging options must be a positive integer',
+				key,
+				value,
+			);
+		}
 	}
 
 	const emit = (level: SchedulerEventLevel, message: string, context: Record<string, unknown>) => {
@@ -287,6 +340,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					if (result === 'failure') metrics.recordDeadLettered();
 				}),
 			onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
+			onLeaseLost: (taskType) => {
+				recordMetric(() => metrics.recordLeaseLost(taskType));
+				emit(
+					'warn',
+					'Scheduler task finished after losing its lease; another instance may have run the same occurrence concurrently',
+					{ taskType },
+				);
+			},
 		},
 		createExecutorTracing(tracer),
 	);
@@ -334,7 +395,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal,
 				);
 				await traceCreatedTasks(tracer, summary.created);
-				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+				recordMetric(() => {
+					metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
+					metrics.recordMisfired(summary.misfires);
+					metrics.recordRetired(summary.retiredOccurrences);
+				});
 				return summary;
 			} catch (error) {
 				// `throwIfAborted` always throws `signal.reason` itself, so this only
@@ -345,7 +410,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal.reason !== PASS_TIMED_OUT &&
 					error === signal.reason
 				) {
-					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+					return {
+						claimedJobs: 0,
+						occurrences: 0,
+						created: [],
+						deferredJobs: 0,
+						misfires: [],
+						retiredOccurrences: 0,
+					};
 				}
 				throw error;
 			}
@@ -354,6 +426,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
 			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
 			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
+			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: totalDiscarded(summary.misfires),
+			[SCHEDULER_ATTRIBUTES.retiredOccurrences]: summary.retiredOccurrences,
 		}),
 	);
 
@@ -386,6 +460,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							},
 						);
 					},
+					onRetireError: (error) => {
+						emit('error', 'Scheduler could not retire stale pending occurrences', {
+							error: described(error),
+						});
+					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
 							...task,
@@ -401,12 +480,15 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				},
 				signal,
 			);
-			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+			recordMetric(() =>
+				metrics.recordReaped(result.reclaimed, result.deadLettered, result.missed),
+			);
 			return result;
 		},
 		(result) => ({
 			[SCHEDULER_ATTRIBUTES.reclaimed]: result.reclaimed,
 			[SCHEDULER_ATTRIBUTES.deadLettered]: result.deadLettered,
+			[SCHEDULER_ATTRIBUTES.missed]: result.missed,
 		}),
 	);
 
@@ -430,6 +512,112 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.retentionDrained]: summary.drained,
 		}),
 	);
+
+	reconciliationOptions.defaultTimezone = materializerOptions.defaultTimezone;
+	const noReconciliation = async (): Promise<ReconciliationSummary> =>
+		await Promise.resolve({
+			ownersChecked: 0,
+			quarantined: 0,
+			deleted: 0,
+			revived: 0,
+			skippedOwnerTypes: [],
+			drained: true,
+		});
+	let runReconcile: (signal?: AbortSignal) => Promise<ReconciliationSummary> = noReconciliation;
+	if (deps.reconciliation !== undefined) {
+		const { jobStore, owners } = deps.reconciliation;
+		let resumeFrom: ReconciliationCursor | undefined;
+		// Passes overlap, and each walks from the cursor it read: only the first
+		// one back may publish, or a pass that started behind rewinds the walk.
+		let published = 0;
+		const readNow = deps.now;
+		if (readNow === undefined) {
+			throw new InvalidSchedulerDepsError(
+				'Owner reconciliation requires `now`: its settle and grace windows are judged on the clock every instance shares',
+			);
+		}
+		runReconcile = tracePass(
+			tracer,
+			{ name: 'Scheduler reconcile owners', op: 'scheduler.reconcile_owners' },
+			async (signal) => {
+				const startedFrom = resumeFrom;
+				const startedAfter = published;
+				const summary = await reconcile(
+					jobStore,
+					owners,
+					readNow,
+					reconciliationOptions,
+					{
+						onUnclaimedOwnerType: (ownerType) => {
+							emit(
+								'warn',
+								'Scheduled jobs exist for an owner type with no registered liveness resolver; leaving them alone',
+								{ ownerType },
+							);
+						},
+						onResolverFailed: (ownerType, error) => {
+							emit(
+								'error',
+								'A scheduled job owner resolver failed; abandoning that owner type for this pass',
+								{ ownerType, error: described(error) },
+							);
+						},
+						onQuarantined: (context) => {
+							emit('warn', 'Disabled scheduled jobs whose owner no longer exists', {
+								...context,
+								deletedAfterSeconds: reconciliationOptions.quarantineGraceSeconds,
+							});
+						},
+						onDeleted: (context) => {
+							emit(
+								'info',
+								'Deleted scheduled jobs whose owner stayed gone past the quarantine grace',
+								{ ...context },
+							);
+						},
+						onRevived: (context) => {
+							emit('warn', 'Re-enabled scheduled jobs whose owner turned out to still exist', {
+								...context,
+							});
+						},
+						onReviveClockFailed: ({ jobId, error }) => {
+							emit('warn', 'Could not recompute the clock of a revived scheduled job', {
+								jobId,
+								error: described(error),
+							});
+						},
+					},
+					signal,
+					startedFrom,
+				);
+				if (published === startedAfter) {
+					published += 1;
+					resumeFrom = summary.resumeFrom;
+				}
+				if (summary.quarantined > 0 || summary.deleted > 0 || summary.revived > 0) {
+					emit('info', 'Scheduled job owner reconciliation changed jobs', { ...summary });
+				}
+				if (summary.resumeFrom !== undefined && signal?.aborted !== true) {
+					emit(
+						'warn',
+						'Scheduler owner reconciliation pass stopped before draining; backlog remains',
+						{ ...summary },
+					);
+				}
+				recordMetric(() =>
+					metrics.recordReconciled(summary.quarantined, summary.deleted, summary.revived),
+				);
+				return summary;
+			},
+			(summary) => ({
+				[SCHEDULER_ATTRIBUTES.ownersChecked]: summary.ownersChecked,
+				[SCHEDULER_ATTRIBUTES.quarantinedJobs]: summary.quarantined,
+				[SCHEDULER_ATTRIBUTES.deletedOrphanedJobs]: summary.deleted,
+				[SCHEDULER_ATTRIBUTES.revivedJobs]: summary.revived,
+				[SCHEDULER_ATTRIBUTES.reconciliationDrained]: summary.drained,
+			}),
+		);
+	}
 
 	const loopOver = (
 		pass: string,
@@ -495,6 +683,16 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			lifecycleOptions.retentionTimeoutSeconds,
 		),
 	];
+	if (deps.reconciliation !== undefined) {
+		loops.push(
+			loopOver(
+				'owner reconciliation',
+				runReconcile,
+				lifecycleOptions.reconciliationIntervalSeconds,
+				lifecycleOptions.reconciliationTimeoutSeconds,
+			),
+		);
+	}
 
 	const checkClockSkew = async () => {
 		if (deps.now === undefined) return;
@@ -534,6 +732,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		reap: runReap,
 
 		prune: runPrune,
+
+		reconcile: runReconcile,
 
 		start() {
 			if (!started && stopping === undefined) {

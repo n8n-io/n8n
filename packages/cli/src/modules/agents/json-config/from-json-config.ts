@@ -1,5 +1,6 @@
 import type {
 	AgentBuilder,
+	AgentMessage,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -68,7 +69,7 @@ export type ToolResolver = (
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessageSync?(toolName: string, output: unknown): unknown;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -109,6 +110,8 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
+	webSearchFetch?: FetchFn;
 	/**
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool is attached without requiring a search provider
@@ -204,6 +207,7 @@ export async function buildFromJson(
 	const fallbackWebSearchTool = buildFallbackWebSearchTool(
 		config,
 		options.credentialProvider,
+		options.webSearchFetch,
 		options.fallbackWebSearch,
 	);
 	if (fallbackWebSearchTool) {
@@ -223,9 +227,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);
@@ -299,6 +302,7 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
@@ -346,11 +350,16 @@ function buildFallbackWebSearchTool(
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(credential.apiUrl, args.query, {
-				maxResults: args.maxResults,
-				includeDomains: args.includeDomains,
-				excludeDomains: args.excludeDomains,
-			});
+			return await searxngSearch(
+				credential.apiUrl,
+				args.query,
+				{
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				},
+				webSearchFetch,
+			);
 		},
 	};
 }
@@ -431,7 +440,6 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
@@ -443,6 +451,12 @@ async function resolveToolRef(
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
+				...(descriptor.hasToMessage
+					? {
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
+						}
+					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
@@ -608,6 +622,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 
@@ -615,6 +630,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

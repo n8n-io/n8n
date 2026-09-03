@@ -14,6 +14,7 @@ export const agentCapabilityKindSchema = z.enum([
 	'skill',
 	'task',
 	'subAgent',
+	'vectorStore',
 ]);
 export type AgentCapabilityKind = z.infer<typeof agentCapabilityKindSchema>;
 
@@ -47,6 +48,13 @@ export const agentConfigValidationIssueSchema = z.object({
 	/** Config dot-path, or a legacy `skill:<id>` token for backward compatibility. */
 	path: z.string(),
 	capability: agentConfigValidationCapabilityRefSchema,
+	/**
+	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
+	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'` for workflow tools).
+	 * Absent when the code itself is specific enough. Frontends map this to a
+	 * reason-specific i18n key; never display it raw.
+	 */
+	reason: z.string().optional(),
 });
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
 

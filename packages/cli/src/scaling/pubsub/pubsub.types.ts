@@ -59,6 +59,9 @@ export namespace PubSub {
 		export type DisplayWorkflowPublicationStatus = ToCommand<'display-workflow-publication-status'>;
 		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
+		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
+		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
+		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
 		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
 		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
@@ -70,10 +73,13 @@ export namespace PubSub {
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
+		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
 		export type AgentChatSubscriptionChanged = ToCommand<'agent-chat-subscription-changed'>;
+		export type AgentChatLeaderChannelRequest = ToCommand<'agent-chat-leader-channel-request'>;
+		export type AgentChatLeaderChannelResult = ToCommand<'agent-chat-leader-channel-result'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
@@ -98,6 +104,9 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowPublicationStatus
 		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
+		| Commands.RelayAgentExecutionUpdate
+		| Commands.ResumeAgentWorkflowTool
+		| Commands.CancelAgentBackgroundJob
 		| Commands.RelayChatStreamEvent
 		| Commands.RelayInstanceAiEvent
 		| Commands.RelayInstanceAiTaskControl
@@ -111,10 +120,13 @@ export namespace PubSub {
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
+		| Commands.ReloadInstanceAiSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentChatSubscriptionChanged
+		| Commands.AgentChatLeaderChannelRequest
+		| Commands.AgentChatLeaderChannelResult
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged;

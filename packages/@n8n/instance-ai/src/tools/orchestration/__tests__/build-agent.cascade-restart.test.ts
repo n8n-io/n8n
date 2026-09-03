@@ -19,20 +19,20 @@
  * 1. `ctx.suspendPayload` restoration on resume (the cli's `builderCheckpoint`
  *    ref, read back from the checkpoint store, not from in-memory state).
  * 2. Two-level SDK resume validation: the orchestrator's permissive
- *    passthrough schema, then the builder's own `questionsResumeSchema` —
- *    the user's answer must survive both without being stripped or replaced.
- * 3. A full "suspend → drop every in-memory object → resume from checkpoint
- *    storage only" restart, per AGENT-354's testing requirement: phase 2
- *    below constructs fresh Agent instances, a fresh delegate, and a fresh
- *    domain context, and resumes purely from the shared checkpoint store and
- *    thread-metadata record (the only state carried across phases).
+ *    passthrough schema, then the builder tool's own resume schema.
+ * 3. Repeated "suspend → drop every in-memory object → resume from checkpoint
+ *    storage only" restarts for a question followed by a target-tool approval.
  */
-import { Agent, Tool } from '@n8n/agents';
-import type {
-	CheckpointStore,
-	SerializableAgentState,
-	StreamChunk,
-	StreamResult,
+import {
+	Agent,
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type ApprovalResumePayload,
+	type CheckpointStore,
+	type SerializableAgentState,
+	type StreamChunk,
+	type StreamResult,
 } from '@n8n/agents';
 import {
 	questionsResumeSchema,
@@ -180,16 +180,13 @@ function toTurnStream(result: StreamResult): BuilderTurnStream {
 /**
  * Build the agent-builder sub-agent: `write_config` (a mutation tool whose
  * name drives `configUpdated` via `CONFIG_MUTATION_TOOL_NAMES`) and
- * `ask_questions` (an interruptible tool using the real shared contract
- * from `@n8n/api-types`, mirroring the cli's own `ask_questions` tool). On
- * resume, `onResume` records the exact `ctx.resumeData` the SDK handed back
- * after validating it against `questionsResumeSchema` — the central
- * assertion of this test is that nothing was stripped along the way.
+ * `ask_questions` and `call_agent` interruptible tools. On resume, `onResume`
+ * records the exact `ctx.resumeData` the SDK handed back after validation.
  */
 function createBuilderAgent(
 	checkpointStore: CheckpointStore,
 	model: MockLanguageModelV3,
-	onResume: (data: QuestionsResumeData) => void,
+	onResume: (toolName: 'ask_questions' | 'call_agent', data: unknown) => void,
 ): Agent {
 	const writeConfigTool = new Tool('write_config')
 		.description('Persist the agent configuration')
@@ -214,8 +211,26 @@ function createBuilderAgent(
 					],
 				});
 			}
-			onResume(ctx.resumeData);
+			onResume('ask_questions', ctx.resumeData);
 			return { answered: true };
+		});
+
+	const callAgentTool = new Tool('call_agent')
+		.description('Test the target agent')
+		.input(z.object({}))
+		.suspend(APPROVAL_SUSPEND_SCHEMA)
+		.resume(APPROVAL_RESUME_SCHEMA)
+		.handler(async (_input, ctx) => {
+			if (ctx.resumeData === undefined) {
+				return await ctx.suspend({
+					type: 'approval',
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				});
+			}
+			onResume('call_agent', ctx.resumeData);
+			return { status: 'completed' };
 		});
 
 	return new Agent('agent-builder')
@@ -223,6 +238,7 @@ function createBuilderAgent(
 		.instructions('You are the agent builder sub-agent. Use your tools to build the agent.')
 		.tool(writeConfigTool)
 		.tool(askQuestionsTool)
+		.tool(callAgentTool)
 		.checkpoint(checkpointStore);
 }
 
@@ -234,7 +250,7 @@ function createBuilderAgent(
 function createBuilderDelegate(
 	store: InMemoryCheckpointStore,
 	model: MockLanguageModelV3,
-	onResume: (data: QuestionsResumeData) => void,
+	onResume: (toolName: 'ask_questions' | 'call_agent', data: unknown) => void,
 ): InstanceAiBuilderDelegate {
 	return {
 		createAgent: async (_name: string) =>
@@ -275,6 +291,9 @@ function createBuilderDelegate(
 
 		listAgents: async () => await Promise.resolve([]),
 
+		listAgentCapabilities: async () =>
+			await Promise.resolve({ channels: [], agentCapabilities: [], limitations: [] }),
+
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
@@ -298,10 +317,6 @@ function createEventBusStub(): InstanceAiEventBus {
 	return {
 		publish: () => {},
 		subscribe: () => () => {},
-		getEventsAfter: () => [],
-		getEventsForRun: () => [],
-		getEventsForRuns: () => [],
-		getNextEventId: async () => await Promise.resolve(1),
 	};
 }
 
@@ -342,7 +357,7 @@ function createOrchestrationContext(params: {
 }
 
 describe('build-agent cascade restart (real SDK)', () => {
-	it('suspends on a builder question, drops all in-memory state, and resumes purely from checkpoint storage with the answer intact', async () => {
+	it('survives restarts across a builder question and a chained target approval', async () => {
 		const store = new InMemoryCheckpointStore();
 		const threadRecords = new Map<string, ThreadRecord>();
 		threadRecords.set('thread-1', {
@@ -438,15 +453,19 @@ describe('build-agent cascade restart (real SDK)', () => {
 		expect(persistedThread?.metadata?.instanceAiAgentBuilderTarget).toMatchObject({
 			agentId: 'agent-1',
 			projectId: 'proj-1',
+			name: 'Support Agent',
+			ref: 'support-agent',
 		});
 
 		// ── Phase 2: drop everything, resume purely from checkpoint storage ─
 		let observedBuilderResumeData: QuestionsResumeData | undefined;
 		const phase2Delegate = createBuilderDelegate(
 			store,
-			createScriptedModel([makeTextTurn('Configured Slack as the channel.')]),
-			(data) => {
-				observedBuilderResumeData = data;
+			createScriptedModel([makeToolCallTurn('b-tc-3', 'call_agent', {})]),
+			(toolName, data) => {
+				if (toolName === 'ask_questions') {
+					observedBuilderResumeData = questionsResumeSchema.parse(data);
+				}
 			},
 		);
 		const phase2Context = createOrchestrationContext({
@@ -454,7 +473,7 @@ describe('build-agent cascade restart (real SDK)', () => {
 			delegate: phase2Delegate,
 			agentBuilderTarget: undefined,
 		});
-		const orchModel2 = createScriptedModel([makeTextTurn('Your agent is ready.')]);
+		const orchModel2 = createScriptedModel([makeTextTurn('This turn should remain suspended.')]);
 		const orchestrator2 = new Agent('ia-orchestrator')
 			.model(orchModel2)
 			.instructions('Test orchestrator')
@@ -476,7 +495,54 @@ describe('build-agent cascade restart (real SDK)', () => {
 		// and the builder's own questionsResumeSchema validation.
 		expect(observedBuilderResumeData).toEqual(resumeData);
 
-		const toolResultChunks = chunksOfType(phase2Chunks, 'tool-result').filter(
+		const approvalSuspensions = chunksOfType(phase2Chunks, 'tool-call-suspended');
+		expect(approvalSuspensions).toHaveLength(1);
+		const approvalSuspension = approvalSuspensions[0];
+		expect(approvalSuspension.suspendPayload).toMatchObject({
+			type: 'approval',
+			toolName: 'delete_record',
+			displayName: 'Delete record',
+			args: { id: 'record-1' },
+			builderCheckpoint: {
+				configUpdated: true,
+			},
+		});
+		expect(store.listStates().filter(([, state]) => state.status === 'suspended')).toHaveLength(2);
+
+		// ── Phase 3: restart again and route only the approval decision back ─
+		let observedApprovalResumeData: ApprovalResumePayload | undefined;
+		const phase3Delegate = createBuilderDelegate(
+			store,
+			createScriptedModel([makeTextTurn('The target action was declined.')]),
+			(toolName, data) => {
+				if (toolName === 'call_agent') {
+					observedApprovalResumeData = APPROVAL_RESUME_SCHEMA.parse(data);
+				}
+			},
+		);
+		const phase3Context = createOrchestrationContext({
+			threadRecords,
+			delegate: phase3Delegate,
+			agentBuilderTarget: undefined,
+		});
+		const orchestrator3 = new Agent('ia-orchestrator')
+			.model(createScriptedModel([makeTextTurn('Your agent test was handled.')]))
+			.instructions('Test orchestrator')
+			.tool(createBuildAgentTool(phase3Context))
+			.checkpoint(store);
+
+		const phase3Run = await orchestrator3.resume(
+			'stream',
+			{ approved: false, scope: 'session' },
+			{
+				runId: approvalSuspension.runId,
+				toolCallId: approvalSuspension.toolCallId,
+			},
+		);
+		const phase3Chunks = await collectStreamChunks(phase3Run.stream);
+
+		expect(observedApprovalResumeData).toEqual({ approved: false });
+		const toolResultChunks = chunksOfType(phase3Chunks, 'tool-result').filter(
 			(c) => c.toolName === ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 		);
 		expect(toolResultChunks).toHaveLength(1);
@@ -485,9 +551,9 @@ describe('build-agent cascade restart (real SDK)', () => {
 			configUpdated: true,
 		});
 		const output = toolResultChunks[0].output as { builderReply?: string };
-		expect(output.builderReply).toContain('Configured Slack');
+		expect(output.builderReply).toContain('target action was declined');
 
-		const finishChunks = chunksOfType(phase2Chunks, 'finish');
+		const finishChunks = chunksOfType(phase3Chunks, 'finish');
 		expect(finishChunks.length).toBeGreaterThan(0);
 		expect(finishChunks.at(-1)?.finishReason).toBe('stop');
 

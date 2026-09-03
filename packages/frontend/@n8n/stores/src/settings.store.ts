@@ -3,7 +3,9 @@ import {
 	type IUserManagementSettings,
 	type FrontendSettings,
 	type FrontendModuleSettings,
+	type WorkflowReviewsPolicy,
 } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import * as eventsApi from '@n8n/rest-api-client/api/events';
@@ -11,7 +13,12 @@ import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import Bowser from 'bowser';
-import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type IDataObject,
+	type WorkflowSettings,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -21,19 +28,20 @@ import { useRootStore } from './useRootStore';
 /**
  * Full-page warning rendered when the instance requires a secure cookie but the
  * page is served over an insecure origin (or via Safari, which drops the cookie).
+ * The copy is localized; the structural markup and inline styles stay in code
+ * because this is written via `document.write` before the Vue app mounts.
  */
-const INSECURE_CONNECTION_WARNING = `
+const buildInsecureConnectionWarning = () => `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>
-<h2>Your n8n server is configured to use a secure cookie, <br/>however you are either visiting this via an insecure URL, or using Safari.
-</h2>
+<h2>${i18n.baseText('settings.authCookie.insecureConnection.title')}</h2>
 <br/>
 <div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
-	To fix this, please consider the following options:
+	${i18n.baseText('settings.authCookie.insecureConnection.fixIntro')}
 	<ul>
-		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
-		<li>If you are running this locally, and not using Safari, try using <a href="http://localhost:5678">localhost</a> instead</li>
-		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.tls')}</li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.localhost', { interpolate: { localhostUrl: 'http://localhost:5678' } })}</li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.disableSecureCookie', { interpolate: { envVar: 'N8N_SECURE_COOKIE' } })}</li>
 	</ul>
 </div>
 </body>`;
@@ -71,17 +79,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const databaseType = computed(() => settings.value?.databaseType);
 
-	const planName = computed(() => settings.value?.license.planName ?? 'Community');
+	const planName = computed(() => settings.value?.license?.planName ?? 'Community');
 
-	const consumerId = computed(() => settings.value?.license.consumerId);
+	const consumerId = computed(() => settings.value?.license?.consumerId);
 
 	const binaryDataMode = computed(() => settings.value?.binaryDataMode);
 
 	const pruning = computed(() => settings.value?.pruning);
 
 	const security = computed(() => ({
-		blockFileAccessToN8nFiles: settings.value.security.blockFileAccessToN8nFiles,
-		secureCookie: settings.value.authCookie.secure,
+		blockFileAccessToN8nFiles: settings.value?.security?.blockFileAccessToN8nFiles,
+		secureCookie: settings.value?.authCookie?.secure,
 	}));
 
 	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise ?? {});
@@ -96,9 +104,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
-	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
+	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi?.enabled ?? false);
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
+
+	const isE2ETestMode = computed(() => settings.value.inE2ETests);
 
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
@@ -162,6 +172,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -199,9 +213,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	// Opt-in flag: enabled when the backend's Daytona sandbox env vars
-	// (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` + `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`)
-	// are set, OR the AI Assistant proxy is available.
+	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
 		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
@@ -251,6 +263,20 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.workflowCallerPolicyDefaultOption,
 	);
 
+	const isNodeTypeExcluded = (nodeType: string) => {
+		const excludeNodes = settings.value.excludeNodes;
+		return Array.isArray(excludeNodes) && excludeNodes.includes(nodeType);
+	};
+
+	const isExecuteWorkflowNodeExcluded = computed(() =>
+		isNodeTypeExcluded(EXECUTE_WORKFLOW_NODE_TYPE),
+	);
+
+	const isSubworkflowConversionDisabled = computed(
+		() =>
+			isExecuteWorkflowNodeExcluded.value || isNodeTypeExcluded(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
+	);
+
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
@@ -289,7 +315,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				location.protocol === 'http:' &&
 				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
 			) {
-				document.write(INSECURE_CONNECTION_WARNING);
+				document.write(buildInsecureConnectionWarning());
 				return;
 			}
 		}
@@ -297,6 +323,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setAllowedModules = (allowedModules: FrontendSettings['allowedModules']) => {
 		settings.value.allowedModules = allowedModules;
+	};
+
+	const setWorkflowReviewsPolicy = (policy: WorkflowReviewsPolicy) => {
+		settings.value.workflowReviews = policy;
 	};
 
 	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
@@ -356,6 +386,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setPublicApiPath(
+			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+		);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});
@@ -445,6 +478,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isE2ETestMode,
 		isCanvasOnly,
 		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
@@ -475,6 +509,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMultiMain,
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
+		isExecuteWorkflowNodeExcluded,
+		isSubworkflowConversionDisabled,
 		permanentlyDismissedBanners,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
@@ -488,6 +524,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
@@ -496,6 +533,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		stopShowingSetupPage,
 		getSettings,
 		setSettings,
+		setWorkflowReviewsPolicy,
 		initialize,
 		getModuleSettings,
 		moduleSettings,

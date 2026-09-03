@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import TestCaseDetail from './TestCaseDetail.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
+import { useEvaluationStore } from '../../evaluation.store';
 
 // ─── Module-level mocks ───────────────────────────────────────────────────────
 
@@ -32,7 +34,7 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
@@ -84,15 +86,12 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 }));
 
 // Stub heavy children not under test.
-vi.mock('./TestCaseResultCard.vue', () => ({
+vi.mock('./TestCaseRunResult.vue', () => ({
 	default: {
-		name: 'TestCaseResultCard',
-		props: ['index'],
-		template: '<div :data-test-id="`stub-result-card-${index}`" />',
+		name: 'TestCaseRunResult',
+		props: ['index', 'expanded', 'separated'],
+		template: '<div :data-test-id="`stub-run-result-${index}`" />',
 	},
-}));
-vi.mock('../WizardSidepanel/CustomCheckModal.vue', () => ({
-	default: { name: 'CustomCheckModal', template: '<div />' },
 }));
 
 // ─── Renderer ────────────────────────────────────────────────────────────────
@@ -126,6 +125,39 @@ describe('TestCaseDetail', () => {
 		const { getByTestId } = renderComponent();
 		await userEvent.click(getByTestId('tests-detail-run'));
 		expect(mockPersistAndRunCase).toHaveBeenCalledWith('initial');
+	});
+
+	// The Config pane's collapse state lives on the reka-ui CollapsibleContent
+	// wrapping our config content.
+	function configPaneState(container: Element): string | null | undefined {
+		return container
+			.querySelector('[data-test-id="tests-detail-config"]')
+			?.closest('[data-state]')
+			?.getAttribute('data-state');
+	}
+
+	it('collapses the Config pane once a run dispatches successfully', async () => {
+		setup();
+		const { getByTestId, container } = renderComponent();
+		expect(configPaneState(container)).toBe('open');
+
+		await userEvent.click(getByTestId('tests-detail-run'));
+
+		// handleRun collapses Config only after persistAndRunCase resolves true.
+		await waitFor(() => expect(configPaneState(container)).toBe('closed'));
+	});
+
+	it('leaves the Config pane open when the run fails to dispatch', async () => {
+		setup();
+		mockPersistAndRunCase.mockResolvedValueOnce(false);
+		const { getByTestId, container } = renderComponent();
+
+		await userEvent.click(getByTestId('tests-detail-run'));
+
+		// Let the (failed) handler settle, then confirm Config was never collapsed —
+		// otherwise the user is stranded on a closed pane with no result to show.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(configPaneState(container)).toBe('open');
 	});
 
 	it('returns to the list when the breadcrumb root is clicked', async () => {
@@ -180,16 +212,46 @@ describe('TestCaseDetail', () => {
 		expect(getByText('$json.x > 1')).toBeInTheDocument();
 	});
 
-	it('reuses the overview result card once a run is active for the case', async () => {
+	it('shows the latest-run pane when the pinned run covers the case', async () => {
 		const store = setup();
+		const evaluationStore = useEvaluationStore();
 		store.setActiveRow(2, 20);
 		store.setActiveRunId('run-1');
+		// The pinned run has this row's execution → pane visible, keyed by row index.
+		evaluationStore.testCaseExecutionsById = {
+			c1: { id: 'c1', testRunId: 'run-1', runIndex: 2, status: 'success' },
+		} as never;
 		const { findByTestId } = renderComponent();
-		// Keyed by the active row index (= the case's runIndex).
-		expect(await findByTestId('stub-result-card-2')).toBeInTheDocument();
+		expect(await findByTestId('stub-run-result-2')).toBeInTheDocument();
 	});
 
-	it('does not show the result card before a run is triggered', () => {
+	it('hides the latest-run pane when the pinned run has no execution for this case', () => {
+		const store = setup();
+		const evaluationStore = useEvaluationStore();
+		// The pinned run ran row 0 only...
+		evaluationStore.testRunsById = { 'run-1': { id: 'run-1', status: 'success' } } as never;
+		evaluationStore.testCaseExecutionsById = {
+			c0: { id: 'c0', testRunId: 'run-1', runIndex: 0, status: 'success' },
+		} as never;
+		// ...but we navigated to row 1 (whose sticky activeRunId is still run-1).
+		store.setActiveRow(1, 11);
+		store.setActiveRunId('run-1');
+		const { queryByTestId } = renderComponent();
+		// No empty pane, no false "running" — the run didn't cover this case.
+		expect(queryByTestId('tests-detail-results')).toBeNull();
+	});
+
+	it('shows the latest-run pane while a run is dispatching for this case', async () => {
+		const store = setup();
+		store.setActiveRow(0, 10);
+		const { getByTestId, findByTestId } = renderComponent();
+		// No execution seeded yet; the dispatch flag keeps the pane visible so the
+		// "running" state shows before the first poll lands the execution.
+		await userEvent.click(getByTestId('tests-detail-run'));
+		expect(await findByTestId('tests-detail-results')).toBeInTheDocument();
+	});
+
+	it('does not show the latest-run pane before a run is triggered', () => {
 		setup();
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('tests-detail-results')).toBeNull();

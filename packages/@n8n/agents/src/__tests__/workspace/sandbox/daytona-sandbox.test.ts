@@ -12,6 +12,7 @@ interface MockSandbox {
 	process: { executeCommand: Mock };
 	fs: Record<string, Mock>;
 	start: Mock;
+	waitUntilStarted: Mock;
 	stop: Mock;
 	delete: Mock;
 	getWorkDir: Mock;
@@ -36,8 +37,10 @@ const {
 	queuedCreateResults,
 	makeMockSandbox,
 	Daytona,
+	DaytonaConnectionError,
 	DaytonaError,
 	DaytonaNotFoundError,
+	DaytonaTimeoutError,
 	resetDaytonaMockState,
 } = vi.hoisted(() => {
 	const clientLog: DaytonaClientLog[] = [];
@@ -71,6 +74,7 @@ const {
 				moveFiles: vi.fn(),
 			},
 			start: vi.fn().mockResolvedValue(undefined),
+			waitUntilStarted: vi.fn().mockResolvedValue(undefined),
 			stop: vi.fn().mockResolvedValue(undefined),
 			delete: vi.fn().mockResolvedValue(undefined),
 			getWorkDir: vi.fn().mockResolvedValue('/home/daytona/workspace'),
@@ -137,6 +141,8 @@ const {
 			super(message, 404);
 		}
 	}
+	class DaytonaConnectionError extends DaytonaError {}
+	class DaytonaTimeoutError extends DaytonaError {}
 
 	function resetDaytonaMockState(): void {
 		clientLog.length = 0;
@@ -154,14 +160,22 @@ const {
 		queuedCreateResults,
 		makeMockSandbox,
 		Daytona,
+		DaytonaConnectionError,
 		DaytonaError,
 		DaytonaNotFoundError,
+		DaytonaTimeoutError,
 		resetDaytonaMockState,
 	};
 });
 
 vi.mock('../../../workspace/sandbox/lazy-daytona', () => ({
-	loadDaytona: () => ({ Daytona, DaytonaError, DaytonaNotFoundError }),
+	loadDaytona: () => ({
+		Daytona,
+		DaytonaConnectionError,
+		DaytonaError,
+		DaytonaNotFoundError,
+		DaytonaTimeoutError,
+	}),
 }));
 
 import { DaytonaFilesystem } from '../../../workspace/filesystem/daytona-filesystem';
@@ -296,6 +310,583 @@ describe('DaytonaSandbox (creation strategies)', () => {
 				},
 			}),
 		);
+	});
+
+	it('reattaches to the existing sandbox when creation reports a name conflict', async () => {
+		const logger = makeLogger();
+		const errorReporter: ErrorReporter = { error: vi.fn() };
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			logger,
+			errorReporter,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-existing');
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith(
+			'Sandbox name already exists; reattached to existing sandbox',
+			expect.objectContaining({ sandboxName: 'sandbox-name', remoteSandboxId: 'remote-existing' }),
+		);
+	});
+
+	it.each(['stopped', 'paused', 'archived'])(
+		'resumes a %s sandbox after a name conflict',
+		async (state) => {
+			queueNotFound('not found');
+			queuedCreateResults.push(new DaytonaError('Sandbox with name sandbox-name already exists'));
+			const existing = makeMockSandbox(`remote-${state}`, state);
+			queuedGetResults.push(existing);
+
+			const sandbox = new DaytonaSandbox({
+				id: 'sandbox-id',
+				name: 'sandbox-name',
+				apiKey: 'api-key',
+				snapshot: 'n8n/instance-ai:1.123.0',
+			});
+
+			await sandbox.start();
+
+			expect(existing.start).toHaveBeenCalled();
+			expect(existing.waitUntilStarted).not.toHaveBeenCalled();
+			expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe(`remote-${state}`);
+		},
+	);
+
+	it.each(['creating', 'restoring', 'starting', 'pending_build', 'pulling_snapshot'])(
+		'waits for a %s sandbox after a concurrent create conflict',
+		async (state) => {
+			queueNotFound('not found');
+			queuedCreateResults.push(
+				new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			);
+			const existing = makeMockSandbox(`remote-${state}`, state);
+			queuedGetResults.push(existing);
+
+			const sandbox = new DaytonaSandbox({
+				id: 'sandbox-id',
+				name: 'sandbox-name',
+				apiKey: 'api-key',
+				snapshot: 'n8n/instance-ai:1.123.0',
+			});
+
+			await sandbox.start();
+
+			expect(existing.waitUntilStarted).toHaveBeenCalled();
+			expect(existing.start).not.toHaveBeenCalled();
+			expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe(`remote-${state}`);
+		},
+	);
+
+	it('keeps polling until a long-running stop can be resumed after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		const stopping = makeMockSandbox('remote-transitioning', 'stopping');
+		const stopped = makeMockSandbox('remote-transitioning', 'stopped');
+		queuedGetResults.push(stopping, stopping, stopping, stopping, stopping, stopped);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(stopping.start).not.toHaveBeenCalled();
+		expect(stopping.waitUntilStarted).not.toHaveBeenCalled();
+		expect(stopped.start).toHaveBeenCalled();
+		expect(clientLog[0].get).toHaveBeenCalledTimes(7);
+	});
+
+	it('keeps polling until a long-running pause can be resumed after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		const pausing = makeMockSandbox('remote-transitioning', 'pausing');
+		const paused = makeMockSandbox('remote-transitioning', 'paused');
+		queuedGetResults.push(pausing, pausing, pausing, pausing, pausing, paused);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(pausing.start).not.toHaveBeenCalled();
+		expect(pausing.waitUntilStarted).not.toHaveBeenCalled();
+		expect(paused.start).toHaveBeenCalled();
+		expect(clientLog[0].get).toHaveBeenCalledTimes(7);
+	});
+
+	it('retries the lookup when a conflicted sandbox is not immediately visible', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queueNotFound('not visible yet');
+		queuedGetResults.push(makeMockSandbox('remote-eventually-visible'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].get).toHaveBeenCalledTimes(3);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-eventually-visible');
+	});
+
+	it.each([
+		['server error', new DaytonaError('Bad Gateway', 502)],
+		['rate limit', new DaytonaError('Too Many Requests', 429)],
+	])('recovers the initial lookup from a transient %s without creating', async (_kind, error) => {
+		queuedGetErrors.push(error);
+		queuedGetResults.push(makeMockSandbox('remote-recovered'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].get).toHaveBeenCalledTimes(2);
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-recovered');
+	});
+
+	it('fails the initial lookup once transient retries are exhausted, without creating', async () => {
+		queuedGetErrors.push(
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+		);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toMatchObject({
+			name: 'SandboxAcquisitionError',
+			failureClass: 'DaytonaError:502',
+			message: expect.stringContaining('Bad Gateway'),
+		});
+		expect(clientLog[0].get).toHaveBeenCalledTimes(3);
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
+	it('recovers the lookup after a name conflict from a transient error', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetErrors.push(new DaytonaError('Bad Gateway', 502));
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].get).toHaveBeenCalledTimes(3);
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-existing');
+	});
+
+	it('fails the lookup after a name conflict once transient retries are exhausted', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetErrors.push(
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+		);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('Bad Gateway');
+		expect(clientLog[0].get).toHaveBeenCalledTimes(4);
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
+
+	it('deletes a dead sandbox before creating a replacement', async () => {
+		const dead = makeMockSandbox('remote-dead', 'error');
+		queuedGetResults.push(dead);
+		queuedCreateResults.push(makeMockSandbox('remote-replacement'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await sandbox.start();
+
+		expect(dead.delete).toHaveBeenCalled();
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-replacement');
+	});
+
+	it('replaces a failed sandbox discovered after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			makeMockSandbox('remote-replacement'),
+		);
+		const failed = makeMockSandbox('remote-failed', 'build_failed');
+		failed.delete.mockImplementation(async () => {
+			await Promise.resolve();
+			queuedGetErrors.push(new DaytonaNotFoundError('deleted'));
+		});
+		queuedGetResults.push(failed);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(failed.delete).toHaveBeenCalled();
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-replacement');
+	});
+
+	it.each([
+		['server', new DaytonaError('Bad Gateway', 502)],
+		['rate-limit', new DaytonaError('Too Many Requests', 429)],
+		['connection', new DaytonaConnectionError('socket hang up')],
+		['timeout', new DaytonaTimeoutError('request timed out')],
+	])('retries a transient %s create failure', async (_kind, error) => {
+		queueNotFound('not found');
+		queuedCreateResults.push(error, makeMockSandbox('remote-after-retry'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-after-retry');
+	});
+
+	it('fails once transient create retries are exhausted', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+		);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toMatchObject({
+			name: 'SandboxAcquisitionError',
+			failureClass: 'DaytonaError:502',
+		});
+		expect(clientLog[0].create).toHaveBeenCalledTimes(3);
+	});
+
+	it('does not retry non-transient create failures', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(new DaytonaError('Forbidden', 403));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('Forbidden');
+		expect(clientLog[0].create).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not treat an unrelated already-exists message as a sandbox name conflict', async () => {
+		const errorReporter: ErrorReporter = { error: vi.fn() };
+		const snapshotError = new DaytonaError('Snapshot build failed: file already exists');
+		queueNotFound('not found');
+		queuedCreateResults.push(snapshotError, makeMockSandbox('remote-from-image'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			image: 'node:20',
+			errorReporter,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-from-image');
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			snapshotError,
+			expect.objectContaining({
+				tags: expect.objectContaining({ strategy: 'snapshot' }),
+			}),
+		);
+	});
+
+	it('retries creation when a conflicted sandbox disappears before it becomes visible', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			makeMockSandbox('remote-replacement'),
+		);
+		queueNotFound('gone before reattach');
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			image: 'node:20',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create).toHaveBeenCalledTimes(2);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-replacement');
+	});
+
+	it('deletes a sandbox stuck provisioning and creates a fresh one', async () => {
+		const logger = makeLogger();
+		const wedged = makeMockSandbox('remote-wedged', 'building_snapshot');
+		wedged.waitUntilStarted.mockRejectedValue(
+			new DaytonaTimeoutError('Sandbox failed to become ready within the timeout period'),
+		);
+		queuedGetResults.push(wedged);
+		queuedCreateResults.push(makeMockSandbox('remote-fresh'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			timeout: 200_000,
+			logger,
+		});
+
+		await sandbox.start();
+
+		// The wait gets half the remaining acquisition budget, not all of it.
+		const waitSeconds = wedged.waitUntilStarted.mock.calls[0][0] as number;
+		expect(waitSeconds).toBeLessThanOrEqual(100);
+		expect(waitSeconds).toBeGreaterThanOrEqual(60);
+		expect(wedged.delete).toHaveBeenCalled();
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-fresh');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Daytona sandbox is stuck in a transitional state; deleting it so a fresh one can be created',
+			expect.objectContaining({ sandboxName: 'sandbox-name', state: 'building_snapshot' }),
+		);
+	});
+
+	it.each(['restoring', 'starting', 'resizing'])(
+		'keeps a %s sandbox whose wait times out and fails with a classified error',
+		async (state) => {
+			const stateful = makeMockSandbox(`remote-${state}`, state);
+			stateful.waitUntilStarted.mockRejectedValue(new DaytonaTimeoutError('never became ready'));
+			queuedGetResults.push(stateful);
+
+			const sandbox = new DaytonaSandbox({
+				id: 'sandbox-id',
+				name: 'sandbox-name',
+				apiKey: 'api-key',
+				snapshot: 'n8n/instance-ai:1.123.0',
+			});
+
+			await expect(sandbox.start()).rejects.toMatchObject({
+				name: 'SandboxNotReadyError',
+				failureClass: 'sandbox-not-ready',
+			});
+			expect(stateful.delete).not.toHaveBeenCalled();
+			expect(clientLog[0].create).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps a stopped sandbox whose resume times out and fails with a classified error', async () => {
+		const stopped = makeMockSandbox('remote-stopped', 'stopped');
+		stopped.start.mockRejectedValue(new DaytonaTimeoutError('resume timed out'));
+		queuedGetResults.push(stopped);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await expect(sandbox.start()).rejects.toMatchObject({ name: 'SandboxNotReadyError' });
+		expect(stopped.delete).not.toHaveBeenCalled();
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
+	it('caps the create timeout at the remaining acquisition budget', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(makeMockSandbox('remote-created'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			timeout: 100_000,
+			createTimeoutSeconds: 300,
+		});
+
+		await sandbox.start();
+
+		const createOptions = clientLog[0].create.mock.calls[0][1] as { timeout: number };
+		expect(createOptions.timeout).toBeLessThanOrEqual(100);
+		expect(createOptions.timeout).toBeGreaterThan(90);
+	});
+
+	it('fails fast with a distinct error when the conflicting sandbox is never visible', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queueNotFound('invisible');
+		queueNotFound('invisible');
+		queueNotFound('invisible');
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toMatchObject({
+			name: 'SandboxNameConflictError',
+			failureClass: 'unresolved-name-conflict',
+		});
+		expect(clientLog[0].create).toHaveBeenCalledTimes(3);
+	});
+});
+
+describe('DaytonaSandbox (destroy ownership)', () => {
+	it('does not delete a sandbox by name when start() never acquired one', async () => {
+		queuedGetErrors.push(
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+			new DaytonaError('Bad Gateway', 502),
+		);
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('Bad Gateway');
+		const getCallsAfterStart = clientLog[0].get.mock.calls.length;
+
+		await expect(sandbox.destroy()).resolves.toBeUndefined();
+
+		// No by-name resolve (and thus no delete) for a remote this instance never acquired.
+		expect(clientLog[0].get).toHaveBeenCalledTimes(getCallsAfterStart);
+	});
+
+	it('destroy() after stop() still deletes the acquired remote by name', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(makeMockSandbox('remote-created'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+		});
+
+		await sandbox.start();
+		await sandbox.stop();
+
+		const byName = makeMockSandbox('remote-created');
+		queuedGetResults.push(byName);
+		await sandbox.destroy();
+
+		expect(byName.delete).toHaveBeenCalled();
+	});
+
+	it('deleteRemote() deletes by name even when this instance never started the sandbox', async () => {
+		const foreign = makeMockSandbox('remote-foreign');
+		queuedGetResults.push(foreign);
+
+		const sandbox = new DaytonaSandbox({ name: 'sandbox-name', apiKey: 'api-key' });
+		await sandbox.deleteRemote();
+
+		expect(clientLog[0].get).toHaveBeenCalledWith('sandbox-name');
+		expect(foreign.delete).toHaveBeenCalled();
 	});
 });
 

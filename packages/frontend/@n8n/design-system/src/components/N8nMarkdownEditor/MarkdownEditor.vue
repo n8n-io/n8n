@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core';
 import { EditorContent } from '@tiptap/vue-3';
+import { BubbleMenu } from '@tiptap/vue-3/menus';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import { useMarkdownEditor } from './composables/useMarkdownEditor';
@@ -26,7 +27,7 @@ const maxHeightStyle = computed(() => ({
 		typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
 }));
 
-const shouldShowToolbar = computed(() => props.showToolbar !== 'never');
+const shouldShowInlineToolbar = computed(() => ['always', 'hover'].includes(props.showToolbar));
 const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
 const shouldPadContentTop = computed(() => props.showToolbar === 'always');
 
@@ -51,6 +52,20 @@ function getRenderedContentHeight() {
 
 	return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
 }
+
+function getBubbleMenuContainer() {
+	return document.body;
+}
+
+const bubbleMenuOptions = computed(function getBubbleMenuOptions() {
+	return {
+		placement: 'top' as const,
+		offset: 8,
+		flip: true,
+		shift: true,
+		scrollTarget: container.value?.querySelector<HTMLElement>('.n8n-markdown') ?? undefined,
+	};
+});
 
 async function toggleRawMode(value: boolean) {
 	if (value) {
@@ -134,15 +149,6 @@ defineExpose({
 		:style="maxHeightStyle"
 		data-test-id="n8n-markdown-editor"
 	>
-		<MarkdownEditorToolbar
-			v-if="shouldShowToolbar && editor"
-			:editor="editor"
-			:disabled="props.disabled || props.readonly"
-			:is-raw-mode="isRawMode"
-			:mode="toolbarMode"
-			:variant="props.variant"
-			@update:is-raw-mode="toggleRawMode"
-		/>
 		<div v-if="isRawMode" :class="[$style.content, shouldPadContentTop ? $style.padTop : '']">
 			<textarea
 				ref="rawEditor"
@@ -163,6 +169,31 @@ defineExpose({
 			:editor="editor"
 			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
 		/>
+		<MarkdownEditorToolbar
+			v-if="shouldShowInlineToolbar && editor"
+			:editor="editor"
+			:disabled="props.disabled || props.readonly"
+			:is-raw-mode="isRawMode"
+			:mode="toolbarMode"
+			:variant="props.variant"
+			@update:is-raw-mode="toggleRawMode"
+		/>
+		<BubbleMenu
+			v-if="props.showToolbar === 'floating' && editor && !isRawMode"
+			:editor="editor"
+			:options="bubbleMenuOptions"
+			:append-to="getBubbleMenuContainer"
+			:class="$style.bubbleMenu"
+		>
+			<MarkdownEditorToolbar
+				:editor="editor"
+				:disabled="props.disabled || props.readonly"
+				:is-raw-mode="false"
+				mode="floating"
+				:variant="props.variant"
+				@update:is-raw-mode="toggleRawMode"
+			/>
+		</BubbleMenu>
 	</div>
 </template>
 
@@ -171,7 +202,12 @@ defineExpose({
 </style>
 
 <style lang="scss" module>
+@use '../../css/common/var';
 @use '../../css/mixins/focus';
+
+.bubbleMenu {
+	z-index: var.$index-popper;
+}
 
 .disabled {
 	cursor: not-allowed;
@@ -249,7 +285,7 @@ defineExpose({
 		scroll-padding-top: calc(var(--height--lg) + var(--spacing--xs));
 	}
 
-	:global(.n8n-markdown .is-empty::before) {
+	:global(.n8n-markdown .is-editor-empty::before) {
 		content: attr(data-placeholder);
 		float: left;
 		height: 0;

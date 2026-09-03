@@ -1,10 +1,12 @@
 name: 'CI: Owners Review Recommendations'
 
 # Posts (or updates) a PR comment with recommended reviewer teams (based on
-# file ownership in .github/OWNERS) and a breakdown of changed lines by
-# category (source code, test files, misc).
+# file ownership in OWNERS), a breakdown of changed lines by category
+# (source code, test files, misc), and the required team reviews with a
+# prompt to request review from those teams.
 #
-# Advisory only — does not gate merging.
+# Advisory only — does not gate merging. Enforcement of required reviews
+# lives in ci-owners-required-reviews.yml.
 
 on:
   pull_request:
@@ -20,7 +22,7 @@ jobs:
     name: Recommend reviewers
     # Skipped for:
     #  - PRs from forks (no token to comment with)
-    #  - Bot-authored PRs (Dependabot, Renovate, etc. — noise, not useful)
+    #  - Bot-authored PRs (Dependabot, etc. — noise, not useful)
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.type != 'Bot'
@@ -49,4 +51,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/owners-review-recommendations.mjs
+        run: node .github/scripts/owners/review-recommendations.mjs

@@ -7,7 +7,7 @@ import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
 vi.mock('@/features/ndv/shared/ndv.store');
@@ -39,7 +39,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		}),
 	}),
 }));
-vi.mock('@/app/composables/useToast');
+vi.mock('@n8n/composables/useToast');
 vi.mock('@/app/composables/useEditorContext', () => ({
 	useEditorContext: () => ({
 		aiAssistant: { value: true },

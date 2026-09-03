@@ -176,6 +176,91 @@ describe('Send and Wait utils tests', () => {
 				]),
 			);
 		});
+
+		describe('customForm validation', () => {
+			const mockCustomFormParameters = (params: { [key: string]: any }) =>
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string) =>
+						({
+							message: 'Pick a customer',
+							responseType: 'customForm',
+							...params,
+						})[parameterName],
+				);
+
+			it('should throw when the form JSON resolves to invalid form fields', () => {
+				mockExecuteFunctions.getNode.mockReturnValue({ name: 'Send Email' } as any);
+				mockCustomFormParameters({
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+				});
+				// A customer row without a name resolves to `{ option: null }`
+				mockExecuteFunctions.evaluateExpression.mockReturnValue([
+					{
+						fieldLabel: 'Customer',
+						fieldType: 'dropdown',
+						fieldOptions: { values: [{ option: null }] },
+					},
+				] as any);
+
+				expect(() => getSendAndWaitConfig(mockExecuteFunctions)).toThrow(
+					'Field dropdown in field 0 has an invalid option 0',
+				);
+			});
+
+			it('should return the config when the form JSON resolves to valid form fields', () => {
+				mockCustomFormParameters({
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+					'options.messageButtonLabel': 'Respond',
+				});
+				mockExecuteFunctions.evaluateExpression.mockReturnValue([
+					{
+						fieldLabel: 'Customer',
+						fieldType: 'dropdown',
+						fieldOptions: { values: [{ option: 'Acme Corp' }] },
+					},
+				] as any);
+				mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+					'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				);
+
+				const config = getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(config.options).toEqual([
+					{
+						label: 'Respond',
+						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
+					},
+				]);
+			});
+
+			const readParameterNames = () =>
+				mockExecuteFunctions.getNodeParameter.mock.calls.map(([name]) => name);
+
+			it('should not read the form JSON when the form is defined with fields', () => {
+				mockCustomFormParameters({ defineForm: 'fields' });
+
+				getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(readParameterNames()).not.toContain('jsonOutput');
+			});
+
+			it('should not read the form JSON for approval response types', () => {
+				mockCustomFormParameters({
+					responseType: 'approval',
+					'approvalOptions.values': { approvalType: 'single' },
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+				});
+
+				getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(readParameterNames()).not.toContain('jsonOutput');
+			});
+		});
 	});
 
 	describe('createEmail', () => {
@@ -450,6 +535,50 @@ describe('Send and Wait utils tests', () => {
 			);
 		});
 
+		// Form fields are re-resolved from upstream data when the form is rendered, so an execution
+		// that is already waiting with bad data still breaks the read-only GET. Pins the current
+		// behaviour; unmasking the reason at render time is a separate follow-up.
+		it('should throw when a data-driven customForm resolves to invalid form fields', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as any);
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: vi.fn(),
+				setHeader: vi.fn(),
+			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({ name: 'Dropdown' } as any);
+
+			// A customer row without a name resolves to `{ option: null }`
+			mockWebhookFunctions.evaluateExpression.mockReturnValue([
+				{
+					fieldLabel: 'Customer',
+					fieldType: 'dropdown',
+					fieldOptions: { values: [{ option: 'Acme Corp' }, { option: null }] },
+				},
+			] as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Pick a customer',
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			const error = await sendAndWaitWebhook
+				.call(mockWebhookFunctions)
+				.catch((e: NodeOperationError) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect((error as NodeOperationError).message).toBe(
+				'Field dropdown in field 0 has an invalid option 1',
+			);
+			// Without `type: 'manual-form-test'` the reason is masked as
+			// "Workflow Webhook Error: Workflow could not be started!" by webhook-helpers
+			expect((error as NodeOperationError).type).toBeUndefined();
+		});
+
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
@@ -643,148 +772,6 @@ describe('Send and Wait utils tests', () => {
 				expect(mockRender).toHaveBeenCalled();
 			},
 		);
-
-		describe('confirmationPage option', () => {
-			const mockParams = (params: Record<string, unknown>) => {
-				mockWebhookFunctions.getNodeParameter.mockImplementation(
-					(parameterName: string, fallbackValue?: any) => params[parameterName] ?? fallbackValue,
-				);
-			};
-
-			it('should render confirmation page on GET when the option is enabled', async () => {
-				const send = vi.fn();
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'GET',
-					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
-					query: { approved: 'true' },
-				} as unknown as Request);
-				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: true,
-					'approvalOptions.values': { approveLabel: 'Yes, approve' },
-					subject: 'Approval required',
-					message: 'Please review the request',
-				});
-
-				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				expect(result).toEqual({ noWebhookResponse: true });
-				const page = send.mock.calls[0][0] as string;
-				expect(page).toContain("<form method='POST'>");
-				expect(page).toContain('Yes, approve');
-				expect(page).toContain('Approval required');
-				expect(page).toContain('Please review the request');
-			});
-
-			it('should use the disapprove label on the confirmation page when approved=false', async () => {
-				const send = vi.fn();
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'GET',
-					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
-					query: { approved: 'false' },
-				} as unknown as Request);
-				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: true,
-					'approvalOptions.values': { approveLabel: 'Yes, approve', disapproveLabel: 'Reject it' },
-					subject: 'Approval required',
-					message: 'Please review the request',
-				});
-
-				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				expect(result).toEqual({ noWebhookResponse: true });
-				const page = send.mock.calls[0][0] as string;
-				expect(page).toContain('Reject it');
-				expect(page).not.toContain('Yes, approve');
-			});
-
-			it('should record the response on POST when the option is enabled', async () => {
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'POST',
-					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
-					query: { approved: 'true' },
-				} as unknown as Request);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: true,
-				});
-
-				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				expect(result).toEqual({
-					webhookResponse: expect.any(String),
-					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
-				});
-			});
-
-			it('should record the response on GET when the option is disabled', async () => {
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'GET',
-					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
-					query: { approved: 'true' },
-				} as unknown as Request);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: false,
-				});
-
-				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				expect(result).toEqual({
-					webhookResponse: expect.any(String),
-					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
-				});
-			});
-
-			it('should return noWebhookResponse for bot user-agent on POST', async () => {
-				const send = vi.fn();
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'POST',
-					headers: {
-						'user-agent':
-							'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-					},
-					query: { approved: 'true' },
-				} as unknown as Request);
-				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: true,
-				});
-
-				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				expect(send).toHaveBeenCalledWith('');
-				expect(result).toEqual({ noWebhookResponse: true });
-			});
-
-			it('should escape HTML in the confirmation page content', async () => {
-				const send = vi.fn();
-				mockWebhookFunctions.getRequestObject.mockReturnValue({
-					method: 'GET',
-					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
-					query: { approved: 'true' },
-				} as unknown as Request);
-				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
-				mockParams({
-					responseType: 'approval',
-					confirmationPage: true,
-					'approvalOptions.values': {},
-					subject: '<script>alert(1)</script>',
-					message: '<img src=x onerror=alert(1)>',
-				});
-
-				await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-				const page = send.mock.calls[0][0] as string;
-				expect(page).not.toContain('<script>');
-				expect(page).not.toContain('<img');
-				expect(page).toContain('&lt;script&gt;');
-			});
-		});
 	});
 });
 
@@ -954,5 +941,23 @@ describe('configureWaitTillDate', () => {
 			.mockReturnValueOnce('minutes');
 
 		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
+	});
+});
+
+describe('getSendAndWaitProperties additionalProperties', () => {
+	const hitl: INodeProperties = {
+		displayName: 'Capture Who Responded',
+		name: 'captureResponder',
+		type: 'boolean',
+		default: false,
+	};
+
+	it('renders additionalProperties before the Options collection', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl]);
+		// The first "options" collection is the approval one, emitted right after "Approval Options".
+		const firstOptionsIndex = props.findIndex((p) => p.name === 'options');
+		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
+		expect(hitlIndex).toBeGreaterThan(-1);
+		expect(hitlIndex).toBeLessThan(firstOptionsIndex);
 	});
 });

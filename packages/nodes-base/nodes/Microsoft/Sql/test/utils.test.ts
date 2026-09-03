@@ -1,7 +1,7 @@
 import { Request } from 'mssql';
 import type { IResult } from 'mssql';
 import type mssql from 'mssql';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { MockInstance } from 'vitest';
 
@@ -258,6 +258,15 @@ describe('MSSQL tests', () => {
 	});
 
 	describe('executeSqlQueryAndPrepareResults', () => {
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const thisArg = {
+			helpers: { prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+
 		it('should handle SELECT query with single record', async () => {
 			querySpy.mockResolvedValueOnce({
 				recordsets: [[{ id: 1, name: 'Test' }]] as any,
@@ -267,7 +276,12 @@ describe('MSSQL tests', () => {
 			} as unknown as IResult<unknown>);
 
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			const result = await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0);
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+			);
 
 			expect(result).toEqual([
 				{
@@ -278,6 +292,99 @@ describe('MSSQL tests', () => {
 			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
 		});
 
+		it('should return Date values as ISO strings on version 1.2', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, created: date }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.2,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { id: 1, created: '2020-01-01T12:00:00.000Z' },
+					pairedItem: [{ item: 0 }],
+				},
+			]);
+		});
+
+		it('should keep Date objects on versions before 1.2', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, created: date }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.1,
+			);
+
+			expect(result[0].json.created).toBeInstanceOf(Date);
+		});
+
+		it('should move binary columns to the binary output and remove them from json on version 1.2', async () => {
+			const blob = Buffer.from('hello');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, name: 'Test', photo: blob }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.2,
+			);
+
+			expect(result[0].json).toEqual({ id: 1, name: 'Test' });
+			expect(result[0].json).not.toHaveProperty('photo');
+			expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'photo');
+			expect(result[0].binary?.photo).toBeDefined();
+		});
+
+		it('should keep binary columns in json on versions before 1.2', async () => {
+			const blob = Buffer.from('hello');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, photo: blob }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.1,
+			);
+
+			expect(result[0].json.photo).toBe(blob);
+			expect(result[0].binary).toBeUndefined();
+		});
+
 		it('should handle SELECT query with multiple records', async () => {
 			querySpy.mockResolvedValueOnce({
 				recordsets: [[{ id: 1 }], [{ name: 'Test' }]] as unknown,
@@ -286,7 +393,12 @@ describe('MSSQL tests', () => {
 			} as unknown as IResult<unknown>);
 
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			const result = await executeSqlQueryAndPrepareResults(pool, 'SELECT id; SELECT name', 1);
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT id; SELECT name',
+				1,
+			);
 
 			expect(result).toEqual([
 				{ json: { id: 1 }, pairedItem: [{ item: 1 }] },
@@ -303,7 +415,12 @@ describe('MSSQL tests', () => {
 			} as unknown as IResult<unknown>);
 
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			const result = await executeSqlQueryAndPrepareResults(pool, 'UPDATE users SET active = 1', 2);
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'UPDATE users SET active = 1',
+				2,
+			);
 
 			expect(result).toEqual([
 				{
@@ -322,7 +439,8 @@ describe('MSSQL tests', () => {
 			} as unknown as IResult<unknown>);
 
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			const result = await executeSqlQueryAndPrepareResults(
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
 				pool,
 				'DELETE FROM users WHERE id = 999',
 				3,
@@ -341,14 +459,20 @@ describe('MSSQL tests', () => {
 			querySpy.mockRejectedValueOnce(new Error(errorMessage));
 
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await expect(executeSqlQueryAndPrepareResults(pool, 'INVALID SQL', 4)).rejects.toThrow(
-				errorMessage,
-			);
+			await expect(
+				executeSqlQueryAndPrepareResults.call(thisArg, pool, 'INVALID SQL', 4),
+			).rejects.toThrow(errorMessage);
 		});
 
 		it('should replace $1 with @p1 and bind the value', async () => {
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users WHERE id = $1', 0, [42]);
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users WHERE id = $1',
+				0,
+				[42],
+			);
 
 			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE id = @p1');
 			assertParameters({ p1: 42 });
@@ -356,7 +480,8 @@ describe('MSSQL tests', () => {
 
 		it('should replace multiple $N placeholders and bind all values', async () => {
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await executeSqlQueryAndPrepareResults(
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
 				pool,
 				'SELECT * FROM users WHERE age > $1 AND name = $2',
 				0,
@@ -369,7 +494,8 @@ describe('MSSQL tests', () => {
 
 		it('should replace the same $N placeholder used multiple times', async () => {
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await executeSqlQueryAndPrepareResults(
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
 				pool,
 				'SELECT * FROM t WHERE id = $1 OR parent_id = $1',
 				0,
@@ -383,7 +509,8 @@ describe('MSSQL tests', () => {
 		it('should not confuse $1 with $10 when replacing parameters', async () => {
 			const values = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'];
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await executeSqlQueryAndPrepareResults(
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
 				pool,
 				'SELECT * FROM t WHERE c1 = $1 AND c10 = $10',
 				0,
@@ -396,7 +523,7 @@ describe('MSSQL tests', () => {
 
 		it('should execute query without parameters when queryValues is empty', async () => {
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
-			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0, []);
+			await executeSqlQueryAndPrepareResults.call(thisArg, pool, 'SELECT * FROM users', 0, []);
 
 			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
 		});

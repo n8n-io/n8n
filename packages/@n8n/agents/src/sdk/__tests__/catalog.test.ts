@@ -9,6 +9,7 @@ describe('fetchProviderCatalog', () => {
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {
+		const abortController = new AbortController();
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
@@ -21,6 +22,12 @@ describe('fetchProviderCatalog', () => {
 								id: 'gpt-5',
 								name: 'GPT-5',
 								tool_call: true,
+								modalities: { input: ['text', 'image'], output: ['text'] },
+							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								reasoning: false,
 							},
 						},
 					},
@@ -58,9 +65,15 @@ describe('fetchProviderCatalog', () => {
 		});
 		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5'].modalities).toEqual({
+			input: ['text', 'image'],
+			output: ['text'],
+		});
+		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
+		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
 			'Claude Sonnet 4.5',
 		);
@@ -69,9 +82,67 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog['amazon-bedrock']).toBeUndefined();
 		expect(catalog.azure).toBeUndefined();
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', {
+			signal: abortController.signal,
+		});
 	});
 
-	it('drops models marked deprecated on models.dev', async () => {
+	it('rejects a malformed catalog response', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve([]),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		await expect(fetchProviderCatalog()).rejects.toThrow();
+	});
+
+	it('omits malformed providers and models while retaining valid entries', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					invalidProvider: {
+						id: 'invalid-provider',
+						models: {},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-valid': {
+								id: 'gpt-valid',
+								name: 'GPT Valid',
+								tool_call: true,
+							},
+							'gpt-missing-name': {
+								id: 'gpt-missing-name',
+							},
+							'gpt-invalid-tool-call': {
+								id: 'gpt-invalid-tool-call',
+								name: 'GPT Invalid Tool Call',
+								tool_call: 'yes',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.invalidProvider).toBeUndefined();
+		expect(catalog.openai.models).toEqual({
+			'gpt-valid': {
+				id: 'gpt-valid',
+				name: 'GPT Valid',
+				toolCall: true,
+			},
+		});
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
+	});
+
+	it('keeps deprecated model ids out of models but exposes them for validation', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
@@ -103,11 +174,12 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog();
 
 		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
 		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
 		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
 	});
 
-	it('omits a provider whose models are all deprecated', async () => {
+	it('retains a provider that only has deprecated models so callers can detect them', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
@@ -136,8 +208,42 @@ describe('fetchProviderCatalog', () => {
 
 		const catalog = await fetchProviderCatalog();
 
-		expect(catalog.anthropic).toBeUndefined();
+		expect(catalog.anthropic.models).toEqual({});
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
 		expect(catalog.openai.models['gpt-5'].name).toBe('GPT-5');
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
+	});
+
+	it('parses the temperature capability flag from models.dev', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-5-mini': {
+								id: 'gpt-5-mini',
+								name: 'GPT-5 mini',
+								temperature: false,
+								tool_call: true,
+							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								temperature: true,
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.openai.models['gpt-5-mini'].temperature).toBe(false);
+		expect(catalog.openai.models['gpt-4.1-mini'].temperature).toBe(true);
 	});
 
 	it('strips the "(latest)" suffix from model names and drops duplicate pinned snapshots', async () => {

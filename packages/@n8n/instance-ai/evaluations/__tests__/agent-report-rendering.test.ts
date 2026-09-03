@@ -1,8 +1,8 @@
 import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
-import { parseTargetOutput } from '../cli/reshape';
 import { generateWorkflowReport } from '../report/workflow-report';
+import { parseTargetOutput } from '../run/reshape';
 import type { WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 const agentRun: InstanceAiEvalAgentExecutionResult = {

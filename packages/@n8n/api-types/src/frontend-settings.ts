@@ -100,6 +100,7 @@ export interface FrontendSettings {
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	excludeNodes: string[];
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -185,7 +186,6 @@ export interface FrontendSettings {
 		enabled: boolean;
 		host: string;
 	};
-	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	/** Whether multi-main mode is enabled and licensed for this main instance. */
 	isMultiMain: boolean;
@@ -197,6 +197,10 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	/**
+	 * @deprecated Gates the AI Transform node's code generation. No longer gates
+	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
+	 */
 	askAi: {
 		enabled: boolean;
 	};
@@ -247,6 +251,7 @@ export interface FrontendSettings {
 	aiGateway?: {
 		enabled: boolean;
 		budget: number;
+		cloudUbbEnabled: boolean;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -258,6 +263,11 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+		/**
+		 * Origins allowed to exchange `postMessage` commands with the editor iframe.
+		 * Empty means no restriction (any origin is accepted).
+		 */
+		postMessageAllowedOrigins: string[];
 	};
 	chatTrigger?: {
 		disablePublicChat: boolean;
@@ -272,6 +282,20 @@ export interface FrontendSettings {
 		 * `084_eval_collections` flag would otherwise never resolve.
 		 */
 		collectionsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_CONFIG_EVALS_ENABLED`) that force-enables the
+		 * config-based evals surface. Surfaced here so the in-editor gate works
+		 * even when the browser PostHog client is disabled (telemetry off), where
+		 * the `088_config_evaluations` flag would otherwise never resolve.
+		 */
+		configEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
+		 * agent-evals surface. Surfaced here so the frontend gate works even when
+		 * the in-browser PostHog client is disabled (telemetry off), where the
+		 * `101_agent_evals` flag would otherwise never resolve.
+		 */
+		agentEvalsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -305,6 +329,16 @@ export type FrontendModuleSettings = {
 		mcpManagedByEnv: boolean;
 		/** Public URL of the instance MCP server endpoint. */
 		serverUrl?: string;
+		/** Whether newly created workflows are auto-exposed to MCP. */
+		autoExposeNewWorkflows: boolean;
+	};
+
+	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
 	};
 
 	/**
@@ -326,11 +360,17 @@ export type FrontendModuleSettings = {
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		/** Whether model, sandbox, and the explicit web-search decision are configured. */
+		setupCompleted?: boolean;
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
+		activationCapped?: boolean;
+		/** Whether the non-blocking setup panel replaces the suspending setup wizard (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`). */
+		instanceAiSetupPanelEnabled?: boolean;
 	};
 
 	/**
@@ -374,10 +414,8 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. True when the backend's
-		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
-		 * proxy is available.
+		 * Whether the agent knowledge base is enabled by the backend's
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED` opt-in.
 		 */
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */

@@ -7,7 +7,7 @@ import type {
 } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
-import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
+import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -92,6 +92,7 @@ describe('OtelLifecycleHandler', () => {
 				updatedAt: new Date(),
 				activeVersionId: null,
 			},
+			mode: 'trigger',
 			workflowInstance: createWorkflowInstance(),
 			executionId: 'exec-sub',
 		};
@@ -801,53 +802,82 @@ describe('productionExecutionsOnly filter', () => {
 	const licenseState = mock<LicenseState>();
 	let handler: OtelLifecycleHandler;
 
-	const inactiveWorkflow = {
+	const node1 = {
+		id: 'node-1',
+		name: 'Node1',
+		type: 'n8n-nodes-base.set',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
+	const publishedWorkflow = {
 		id: 'wf-1',
 		name: 'Test',
 		versionId: 'v1',
-		nodes: [],
+		nodes: [node1],
 		connections: {},
-		active: false,
+		active: true,
 		isArchived: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		activeVersionId: null,
+		activeVersionId: 'av-1',
 	};
 
-	const activeWorkflow = { ...inactiveWorkflow, active: true };
+	const snapshot = {
+		id: 'wf-1',
+		name: 'Test',
+		nodes: [node1],
+		connections: {},
+		settings: {},
+		nodeGroups: [],
+	};
 
-	const makeWorkflowStartCtx = (workflow: object): WorkflowExecuteBeforeContext => ({
+	const makeWorkflowStartCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): WorkflowExecuteBeforeContext => ({
 		type: 'workflowExecuteBefore',
 		workflow: workflow as never,
+		mode,
 		workflowInstance: undefined as never,
 		executionId: 'exec-1',
 	});
 
-	const makeWorkflowEndCtx = (workflow: object): WorkflowExecuteAfterContext =>
+	const makeWorkflowEndCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): WorkflowExecuteAfterContext =>
 		({
 			type: 'workflowExecuteAfter',
 			workflow,
+			mode,
 			executionId: 'exec-1',
 			newStaticData: {},
 			runData: {
 				status: 'success',
-				mode: 'manual',
+				mode,
 				data: { resultData: { runData: {}, pinData: {} } },
 			},
 		}) as unknown as WorkflowExecuteAfterContext;
 
-	const makeNodeStartCtx = (workflow: object): NodeExecuteBeforeContext =>
+	const makeNodeStartCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): NodeExecuteBeforeContext =>
 		({
 			type: 'nodeExecuteBefore',
 			workflow,
+			mode,
 			nodeName: 'Node1',
 			executionId: 'exec-1',
 		}) as unknown as NodeExecuteBeforeContext;
 
-	const makeNodeEndCtx = (workflow: object): NodeExecuteAfterContext =>
+	const makeNodeEndCtx = (workflow: object, mode: WorkflowExecuteMode): NodeExecuteAfterContext =>
 		({
 			type: 'nodeExecuteAfter',
 			workflow,
+			mode,
 			nodeName: 'Node1',
 			executionId: 'exec-1',
 			taskData: {
@@ -880,11 +910,11 @@ describe('productionExecutionsOnly filter', () => {
 		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
 
-	it('should not start spans for an inactive workflow when productionExecutionsOnly is true, but still call endWorkflow', async () => {
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
-		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
-		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
-		handler.onNodeEnd(makeNodeEndCtx(inactiveWorkflow));
+	it('should not start spans for a manual execution when productionExecutionsOnly is true, but still call endWorkflow', async () => {
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
+		handler.onWorkflowEnd(makeWorkflowEndCtx(publishedWorkflow, 'manual'));
+		handler.onNodeStart(makeNodeStartCtx(publishedWorkflow, 'manual'));
+		handler.onNodeEnd(makeNodeEndCtx(publishedWorkflow, 'manual'));
 
 		expect(tracer.startWorkflow).not.toHaveBeenCalled();
 		expect(traceContextService.persist).not.toHaveBeenCalled();
@@ -893,44 +923,64 @@ describe('productionExecutionsOnly filter', () => {
 		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
-	it('should close a span even when settings change to exclude the workflow mid-execution', async () => {
+	it('should close a span even when settings change to exclude the execution mid-run', async () => {
+		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 
 		// Simulate settings change mid-execution
 		otelSettingsService._settings.productionExecutionsOnly = true;
 
-		handler.onWorkflowEnd(makeWorkflowEndCtx(activeWorkflow));
+		handler.onWorkflowEnd(makeWorkflowEndCtx(publishedWorkflow, 'manual'));
 		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
-	it('should trace an active workflow when productionExecutionsOnly is true', async () => {
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	it.each<WorkflowExecuteMode>(['trigger', 'webhook', 'integrated', 'retry', 'error', 'cli'])(
+		'should trace a %s execution when productionExecutionsOnly is true',
+		async (mode) => {
+			tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+			await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, mode));
 
-		expect(tracer.startWorkflow).toHaveBeenCalled();
-		expect(traceContextService.persist).toHaveBeenCalled();
-	});
+			expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalled();
+		},
+	);
 
-	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
+	it('should trace a manual execution when productionExecutionsOnly is false', async () => {
 		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
 
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 	});
 
-	it('should also treat activeVersionId as published', async () => {
-		const workflowWithVersionId = { ...inactiveWorkflow, active: false, activeVersionId: 'v123' };
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	describe('when the context holds a persisted workflow snapshot (scaling worker)', () => {
+		it('should trace the workflow even though the snapshot has no published markers', async () => {
+			tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(workflowWithVersionId));
+			await handler.onWorkflowStart(makeWorkflowStartCtx(snapshot, 'webhook'));
 
-		expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalled();
+		});
+
+		it('should emit node spans for the snapshot', () => {
+			handler.onNodeStart(makeNodeStartCtx(snapshot, 'webhook'));
+			handler.onNodeEnd(makeNodeEndCtx(snapshot, 'webhook'));
+
+			expect(tracer.startNode).toHaveBeenCalled();
+			expect(tracer.endNode).toHaveBeenCalled();
+		});
+
+		it('should still skip a manual execution carried on a snapshot', async () => {
+			await handler.onWorkflowStart(makeWorkflowStartCtx(snapshot, 'manual'));
+
+			expect(tracer.startWorkflow).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { indexedDbCache } from './cache';
-// @ts-ignore
+// @ts-expect-error no types for subpath import
 import FDBFactory from 'fake-indexeddb/lib/FDBFactory';
-// @ts-ignore
+// @ts-expect-error no types for subpath import
 import FDBKeyRange from 'fake-indexeddb/lib/FDBKeyRange';
 
 const globalTeardown = () => {

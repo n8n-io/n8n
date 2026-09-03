@@ -1,21 +1,24 @@
-import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { McpConfig } from './mcp.config';
-import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
-import type { User } from '@n8n/db';
 
-export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { McpConfig } from './mcp.config';
+import { McpSettingsService } from './mcp.settings.service';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the
  * mapping in `mcp-scopes.ts` when the MCP server registers tools.
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
+const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -36,8 +39,6 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
 
-	readonly scopes = SUPPORTED_SCOPES;
-
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
 	 * indicator — the instance MCP server predates resource indicators, so
@@ -50,7 +51,14 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly mcpConfig: McpConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly licenseState: LicenseState,
 	) {}
+
+	get scopes(): string[] {
+		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
+		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+	}
 
 	/**
 	 * Filtered to the tools this instance actually exposes, so the consent
@@ -59,15 +67,21 @@ export class McpProtectedResource implements ProtectedResource {
 	getScopeTools(): Record<string, string[]> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const tagsDisabled = this.globalConfig.tags.disabled;
+		const foldersLicensed = this.licenseState.isFoldersLicensed();
+		const supportedScopes = new Set(this.scopes);
 
 		return Object.fromEntries(
-			Object.entries(TOOLS_BY_SCOPE).map(([scope, tools]) => [
-				scope,
-				tools.filter(
-					(tool) =>
-						(builderEnabled || !BUILDER_TOOLS.has(tool)) && (!tagsDisabled || tool !== 'list_tags'),
-				),
-			]),
+			Object.entries(TOOLS_BY_SCOPE)
+				.filter(([scope]) => supportedScopes.has(scope))
+				.map(([scope, tools]) => [
+					scope,
+					tools.filter(
+						(tool) =>
+							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
+							(!tagsDisabled || tool !== 'list_workflow_tags') &&
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+					),
+				]),
 		);
 	}
 
@@ -79,6 +93,17 @@ export class McpProtectedResource implements ProtectedResource {
 		}
 		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
 		return `${baseUrl}${MCP_RESOURCE_PATH}`;
+	}
+
+	/**
+	 * RFC 9728 §3.1 metadata URL for this resource: `/.well-known/
+	 * oauth-protected-resource` with the resource's path inserted after it.
+	 * Advertised in `WWW-Authenticate: resource_metadata=...` on 401s so clients
+	 * discover the metadata directly instead of guessing the well-known path.
+	 */
+	getProtectedResourceMetadataUrl(): string {
+		const url = new URL(this.getResourceUrl());
+		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
 	}
 
 	/**
@@ -102,10 +127,14 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
 	}
 
+	async isAvailable(): Promise<boolean> {
+		return await this.mcpSettingsService.getEnabled();
+	}
+
 	async authorize(_user: User): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.
-		return await this.mcpSettingsService.getEnabled();
+		return await this.isAvailable();
 	}
 }

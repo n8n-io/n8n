@@ -13,6 +13,7 @@ const ctx = {
 };
 
 const notionResult: McpRegistrySearchResult = {
+	slug: 'notion',
 	name: 'notion',
 	title: 'Notion',
 	description: 'Connect to the Notion MCP Server',
@@ -22,6 +23,7 @@ const notionResult: McpRegistrySearchResult = {
 	credentialType: 'notionMcpOAuth2Api',
 	tools: [],
 	metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+	isTemplated: false,
 };
 
 describe('buildResolveIntegrationTool', () => {

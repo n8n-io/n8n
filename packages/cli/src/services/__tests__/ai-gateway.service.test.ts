@@ -1,16 +1,17 @@
-import type { Mock, Mocked } from 'vitest';
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'vitest-mock-extended';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
 
@@ -49,6 +50,7 @@ let requestMock: Mock;
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
+	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
@@ -58,6 +60,7 @@ function makeService({
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
+		aiGateway: { enabled: aiGatewayEnabled },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
@@ -98,6 +101,18 @@ describe('AiGatewayService', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('assertEnabled()', () => {
+		it('allows licensed instances when the opt-out is not set', () => {
+			expect(() => makeService().assertEnabled()).not.toThrow();
+		});
+
+		it('rejects instances that opt out', () => {
+			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
+				BadRequestError,
+			);
+		});
+	});
+
 	describe('getGatewayConfig()', () => {
 		it('fetches and returns config from the gateway', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
@@ -106,7 +121,7 @@ describe('AiGatewayService', () => {
 			const result = await service.getGatewayConfig();
 
 			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({ method: 'GET', url: `${BASE_URL}/v1/gateway/config` }),
 			);
@@ -149,6 +164,15 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('isAvailable()', () => {
+		it('returns available:false when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
 		it('returns available:false when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 
@@ -175,7 +199,7 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({ available: false });
 		});
 
-		it('returns available:true with config when licensed and gateway responds', async () => {
+		it('returns available:true with config when enabled and gateway responds', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 
@@ -186,11 +210,18 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getSyntheticCredential()', () => {
-		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
+		it('throws FeatureNotLicensedError when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
+		it('throws when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow('Gateway credits are not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -418,7 +449,7 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for n8n credits attribution.');
+			).rejects.toThrow('Failed to resolve user for Gateway credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
@@ -432,6 +463,66 @@ describe('AiGatewayService', () => {
 				workflowId: 'R9JFXwkUCL1jZBuw',
 			});
 
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
+		it('appends an explicit projectId to the workflow segment (| encoded as %7C)', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('derives projectId from workflow ownership when not explicitly provided', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-from-wf' }),
+			);
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cproject-from-wf/google`,
+			});
+		});
+
+		it('keeps workflow-only gateway URL when workflow ownership lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('Workflow not found'));
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
 			expect(result).toEqual({
 				apiKey: 'mock-jwt-token',
 				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
@@ -631,7 +722,18 @@ describe('AiGatewayService', () => {
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns budget and balance from gateway wallet', async () => {
+		it('returns budget, balance, and hasEverToppedUp from gateway wallet', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7, hasEverToppedUp: true }));
+			const service = makeService();
+
+			const result = await service.getWallet(USER_ID);
+
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: true });
+		});
+
+		it('defaults hasEverToppedUp to false when the gateway omits it', async () => {
 			requestMock
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
 				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
@@ -639,7 +741,7 @@ describe('AiGatewayService', () => {
 
 			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ budget: 10, balance: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: false });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {
@@ -867,6 +969,124 @@ describe('AiGatewayService', () => {
 				(c[0].url as string).includes('/v1/gateway/credentials'),
 			);
 			expect(credentialsCalls).toHaveLength(1);
+		});
+	});
+
+	describe('getCredentialTypeForProvider()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi', 'googlePalmApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+				googlePalmApi: {
+					gatewayPath: '/v1/gateway/google',
+					urlField: 'host',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it.each([
+			['openai', 'openAiApi'],
+			['anthropic', 'anthropicApi'],
+			['google', 'googlePalmApi'],
+		])(
+			'maps model provider prefix "%s" to gateway credential type "%s"',
+			async (provider, credType) => {
+				requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+				const service = makeService();
+
+				await expect(service.getCredentialTypeForProvider(provider)).resolves.toBe(credType);
+			},
+		);
+
+		it('returns undefined for a provider the gateway does not serve', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('xai')).resolves.toBeUndefined();
+		});
+
+		it('maps a provider whose gateway path slug differs from the provider id', async () => {
+			// The gateway's URL slugs are its own naming scheme and need not match n8n's
+			// provider ids (Moonshot serves Kimi under `/moonshot`). Mapping must key on
+			// the providerConfig credential type, not on the path.
+			requestMock.mockResolvedValueOnce(
+				ok({
+					nodes: [],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {
+						openAiApi: {
+							gatewayPath: '/v1/gateway/a-different-slug/v1',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBe('openAiApi');
+		});
+
+		it('returns undefined (without fetching config) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCredentialTypeForProviderCached()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it('returns undefined (unknown) without fetching when no config is cached', async () => {
+			const service = makeService();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns the credential type from the cached config without fetching', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			// Warm the cache once.
+			await service.getGatewayConfig();
+			requestMock.mockClear();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBe('openAiApi');
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns null (definitive no) when the cached config does not serve the provider', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			await service.getGatewayConfig();
+
+			expect(service.getCredentialTypeForProviderCached('xai')).toBeNull();
+		});
+
+		it('returns null (definitive no) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeNull();
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 });

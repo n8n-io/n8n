@@ -1,4 +1,4 @@
-import { LaneAllocator, type AllocatableLane } from '../cli/lane-allocator';
+import { LaneAllocator, type AllocatableLane } from '../run/lane-allocator';
 
 interface TestLane extends AllocatableLane {
 	id: number;

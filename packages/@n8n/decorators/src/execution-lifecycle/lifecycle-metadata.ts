@@ -7,6 +7,8 @@ import type {
 	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import type { Class } from '../types';
@@ -18,6 +20,7 @@ export type LifecycleHandlerClass = Class<
 export type NodeExecuteBeforeContext = {
 	type: 'nodeExecuteBefore';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	nodeName: string;
 	taskData: ITaskStartedData;
 	executionId: string;
@@ -26,6 +29,7 @@ export type NodeExecuteBeforeContext = {
 export type NodeExecuteAfterContext = {
 	type: 'nodeExecuteAfter';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	nodeName: string;
 	taskData: ITaskData;
 	executionData: IRunExecutionData;
@@ -35,7 +39,9 @@ export type NodeExecuteAfterContext = {
 export type WorkflowExecuteBeforeContext = {
 	type: 'workflowExecuteBefore';
 	workflow: IWorkflowBase;
-	workflowInstance: Workflow;
+	mode: WorkflowExecuteMode;
+	/** Only the engine's own call carries one — queue-mode main and the failure recorder don't. */
+	workflowInstance: Workflow | undefined;
 	executionData?: IRunExecutionData;
 	executionId: string;
 };
@@ -43,15 +49,19 @@ export type WorkflowExecuteBeforeContext = {
 export type WorkflowExecuteAfterContext = {
 	type: 'workflowExecuteAfter';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	runData: IRun;
 	newStaticData: IDataObject;
 	executionId: string;
 	retryOf?: string;
+	/** Who initiated the run. Unset means a regular user-initiated run. */
+	source?: WorkflowExecutionSource;
 };
 
 export type WorkflowExecuteResumeContext = {
 	type: 'workflowExecuteResume';
 	workflow: IWorkflowBase;
+	mode: WorkflowExecuteMode;
 	workflowInstance: Workflow;
 	executionData: IRunExecutionData;
 	executionId: string;

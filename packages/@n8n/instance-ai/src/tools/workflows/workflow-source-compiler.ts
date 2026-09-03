@@ -2,9 +2,12 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectPythonCodeConstraints } from './detect-python-code-constraints';
+import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
@@ -55,7 +58,7 @@ function isWorkflowJson(value: unknown): value is WorkflowJSON {
 	);
 }
 
-function isTypeScriptWorkflowSource(filePath: string): boolean {
+export function isTypeScriptWorkflowSource(filePath: string): boolean {
 	const normalized = filePath.toLowerCase();
 	return normalized.endsWith('.ts') || normalized.endsWith('.tsx');
 }
@@ -64,12 +67,13 @@ export function isWorkflowJsonSourceFile(filePath: string): boolean {
 	return filePath.toLowerCase().endsWith('.json');
 }
 
-function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
-	for (const node of json.nodes ?? []) {
-		if (!isRecord(node.parameters)) {
-			node.parameters = {};
-		}
-	}
+/**
+ * Normalizes compiled workflow nodes for INode persistence via
+ * {@link normalizeNodeShape}. Nested nulls (e.g. credential id) are preserved.
+ */
+function normalizeWorkflowNodes(json: WorkflowJSON): void {
+	if (!json.nodes) return;
+	json.nodes = json.nodes.map((node) => normalizeNodeShape(node));
 }
 
 function validateCompiledWorkflow(
@@ -77,7 +81,7 @@ function validateCompiledWorkflow(
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
 ): ValidationWarning[] {
-	normalizeWorkflowNodeParameters(json);
+	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
 		nodeTypesProvider: context.nodeTypesProvider,
@@ -90,6 +94,8 @@ function validateCompiledWorkflow(
 	warnings.push(...detectArrayInputCollapse(json));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	warnings.push(...detectUnparseableOpenAiSchema(json));
+	warnings.push(...detectPythonCodeConstraints(json));
+	warnings.push(...detectSlackBlocksShape(json));
 	return warnings;
 }
 
@@ -134,6 +140,12 @@ function parseSandboxWarnings(value: unknown): ValidationWarning[] {
 			code: warning.code,
 			message: warning.message,
 			nodeName: typeof warning.nodeName === 'string' ? warning.nodeName : undefined,
+			severity:
+				warning.severity === 'informational' ||
+				warning.severity === 'warning' ||
+				warning.severity === 'error'
+					? warning.severity
+					: undefined,
 		});
 	}
 

@@ -145,9 +145,9 @@ describe('partialIsolationWarning', () => {
 
 describe('parseCliArgs --source langtracer dataset isolation', () => {
 	it('derives a suite-scoped dataset + baseline prefix by default', () => {
-		const args = parseCliArgs(['--source', 'langtracer', '--suite', 'n8n-workflows']);
-		expect(args.dataset).toBe('instance-ai-langtracer-n8n-workflows');
-		expect(args.baselinePrefix).toBe('instance-ai-langtracer-n8n-workflows-baseline-');
+		const args = parseCliArgs(['--source', 'langtracer', '--suite', 'my-suite']);
+		expect(args.dataset).toBe('instance-ai-langtracer-my-suite');
+		expect(args.baselinePrefix).toBe('instance-ai-langtracer-my-suite-baseline-');
 	});
 
 	it('does not derive in disk mode (defaults stay the shared cohort)', () => {
@@ -161,7 +161,7 @@ describe('parseCliArgs --source langtracer dataset isolation', () => {
 			'--source',
 			'langtracer',
 			'--suite',
-			'n8n-workflows',
+			'my-suite',
 			'--dataset',
 			'custom-ds',
 			'--baseline-prefix',

@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import BlinkingCursor from './BlinkingCursor.vue';
 
 export default {
-	title: 'Assistant/BlinkingCursor',
+	title: 'Areas/Assistant/BlinkingCursor',
 	component: BlinkingCursor,
 	argTypes: {},
 };
@@ -17,4 +17,4 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<blinking-cursor v-bind="args" />',
 });
 
-export const Cursor = Template.bind({});
+export const Default = Template.bind({});

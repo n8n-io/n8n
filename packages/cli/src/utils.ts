@@ -1,4 +1,4 @@
-import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
+import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -18,6 +18,15 @@ export function isWorkflowIdValid(id: string | null | undefined): boolean {
  */
 export function stripToolSuffix(nodeType: string): string {
 	return nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+}
+
+/**
+ * Whether the given resolved node (version) can back the synthetic tool name.
+ * HITL tools have no capability requirement; regular tools need the base node
+ * version to declare `usableAsTool`.
+ */
+export function satisfiesToolCapability(syntheticToolName: string, nodeType: INodeType): boolean {
+	return isHitlToolType(syntheticToolName) || !!nodeType.description.usableAsTool;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {

@@ -1,0 +1,49 @@
+{
+	"id": "lint-unsolicited-sticky",
+	"name": "Lint: unsolicited sticky note",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"content": "Please do not add this unless asked"
+			},
+			"id": "sticky-1",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [220, -120]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "value",
+							"value": "ok",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "set-1",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		}
+	}
+}

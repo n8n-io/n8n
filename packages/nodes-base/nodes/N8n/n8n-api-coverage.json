@@ -1,9 +1,60 @@
 {
 	"$comment": "Coverage manifest: n8n node vs n8n public API. When a new endpoint is added to the OpenAPI spec, add it here with status covered/gap/excluded. See test/N8n.api-coverage.test.ts.",
 	"endpoints": {
+		"GET /git-connections": {
+			"status": "gap"
+		},
+		"POST /git-connections": {
+			"status": "gap"
+		},
+		"GET /git-connections/{id}": {
+			"status": "gap"
+		},
+		"PUT /git-connections/{id}": {
+			"status": "gap"
+		},
+		"DELETE /git-connections/{id}": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/clone": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/disconnect": {
+			"status": "gap"
+		},
 		"POST /audit": {
 			"status": "covered",
 			"nodeOperation": "audit:generate"
+		},
+		"GET /roles": {
+			"status": "gap"
+		},
+		"GET /roles/{slug}": {
+			"status": "gap"
+		},
+		"POST /roles": {
+			"status": "gap"
+		},
+		"PUT /roles/{slug}": {
+			"status": "gap"
+		},
+		"DELETE /roles/{slug}": {
+			"status": "gap"
+		},
+		"GET /role-mapping-rules": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
+			"status": "gap"
+		},
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
+		"DELETE /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
 		},
 		"GET /settings/security-policy": {
 			"status": "gap"
@@ -60,27 +111,27 @@
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
 		},
-		"GET /executions/{id}": {
+		"GET /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:get"
 		},
-		"DELETE /executions/{id}": {
+		"DELETE /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
 		"POST /executions/{id}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
 			"status": "gap"
 		},
-		"GET /executions/{id}/tags": {
+		"GET /executions/{executionId}/tags": {
 			"status": "gap"
 		},
-		"PUT /executions/{id}/tags": {
+		"PUT /executions/{executionId}/tags": {
 			"status": "gap"
 		},
 		"GET /insights/summary": {
@@ -125,6 +176,12 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
+		"GET /workflows/{workflowId}/versions/{versionId}": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/history": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/activate": {
 			"status": "covered",
 			"nodeOperation": "workflow:activate"
@@ -132,6 +189,12 @@
 		"POST /workflows/{id}/deactivate": {
 			"status": "covered",
 			"nodeOperation": "workflow:deactivate"
+		},
+		"POST /workflows/{id}/publish": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unpublish": {
+			"status": "gap"
 		},
 		"POST /workflows/{id}/archive": {
 			"status": "gap"
@@ -181,6 +244,12 @@
 		"POST /source-control/pull": {
 			"status": "gap"
 		},
+		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/pull": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
@@ -212,6 +281,12 @@
 			"status": "gap"
 		},
 		"POST /settings/log-streaming/destinations/{id}/test": {
+			"status": "gap"
+		},
+		"GET /settings/sso/oidc": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/oidc": {
 			"status": "gap"
 		},
 		"POST /variables": {

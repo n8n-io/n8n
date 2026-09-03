@@ -21,13 +21,12 @@ import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
-import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
+import type { INodeProperties, INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 
@@ -48,7 +47,6 @@ export async function initActiveWorkflowManager() {
 	});
 
 	mockInstance(Push);
-	mockInstance(ExecutionService);
 	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
@@ -83,6 +81,35 @@ export async function initCredentialsTypes(): Promise<void> {
 	};
 }
 
+/**
+ * A node type resolvable by name and version, and safe to publish. The empty arrays matter:
+ * publishing validates each node — resolving its parameters, scanning for webhooks and checking
+ * its credentials — and every one of those iterates a field on the description. `properties` must
+ * declare any parameter a test relies on: parameter resolution drops what the type doesn't declare.
+ */
+function minimalNodeType(name: string, properties: INodeProperties[] = []): INodeTypeData[string] {
+	// A plain object, not `mock<INodeType>`: vitest-mock-extended deep-wraps `properties` in
+	// proxies, and parameter dependency resolution then fails to converge on them.
+	return {
+		type: {
+			description: {
+				displayName: name,
+				name,
+				group: [],
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties,
+				webhooks: [],
+				credentials: [],
+			},
+		} as unknown as INodeType,
+		sourcePath: '',
+	};
+}
+
 function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
@@ -107,9 +134,19 @@ function buildDefaultNodes(): INodeTypeData {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
+			// The real node: publishing resolves a webhook node's parameters against its
+			// description, which a mock-wrapped description does not survive.
+			type: new WebhookNode() as unknown as INodeType,
 			sourcePath: '',
 		},
+		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.
+		'n8n-nodes-base.httpRequest': minimalNodeType('n8n-nodes-base.httpRequest'),
+		'n8n-nodes-base.dataTable': minimalNodeType('n8n-nodes-base.dataTable'),
+		// `workflowId` is declared so the sub-workflow reference survives parameter resolution —
+		// publishing validates it, and a dropped parameter silently skips that check.
+		'n8n-nodes-base.executeWorkflow': minimalNodeType('n8n-nodes-base.executeWorkflow', [
+			{ displayName: 'Workflow', name: 'workflowId', type: 'workflowSelector', default: '' },
+		]),
 	};
 }
 

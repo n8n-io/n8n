@@ -13,10 +13,12 @@ import {
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
 import type { BuiltProviderTool, BuiltTool } from '../../types';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import { Agent, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 const runtimeGenerateResults: Array<Record<string, unknown>> = [];
+const runtimeGenerateOptions: Array<Record<string, unknown>> = [];
 
 function makeGenerateSuccess(): Record<string, unknown> {
 	return {
@@ -33,6 +35,51 @@ function makeGenerateSuccess(): Record<string, unknown> {
 	};
 }
 
+function chunksFromGenerateResult(result: Record<string, unknown>): unknown[] {
+	const chunks: unknown[] = [];
+	const messages = result.messages as
+		| Array<{ content?: Array<{ type: string; text?: string }> }>
+		| undefined;
+	for (const message of messages ?? []) {
+		for (const part of message.content ?? []) {
+			if (part.type === 'text' && part.text) {
+				chunks.push({ type: 'text-delta', id: 't-1', delta: part.text });
+			}
+		}
+	}
+	for (const suspension of (result.pendingSuspend as Array<Record<string, unknown>> | undefined) ??
+		[]) {
+		chunks.push({
+			type: 'tool-call-suspended',
+			runId: suspension.runId,
+			toolCallId: suspension.toolCallId,
+			toolName: suspension.toolName,
+			input: suspension.input,
+			suspendPayload: suspension.suspendPayload,
+		});
+	}
+	if (result.error !== undefined) {
+		chunks.push({ type: 'error', error: result.error });
+	}
+	chunks.push({
+		type: 'finish',
+		finishReason: result.finishReason ?? 'stop',
+		...(result.usage !== undefined ? { usage: result.usage } : {}),
+		...(result.model !== undefined ? { model: result.model } : {}),
+		...(result.structuredOutput !== undefined ? { structuredOutput: result.structuredOutput } : {}),
+	});
+	return chunks;
+}
+
+function readableFromChunks(chunks: unknown[]): ReadableStream<unknown> {
+	return new ReadableStream({
+		start(controller) {
+			for (const chunk of chunks) controller.enqueue(chunk);
+			controller.close();
+		},
+	});
+}
+
 vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
@@ -42,8 +89,23 @@ vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate() {
+			async generate(_prompt: string, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options ?? {});
 				return await Promise.resolve(runtimeGenerateResults.shift() ?? makeGenerateSuccess());
+			}
+
+			async stream(_prompt: string, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options ?? {});
+				const result = runtimeGenerateResults.shift() ?? makeGenerateSuccess();
+				return await Promise.resolve({
+					runId: (result.runId as string | undefined) ?? 'child-run',
+					stream: readableFromChunks(chunksFromGenerateResult(result)),
+					getState: () => ({
+						status: 'success',
+						messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+						pendingToolCalls: {},
+					}),
+				});
 			}
 
 			async dispose() {
@@ -77,6 +139,7 @@ type AgentWithInlineRunner = {
 		deferredTools: BuiltTool[];
 		modelConfig: string;
 		tools: BuiltTool[];
+		telemetry?: BuiltTelemetry;
 		inlineSubAgentBlockedTools?: string[];
 		inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
 		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -85,6 +148,7 @@ type AgentWithInlineRunner = {
 
 function createInlineRunner(options: {
 	tools?: BuiltTool[];
+	telemetry?: BuiltTelemetry;
 	inlineSubAgentBlockedTools?: string[];
 	inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -94,10 +158,21 @@ function createInlineRunner(options: {
 		deferredTools: [],
 		modelConfig: 'openai/gpt-4o-mini',
 		tools: options.tools ?? [makeTool('lookup')],
+		telemetry: options.telemetry,
 		inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools,
 		inlineSubAgentModelsByDifficulty: options.inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools: options.resolveInlineSubAgentProviderTools,
 	});
+}
+
+function builtTelemetry(overrides: Partial<BuiltTelemetry> = {}): BuiltTelemetry {
+	return {
+		enabled: true,
+		recordInputs: true,
+		recordOutputs: true,
+		integrations: [],
+		...overrides,
+	};
 }
 
 function providerToolNames(runtimeConfig: Record<string, unknown> | undefined): string[] {
@@ -111,6 +186,7 @@ describe('inline sub-agent tool filtering', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
 		runtimeGenerateResults.length = 0;
+		runtimeGenerateOptions.length = 0;
 	});
 
 	it.each([
@@ -287,6 +363,52 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs[0]?.thinking).toEqual(thinking);
 	});
 
+	it('inherits generic reasoning when difficulty selects a different provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').reasoning('high');
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.reasoning).toBe('high');
+	});
+
+	it('keeps parent reasoning when difficulty keeps the same provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').reasoning('low');
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'openai/o3-mini' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('openai/o3-mini');
+		expect(runtimeConfigs[0]?.reasoning).toBe('low');
+	});
+
 	it('includes selected child model in failed inline child output when runtime result omits it', async () => {
 		runtimeGenerateResults.push({
 			runId: 'child-run',
@@ -294,6 +416,11 @@ describe('inline sub-agent tool filtering', () => {
 			error: 'model failed',
 			messages: [],
 			usage: {},
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		});
 		const runner = createInlineRunner({
 			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
@@ -349,6 +476,65 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs).toHaveLength(2);
 		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-5');
 		expect(providerToolNames(runtimeConfigs[1])).toEqual(['anthropic.web_search_20250305']);
+	});
+
+	it('derives the child telemetry from the live per-request parentTelemetry, not build-time telemetry', async () => {
+		const parentTelemetry = builtTelemetry({
+			functionId: 'parent-agent',
+			metadata: { thread_id: 't1' },
+		});
+		const runner = createInlineRunner({});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			parentTelemetry,
+		});
+
+		const expectedTelemetry = {
+			...parentTelemetry,
+			functionId: undefined,
+			metadata: { thread_id: 't1', source: 'sub-agent' },
+			rootAnchored: false,
+		};
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.telemetry).toEqual(expectedTelemetry);
+		expect(runtimeGenerateOptions).toHaveLength(1);
+		expect(runtimeGenerateOptions[0]?.telemetry).toEqual(expectedTelemetry);
+	});
+
+	it('falls back to build-time telemetry when the request has no parentTelemetry', async () => {
+		const buildTimeTelemetry = builtTelemetry({ functionId: 'build-time' });
+		const runner = createInlineRunner({ telemetry: buildTimeTelemetry });
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+		});
+
+		expect(runtimeConfigs[0]?.telemetry).toBe(buildTimeTelemetry);
+		expect(runtimeGenerateOptions[0]?.telemetry).toBe(buildTimeTelemetry);
+	});
+
+	it('omits telemetry entirely when neither parentTelemetry nor build-time telemetry is set', async () => {
+		const runner = createInlineRunner({});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+		});
+
+		expect(runtimeConfigs[0]).not.toHaveProperty('telemetry');
+		expect(runtimeGenerateOptions[0]).not.toHaveProperty('telemetry');
 	});
 });
 

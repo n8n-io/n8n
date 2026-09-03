@@ -13,6 +13,7 @@ import {
 } from './mcp-tool-name-validation';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
+import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
@@ -23,7 +24,26 @@ import type {
 	CreateInstanceAgentOptions,
 	InstanceAiContext,
 	InstanceAiToolRegistry,
+	ModelConfig,
 } from '../types';
+import { withModalSession } from '../utils/modal-session';
+
+function resolveModalSessionModelId(
+	modelId: ModelConfig,
+	context: InstanceAiContext,
+	orchestrationThreadId: string | undefined,
+): ModelConfig {
+	const threadId = [context.threadId, orchestrationThreadId]
+		.map((value) => value?.trim())
+		.find((value): value is string => value !== undefined && value.length > 0);
+	if (!threadId) return modelId;
+
+	const stickyModelId = withModalSession(modelId, threadId);
+	if (stickyModelId === modelId) return modelId;
+
+	context.modelId = stickyModelId;
+	return stickyModelId;
+}
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
@@ -48,9 +68,11 @@ function splitDeferredTools(
 	return { coreTools, deferredTools };
 }
 
-export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
+export async function createInstanceAgent(
+	options: CreateInstanceAgentOptions,
+): Promise<{ agent: Agent; mcpConnectionFailures: Array<{ server: string; error: string }> }> {
 	const {
-		modelId,
+		modelId: rawModelId,
 		context,
 		orchestrationContext,
 		mcpServers = [],
@@ -58,24 +80,46 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memoryConfig,
 	} = options;
 
+	const modelId = resolveModalSessionModelId(rawModelId, context, orchestrationContext?.threadId);
+	if (orchestrationContext && orchestrationContext.modelId !== modelId) {
+		orchestrationContext.modelId = modelId;
+	}
+
 	// Build native n8n domain tools (context captured via closures — per-run).
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
 	const domainTools = createAllTools(domainContext);
-	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
-	// processes / opens connections on first call or config change).
+	// processes / opens connections on first call or config change). The manager
+	// returns per-server connection failures alongside the tools so they travel
+	// with this call (not shared mutable state) — concurrent runs with different
+	// configs can't read each other's failures.
 	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
-	const mcpTools = await mcpManager.getRegularTools(
-		mcpServers,
-		context.logger,
-		requireMcpToolApproval,
-	);
+	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
+		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
+	// Map manager-reported connection failures to the generic SDK event type so
+	// the runtime can inject a model-facing note into the orchestrator's system
+	// message. The adapter owns the n8n-specific server config → plain SDK event
+	// translation; the SDK runtime does the rest.
+	const mcpConnectionFailures = managerMcpFailures.map((f) => ({
+		server: f.server.name,
+		error: f.error,
+	}));
+	const browserCredentialSetup = context.browserCredentialSetup;
 	const rawLocalMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
+		? createToolsFromLocalMcpServer({
+				server: context.localMcpServer,
+				logger: context.logger,
+				onCredentialCreateResult: browserCredentialSetup
+					? (credentialType, outcome) => {
+							if (outcome.ok) browserCredentialSetup.markCreated(credentialType);
+							else browserCredentialSetup.markCreateFailed(credentialType, outcome.errorCode);
+						}
+					: undefined,
+			})
 		: createToolRegistry();
 
 	const browserToolNames = new Set(
@@ -129,6 +173,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		warn: warnSkippedMcpTool,
 	});
 
+	const orchestratorDomainTools = createOrchestratorDomainTools({
+		...domainContext,
+		connectedMcpServices: listConnectedMcpServices(mcpServers, safeMcpTools),
+	});
+
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
@@ -156,6 +205,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		projectId: context.projectId,
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot
@@ -176,6 +226,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (mcpConnectionFailures.length > 0) {
+		agent.mcpConnectionFailures(mcpConnectionFailures);
+	}
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}
@@ -245,5 +298,5 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}),
 	);
 
-	return agent;
+	return { agent, mcpConnectionFailures };
 }

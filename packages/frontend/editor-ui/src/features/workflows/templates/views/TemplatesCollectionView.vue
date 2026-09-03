@@ -11,7 +11,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/features/workflows/templates/utils/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 

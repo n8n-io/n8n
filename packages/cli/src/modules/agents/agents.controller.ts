@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { AgentsService } from './agents.service';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -22,6 +23,7 @@ export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
+		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 	) {}
 
 	@Post('/')
@@ -32,8 +34,12 @@ export class AgentsController {
 		@Body payload: CreateAgentDto,
 	) {
 		const { projectId } = req.params;
+		const defaultModel = await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
-		const agent = await this.agentsService.create(projectId, payload.name);
+		const agent = await this.agentsService.create(projectId, payload.name, {
+			id: payload.id,
+			...(defaultModel ? { defaultModel } : {}),
+		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}
 

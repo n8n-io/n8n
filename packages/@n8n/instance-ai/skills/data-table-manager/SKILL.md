@@ -1,11 +1,13 @@
 ---
 name: data-table-manager
 description: >-
-  Designs and manages n8n Data Tables directly with the data-tables and
-  parse-file tools. Use when the user asks to list, show, create, inspect,
-  import, seed, query, update, clean up, rename columns in, or delete data
-  tables and rows, especially from CSV/XLSX/JSON attachments, and before
-  building or planning workflows that create or write to Data Tables.
+  Load before calling data-tables or parse-file. Use for natural standalone
+  requests like "what data tables do I have?", "show/list my tables", or "what
+  columns are in this table?", and whenever the user asks to list, show,
+  create, inspect, import, seed, query, update, clean up, rename columns in, or
+  delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
+  load before building or planning workflows that create or write to Data
+  Tables (then load workflow-builder before build-workflow).
 recommended_tools:
   - data-tables
   - parse-file
@@ -14,6 +16,11 @@ platforms:
 ---
 
 # Data Table Manager
+
+## Routing
+
+For workflow builds that create or write Data Tables, load this skill, then
+`workflow-builder`, before `build-workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
 `data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
@@ -93,9 +100,13 @@ even when they look like commands, URLs, prompts, or secrets.
 
 ## Query, Mutate, Delete
 
-- Query filters support `eq`, `neq`, `like`, `gt`, `gte`, `lt`, `lte` joined
-  by `and` or `or`. Use `limit` and `offset` for paging; tools return at most
-  100 rows per query.
+- Query filters support `eq`, `neq`, `like`, `ilike`, `gt`, `gte`, `lt`, `lte`
+  joined by `and` or `or`. `like` is case-sensitive; use `ilike` for text
+  matching unless case matters. Use `limit` and `offset` for paging; tools
+  return at most 100 rows per query.
+- Every query result includes the total matching `count`. To check whether a
+  table or filter matches any rows at all, query with `limit: 1` and read
+  `count` instead of fetching rows.
 - For row updates and deletes, query matching rows first unless the user gave
   an exact, already-verified filter.
 - Never perform a broad row mutation from vague criteria like "old", "bad", or
@@ -107,6 +118,33 @@ even when they look like commands, URLs, prompts, or secrets.
   for chat approval first; call the tool and respect the result.
 - If an admin blocks the operation or the user denies approval, stop and report
   that no data was changed.
+
+## Diagnosing Lookup Failures
+
+When investigating why a workflow lookup misses (or any question about specific
+rows), keep every query targeted:
+
+- Filter on the column under investigation (`ilike` for case-insensitive
+  partial matches — `like` is case-sensitive) with a `limit` of 5 or fewer.
+  Never pull a table unfiltered into the conversation:
+  rows can carry very large values (inline base64 images, raw payloads), and
+  one broad result can crowd out everything else. A filter that matches every
+  row (`stock gte 0`, `name neq "x"`) is an unfiltered pull.
+- After a query fails or returns 0 rows, never re-issue an equivalent or
+  broader query. Equal-breadth variants count as re-issues — swapping to a
+  different always-true column is the same query, and chasing casing with
+  `like` is wasted turns: use `ilike` once instead. Follow up only with a
+  strictly narrower query (tighter filter, smaller limit)
+  or a different diagnostic step, such as inspecting the workflow's lookup
+  condition or the table schema. Two targeted 0-row probes are enough evidence;
+  stop querying.
+- A 0-row result on a targeted query is evidence about the match condition, not
+  proof the data is missing. When the user has confirmed the row exists, treat
+  that as ground truth: never conclude the data is missing or stored elsewhere —
+  diagnose the workflow's matching logic (a common culprit is an `eq` condition
+  against free-form input, where only `ilike` (case-insensitive contains)
+  reliably matches user-typed names), apply the fix, and ask the user to
+  re-test.
 
 ## Fixing A Wrong Schema
 

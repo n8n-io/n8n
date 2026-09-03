@@ -15,8 +15,11 @@
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { deepCopy } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
+/** Same computed type as ai-workflow-builder.ee's `SimpleWorkflow`, declared locally so
+ *  the eval typecheck program doesn't pull the builder package's source tree in. */
+export type SimpleWorkflow = Pick<IWorkflowBase, 'name' | 'nodes' | 'connections'>;
 
 type NodeRaw = WorkflowJSON['nodes'][number];
 
@@ -27,7 +30,7 @@ interface NormalizedNode {
 	typeVersion: number;
 	position: [number, number];
 	parameters: Record<string, unknown>;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: NodeRaw['credentials'];
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;

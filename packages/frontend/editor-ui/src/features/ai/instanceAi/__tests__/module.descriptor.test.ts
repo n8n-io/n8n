@@ -1,6 +1,12 @@
+import { ref } from 'vue';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 import { InstanceAiModule } from '../module.descriptor';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
+
+vi.mock('../composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => ref(true),
+	useInstanceAiReady: () => ref(true),
+}));
 
 const stub = { render: () => null };
 

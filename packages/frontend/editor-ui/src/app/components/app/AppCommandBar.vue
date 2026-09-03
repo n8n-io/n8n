@@ -3,13 +3,15 @@ import { N8nCommandBar } from '@n8n/design-system';
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();
+const settingsStore = useSettingsStore();
 
 const {
 	initialize: initializeCommandBar,
@@ -23,7 +25,9 @@ const {
 
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 
-const showCommandBar = computed(() => hasPermission(['authenticated']) && !isDemoMode.value);
+const showCommandBar = computed(
+	() => hasPermission(['authenticated']) && !isDemoMode.value && !settingsStore.isCanvasOnly,
+);
 
 watch(showCommandBar, (newVal) => {
 	if (newVal) {

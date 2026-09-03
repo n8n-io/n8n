@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IUserSettings,
 	AnnotationVote,
@@ -18,7 +19,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { CredentialsEntity } from './credentials-entity';
+import type { CredentialUsageScope, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
@@ -66,6 +67,7 @@ export interface IExecutionBase {
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
@@ -103,6 +105,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	isManaged?: boolean;
+	usageScope?: CredentialUsageScope;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -141,6 +144,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	featureFlagPayloads?: FeatureFlagPayloads;
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;

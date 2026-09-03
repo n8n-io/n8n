@@ -36,7 +36,7 @@ const emit = defineEmits<{
 
 const { options } = useOptions();
 const chatStore = useChat();
-const { waitingForResponse } = chatStore;
+const { waitingForResponse, credentialStatus } = chatStore;
 
 const files = ref<FileList | null>(null);
 const chatTextArea = ref<HTMLTextAreaElement | null>(null);
@@ -45,13 +45,21 @@ const isSubmitting = ref(false);
 const resizeObserver = ref<ResizeObserver | null>(null);
 const waitingForChatResponse = ref(false);
 
+const isCredentialGateActive = computed(() => {
+	const status = credentialStatus.value;
+	return status !== null && !status.testMode && !status.ready;
+});
+
 const isSubmitDisabled = computed(() => {
 	if (chatStore.blockUserInput.value) return true;
+	if (isCredentialGateActive.value) return true;
 	if (waitingForChatResponse.value) return false;
 	return input.value === '' || unref(waitingForResponse) || options.disabled?.value === true;
 });
 
-const isInputDisabled = computed(() => options.disabled?.value === true);
+const isInputDisabled = computed(
+	() => options.disabled?.value === true || isCredentialGateActive.value,
+);
 const isFileUploadDisabled = computed(
 	() => isFileUploadAllowed.value && unref(waitingForResponse) && !options.disabled?.value,
 );
@@ -167,6 +175,10 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 				resumeToken,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
+			// Keep the typing indicator up while the execution runs: the initial
+			// sendMessage cleared it on `executionStarted`, and the first bot frame
+			// (or socket close) below will clear it again.
+			chatStore.waitingForResponse.value = true;
 			// The first heartbeat locks the protocol: a pre-v3 server sends the string
 			// `n8n|heartbeat`, a v3 server sends `{type:'heartbeat'}`. Once legacy mode is
 			// locked, JSON that merely looks like a control frame is a chat message.

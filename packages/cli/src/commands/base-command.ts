@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -8,11 +9,15 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
+	BinaryDataBlobManager,
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
@@ -21,12 +26,10 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -86,7 +89,24 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
+	protected needsExpressionEngine = false;
+
+	/**
+	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
+	 * Only server processes hold the encryption key these are derived from.
+	 */
+	protected seedsInstanceIdentity = false;
+
+	/** Whether this command runs the main server process (`n8n start`). */
+	protected readonly isMainServer: boolean = false;
+
 	async init(): Promise<void> {
+		// First, so any default-agent egress during init already honours the proxy
+		// env vars. Sentry is unaffected either way: its transport builds its own
+		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
+		this.installOutboundProxyAgents();
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
@@ -166,6 +186,20 @@ export abstract class BaseCommand<F = never> {
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
 
+		// Apply the persisted instance identity so every command (e.g. license:info)
+		// sees the same instanceId as the running server. Non-fatal for one-off
+		// commands, which must keep working with restricted DB credentials.
+		try {
+			await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+				canSeed: this.seedsInstanceIdentity,
+			});
+		} catch (error) {
+			if (this.seedsInstanceIdentity) throw error;
+			this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+				error: ensureError(error),
+			});
+		}
+
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
@@ -204,17 +238,42 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-			this.globalConfig.expressionEngine;
-		await Expression.initExpressionEngine({
-			engine,
-			poolSize,
-			maxCodeCacheSize,
-			bridgeTimeout,
-			bridgeMemoryLimit,
-			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
-			observability: Container.get(ExpressionObservabilityProvider),
-		});
+		if (this.needsExpressionEngine) {
+			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
+				this.globalConfig.expressionEngine;
+			const observability = Container.get(ExpressionObservabilityProvider);
+			try {
+				await Expression.initExpressionEngine({
+					engine,
+					poolSize,
+					maxCodeCacheSize,
+					bridgeTimeout,
+					bridgeMemoryLimit,
+					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					observability,
+				});
+			} catch (error) {
+				await this.exitWithCrash(
+					'Could not initialize the vm expression engine (see errors above for details). If they point at isolated-vm, check that it installed correctly, e.g. that native build scripts were not skipped.',
+					error,
+				);
+			}
+		} else {
+			// Record the configured engine so an unexpected expression evaluation on a
+			// vm-configured instance fails loudly instead of silently using the legacy engine
+			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
+		}
+	}
+
+	/**
+	 * Installs the env-proxy global agents so default-agent HTTP honours the proxy
+	 * environment variables. In `main-only` outbound proxy mode, only the main
+	 * server process installs them.
+	 */
+	protected installOutboundProxyAgents() {
+		if (this.globalConfig.outboundProxy.mode === 'all' || this.isMainServer) {
+			installGlobalProxyAgent();
+		}
 	}
 
 	protected async stopProcess() {
@@ -248,7 +307,9 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	protected async exitWithCrash(message: string, error: unknown) {
+	protected async exitWithCrash(message: string, error: unknown): Promise<never> {
+		// the error reporter only sends to Sentry when a DSN is configured, so also log to the console
+		this.logger.error(message, { error });
 		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
@@ -338,10 +399,10 @@ export abstract class BaseCommand<F = never> {
 		try {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
-				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager.js'
+				binaryDataService.setManager(
+					's3',
+					new BinaryDataBlobManager(new S3ByteStore(objectStoreService), this.errorReporter),
 				);
-				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			}
 		} catch {
 			if (isS3WriteMode || isExecutionDataS3Mode) {
@@ -353,10 +414,10 @@ export abstract class BaseCommand<F = never> {
 		try {
 			const azureBlobService = await this.initAzureStoreIfConfigured();
 			if (azureBlobService) {
-				const { AzureBlobManager } = await import(
-					'n8n-core/dist/binary-data/azure-blob.manager.js'
+				binaryDataService.setManager(
+					'azure',
+					new BinaryDataBlobManager(new AzureByteStore(azureBlobService), this.errorReporter),
 				);
-				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
 			}
 		} catch {
 			if (isAzureWriteMode || isExecutionDataAzureMode) {

@@ -68,6 +68,7 @@ describe('buildFromJson()', () => {
 
 	const makeMockToolExecutor = (): ToolExecutor => ({
 		executeTool: vi.fn().mockResolvedValue({ result: 'tool result' }),
+		executeToMessage: vi.fn().mockResolvedValue(undefined),
 	});
 
 	const makeMockCredentialProvider = () => ({
@@ -233,21 +234,41 @@ describe('buildFromJson()', () => {
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
 	});
 
-	it('wires a custom tool', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search' });
+	it('executes a custom tool handler and message transform', async () => {
+		const descriptor = makeToolDescriptor({ name: 'my_search', hasToMessage: true });
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+		const rawOutput = { matches: ['first', 'second'] };
+		const toolExecutor: ToolExecutor = {
+			executeTool: async () => rawOutput,
+			executeToMessage: async (_toolName, output) => ({
+				role: 'assistant',
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+			}),
+		};
 
 		const agent = await buildFromJson(
 			config,
 			{ search_tool: descriptor },
 			{
-				toolExecutor: makeMockToolExecutor(),
+				toolExecutor,
 				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
+		const tool = (
+			agent as unknown as {
+				tools: BuiltTool[];
+			}
+		).tools.find(({ name }) => name === 'my_search');
+		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
 
-		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
+		const output = await tool.handler({ query: 'n8n' }, {} as never);
+
+		expect(output).toEqual(rawOutput);
+		expect(await tool.toMessage(output)).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: '{"matches":["first","second"]}' }],
+		});
 	});
 
 	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
@@ -275,7 +296,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(true);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -338,15 +359,6 @@ describe('buildFromJson()', () => {
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-		});
-
-		const listSkills = agent.declaredTools.find((t) => t.name === 'list_skills');
-		const listOutput = (await listSkills!.handler?.({}, {})) as {
-			skills: Array<Record<string, unknown>>;
-		};
-		expect(listOutput?.skills[0]).toMatchObject({
-			name: 'Summarize notes',
-			allowedTools: ['load_workflow'],
 		});
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
@@ -573,9 +585,9 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
 	});
 
-	it('sets thinking config', async () => {
+	it('sets generic reasoning effort', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+			config: { reasoning: 'high' },
 		});
 
 		const agent = await buildFromJson(
@@ -589,8 +601,7 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.thinking).not.toBeNull();
-		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+		expect(snap.reasoning).toBe('high');
 	});
 
 	it('sets prompt caching config with an Anthropic ttl', async () => {
@@ -853,6 +864,42 @@ describe('buildFromJson()', () => {
 
 		expect(getProviderToolNames(agent)).toEqual([]);
 		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('routes fallback SearXNG search through the injected webSearchFetch', async () => {
+		const webSearchFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ results: [] }),
+		});
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiUrl: 'http://searxng.internal:8080' }),
+			list: vi.fn().mockResolvedValue([]),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'searxng', credential: 'searxng-url' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+				webSearchFetch: webSearchFetch as unknown as typeof fetch,
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'test' }, {} as never);
+
+		expect(webSearchFetch).toHaveBeenCalledTimes(1);
+		const [requestUrl] = webSearchFetch.mock.calls[0] as [string];
+		expect(requestUrl).toContain('http://searxng.internal:8080/search');
 	});
 
 	it('uses native web search when native provider is explicitly configured', async () => {
@@ -1819,11 +1866,20 @@ describe('AgentJsonConfigSchema', () => {
 			).toThrow();
 		});
 
-		it('rejects names with invalid characters', () => {
+		it('preserves human-readable MCP server names', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'Linear production (EU)', url: 'https://a.example.test/mcp' }],
+			});
+
+			expect(parsed.mcpServers?.[0].name).toBe('Linear production (EU)');
+		});
+
+		it('rejects whitespace-only MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
-					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+					mcpServers: [{ name: '   ', url: 'https://a.example.test/mcp' }],
 				}),
 			).toThrow();
 		});

@@ -13,6 +13,7 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type INodeTypes,
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
@@ -63,6 +64,45 @@ export type NodeGroupValidationResult<TNode extends INode = INode> =
 			reason: 'non-main-boundary';
 			connection: { source: string; target: string; type: string };
 	  };
+
+/**
+ * Single source of truth for the structural grouping rules, shared by three
+ * surfaces so they cannot drift:
+ * - `sdkReference`: the rule as stated in the SDK/MCP docs an agent reads.
+ * - `violation`: the fragment used in the save-path rejection message below.
+ *
+ * Only the four reasons `validateNodeSelectionForGrouping` can actually return
+ * live here. The per-node `multiple-input-branches` / `multiple-output-branches`
+ * checks are extraction-only (`validateNodeSelectionForExtraction`) and are
+ * deliberately absent — a group is never rejected for them.
+ */
+export const NODE_GROUPING_RULES = {
+	triggerSelected: {
+		sdkReference: '**No trigger nodes.** Trigger nodes cannot be part of a group.',
+		violation: 'cannot contain trigger nodes',
+	},
+	invalidSubgraph: {
+		sdkReference:
+			'**One connected section with a single entry and exit.** The connectable members must ' +
+			'form a single connected section of the graph — reachable from one another, not two ' +
+			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
+			'the group boundary. Sticky notes may accompany the selection without participating in ' +
+			'connectivity, and a sticky-only group is valid.',
+		violation: 'must form a single connected subgraph with a single entry and exit',
+	},
+	nonMainBoundary: {
+		sdkReference:
+			'**Keep AI sub-nodes with their Agent.** If an AI Agent is in a group, its language-model, ' +
+			'tool, and memory sub-nodes belong in the same group — put them either all inside the group ' +
+			'or all outside it, never split. A model/tool/memory connection must not cross the group boundary.',
+		// Fragment: reads as `<label> cannot cross the "<type>" connection between "<a>" and "<b>".`
+		violation: 'cannot cross the',
+	},
+	nodeAlreadyGrouped: {
+		sdkReference: '**One group per node.** A node can belong to at most one group at a time.',
+		violation: 'contains nodes that already belong to another group',
+	},
+} as const;
 
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
@@ -134,6 +174,284 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 
 	// Report the full selection (stickies included) as the resulting subgraph.
 	return { ...subgraphResult, subGraph: input.nodes };
+}
+
+export type WorkflowGroupViolationCode =
+	| 'duplicate-group-id'
+	| 'duplicate-group-name'
+	| 'empty-group'
+	| 'unknown-node-id'
+	| 'node-in-multiple-groups'
+	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
+
+export type WorkflowGroupViolation = {
+	groupId: string;
+	groupName: string;
+	code: WorkflowGroupViolationCode;
+	/** Actionable, user-facing description; identical to the save-path rejection message. */
+	message: string;
+};
+
+type WorkflowGroupViolationWithGroup = WorkflowGroupViolation & { group: IWorkflowGroup };
+
+export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
+	nodes: TNode[];
+	connectionsBySourceNode?: IConnections;
+	nodeGroups?: IWorkflowGroup[];
+	/**
+	 * Resolves a node to its type description (used to detect trigger nodes), or
+	 * `undefined`/`null` for unknown node types so validation degrades gracefully.
+	 * Pass `null` to run basic checks only.
+	 */
+	getNodeType: ((node: TNode) => INodeTypeDescription | null | undefined) | null;
+};
+
+export type WorkflowGroupsValidationResult =
+	| { valid: true }
+	| { valid: false; violations: [WorkflowGroupViolation, ...WorkflowGroupViolation[]] };
+
+export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description. Returns `null` for unknown node types so
+ * validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
+
+/**
+ * Validates a workflow's `nodeGroups` without throwing, collecting all violations.
+ * Single source of truth for group rules: persistence (CLI save path) rejects with
+ * the first violation's message, and validate-time surfaces (e.g. the MCP
+ * `validate_workflow` tool) report all of them as errors.
+ *
+ * Basic checks (always run): unique group IDs, unique group names, at least one
+ * member, all referenced node IDs exist, and each node belongs to at most one group.
+ *
+ * Full checks (run only when `getNodeType` is non-null, and skipped for groups that
+ * already have a basic violation): each group must satisfy the same grouping rules
+ * the canvas enforces — no triggers, a single connected subgraph, and no non-main
+ * connection crossing the group boundary — validated against the other groups as
+ * existing groups. Pass the `getNodeType` callback to run the full checks (on
+ * create, and on an update that changed the graph or the groups); pass `null` to
+ * run basic checks only (e.g. a git import, so legacy-invalid groups don't block
+ * the import).
+ *
+ * Violations are collected in the same order the save path checks them, so
+ * `violations[0]` is always the error a save would reject with.
+ *
+ * Note: must be called after node IDs are assigned (see `addNodeIds` in the CLI),
+ * since nodes created via the API may not have IDs until that step assigns them.
+ */
+export function validateWorkflowGroups<TNode extends INode>({
+	nodes,
+	connectionsBySourceNode,
+	nodeGroups,
+	getNodeType,
+}: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes,
+		connectionsBySourceNode,
+		nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) return { valid: true };
+
+	const [firstViolation, ...restViolations] = result.violations;
+	return {
+		valid: false,
+		violations: [
+			stripWorkflowGroupIdentity(firstViolation),
+			...restViolations.map(stripWorkflowGroupIdentity),
+		],
+	};
+}
+
+function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
+	nodes,
+	connectionsBySourceNode,
+	nodeGroups,
+	getNodeType,
+}: WorkflowGroupsValidationInput<TNode>):
+	| { valid: true }
+	| {
+			valid: false;
+			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
+	  } {
+	if (!nodeGroups || nodeGroups.length === 0) return { valid: true };
+
+	const violations: WorkflowGroupViolationWithGroup[] = [];
+	// Tracked by object identity: duplicate IDs/names make `group.id` ambiguous.
+	const groupsWithBasicViolations = new Set<IWorkflowGroup>();
+	const addViolation = (
+		group: IWorkflowGroup,
+		code: WorkflowGroupViolationCode,
+		message: string,
+	) => {
+		violations.push({ group, groupId: group.id, groupName: group.name, code, message });
+	};
+
+	const nodeById = new Map(nodes.filter((node) => Boolean(node.id)).map((node) => [node.id, node]));
+	// Node names are how users and agents identify nodes, so messages use them;
+	// the id is only a fallback for members without a resolvable name.
+	const nodeLabel = (nodeId: string) => nodeById.get(nodeId)?.name || nodeId;
+	const seenGroupIds = new Set<string>();
+	const seenGroupNames = new Set<string>();
+	const nodeToGroup = new Map<string, string>();
+
+	for (const group of nodeGroups) {
+		const addBasicViolation = (code: WorkflowGroupViolationCode, message: string) => {
+			addViolation(group, code, message);
+			groupsWithBasicViolations.add(group);
+		};
+
+		// Unique group IDs
+		if (seenGroupIds.has(group.id)) {
+			addBasicViolation('duplicate-group-id', `Duplicate node group ID "${group.id}".`);
+		}
+		seenGroupIds.add(group.id);
+
+		// Unique group names
+		if (seenGroupNames.has(group.name)) {
+			addBasicViolation('duplicate-group-name', `Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
+		if (group.nodeIds.length === 0) {
+			addBasicViolation('empty-group', `Group "${group.name}" has no members.`);
+		}
+
+		for (const nodeId of group.nodeIds) {
+			// All referenced nodes must exist
+			if (!nodeById.has(nodeId)) {
+				addBasicViolation(
+					'unknown-node-id',
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+				continue;
+			}
+			// A node can only belong to one group
+			const existingGroup = nodeToGroup.get(nodeId);
+			if (existingGroup) {
+				addBasicViolation(
+					'node-in-multiple-groups',
+					`Node "${nodeLabel(nodeId)}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+				);
+			} else {
+				nodeToGroup.set(nodeId, group.name);
+			}
+		}
+	}
+
+	if (getNodeType) {
+		const connections = connectionsBySourceNode ?? {};
+
+		for (const group of nodeGroups) {
+			// A basic violation makes the group's member set unreliable, so the
+			// graph rules would only produce misleading follow-up violations.
+			if (groupsWithBasicViolations.has(group)) continue;
+
+			const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
+			const result = validateNodeSelectionForGrouping({
+				nodes: groupNodes,
+				connectionsBySourceNode: connections,
+				getNodeType,
+				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+			});
+			if (!result.valid) {
+				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
+			}
+		}
+	}
+
+	const [firstViolation, ...restViolations] = violations;
+	if (!firstViolation) return { valid: true };
+	return { valid: false, violations: [firstViolation, ...restViolations] };
+}
+
+function stripWorkflowGroupIdentity({
+	groupId,
+	groupName,
+	code,
+	message,
+}: WorkflowGroupViolationWithGroup): WorkflowGroupViolation {
+	return { groupId, groupName, code, message };
+}
+
+/**
+ * Non-fatal twin of `validateWorkflowGroups`: drops every offending group instead
+ * of throwing, returning every violation for the groups it dropped.
+ * Mutates `nodeGroups`.
+ *
+ * `shouldDrop` filters which violating groups are removed, letting a caller
+ * drop the groups it can blame first and re-check the rest afterwards.
+ */
+export function dropInvalidWorkflowGroups<TNode extends INode>(
+	workflow: { nodes: TNode[]; nodeGroups?: IWorkflowGroup[]; connections?: IConnections },
+	getNodeType: GetNodeTypeForGrouping | null,
+	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
+): WorkflowGroupViolation[] {
+	if (!workflow.nodeGroups?.length) {
+		return [];
+	}
+
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) {
+		return [];
+	}
+
+	const dropped = result.violations.filter(shouldDrop);
+	if (dropped.length === 0) {
+		return [];
+	}
+
+	const droppedGroups = new Set(dropped.map((violation) => violation.group));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroups.has(group));
+
+	return dropped.map(stripWorkflowGroupIdentity);
+}
+
+/**
+ * Maps a failed `validateNodeSelectionForGrouping` result to an actionable message
+ * that names the offending group and the rule it broke. These strings are the
+ * public save-rejection messages — change them only deliberately.
+ */
+function groupRuleViolationMessage(
+	group: IWorkflowGroup,
+	result: Extract<NodeGroupValidationResult, { valid: false }>,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	const label = `Node group "${group.name}"`;
+	switch (result.reason) {
+		case 'trigger-selected':
+			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;
+		case 'invalid-subgraph':
+			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}.`;
+		case 'node-already-grouped':
+			return `${label} ${NODE_GROUPING_RULES.nodeAlreadyGrouped.violation}: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
+		case 'non-main-boundary':
+			return `${label} ${NODE_GROUPING_RULES.nonMainBoundary.violation} "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`;
+		// Extraction-only reasons; unreachable from grouping but required for exhaustiveness.
+		case 'multiple-input-branches':
+			return `${label} has multiple input branches at node "${result.node}".`;
+		case 'multiple-output-branches':
+			return `${label} has multiple output branches at node "${result.node}".`;
+	}
 }
 
 function validateNodeSelectionSubgraph<TNode extends INode>({

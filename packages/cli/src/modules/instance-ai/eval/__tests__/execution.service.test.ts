@@ -11,13 +11,15 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -44,6 +46,8 @@ vi.mock('../workflow-analysis', () => ({
 	generateMockHints: vi.fn(),
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
+	isDataTableRead: vi.fn().mockReturnValue(false),
+	emitsDataTableRows: vi.fn().mockReturnValue(false),
 	detectBinaryDependencies: vi.fn(),
 }));
 
@@ -99,6 +103,7 @@ import { createLlmMockHandler } from '../mock-handler';
 import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -114,6 +119,7 @@ const generateMockHintsMock = vi.mocked(generateMockHints);
 const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
+const emitsDataTableRowsMock = vi.mocked(emitsDataTableRows);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
 const generatePinDataMock = vi.mocked(generatePinData);
@@ -209,6 +215,8 @@ describe('EvalExecutionService', () => {
 	const binaryDataService = mock<BinaryDataService>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const ownershipService = mock<OwnershipService>();
+	const dataTableService = mock<DataTableService>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -243,6 +251,8 @@ describe('EvalExecutionService', () => {
 			binaryDataService,
 			workflowStaticDataService,
 			loadNodesAndCredentials,
+			ownershipService,
+			dataTableService,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -462,6 +472,29 @@ describe('EvalExecutionService', () => {
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
 		});
 
+		it('preserves an intentional zero-item bypass pin instead of injecting a phantom item', async () => {
+			const bypassNode = {
+				id: 'node-3',
+				name: 'Only New Jobs',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [400, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), bypassNode] }) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([bypassNode]);
+			generatePinDataMock.mockResolvedValue({ 'Only New Jobs': [] });
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.['Only New Jobs']).toEqual([]);
+		});
+
 		it('returns a framework failure when bypass pin data generation fails', async () => {
 			const bypassNode = {
 				id: 'node-3',
@@ -490,6 +523,78 @@ describe('EvalExecutionService', () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
+		});
+
+		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
+		// pinning that the budget is reported and not that rejection.
+		it('stops the execution and reports it when the run outlives the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				await vi.advanceTimersByTimeAsync(30_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					DB_EXECUTION_ID,
+					expect.any(TimeoutExecutionCancelledError),
+				);
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		// Hint generation is an LLM call, so it has to come out of the caller's
+		// budget — otherwise the request outlives the deadline it declared.
+		it('charges setup time against the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+				// Setup burns 25s of the 30s budget. The clock moves without running
+				// timers — advancing them here would re-enter the timer queue the test
+				// drives below.
+				generateMockHintsMock.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + 25_000);
+					return makeEmptyHints();
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				// Only the 5s left after setup, not another full 30s.
+				await vi.advanceTimersByTimeAsync(5_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalled();
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps waiting indefinitely when the caller sends no budget', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 
 		it('wraps additionalData.credentialsHelper inside configureAdditionalData', async () => {
@@ -844,6 +949,51 @@ describe('EvalExecutionService', () => {
 				const toolUrls = result.nodeResults['Get Order Tool'].interceptedRequests.map((r) => r.url);
 				expect(agentUrls).not.toContain('https://orders.example.com/v1/orders/42');
 				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
+			});
+
+			it('detaches the ledger entry from a node mutating the served response in place', async () => {
+				// The reported failure: the OpenAI node's json_schema mode parses
+				// `output[].content[].text` in place, so an aliased entry rewrote
+				// history and the judge blamed the mock. Asserted at this call site,
+				// not just on the helper, so a refactor can't bypass the snapshot.
+				const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+				const innerMockHandler = vi.fn().mockResolvedValue({
+					body: served,
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				let capturedAd: StubAdditionalData | undefined;
+				workflowRunner.run.mockImplementation(async (data) => {
+					const ad = makeMockedAdditionalData();
+					await data.configureAdditionalData?.(ad as never);
+					capturedAd = ad;
+					return DB_EXECUTION_ID;
+				});
+
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
+					const response = (await capturedAd?.evalLlmMockHandler?.(
+						{ url: 'https://api.openai.com/v1/responses', method: 'POST' },
+						{
+							id: 'node-2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					)) as { body: typeof served } | undefined;
+					// Node code mutates the body it was handed.
+					response!.body.output[0].content[0].text = { a: 1 } as never;
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				const recorded = result.nodeResults['HTTP Request'].interceptedRequests[0]
+					.mockResponse as typeof served;
+				expect(recorded.output[0].content[0].text).toBe('{"a":1}');
 			});
 
 			it('records "(no URL)" when broken node routing emits a request without a URL', async () => {
@@ -1455,6 +1605,100 @@ describe('EvalExecutionService', () => {
 		});
 	});
 
+	// ── Data Table column contracts ──────────────────────────────────
+
+	describe('resolveDataTableColumns (via execution)', () => {
+		function makeDataTableNode(dataTableId: unknown, operation = 'get'): INode {
+			return {
+				id: 'node-dt',
+				name: 'Get Rows',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { resource: 'row', operation, dataTableId },
+			} as INode;
+		}
+
+		function makeDataTableWorkflow(dataTableId: unknown, operation = 'get') {
+			const node = makeDataTableNode(dataTableId, operation);
+			// The SUT maps these to names, so the mock must yield node objects.
+			identifyNodesForPinDataMock.mockReturnValue([node]);
+			return makeWorkflowEntity({ nodes: [makeStartNode(), node] });
+		}
+
+		beforeEach(() => {
+			// Mirrors the real predicate: only `get` emits stored rows.
+			emitsDataTableRowsMock.mockImplementation(
+				(node: INode) =>
+					node.type === 'n8n-nodes-base.dataTable' &&
+					(node.parameters as { operation?: string } | undefined)?.operation === 'get',
+			);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'contact_email', type: 'string' },
+			] as never);
+		});
+
+		it('passes an id-mode locator straight through to the column lookup', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-42', 'proj-1');
+			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toEqual({
+				'Get Rows': [{ name: 'contact_email', type: 'string' }],
+			});
+		});
+
+		it('resolves a name-mode locator to its id before fetching columns', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Customers' }) as never,
+			);
+			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([
+				{ id: 'dt-9', name: 'Customers' },
+			]);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			// A name passed to the id lookup used to miss, silently dropping the node
+			// to prompt-only generation with invented column names.
+			expect(dataTableService.findDataTablesByNamesInProject).toHaveBeenCalledWith('proj-1', [
+				'Customers',
+			]);
+			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-9', 'proj-1');
+		});
+
+		it.each(['rowExists', 'rowNotExists'])(
+			'skips the column contract for %s, which emits the input item not table rows',
+			async (operation) => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }, operation) as never,
+				);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				// Enforcing table columns here would demand a fixture the real node
+				// never emits, then blame the resulting mismatch on the builder.
+				expect(dataTableService.getColumns).not.toHaveBeenCalled();
+				expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+			},
+		);
+
+		it('degrades to prompt-only generation when no table matches the name', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Missing' }) as never,
+			);
+			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(dataTableService.getColumns).not.toHaveBeenCalled();
+			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+		});
+	});
+
 	// ── hints passthrough ────────────────────────────────────────────
 
 	describe('hints in result', () => {
@@ -1470,6 +1714,49 @@ describe('EvalExecutionService', () => {
 
 			expect(result.hints.globalContext).toBe('Users: jane@example.com, john@example.com');
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
+		});
+	});
+
+	// ── reserved node names ──────────────────────────────────────────
+
+	describe('reserved node names', () => {
+		// Object literals cannot express an own "__proto__" key; this mirrors the
+		// shape JSON.parse produces for a persisted runData column.
+		function runDataWithOwnKey(key: string, value: unknown): Record<string, unknown> {
+			const runData: Record<string, unknown> = {};
+			Object.defineProperty(runData, key, {
+				value,
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
+			return runData;
+		}
+
+		afterEach(() => {
+			// Undo any pollution a regression would have caused so it can't leak
+			// into unrelated tests.
+			for (const key of ['iterationCount', 'outputs', 'outputCount', 'executionMode']) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('does not pollute Object.prototype when a run node is named "__proto__"', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: { runData: runDataWithOwnKey('__proto__', []) },
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect('iterationCount' in {}).toBe(false);
+			expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('iterationCount');
+			// The node is still recorded — as an own key on the result, not on the prototype.
+			expect(Object.keys(result.nodeResults)).toContain('__proto__');
 		});
 	});
 });

@@ -18,6 +18,11 @@ export const s3ThrottledError = wrapProviderError(
 	Object.assign(new Error('slow down'), { name: 'ThrottlingException' }),
 );
 
+/** S3 HEAD 404s carry no error code, only a generic `NotFound` name. */
+export const s3HeadNotFoundError = wrapProviderError(
+	Object.assign(new Error('missing'), { name: 'NotFound' }),
+);
+
 export const azureNotFoundError = wrapProviderError(
 	Object.assign(new Error('missing'), { code: 'BlobNotFound' }),
 );

@@ -15,7 +15,7 @@ export async function encryptCredentialData(
 	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper.js');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
-	// @ts-ignore
+	// @ts-expect-error entity data typed as string
 	await coreCredential.setData(credential.data);
 
 	return Object.assign(credential, coreCredential.getDataToSave());

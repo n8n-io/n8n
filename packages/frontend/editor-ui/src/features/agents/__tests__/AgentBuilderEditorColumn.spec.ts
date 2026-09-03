@@ -1,19 +1,21 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
+import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+
+import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
-				'agents.builder.memory.episodicMemory.hint':
-					'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
+	// The i18n singleton is used at module load by some transitively-imported utils.
+	i18n: { baseText: (key: string) => key },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -42,8 +44,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
-	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
+	N8nSegmentControl: { template: '<div />', props: ['modelValue', 'options'] },
+	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
 	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
@@ -56,20 +60,20 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
 
-vi.mock('@n8n/design-system/components/N8nSelect', () => ({
-	default: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
-}));
-
-vi.mock('@n8n/design-system/components/N8nOption', () => ({
-	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
-}));
-
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
-	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+	default: {
+		name: 'AgentAdvancedPanel',
+		template: '<div />',
+		props: ['config', 'disabled', 'collapsible', 'projectId'],
+	},
 }));
 
 vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
+}));
+
+vi.mock('../components/AgentChannelsSection.vue', () => ({
+	default: { name: 'AgentChannelsSection', template: '<div />' },
 }));
 
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
@@ -81,7 +85,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
 	},
 }));
 
@@ -89,13 +93,9 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId', 'isPublished'],
+		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
-}));
-
-vi.mock('../components/AgentJsonEditor.vue', () => ({
-	default: { name: 'AgentJsonEditor', template: '<div />' },
 }));
 
 vi.mock('../components/AgentPanelHeader.vue', () => ({
@@ -114,7 +114,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -122,19 +122,38 @@ vi.mock('../views/AgentSessionsListView.vue', () => ({
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
 
+/**
+ * The Evals tab renders the real `AgentEvalsSection`, which reads the eval store.
+ * A bare `createTestingPinia` stubs every store function to return `undefined`, so
+ * the reads it makes on mount have to be given the shapes it expects — otherwise
+ * this file fails on an uncaught error from a component it is not even testing.
+ */
+function createPiniaWithEvalStore() {
+	const pinia = createTestingPinia({ createSpy: vi.fn });
+	const evals = useAgentEvalsStore();
+	vi.mocked(evals.getDatasets).mockReturnValue([]);
+	vi.mocked(evals.isLoaded).mockReturnValue(true);
+	vi.mocked(evals.fetchDatasets).mockResolvedValue([]);
+	vi.mocked(evals.isStartingRun).mockReturnValue(false);
+	return pinia;
+}
+
 async function mountColumn(
 	overrides: Partial<{
-		activeMainTab: 'agent' | 'knowledge' | 'sessions' | 'settings';
+		activeMainTab: AgentBuilderMainTab;
 		mainTabOptions: Array<{
 			label: string;
-			value: 'agent' | 'knowledge' | 'sessions' | 'settings';
+			value: AgentBuilderMainTab;
 		}>;
 		knowledgeBaseEnabled: boolean;
+		canEditAgent: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
+	const pinia = createPiniaWithEvalStore();
+
 	return mount(AgentBuilderEditorColumn, {
 		props: {
 			activeMainTab: overrides.activeMainTab ?? 'agent',
@@ -159,18 +178,24 @@ async function mountColumn(
 			knowledgeBaseEnabled: overrides.knowledgeBaseEnabled ?? true,
 			appliedSkills: [],
 			connectedTriggers: [],
-			canEditAgent: true,
+			canEditAgent: overrides.canEditAgent ?? true,
 			executionsDescription: '',
 		},
 		global: {
-			plugins: [createTestingPinia({ createSpy: vi.fn })],
+			plugins: [pinia],
 			stubs: {
-				AgentCapabilitiesSection: true,
+				AgentCapabilitiesSection: false,
+				AgentChannelsSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+					props: [
+						'showModel',
+						'showInstructions',
+						'showInstructionsToolbar',
+						'instructionsMaxHeight',
+					],
 				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
@@ -235,6 +260,7 @@ describe('AgentBuilderEditorColumn', () => {
 		['knowledge', 'agent-knowledge-tab-content'],
 		['sessions', 'agent-sessions-tab-content'],
 		['settings', 'agent-settings-tab-content'],
+		['evals', 'agent-evals-tab-content'],
 	] as const)('renders the %s tab through the shared tab panel', async (activeMainTab, testId) => {
 		const wrapper = await mountColumn({ activeMainTab });
 
@@ -243,10 +269,39 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(panels[0].attributes('data-testid')).toBe(testId);
 	});
 
+	it('forwards the evals generate request to the host', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+
+		// The shell owns no generation flow yet, so the request has to reach the
+		// host rather than being emitted into nothing.
+		wrapper.getComponent({ name: 'AgentEvalsSection' }).vm.$emit('generate');
+
+		expect(wrapper.emitted('generate-eval-cases')).toHaveLength(1);
+	});
+
+	it('disables the evals CTA for a read-only agent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
+
+		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
+	});
+
+	// The eval routes are agent-scoped, so the section can't read anything unless
+	// it is told which agent to read.
+	it('gives the evals section the agent it should read', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+
+		expect(section.props('projectId')).toBe('project-1');
+		expect(section.props('agentId')).toBe('agent-1');
+	});
+
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
-		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
+			embedded: true,
+			manageStoreLifecycle: false,
+		});
 	});
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {
@@ -285,9 +340,6 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(wrapper.text()).toContain('Episodic Memory');
-		expect(wrapper.text()).toContain(
-			'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
-		);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
@@ -306,7 +358,9 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(true);
+		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
+		expect(advancedPanel.exists()).toBe(true);
+		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {
@@ -320,17 +374,23 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as capabilities, model, then instructions', async () => {
+	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
-		const model = wrapper.find('[data-testid="agent-model-panel"]');
+		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
 
-		expect(model.exists()).toBe(true);
+		expect(channels.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
+		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
+		expect(
+			channels.element.compareDocumentPosition(capabilities.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 		expect(
 			capabilities.element.compareDocumentPosition(model.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
@@ -350,5 +410,6 @@ describe('AgentBuilderEditorColumn', () => {
 			.find((panel) => panel.props('showModel') === false);
 
 		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
+		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
 	});
 });

@@ -50,6 +50,13 @@ export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
 export const PUSH_NODES_OFFSET = DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE;
+// Horizontal gap the auto-layout leaves between adjacent nodes (dagre `ranksep`).
+// Shared so manual placement and cleanup stay in lockstep.
+export const NODE_X_SPACING = GRID_SIZE * 8;
+// Center-to-center horizontal step when placing a node directly after another
+// (plus button, connection drop, mid-flow insert). Must equal a node width plus
+// NODE_X_SPACING so a freshly placed node lands exactly where cleanup would put it.
+export const HORIZONTAL_NODE_STEP = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
 	yMin: -Infinity,

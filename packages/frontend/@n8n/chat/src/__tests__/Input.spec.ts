@@ -1,8 +1,12 @@
 import type { VueWrapper } from '@vue/test-utils';
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ref } from 'vue';
 
 import Input from '../components/Input.vue';
+import type { CredentialStatus } from '../types/credentialStatus';
+
+const mockCredentialStatus: { value: CredentialStatus | null } = { value: null };
 
 vi.mock('@vueuse/core', () => ({
 	useFileDialog: vi.fn(() => ({
@@ -29,8 +33,9 @@ vi.mock('@n8n/chat/composables', () => ({
 		t: (key: string) => key,
 	}),
 	useChat: () => ({
-		waitingForResponse: { value: false },
+		waitingForResponse: ref(false),
 		blockUserInput: { value: false },
+		credentialStatus: mockCredentialStatus,
 		currentSessionId: { value: 'session-123' },
 		messages: { value: [] },
 		sendMessage: vi.fn(),
@@ -79,6 +84,7 @@ describe('ChatInput', () => {
 			wrapper.unmount();
 		}
 		vi.clearAllMocks();
+		mockCredentialStatus.value = null;
 	});
 
 	it('renders the component with default props', () => {
@@ -127,6 +133,28 @@ describe('ChatInput', () => {
 		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
 	});
 
+	it('keeps waitingForResponse true after setting up the WebSocket connection', () => {
+		// The initial sendMessage clears waitingForResponse on `executionStarted`;
+		// the connection setup must re-enable it so the typing indicator stays up
+		// until the first bot frame arrives over the socket.
+		// The shared vi.fn mock doesn't return its object from `new`, so use a
+		// class that returns a captured instance (same pattern as the frame tests).
+		const ws = { send: vi.fn(), onmessage: null, onclose: null };
+		class FakeWebSocket {
+			constructor() {
+				return ws;
+			}
+		}
+		// @ts-expect-error - mock WebSocket
+		global.WebSocket = FakeWebSocket;
+		wrapper = mount(Input);
+		wrapper.vm.chatStore.waitingForResponse.value = false;
+
+		wrapper.vm.setupWebsocketConnection('exec-123');
+
+		expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+	});
+
 	it('handles WebSocket messages correctly', async () => {
 		const mockWs = {
 			send: vi.fn(),
@@ -154,6 +182,35 @@ describe('ChatInput', () => {
 		await submitButton.trigger('click');
 
 		expect(wrapper.vm.isSubmitting).toBe(false);
+	});
+
+	describe('credential status gate', () => {
+		it('disables the textarea and send button while required accounts are missing', async () => {
+			mockCredentialStatus.value = { ready: false, missingCount: 1, testMode: false };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeDefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeDefined();
+		});
+
+		it('does not disable the input once the host reports readiness', async () => {
+			mockCredentialStatus.value = { ready: true, missingCount: 0, testMode: false };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeUndefined();
+		});
+
+		it('does not disable the input in test mode even though missingCount is 0 and ready', async () => {
+			mockCredentialStatus.value = { ready: true, missingCount: 0, testMode: true };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeUndefined();
+		});
 	});
 
 	describe('WebSocket frame handling (backward compatible)', () => {

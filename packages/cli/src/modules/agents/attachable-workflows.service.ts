@@ -5,6 +5,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /** A workflow that can be attached to an agent as a `type: "workflow"` tool. */
 export interface AttachableWorkflow {
+	id: string;
 	name: string;
 	active: boolean;
 	triggerType: string;
@@ -35,11 +36,10 @@ export class AttachableWorkflowsService {
 	constructor(private readonly workflowFinderService: WorkflowFinderService) {}
 
 	async list(user: User, projectId: string, searchTerm = ''): Promise<AttachableWorkflow[]> {
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			undefined,
-			projectId,
+			{ filters: { projectId } },
 		);
 		const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
@@ -60,6 +60,7 @@ export class AttachableWorkflowsService {
 				if (!triggerNode) return [];
 				return [
 					{
+						id: workflow.id,
 						name: workflow.name,
 						active: workflow.active,
 						triggerType: SUPPORTED_TRIGGERS[triggerNode.type],

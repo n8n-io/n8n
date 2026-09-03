@@ -115,6 +115,35 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
+	describe('includeTags', () => {
+		it('defaults to true when omitted', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeTags).toBe(true);
+		});
+
+		it.each([true, false])('accepts explicit %s', (includeTags) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeTags,
+			});
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeTags).toBe(includeTags);
+		});
+
+		it.each([
+			{ name: 'string value', includeTags: 'false' },
+			{ name: 'numeric value', includeTags: 0 },
+			{ name: 'null value', includeTags: null },
+		])('rejects $name', ({ includeTags }) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeTags,
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('missingWorkflowDependencyPolicy', () => {
 		it.each(['fail', 'reference-only', 'include-in-package'])(
 			'accepts %s',
@@ -141,6 +170,67 @@ describe('ExportPackageRequestDto', () => {
 			const result = ExportPackageRequestDto.safeParse({
 				workflowIds: ['wf-1'],
 				missingWorkflowDependencyPolicy: 'skip',
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('workflowVersionPolicy', () => {
+		it.each(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])(
+			'accepts %s',
+			(workflowVersionPolicy) => {
+				const result = ExportPackageRequestDto.safeParse({
+					workflowIds: ['wf-1'],
+					workflowVersionPolicy,
+				});
+
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('defaults to latest', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowVersionPolicy).toBe('latest');
+			}
+		});
+
+		it('rejects unknown values', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				workflowVersionPolicy: 'published',
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('credentialExportPolicy', () => {
+		it.each(['expression-values-only', 'no-values'])('accepts %s', (credentialExportPolicy) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				credentialExportPolicy,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it('defaults to expression-values-only', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialExportPolicy).toBe('expression-values-only');
+			}
+		});
+
+		it('rejects unknown values', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				credentialExportPolicy: 'all-values',
 			});
 
 			expect(result.success).toBe(false);

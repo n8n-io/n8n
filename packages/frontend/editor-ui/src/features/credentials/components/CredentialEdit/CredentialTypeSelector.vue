@@ -1,15 +1,33 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nLink, N8nPreviewTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nLink,
+	N8nOption,
+	N8nPreviewTag,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { computed } from 'vue';
 import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 
-const props = defineProps<{
-	// `true` = end-user (private) credential, `false` = fixed (static) credential.
-	// Mirrors the `isResolvable` flag the rest of the modal uses.
-	modelValue: boolean;
-	// Explainer shown in the help tooltip next to the "Credential type" label.
-	infoTip?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		// `true` = end-user (private) credential, `false` = fixed (static) credential.
+		// Mirrors the `isResolvable` flag the rest of the modal uses.
+		modelValue: boolean;
+		// Explainer shown in the help tooltip next to the "Credential type" label.
+		infoTip?: string;
+		// When set the select is read-only and hovering shows `disabledTooltip`
+		// (used when the current role can't change an end-user credential's type).
+		disabled?: boolean;
+	}>(),
+	{
+		infoTip: undefined,
+		disabled: false,
+	},
+);
 
 // Controlled component: the parent owns the value and may veto a change (confirm
 // dialog), so we only emit the intent and let the prop drive the rendered state.
@@ -19,9 +37,29 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-function select(value: boolean): void {
-	if (value === props.modelValue) return;
-	emit('update:modelValue', value);
+type CredentialTypeValue = 'fixed' | 'endUser';
+
+const selected = computed<CredentialTypeValue>(() => (props.modelValue ? 'endUser' : 'fixed'));
+
+const options = computed(() => [
+	{
+		value: 'fixed' as const,
+		icon: 'key-round' as const,
+		title: i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.title'),
+		subtitle: i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.subtitle'),
+	},
+	{
+		value: 'endUser' as const,
+		icon: 'user-round' as const,
+		title: i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title'),
+		subtitle: i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle'),
+	},
+]);
+
+function onSelect(value: string): void {
+	const asBoolean = value === 'endUser';
+	if (asBoolean === props.modelValue) return;
+	emit('update:modelValue', asBoolean);
 }
 </script>
 
@@ -44,61 +82,42 @@ function select(value: boolean): void {
 				<N8nIcon icon="circle-help" size="small" color="text-light" />
 			</N8nTooltip>
 		</div>
-		<div
-			role="radiogroup"
-			:aria-label="i18n.baseText('credentialEdit.credentialConfig.credentialType.title')"
-			:class="$style.cards"
-		>
-			<button
-				type="button"
-				role="radio"
-				:aria-checked="!modelValue"
-				data-test-id="credential-type-card-fixed"
-				:class="[$style.card, !modelValue ? $style.cardSelected : $style.cardIdle]"
-				@click="select(false)"
-			>
-				<span :class="$style.cardTop">
-					<span :class="$style.cardLabel">
-						<N8nIcon icon="key-round" size="small" />
-						<N8nText size="medium" :bold="true">
-							{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.title') }}
-						</N8nText>
-					</span>
-					<span
-						:class="[$style.radioOuter, !modelValue && $style.radioOuterOn]"
-						aria-hidden="true"
-					/>
-				</span>
-				<N8nText size="small" color="text-light" :class="$style.subtitle">
-					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.subtitle') }}
-				</N8nText>
-			</button>
 
-			<button
-				type="button"
-				role="radio"
-				:aria-checked="modelValue"
-				data-test-id="credential-type-card-end-user"
-				:class="[$style.card, modelValue ? $style.cardSelected : $style.cardIdle]"
-				@click="select(true)"
+		<N8nTooltip :disabled="!disabled" placement="top">
+			<template #content>
+				{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.disabledTooltip') }}
+			</template>
+			<N8nSelect
+				:model-value="selected"
+				:disabled="disabled"
+				size="large"
+				:teleported="false"
+				:popper-class="$style.popper"
+				data-test-id="credential-type-select"
+				@update:model-value="onSelect"
 			>
-				<span :class="$style.cardTop">
-					<span :class="$style.cardLabel">
-						<N8nIcon icon="user-round" size="small" />
-						<N8nText size="medium" :bold="true">
-							{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title') }}
+				<template #prefix>
+					<N8nIcon :icon="options.find((o) => o.value === selected)?.icon ?? 'key-round'" />
+				</template>
+				<N8nOption
+					v-for="option in options"
+					:key="option.value"
+					:value="option.value"
+					:label="option.title"
+					:data-test-id="`credential-type-option-${option.value}`"
+				>
+					<div :class="$style.option">
+						<div :class="$style.optionTitle">
+							<N8nIcon :icon="option.icon" size="small" />
+							<N8nText size="medium" :bold="true">{{ option.title }}</N8nText>
+						</div>
+						<N8nText size="small" color="text-light" :class="$style.optionSubtitle">
+							{{ option.subtitle }}
 						</N8nText>
-					</span>
-					<span
-						:class="[$style.radioOuter, modelValue && $style.radioOuterOn]"
-						aria-hidden="true"
-					/>
-				</span>
-				<N8nText size="small" color="text-light" :class="$style.subtitle">
-					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
-				</N8nText>
-			</button>
-		</div>
+					</div>
+				</N8nOption>
+			</N8nSelect>
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -116,90 +135,32 @@ function select(value: boolean): void {
 	gap: var(--spacing--3xs);
 }
 
-.cards {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: stretch;
+.popper {
+	// Give the two-line options room to breathe.
+	:global(.el-select-dropdown__item) {
+		height: auto;
+		line-height: var(--line-height--md);
+		padding-top: var(--spacing--2xs);
+		padding-bottom: var(--spacing--2xs);
+	}
 }
 
-.card {
+.option {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	flex: 1 1 0;
+	gap: var(--spacing--4xs);
 	min-width: 0;
-	text-align: left;
-	padding: var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius);
-	cursor: pointer;
-	background: transparent;
-	font: inherit;
-	transition:
-		background-color 0.15s ease,
-		border-color 0.15s ease;
-
-	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
-	}
 }
 
-.cardSelected {
-	border-color: var(--color--primary);
-	background-color: color-mix(in srgb, var(--color--primary) 6%, transparent);
-}
-
-.cardIdle {
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
-	}
-}
-
-.cardTop {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-}
-
-.cardLabel {
+.optionTitle {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 
-.subtitle {
+.optionSubtitle {
 	display: block;
-}
-
-.radioOuter {
-	position: relative;
-	flex-shrink: 0;
-	box-sizing: border-box;
-	width: 1rem;
-	height: 1rem;
-	border-radius: 50%;
-	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
-	transition:
-		border-color 0.15s ease,
-		background-color 0.15s ease;
-}
-
-.radioOuterOn {
-	border-color: var(--color--primary);
-
-	&::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 0.5rem;
-		height: 0.5rem;
-		border-radius: 50%;
-		background-color: var(--color--primary);
-		transform: translate(-50%, -50%);
-	}
+	white-space: normal;
 }
 </style>

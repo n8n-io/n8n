@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { HttpRequestConfig } from '@n8n/config';
+import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
@@ -12,8 +12,11 @@ import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
 import { binaryToString } from '../binary-string';
 import { OutboundHttp } from '../outbound-http';
 
-function makeFacade(): OutboundHttp {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>());
+// A given `bridge` is installed as the instance's protection service, so
+// clients pick it up through the default safe mode.
+function makeFacade(bridge?: SsrfBridge): OutboundHttp {
+	const service = bridge ? mock<SsrfProtectionService>(bridge) : mock<SsrfProtectionService>();
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>());
 }
 
 describe('OutboundHttp.requests requestLegacy', () => {
@@ -27,7 +30,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		it('returns the body and fires onFetched on success', async () => {
 			nock(baseUrl).get('/ok').reply(200, 'hello');
 			const onFetched = vi.fn();
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const body = await client.requestLegacy({ url: `${baseUrl}/ok` }, { onFetched });
 
@@ -37,7 +40,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 		it('returns the full response when resolveWithFullResponse is set', async () => {
 			nock(baseUrl).get('/ok').reply(200, 'hello');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/ok`,
@@ -50,7 +53,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		it('rethrows an enriched error carrying the status, without firing onFetched', async () => {
 			nock(baseUrl).get('/bad').reply(403, 'Forbidden', { 'content-type': 'text/plain' });
 			const onFetched = vi.fn();
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			await expect(
 				client.requestLegacy({ url: `${baseUrl}/bad` }, { onFetched }),
@@ -69,7 +72,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		it('returns the error body and fires onFetched when simple is false', async () => {
 			nock(baseUrl).get('/missing').reply(404, 'Not Found');
 			const onFetched = vi.fn();
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const body = await client.requestLegacy(
 				{ url: `${baseUrl}/missing`, simple: false },
@@ -82,7 +85,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 		it('returns the full error response when simple is false and resolveWithFullResponse is set', async () => {
 			nock(baseUrl).get('/missing').reply(404, 'Not Found');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/missing`,
@@ -114,7 +117,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 					.get('/redirect')
 					.reply(301, '', { Location: `${otherOrigin}/test` });
 				nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				const response = (await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -136,7 +139,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${otherOrigin}/test` });
 			nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const response = (await client.requestLegacy({
 				url: `${baseUrl}/redirect`,
@@ -159,7 +162,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 					.get('/redirect')
 					.reply(301, '', { Location: `${baseUrl}/test` });
 				nock(baseUrl).get('/test').reply(200, reflectHeaders);
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				const response = (await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -181,7 +184,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${baseUrl}/test` });
 			nock(baseUrl).get('/test').reply(200, 'Redirected');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/redirect`,
@@ -196,7 +199,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${baseUrl}/test` });
 			nock(baseUrl).get('/test').reply(200, 'Redirected');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			await expect(
 				client.requestLegacy({
@@ -210,9 +213,9 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 	describe('SSRF policy', () => {
 		const baseUrl = 'https://example.test';
+		const otherUrl = 'https://other.test';
 
-		it('validates the URL through the provided bridge', async () => {
-			nock(baseUrl).get('/ok').reply(200, 'ok');
+		function makeBridge() {
 			const validateUrl = vi.fn().mockResolvedValue({ ok: true, result: undefined });
 			const bridge = {
 				validateUrl,
@@ -220,11 +223,56 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				validateRedirectSync: vi.fn(),
 				createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			} as unknown as SsrfBridge;
-			const client = makeFacade().requests({ ssrf: bridge });
+			return { bridge, validateUrl };
+		}
+
+		it('validates the URL through the provided bridge', async () => {
+			nock(baseUrl).get('/ok').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			const client = makeFacade(bridge).requests();
 
 			await client.requestLegacy({ baseURL: baseUrl, url: '/ok' });
 
 			expect(validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/ok`));
+		});
+
+		it('validates the url the request is sent to, not the uri alias', async () => {
+			const scope = nock(otherUrl).get('/target').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			const client = makeFacade(bridge).requests();
+
+			await client.requestLegacy({ uri: `${baseUrl}/ok`, url: `${otherUrl}/target` });
+
+			expect(validateUrl).toHaveBeenCalledTimes(1);
+			expect(validateUrl).toHaveBeenCalledWith(new URL(`${otherUrl}/target`));
+			expect(scope.isDone()).toBe(true);
+		});
+
+		it('rejects a blocked url even when the uri alias is allowed', async () => {
+			const scope = nock(otherUrl).get('/target').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			validateUrl.mockImplementation((url: URL) =>
+				url.href === `${otherUrl}/target`
+					? { ok: false, error: new Error('Blocked') }
+					: { ok: true, result: undefined },
+			);
+			const client = makeFacade(bridge).requests();
+
+			await expect(
+				client.requestLegacy({ uri: `${baseUrl}/ok`, url: `${otherUrl}/target` }),
+			).rejects.toThrow('Blocked');
+			expect(scope.isDone()).toBe(false);
+		});
+
+		it('validates a baseURL-only target', async () => {
+			const scope = nock(baseUrl).get('/only').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			const client = makeFacade(bridge).requests();
+
+			await client.requestLegacy({ baseURL: `${baseUrl}/only` });
+
+			expect(validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/only`));
+			expect(scope.isDone()).toBe(true);
 		});
 	});
 
@@ -232,7 +280,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		const baseUrl = 'https://example.com';
 
 		it('blocks requests to disallowed domains', async () => {
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			await expect(
 				client.requestLegacy({ url: `${baseUrl}/data`, allowedDomains: 'other.com' }),
@@ -243,7 +291,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			'allows requests to allowed domains when allowedDomains is %s',
 			async (allowedDomains) => {
 				nock(baseUrl).get('/data').reply(200, 'ok');
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				const body = await client.requestLegacy({ url: `${baseUrl}/data`, allowedDomains });
 
@@ -254,7 +302,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		it('blocks redirects to disallowed domains', async () => {
 			nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://not-allowed.com/data' });
 			nock('https://not-allowed.com').get('/data').reply(200, 'not-ok');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			await expect(
 				client.requestLegacy({
@@ -270,7 +318,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async (allowedDomains) => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://allowed.com/data' });
 				nock('https://allowed.com').get('/data').reply(200, 'ok');
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				const body = await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -284,7 +332,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 		it('supports wildcard domains in allowedDomains', async () => {
 			nock('https://api.example.com').get('/data').reply(200, 'ok');
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const body = await client.requestLegacy({
 				url: 'https://api.example.com/data',
@@ -295,7 +343,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		});
 
 		it('blocks wildcard domains that do not match', async () => {
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			await expect(
 				client.requestLegacy({ url: 'https://blocked.com/data', allowedDomains: '*.example.com' }),
@@ -330,7 +378,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 		it('authenticates against a Digest-only server when sendImmediately is false', async () => {
 			mockStrictDigestServer();
-			const client = makeFacade().requests({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 			const body = await client.requestLegacy({
 				url: `${baseUrl}/get_file`,
@@ -389,7 +437,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async () => {
 				// No per-request `timeout`: axios then sets no socket timeout, so nothing
 				// tears the stalled body stream down — without the guard it hangs forever.
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				await expect(
 					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
@@ -404,7 +452,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				// The HTTP Request node always sets a per-request timeout (default 300_000ms).
 				// The configured guard must still apply, so the read aborts at ~500ms here,
 				// not at the 30s request timeout.
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 				const start = Date.now();
 
 				await expect(
@@ -424,7 +472,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async () => {
 				// A 2xx is not thrown, so requestLegacy returns the body stream and the
 				// caller drains it. The guard must still bound it.
-				const client = makeFacade().requests({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 				const start = Date.now();
 
 				const body = (await client.requestLegacy({

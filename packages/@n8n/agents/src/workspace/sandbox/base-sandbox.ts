@@ -47,6 +47,15 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 	abstract stop(): Promise<void>;
 	abstract destroy(): Promise<void>;
 
+	/**
+	 * Delete the provider-side sandbox this instance names, regardless of whether this
+	 * instance created it. For explicit teardown paths; defaults to destroy(). Providers
+	 * whose destroy() is scoped to remotes the instance acquired override this.
+	 */
+	async deleteRemote(): Promise<void> {
+		await this.destroy();
+	}
+
 	async _start(): Promise<void> {
 		if (this.status === 'running') return;
 

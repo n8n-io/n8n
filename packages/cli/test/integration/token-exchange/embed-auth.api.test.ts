@@ -62,6 +62,7 @@ function signEmbedToken(overrides: Record<string, unknown> = {}): string {
 		exp: now + 30,
 		jti: randomUUID(),
 		email: `embed-${randomUUID()}@test.example.com`,
+		email_verified: true,
 		given_name: 'Test',
 		family_name: 'User',
 		...overrides,

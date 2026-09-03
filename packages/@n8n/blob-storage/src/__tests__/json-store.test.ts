@@ -2,6 +2,8 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import { Readable } from 'node:stream';
+
 import { JsonStore } from '../json-store';
 import type { ByteStore, ByteStoreKey, StorageLocation } from '../types';
 
@@ -14,7 +16,8 @@ class InMemoryByteStore implements ByteStore {
 	/** Force a non-ENOENT (systemic) failure on read for these keys. */
 	readonly failingKeys = new Set<ByteStoreKey>();
 
-	async write(key: ByteStoreKey, body: Buffer) {
+	async write(key: ByteStoreKey, body: Buffer | Readable) {
+		if (!Buffer.isBuffer(body)) throw new Error('InMemoryByteStore supports Buffer writes only');
 		this.objects.set(key, body);
 		return body.length;
 	}
@@ -22,6 +25,21 @@ class InMemoryByteStore implements ByteStore {
 	async read(key: ByteStoreKey): Promise<Buffer | null> {
 		if (this.failingKeys.has(key)) throw new Error('disk on fire');
 		return this.objects.get(key) ?? null;
+	}
+
+	async readStream(key: ByteStoreKey): Promise<Readable | null> {
+		const buffer = this.objects.get(key);
+		return buffer ? Readable.from(buffer) : null;
+	}
+
+	async copy(sourceKey: ByteStoreKey, targetKey: ByteStoreKey): Promise<void> {
+		const buffer = this.objects.get(sourceKey);
+		if (buffer) this.objects.set(targetKey, buffer);
+	}
+
+	async rename(oldKey: ByteStoreKey, newKey: ByteStoreKey): Promise<void> {
+		await this.copy(oldKey, newKey);
+		this.objects.delete(oldKey);
 	}
 
 	async delete(keys: ByteStoreKey[]): Promise<void> {

@@ -1,18 +1,24 @@
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
+import type { TagImportPlan } from '../entities/tag/tag.types';
+import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 } from '../entities/workflow/workflow-import.types';
+import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportTagSummary,
+	ImportVariableSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -26,57 +32,136 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	};
 }
 
+/**
+ * One row per imported workflow, folding in what the publish phase decided for it. Ordered as the
+ * workflows were written, not as they were published (dependencies first), which is an
+ * implementation detail. Publishing reloads the workflow, so its copy wins where it has one; a
+ * workflow the phase never acted on — a skip — keeps the state it had and reports `unchanged`.
+ */
 export function toImportedWorkflowSummaries(
-	outcomes: WorkflowImportOutcome[],
+	outcomes: PersistedWorkflowOutcome[],
 	projectId: string,
+	published: PackagePublishingResults,
 ): ImportedWorkflowSummary[] {
-	return outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
-		sourceWorkflowId,
-		localId: workflow.id,
-		name: workflow.name,
-		projectId,
-		parentFolderId: workflow.parentFolder?.id ?? null,
-		activeVersionId: workflow.activeVersionId ?? null,
-		publishing,
-		status,
-	}));
+	return outcomes.map(({ workflow, sourceWorkflowId, status }) => {
+		const result = published.get(sourceWorkflowId);
+		const current = result?.workflow ?? workflow;
+
+		return {
+			sourceWorkflowId,
+			localId: current.id,
+			name: current.name,
+			projectId,
+			parentFolderId: current.parentFolder?.id ?? null,
+			activeVersionId: current.activeVersionId ?? null,
+			publishing: result?.publishing ?? { state: 'unchanged' },
+			status,
+		};
+	});
 }
 
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
-	credentials?: ImportCredentialSummary;
+	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
+	variables: ImportVariableSummary;
+	tags: ImportTagSummary;
 }): ImportResult {
 	return {
 		package: input.package,
 		workflows: input.workflows,
+		removedWorkflows: input.removedWorkflows,
+		removedFolders: input.removedFolders,
 		folders: input.folders,
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
-		credentials: input.credentials ?? { matched: [], stubbed: [] },
+		credentials: input.credentials,
+		dataTables: input.dataTables,
+		variables: input.variables,
+		tags: input.tags,
+	};
+}
+
+export function reconcileVariableSummary(input: {
+	matched: Iterable<string>;
+	missing: Iterable<string>;
+	created: Iterable<string>;
+	stubbed: Iterable<string>;
+	skipped: Iterable<string>;
+	updated: Iterable<string>;
+}): ImportVariableSummary {
+	const matched = new Set(input.matched);
+	const created = new Set(input.created);
+	const stubbed = new Set(input.stubbed);
+	const skipped = new Set(input.skipped);
+	const updated = new Set(input.updated);
+
+	// A skipped name that no scope of this import created genuinely pre-existed, so it counts as matched.
+	for (const name of skipped) {
+		if (!created.has(name) && !stubbed.has(name)) matched.add(name);
+	}
+
+	// An overwritten name matched first, but the import rewrote it, so `updated` wins.
+	for (const name of updated) {
+		matched.delete(name);
+	}
+
+	return {
+		matched: [...matched],
+		created: [...created],
+		stubbed: [...stubbed],
+		updated: [...updated],
+		missing: [...new Set(input.missing)].filter(
+			(name) => !created.has(name) && !stubbed.has(name) && !skipped.has(name),
+		),
+	};
+}
+
+export function toVariableSummary(
+	plan: VariableImportPlan,
+	result: VariableApplyResult,
+): ImportVariableSummary {
+	return reconcileVariableSummary({
+		matched: plan.matched,
+		missing: plan.missing.map(({ name }) => name),
+		created: result.created,
+		stubbed: result.stubbed,
+		skipped: result.skippedExisting,
+		updated: result.updated,
+	});
+}
+
+/** Tag names (renames report the post-rename name). */
+export function toTagSummary(plan: TagImportPlan): ImportTagSummary {
+	return {
+		matched: plan.matched.map(({ name }) => name),
+		created: plan.creations.map(({ name }) => name),
+		renamed: plan.renames.map(({ to }) => to),
+		reconciled: plan.reconciles.map(({ name }) => name),
+		skipped: plan.dropped.map(({ name }) => name),
+	};
+}
+
+/** Set-unions per-scope tag summaries: one global tag planned by several scopes reports once. */
+export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSummary {
+	return {
+		matched: [...new Set(summaries.flatMap(({ matched }) => matched))],
+		created: [...new Set(summaries.flatMap(({ created }) => created))],
+		renamed: [...new Set(summaries.flatMap(({ renamed }) => renamed))],
+		reconciled: [...new Set(summaries.flatMap(({ reconciled }) => reconciled))],
+		skipped: [...new Set(summaries.flatMap(({ skipped }) => skipped))],
 	};
 }
 
 /**
- * Asserts the caller's API key carries the scopes the package's contents require (public API only).
- * Internal callers omit `apiKeyScopes` and are authorized by user RBAC alone.
+ * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
  */
-export function assertPackageImportApiKeyScopes(
-	apiKeyScopes: string[] | undefined,
-	required: string[],
-): void {
-	if (apiKeyScopes === undefined) return;
-	for (const scope of required) {
-		if (!apiKeyScopes.includes(scope)) {
-			throw new ForbiddenError('Forbidden');
-		}
-	}
-}
-
-/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
 export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],

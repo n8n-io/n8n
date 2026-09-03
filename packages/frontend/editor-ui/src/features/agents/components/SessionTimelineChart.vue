@@ -1,19 +1,24 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { N8nHoverCard } from '@n8n/design-system';
+import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
-	builtinToolLabelKey,
+	executionErrorLabel,
+	executionErrorMessage,
 	formatDuration,
+	hitlRequestLabelKey,
+	hitlTimelineName,
+	isErroredTimelineItem,
 	isSubAgentTimelineItem,
-	itemFilterKey,
+	matchesTimelineFilters,
+	timelineItemStatus,
 } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -29,18 +34,32 @@ const SCROLL_PADDING = 48;
 
 const emit = defineEmits<{ select: [index: number] }>();
 
+type Segment =
+	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
+	| { kind: 'idle'; range: IdleRange };
+
+type PopoverTarget = { segment: Segment; reference: HTMLElement };
+
 const i18n = useI18n();
+const carouselRef = ref<HTMLElement | null>(null);
 const chartRef = ref<HTMLElement | null>(null);
-const activePopover = ref<{ segment: Segment; reference: HTMLElement } | null>(null);
+const hasOverflow = ref(false);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
+const activePopoverStatus = computed(() => {
+	const segment = activePopover.value?.segment;
+	return segment?.kind === 'event' ? timelineItemStatus(segment.item) : undefined;
+});
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
 let showPopoverTimer: ReturnType<typeof setTimeout> | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
-type Segment =
-	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
-	| { kind: 'idle'; range: IdleRange };
+let hoveredPopover: PopoverTarget | null = null;
+let focusedPopover: PopoverTarget | null = null;
 
 const segments = computed<Segment[]>(() => {
 	const out: Segment[] = [];
@@ -63,8 +82,7 @@ const segments = computed<Segment[]>(() => {
 });
 
 function isDimmed(item: TimelineItem): boolean {
-	if (props.visibleKinds.size === 0) return false;
-	return !props.visibleKinds.has(itemFilterKey(item));
+	return !matchesTimelineFilters(item, props.visibleKinds);
 }
 
 function cellStyle(seg: Segment): Record<string, string> {
@@ -99,8 +117,12 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
+			return i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -115,18 +137,25 @@ function popoverName(item: TimelineItem): string {
 		case 'agent':
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
-			const key = builtinToolLabelKey(item.toolName, item.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(item.toolName);
+			return resolveToolNameForDisplay(item.toolName, i18n);
 		}
 		case 'workflow':
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
+		case 'execution-error':
+			return executionErrorMessage(item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response':
+			return hitlTimelineName(item, i18n);
 		default:
 			return '';
 	}
+}
+
+function statusLabel(item: TimelineItem): string | undefined {
+	const status = timelineItemStatus(item);
+	return status ? i18n.baseText(status.labelKey) : undefined;
 }
 
 /**
@@ -151,6 +180,12 @@ function popoverTime(item: TimelineItem): string {
 	return convertToDisplayDate(new Date(item.timestamp).toISOString()).time;
 }
 
+function blockAriaLabel(item: TimelineItem): string {
+	return [popoverLabel(item), popoverName(item), statusLabel(item)]
+		.filter((part): part is string => Boolean(part))
+		.join(', ');
+}
+
 function onClick(index: number, item: TimelineItem): void {
 	if (isDimmed(item)) return;
 	emit('select', index);
@@ -158,10 +193,15 @@ function onClick(index: number, item: TimelineItem): void {
 
 function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
-	const reference = event.currentTarget;
+	const target = { segment, reference: event.currentTarget };
+	if (event.type === 'focus') {
+		focusedPopover = target;
+	} else {
+		hoveredPopover = target;
+	}
 	clearShowPopoverTimer();
 	showPopoverTimer = setTimeout(() => {
-		activePopover.value = { segment, reference };
+		activePopover.value = target;
 		popoverOpen.value = true;
 	}, POPOVER_SHOW_DELAY_MS);
 }
@@ -170,25 +210,6 @@ function clearShowPopoverTimer(): void {
 	if (!showPopoverTimer) return;
 	clearTimeout(showPopoverTimer);
 	showPopoverTimer = null;
-}
-
-function showSelectedPopover(): void {
-	const selectedIndex = props.selectedIndex;
-	if (selectedIndex === null) {
-		popoverOpen.value = false;
-		activePopover.value = null;
-		return;
-	}
-
-	const segment = segments.value.find((seg) => seg.kind === 'event' && seg.index === selectedIndex);
-	const reference = chartRef.value?.querySelector<HTMLElement>(
-		`[data-timeline-index="${selectedIndex}"]`,
-	);
-
-	if (segment && reference) {
-		activePopover.value = { segment, reference };
-		popoverOpen.value = true;
-	}
 }
 
 function scrollSelectedIntoView(): void {
@@ -213,13 +234,46 @@ function scrollSelectedIntoView(): void {
 	}
 }
 
-function hidePopover(segment: Segment): void {
-	clearShowPopoverTimer();
-	if (segment.kind === 'event' && segment.index === props.selectedIndex) {
-		showSelectedPopover();
+function updateScrollState(): void {
+	const chart = chartRef.value;
+	if (!chart) {
+		hasOverflow.value = false;
+		canScrollLeft.value = false;
+		canScrollRight.value = false;
 		return;
 	}
 
+	const availableWidth = carouselRef.value?.clientWidth ?? chart.clientWidth;
+	const maxScrollLeft = Math.max(0, chart.scrollWidth - chart.clientWidth);
+	hasOverflow.value = chart.scrollWidth - availableWidth > 1;
+	canScrollLeft.value = hasOverflow.value && chart.scrollLeft > 1;
+	canScrollRight.value = hasOverflow.value && chart.scrollLeft < maxScrollLeft - 1;
+}
+
+function scrollChart(direction: -1 | 1): void {
+	const chart = chartRef.value;
+	if (!chart) return;
+
+	const distance = Math.max(chart.clientWidth - SCROLL_PADDING, SCROLL_PADDING);
+	const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		? 'auto'
+		: 'smooth';
+	chart.scrollBy({ left: direction * distance, top: 0, behavior });
+}
+
+function hidePopover(event: MouseEvent | FocusEvent): void {
+	if (event.type === 'blur') {
+		focusedPopover = null;
+	} else {
+		hoveredPopover = null;
+	}
+	clearShowPopoverTimer();
+	const remainingTarget = focusedPopover ?? hoveredPopover;
+	if (remainingTarget) {
+		activePopover.value = remainingTarget;
+		popoverOpen.value = true;
+		return;
+	}
 	popoverOpen.value = false;
 	activePopover.value = null;
 }
@@ -227,95 +281,156 @@ function hidePopover(segment: Segment): void {
 watch(
 	() => props.selectedIndex,
 	() => {
-		clearShowPopoverTimer();
-		void nextTick(() => {
-			scrollSelectedIntoView();
-			showSelectedPopover();
-		});
+		void nextTick(scrollSelectedIntoView);
 	},
 );
 
-onBeforeUnmount(clearShowPopoverTimer);
+watch(segments, () => {
+	void nextTick(updateScrollState);
+});
+
+onMounted(() => {
+	const chart = chartRef.value;
+	if (!chart) return;
+
+	chart.addEventListener('scroll', updateScrollState, { passive: true });
+	resizeObserver = new ResizeObserver(updateScrollState);
+	resizeObserver.observe(chart);
+	if (carouselRef.value) resizeObserver.observe(carouselRef.value);
+	updateScrollState();
+});
+
+onBeforeUnmount(() => {
+	clearShowPopoverTimer();
+	chartRef.value?.removeEventListener('scroll', updateScrollState);
+	resizeObserver?.disconnect();
+});
 </script>
 
 <template>
-	<div ref="chartRef" :class="$style.chart">
-		<N8nHoverCard
-			:open="popoverOpen"
-			hide-trigger
-			:reference="activePopover?.reference"
-			side="top"
-			align="center"
-			:side-offset="8"
-			:close-delay="0"
-			max-width="none"
-			:content-class="$style.hoverCardContent"
-		>
-			<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
-			<template #content>
-				<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
-					<SessionTimelinePill
-						kind="idle"
-						:label="i18n.baseText('agentSessions.timeline.idle')"
-						show-label
-					/>
-					<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
-				</div>
-				<div v-else-if="activePopover" :class="$style.popoverInner">
-					<SessionTimelinePill
-						:kind="popoverPillKind(activePopover.segment.item)"
-						:label="popoverLabel(activePopover.segment.item)"
-						show-label
-					/>
-					<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
-					<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
-						{{ popoverDuration(activePopover.segment.item) }}
-					</span>
-					<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
-				</div>
-			</template>
-		</N8nHoverCard>
-		<div
-			v-for="(seg, segIdx) in segments"
-			:key="segIdx"
-			data-test-id="timeline-cell"
-			:class="$style.cell"
-			:style="cellStyle(seg)"
-		>
-			<div
-				v-if="seg.kind === 'idle'"
-				data-test-id="timeline-idle"
-				:class="$style.idle"
-				@mouseenter="showPopover(seg, $event)"
-				@mouseleave="hidePopover(seg)"
+	<div ref="carouselRef" :class="$style.carousel">
+		<N8nIconButton
+			v-if="hasOverflow"
+			icon="chevron-left"
+			variant="ghost"
+			size="small"
+			:aria-label="i18n.baseText('agentSessions.timeline.scrollBackward')"
+			:disabled="!canScrollLeft"
+			@click="scrollChart(-1)"
+		/>
+		<div ref="chartRef" :class="$style.chart">
+			<N8nHoverCard
+				:open="popoverOpen"
+				hide-trigger
+				:reference="activePopover?.reference"
+				side="top"
+				align="center"
+				:side-offset="8"
+				:close-delay="0"
+				max-width="none"
+				:content-class="$style.hoverCardContent"
 			>
-				<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
+				<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
+				<template #content>
+					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
+						<SessionTimelinePill
+							kind="idle"
+							:label="i18n.baseText('agentSessions.timeline.idle')"
+							show-label
+						/>
+						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
+					</div>
+					<div v-else-if="activePopover" :class="$style.popoverInner">
+						<SessionTimelinePill
+							:kind="popoverPillKind(activePopover.segment.item)"
+							:label="popoverLabel(activePopover.segment.item)"
+							show-label
+						/>
+						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+						<N8nBadge
+							v-if="activePopoverStatus"
+							:theme="activePopoverStatus.theme"
+							size="xsmall"
+							:data-test-id="
+								activePopoverStatus.kind === 'hitl-response'
+									? 'timeline-popover-hitl-response-badge'
+									: activePopover.segment.item.kind === 'execution-error'
+										? 'timeline-popover-execution-error-badge'
+										: 'timeline-popover-tool-error-badge'
+							"
+						>
+							{{ i18n.baseText(activePopoverStatus.labelKey) }}
+						</N8nBadge>
+						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
+							{{ popoverDuration(activePopover.segment.item) }}
+						</span>
+						<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
+					</div>
+				</template>
+			</N8nHoverCard>
+			<div
+				v-for="(seg, segIdx) in segments"
+				:key="segIdx"
+				data-test-id="timeline-cell"
+				:data-error="seg.kind === 'event' && isErroredTimelineItem(seg.item) ? 'true' : undefined"
+				:class="$style.cell"
+				:style="cellStyle(seg)"
+			>
+				<div
+					v-if="seg.kind === 'idle'"
+					data-test-id="timeline-idle"
+					:class="$style.idle"
+					@mouseenter="showPopover(seg, $event)"
+					@mouseleave="hidePopover($event)"
+				>
+					<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
+				</div>
+				<button
+					v-else
+					type="button"
+					data-test-id="timeline-block"
+					:data-timeline-index="seg.index"
+					:data-error="isErroredTimelineItem(seg.item) ? 'true' : undefined"
+					:aria-label="blockAriaLabel(seg.item)"
+					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
+					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
+					:style="eventStyle(seg.item)"
+					@mouseenter="showPopover(seg, $event)"
+					@mouseleave="hidePopover($event)"
+					@focus="showPopover(seg, $event)"
+					@blur="hidePopover($event)"
+					@click="onClick(seg.index, seg.item)"
+				/>
 			</div>
-			<button
-				v-else
-				type="button"
-				data-test-id="timeline-block"
-				:data-timeline-index="seg.index"
-				:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
-				:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
-				:style="eventStyle(seg.item)"
-				@mouseenter="showPopover(seg, $event)"
-				@mouseleave="hidePopover(seg)"
-				@focus="showPopover(seg, $event)"
-				@blur="hidePopover(seg)"
-				@click="onClick(seg.index, seg.item)"
-			/>
 		</div>
+		<N8nIconButton
+			v-if="hasOverflow"
+			icon="chevron-right"
+			variant="ghost"
+			size="small"
+			:aria-label="i18n.baseText('agentSessions.timeline.scrollForward')"
+			:disabled="!canScrollRight"
+			@click="scrollChart(1)"
+		/>
 	</div>
 </template>
 
 <style module lang="scss">
+.carousel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	width: 100%;
+	min-width: 0;
+}
+
 .chart {
 	display: flex;
 	align-items: stretch;
+	flex: 1;
 	gap: 1px;
 	height: 28px;
-	width: 100%;
+	min-width: 0;
 	overflow-x: auto;
 	scrollbar-width: none;
 	scroll-padding-inline: var(--spacing--lg);
@@ -332,6 +447,7 @@ onBeforeUnmount(clearShowPopoverTimer);
  * anchored to the active block/idle element.
  */
 .cell {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
@@ -341,8 +457,20 @@ onBeforeUnmount(clearShowPopoverTimer);
 		transform var(--duration--snappy) var(--easing--ease-out);
 }
 
+.cell[data-error='true']::before {
+	position: absolute;
+	top: calc(var(--spacing--5xs) * -1);
+	left: 0;
+	width: 100%;
+	height: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--color--danger);
+	content: '';
+	z-index: 10;
+}
+
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
-	opacity: 0.6;
+	opacity: 0.4;
 }
 
 .idle {
@@ -383,14 +511,6 @@ onBeforeUnmount(clearShowPopoverTimer);
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
-}
-
-.selected {
-	outline: 2px solid var(--session-timeline-chart-block-color);
-	outline-offset: 1px;
-	/* Lift above neighbouring idle stripes so the highlight outline doesn't
-	   get covered by the adjacent .idle background. */
-	z-index: 2;
 }
 
 /*

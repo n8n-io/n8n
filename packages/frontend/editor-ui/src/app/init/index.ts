@@ -1,0 +1,315 @@
+import '@/app/polyfills';
+import SourceControlInitializationErrorMessage from '@/features/integrations/sourceControl.ee/components/SourceControlInitializationErrorMessage.vue';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
+import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+
+import type { AuthenticationMethod } from '@n8n/api-types';
+import {
+	registerModuleCommands,
+	registerModuleModals,
+	registerModuleProjectTabs,
+	registerModulePushHandlers,
+	registerModuleResources,
+	registerModuleSettingsPages,
+} from '@/app/moduleInitializer/moduleInitializer';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { h } from 'vue';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+
+export const state = {
+	initialized: false,
+};
+let authenticatedFeaturesInitialized = false;
+
+/**
+ * Initializes the core application stores and hooks
+ * This is called once, when the first route is loaded.
+ */
+export async function initializeCore() {
+	if (state.initialized) {
+		return;
+	}
+
+	// Register toast notifier first, so nothing that can toast runs unregistered
+	registerToastNotifier();
+
+	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
+	const ssoStore = useSSOStore();
+
+	const toast = useToast();
+	const i18n = useI18n();
+
+	registerAuthenticationHooks();
+
+	/**
+	 * Initialize stores
+	 */
+
+	try {
+		await settingsStore.initialize();
+	} catch (error) {
+		console.error('Failed to initialize settings store', error);
+		toast.showToast({
+			title: i18n.baseText('startupError'),
+			message: i18n.baseText('startupError.message'),
+			type: 'error',
+			duration: 0,
+		});
+	}
+
+	ssoStore.initialize({
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
+		managedByEnv: settingsStore.settings.sso.managedByEnv,
+		config: settingsStore.settings.sso,
+		features: {
+			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+		},
+	});
+
+	if (!settingsStore.isPreviewMode) {
+		await usersStore.initialize();
+	}
+
+	void useExternalHooks().run('app.mount');
+
+	state.initialized = true;
+}
+
+/**
+ * Initializes the features of the application that require an authenticated user
+ */
+export async function initializeAuthenticatedFeatures(
+	initialized: boolean = authenticatedFeaturesInitialized,
+	routeName?: string,
+) {
+	if (initialized) {
+		return;
+	}
+
+	const usersStore = useUsersStore();
+	if (!usersStore.currentUser) {
+		return;
+	}
+
+	const i18n = useI18n();
+	const toast = useToast();
+	const sourceControlStore = useSourceControlStore();
+	const settingsStore = useSettingsStore();
+	const rootStore = useRootStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const cloudPlanStore = useCloudPlanStore();
+	cloudPlanStore.setIsInstanceOwner(() => hasPermission(['instanceOwner']));
+	const projectsStore = useProjectsStore();
+	const rolesStore = useRolesStore();
+	const bannersStore = useBannersStore();
+	const versionsStore = useVersionsStore();
+	const dataTableStore = useDataTableStore();
+	const favoritesStore = useFavoritesStore();
+	const uiStore = useUIStore();
+
+	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
+	// so they can open modals without importing it.
+	const modalOpeners = {
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	};
+	usersStore.registerModalOpeners(modalOpeners);
+	versionsStore.registerModalOpeners(modalOpeners);
+
+	// Provide the app-side capability `users.store` no longer imports directly
+	// after moving into `@n8n/stores` (RBAC check).
+	usersStore.setPermissionsResolvers({
+		listUsers: () => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }),
+	});
+
+	if (!settingsStore.isPreviewMode) {
+		usersStore.setUserQuota(settingsStore.userManagement.quota);
+	}
+
+	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
+		try {
+			await sourceControlStore.getPreferences();
+		} catch (e) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.connection.error'),
+				message: h(SourceControlInitializationErrorMessage),
+				type: 'error',
+				duration: 0,
+			});
+			console.error('Failed to initialize source control store', e);
+		}
+	}
+
+	if (rootStore.defaultLocale !== 'en') {
+		await nodeTypesStore.getNodeTranslationHeaders();
+	}
+
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		bannersStore.pushBannerToStack('NON_PRODUCTION_LICENSE');
+	}
+
+	if (
+		settingsStore.settings.banners &&
+		!settingsStore.settings.banners.dismissed.includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		bannersStore.pushBannerToStack('V1');
+	}
+
+	if (settingsStore.isCloudDeployment) {
+		void cloudPlanStore
+			.initialize()
+			.then(() => {
+				if (cloudPlanStore.shouldShowBanner) {
+					if (cloudPlanStore.trialExpired) {
+						bannersStore.pushBannerToStack('TRIAL_OVER');
+					} else {
+						bannersStore.pushBannerToStack('TRIAL');
+					}
+				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
+					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to initialize cloud plan store:', error);
+			});
+	}
+
+	if (
+		settingsStore.isDataTableFeatureEnabled &&
+		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } })
+	) {
+		void dataTableStore
+			.fetchDataTableSize()
+			.then(({ quotaStatus }) => {
+				if (quotaStatus === 'error') {
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
+				} else if (quotaStatus === 'warn') {
+					bannersStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to fetch data table limits:', error);
+			});
+	}
+
+	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
+	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
+		versionsStore.initialize(settingsStore.settings.versionNotifications);
+		void versionsStore.checkForNewVersions();
+	}
+
+	await Promise.all([
+		projectsStore.getMyProjects(),
+		projectsStore.getPersonalProject(),
+		projectsStore.getProjectsCount(),
+		rolesStore.fetchRoles(),
+	]);
+
+	await projectsStore.refreshCurrentProject();
+
+	void favoritesStore.fetchFavorites();
+
+	// Initialize modules
+	registerModuleResources();
+	registerModuleProjectTabs();
+	registerModuleModals();
+	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
+
+	// Initialize run data worker and load node types
+	if (isDataWorkerEnabled()) {
+		const coordinator = await import('@/app/workers');
+		await coordinator.initialize({ version: settingsStore.settings.versionCli });
+		await coordinator.loadNodeTypes(rootStore.baseUrl);
+	}
+
+	authenticatedFeaturesInitialized = true;
+}
+
+function registerAuthenticationHooks() {
+	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
+	const postHogStore = usePostHog();
+	const bannersStore = useBannersStore();
+	const npsSurveyStore = useNpsSurveyStore();
+	const telemetry = useTelemetry();
+	const RBACStore = useRBACStore();
+	const settingsStore = useSettingsStore();
+	const ssoStore = useSSOStore();
+	const favoritesStore = useFavoritesStore();
+
+	usersStore.registerLoginHook(async (user) => {
+		await settingsStore.getSettings();
+
+		// Re-initialize SSO store with authenticated settings.
+		// Before login, public settings omit callbackUrl, leaving it empty.
+		// Without this, navigating to SSO settings after login shows an empty redirect URL.
+		ssoStore.initialize({
+			authenticationMethod: settingsStore.userManagement
+				.authenticationMethod as AuthenticationMethod,
+			managedByEnv: settingsStore.settings.sso.managedByEnv,
+			config: settingsStore.settings.sso,
+			features: {
+				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+				ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+				oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+			},
+		});
+
+		RBACStore.setGlobalScopes(user.globalScopes ?? []);
+		telemetry.identify({
+			instanceId: rootStore.instanceId,
+			versionCli: rootStore.versionCli,
+			userId: user.id,
+			userRole: user.role,
+		});
+		try {
+			postHogStore.init(user.featureFlags, user.featureFlagPayloads);
+		} catch (e) {
+			// don't let posthog failing prevent further function calls
+			console.error(e);
+		}
+		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+		await settingsStore.getModuleSettings();
+		void bannersStore.loadDynamicBanners();
+	});
+
+	usersStore.registerLogoutHook(() => {
+		bannersStore.clearBannerStack();
+		npsSurveyStore.resetNpsSurveyOnLogOut();
+		postHogStore.reset();
+		cloudPlanStore.reset();
+		telemetry.reset();
+		RBACStore.setGlobalScopes([]);
+		favoritesStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
+	});
+}

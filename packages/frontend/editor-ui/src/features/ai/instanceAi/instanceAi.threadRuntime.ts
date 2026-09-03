@@ -2,8 +2,11 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildDataTablesSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -17,12 +20,15 @@ import {
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
+	type InstanceAiSetupItem,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { redactTelemetryProperties } from '@n8n/telemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -42,6 +48,12 @@ import { getLatestBuildResult, type RememberedManualExecution } from './canvasPr
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+} from './constants';
+import {
 	findToolCallInTree,
 	isOrchestratorLive,
 	markAssistantMessageStreaming,
@@ -49,6 +61,7 @@ import {
 	shouldRearmRunAfterConfirm,
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
+import { isInstanceAiThreadSource } from './constants';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -98,12 +111,10 @@ export interface ThreadRuntimeHooks {
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
 
-const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
-
 export function getAgentBuilderTargetFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
-	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	const raw = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY];
 	if (!raw || typeof raw !== 'object') return undefined;
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
@@ -112,6 +123,45 @@ export function getAgentBuilderTargetFromThreadMetadata(
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
+}
+
+export function getPendingAgentTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_PENDING_AGENT_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
+}
+
+export function getAgentPreviewViewFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	);
+}
+
+export function getAgentPreviewSessionFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	);
+}
+
+function getAgentPreviewTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+	metadataKey: string,
+) {
+	const raw = metadata?.[metadataKey];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.threadId !== 'string') return undefined;
+	return { agentId: target.agentId, threadId: target.threadId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -133,8 +183,10 @@ function collectPendingConfirmations(
 			// would block the chat input on a confirmation the user can no
 			// longer act on.
 			!tc.confirmation.expired &&
-			// Plan review renders inline in the timeline, not in the confirmation panel
-			tc.confirmation.inputType !== 'plan-review'
+			// Plan review and the MCP connect card render inline in the timeline, not
+			// in the confirmation panel
+			tc.confirmation.inputType !== 'plan-review' &&
+			!tc.confirmation.mcpConnectRequest
 		) {
 			out.push({
 				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
@@ -150,7 +202,7 @@ function collectPendingConfirmations(
 
 /**
  * Whether any tool call in the tree still waits on user input. Broader than
- * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * `collectPendingConfirmations`: timeline-rendered and expired confirmations also
  * pause the run, so the stall watchdog must not count them as thinking time.
  */
 function hasUnresolvedConfirmation(
@@ -171,27 +223,37 @@ function hasUnresolvedConfirmation(
 	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
 }
 
-/** Settle persisted activity only after thread status confirms there is no live work. */
-function settleStaleAgentTree(node: InstanceAiAgentNode): void {
-	if (node.status === 'active') {
-		node.status = 'cancelled';
-	}
-	for (const tc of node.toolCalls) {
-		if (tc.isLoading) {
-			tc.isLoading = false;
-		}
-	}
-	for (const child of node.children) {
-		settleStaleAgentTree(child);
-	}
-}
-
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const tasks = messages[i].agentTree?.tasks;
 		if (tasks) return tasks;
 	}
 	return null;
+}
+
+/**
+ * Latest setup-items snapshot per workflowId across all messages (newest wins
+ * per key). Bounded by the hydrated message page: snapshots older than the
+ * page are deliberately not resurrected — at rest the panel derives its state
+ * from the saved workflow itself, the event feed only covers live builds.
+ *
+ * Message position is the recency proxy for restored snapshots — if parallel
+ * emitters across message groups ever land, stamp the events with a sequence
+ * instead of trusting position.
+ */
+function findLatestSetupItemsFromMessages(
+	messages: InstanceAiMessage[],
+): Record<string, InstanceAiSetupItem[]> {
+	const result: Record<string, InstanceAiSetupItem[]> = {};
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const byWorkflowId = messages[i].agentTree?.setupItemsByWorkflowId;
+		if (!byWorkflowId) continue;
+		for (const [workflowId, items] of Object.entries(byWorkflowId)) {
+			if (!isSafeObjectKey(workflowId)) continue;
+			if (!Object.hasOwn(result, workflowId)) result[workflowId] = items;
+		}
+	}
+	return result;
 }
 
 interface DebugEventEntry {
@@ -318,6 +380,7 @@ export function createThreadRuntime(
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -325,6 +388,7 @@ export function createThreadRuntime(
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
+	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -402,6 +466,10 @@ export function createThreadRuntime(
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
 		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		() => {
+			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
+			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
+		},
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -417,6 +485,15 @@ export function createThreadRuntime(
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
 	);
+
+	/**
+	 * Latest setup-items snapshot per workflowId — restored messages as the
+	 * base, live setup-items events (strictly newer) overriding per key.
+	 */
+	const setupItemsByWorkflowId = computed<Record<string, InstanceAiSetupItem[]>>(() => ({
+		...findLatestSetupItemsFromMessages(messages.value),
+		...latestSetupItems.value,
+	}));
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
 	// FE counterpart of the backend 'Builder created workflow' event, which carries
@@ -559,40 +636,92 @@ export function createThreadRuntime(
 
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
-	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
-	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
-	// create grant doesn't silently auto-approve later updates (the backend
-	// distinguishes createWorkflow vs updateWorkflow by that field).
+	// runtime is disposed and recreated. Prefer shared builders from
+	// `@n8n/api-types` so UI keys match persisted thread grants:
+	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
+	// `submit-workflow` is keyed on `workflowId` presence so a create grant
+	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 
-	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+	function resolveAlwaysAllowWorkflowId(
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string {
+		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
+			return args.workflowId;
+		}
+		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
+			return confirmationWorkflowId;
+		}
+		return '';
+	}
+
+	/**
+	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
+	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 */
+	function buildAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string | null {
 		if (toolName === 'submit-workflow') {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
-			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
+		// payload instead. Without either ID, refuse to store a key (fail closed).
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+			if (!workflowId) return null;
+			return buildUpdateWorkflowSessionGrantKey(workflowId);
+		}
+		if (toolName === 'data-tables') {
+			return buildDataTablesSessionGrantKey(action);
 		}
 		return `${toolName}:${action}`;
 	}
 
-	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+	function addAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): void {
+		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
+		if (key === null) return;
 		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(buildAlwaysAllowKey(toolName, args));
+		next.add(key);
 		sessionAlwaysAllowKeys.value = next;
+	}
+
+	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
+	function canAlwaysAllow(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): boolean {
+		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
+		if (conf.targetApproval) return false;
+		if (conf.credentialDestination) return false;
 		if (conf.severity === 'destructive') return false;
 		if (conf.domainAccess) return false;
 		if (conf.inputType) return false;
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
+		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
 		return true;
@@ -613,29 +742,38 @@ export function createThreadRuntime(
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
-				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+				const key = buildAlwaysAllowKey(
+					item.toolCall.toolName,
+					item.toolCall.args ?? {},
+					conf.workflowId,
+				);
+				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
 					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
 					if (!ok) continue;
 					resolveConfirmation(conf.requestId, 'approved');
-					telemetry.track('User finished providing input', {
-						thread_id: threadId,
-						input_thread_id: conf.inputThreadId ?? '',
-						instance_id: rootStore.instanceId,
-						type: 'approval',
-						provided_inputs: [
-							{
-								label: conf.message,
-								options: ['approve', 'deny', 'approve_always'],
-								option_chosen: 'approve_auto',
-							},
-						],
-						skipped_inputs: [],
-						auto_resolved: true,
-					});
+					// `conf.message` is the agent's own description of the action, so it
+					// quotes tool args and recipients — scrub before it leaves the browser.
+					telemetry.track(
+						'User finished providing input',
+						redactTelemetryProperties({
+							thread_id: threadId,
+							input_thread_id: conf.inputThreadId ?? '',
+							instance_id: rootStore.instanceId,
+							type: 'approval',
+							provided_inputs: [
+								{
+									label: conf.message,
+									options: ['approve', 'deny', 'approve_always'],
+									option_chosen: 'approve_auto',
+								},
+							],
+							skipped_inputs: [],
+							auto_resolved: true,
+						}),
+					);
 				} finally {
 					autoApproveInFlight.delete(conf.requestId);
 				}
@@ -713,6 +851,12 @@ export function createThreadRuntime(
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
+			}
+			if (parsed.data.type === 'setup-items' && isSafeObjectKey(parsed.data.payload.workflowId)) {
+				latestSetupItems.value = {
+					...latestSetupItems.value,
+					[parsed.data.payload.workflowId]: parsed.data.payload.items,
+				};
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
@@ -800,6 +944,10 @@ export function createThreadRuntime(
 			msg.content = data.agentTree.textContent;
 			msg.reasoning = data.agentTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			// Wholesale recompute, not a per-key merge with the live ref: the synced
+			// fold carries reconnect catch-up the ref never saw, and live events this
+			// connection already delivered are also in the message trees scanned here.
+			latestSetupItems.value = findLatestSetupItemsFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.
 			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -894,6 +1042,7 @@ export function createThreadRuntime(
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
+		latestSetupItems.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -932,6 +1081,7 @@ export function createThreadRuntime(
 				if (result.messages.length > 0) {
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
+					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
 
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into
@@ -975,27 +1125,20 @@ export function createThreadRuntime(
 				return;
 			}
 
-			if (isOrchestratorLive(status)) {
-				const runId = syncLiveRunFromStatus(status, messages.value);
-				if (runId) {
-					activeRunId.value = runId;
-					triggerRef(messages);
-				}
-				return;
+			// An idle response is deliberately a no-op: /status reflects this
+			// process only, so on multi-main a non-driving main truthfully
+			// reports idle while a sibling still streams — settling local state
+			// on it would cancel a live run's tree. Dead runs converge through
+			// terminal facts in the durable log (boot sweep + cancel) instead.
+			// Background task visibility is handled by the run-sync control
+			// frame that is sent on SSE connect.
+			if (!isOrchestratorLive(status)) return;
+
+			const runId = syncLiveRunFromStatus(status, messages.value);
+			if (runId) {
+				activeRunId.value = runId;
+				triggerRef(messages);
 			}
-
-			activeRunId.value = null;
-
-			// Background work is still visible via SSE run-sync on reconnect —
-			// settling trees here would race with that authoritative snapshot.
-			if (status.backgroundTasks.length > 0) return;
-
-			for (const message of messages.value) {
-				if (message.role !== 'assistant') continue;
-				message.isStreaming = false;
-				if (message.agentTree) settleStaleAgentTree(message.agentTree);
-			}
-			triggerRef(messages);
 		} catch {
 			// Silently ignore
 		}
@@ -1041,10 +1184,27 @@ export function createThreadRuntime(
 	}
 
 	function trackUserMessageSent(isFirstMessage: boolean): void {
+		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
+		const actionSource = isInstanceAiThreadSource(rawSource)
+			? rawSource
+			: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+		// Create-path validation hard-rejects missing source; this is the read-path
+		// safety net for legacy threads and for entry points that forget to thread
+		// launch metadata through syncThread. Keep telemetry resilient, but make the
+		// gap loud in development so new surfaces can't ship silent unknown attribution.
+		if (import.meta.env.DEV && actionSource === INSTANCE_AI_THREAD_SOURCE_FALLBACK) {
+			console.warn(
+				`[InstanceAI] Missing or invalid thread source for message telemetry (thread ${threadId}). ` +
+					'Pass launch metadata through syncThread so action_source is attributed.',
+			);
+		}
+
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
+			action_source: actionSource,
 		});
 	}
 
@@ -1114,15 +1274,16 @@ export function createThreadRuntime(
 	}
 
 	async function cancelRun(): Promise<void> {
+		// Thread-scoped and idempotent server-side, so it works after a reload
+		// that lost the local run id. Don't clear activeRunId or settle any
+		// state here: the terminal state arrives as a run-finish fact over SSE
+		// — the backend appends one even for a crashed run with no live
+		// process left to emit it, so every client converges through replay.
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
-			return;
 		}
-		// Cancel is idempotent, so an already-dead run emits no run-finish SSE —
-		// re-check authoritative status to settle stale local state either way.
-		await loadThreadStatus();
 	}
 
 	/** Cancel a specific background task. */
@@ -1271,6 +1432,7 @@ export function createThreadRuntime(
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
+		setupItemsByWorkflowId,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
@@ -1299,6 +1461,7 @@ export function createThreadRuntime(
 		confirmResourceDecision,
 		resolveConfirmation,
 		addAlwaysAllowKey,
+		canAlwaysAllow,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

@@ -16,11 +16,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_details',
 		'get_workflow_history',
 		'get_workflow_version',
+		'get_workflow_versions_diff',
 		// Read-only builder support tools
 		'search_nodes',
 		'get_node_types',
 		'get_workflow_best_practices',
-		'get_sdk_reference',
+		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
 	],
@@ -31,20 +32,49 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'restore_workflow_version',
 		'publish_workflow',
 		'unpublish_workflow',
+		'move_workflows_to_folder',
 		// Builder support tools, so a write-only grant can still build
 		'search_nodes',
 		'get_node_types',
 		'get_workflow_best_practices',
-		'get_sdk_reference',
+		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
 	],
-	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_test_pin_data'],
-	'execution:read': ['get_execution', 'search_executions'],
+	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_workflow_pin_data'],
+	'execution:read': ['get_workflow_execution', 'search_workflow_executions'],
+	'agent:read': [
+		'search_agents',
+		'get_agent',
+		'list_agent_versions',
+		'discover_agent_assets',
+		'validate_agent',
+		'get_agent_builder_reference',
+	],
+	// The read tools ride along on a write-only grant: mutate_agent's
+	// configHash handshake starts at get_agent, and building needs search
+	// (sub-agents), asset discovery, validation, and the reference.
+	'agent:write': [
+		'create_agent',
+		'mutate_agent',
+		'revert_agent',
+		'delete_agent',
+		'verify_agent_mcp_server',
+		'search_agents',
+		'get_agent',
+		'list_agent_versions',
+		'discover_agent_assets',
+		'validate_agent',
+		'get_agent_builder_reference',
+		'update_agent_integration',
+		'publish_agent',
+		'unpublish_agent',
+	],
+	'agent:execute': ['call_agent'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
-	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
-	'dataTable:read': ['search_data_tables'],
+	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
 		'search_data_tables',
@@ -56,8 +86,24 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'add_data_table_rows',
 	],
 	'project:read': ['search_projects', 'search_folders'],
-	'tag:read': ['list_tags'],
+	// Creating or moving folders requires finding projects and folders first,
+	// so the search tools ride along on a write-only grant.
+	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
+	'tag:read': ['list_workflow_tags'],
 };
+
+/**
+ * Tools that operate on folders and therefore require the `feat:folders`
+ * license, matching the gate on the REST and public API folder endpoints.
+ * Only registered (and advertised on the consent screen) when the instance
+ * is licensed for folders.
+ */
+export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
+	'search_folders',
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
+]);
 
 /**
  * Tools only registered when the workflow builder is enabled
@@ -68,7 +114,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_nodes',
 	'get_node_types',
 	'get_workflow_best_practices',
-	'get_sdk_reference',
+	'get_workflow_sdk_reference',
 	'validate_workflow',
 	'validate_node_config',
 	'create_workflow_from_code',
@@ -78,6 +124,13 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	...FOLDER_FEATURE_TOOLS,
+]);
+
+export const AGENT_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['agent:read'],
+	...TOOLS_BY_SCOPE['agent:write'],
+	...TOOLS_BY_SCOPE['agent:execute'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

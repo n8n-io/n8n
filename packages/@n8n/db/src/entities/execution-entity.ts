@@ -76,12 +76,12 @@ export class ExecutionEntity {
 
 	@Index()
 	@DateTimeColumn({ nullable: true })
-	stoppedAt: Date;
+	stoppedAt: Date | null;
 
 	@DeleteDateColumn({ type: datetimeColumnType as SimpleColumnType, nullable: true })
-	deletedAt: Date;
+	deletedAt: Date | null;
 
-	@Column({ nullable: true })
+	@Column()
 	workflowId: string;
 
 	@DateTimeColumn({ nullable: true })

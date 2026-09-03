@@ -66,14 +66,14 @@ describe('ExecutionsView', () => {
 		await waitAllPromises();
 	});
 
-	it('shows the workflows empty state when there are no workflows', async () => {
+	it('shows the executions empty state when there are no workflows', async () => {
 		workflowsListStore.hasFetchedAllWorkflows.mockReturnValue(true);
 
 		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
 
 		const emptyState = getByTestId('empty-resources-list');
-		expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
+		expect(within(emptyState).getByText('No executions yet')).toBeVisible();
 		expect(queryByTestId('global-executions-list-stub')).not.toBeInTheDocument();
 
 		await fireEvent.click(within(emptyState).getByRole('button', { name: 'Create workflow' }));

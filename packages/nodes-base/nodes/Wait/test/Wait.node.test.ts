@@ -1,7 +1,12 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
-import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	FORM_TRIGGER_NODE_TYPE,
+	NodeOperationError,
+	UserError,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
 
 import { Wait } from '../Wait.node';
 
@@ -101,6 +106,25 @@ describe('Execute Wait Node', () => {
 		cancelSignal!();
 
 		await expect(waitPromise).resolves.toEqual([inputData]);
+	});
+
+	test('should fail the node when the form redirect response cannot be dispatched', async () => {
+		const waitNode = new Wait();
+		const executeFunctionsMock = mock<IExecuteFunctions>({
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'resume') return 'form';
+				if (paramName === 'limitWaitTime') return false;
+			}),
+			getNode: vi.fn().mockReturnValue({ name: 'Wait' }),
+			getParentNodes: vi.fn().mockReturnValue([{ type: FORM_TRIGGER_NODE_TYPE }]),
+			evaluateExpression: vi.fn().mockReturnValue('https://n8n.test/form-url'),
+			getTimezone: vi.fn().mockReturnValue('UTC'),
+			putExecutionToWait: vi.fn(),
+			getInputData: vi.fn(() => []),
+			sendResponse: vi.fn().mockRejectedValue(new UserError('Response not relayed')),
+		});
+
+		await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrow('Response not relayed');
 	});
 
 	describe('Validation', () => {

@@ -1,5 +1,7 @@
 import type { NodeExecutionHint } from 'n8n-workflow';
 
+import { fieldNotFoundHint } from '../utils/utils';
+
 export class FieldsTracker {
 	fields: { [key: string]: boolean } = {};
 
@@ -20,10 +22,7 @@ export class FieldsTracker {
 
 		for (const [field, value] of Object.entries(this.fields)) {
 			if (!value) {
-				hints.push({
-					message: `The field '${field}' wasn't found in any input item`,
-					location: 'outputPane',
-				});
+				hints.push(fieldNotFoundHint(field));
 			}
 		}
 

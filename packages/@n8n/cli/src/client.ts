@@ -18,10 +18,18 @@ export interface ImportPackageFields {
 	workflowConflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
+	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -29,8 +37,70 @@ export interface ExportPackageFields {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
+	credentialExportPolicy?: string;
 }
+
+/** True per-entity counts of what ended up in an exported package. */
+export interface ExportPackageCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	/** Undefined when talking to an older server that doesn't send the counts header. */
+	counts?: ExportPackageCounts;
+}
+
+/** Outcome of pushing a Git connection's projects to its working copy. */
+export type PushGitConnectionResult = {
+	connectionId: string;
+	counts: ExportPackageCounts;
+	commitSha: string;
+};
+
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number; deleted: number };
+	folders: { created: number; skipped: number; removed: number };
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		archived: number;
+		deleted: number;
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
+	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+export type PullGitConnectionResult = {
+	connectionId: string;
+	counts: ImportPackageCounts;
+	commitSha: string;
+};
 
 export class ApiError extends Error {
 	constructor(
@@ -76,6 +146,7 @@ export class N8nClient {
 			query?: Record<string, string>;
 			formData?: FormData;
 			responseType?: 'json' | 'binary';
+			onResponse?: (response: Response) => void;
 		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
@@ -126,6 +197,8 @@ export class N8nClient {
 						: undefined;
 			throw new ApiError(response.status, message, hint, errorBody);
 		}
+
+		options.onResponse?.(response);
 
 		if (response.status === 204) {
 			return undefined as T;
@@ -183,6 +256,58 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── Git connections ───────────────────────────────────────────
+
+	async listGitConnections(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	}
+
+	async getGitConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	}
+
+	async createGitConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/git-connections', body);
+	}
+
+	async updateGitConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	}
+
+	async cloneGitConnection(id: string, branchName?: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
+			...(branchName ? { branchName } : {}),
+		});
+	}
+
+	async disconnectGitConnection(id: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	}
+
+	async deleteGitConnection(id: string) {
+		return await this.del<undefined>(`/git-connections/${id}`);
+	}
+
+	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
+	}
+
+	async listGitConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
+	}
+
+	async addProjectToGitConnection(id: string, projectId: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async removeProjectFromGitConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async pullGitConnectionProjects(id: string) {
+		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -435,27 +560,50 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
+			credentialExportPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
+		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		// Only sent when set, so an older server without this field in its schema never sees it.
+		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
 
-		return await this.request<Buffer>('POST', '/n8n-packages/export', {
+		let counts: ExportPackageCounts | undefined;
+		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
 			responseType: 'binary',
+			// Older servers omit this header; counts then stays undefined.
+			onResponse: (response) => {
+				const header = response.headers.get('X-N8n-Export-Counts');
+				if (header) counts = this.parseExportCounts(header);
+			},
 		});
+
+		return { archive, counts };
+	}
+
+	private parseExportCounts(header: string): ExportPackageCounts | undefined {
+		try {
+			return JSON.parse(header) as ExportPackageCounts;
+		} catch {
+			return undefined;
+		}
 	}
 
 	async importPackage(

@@ -1,5 +1,7 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
+
 export function memorySkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-memory',
@@ -47,7 +49,7 @@ Memory (long-term, cross-session recall).
 ## Episodic Memory
 
 - Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
-- Before enabling it, call \`ask_embedding_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`.
+- Before enabling it, call \`ask_embedding_credential({ credentialType: "openAiApi", purpose: "OpenAI credential for Episodic Memory embeddings" })\`. Without the assistant proxy: ${INITIAL_BUILD_NOTE} Leave Episodic Memory disabled, include an \`openAiApi\` entry in the trailing \`finish_setup\` call, and enable it with the returned credential id — the draft schema requires a credential to enable it.
 - On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`, using the returned \`credentialId\` value. This can be a real credential id or \`"managed"\` when the assistant proxy is available. Preserve existing \`topK\` or \`maxEntriesPerRun\`.
 - \`memory.episodicMemory.credential\` is only for OpenAI embeddings. It is separate from optional \`extractorModel\` and \`reflectorModel\` worker credentials.
 - If credential selection is skipped, do not enable Episodic Memory; explain that it needs an OpenAI credential for embeddings.
