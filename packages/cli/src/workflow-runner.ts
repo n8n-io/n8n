@@ -4,7 +4,6 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
@@ -52,7 +51,6 @@ import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { PoolConfigService } from '@/scaling/pool-config.service';
-import { DEFAULT_QUEUE_NAME } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -544,18 +542,7 @@ export class WorkflowRunner {
 			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
-		// A pool-resolution failure must not abort the execution: fall back to the default queue.
-		let queueName: string;
-		let poolName: string | undefined;
-		try {
-			({ queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data));
-		} catch (error) {
-			this.logger.warn(
-				`Failed to resolve worker pool for execution ${executionId}, falling back to default queue: ${ensureError(error).message}`,
-			);
-			queueName = DEFAULT_QUEUE_NAME;
-			poolName = undefined;
-		}
+		const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
 
 		const jobData: JobData = {
 			workflowId,

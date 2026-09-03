@@ -30,8 +30,9 @@ export class PoolConfigService {
 
 	/**
 	 * Resolve the queue an execution should run on. Returns the project's default pool when worker
-	 * pools are enabled and the pool is live; otherwise the system default queue. Never routes to a
-	 * pool that isn't registered by a worker.
+	 * pools are enabled and licensed; otherwise the system default queue. The pool queue is used
+	 * even when no worker has registered the pool: executions then wait on the queue, matching
+	 * plain queue mode with no workers deployed.
 	 */
 	async resolvePoolForExecution(
 		data: Pick<IWorkflowExecutionDataProcess, 'projectId'>,
@@ -44,9 +45,6 @@ export class PoolConfigService {
 
 		const pool = await this.getProjectDefaultPool(data.projectId);
 		if (!pool) return systemDefault;
-
-		const availablePools = await this.workerPoolsService.getAvailablePools();
-		if (!availablePools.includes(pool)) return systemDefault;
 
 		return { queueName: poolQueueName(pool), poolName: pool };
 	}
