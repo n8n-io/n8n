@@ -158,6 +158,11 @@ describe('SourceControlImportService', () => {
 			if (!callback) throw new Error('Transaction callback is required');
 			return await callback(transactionManager);
 		});
+		// Run the body inline against the shared manager mock; the context passes through so the
+		// clearance the service minted still reaches the write.
+		credentialsRepository.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(transactionManager, ctx),
+		);
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 

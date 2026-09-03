@@ -1123,7 +1123,7 @@ export class SourceControlImportService {
 					);
 
 					this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-					await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+					await this.credentialsRepository.runInTransaction({}, async (transactionManager) => {
 						await transactionManager.upsert(
 							CredentialsEntity,
 							{
