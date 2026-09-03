@@ -281,6 +281,8 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	/** Open the rename flow for a group, as if the user had pressed Space on it. */
+	'rename:group': { groupId: string };
 	'deprecated:tab-shortcut': never;
 };
 

@@ -231,7 +231,12 @@ export function useContextMenuItems(
 			if (groupView === undefined || groupId === undefined) return [];
 
 			const group = workflowDocumentStore?.value?.allGroups.find((g) => g.id === groupId);
-			if (!group?.description?.trim() || !groupView.isGroupCollapsed(groupId)) return [];
+			// An empty group is force-collapsed by the mapping, so it has the pinned
+			// description panel even when the view store still says expanded.
+			const isRenderedCollapsed =
+				(workflowDocumentStore?.value?.isEmptyGroup(groupId) ?? false) ||
+				groupView.isGroupCollapsed(groupId);
+			if (!group?.description?.trim() || !isRenderedCollapsed) return [];
 
 			const visible = groupView.isDescriptionVisible(groupId);
 			return [

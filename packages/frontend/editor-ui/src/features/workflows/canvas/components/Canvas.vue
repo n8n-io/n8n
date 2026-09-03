@@ -868,14 +868,30 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	renameGroup(groupId, name);
 }
 
+// What the canvas actually renders, which is what the inline title editor keys
+// off. An empty group is force-collapsed by the mapping regardless of what the
+// view store says, so the view store alone is not enough here.
+function isGroupRenderedCollapsed(groupId: string): boolean {
+	return (
+		workflowDocumentStore.value.isEmptyGroup(groupId) ||
+		(injectedNodeGroupView?.isGroupCollapsed(groupId) ?? false)
+	);
+}
+
 // Collapsed groups have no inline title editor, so they rename through a
 // prompt (mirroring node rename); expanded groups focus the inline editor.
 function openGroupRename(groupId: string) {
-	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+	if (isGroupRenderedCollapsed(groupId)) {
 		void onOpenGroupRenameModal(groupId);
 	} else {
 		autofocusGroupTitleId.value = groupId;
 	}
+}
+
+// Lets a group created outside the canvas (e.g. the "add empty group" menu
+// item) open the same rename flow the in-canvas grouping shortcuts use.
+function onRenameGroupRequested({ groupId }: CanvasEventBusEvents['rename:group']) {
+	openGroupRename(groupId);
 }
 
 // Space renames a selected group the same way it renames a selected node.
@@ -1767,6 +1783,7 @@ onMounted(() => {
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
+	props.eventBus.on('rename:group', onRenameGroupRequested);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
 });
@@ -1778,6 +1795,7 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
+	props.eventBus.off('rename:group', onRenameGroupRequested);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 });

@@ -37,7 +37,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
-import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { GROUP_PLACEHOLDER_NODE_TYPE, MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -548,6 +548,44 @@ describe('Canvas', () => {
 
 			await waitFor(() => expect(messagePrompt).toHaveBeenCalledTimes(1));
 			expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('My Group');
+		});
+
+		// An empty group is force-collapsed by the mapping, so it has no inline
+		// editor to focus even while the view store still reports it expanded.
+		it('renames an empty group through the prompt, not the inline editor', async () => {
+			messagePrompt.mockResolvedValue({ action: 'confirm', value: 'Fetch orders' });
+			workflowDocumentStore.setScopes(['workflow:update']);
+			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'p', name: 'Plan', type: GROUP_PLACEHOLDER_NODE_TYPE }),
+			]);
+			const group = workflowDocumentStore.createGroup(['p'], 'Plan');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['p'],
+				isCollapsed: true,
+				isEmptyGroup: true,
+			});
+			const rendered = renderComponent({
+				props: { nodes: [groupNode] },
+				// The view store reports expanded — only isEmptyGroup makes it a chip.
+				global: { provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) } },
+			});
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+
+			const vueFlow = useVueFlow(canvasId);
+			const graphNode = vueFlow.findNode(groupNode.id)!;
+			Object.assign(graphNode.dimensions, { width: 300, height: 40 });
+			vueFlow.addSelectedNodes([graphNode]);
+			await waitFor(() => expect(vueFlow.findNode(groupNode.id)?.selected).toBe(true));
+
+			await pressSpace();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('Fetch orders'),
+			);
+			expect(messagePrompt).toHaveBeenCalledTimes(1);
 		});
 
 		it('focuses the inline title editor instead of the prompt for an expanded group', async () => {

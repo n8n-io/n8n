@@ -1090,7 +1090,11 @@ async function onCreateEmptyGroup() {
 	const placeholder = workflowDocumentStore.value.getNodeById(id);
 	if (!placeholder) return;
 	// ponytail: not one undo step with the node; wrap in a history bulk later.
-	workflowDocumentStore.value.createGroup([placeholder.id], name);
+	const group = workflowDocumentStore.value.createGroup([placeholder.id], name);
+	// Same rename flow as grouping nodes, so the user can type the title straight
+	// away. An empty group renders as a chip, so this opens the rename modal.
+	await nextTick();
+	canvasEventBus.emit('rename:group', { groupId: group.id });
 }
 
 async function onGenerateGroup(groupId: string) {
