@@ -7395,6 +7395,9 @@ importers:
       '@codemirror/autocomplete':
         specifier: 'catalog:'
         version: 6.20.0
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../@n8n/constants
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
