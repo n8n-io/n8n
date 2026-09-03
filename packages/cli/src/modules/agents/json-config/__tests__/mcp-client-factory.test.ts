@@ -692,26 +692,6 @@ describe('listMcpServerTools', () => {
 		closeMock.mockResolvedValue(undefined);
 	});
 
-	it('reports a connection failure instead of an empty tool list', async () => {
-		// The SDK drops a server that fails to connect rather than throwing, so
-		// the failure only reaches us through `onConnectionFailed`.
-		listToolsMock.mockImplementation(async () => {
-			const [configs] = mcpClientCtor.mock.calls[0] as [
-				Array<{ onConnectionFailed?: (e: { server: string; error: string }) => void }>,
-			];
-			configs[0].onConnectionFailed?.({
-				server: 'srv',
-				error: 'Credential type "x" does not contain an OAuth2 access token',
-			});
-			return [];
-		});
-
-		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow(
-			'does not contain an OAuth2 access token',
-		);
-		expect(closeMock).toHaveBeenCalled();
-	});
-
 	it('returns name/description pairs (empty description fallback) and closes the client', async () => {
 		listToolsMock.mockResolvedValue([
 			{ name: 'echo', description: 'Echoes input' },

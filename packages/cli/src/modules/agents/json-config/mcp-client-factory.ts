@@ -217,20 +217,9 @@ export async function listMcpServerTools(
 	deps: BuildMcpClientDeps,
 ): Promise<Array<{ name: string; description: string }>> {
 	let client: McpClient | undefined;
-	// A server that fails to connect contributes no tools rather than throwing,
-	// so without this an auth or endpoint failure verifies as a healthy server
-	// with an empty tool list. Verification has to report the real reason.
-	let connectionError: string | undefined;
 	try {
-		client = await buildMcpClientForServer(server, {
-			...deps,
-			onConnectionFailed: (event) => {
-				connectionError = event.error;
-				deps.onConnectionFailed?.(event);
-			},
-		});
+		client = await buildMcpClientForServer(server, deps);
 		const tools = await client.listTools();
-		if (connectionError !== undefined) throw new OperationalError(connectionError);
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});

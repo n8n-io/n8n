@@ -280,6 +280,30 @@ describe('InstanceAiMcpRegistryService', () => {
 		);
 	});
 
+	it('skips connections whose server URL is a template', async () => {
+		// This path decrypts the credential without resolving expressions, so the
+		// template would stay unresolved. The row is dropped instead of offered.
+		const { service, connectionRepository, mcpRegistryService, logger } = createService();
+		connectionRepository.findBy.mockResolvedValue([
+			{ id: '3', userId: user.id, serverSlug: 'genie', credentialId: credential.id },
+		] as InstanceAiMcpRegistryConnection[]);
+		mcpRegistryService.getBySlugs.mockResolvedValue([
+			makeRegistryServer('genie', {
+				remotes: [
+					{ type: 'streamable-http-templated', url: '={{$self["host"]}}/api/2.0/mcp/genie' },
+				],
+			}),
+		]);
+
+		const result = await service.getRegistryMcpServers(user);
+
+		expect(result).toEqual([]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipping MCP registry connection with a templated server URL',
+			expect.objectContaining({ connectionId: '3', serverSlug: 'genie' }),
+		);
+	});
+
 	it('does not attach custom fetch for non-oauth servers', async () => {
 		const {
 			service,
