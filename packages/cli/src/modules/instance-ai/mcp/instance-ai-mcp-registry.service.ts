@@ -375,7 +375,11 @@ export class InstanceAiMcpRegistryService {
 				transport: toAgentMcpTransport(resolvedServer.connection.transport),
 				cacheKey: `registry-connection:${connection.id}`,
 				toolFilter: connection.toolFilter ?? undefined,
-				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
+				metadata: {
+					connectionId: connection.id,
+					serverSlug: resolvedServer.serverSlug,
+					userId: user.id,
+				},
 			};
 
 			if (
