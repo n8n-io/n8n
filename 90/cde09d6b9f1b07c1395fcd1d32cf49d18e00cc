@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_14f52ab61740a5::t_810583e90cd842 58,115
+  s_14f52ab61740a5::t_aaa9bbeb6a8066 12
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_14f52ab61740a5::t_d2396eeb62fbde 42-44,46-66
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_14f52ab61740a5::t_a8a28a95f9bc83 78
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.mentions.test.ts
+  s_14f52ab61740a5::t_48f04d10e53812 34,69
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.workflow.json
+  s_14f52ab61740a5::t_48f04d10e53812 80
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_14f52ab61740a5::t_47b42d0ca2bee7 16-19,142,147,149-152
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/create.operation.ts
+  s_14f52ab61740a5::t_810583e90cd842 5,59,98
+  s_14f52ab61740a5::t_aaa9bbeb6a8066 6
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_14f52ab61740a5::t_91b0a2213b71b4 85-120
+  s_14f52ab61740a5::t_a8a28a95f9bc83 127,146,177
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.mentions.workflow.json
+  s_14f52ab61740a5::t_48f04d10e53812 94
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.test.ts
+  s_14f52ab61740a5::t_48f04d10e53812 26,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "90cde09d6b9f1b07c1395fcd1d32cf49d18e00cc",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
