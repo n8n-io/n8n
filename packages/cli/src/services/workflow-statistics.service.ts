@@ -161,7 +161,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		});
 	}
 
-	async recordExecutionOutcome({
+	private async recordExecutionOutcome({
 		workflowId,
 		workflowName,
 		mode,

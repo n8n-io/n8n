@@ -12,7 +12,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExecutionEntity, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
-import type { OperationContext } from '../../services/transaction';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
@@ -29,14 +28,13 @@ describe('ExecutionRepository', () => {
 		logging: { outputs: ['console'], scopes: [] },
 	});
 	mockInstance(BinaryDataService);
-	Container.set(TransactionRunner, {
-		run: async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) =>
-			await fn(ctx),
-	});
+	const transactionRunner = mock<TransactionRunner>();
+	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	});
 
 	describe('countInWorkflows', () => {

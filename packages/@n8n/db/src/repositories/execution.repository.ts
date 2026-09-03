@@ -22,6 +22,7 @@ import {
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
@@ -388,18 +389,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		executionIds: string | string[],
 		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
 	): Promise<CrashedExecution[]> {
-		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 		// Dedupe so an id that lands in two batches is reported only once.
-		executionIds = [...new Set(executionIds)];
+		const ids = [...new Set(Array.isArray(executionIds) ? executionIds : [executionIds])];
 
 		const crashed: CrashedExecution[] = [];
 
-		let processed: number = 0;
-		while (processed < executionIds.length) {
-			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
-			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
-			processed += batch.length;
-
+		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
 			// `stoppedAt` doubles as a claim token: the read below matches only the rows
 			// this UPDATE wrote, so concurrent sweeps each report their own rows without
 			// `SELECT ... FOR UPDATE`, which SQLite does not support.
@@ -435,7 +430,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// Report each batch as it commits. A later batch that throws must not
 			// discard the batches already written.
 			onBatchTransitioned?.(transitioned);
-			this.logger.info('Marked executions as `crashed`', { executionIds });
+			this.logger.info('Marked executions as `crashed`', { executionIds: batch });
 		}
 
 		return crashed;
