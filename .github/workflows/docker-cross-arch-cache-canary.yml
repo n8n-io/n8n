@@ -76,10 +76,12 @@ jobs:
           case "$(uname -m)" in
             x86_64)
               binary_package='linux-64'
+              archive_root='turbo-linux-x64'
               integrity='sha512-/bmxn+x/xE+oh0VzEXt/zf2zsORAYZPrL3db5/VrXzYt0Z4wxcvffwJBGlSfla2smfS1BLGBiyWldJlWDXJVXA=='
               ;;
             aarch64 | arm64)
               binary_package='linux-arm64'
+              archive_root='turbo-linux-arm64'
               integrity='sha512-cbOaDe1ijz5As+mimOOHgmRMolZZZO7miNBHHp5xdiYMm2Q/Dwu1JVLx/Kw4s7xjocG/oEoHrpHrxpEAIEfNiw=='
               ;;
             *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
@@ -101,7 +103,7 @@ jobs:
           NODE
           mkdir -p "$install_dir"
           tar -xzf "$archive" -C "$install_dir"
-          binary="$install_dir/package/bin/turbo"
+          binary="$install_dir/$archive_root/bin/turbo"
           actual="$("$binary" --version)"
           if [ "$actual" != "$TURBO_CANARY_VERSION" ]; then
             echo "Turbo binary $actual does not match package $TURBO_CANARY_VERSION" >&2
@@ -215,10 +217,12 @@ jobs:
           case "$(uname -m)" in
             x86_64)
               binary_package='linux-64'
+              archive_root='turbo-linux-x64'
               integrity='sha512-/bmxn+x/xE+oh0VzEXt/zf2zsORAYZPrL3db5/VrXzYt0Z4wxcvffwJBGlSfla2smfS1BLGBiyWldJlWDXJVXA=='
               ;;
             aarch64 | arm64)
               binary_package='linux-arm64'
+              archive_root='turbo-linux-arm64'
               integrity='sha512-cbOaDe1ijz5As+mimOOHgmRMolZZZO7miNBHHp5xdiYMm2Q/Dwu1JVLx/Kw4s7xjocG/oEoHrpHrxpEAIEfNiw=='
               ;;
             *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
@@ -240,7 +244,7 @@ jobs:
           NODE
           mkdir -p "$install_dir"
           tar -xzf "$archive" -C "$install_dir"
-          binary="$install_dir/package/bin/turbo"
+          binary="$install_dir/$archive_root/bin/turbo"
           actual="$("$binary" --version)"
           if [ "$actual" != "$TURBO_CANARY_VERSION" ]; then
             echo "Turbo binary $actual does not match package $TURBO_CANARY_VERSION" >&2
