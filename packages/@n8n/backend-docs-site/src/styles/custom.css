@@ -1,0 +1,42 @@
+/* The inventory and the variant matrices are wide tables. Give the content more room. */
+:root {
+	--sl-content-width: 60rem;
+}
+
+pre.mermaid {
+	background: transparent;
+	border: 0;
+	display: flex;
+	justify-content: center;
+	overflow-x: auto;
+	cursor: zoom-in;
+}
+
+/* Zoomed state. The script moves the diagram into this overlay on <body>, where the SVG can
+   grow up to its natural size or the window width, whichever is smaller. */
+.mermaid-zoom {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	overflow: auto;
+	padding: 2rem;
+	background: var(--sl-color-bg);
+	cursor: zoom-out;
+}
+
+.mermaid-zoom pre.mermaid {
+	margin: 0;
+	min-height: 100%;
+	align-items: center;
+}
+
+/* Collapsed sidebar from starlight-fullview-mode: center the toggle in the 50px strip instead of
+   letting the content padding push it off the left edge. */
+.sidebar-pane-collapsed .sidebar-content {
+	padding-inline: 0;
+	align-items: center;
+}
+
+.sidebar-pane-collapsed .toggle-left-side-bar-btn {
+	align-self: center;
+}

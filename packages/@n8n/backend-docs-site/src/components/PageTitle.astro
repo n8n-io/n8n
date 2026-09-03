@@ -1,0 +1,24 @@
+---
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+
+// Show the front matter that the reading plan relies on: when to read, reading time, review date, owner.
+const WHEN: Record<number, string> = { 1: 'Day 1', 2: 'Week 1', 3: 'Month 1' };
+const data: Record<string, unknown> = Astro.locals.starlightRoute.entry.data;
+const parts: string[] = [];
+if (typeof data.tier === 'number' && WHEN[data.tier]) parts.push(WHEN[data.tier]);
+if (typeof data.reading_time === 'string') parts.push(data.reading_time);
+if (data.last_reviewed instanceof Date) parts.push(`Reviewed ${data.last_reviewed.toISOString().slice(0, 10)}`);
+if (typeof data.owner === 'string') parts.push(data.owner);
+if (data.generated === true) parts.push('Generated, do not edit');
+---
+
+<Default />
+{parts.length > 0 && <p class="doc-meta">{parts.join(' · ')}</p>}
+
+<style>
+	.doc-meta {
+		margin-top: 0.5rem;
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-sm);
+	}
+</style>

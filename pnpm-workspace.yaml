@@ -71,6 +71,7 @@ catalog:
   '@ai-sdk/provider-utils': ^5.0.27
   '@ai-sdk/xai': ^4.0.18
   '@asteasolutions/zod-to-openapi': 7.3.4
+  '@astrojs/starlight': ^0.41.2
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
@@ -175,6 +176,7 @@ catalog:
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
   ai: ^7.0.66
+  astro: ^7.2.0
   axios: 1.18.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
@@ -185,6 +187,7 @@ catalog:
   chokidar: 4.0.3
   citty: ^0.1.6
   consola: ^3.4.2
+  cookie: ^2.0.1
   cron: 4.4.0
   cron-parser: 5.6.1
   cross-env: ^7.0.3
@@ -224,6 +227,7 @@ catalog:
   luxon: 3.7.2
   markdown-it: ^13.0.2
   markdown-it-link-attributes: ^4.0.1
+  mermaid: ^11.17.0
   mime-types: 3.0.2
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
@@ -254,6 +258,7 @@ catalog:
   simple-git: 3.36.0
   source-map-support: 0.5.21
   ssh2: 1.15.0
+  starlight-fullview-mode: ^0.2.6
   stream-json: 1.9.1
   stylelint: ^16.23.0
   tar: 7.5.21
@@ -381,6 +386,9 @@ overrides:
   nodemailer: 8.0.10
   validator: 13.15.26
   zod: 3.25.76
+  # Astro 7 needs Zod 4. The scoped overrides keep the backend docs site working under the pin above.
+  'astro>zod': ^4.3.6
+  '@astrojs/sitemap>zod': ^4.3.6
   js-yaml: 4.3.1
   katex: 0.18.2
   body-parser: 2.3.0

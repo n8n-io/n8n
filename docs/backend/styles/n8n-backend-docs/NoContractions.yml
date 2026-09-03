@@ -1,0 +1,11 @@
+extends: existence
+message: "Do not use the contraction '%s'. Write both words."
+link: https://github.com/n8n-io/n8n/blob/master/AGENTS.md
+level: warning
+ignorecase: true
+tokens:
+  - "\\b(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|shouldn|wouldn|won|hasn|haven|hadn|mustn|needn)'t\\b"
+  - "\\b(?:it|that|there|here|what|who|he|she)'s\\b"
+  - "\\b(?:you|we|they)'(?:re|ve|ll|d)\\b"
+  - "\\bI'(?:m|ve|ll|d)\\b"
+  - "\\blet's\\b"

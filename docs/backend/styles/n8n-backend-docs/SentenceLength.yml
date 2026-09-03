@@ -1,0 +1,8 @@
+extends: occurrence
+message: "Keep sentences to 25 words or fewer. Split this one."
+link: https://github.com/n8n-io/n8n/blob/master/AGENTS.md
+level: suggestion
+scope: sentence
+ignorecase: false
+max: 25
+token: \b(\w+)\b

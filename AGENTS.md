@@ -121,6 +121,12 @@ build the system before running lint and typecheck.
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
 
+For an orientation to the backend (process roles, package map, the two
+"life of" walkthroughs, and what is legacy versus new), start at
+[docs/backend/README.md](docs/backend/README.md). The generated
+[docs/backend/inventory.md](docs/backend/inventory.md) lists every backend
+package, module, and server subsystem with its status label and owning team.
+
 ### Package Structure
 
 The monorepo is organized into these key packages:
