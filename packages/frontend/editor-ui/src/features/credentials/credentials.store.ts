@@ -405,6 +405,18 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		await fetchUsableCredentials(scope);
 	};
 
+	/**
+	 * Whether the usable-credentials slice currently holds the given scope. The
+	 * slice is last-writer-wins across workflows/projects, so consumers reading
+	 * it for a specific scope must check this before trusting the answer.
+	 */
+	const hasUsableCredentialsForScope = computed(() => {
+		return (scope: CredentialFetchScope): boolean =>
+			hasFetchedUsableCredentials.value &&
+			usableCredentialsScope.value !== null &&
+			scopeKey(usableCredentialsScope.value) === scopeKey(scope);
+	});
+
 	const getCredentialData = async ({
 		id,
 	}: {
@@ -618,6 +630,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		state,
 		usableCredentials,
 		hasFetchedUsableCredentials,
+		hasUsableCredentialsForScope,
 		refreshUsableCredentials,
 		credentialTestResults,
 		isCredentialTestedOk,
