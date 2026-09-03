@@ -235,7 +235,10 @@ function resolveAuthenticationParameterFromCredentialType(
 ) {
 	const credentials = nodeTypeDescription.credentials;
 	const credential = credentials?.find((credential) => credential.name === credentialType);
-	return credential?.displayOptions?.show?.authentication?.[0];
+	const showCondition = credential?.displayOptions?.show?.authentication?.[0];
+	// node type with authentication selector store the authentication option in the displayOptions.show.authentication
+	// single auth method nodes don't have "authentication" parameter
+	return showCondition ? showCondition : undefined;
 }
 
 export function mcpServerToNode(
@@ -254,7 +257,7 @@ export function mcpServerToNode(
 			: undefined;
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
-
+	console.log('server', server, nodeTypeDescription);
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
 		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
 		: server.authentication;
