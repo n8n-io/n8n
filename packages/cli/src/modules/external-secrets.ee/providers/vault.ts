@@ -479,11 +479,8 @@ export class VaultProvider extends SecretsProvider {
 		return [body.data, resp];
 	}
 
-	private async getKVSecrets(
-		mountPath: string,
-		kvVersion: string,
-		path: string,
-	): Promise<IDataObject | null> {
+	private async getKVSecrets(mount: KvMount, path: string): Promise<IDataObject | null> {
+		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
 		const listRequest = this.kvListRequest(this.kvApiPath(mountPath, kvVersion, 'metadata', path));
 		let listBody: VaultResponse<VaultSecretList>;
@@ -506,8 +503,9 @@ export class VaultProvider extends SecretsProvider {
 				await Promise.allSettled(
 					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							const folder = await this.getKVSecrets(mountPath, kvVersion, path + key);
-							return folder === null ? null : [key.slice(0, -1), folder];
+							const folder = await this.getKVSecrets(mount, path + key);
+							const folderKey = (path + key).slice(subPath.length, -1);
+							return folder === null ? null : [folderKey, folder];
 						}
 						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
 						try {
@@ -634,17 +632,8 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		const { body } = resp;
-		// Vault answers a LIST on an empty KV mount with 404 and an empty `errors` array; a 404 for an
-		// unknown mount or path carries an error message instead (hashicorp/vault#24964).
-		const isEmptyMount =
-			resp.statusCode === 404 &&
-			typeof body === 'object' &&
-			body !== null &&
-			'errors' in body &&
-			Array.isArray(body.errors) &&
-			body.errors.length === 0;
-		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
+		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
+		if (resp.statusCode === 200 || (manualMount?.subPath === '' && resp.statusCode === 404)) {
 			return [true];
 		}
 		return [false, failureMessage(resp.statusCode)];
@@ -657,19 +646,17 @@ export class VaultProvider extends SecretsProvider {
 			const secrets = Object.fromEntries(
 				(
 					await Promise.all(
-						kvMounts.map(
-							async ({ path, version, subPath }): Promise<[string, IDataObject] | null> => {
-								const value = await this.getKVSecrets(path, version, subPath);
-								if (value === null) {
-									return null;
-								}
-								const nested = subPath
-									.split('/')
-									.filter(Boolean)
-									.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
-								return [path.substring(0, path.length - 1), nested];
-							},
-						),
+						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
+							const value = await this.getKVSecrets(mount, mount.subPath);
+							if (value === null) {
+								return null;
+							}
+							const nested = mount.subPath
+								.split('/')
+								.filter(Boolean)
+								.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
+							return [mount.path.substring(0, mount.path.length - 1), nested];
+						}),
 					)
 				).filter((entry): entry is [string, IDataObject] => entry !== null),
 			);
