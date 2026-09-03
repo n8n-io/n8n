@@ -38,6 +38,9 @@
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
+		"OPENROUTER_API_KEY": {
+			"description": "OpenRouter API key for Flaky's OpenCode sessions"
+		},
 		"AGENT_WORKER_TOKEN": {
 			"description": "The shared bearer token. The poll worker sends it to n8n on each dequeue. See .devcontainer/codespaces/agent-worker.mjs."
 		},

@@ -111,7 +111,7 @@ export function runOpenCode(
 	} = {},
 ) {
 	const directory = safeCwd(cwd);
-	const args = ['run', '--format', 'json', '--auto'];
+	const args = ['run', '--model', 'openrouter/openai/gpt-5.6-sol', '--format', 'json', '--auto'];
 	if (sessionId) args.push('--session', sessionId);
 
 	return new Promise((resolve, reject) => {
@@ -366,6 +366,7 @@ async function main() {
 	for (const [key, value] of Object.entries({
 		N8N_DEQUEUE_URL: DEQUEUE_URL,
 		AGENT_WORKER_TOKEN: TOKEN,
+		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		GITHUB_USER,
 	})) {
 		if (!value) {

@@ -211,6 +211,8 @@ test('streams OpenCode CLI events and resumes an OpenCode session', async () => 
 	assert.equal(result.session_id, 'ses_existing');
 	assert.deepEqual(invocation.args, [
 		'run',
+		'--model',
+		'openrouter/openai/gpt-5.6-sol',
 		'--format',
 		'json',
 		'--auto',
@@ -257,8 +259,13 @@ test('keeps broker credentials out of the OpenCode process', () => {
 			N8N_DEQUEUE_URL: 'https://example.com',
 			SLACK_BOT_TOKEN: 'slack',
 			ANTHROPIC_API_KEY: 'model',
+			OPENROUTER_API_KEY: 'openrouter',
 			GITHUB_TOKEN: 'github',
 		}),
-		{ ANTHROPIC_API_KEY: 'model', GITHUB_TOKEN: 'github' },
+		{
+			ANTHROPIC_API_KEY: 'model',
+			OPENROUTER_API_KEY: 'openrouter',
+			GITHUB_TOKEN: 'github',
+		},
 	);
 });

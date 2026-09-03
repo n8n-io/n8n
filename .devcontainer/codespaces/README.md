@@ -11,8 +11,9 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 
 ## One-time setup (~5 min)
 
-1. Add your key at [github.com/settings/codespaces](https://github.com/settings/codespaces)
-   → **New secret** → name `ANTHROPIC_API_KEY`, repository access `n8n-io/n8n`.
+1. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces).
+   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for Flaky's
+   OpenCode worker. Give both secrets access to `n8n-io/n8n`.
    (Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.)
 2. Give the GitHub CLI the codespace scope:
 
@@ -45,9 +46,10 @@ pnpm session rm           # delete the codespace
 
 `agent-worker.mjs` lets an n8n workflow drive an OpenCode session on the
 codespace. This is how Slack (the Flaky bot) steers a session that runs here.
-Each turn runs `opencode run --format json --auto`. The session state remains on
-disk. The returned session ID continues a conversation across turns and a
-Codespace restart.
+Each turn runs `openrouter/openai/gpt-5.6-sol` through
+`opencode run --format json --auto`. The session state remains on disk. The
+returned session ID continues a conversation across turns and a Codespace
+restart.
 
 **The worker polls outward. Nothing inbound is exposed.** GitHub sets every
 forwarded port to private on start. It gives no API to make a port public. So
@@ -56,13 +58,14 @@ instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
 It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
-The worker starts on each container start (`postStartCommand`). It needs two
+The worker starts on each container start (`postStartCommand`). It needs three
 secrets and uses one optional secret. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
 
 - `AGENT_WORKER_TOKEN` — the shared bearer token. The worker sends it on each poll.
 - `N8N_DEQUEUE_URL` — the n8n webhook that returns a pending turn.
+- `OPENROUTER_API_KEY` — the model provider key for Sol.
 - `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
 
 The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
@@ -71,7 +74,7 @@ It updates the message at most once every 1.5 seconds. It does not send reasonin
 text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
 The worker does not export its dequeue or Slack credentials to OpenCode.
-Interactive cloud sessions unset the same variables before they start.
+Interactive Claude Code sessions unset all worker-only credentials before they start.
 
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a
