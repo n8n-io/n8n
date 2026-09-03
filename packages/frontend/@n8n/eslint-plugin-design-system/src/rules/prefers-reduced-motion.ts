@@ -264,7 +264,7 @@ export const PrefersReducedMotionRule = ESLintUtils.RuleCreator.withoutDocs({
 		},
 		messages: {
 			missingReducedMotion:
-				'Add a matching `prefers-reduced-motion: reduce` override for `{{property}}` on `{{selector}}`.',
+				'Add a matching `prefers-reduced-motion: reduce` override. Prefer `motion.reduced-motion` mixin',
 		},
 		schema: [],
 	},
