@@ -1,0 +1,37 @@
+packages/cli/src/services/__tests__/engine-v2-payload-guard.service.test.ts
+  s_14535e67e8db34::t_8ab7d54363e54d 3,52
+  s_14535e67e8db34::t_6685a580c3a322 1-2,4-51,53-111
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_14535e67e8db34::t_0d139bd8411a3c 21,56,114,117-120
+packages/cli/src/workflows/triggers/engine-v2-active-triggers.ts
+  s_14535e67e8db34::t_e27faef103d9d8 5,13,37-40,64-84
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_14535e67e8db34::t_ffcf10925ea9aa 8-13
+  s_14535e67e8db34::t_ed8cc07306774e 50,78-82
+  s_14535e67e8db34::t_6d7c7e4e44c1af 1730,1732,1734-1743,1745-1746,1748-1757,1776,1778,1780,1784-1791
+  s_14535e67e8db34::t_920d3264d3b9d5 19,1657-1659,1731,1733,1744,1747,1781-1783
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_14535e67e8db34::t_ca9201838286f2 127,378
+  s_14535e67e8db34::t_a2f8085e958647 119-122,124-126,212,375-377,379
+packages/cli/src/workflows/triggers/__tests__/engine-v2-active-triggers.test.ts
+  s_14535e67e8db34::t_ed8cc07306774e 2,7,12,19-21,62-73,75-87
+  s_14535e67e8db34::t_ffcf10925ea9aa 74
+packages/cli/src/services/engine-v2-payload-guard.service.ts
+  s_14535e67e8db34::t_8e0ba2ac0fc669 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e52e97f33c490867a847ae2fd840b18ace435abf",
+  "prompts": {},
+  "sessions": {
+    "s_14535e67e8db34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8003e5e0-67f3-4443-bb1d-19cfb4508054",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
