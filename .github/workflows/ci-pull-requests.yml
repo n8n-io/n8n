@@ -114,6 +114,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .devcontainer/codespaces/agent-worker*.mjs
               OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
