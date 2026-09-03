@@ -111,8 +111,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  consume-cache-and-build:
-    name: Consume cache and build images (${{ matrix.target }})
+  consume-cache:
+    name: Consume Turbo cache (${{ matrix.target }})
     needs: prime-cache
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     strategy:
@@ -126,14 +126,9 @@ jobs:
             target: amd64
             runner: blacksmith-8vcpu-ubuntu-2204
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    timeout-minutes: 45
     env:
       CROSS_ARCH_CACHE_CANARY: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.direction }}
-      TARGET_PLATFORM: linux/${{ matrix.target }}
-      N8N_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}
-      N8N_PC_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}-pc
-      RUNNERS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}
-      RUNNERS_DISTROLESS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}-distroless
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -210,6 +205,61 @@ jobs:
           path: .turbo/runs/*.json
           if-no-files-found: error
           retention-days: 7
+
+      # Keep symlinks and executable modes intact across the job boundary.
+      - name: Package the architecture-specific Docker context
+        run: |
+          tar -cf "$RUNNER_TEMP/build-context-${{ matrix.target }}.tar" \
+            compiled \
+            dist/task-runner-javascript
+
+      - name: Upload the architecture-specific Docker context
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: build-context-${{ matrix.target }}
+          path: ${{ runner.temp }}/build-context-${{ matrix.target }}.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  build-images:
+    name: Build and verify images (${{ matrix.target }})
+    needs: consume-cache
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+          - target: amd64
+            runner: blacksmith-8vcpu-ubuntu-2204
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      TARGET_PLATFORM: linux/${{ matrix.target }}
+      N8N_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}
+      N8N_PC_IMAGE: n8nio/n8n:cross-arch-canary-${{ matrix.target }}-pc
+      RUNNERS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}
+      RUNNERS_DISTROLESS_IMAGE: n8nio/runners:cross-arch-canary-${{ matrix.target }}-distroless
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Docker smoke-test dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: ''
+
+      - name: Download the architecture-specific Docker context
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: build-context-${{ matrix.target }}
+          path: ${{ runner.temp }}/build-context
+
+      - name: Restore the architecture-specific Docker context
+        run: tar -xf "$RUNNER_TEMP/build-context/build-context-${{ matrix.target }}.tar"
 
       # Use a fresh builder. Docker caching must not hide a bad native build in
       # a canary that is testing the host-side Turbo cache.
