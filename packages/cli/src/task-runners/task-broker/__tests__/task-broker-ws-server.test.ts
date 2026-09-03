@@ -4,7 +4,10 @@ import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { ShutdownMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import {
@@ -286,6 +289,16 @@ describe('TaskBrokerWsServer', () => {
 
 		afterEach(() => {
 			vi.useRealTimers();
+		});
+
+		it('should register at the highest shutdown priority, so the cap runs alongside the worker drain instead of after it', () => {
+			const handlers =
+				Container.get(ShutdownMetadata).getHandlersByPriority()[HIGHEST_SHUTDOWN_PRIORITY] ?? [];
+
+			expect(handlers).toContainEqual({
+				serviceClass: TaskBrokerWsServer,
+				methodName: 'capTaskTimeoutsForShutdown',
+			});
 		});
 
 		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
