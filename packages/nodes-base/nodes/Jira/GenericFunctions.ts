@@ -17,9 +17,17 @@ import {
 	getAtlassianCloudId,
 	getAtlassianSiteParameter,
 	resolveAtlassianCloudId,
+	retryOnceIfTokenExpired,
 } from '@utils/atlassian';
 
 import type { JiraServerInfo, JiraWebhook } from './types';
+
+// The gateway-routed OAuth2 credentials: both go through api.atlassian.com/ex/jira/{cloudId},
+// the same gateway that answers 404/403 instead of 401 on an expired token (ENT-408).
+const GATEWAY_OAUTH2_CREDENTIAL_TYPES = [
+	'jiraSoftwareCloudOAuth2Api',
+	'atlassianServiceAccountApi',
+];
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -93,8 +101,21 @@ export async function jiraSoftwareCloudApiRequest(
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
+
+	// A formData body (e.g. issue attachment upload) can carry a stream that's consumed
+	// by the first attempt — never safe to replay, so it skips the forced-refresh retry.
+	const canRetryOnExpiry =
+		GATEWAY_OAUTH2_CREDENTIAL_TYPES.includes(credentialType) && options.formData === undefined;
+
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return canRetryOnExpiry
+			? await retryOnceIfTokenExpired(
+					this,
+					credentialType,
+					async () =>
+						await this.helpers.requestWithAuthentication.call(this, credentialType, options),
+				)
+			: await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (error.description?.includes?.("Field 'priority' cannot be set")) {
 			throw new NodeApiError(this.getNode(), error as JsonObject, {
