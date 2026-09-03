@@ -50,7 +50,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		// here can equally be a legitimate refusal. Inline because there is a single
 		// call site - see the per-operation 403 hint note in utils/microsoft/transport.ts.
 		if (error instanceof NodeApiError && error.httpCode === '403') {
-			throw new NodeOperationError(this.getNode(), error as Error, {
+			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
 					'Removing a member needs the ChatMember.ReadWrite permission, which has no higher-privileged alternative: reconnect the credential to grant it (a tenant admin may have to consent again), and if Custom Scopes is enabled add it to Enabled Scopes by hand. Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
