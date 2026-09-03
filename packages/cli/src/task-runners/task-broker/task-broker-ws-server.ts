@@ -106,11 +106,9 @@ export class TaskBrokerWsServer {
 	}
 
 	/**
-	 * Runs at the start of shutdown, concurrently with the worker's execution drain.
-	 * The regular `stop()` runs only after that drain, which is too late: an execution
-	 * stuck on a runner task blocks the drain, and its task timeout (default 300s) can
-	 * fire long after the force-kill deadline. Capping the timers up front lets such
-	 * executions fail inside the window, so the drain can complete.
+	 * Runs at shutdown start, concurrently with the worker's execution drain. The
+	 * regular `stop()` runs only after that drain - too late for a task timeout that
+	 * outlasts the force-kill deadline while an execution stuck on it blocks the drain.
 	 */
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	capTaskTimeoutsForShutdown() {

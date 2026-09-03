@@ -33,7 +33,7 @@ export interface Task {
 	requesterId: string;
 	taskType: string;
 	timeout?: NodeJS.Timeout;
-	/** Epoch ms when `timeout` fires. Node timers expose no remaining time, so capping a timer without ever extending it requires tracking this. */
+	/** Epoch ms when `timeout` fires. Lets the shutdown cap skip timers already due sooner. */
 	timesOutAt?: number;
 }
 
@@ -101,11 +101,7 @@ export class TaskBroker {
 	 */
 	private isDraining = false;
 
-	/**
-	 * Epoch ms by which every task timeout must fire once shutdown has begun.
-	 * A task held past this point would outlive the graceful-shutdown window, so the
-	 * execution waiting on it would be force-killed and stall permanently.
-	 */
+	/** Epoch ms by which every task timeout must fire once shutdown has begun. */
 	private shutdownDeadline?: number;
 
 	private runnerAcceptRejects: Map<
@@ -621,14 +617,12 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
-		// A capped timer fires at the shutdown deadline, not because the task exceeded
-		// its configured timeout, so it must not report a regular execution timeout.
+		// A capped timer fires at the shutdown deadline, not the task's own timeout.
 		const isCappedByShutdown =
 			this.shutdownDeadline !== undefined && task.timesOutAt === this.shutdownDeadline;
 
 		if (this.taskRunnersConfig.mode === 'internal') {
-			// During shutdown, restarting the runner would respawn a process that the
-			// runner module is about to stop again; failing the task below is enough.
+			// Don't restart a runner that shutdown is about to stop anyway.
 			if (this.shutdownDeadline === undefined) {
 				this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
 					runnerId: task.runnerId,
@@ -1005,12 +999,9 @@ export class TaskBroker {
 	}
 
 	/**
-	 * Caps every armed task timeout so it fires no later than `deadline`, and makes
-	 * timers armed afterwards respect the same deadline. Once shutdown has begun, a
-	 * task held by an unresponsive runner must fail inside the graceful-shutdown
-	 * window - the execution waiting on it then errors normally and the worker drain
-	 * can complete, instead of the process being force-killed with the job in flight.
-	 * A timer already due before the deadline is never extended.
+	 * Caps every task timeout, current and future, to fire no later than `deadline`,
+	 * without extending timers already due sooner. A task that fails inside the
+	 * shutdown window lets its execution error normally and the worker drain complete.
 	 */
 	capTaskTimeoutsForShutdown(deadline: number) {
 		this.shutdownDeadline = deadline;

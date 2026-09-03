@@ -90,9 +90,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.gracefulShutdownTimeoutInS =
 				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			// Keep the config in sync - the task broker reads its shutdown window from it.
-			// Mutating config at init is a necessary smell: QUEUE_WORKER_TIMEOUT is a
-			// worker-only override, so it cannot be resolved inside the instance-agnostic
-			// @n8n/config layer. The var is deprecated; this whole block goes when it does.
+			// A worker-only override can't resolve in the instance-agnostic config layer;
+			// this block goes when the deprecated var does.
 			this.globalConfig.generic.gracefulShutdownTimeout = this.gracefulShutdownTimeoutInS;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
