@@ -1,4 +1,4 @@
-import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { isUniqueConstraintError, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -93,36 +93,49 @@ export class TypeAvailabilityPolicyService {
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
 	 * version `0` rather than being materialized just because someone looked at it.
+	 *
+	 * The scope and its attachments are read inside one `REPEATABLE READ` transaction, so both
+	 * statements see the same snapshot — otherwise a write landing between them could pair a
+	 * scope's new version with its old rules (or vice versa) in the response.
 	 */
 	async getEffectivePolicy(
 		kind: string,
 		projectId: string | null,
 		ctx: OperationContext = {},
 	): Promise<EffectivePolicy> {
-		const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
-		if (!scope) {
-			return {
-				scopeId: null,
-				kind,
-				projectId,
-				defaultAction: 'allow',
-				version: UNCONFIGURED_VERSION,
-				rules: [],
-				attachments: [],
-			};
-		}
+		return await this.transactionRunner.run(
+			ctx,
+			async (txCtx) => {
+				const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, txCtx);
+				if (!scope) {
+					return {
+						scopeId: null,
+						kind,
+						projectId,
+						defaultAction: 'allow' as const,
+						version: UNCONFIGURED_VERSION,
+						rules: [],
+						attachments: [],
+					};
+				}
 
-		const attachments = await this.attachmentRepository.listAttachmentsForScope(scope.id, ctx);
+				const attachments = await this.attachmentRepository.listAttachmentsForScope(
+					scope.id,
+					txCtx,
+				);
 
-		return {
-			scopeId: scope.id,
-			kind,
-			projectId,
-			defaultAction: scope.defaultAction,
-			version: scope.version,
-			rules: flattenRules(attachments),
-			attachments,
-		};
+				return {
+					scopeId: scope.id,
+					kind,
+					projectId,
+					defaultAction: scope.defaultAction,
+					version: scope.version,
+					rules: flattenRules(attachments),
+					attachments,
+				};
+			},
+			{ isolationLevel: 'REPEATABLE READ' },
+		);
 	}
 
 	/**
@@ -195,6 +208,17 @@ export class TypeAvailabilityPolicyService {
 		return { policy, warnings };
 	}
 
+	/**
+	 * Reads and writes the document inside one transaction — `updateRules` returns the
+	 * pre-write row as its `before`, read under the same transaction as the write, so a
+	 * concurrent edit landing between a separate "before" read and the write can no longer
+	 * make the audit event's "before" stale.
+	 *
+	 * Also fans the version bump out to every scope this policy is attached to: a scope's
+	 * effective policy is a function of its attachments' content, so a real content change
+	 * here must move those scopes' `version` too, or their optimistic-concurrency check and
+	 * any cache keyed on it would miss the drift.
+	 */
 	async updatePolicyDocument(
 		policyId: string,
 		rules: readonly PolicyRule[],
@@ -202,49 +226,69 @@ export class TypeAvailabilityPolicyService {
 	): Promise<PolicyDocumentWrite> {
 		const warnings = lintRulesForShadowing(rules);
 
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const result = await this.transactionRunner.run({}, async (ctx) => {
+			const updateResult = await this.policyRepository.updateRules(policyId, rules, updatedBy, ctx);
+			if (!updateResult) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
 
-		const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, {});
-		if (!updated) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+			const { before, after } = updateResult;
+
+			if (before.version !== after.version) {
+				const scopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					policyId,
+					ctx,
+				);
+				if (scopeIds.length > 0) {
+					await this.scopeRepository.bumpVersions(scopeIds, ctx);
+				}
+			}
+
+			return { before, after };
+		});
 
 		this.eventService.emit('node-type-policy-document-updated', {
 			updatedBy,
-			kind: existing.kind,
+			kind: result.after.kind,
 			policyId,
-			before: { rules: existing.rules, version: existing.version },
-			after: { rules: updated.rules, version: updated.version },
+			before: { rules: result.before.rules, version: result.before.version },
+			after: { rules: result.after.rules, version: result.after.version },
 		});
 
-		return { policy: updated, warnings };
+		return { policy: result.after, warnings };
 	}
 
 	/**
 	 * Refuses to delete a policy that is still attached to any scope — the attachment FK is
 	 * `RESTRICT`, so this checks first and reports a clean count instead of letting a raw SQL
 	 * constraint violation reach the caller.
+	 *
+	 * The "not attached" check and the delete run inside one transaction, with a write lock
+	 * taken on the policy row up front — see `TypeAvailabilityPolicyRepository.findByIdForUpdate`
+	 * for why that lock (not just the transaction) is what actually closes the race against a
+	 * concurrent attach.
 	 */
 	async deletePolicyDocument(policyId: string, updatedBy: string): Promise<void> {
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const existing = await this.transactionRunner.run({}, async (ctx) => {
+			const existing = await this.policyRepository.findByIdForUpdate(policyId, ctx);
+			if (!existing) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
 
-		const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
-			policyId,
-			{},
-		);
-		if (attachedScopeIds.length > 0) {
-			throw new ConflictError(
-				`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+				policyId,
+				ctx,
 			);
-		}
+			if (attachedScopeIds.length > 0) {
+				throw new ConflictError(
+					`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+				);
+			}
 
-		await this.policyRepository.deletePolicy(policyId, {});
+			await this.policyRepository.deletePolicy(policyId, ctx);
+
+			return existing;
+		});
 
 		this.eventService.emit('node-type-policy-document-deleted', {
 			updatedBy,
@@ -332,6 +376,11 @@ export class TypeAvailabilityPolicyService {
 	 * Not named in the parent ticket's guessed method list — added because the DTO for the
 	 * composed endpoint carries one `version` for both facets, which can only be checked
 	 * and written race-free inside one transaction. See the PR description for the tradeoff.
+	 *
+	 * Refuses a scope that already carries more than one attachment: this endpoint only ever
+	 * writes a single document, so applying it to a multi-attachment scope would silently
+	 * pick one attachment to keep and drop the rest. `PUT /scopes/:scopeId/attachments` is the
+	 * right tool once a scope has grown past this endpoint's single-document shape.
 	 */
 	async setEffectivePolicy(
 		kind: string,
@@ -349,7 +398,15 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			// A pessimistic-write-locked read: a second concurrent call for the same
+			// `(kind, projectId)` blocks here until this transaction commits or rolls back,
+			// so it then correctly observes the bumped version and hits the conflict check
+			// below instead of racing past it. A miss (scope not created yet) takes no lock.
+			const scope = await this.scopeRepository.findScopeByKindAndProjectForUpdate(
+				kind,
+				projectId,
+				ctx,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -362,27 +419,50 @@ export class TypeAvailabilityPolicyService {
 				? { defaultAction: scope.defaultAction, version: scope.version }
 				: null;
 
-			const scopeId = scope
-				? scope.id
-				: (
-						await this.scopeRepository.createScope(
-							{ kind, projectId, defaultAction: input.defaultAction, updatedBy },
-							ctx,
-						)
-					).id;
+			let scopeId: string;
 
-			if (scope && scope.defaultAction !== input.defaultAction) {
-				await this.scopeRepository.updateDefaultAction(
-					scopeId,
-					input.defaultAction,
-					updatedBy,
-					ctx,
-				);
+			if (scope) {
+				scopeId = scope.id;
+
+				if (scope.defaultAction !== input.defaultAction) {
+					await this.scopeRepository.updateDefaultAction(
+						scopeId,
+						input.defaultAction,
+						updatedBy,
+						ctx,
+					);
+				}
+			} else {
+				try {
+					const created = await this.scopeRepository.createScope(
+						{ kind, projectId, defaultAction: input.defaultAction, updatedBy },
+						ctx,
+					);
+					scopeId = created.id;
+				} catch (error) {
+					// Two racing first-writes both saw "no row yet" and both reached the
+					// insert; the loser hits the unique `(kind, projectId)` index instead of
+					// the `expectedVersion` check above. Report it the same way: a conflict,
+					// not a raw constraint violation.
+					if (isUniqueConstraintError(error)) {
+						throw new ConflictError(
+							'Policy scope has changed since it was last read (concurrent first write)',
+						);
+					}
+					throw error;
+				}
 			}
 
 			const existingAttachments = scope
 				? await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx)
 				: [];
+
+			if (existingAttachments.length > 1) {
+				throw new UserError(
+					'This scope has multiple attached policies; use PUT /scopes/:scopeId/attachments to manage them instead of PUT /instance.',
+				);
+			}
+
 			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
 
 			let documentBefore: { rules: readonly PolicyRule[]; version: number } | null = null;
@@ -391,21 +471,22 @@ export class TypeAvailabilityPolicyService {
 			let policyId: string;
 
 			if (existingDocumentId) {
-				const before = await this.policyRepository.findById(existingDocumentId, ctx);
-				documentBefore = before ? { rules: before.rules, version: before.version } : null;
-
-				const updated = await this.policyRepository.updateRules(
+				const updateResult = await this.policyRepository.updateRules(
 					existingDocumentId,
 					input.rules,
 					updatedBy,
 					ctx,
 				);
 				// The attachment's FK guarantees the policy row exists.
-				if (!updated) {
+				if (!updateResult) {
 					throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
 				}
 
-				documentAfter = { rules: updated.rules, version: updated.version };
+				documentBefore = {
+					rules: updateResult.before.rules,
+					version: updateResult.before.version,
+				};
+				documentAfter = { rules: updateResult.after.rules, version: updateResult.after.version };
 				documentCreated = false;
 				policyId = existingDocumentId;
 			} else {

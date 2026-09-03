@@ -32,6 +32,30 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		return await this.managerFor(ctx).findOneBy(TypeAvailabilityPolicy, { id });
 	}
 
+	/**
+	 * Same lookup as {@link findById}, but takes a row-level write lock on a match (Postgres
+	 * only — SQLite has no equivalent). Must run inside an active transaction.
+	 *
+	 * Locking the policy row here is what closes the delete-vs-attach race: on Postgres, an
+	 * `INSERT` into the attachment table takes a `FOR KEY SHARE` lock on the policy row it
+	 * references, so holding `FOR UPDATE` on that same row makes a concurrent attach block
+	 * until this transaction commits or rolls back, instead of slipping in between the
+	 * "not attached" check and the delete.
+	 */
+	async findByIdForUpdate(
+		id: string,
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicy | null> {
+		const manager = this.managerFor(ctx);
+
+		return await manager.findOne(TypeAvailabilityPolicy, {
+			where: { id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
 	async findManyByIds(ids: string[], ctx: OperationContext): Promise<TypeAvailabilityPolicy[]> {
 		if (ids.length === 0) return [];
 		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { id: In(ids) });
@@ -56,8 +80,13 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 	/**
 	 * Replaces the rules document and bumps `version`. Returns `null` if no such policy.
 	 *
-	 * Unchanged content is a no-op that leaves `version` alone, so an env-bootstrap upsert
-	 * repeated on every main during a rolling restart doesn't invalidate caches.
+	 * Returns both `before` and `after` — read inside the same transaction as the write — so
+	 * a caller never has to pair this with a separate, non-transactional read for its "before"
+	 * audit snapshot, which a concurrent edit could otherwise land in between and make stale.
+	 *
+	 * Unchanged content is a no-op that leaves `version` alone (before and after are then the
+	 * same row), so an env-bootstrap upsert repeated on every main during a rolling restart
+	 * doesn't invalidate caches.
 	 *
 	 * The bump is computed by the database rather than from the row read above: two
 	 * overlapping edits would otherwise both write `read version + 1`, losing a bump and
@@ -70,16 +99,19 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 		ctx: OperationContext,
-	): Promise<TypeAvailabilityPolicy | null> {
+	): Promise<{ before: TypeAvailabilityPolicy; after: TypeAvailabilityPolicy } | null> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			const policy = await tx.findOneBy(TypeAvailabilityPolicy, { id });
-			if (!policy) return null;
-			if (rulesEqual(policy.rules, rules)) return policy;
+			const before = await tx.findOneBy(TypeAvailabilityPolicy, { id });
+			if (!before) return null;
+			if (rulesEqual(before.rules, rules)) return { before, after: before };
 
 			await tx.update(TypeAvailabilityPolicy, { id }, { rules: [...rules], updatedBy });
 			await tx.increment(TypeAvailabilityPolicy, { id }, 'version', 1);
 
-			return await tx.findOneBy(TypeAvailabilityPolicy, { id });
+			// The row we just updated inside this same transaction: it cannot have vanished —
+			// the `before ??` fallback only satisfies the type checker.
+			const after = await tx.findOneBy(TypeAvailabilityPolicy, { id });
+			return { before, after: after ?? before };
 		});
 	}
 

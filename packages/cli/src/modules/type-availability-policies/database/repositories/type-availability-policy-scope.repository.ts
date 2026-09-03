@@ -40,6 +40,32 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return await this.managerFor(ctx).findOneBy(TypeAvailabilityPolicyScope, { id });
 	}
 
+	/**
+	 * Same lookup as {@link findScopeByKindAndProject}, but takes a row-level write lock on a
+	 * match (Postgres only — SQLite has no equivalent, and its single-writer model makes the
+	 * race this guards against impossible there anyway).
+	 *
+	 * Must run inside an active transaction: call it only from within
+	 * `TransactionRunner.run`, threading the `ctx` it hands back. A second concurrent
+	 * transaction reading the same scope then blocks until the first commits or rolls back,
+	 * so it observes the bumped version and correctly hits the `expectedVersion` conflict
+	 * check instead of racing past it.
+	 */
+	async findScopeByKindAndProjectForUpdate(
+		kind: string,
+		projectId: string | null,
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicyScope | null> {
+		const manager = this.managerFor(ctx);
+
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { kind, projectId: projectId ?? IsNull() },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
 	async createScope(
 		input: NewPolicyScope,
 		ctx: OperationContext,
