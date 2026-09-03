@@ -559,13 +559,18 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
-
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
+			// Run before enqueueing: this is what starts (and persists to the execution
+			// row) the OTel traceparent a worker parents its own workflow.execute span
+			// under. Enqueueing first let a fast-dequeuing worker start executing - and
+			// look up that traceparent - before it was written, orphaning the worker's
+			// span (and its node.execute children) onto a disconnected trace.
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
 			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 		} catch (error) {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.

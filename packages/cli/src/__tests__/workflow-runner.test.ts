@@ -572,6 +572,41 @@ describe('enqueueExecution', () => {
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
 	});
+
+	it('runs workflowExecuteBefore before enqueueing the job, so a worker cannot dequeue and start executing before its tracing context is persisted', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+
+		const callOrder: string[] = [];
+		const actualGetLifecycleHooksForScalingMain =
+			ExecutionLifecycleHooks.getLifecycleHooksForScalingMain;
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockImplementation(
+			(...args) => {
+				const hooks = actualGetLifecycleHooksForScalingMain(...args);
+				const originalRunHook = hooks.runHook.bind(hooks);
+				vi.spyOn(hooks, 'runHook').mockImplementation(async (hookName, params) => {
+					if (hookName === 'workflowExecuteBefore') callOrder.push('workflowExecuteBefore');
+					return await originalRunHook(hookName, params);
+				});
+				return hooks;
+			},
+		);
+
+		addJob.mockImplementationOnce(async () => {
+			callOrder.push('addJob');
+			throw new Error('stop for test purposes');
+		});
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow();
+
+		expect(callOrder).toEqual(['workflowExecuteBefore', 'addJob']);
+	});
 });
 
 describe('workflow timeout with startedAt', () => {
