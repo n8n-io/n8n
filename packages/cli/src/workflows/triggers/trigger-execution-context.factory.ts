@@ -501,7 +501,8 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
-	 * published data. `pinData` and `meta` are deliberately left out: they are
+	 * published data, or returns `null` when the workflow has no published
+	 * version. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
 	 * Pass `bypassCache` on the poll path: the poll cursor lives in `poller_state`,
@@ -509,15 +510,28 @@ export class TriggerExecutionContextFactory {
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(
+	async findPublishedWorkflowData(
 		workflowId: string,
 		{ bypassCache = false }: { bypassCache?: boolean } = {},
-	): Promise<IWorkflowBase> {
-		const publishedData = bypassCache
+	): Promise<IWorkflowBase | null> {
+		return bypassCache
 			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
 			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
 					workflowId,
 				);
+	}
+
+	/**
+	 * Same as {@link findPublishedWorkflowData}, for callers that require a
+	 * published version to exist.
+	 *
+	 * @throws {UnexpectedError} when the workflow has no published version
+	 */
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		options: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = await this.findPublishedWorkflowData(workflowId, options);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {

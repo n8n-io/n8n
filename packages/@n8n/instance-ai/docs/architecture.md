@@ -194,7 +194,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
+- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
 - **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
@@ -222,9 +222,9 @@ The n8n integration layer.
   replay belong to the durable event log, not the bus
 - **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
   See `docs/filesystem-access.md`
-- **Persistence** — 13 TypeORM entity/repository pairs for threads, messages,
-  resources, observations, observation cursors and locks, checkpoints, run
-  snapshots, event-log entries, pending confirmations, iteration logs, thread
+- **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
+  resources, observations, observation cursors and locks, checkpoints,
+  event-log entries, pending confirmations, iteration logs, thread
   grants, and MCP registry connections
 
 ### `packages/@n8n/api-types` (Shared Types)

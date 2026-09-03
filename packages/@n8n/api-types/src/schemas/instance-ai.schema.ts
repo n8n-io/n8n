@@ -64,6 +64,11 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
 }
 
+/** Builds the thread-level grant for using a credential with one exact service origin. */
+export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
+	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
+}
+
 /**
  * Builds the thread-level "always allow" grant key for a data-tables action
  * (e.g. `create`, `insert-rows`). Must match the frontend key
@@ -177,6 +182,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
+	'setup-items',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -286,6 +292,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -412,6 +426,18 @@ export const credentialPlaceholderDefSchema = z.object({
 });
 export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
 
+const exactHttpOriginSchema = z
+	.string()
+	.max(300)
+	.refine((value) => {
+		try {
+			const url = new URL(value);
+			return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
+		} catch {
+			return false;
+		}
+	}, 'Expected an exact HTTP origin');
+
 /**
  * Agent-supplied recipe for creating a Templated Custom Auth credential: the
  * auth request parts with `{{placeholder}}` markers where user-provided values
@@ -438,6 +464,9 @@ export const credentialSetupHintSchema = z.object({
 	 *  being set up (never model-supplied). Stamped into the created credential
 	 *  so setup surfaces only offer it to nodes calling the same service. */
 	serviceHost: z.string().optional(),
+	/** Exact origin of the API the recipe targets, derived server-side from the
+	 *  node being set up. Used to bind automatic credential tests to that API. */
+	serviceOrigin: exactHttpOriginSchema.optional(),
 });
 export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
 
@@ -456,6 +485,19 @@ export const credentialFlowSchema = z.object({
 	stage: z.enum(['generic', 'finalize']),
 });
 export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
+
+export const credentialDestinationSchema = z.object({
+	origin: exactHttpOriginSchema,
+	nodeNames: z.array(z.string().trim().min(1).max(255)).min(1),
+});
+export type InstanceAiCredentialDestination = z.infer<typeof credentialDestinationSchema>;
+
+export const credentialDestinationDecisionSchema = credentialDestinationSchema.pick({
+	origin: true,
+});
+export type InstanceAiCredentialDestinationDecision = z.infer<
+	typeof credentialDestinationDecisionSchema
+>;
 
 export const workflowSetupNodeSchema = z.object({
 	node: z.object({
@@ -718,6 +760,11 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Credential flow stage — finalize renders post-verification credential picker with different copy',
 		),
+	credentialDestination: credentialDestinationSchema
+		.optional()
+		.describe(
+			'Exact destination that must be approved before a workflow credential setup card opens',
+		),
 	setupRequests: z
 		.array(workflowSetupNodeSchema)
 		.optional()
@@ -944,6 +991,56 @@ export const tasksUpdatePayloadSchema = z.object({
 	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
+/**
+ * One entry of the setup panel checklist. Service-keyed (one row per
+ * credential type, fanned out to all nodes that use it via `nodeBindings`),
+ * not per-node like the wizard's `workflowSetupNodeSchema`. Carries identity
+ * and requirements only — done-ness is always derived client-side (usable
+ * credential exists / slot bound / parameter filled), never stored, so
+ * replay, refresh, and out-of-band completion stay consistent.
+ */
+const setupItemBase = {
+	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
+	id: z.string(),
+};
+
+/** No 'question' kind in v1 (agent questions stay in chat); arms are additive. */
+export const setupItemSchema = z.discriminatedUnion('kind', [
+	z.object({
+		...setupItemBase,
+		kind: z.literal('credential'),
+		credentialType: z.string(),
+		appDisplayName: z.string().optional(),
+		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
+		setupHint: credentialSetupHintSchema.optional(),
+		/** Why the app is needed, e.g. "for the docs search". */
+		reason: z.string().optional(),
+	}),
+	// Parameter names only — values always derive from the workflow.
+	z.object({
+		...setupItemBase,
+		kind: z.literal('parameters'),
+		nodeName: z.string(),
+		parameterNames: z.array(z.string()),
+	}),
+]);
+export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
+
+export const setupItemsPayloadSchema = z.object({
+	workflowId: z.string().min(1).max(64),
+	/** FULL current list for this workflow. Each event replaces the previous
+	 *  snapshot — removal is implicit (an item absent from the next snapshot is
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
+});
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -958,8 +1055,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
@@ -1010,6 +1107,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1046,6 +1144,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1297,6 +1396,9 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
+ * Experiment cleanup: remove with openWorkflowInAssistant.
+ * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
+ * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1309,6 +1411,9 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	'workflow_list_auto',
+	'workflow_list_button',
 	'evals',
 	'playwright',
 ] as const;
@@ -1375,35 +1480,10 @@ export interface InstanceAiSendMessageResponse {
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiConfirmation {
-	requestId: string;
-	inputThreadId?: string;
-	severity: InstanceAiConfirmationSeverity;
-	message: string;
-	targetApproval?: InstanceAiTargetApproval;
-	credentialRequests?: InstanceAiCredentialRequest[];
-	requireUserSelection?: boolean;
-	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
-	domainAccess?: DomainAccessMeta;
-	webSearch?: WebSearchMeta;
-	credentialFlow?: InstanceAiCredentialFlow;
-	setupRequests?: InstanceAiWorkflowSetupNode[];
-	workflowId?: string;
-	planItems?: PlannedTaskArg[];
-	questions?: Array<{
-		id: string;
-		question: string;
-		type: 'single' | 'multi' | 'text';
-		options?: string[];
-	}>;
-	introMessage?: string;
-	tasks?: TaskList;
-	resourceDecision?: GatewayConfirmationRequiredPayload;
-	channelConfig?: InstanceAiChannelConfig;
-	mcpConnectRequest?: InstanceAiMcpConnectRequest;
-	expired?: boolean;
-}
+export type InstanceAiConfirmation = Omit<
+	InstanceAiConfirmationRequestPayload,
+	'toolCallId' | 'toolName' | 'args'
+> & { expired?: boolean };
 
 export interface InstanceAiToolCallState {
 	toolCallId: string;
@@ -1466,6 +1546,13 @@ export interface InstanceAiAgentNode {
 	tasks?: TaskList;
 	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
+	/**
+	 * Latest setup-panel snapshot per workflow — updated by setup-items events
+	 * (last event wins per workflowId). Thread-level state: always folded onto
+	 * the ROOT node so history restore, which reads the tree root, sees it
+	 * regardless of which agent emitted.
+	 */
+	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -2147,6 +2234,10 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

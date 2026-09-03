@@ -480,7 +480,7 @@ export class ExecutionRecorder {
 			case 'error': {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
-				this.error = normaliseStreamError(chunk.error);
+				this.error ??= normaliseStreamError(chunk.error);
 				break;
 			}
 		}

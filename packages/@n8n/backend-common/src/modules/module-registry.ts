@@ -1,5 +1,5 @@
 import type { InstanceType } from '@n8n/constants';
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
@@ -38,6 +38,7 @@ export class ModuleRegistry {
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly modulesConfig: ModulesConfig,
+		private readonly systemTaskMetadata: SystemTaskMetadata,
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
@@ -172,6 +173,12 @@ export class ModuleRegistry {
 			}
 
 			await Container.get(ModuleClass).init?.();
+
+			const systemTasks = await Container.get(ModuleClass).systemTasks?.();
+
+			for (const taskClass of systemTasks ?? []) {
+				this.systemTaskMetadata.register(taskClass);
+			}
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 

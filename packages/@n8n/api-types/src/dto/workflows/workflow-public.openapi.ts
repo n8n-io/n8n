@@ -1,11 +1,6 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
-// We generate OpenAPI 3.0, which marks a nullable field with `nullable: true`. OpenAPI 3.1 removed
-// that keyword, and `.openapi()` accepts only the fields both versions define, so it rejects
-// `nullable` outright. This adds it back.
-function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
-	return { ...metadata, nullable: true } as ZodOpenAPIMetadata;
-}
+import { alsoNullable } from '../openapi-nullable';
 
 // Key order below reaches the generated OpenAPI fragments verbatim, so each literal keeps the
 // order the published spec already uses.
@@ -131,6 +126,24 @@ export const workflowCreateFieldDocs = {
 		description: 'Folder the workflow was placed in, or null at the project root',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const workflowUpdateFieldDocs = {
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
+	parentFolderId: {
+		writeOnly: true,
+		description:
+			'ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.',
+		example: 'X8ovzm8lTQjcXRZQ',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const publishIfActiveOpenApi: ZodOpenAPIMetadata = {
+	description:
+		"Whether to publish the update if the workflow is currently published. Set to `false` to save the change as a draft on the existing published version instead of releasing it. Has no effect on a workflow that isn't currently published.",
+};
 
 export const nodesOpenApi: ZodOpenAPIMetadata = {
 	type: 'array',

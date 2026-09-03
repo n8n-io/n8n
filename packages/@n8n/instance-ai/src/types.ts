@@ -5,7 +5,6 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -16,6 +15,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -311,6 +311,22 @@ export interface WorkflowListResult {
 	totalInScope: number;
 }
 
+/**
+ * What the workflows in scope are built out of. The cheap rung of preference discovery:
+ * `nodeTypes` answers "what does this project reach for" without opening a workflow, and
+ * `workflows` names the ones using a given type so one read gets the current house style.
+ */
+export interface NodeUsageResult {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	/** Set when no `nodeType` was asked for: every node type in use, most-used first. */
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	/** Set when a `nodeType` was asked for: the workflows using it, most recently updated first. */
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
+	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
@@ -324,7 +340,27 @@ export interface InstanceAiWorkflowService {
 		 * access. Writes stay locked to the thread's bound project regardless.
 		 */
 		projectId?: string;
+		/**
+		 * Keep only workflows containing at least one node of these types
+		 * (`n8n-nodes-base.slack`). Resolved from the dependency index, so it matches what a
+		 * workflow actually contains rather than what its name suggests, and costs one join
+		 * instead of a fetch per workflow.
+		 */
+		nodeTypes?: string[];
 	}): Promise<WorkflowListResult>;
+	/**
+	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
+	 * fetching workflows. Without `nodeType` it returns the histogram; with one, the workflows using
+	 * it. Node types only — parameter-level house style still needs a `get`.
+	 *
+	 * Optional: present only where the host wires the index behind it.
+	 */
+	nodeUsage?(options?: {
+		nodeType?: string;
+		limit?: number;
+		scope?: 'project' | 'instance';
+		projectId?: string;
+	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
@@ -616,7 +652,14 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
+	): Promise<{
+		content: string;
+		version?: string;
+		error?: string;
+		builderHint?: string;
+		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
+		deprecated?: boolean;
+	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -707,7 +750,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -1037,6 +1080,20 @@ export interface BuilderOpenSuspension {
  * suspend, which the caller cascades through its own suspend/resume so the
  * builder's questions survive a process restart.
  */
+
+/** Capabilities and limitations the orchestrator surfaces to plan an agent
+ *  build, sourced from the agents module via `InstanceAiBuilderDelegate.listAgentCapabilities`
+ *  so they stay aligned with the agent config schema and business rules as
+ * they evolve — the orchestrator never hardcodes these. */
+export interface AgentCapabilitiesSummary {
+	/** Supported chat-channel integrations; absence from this list means unsupported. */
+	channels: ChatIntegrationDescriptor[];
+	/** What an n8n Agent can do beyond chat channels — brief, for planning. */
+	agentCapabilities: string[];
+	/** Agent-level limitations the orchestrator must respect when planning a build. */
+	limitations: string[];
+}
+
 export interface InstanceAiBuilderDelegate {
 	/** `id` creates the agent under an id the frontend already minted for its
 	 *  unsaved artifact, so the chat and the editor converge on one agent. */
@@ -1062,6 +1119,11 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Capabilities and limitations the orchestrator surfaces to plan an agent
+	 *  build, sourced from the agents module via `listAgentCapabilities` so they
+	 *  stay aligned with the agent config schema and business rules as they
+	 *  evolve — the orchestrator never hardcodes these. */
+	listAgentCapabilities(): Promise<AgentCapabilitiesSummary>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1441,6 +1503,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1697,12 +1761,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/**
-	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
-	 * default policy, which on the durable-log path would persist redacted text
-	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
-	 */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

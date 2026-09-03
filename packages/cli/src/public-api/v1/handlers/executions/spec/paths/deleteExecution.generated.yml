@@ -1,0 +1,160 @@
+operationId: deleteExecution
+tags:
+  - Execution
+summary: Delete an execution
+description: Deletes an execution from your instance.
+x-required-scope: execution:delete
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: executionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: number
+              description: ID of the deleted execution. This endpoint returns it as a number, where every other execution endpoint returns a string.
+              example: 1000
+            finished:
+              type: boolean
+              description: Whether the execution ran to completion. Use `status` instead.
+              example: true
+              deprecated: true
+            mode:
+              type: string
+              enum:
+                - cli
+                - error
+                - integrated
+                - internal
+                - manual
+                - retry
+                - trigger
+                - webhook
+                - evaluation
+                - chat
+                - agent
+              example: manual
+            retryOf:
+              type: string
+              nullable: true
+              description: ID of the execution this one is a retry of.
+            retrySuccessId:
+              type: string
+              nullable: true
+              description: ID of the retry that succeeded, if this execution failed and a retry did not.
+              example: '2'
+            status:
+              type: string
+              enum:
+                - canceled
+                - crashed
+                - error
+                - new
+                - running
+                - success
+                - unknown
+                - waiting
+            createdAt:
+              type: string
+              format: date-time
+            startedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: Null until the execution leaves the queue and starts running.
+            stoppedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: When the execution stopped. Null for the `new`, `running` and `unknown` statuses; a `waiting` execution has stopped its current run, so it has a value.
+            deletedAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: Always null. Soft-deleted executions are not returned.
+            workflowId:
+              type: string
+              example: '1000'
+            waitTill:
+              type: string
+              nullable: true
+              format: date-time
+              description: The time at which a waiting execution resumes.
+            storedAt:
+              type: string
+              description: Where the execution data is stored.
+              enum:
+                - db
+                - fs
+                - s3
+                - az
+            tracingContext:
+              type: object
+              nullable: true
+              properties:
+                traceparent:
+                  type: string
+                tracestate:
+                  type: string
+              required:
+                - traceparent
+              description: W3C trace context propagated with the execution.
+            deduplicationKey:
+              type: string
+              nullable: true
+              description: Key used to stop a duplicate execution from being created.
+            jsonSizeBytes:
+              type: number
+              description: Size of the stored execution data in bytes. 0 means unknown.
+              example: 0
+            binaryDataSizeBytes:
+              type: number
+              description: Size of the stored binary data in bytes. 0 means unknown.
+              example: 0
+            workflowVersionId:
+              type: string
+              nullable: true
+              description: ID of the workflow version this execution ran.
+            usedPrivateCredentials:
+              type: boolean
+              description: Whether the execution used credentials that are not shared with the project.
+              example: false
+          required:
+            - id
+            - finished
+            - mode
+            - retryOf
+            - retrySuccessId
+            - status
+            - createdAt
+            - startedAt
+            - stoppedAt
+            - deletedAt
+            - workflowId
+            - waitTill
+            - storedAt
+            - tracingContext
+            - deduplicationKey
+            - jsonSizeBytes
+            - binaryDataSizeBytes
+            - workflowVersionId
+            - usedPrivateCredentials
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

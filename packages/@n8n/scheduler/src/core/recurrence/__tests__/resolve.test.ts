@@ -1,6 +1,8 @@
+import type { ScheduleDefinition } from '@n8n/constants';
+
 import { CorruptStorageRowError } from '../../errors';
 import type { ScheduledJob } from '../../types';
-import { resolveSchedule } from '../resolve';
+import { resolveSchedule, scheduleFromDefinition } from '../resolve';
 
 const DEFAULT_TZ = 'America/New_York';
 
@@ -22,7 +24,7 @@ function makeJob(overrides: Partial<ScheduledJob> = {}): ScheduledJob {
 		maxAttempts: 1,
 		misfirePolicy: 'coalesce',
 		misfireGraceSeconds: 60,
-		ownerKey: null,
+		ownerKey: 'owner-1',
 		...overrides,
 	};
 }
@@ -155,5 +157,50 @@ describe('resolveSchedule', () => {
 	it('throws on a kind outside the enum (a corrupt row)', () => {
 		const corrupt = makeJob({ kind: 'weekly' as ScheduledJob['kind'] });
 		expect(() => resolveSchedule(corrupt, DEFAULT_TZ)).toThrow(CorruptStorageRowError);
+	});
+});
+
+describe('scheduleFromDefinition', () => {
+	it('resolves a cron definition with no timezone to the instance default', () => {
+		const schedule = scheduleFromDefinition(
+			{ kind: 'cron', cronExpression: '0 * * * *', timezone: null },
+			DEFAULT_TZ,
+		);
+
+		expect(schedule).toEqual({
+			kind: 'cron',
+			cronExpression: '0 * * * *',
+			timezone: DEFAULT_TZ,
+		});
+	});
+
+	it('keeps an explicit timezone', () => {
+		const schedule = scheduleFromDefinition(
+			{
+				kind: 'recurring_cron',
+				cronExpression: '0 0 * * *',
+				timezone: 'UTC',
+				recurrenceUnit: 'days',
+				recurrenceSize: 3,
+			},
+			DEFAULT_TZ,
+		);
+
+		expect(schedule).toMatchObject({ timezone: 'UTC' });
+	});
+
+	it('passes an interval definition through', () => {
+		const definition: ScheduleDefinition = { kind: 'interval', intervalSeconds: 30 };
+
+		expect(scheduleFromDefinition(definition, DEFAULT_TZ)).toEqual(definition);
+	});
+
+	it('passes a one_off definition through', () => {
+		const definition: ScheduleDefinition = {
+			kind: 'one_off',
+			fireAt: new Date('2026-06-01T12:00:00.000Z'),
+		};
+
+		expect(scheduleFromDefinition(definition, DEFAULT_TZ)).toEqual(definition);
 	});
 });

@@ -1,7 +1,7 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -26,7 +26,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (additionalFields.pageSize !== undefined) queryParams.page_size = additionalFields.pageSize;
 	if (additionalFields.pageToken) queryParams.page_token = additionalFields.pageToken;
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = await databricksApiRequest(this, credentialType, {
 		method: 'GET',
 		url: directoryPath
 			? `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`

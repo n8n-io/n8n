@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { GenerateAgentToolMockResult } from '@n8n/api-types';
 
-import { generateAgentToolMockData, listAgents, listAgentsPage } from '../composables/useAgentApi';
+import {
+	generateAgentToolMockData,
+	getChatMessages,
+	listAgents,
+	listAgentsPage,
+} from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -100,6 +105,20 @@ describe('useAgentApi', () => {
 				{ toolName: 'send_email', source: 'user' },
 			);
 			expect(response).toBe(result);
+		});
+	});
+
+	describe('getChatMessages', () => {
+		it('percent-encodes the thread id so a rotated session id survives as a URL, not a fragment', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ messages: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'agent-1:chat:bot-1-2#1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
+			);
 		});
 	});
 });

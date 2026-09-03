@@ -12,6 +12,16 @@ describe('Confluence Node', () => {
 		);
 	const operationOptions = (resource: string) => operationProperty(resource)?.options;
 
+	it('offers Cloud OAuth2 (default) and Service Account authentication', () => {
+		const auth = node.description.properties.find((p) => p.name === 'authentication');
+		expect(auth?.type).toBe('options');
+		expect(auth?.default).toBe('cloudOAuth2');
+		expect(auth?.options).toEqual([
+			expect.objectContaining({ value: 'cloudOAuth2' }),
+			expect.objectContaining({ value: 'serviceAccount' }),
+		]);
+	});
+
 	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
 		expect(node.description.properties.length).toBeGreaterThan(0);
@@ -55,6 +65,18 @@ describe('Confluence Node', () => {
 		]);
 	});
 
+	it('carries the top-level Site selector on every resource', () => {
+		for (const resource of ['attachment', 'page', 'search', 'space']) {
+			const site = node.description.properties.find(
+				(p) => p.name === 'site' && p.displayOptions?.show?.resource?.includes(resource),
+			);
+			expect(site?.type).toBe('resourceLocator');
+			expect(site?.required).toBeUndefined();
+			expect(site?.modes?.map((mode) => mode.name)).toEqual(['list', 'url']);
+			expect(site?.modes?.[0].typeOptions?.searchListMethod).toBe('getSites');
+		}
+	});
+
 	it('exposes the getLabels fields on the node description', () => {
 		const forGetLabels = node.description.properties.filter((p) =>
 			p.displayOptions?.show?.operation?.includes('getLabels'),
@@ -78,9 +100,18 @@ describe('Confluence Node', () => {
 		expect(fieldsFor('removeLabel')).toEqual(['space', 'page', 'labelName']);
 	});
 
-	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
+	it('should reference the credentials by name, each gated on its authentication value', () => {
 		expect(node.description.credentials).toEqual([
-			{ name: 'confluenceCloudOAuth2Api', required: true },
+			{
+				name: 'confluenceCloudOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['cloudOAuth2'] } },
+			},
+			{
+				name: 'atlassianServiceAccountApi',
+				required: true,
+				displayOptions: { show: { authentication: ['serviceAccount'] } },
+			},
 		]);
 	});
 

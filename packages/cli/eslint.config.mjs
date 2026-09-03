@@ -13,6 +13,12 @@ const acknowledgedProjectOwnedEntities = [
 const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
 
+const POLICY_INTERNAL_RESTRICTION = {
+	name: '@n8n/decorators/policy-internal',
+	message:
+		'Only PolicyEnforcementService may mint a policy clearance. Call enforce*/evaluate* instead.',
+};
+
 const instanceAiLazyRuntimeImports = [
 	'@joplin/turndown-plugin-gfm',
 	'@mozilla/readability',
@@ -24,6 +30,13 @@ const instanceAiLazyRuntimeImports = [
 	allowTypeImports: true,
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
+
+const engineV2ModuleOnlyImport = {
+	name: '@n8n/engine',
+	allowTypeImports: true,
+	message:
+		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
+};
 
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
@@ -39,6 +52,18 @@ export default defineConfig(
 			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
 			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+			// Seal WorkflowEntity node-writes to the token-gated repository methods.
+			// The allowlist below must shrink to empty; a new unsealed write fails CI.
+			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
+			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
+			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
+			'n8n-local-rules/no-on-leader-takeover': 'error',
+			// The clearance minter lives on the `policy-internal` subpath, off the public barrel.
+			// Only PolicyEnforcementService may reach it; callers use enforce*/evaluate*.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+			],
 			'n8n-local-rules/project-owned-entity-transfer': [
 				'error',
 				{ acknowledged: acknowledgedProjectOwnedEntities },
@@ -119,11 +144,7 @@ export default defineConfig(
 		files: [
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
-			'./src/public-api/v1/handlers/users/users.service.ee.ts',
-			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
@@ -164,14 +185,45 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			// Repeats the policy restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
 		files: ['./src/modules/instance-ai/**/*.ts'],
 		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
 		rules: {
+			// Repeats the engine restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: instanceAiLazyRuntimeImports },
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						...instanceAiLazyRuntimeImports,
+						engineV2ModuleOnlyImport,
+					],
+				},
 			],
 		},
+	},
+	{
+		// Shrink-only ratchet: node-write sites not yet migrated to the sealed repository path.
+		// NEVER add a new write here — it must fail CI. Remove each entry as its site migrates.
+		files: ['./src/modules/source-control.ee/source-control-import.service.ee.ts'],
+		rules: { 'n8n-local-rules/no-unsealed-workflow-entity-write': 'off' },
+	},
+	{
+		// Only the PEP may import the clearance minter.
+		files: ['./src/policy/policy-enforcement.service.ts'],
+		rules: { '@typescript-eslint/no-restricted-imports': 'off' },
 	},
 	{
 		files: ['./src/databases/migrations/**/*.ts'],
@@ -244,8 +296,6 @@ export default defineConfig(
 			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
 			'./src/public-api/v1/handlers/tags/tags.handler.ts',
-			'./src/public-api/v1/handlers/users/users.service.ee.ts',
-			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',
@@ -329,9 +379,51 @@ export default defineConfig(
 		},
 	},
 	{
+		// Sanctioned `@OnLeaderTakeover` users. Permanent, but additions need review:
+		// the system task runner itself, services that hold live resources on the
+		// leader (webhooks, pollers, sockets, queue consumers), and services that
+		// run a documented one-shot catch-up pass on takeover.
+		files: [
+			'./src/scheduling/system-tasks/system-task-runner.ts',
+			'./src/active-workflow-manager.ts',
+			'./src/metrics/prometheus/instance-role-metrics.service.ts',
+			'./src/scaling/scaling.service.ts',
+			'./src/wait-tracker.ts',
+			'./src/workflows/publication/workflow-publication-outbox-consumer.ts',
+			'./src/workflows/publication/workflow-publication-reconciler.service.ts',
+			'./src/modules/agents/agent-task.service.ts',
+			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
+			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
+			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+		],
+		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
+	},
+	{
+		// Shrink-only ratchet: periodic leader timers not yet migrated to system
+		// tasks. NEVER add to this list — new periodic leader work must be a
+		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
+		files: [
+			'./src/license.ts',
+			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
+			'./src/modules/insights/insights.service.ts',
+			'./src/modules/instance-ai/instance-ai.service.ts',
+			'./src/modules/instance-registry/checks/check.service.ts',
+			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
+			'./src/modules/mcp-registry/registry/mcp-registry.service.ts',
+			'./src/modules/token-exchange/services/jti-cleanup.service.ts',
+			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/executions-pruning.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
+			'./src/services/workflow-statistics-rollup.service.ts',
+			'./src/workflows/publication/workflow-publication-outbox-cleanup.service.ts',
+		],
+		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
+	},
+	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
+			'n8n-local-rules/no-on-leader-takeover': 'off',
 		},
 	},
 	{

@@ -1,8 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Cipher } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.service';
@@ -19,22 +21,53 @@ const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 		...overrides,
 	}) as DeploymentKey;
 
+// Builds a service with its own mocks so the memoized legacy-key cache starts
+// cold, independent of the shared DI singleton and test order.
+const makeFreshService = () => {
+	const repo = mock<DeploymentKeyRepository>();
+	const cipherMock = mock<Cipher>();
+	const service = new KeyManagerService(
+		repo,
+		cipherMock,
+		mock<InstanceSettings>({ encryptionKey: 'test_key' }),
+		mock<Logger>(),
+	);
+	return { service, repo, cipherMock };
+};
+
 describe('KeyManagerService', () => {
 	const repository = mockInstance(DeploymentKeyRepository);
 	const cipher = mockInstance(Cipher);
+	const instanceSettings = mockInstance(InstanceSettings, {
+		encryptionKey: 'test-instance-key',
+	});
+	mockInstance(Logger);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	describe('getActiveKey()', () => {
-		it('returns KeyInfo when one active key exists', async () => {
+	describe('getActiveKey() with rotation enabled', () => {
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+		});
+
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		it('returns the active key as a prefixed descriptor', async () => {
 			const key = makeKey();
 			repository.find.mockResolvedValue([key]);
 
 			const result = await Container.get(KeyManagerService).getActiveKey();
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: key.algorithm });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: key.algorithm,
+				format: 'prefixed',
+			});
 		});
 
 		it('throws NotFoundError when no active key exists', async () => {
@@ -52,6 +85,43 @@ describe('KeyManagerService', () => {
 		});
 	});
 
+	describe('getActiveKey() with rotation disabled', () => {
+		beforeEach(() => {
+			// The disabled path must not depend on the ambient environment.
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		// Fresh instances: the legacy descriptor is memoized per service instance.
+		const createService = () =>
+			new KeyManagerService(repository, cipher, instanceSettings, mock<Logger>());
+
+		it('returns the legacy no-prefix descriptor without touching the database', async () => {
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+
+			const result = await createService().getActiveKey();
+
+			expect(result).toEqual({
+				id: 'instance-key',
+				value: 'wrapped-instance-key',
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
+			});
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test-instance-key');
+			expect(repository.find).not.toHaveBeenCalled();
+		});
+
+		it('memoizes the legacy descriptor', async () => {
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+			const service = createService();
+
+			const first = await service.getActiveKey();
+			const second = await service.getActiveKey();
+
+			expect(second).toBe(first);
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getKeyById()', () => {
 		it('returns KeyInfo when key exists', async () => {
 			const key = makeKey();
@@ -59,7 +129,12 @@ describe('KeyManagerService', () => {
 
 			const result = await Container.get(KeyManagerService).getKeyById('key-1');
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: key.algorithm });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: key.algorithm,
+				format: 'prefixed',
+			});
 			expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 'key-1' } });
 		});
 
@@ -73,22 +148,67 @@ describe('KeyManagerService', () => {
 	});
 
 	describe('getLegacyKey()', () => {
-		it('returns KeyInfo for the aes-256-cbc key', async () => {
+		it('returns the stored KeyInfo for the aes-256-cbc key when the store serves it', async () => {
 			const key = makeKey({ algorithm: 'aes-256-cbc' });
 			repository.findOne.mockResolvedValue(key);
 
 			const result = await Container.get(KeyManagerService).getLegacyKey();
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: 'aes-256-cbc' });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
+			});
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
+			expect(cipher.encryptDEKWithInstanceKey).not.toHaveBeenCalled();
 		});
 
-		it('throws NotFoundError when no CBC key exists', async () => {
-			repository.findOne.mockResolvedValue(null);
+		it('falls back to the instance key when the legacy key is not seeded', async () => {
+			const { service, repo, cipherMock } = makeFreshService();
+			repo.findOne.mockResolvedValue(null);
+			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
-			await expect(Container.get(KeyManagerService).getLegacyKey()).rejects.toThrow(NotFoundError);
+			const result = await service.getLegacyKey();
+
+			expect(result.value).toBe('wrapped-instance-key');
+			expect(result.algorithm).toBe('aes-256-cbc');
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test_key');
+		});
+
+		it('falls back to the instance key when the store lookup fails', async () => {
+			const { service, repo, cipherMock } = makeFreshService();
+			repo.findOne.mockRejectedValue(new Error('connection refused'));
+			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+
+			const result = await service.getLegacyKey();
+
+			expect(result.value).toBe('wrapped-instance-key');
+			expect(result.algorithm).toBe('aes-256-cbc');
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test_key');
+		});
+
+		// The seeded legacy key IS the instance key, so the fallback wraps the
+		// instance key exactly as bootstrap would.
+		it('wraps the instance key only once and reuses the result', async () => {
+			const { service, repo, cipherMock } = makeFreshService();
+			repo.findOne.mockResolvedValue(null);
+			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+
+			const first = await service.getLegacyKey();
+			const second = await service.getLegacyKey();
+
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test_key');
+			expect(first).toEqual({
+				id: 'instance-key',
+				value: 'wrapped-instance-key',
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
+			});
+			expect(second).toBe(first);
 		});
 	});
 
@@ -103,26 +223,20 @@ describe('KeyManagerService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.seedLegacyCbcKey).not.toHaveBeenCalled();
 		});
 
-		it('encrypts the instance key and inserts as inactive when no CBC key exists', async () => {
+		it('encrypts the instance key and seeds it when no CBC key exists', async () => {
 			repository.findOne.mockResolvedValue(null);
-			const entity = makeKey({ algorithm: 'aes-256-cbc', status: 'inactive' });
-			repository.create.mockReturnValue(entity);
-			repository.save.mockResolvedValue(entity);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-instance-key');
 
 			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
 
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('instance-key');
-			expect(repository.create).toHaveBeenCalledWith({
-				type: 'data_encryption',
-				value: 'encrypted-instance-key',
-				algorithm: 'aes-256-cbc',
-				status: 'inactive',
-			});
-			expect(repository.save).toHaveBeenCalledWith(entity);
+			// The repository seeds inside a DbLock critical section, which keeps
+			// concurrent startups from creating duplicate rows.
+			expect(repository.seedLegacyCbcKey).toHaveBeenCalledWith('encrypted-instance-key');
+			expect(repository.save).not.toHaveBeenCalled();
 		});
 	});
 

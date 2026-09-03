@@ -5,8 +5,13 @@ FROM node:24.18.1 AS base
 RUN apt-get update && apt-get install -y gnupg2 curl
 
 # Add k6 GPG key and repository
+# The pinned checksum makes an upstream key rotation fail the build instead of being silently trusted
+ARG K6_KEY_SHA256=4c37d3903756418615dd5bb72a7ed49485fde47a9a5239c0bd4726ea15584727
 RUN mkdir -p /etc/apt/keyrings && \
-	curl -sS https://dl.k6.io/key.gpg | gpg --dearmor --yes -o /etc/apt/keyrings/k6.gpg && \
+	curl -sS https://dl.k6.io/key.gpg -o /tmp/k6-key.gpg && \
+	echo "${K6_KEY_SHA256}  /tmp/k6-key.gpg" | sha256sum -c - && \
+	gpg --dearmor --yes -o /etc/apt/keyrings/k6.gpg /tmp/k6-key.gpg && \
+	rm /tmp/k6-key.gpg && \
 	chmod a+x /etc/apt/keyrings/k6.gpg && \
 	echo "deb [signed-by=/etc/apt/keyrings/k6.gpg] https://dl.k6.io/deb stable main" | tee /etc/apt/sources.list.d/k6.list
 
