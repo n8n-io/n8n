@@ -146,6 +146,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -334,6 +335,7 @@ export class InstanceAiAdapterService {
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
 		private readonly collaborationService: CollaborationService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
@@ -675,6 +677,7 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			telemetry,
 			collaborationService,
+			policyEnforcementService,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
@@ -967,23 +970,34 @@ export class InstanceAiAdapterService {
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
-					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
-					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
-					if (options?.markAsAiTemporary) {
-						if (!threadId) {
-							throw new UnexpectedError(
-								'Cannot mark AI-builder temporary workflow without a thread ID',
+				// The shell has no nodes, so the real content check is the `update()` below.
+				// This call is still needed: `createContent` refuses to write without a clearance.
+				const cleared = await policyEnforcementService.enforceWorkflowSave({
+					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+					storedWorkflow: null,
+					projectId,
+				});
+
+				const saved = await workflowRepository.runInTransaction(
+					{ policyCleared: cleared },
+					async (transactionManager, ctx) => {
+						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
+						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+						if (options?.markAsAiTemporary) {
+							if (!threadId) {
+								throw new UnexpectedError(
+									'Cannot mark AI-builder temporary workflow without a thread ID',
+								);
+							}
+							await aiBuilderTemporaryWorkflowRepository.mark(
+								workflow.id,
+								threadId,
+								transactionManager,
 							);
 						}
-						await aiBuilderTemporaryWorkflowRepository.mark(
-							workflow.id,
-							threadId,
-							transactionManager,
-						);
-					}
-					return workflow;
-				});
+						return workflow;
+					},
+				);
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.

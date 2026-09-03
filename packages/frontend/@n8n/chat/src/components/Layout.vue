@@ -30,9 +30,6 @@ onBeforeUnmount(() => {
 		<div v-if="$slots.default" ref="chatBodyRef" class="chat-body">
 			<slot />
 		</div>
-		<div v-if="$slots.statusStrip" class="chat-status-strip">
-			<slot name="statusStrip" />
-		</div>
 		<div v-if="$slots.footer" class="chat-footer">
 			<slot name="footer" />
 		</div>

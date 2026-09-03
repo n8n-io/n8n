@@ -928,6 +928,27 @@ describe('InstanceAiMcpRegistryService', () => {
 				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
 			).rejects.toBeInstanceOf(ConflictError);
 		});
+
+		it('translates unique-index violations reported under the base SQLite code into ConflictError', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			const uniqueErr = new QueryFailedError(
+				'insert',
+				[],
+				new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: connection.serverSlug'),
+			);
+			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
+				code: 'SQLITE_CONSTRAINT',
+			};
+			connectionRepository.save.mockRejectedValue(uniqueErr);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+		});
 	});
 
 	describe('updateConnection', () => {
