@@ -669,6 +669,8 @@ export type {
 	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
+	WorkflowFolderRef,
+	FolderResolutionFailure,
 	WorkflowDetail,
 	NodeUsageResult,
 	WorkflowNode,
