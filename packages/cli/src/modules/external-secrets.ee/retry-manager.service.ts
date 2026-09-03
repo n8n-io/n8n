@@ -4,7 +4,7 @@ import type { LogMetadata } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 
-type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
+export type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
 type LogMethod = (message: string, metadata?: LogMetadata) => void;
 
 interface RetryInfo {

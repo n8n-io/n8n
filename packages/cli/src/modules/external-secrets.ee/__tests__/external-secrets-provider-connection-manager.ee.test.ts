@@ -7,7 +7,7 @@ import { DummyProvider } from '@test/external-secrets/utils';
 import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
 import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 import type { ExternalSecretsProviderRegistry } from '../provider-registry.service';
-import type { ExternalSecretsRetryManager } from '../retry-manager.service';
+import type { ExternalSecretsRetryManager, RetryOperation } from '../retry-manager.service';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { SecretsProvider, SecretsProviderSettings } from '../types';
 
@@ -35,6 +35,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 	let mockSecretsCache: Mocked<ExternalSecretsSecretsCache>;
 	let providersMap: Map<string, SecretsProvider>;
 	let scopedLogger: Mocked<Logger>;
+	let pendingRetries: Map<string, RetryOperation>;
 
 	const providerSettings: SecretsProviderSettings = {
 		connected: true,
@@ -48,6 +49,22 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			providerType,
 			config: providerSettings,
 		});
+
+	// toHaveBeenCalledWith compares structurally, so two providers in the same state deep-equal
+	// each other. These assertions are about identity.
+	const disconnectedProviders = () =>
+		mockProviderLifecycle.disconnect.mock.calls.map(([provider]) => provider);
+
+	const runPendingRetry = async (providerKey = 'my-vault') => {
+		const operation = pendingRetries.get(providerKey);
+		if (!operation) throw new Error(`No pending retry for ${providerKey}`);
+
+		// The real timer callback drops its entry before awaiting the attempt.
+		pendingRetries.delete(providerKey);
+		const result = await operation();
+		if (!result.success) pendingRetries.set(providerKey, operation);
+		return result;
+	};
 
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -70,10 +87,19 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		});
 		mockProviderLifecycle.connect.mockResolvedValue({ success: true });
 
+		// Mirrors the real manager's per-key semantics: one chain per key, cancelled on entry and
+		// re-armed on failure. It deliberately does not route through mockRetryManager.cancelRetry,
+		// so the cancelRetry call records stay clean for the assertions that read them.
+		pendingRetries = new Map();
 		mockRetryManager = mock<ExternalSecretsRetryManager>();
-		mockRetryManager.runWithRetry.mockImplementation(async (_key, operation) => {
-			return await operation();
+		mockRetryManager.runWithRetry.mockImplementation(async (key, operation) => {
+			pendingRetries.delete(key);
+			const result = await operation();
+			if (!result.success) pendingRetries.set(key, operation);
+			return result;
 		});
+		mockRetryManager.cancelRetry.mockImplementation((key) => pendingRetries.delete(key));
+		mockRetryManager.cancelAll.mockImplementation(() => pendingRetries.clear());
 
 		mockSecretsCache = mock<ExternalSecretsSecretsCache>();
 
@@ -324,6 +350,345 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		);
 	});
 
+	it('should keep a connected old provider active while a replacement hydration retries', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		vi.spyOn(replacementProvider, 'update').mockRejectedValue(new Error('Hydration failed'));
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+
+		await upsertProvider();
+
+		await vi.waitFor(() => {
+			expect(replacementProvider.state).toBe('error');
+		});
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(disconnectedProviders()).not.toContain(existingProvider);
+		expect(pendingRetries.has('my-vault')).toBe(true);
+	});
+
+	it('should keep serving the last secrets of an errored provider until its hydration retry succeeds', async () => {
+		const existingProvider = new DummyProvider();
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		replacementProvider.secrets = { test1: 'last-good' };
+		vi.spyOn(replacementProvider, 'update').mockRejectedValueOnce(new Error('Hydration failed'));
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+		mockProviderLifecycle.connect.mockImplementation(async (provider) => {
+			provider.setState('connected');
+			return { success: true };
+		});
+
+		await upsertProvider();
+
+		// No connected predecessor, so the errored candidate takes the slot and keeps serving.
+		await vi.waitFor(() => {
+			expect(providersMap.get('my-vault')).toBe(replacementProvider);
+		});
+		expect(replacementProvider.state).toBe('error');
+		expect(providersMap.get('my-vault')?.getSecret('test1')).toBe('last-good');
+
+		await runPendingRetry();
+
+		expect(providersMap.get('my-vault')).toBe(replacementProvider);
+		expect(replacementProvider.state).toBe('connected');
+		expect(providersMap.get('my-vault')?.getSecret('test1')).toBe('value1');
+		expect(disconnectedProviders()).not.toContain(replacementProvider);
+	});
+
+	it('should keep the pending retry of a newer replacement when an older one connects late', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		const candidateAUpdate = vi.spyOn(candidateA, 'update');
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+
+		const connectionA = createDeferred<{ success: boolean }>();
+		mockProviderLifecycle.connect.mockImplementation(async (provider) =>
+			provider === candidateA
+				? await connectionA.promise
+				: { success: false, error: new Error('Connection failed') },
+		);
+
+		const upsertA = upsertProvider();
+		await flushPromises();
+		await upsertProvider();
+
+		const retryOfB = pendingRetries.get('my-vault');
+		expect(retryOfB).toBeDefined();
+
+		connectionA.resolve({ success: true });
+		await upsertA;
+
+		await vi.waitFor(() => {
+			expect(disconnectedProviders()).toContain(candidateA);
+		});
+		expect(candidateAUpdate).not.toHaveBeenCalled();
+		expect(pendingRetries.get('my-vault')).toBe(retryOfB);
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+	});
+
+	it('should not schedule a retry when a hydration failure lands after supersession', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		vi.spyOn(candidateA, 'update').mockRejectedValue(new Error('Hydration failed'));
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+
+		await upsertProvider();
+		await vi.waitFor(() => {
+			expect(pendingRetries.has('my-vault')).toBe(true);
+		});
+		const retryOfA = pendingRetries.get('my-vault')!;
+
+		const connectionB = createDeferred<{ success: boolean }>();
+		mockProviderLifecycle.connect.mockReturnValue(connectionB.promise);
+		const upsertB = upsertProvider();
+
+		// A late attempt of the superseded candidate must report success, otherwise the retry
+		// manager would arm a timer that nothing owns.
+		await expect(retryOfA()).resolves.toEqual({ success: true });
+
+		connectionB.resolve({ success: true });
+		await upsertB;
+	});
+
+	it.each(['removeProviderConnection', 'disconnectProvider'] as const)(
+		'should disconnect a candidate waiting on a hydration retry when %s runs',
+		async (method) => {
+			const existingProvider = new DummyProvider();
+			existingProvider.setState('connected');
+			providersMap.set('my-vault', existingProvider);
+
+			const replacementProvider = new DummyProvider();
+			vi.spyOn(replacementProvider, 'update').mockRejectedValue(new Error('Hydration failed'));
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: replacementProvider,
+			});
+
+			await upsertProvider();
+			await vi.waitFor(() => {
+				expect(pendingRetries.has('my-vault')).toBe(true);
+			});
+			expect(disconnectedProviders()).not.toContain(replacementProvider);
+
+			await manager[method]('my-vault');
+
+			expect(disconnectedProviders()).toContain(replacementProvider);
+			expect(providersMap.has('my-vault')).toBe(false);
+		},
+	);
+
+	it('should disconnect an outgoing candidate whose pending retry a new replacement supersedes', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		vi.spyOn(candidateA, 'update').mockRejectedValue(new Error('Hydration failed'));
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+
+		await upsertProvider();
+		await vi.waitFor(() => {
+			expect(pendingRetries.has('my-vault')).toBe(true);
+		});
+
+		const connectionB = createDeferred<{ success: boolean }>();
+		mockProviderLifecycle.connect.mockReturnValue(connectionB.promise);
+		const upsertB = upsertProvider();
+
+		expect(disconnectedProviders()).toContain(candidateA);
+		expect(pendingRetries.has('my-vault')).toBe(false);
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+
+		connectionB.resolve({ success: true });
+		await upsertB;
+
+		await vi.waitFor(() => {
+			expect(providersMap.get('my-vault')).toBe(candidateB);
+		});
+	});
+
+	it('should disconnect a candidate waiting on a hydration retry on shutdown', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		vi.spyOn(replacementProvider, 'update').mockRejectedValue(new Error('Hydration failed'));
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+
+		await upsertProvider();
+		await vi.waitFor(() => {
+			expect(pendingRetries.has('my-vault')).toBe(true);
+		});
+		expect(disconnectedProviders()).not.toContain(replacementProvider);
+
+		manager.shutdown();
+
+		expect(disconnectedProviders()).toContain(replacementProvider);
+		expect(pendingRetries.has('my-vault')).toBe(false);
+	});
+
+	it('should keep a connected old provider active when replacement initialization fails', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const failedProvider = new DummyProvider();
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: false,
+			provider: failedProvider,
+			error: new Error('Init failed'),
+		});
+
+		await upsertProvider();
+
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(disconnectedProviders()).not.toContain(existingProvider);
+		expect(disconnectedProviders()).toContain(failedProvider);
+		expect(scopedLogger.error).toHaveBeenCalledWith(
+			'External secrets provider replacement failed; previous provider stays active',
+			expect.objectContaining({
+				providerKey: 'my-vault',
+				phase: 'initialization',
+				error: expect.any(Error),
+			}),
+		);
+		expect(scopedLogger.error).not.toHaveBeenCalledWith(
+			'External secrets provider replacement reached terminal failure',
+			expect.objectContaining({ phase: 'initialization' }),
+		);
+	});
+
+	it('should keep a connected old provider active when a replacement has no provider to fall back on', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: false,
+			error: new Error('Provider class not found: dummy'),
+		});
+
+		await upsertProvider();
+
+		expect(providersMap.get('my-vault')).toBe(existingProvider);
+		expect(mockProviderRegistry.remove).not.toHaveBeenCalledWith('my-vault');
+		expect(disconnectedProviders()).not.toContain(existingProvider);
+	});
+
+	it('should not disconnect a superseded candidate that is still connecting', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+
+		const connectionA = createDeferred<{ success: boolean }>();
+		mockProviderLifecycle.connect.mockImplementation(async (provider) => {
+			provider.setState('connecting');
+			return provider === candidateA ? await connectionA.promise : { success: true };
+		});
+
+		const upsertA = upsertProvider();
+		await flushPromises();
+		expect(candidateA.state).toBe('connecting');
+
+		await upsertProvider();
+
+		// Candidate A owns its connect() call and must settle itself: disconnecting it mid-connect
+		// races the providers that re-create their abort controller inside doConnect().
+		expect(disconnectedProviders()).not.toContain(candidateA);
+
+		connectionA.resolve({ success: true });
+		await upsertA;
+
+		await vi.waitFor(() => {
+			expect(disconnectedProviders()).toContain(candidateA);
+		});
+	});
+
+	it('should disconnect a superseded candidate that connected but has no retry armed yet', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const candidateA = new DummyProvider();
+		const hydration = createDeferred<undefined>();
+		vi.spyOn(candidateA, 'update').mockReturnValue(hydration.promise);
+		const candidateB = new DummyProvider();
+		mockProviderLifecycle.initialize
+			.mockResolvedValueOnce({ success: true, provider: candidateA })
+			.mockResolvedValueOnce({ success: true, provider: candidateB });
+		mockProviderLifecycle.connect.mockImplementation(async (provider) => {
+			provider.setState('connected');
+			return { success: true };
+		});
+
+		await upsertProvider();
+		expect(candidateA.state).toBe('connected');
+		expect(pendingRetries.has('my-vault')).toBe(false);
+
+		await upsertProvider();
+
+		expect(disconnectedProviders()).toContain(candidateA);
+	});
+
+	it('should retire a connected old provider for a replacement that is saved as disconnected', async () => {
+		const existingProvider = new DummyProvider();
+		existingProvider.setState('connected');
+		providersMap.set('my-vault', existingProvider);
+
+		const replacementProvider = new DummyProvider();
+		replacementProvider.setState('initialized');
+		mockProviderLifecycle.initialize.mockResolvedValue({
+			success: true,
+			provider: replacementProvider,
+		});
+
+		await manager.upsertProviderConnection({
+			providerKey: 'my-vault',
+			providerType: 'dummy',
+			config: { ...providerSettings, connected: false },
+		});
+
+		expect(providersMap.get('my-vault')).toBe(replacementProvider);
+		expect(replacementProvider.state).toBe('initialized');
+		expect(disconnectedProviders()).toContain(existingProvider);
+		expect(mockRetryManager.runWithRetry).not.toHaveBeenCalled();
+	});
+
 	it('should activate a retried replacement over a preserved connected old provider', async () => {
 		const existingProvider = new DummyProvider();
 		existingProvider.setState('connected');
@@ -337,11 +702,6 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			provider: replacementProvider,
 		});
 
-		let retryOperation!: () => Promise<{ success: boolean; error?: Error }>;
-		mockRetryManager.runWithRetry.mockImplementation(async (_key, operation) => {
-			retryOperation = operation;
-			return await operation();
-		});
 		mockProviderLifecycle.connect.mockResolvedValueOnce({
 			success: false,
 			error: new Error('Connection failed'),
@@ -354,7 +714,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			provider.setState('connected');
 			return { success: true };
 		});
-		await retryOperation();
+		await runPendingRetry();
 
 		// The old provider keeps serving secrets while the retried candidate hydrates.
 		expect(providersMap.get('my-vault')).toBe(existingProvider);
@@ -379,11 +739,6 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			provider: replacementProvider,
 		});
 
-		let retryOperation!: () => Promise<{ success: boolean; error?: Error }>;
-		mockRetryManager.runWithRetry.mockImplementation(async (_key, operation) => {
-			retryOperation = operation;
-			return await operation();
-		});
 		mockProviderLifecycle.connect.mockResolvedValueOnce({
 			success: false,
 			error: new Error('Connection failed'),
@@ -396,7 +751,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 			provider.setState('connected');
 			return { success: true };
 		});
-		await retryOperation();
+		await runPendingRetry();
 
 		expect(replacementProvider.state).toBe('connected');
 		expect(providersMap.has('my-vault')).toBe(false);
@@ -408,7 +763,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		});
 	});
 
-	it('should publish a hydration failure and retire the old provider', async () => {
+	it('should publish a hydration failure and retire an unconnected old provider', async () => {
 		const existingProvider = new DummyProvider();
 		providersMap.set('my-vault', existingProvider);
 
@@ -427,12 +782,16 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		expect(replacementProvider.state).toBe('error');
 		expect(mockProviderLifecycle.disconnect).toHaveBeenCalledWith(existingProvider);
 		expect(scopedLogger.error).toHaveBeenCalledWith(
-			'External secrets provider replacement reached terminal failure',
+			'External secrets provider replacement hydration attempt failed',
 			expect.objectContaining({
 				providerKey: 'my-vault',
 				phase: 'hydration',
 				error: expect.any(Error),
 			}),
+		);
+		expect(scopedLogger.error).not.toHaveBeenCalledWith(
+			'External secrets provider replacement reached terminal failure',
+			expect.objectContaining({ phase: 'hydration' }),
 		);
 	});
 
@@ -469,10 +828,10 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		});
 		expect(providersMap.get('my-vault')).toBe(candidateB);
 		expect(scopedLogger.debug).toHaveBeenCalledWith(
-			'External secrets provider superseded replacement discarded',
+			'External secrets provider replacement candidate discarded',
 			expect.objectContaining({
 				providerKey: 'my-vault',
-				phase: 'hydration',
+				reason: 'hydration',
 				disposed: true,
 			}),
 		);
