@@ -12,6 +12,11 @@ export interface DatabricksOAuth2Credential {
 	authentication?: 'header' | 'body';
 }
 
+// Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec).
+// Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
+// OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
+export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksChatModel/1.0';
+
 /**
  * Mints Databricks service-principal tokens on demand. Concurrent callers
  * share one in-flight mint, and tokens re-mint 60s before expiry so requests
@@ -44,6 +49,7 @@ export function getDatabricksTokenProvider(
 				scopes: credential.scope?.split(' '),
 				authentication: credential.authentication,
 				ssrfBridge: egressFilter,
+				headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
 			});
 			const token = await oAuthClient.credentials.getToken();
 			const expiresIn = Number(token.data.expires_in);
@@ -75,11 +81,6 @@ export function getDatabricksTokenProvider(
 		return await cached;
 	};
 }
-
-// Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec).
-// Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
-// OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
-export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksChatModel/1.0';
 
 /**
  * Wraps fetch to inject a fresh bearer token per request. Never reads or

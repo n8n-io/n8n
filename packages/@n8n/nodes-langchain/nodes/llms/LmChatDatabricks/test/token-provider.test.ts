@@ -84,6 +84,7 @@ describe('getDatabricksTokenProvider', () => {
 			accessTokenUri: 'https://my.databricks.com/oidc/v1/token',
 			scopes: ['all-apis'],
 			authentication: 'header',
+			headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
 		});
 	});
 
