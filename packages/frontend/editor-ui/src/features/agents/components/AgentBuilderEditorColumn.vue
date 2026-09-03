@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nCard, N8nTabs, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -53,6 +53,7 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	templateApplied?: boolean;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -102,7 +103,16 @@ const i18n = useI18n();
 					:class="$style.identityHeader"
 					@update:config="emit('update:config', $event)"
 				/>
+				<div
+					v-if="templateApplied"
+					:class="$style.templateAppliedChip"
+					data-testid="agent-template-applied-chip"
+				>
+					<N8nIcon icon="sparkles" size="small" />
+					{{ i18n.baseText('agents.builder.templates.appliedChip') }}
+				</div>
 			</div>
+
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
 					<N8nTabs
@@ -336,6 +346,8 @@ const i18n = useI18n();
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
+	align-items: center;
+	flex-direction: row;
 }
 
 .identityHeader {
@@ -344,6 +356,23 @@ const i18n = useI18n();
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.templateAppliedChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: var(--agent-builder-content-max-width);
+	margin: calc(var(--spacing--lg) * -1) auto 0;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: 1px solid color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+	border-radius: var(--radius--full);
+	background: color-mix(in srgb, var(--background--brand) 10%, var(--background--surface));
+	color: color-mix(in srgb, var(--background--brand) 70%, var(--text-color));
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	height: 25px;
+	position: static;
 }
 
 .tabsRow {

@@ -86,6 +86,9 @@ import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPane
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import AgentTemplateSuggestions from '@/features/agents/components/AgentTemplateSuggestions.vue';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
+import type { AgentTemplate } from '@/features/agents/agentTemplates';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
@@ -321,6 +324,56 @@ watch(
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
+
+// Template suggestions appear above the chat on a fresh, pending agent with
+// no visible messages. They disappear once the user picks one.
+const showAgentTemplateSuggestions = computed(
+	() =>
+		displayedMessages.length === 0 &&
+		preview.activeAgentPending.value &&
+		preview.activeAgentId.value !== null,
+);
+const agentTemplateSuggestionsDismissed = ref(false);
+const canShowAgentTemplateSuggestions = computed(
+	() => showAgentTemplateSuggestions.value && !agentTemplateSuggestionsDismissed.value,
+);
+
+function handleAgentTemplateSelect(template: AgentTemplate) {
+	const agentId = preview.activeAgentId.value;
+	if (!agentId) return;
+	agentTemplateSuggestionsDismissed.value = true;
+	telemetry.track('User clicked agent template', {
+		template_id: template.id,
+		agent_id: agentId,
+	});
+	agentsEventBus.emit('applyTemplate', {
+		agentId,
+		config: template.config,
+		connectedTriggers: template.connectedTriggers,
+	});
+}
+
+// Reset the dismissed flag when the conditions for showing suggestions no
+// longer hold, so a subsequent fresh agent shows them again.
+watch(
+	() => showAgentTemplateSuggestions.value,
+	(show) => {
+		if (!show) agentTemplateSuggestionsDismissed.value = false;
+	},
+);
+
+// Track once when the template suggestions first become visible.
+watch(
+	() => canShowAgentTemplateSuggestions.value,
+	(visible) => {
+		if (visible) {
+			telemetry.track('User viewed agent templates', {
+				agent_id: preview.activeAgentId.value,
+			});
+		}
+	},
+);
+
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
@@ -1178,6 +1231,10 @@ async function dismissComposerContextChip() {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
+					<AgentTemplateSuggestions
+						v-if="canShowAgentTemplateSuggestions"
+						@select="handleAgentTemplateSelect"
+					/>
 					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 						<div ref="scrollable" :class="$style.scrollContent">
 							<div :class="$style.messageList">

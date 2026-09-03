@@ -73,7 +73,11 @@ import {
 	NEW_SESSION_PARAM,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import {
+	agentsEventBus,
+	type AgentUpdatedEvent,
+	type AgentTemplateAppliedEvent,
+} from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
@@ -273,6 +277,8 @@ let latestSessionsFetchRequestId = 0;
  * persisted. Cleared by `ensureAgentPersisted`.
  */
 const isUnsaved = ref(false);
+/** True when a starter template was applied and the user has not yet edited anything. */
+const templateApplied = ref(false);
 /** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
 const pendingExternalRefresh = ref(false);
 const agentName = ref('');
@@ -1049,6 +1055,8 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
+	// The user has started customizing — clear the "template applied" chip.
+	templateApplied.value = false;
 	Object.assign(localConfig.value, updates);
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
@@ -1177,6 +1185,27 @@ async function replayPendingExternalRefresh() {
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
+
+// Apply a starter template to this agent. Merges the template config into the
+// local config and pre-connects any channel triggers — the user sees a
+// working example immediately. The `templateApplied` flag drives a chip in
+// the editor column that disappears on the first manual edit.
+function onApplyTemplate(event: AgentTemplateAppliedEvent) {
+	if (event.agentId !== agentId.value) return;
+	const current = localConfig.value;
+	if (!current) return;
+
+	const nextConfig = { ...current, ...event.config };
+	replaceConfigAndScheduleSave(nextConfig);
+
+	if (event.connectedTriggers) {
+		connectedTriggers.value = [...event.connectedTriggers];
+	}
+
+	templateApplied.value = true;
+}
+
+agentsEventBus.on('applyTemplate', onApplyTemplate);
 
 // Serves a request from outside the builder to focus the eval surface (the
 // assistant's post-setup suggestion). `immediate` so a request raised before
@@ -1606,6 +1635,7 @@ onBeforeUnmount(() => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	agentsEventBus.off('applyTemplate', onApplyTemplate);
 	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});
@@ -1922,6 +1952,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"
+					:template-applied="templateApplied"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
