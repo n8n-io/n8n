@@ -24,6 +24,8 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		/** Backend-computed readiness; the preview can't run until the agent is runnable. */
 		agentRunnable?: boolean;
+		/** Whether the preview dock is currently showing, so the button can toggle it. */
+		isPreviewOpen?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 	}>(),
 	{
@@ -33,6 +35,7 @@ const props = withDefaults(
 		validationIssues: () => [],
 		simpleChannelSetup: false,
 		agentRunnable: false,
+		isPreviewOpen: false,
 		ensureAgentPersisted: undefined,
 	},
 );
@@ -42,6 +45,7 @@ const emit = defineEmits<{
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'agent-changed': [];
 	'open-preview': [];
+	'close-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -156,14 +160,19 @@ onBeforeUnmount(() => {
 });
 
 // Mirrors the header's preview toggle: the draft chat only runs once the
-// backend reports the agent as runnable.
-const isPreviewDisabled = computed(() => !props.agentRunnable);
+// backend reports the agent as runnable, but an open preview can always be
+// closed again.
+const isPreviewDisabled = computed(() => !props.isPreviewOpen && !props.agentRunnable);
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip'),
 );
 
-function openPreview() {
-	emit('open-preview');
+function onPreviewClick() {
+	if (props.isPreviewOpen) {
+		emit('close-preview');
+		return;
+	}
+	if (!isPreviewDisabled.value) emit('open-preview');
 }
 
 function openChannelModal() {
@@ -218,28 +227,29 @@ const remainingChannelOptionLabels = computed(() => {
 		<N8nText size="small" :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.triggers.title') }}
 		</N8nText>
-		<N8nButton
-			variant="subtle"
-			size="medium"
-			:class="$style.previewButton"
-			:disabled="props.disabled || isPreviewDisabled"
-			data-testid="agent-channels-preview-tile"
-			@click="openPreview"
+		<AgentValidationTooltip
+			:disabled="!isPreviewDisabled"
+			:fallback="previewDisabledTooltip"
+			action="preview"
+			:issues="props.validationIssues"
 		>
-			<template #icon>
-				<N8nIcon icon="play" size="small" />
-			</template>
-			<div :class="$style.previewButtonText">
-				<AgentValidationTooltip
-					:disabled="!isPreviewDisabled"
-					:fallback="previewDisabledTooltip"
-					action="preview"
-					:issues="props.validationIssues"
-				>
+			<N8nButton
+				variant="subtle"
+				size="medium"
+				:class="$style.previewButton"
+				:disabled="props.disabled || isPreviewDisabled"
+				:aria-expanded="props.isPreviewOpen"
+				data-testid="agent-channels-preview-tile"
+				@click="onPreviewClick"
+			>
+				<template #icon>
+					<N8nIcon icon="play" size="small" />
+				</template>
+				<div :class="$style.previewButtonText">
 					<N8nText step="sm" bold>{{ i18n.baseText('agents.channels.preview.title') }}</N8nText>
-				</AgentValidationTooltip>
-			</div>
-		</N8nButton>
+				</div>
+			</N8nButton>
+		</AgentValidationTooltip>
 
 		<div :class="$style.innerRow" :inert="props.disabled || undefined">
 			<button

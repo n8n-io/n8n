@@ -51,6 +51,7 @@ const props = defineProps<{
 	artifactMode?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
+	isPreviewOpen?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
@@ -84,6 +85,7 @@ const emit = defineEmits<{
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [];
+	'close-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -128,11 +130,13 @@ const i18n = useI18n();
 						:simple-channel-setup="artifactMode"
 						:agent-unsaved="agentUnsaved"
 						:agent-runnable="agent?.isRunnable === true"
+						:is-preview-open="isPreviewOpen"
 						:ensure-agent-persisted="ensureAgentPersisted"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
 						@open-preview="emit('open-preview')"
+						@close-preview="emit('close-preview')"
 					/>
 
 					<AgentCapabilitiesSection
