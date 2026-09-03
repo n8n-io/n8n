@@ -2441,6 +2441,7 @@ export class InstanceAiService {
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
+		const folderExplorationEnabled = await this.adapterService.isFolderExplorationEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2453,6 +2454,7 @@ export class InstanceAiService {
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			conversationHistory,
+			folderExplorationEnabled,
 			modelId,
 		});
 

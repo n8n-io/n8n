@@ -881,6 +881,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
 				resolveExperimentGates: Mock;
+				isFolderExplorationEnabled: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -933,6 +934,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 			}),
+			isFolderExplorationEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
@@ -1121,6 +1123,165 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+	});
+
+	it('resolves the folder-exploration gate once and passes it into the context', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<{
+				orchestrationContext: {
+					outputRedaction?: unknown;
+					workspace?: unknown;
+					runtimeSkills?: {
+						registry: { skillsHash: string; skills: Array<{ id: string }> };
+						loadSkill: (skillId: string) => Promise<unknown>;
+					};
+					claimSubAgentUsage?: (
+						dedupeId: string,
+						usage: BuilderUsageItem[],
+						status: TraceStatus,
+					) => Promise<void>;
+				};
+			}>;
+			settingsService: {
+				getAdminSettings: Mock;
+				getSandboxStatus: Mock;
+				isLocalGatewayDisabledForUser: Mock;
+				getPermissions: Mock;
+			};
+			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
+			aiService: { isProxyEnabled: Mock };
+			adapterService: {
+				createContext: Mock;
+				getNodeDefinitionDirs: Mock;
+				isConfigEvalsEnabled: Mock;
+				isMcpConnectionsEnabled: Mock;
+				isFolderExplorationEnabled: Mock;
+			};
+			instanceWriteAccess: { isReadOnly: Mock };
+			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			ensureThreadExists: Mock;
+			agentMemory: unknown;
+			dbIterationLogStorage: unknown;
+			dbSnapshotStorage: unknown;
+			checkpointStore: unknown;
+			instanceAiConfig: Record<string, never>;
+			defaultTimeZone: string;
+			eventBus: unknown;
+			logger: { warn: Mock };
+			telemetry: { track: Mock };
+			oauth2CallbackUrl: string;
+			webhookBaseUrl: string;
+			formBaseUrl: string;
+			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
+			spawnBackgroundTask: Mock;
+			cancelBackgroundTask: Mock;
+			backgroundTasks: { touchTask: Mock };
+			schedulePlannedTasks: Mock;
+			sendCorrectionToTask: Mock;
+			sandboxService: InstanceAiSandboxService;
+			browserSessionService: { findMcpServer: Mock };
+			domainAccessTrackersByThread: Map<string, unknown>;
+			threadGrantRepo: { findKeys: Mock };
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		};
+		service.settingsService = {
+			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: vi.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
+			isLocalGatewayDisabledForUser: vi.fn(async () => false),
+			getPermissions: vi.fn(() => ({})),
+		};
+		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
+		service.aiService = { isProxyEnabled: vi.fn(() => false) };
+		service.adapterService = {
+			createContext: vi.fn(() => ({})),
+			getNodeDefinitionDirs: vi.fn(() => []),
+			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
+			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
+			isFolderExplorationEnabled: vi.fn().mockResolvedValue(true),
+		};
+		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
+		service.modelService = {
+			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
+			resolveProxyModel: vi.fn(async () => 'model-1'),
+		};
+		service.ensureThreadExists = vi.fn(async () => {});
+		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.dbIterationLogStorage = {};
+		service.dbSnapshotStorage = {};
+		service.checkpointStore = {};
+		service.instanceAiConfig = {};
+		service.defaultTimeZone = 'UTC';
+		service.eventBus = {};
+		service.logger = { warn: vi.fn() };
+		service.telemetry = { track: vi.fn() };
+		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
+		service.webhookBaseUrl = 'http://localhost/webhook';
+		service.formBaseUrl = 'http://localhost/form';
+		service.runState = {
+			touchActiveRun: vi.fn(),
+			registerPendingConfirmation: vi.fn(),
+		};
+		service.spawnBackgroundTask = vi.fn();
+		service.cancelBackgroundTask = vi.fn();
+		service.backgroundTasks = { touchTask: vi.fn() };
+		service.schedulePlannedTasks = vi.fn();
+		service.sendCorrectionToTask = vi.fn();
+		service.domainAccessTrackersByThread = new Map();
+		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
+		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
+		service.sandboxService = new InstanceAiSandboxService({
+			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
+			logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+			errorReporter: { error: vi.fn() } as unknown as ErrorReporter,
+			runState: {
+				getActiveRunId: vi.fn(() => undefined),
+				hasSuspendedRun: vi.fn(() => false),
+			},
+			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
+			settingsService: {
+				resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
+				resolveN8nSandboxConfig: vi.fn(async () => ({})),
+			},
+			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+		});
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.creditService = {
+			claimRunUsage: vi.fn(),
+			ensureQuotaLockApplied: vi.fn(async () => {}),
+		};
+		(createAllTools as Mock).mockReturnValue(new Map());
+		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+		(createWorkspace as Mock).mockReturnValue({
+			init: vi.fn(async () => {}),
+			destroy: vi.fn(async () => {}),
+		});
+		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+		await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+		expect(service.adapterService.isFolderExplorationEnabled).toHaveBeenCalledTimes(1);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
 	});
 });
 
