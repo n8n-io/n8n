@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { EventService } from '@/events/event.service';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
+import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -22,6 +23,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const executionService = mock<ExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionCrashService = mock<ExecutionCrashService>();
 	const ownershipService = mock<OwnershipService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const eventService = mock<EventService>();
@@ -33,6 +35,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			mock<ExecutionsConfig>({ mode }),
 			executionService,
 			executionRepository,
+			executionCrashService,
 			ownershipService,
 			workflowRunner,
 			eventService,
@@ -106,7 +109,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,
@@ -120,7 +123,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
@@ -129,6 +132,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 	});
 

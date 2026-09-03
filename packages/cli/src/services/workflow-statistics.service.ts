@@ -60,8 +60,13 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
+type CompletedRunOutcome = {
+	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
+};
+
 function getStatisticsNameForCompletedRun(
-	runData: IRun,
+	runData: CompletedRunOutcome,
 	source?: WorkflowExecutionSource,
 ): StatisticsNames | null {
 	const isChatExecution = runData.mode === 'chat';
@@ -84,7 +89,7 @@ function getStatisticsNameForCompletedRun(
 		: StatisticsNames.productionError;
 }
 
-function isRootExecutionForRun(runData: IRun): boolean {
+function isRootExecutionForRun(runData: CompletedRunOutcome): boolean {
 	return isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 }
 
@@ -95,6 +100,7 @@ type WorkflowStatisticsEvents = {
 		fullRunData: IRun;
 		source?: WorkflowExecutionSource;
 	};
+	executionCrashed: { workflowId: string; mode: WorkflowExecuteMode };
 };
 
 @Service()
@@ -121,6 +127,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			async ({ workflowData, fullRunData, source }) =>
 				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
+		this.on(
+			'executionCrashed',
+			async ({ workflowId, mode }) =>
+				await this.recordExecutionOutcome({ workflowId, mode, status: 'crashed' }),
+		);
 	}
 
 	async workflowExecutionCompleted(
@@ -138,6 +149,47 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
+		await this.recordCompletedRun({
+			statisticsName,
+			workflowId,
+			workflowName: workflowData.name,
+			isRoot,
+			firstEventMs: runData.startedAt.getTime(),
+		});
+	}
+
+	async recordExecutionOutcome({
+		workflowId,
+		mode,
+		status,
+	}: { workflowId: string } & CompletedRunOutcome): Promise<void> {
+		const outcome = { mode, status };
+		const statisticsName = getStatisticsNameForCompletedRun(outcome);
+
+		if (!statisticsName) return;
+
+		await this.recordCompletedRun({
+			statisticsName,
+			workflowId,
+			workflowName: await this.workflowRepository.findNameById(workflowId),
+			isRoot: isRootExecutionForRun(outcome),
+			firstEventMs: Date.now(),
+		});
+	}
+
+	private async recordCompletedRun({
+		statisticsName,
+		workflowId,
+		workflowName,
+		isRoot,
+		firstEventMs,
+	}: {
+		statisticsName: StatisticsNames;
+		workflowId: string;
+		workflowName?: string;
+		isRoot: boolean;
+		firstEventMs: number;
+	}): Promise<void> {
 		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
 
 		try {
@@ -146,12 +198,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			 * whereas in SQLite we upsert directly.
 			 */
 			if (this.databaseConfig.type === 'postgresdb') {
-				await this.repository.appendIncrement(
-					statisticsName,
-					workflowId,
-					isRoot,
-					workflowData.name,
-				);
+				await this.repository.appendIncrement(statisticsName, workflowId, isRoot, workflowName);
 				return;
 			}
 
@@ -159,7 +206,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				statisticsName,
 				workflowId,
 				isRoot,
-				workflowData.name,
+				workflowName,
 			);
 		} catch (error) {
 			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
@@ -172,8 +219,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			await this.emitFirstOccurrenceEvent(
 				statisticsName,
 				workflowId,
-				workflowData.name ?? null,
-				runData.startedAt.getTime(),
+				workflowName ?? null,
+				firstEventMs,
 			);
 		} catch (error) {
 			this.logger.debug('Failed to emit workflow statistics milestone', {

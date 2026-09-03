@@ -14,6 +14,7 @@ import assert, { strict } from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
@@ -636,7 +637,7 @@ export class ScalingService {
 			return waitMs;
 		}
 
-		await this.executionRepository.markAsCrashed(danglingIds);
+		await Container.get(ExecutionCrashService).markAsCrashed(danglingIds);
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,
