@@ -1,3 +1,4 @@
+import type { JsonValue } from '../common';
 import type { ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
@@ -40,6 +41,13 @@ export interface StepExecutionRequest {
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
 	context: StepExecutionContext;
+	/**
+	 * Present when this run resumes a wait on request: the executor runs the
+	 * node's resume path with this payload instead of its execute path. A
+	 * deadline resume never arrives here - the engine emits the declaration's
+	 * captured outputs itself.
+	 */
+	resumeRequest?: { payload: JsonValue };
 }
 
 /**

@@ -90,6 +90,13 @@ export type WaitDeclaration =
 	  };
 
 /**
+ * What ended a step's wait, recorded on the row when it resumed. The engine
+ * emits a deadline's captured outputs itself; only a request reaches an
+ * executor, which runs the node's resume path with the payload.
+ */
+export type StepResume = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
+
+/**
  * A wait with neither condition would never end, stranding the execution. The
  * union above rules that out, so this only ever catches an executor that built
  * a declaration outside the type system - as `assertCreatableRecord` does for

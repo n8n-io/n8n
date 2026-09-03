@@ -3,7 +3,12 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { StepSlots, StepStatus } from '../../execution/execution.types';
+import type {
+	StepResume,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from '../../execution/execution.types';
 import { StepNotFoundError, type NewStepRecord } from '../../execution/step-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
@@ -69,6 +74,8 @@ describe('workflow_step_execution table (integration)', () => {
 		iteration?: number;
 		status: StepStatus;
 		outputs?: StepSlots;
+		wait?: WaitDeclaration;
+		resume?: StepResume;
 	}): Promise<{ id: string }> {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const row = await repo.save(repo.create(record));
@@ -437,6 +444,73 @@ describe('workflow_step_execution table (integration)', () => {
 
 		// expected but pending: the execution stays open until the wait resolves
 		expect(await store.countSettledSteps(executionId)).toBe(0);
+	});
+
+	it('TypeOrmStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const wait: WaitDeclaration = { acceptsResumeRequest: true };
+		const { id } = await seedStep({ executionId, nodeId: 'a', status: 'waiting', wait });
+		const resume: StepResume = { kind: 'request', payload: { body: { approved: true } } };
+
+		expect(await store.resumeStep(id, resume)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.resume).toEqual(resume);
+		// the declaration stays: a deadline resume reads its captured outputs
+		// after the claim, and the row is the only place it lives
+		expect(found.wait).toEqual(wait);
+	});
+
+	it('TypeOrmStepStore.resumeStep only resumes a waiting step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const resume: StepResume = { kind: 'deadline' };
+
+		for (const status of ['queued', 'running', 'completed', 'cancelled'] as const) {
+			const { id } = await seedStep({ executionId, nodeId: `n-${status}`, status });
+
+			expect(await store.resumeStep(id, resume)).toBe(false);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(status);
+			expect(found.resume).toBeNull();
+		}
+	});
+
+	it('TypeOrmStepStore.claimStep hands back the declaration and the resume of a resumed step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const wait: WaitDeclaration = {
+			resumeAt: '2026-09-02T12:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const { id } = await seedStep({ executionId, nodeId: 'a', status: 'waiting', wait });
+		await store.resumeStep(id, { kind: 'deadline' });
+
+		// the claim carries both, so dispatching a resumed step costs no extra read
+		expect(await store.claimStep(id)).toMatchObject({
+			id,
+			status: 'running',
+			wait,
+			resume: { kind: 'deadline' },
+		});
+	});
+
+	it('TypeOrmStepStore.claimStep reports no wait and no resume on a first dispatch', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const [step] = await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'queued' },
+		]);
+
+		expect(await store.claimStep(step.id)).toMatchObject({ wait: null, resume: null });
 	});
 
 	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {

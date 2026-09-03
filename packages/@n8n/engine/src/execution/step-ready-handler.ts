@@ -76,11 +76,18 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// NOTE: an unexpected error in gathering inputs will leave the step
-		// running. In the future, this will be handled by either:
+		// A deadline resume emits what the declaration captured, so the node does
+		// not run again and has no inputs to gather. Every other dispatch does,
+		// and the gather stays outside the `try` below on purpose: the errors it
+		// raises are the engine's own bookkeeping, not the node's, so they leave
+		// the step running rather than recording it failed. In the future that is
+		// handled by either:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const inputs = await this.gatherInputs(execution, step);
+		const dispatch: { kind: 'deadline' } | { kind: 'run'; inputs: StepSlots } =
+			step.resume?.kind === 'deadline'
+				? { kind: 'deadline' }
+				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
@@ -89,9 +96,16 @@ export class StepReadyHandler {
 			| { kind: 'wait'; wait: WaitDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
-			const result: StepExecutionResult = executor
-				? await this.runStep(step, execution, node, inputs, executor)
-				: { outputs: await this.runBatchNode(step, execution, node) };
+			let result: StepExecutionResult;
+			if (dispatch.kind === 'deadline') {
+				// The declaration already holds what this step emits, so the node does
+				// not run again and no executor is involved.
+				result = { outputs: capturedDeadlineOutputs(step) };
+			} else if (executor) {
+				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
+			} else {
+				result = { outputs: await this.runBatchNode(step, execution, node) };
+			}
 			run = result.wait
 				? { kind: 'wait', wait: result.wait }
 				: { kind: 'outputs', outputs: result.outputs };
@@ -153,6 +167,9 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				iteration: step.iteration,
 			},
+			...(step.resume?.kind === 'request'
+				? { resumeRequest: { payload: step.resume.payload } }
+				: {}),
 		});
 
 		if (result.wait && !hasResumeCondition(result.wait)) {
@@ -353,4 +370,20 @@ function toStepError(error: unknown): StepError {
 		return { name: error.name, message: error.message, stack: error.stack };
 	}
 	return { name: 'Error', message: String(error) };
+}
+
+/**
+ * The outputs a deadline resume emits, taken from the declaration on the row.
+ * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
+ * the row disagrees with the contract - and a row is a write from outside the
+ * type system.
+ */
+function capturedDeadlineOutputs(step: StepRecord): StepSlots {
+	const outputs = step.wait?.outputsAtDeadline;
+	if (!outputs) {
+		throw new UnexpectedError(
+			`step ${step.id} resumes at its deadline but its declaration captured no outputs`,
+		);
+	}
+	return outputs;
 }
