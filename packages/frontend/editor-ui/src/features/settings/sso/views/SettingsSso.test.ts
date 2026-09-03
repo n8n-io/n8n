@@ -729,6 +729,17 @@ describe('SettingsSso View', () => {
 		});
 	});
 
+	describe('Redirect login to SSO toggle', () => {
+		it('renders the redirect toggle within the SSO settings form', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByTestId } = renderView();
+
+			expect(await waitFor(() => getByTestId('sso-redirect-login-switch'))).toBeInTheDocument();
+		});
+	});
+
 	describe('Protocol Selection Persistence', () => {
 		it('should not persist protocol selection to store until save is clicked', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;

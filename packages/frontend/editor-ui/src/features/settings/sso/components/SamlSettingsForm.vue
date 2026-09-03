@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
+import SsoRedirectLoginToggle from './SsoRedirectLoginToggle.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const i18n = useI18n();
@@ -489,6 +490,8 @@ onMounted(async () => {
 				</div>
 			</div>
 		</div>
+
+		<SsoRedirectLoginToggle />
 
 		<div :class="$style.buttons">
 			<N8nButton

@@ -53,7 +53,31 @@ const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0
 	notificationsStore.setNotificationsSuppressed(true);
 };
 
-onMounted(() => {
+// The internal-auth fallback: `?internalAuth=true` skips the SSO redirect and
+// shows the email/password form (e.g. for an admin to recover if SSO is down).
+const isInternalAuthRequested = computed(() => route.query.internalAuth === 'true');
+const redirectingToSso = ref(false);
+
+onMounted(async () => {
+	// When SSO is the active method, funnel users straight to the provider unless
+	// they explicitly requested the internal-auth fallback or an admin disabled it.
+	if (
+		ssoStore.showSsoLoginButton &&
+		ssoStore.redirectLoginToSso &&
+		!isInternalAuthRequested.value
+	) {
+		redirectingToSso.value = true;
+		try {
+			window.location.href = await ssoStore.resolveActiveSsoRedirectUrl(
+				getRedirectQueryParameter(),
+			);
+			return;
+		} catch {
+			// If we cannot build the SSO URL, fall back to showing the login form.
+			redirectingToSso.value = false;
+		}
+	}
+
 	// An SSO login denied by role mapping ("Block access"): the user authenticated
 	// fine at the IdP, they are simply not allowed in, so say exactly that.
 	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_ACCESS_DENIED) {
@@ -243,7 +267,7 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 <template>
 	<div>
 		<AuthView
-			v-if="!showMfaView"
+			v-if="!showMfaView && !redirectingToSso"
 			:form="formConfig"
 			:form-loading="loading"
 			:with-sso="true"

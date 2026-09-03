@@ -21,6 +21,15 @@ export const getSamlMetadata = async (context: IRestApiContext): Promise<SamlPre
 	return await makeRestApiRequest(context, 'GET', '/sso/saml/metadata');
 };
 
+export const setSsoLoginRedirect = async (
+	context: IRestApiContext,
+	redirectLoginToSso: boolean,
+): Promise<void> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/settings/login-redirect', {
+		redirectLoginToSso,
+	});
+};
+
 export const getSamlConfig = async (
 	context: IRestApiContext,
 ): Promise<SamlPreferences & SamlPreferencesExtractedData> => {

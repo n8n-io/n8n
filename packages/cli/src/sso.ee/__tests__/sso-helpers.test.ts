@@ -1,10 +1,16 @@
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 
-import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers';
+import {
+	isSsoCurrentAuthenticationMethod,
+	reloadAuthenticationMethod,
+	reloadRedirectLoginToSso,
+	setRedirectUsersFromLoginToSsoFlow,
+} from '../sso-helpers';
 
 vi.mock('@/config');
 
@@ -90,6 +96,46 @@ describe('sso-helpers', () => {
 			await expect(reloadAuthenticationMethod()).rejects.toThrow('Database connection failed');
 
 			expect(mockConfig.set).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('redirectLoginToSso setting', () => {
+		let globalConfig: GlobalConfig;
+
+		beforeEach(() => {
+			globalConfig = { sso: { redirectLoginToSso: true } } as GlobalConfig;
+			Container.set(GlobalConfig, globalConfig);
+		});
+
+		it('setRedirectUsersFromLoginToSsoFlow persists the value and mirrors it into config', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue({});
+
+			await setRedirectUsersFromLoginToSsoFlow(false);
+
+			expect(globalConfig.sso.redirectLoginToSso).toBe(false);
+			expect(settingsRepository.save).toHaveBeenCalledWith(
+				{ key: 'sso.redirectLoginToSso', value: 'false', loadOnStartup: true },
+				{ transaction: false },
+			);
+		});
+
+		it('reloadRedirectLoginToSso applies the persisted value into config', async () => {
+			settingsRepository.findByKey = vi
+				.fn()
+				.mockResolvedValue({ key: 'sso.redirectLoginToSso', value: 'false' });
+
+			await reloadRedirectLoginToSso();
+
+			expect(settingsRepository.findByKey).toHaveBeenCalledWith('sso.redirectLoginToSso');
+			expect(globalConfig.sso.redirectLoginToSso).toBe(false);
+		});
+
+		it('reloadRedirectLoginToSso leaves the env default untouched when nothing is persisted', async () => {
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(null);
+
+			await reloadRedirectLoginToSso();
+
+			expect(globalConfig.sso.redirectLoginToSso).toBe(true);
 		});
 	});
 

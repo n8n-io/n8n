@@ -12,6 +12,7 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
+import SsoRedirectLoginToggle from './SsoRedirectLoginToggle.vue';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
@@ -452,6 +453,8 @@ onMounted(async () => {
 				</div>
 			</div>
 		</div>
+
+		<SsoRedirectLoginToggle />
 
 		<div :class="$style.buttons">
 			<N8nButton

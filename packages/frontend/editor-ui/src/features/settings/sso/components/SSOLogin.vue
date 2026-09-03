@@ -12,12 +12,10 @@ const route = useRoute();
 
 const onSSOLogin = async () => {
 	try {
-		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
-			? await ssoStore.getSSORedirectUrl(
-					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
-				)
-			: ssoStore.oidc.loginUrl;
-		window.location.href = redirectUrl ?? '';
+		const redirectUrl = await ssoStore.resolveActiveSsoRedirectUrl(
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+		);
+		window.location.href = redirectUrl;
 	} catch (error) {
 		toast.showError(error, 'Error', { message: error.message });
 	}

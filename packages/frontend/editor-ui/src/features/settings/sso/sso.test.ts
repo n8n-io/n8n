@@ -236,4 +236,58 @@ describe('SSO store', () => {
 			expect(ssoStore.isOidcLoginEnabled).toBe(false);
 		});
 	});
+
+	describe('redirectLoginToSso', () => {
+		it('defaults to true and reflects the initialized value', () => {
+			expect(ssoStore.redirectLoginToSso).toBe(true);
+
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				redirectLoginToSso: false,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			expect(ssoStore.redirectLoginToSso).toBe(false);
+		});
+
+		it('persists the toggle via the API and updates local state', async () => {
+			vi.mocked(ssoApi.setSsoLoginRedirect).mockResolvedValue();
+
+			await ssoStore.toggleRedirectLoginToSso(false);
+
+			expect(ssoApi.setSsoLoginRedirect).toHaveBeenCalledWith(expect.anything(), false);
+			expect(ssoStore.redirectLoginToSso).toBe(false);
+		});
+	});
+
+	describe('resolveActiveSsoRedirectUrl', () => {
+		it('uses the SAML init endpoint when SAML is the active protocol', async () => {
+			vi.mocked(ssoApi.initSSO).mockResolvedValue('https://idp.example/saml');
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl('/home')).resolves.toBe(
+				'https://idp.example/saml',
+			);
+			expect(ssoApi.initSSO).toHaveBeenCalledWith(expect.anything(), '/home');
+		});
+
+		it('uses the OIDC login URL when OIDC is the active protocol', async () => {
+			vi.mocked(ssoApi.initSSO).mockClear();
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: 'https://idp.example/oidc' } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl()).resolves.toBe(
+				'https://idp.example/oidc',
+			);
+			expect(ssoApi.initSSO).not.toHaveBeenCalled();
+		});
+	});
 });
