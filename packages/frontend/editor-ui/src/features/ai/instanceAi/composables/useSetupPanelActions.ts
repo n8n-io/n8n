@@ -30,7 +30,10 @@ export type SetupPanelApplyResult =
 	| 'applied'
 	/** Every target node already carries the value — no write needed. */
 	| 'noop'
-	/** No target node exists in the saved workflow anymore — rows re-derive. */
+	/**
+	 * The write's target vanished — node gone from the saved workflow, or the
+	 * panel re-anchored to another workflow mid-write. Rows re-derive.
+	 */
 	| 'dropped'
 	/** Two consecutive version conflicts — gave up, rows re-derive. */
 	| 'conflict'
@@ -215,9 +218,12 @@ export function useSetupPanelActions(options: {
 			const outcome = applyDeltaToNodes(nodes, delta);
 			if (outcome !== 'changed') return outcome;
 
-			// The agent lock can be re-acquired while the fetch was awaited (a
-			// new build starting is also what a 409 usually means) — a user
-			// write must not land mid-build. Requeue for the release flush.
+			// The anchor and the agent lock can both move while the fetch was
+			// awaited. A re-anchored panel no longer owns this write — drop it
+			// (the same rule the queue watcher enforces). A re-acquired lock (a
+			// new build starting is also what a 409 usually means) requeues it
+			// instead: a user write must not land mid-build.
+			if (toValue(options.workflowId) !== workflowId) return 'dropped';
 			if (toValue(options.isAgentBuilding)) {
 				requeueDelta(workflowId, delta);
 				return 'queued';
