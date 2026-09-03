@@ -52,9 +52,11 @@ export interface ClientOAuth2Options {
 	/**
 	 * When provided, token endpoint requests are validated against the host's
 	 * outbound network policy before dispatch, at DNS resolution time, and on
-	 * every redirect. Omit to leave the request unchecked.
+	 * every redirect. Omit to leave the request unchecked. Narrowed to the
+	 * methods this client uses so node-facing filters (`NodeEgressFilter`)
+	 * qualify as well as the full bridge.
 	 */
-	ssrfBridge?: SsrfBridge;
+	ssrfBridge?: Pick<SsrfBridge, 'validateUrl' | 'validateRedirectSync' | 'createSecureLookup'>;
 }
 
 export class ResponseError extends Error {
