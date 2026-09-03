@@ -699,6 +699,9 @@ catalogs:
     '@storybook/addon-docs':
       specifier: ^10.5.10
       version: 10.5.10
+    '@storybook/addon-themes':
+      specifier: ^10.5.10
+      version: 10.5.10
     '@storybook/addon-vitest':
       specifier: ^10.5.10
       version: 10.5.10
@@ -708,9 +711,6 @@ catalogs:
     '@storybook/vue3-vite':
       specifier: ^10.5.10
       version: 10.5.10
-    '@vueless/storybook-dark-mode':
-      specifier: ^10.0.8
-      version: 10.0.8
     eslint-plugin-storybook:
       specifier: ^10.5.10
       version: 10.5.10
@@ -5957,6 +5957,9 @@ importers:
       '@storybook/addon-docs':
         specifier: catalog:storybook
         version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/addon-themes':
+        specifier: catalog:storybook
+        version: 10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/addon-vitest':
         specifier: catalog:storybook
         version: 10.5.10(@vitest/browser-playwright@4.1.9)(@vitest/browser@4.1.10)(@vitest/runner@4.1.9)(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vitest@4.1.9)
@@ -5984,9 +5987,6 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      '@vueless/storybook-dark-mode':
-        specifier: catalog:storybook
-        version: 10.0.8(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
       eslint-plugin-storybook:
         specifier: catalog:storybook
         version: 10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
@@ -13289,6 +13289,11 @@ packages:
       '@types/react':
         optional: true
 
+  '@storybook/addon-themes@10.5.10':
+    resolution: {integrity: sha512-XNTjmIBwJ0TUcIV11STGY6hcynCy6imgYCDZeDaDyNEQsCoYAlY25fYvWNfrz5jOu1MGACiaA/E0ypk03whDdQ==}
+    peerDependencies:
+      storybook: ^10.5.10
+
   '@storybook/addon-vitest@10.5.10':
     resolution: {integrity: sha512-JNQ9DSkLfxC8qqytBCej91zBExIZ7z97B410U2zgfQPki4HkI9Ffz97a15f5yhVZ79ppIrZ/ssI+WcyWn0ykXQ==}
     peerDependencies:
@@ -14965,12 +14970,6 @@ packages:
         optional: true
       vue:
         optional: true
-
-  '@vueless/storybook-dark-mode@10.0.8':
-    resolution: {integrity: sha512-nhueFjEbyNGBzye4H+STC+pRIKthttiuPJRfcqCrDwqKnLS9AkVT3Ra+F5bvOeWbvZt3xc6xNJBNV5OrjRIoZQ==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      storybook: ^10.0.0
 
   '@vueuse/components@10.11.0':
     resolution: {integrity: sha512-ZvLZI23d5ZAtva5fGyYh/jQtZO8l+zJ5tAXyYNqHJZkq1o5yWyqZhENvSv5mfDmN5IuAOp4tq02mRmX/ipFGcg==}
@@ -32718,6 +32717,11 @@ snapshots:
       - vite
       - webpack
 
+  '@storybook/addon-themes@10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))':
+    dependencies:
+      storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
+      ts-dedent: 2.2.0
+
   '@storybook/addon-vitest@10.5.10(@vitest/browser-playwright@4.1.9)(@vitest/browser@4.1.10)(@vitest/runner@4.1.9)(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vitest@4.1.9)':
     dependencies:
       '@storybook/global': 5.0.0
@@ -34845,12 +34849,6 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
       vue: 3.5.26(typescript@6.0.2)
-
-  '@vueless/storybook-dark-mode@10.0.8(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@storybook/global': 5.0.0
-      lodash-es: 4.18.1
-      storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
 
   '@vueuse/components@10.11.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
