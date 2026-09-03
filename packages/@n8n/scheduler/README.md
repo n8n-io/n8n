@@ -321,18 +321,20 @@ sight:
 ```mermaid
 stateDiagram-v2
     [*] --> Running: rule provisioned
-    Running --> Quarantined: owner reported gone<br/>(disabled, queued runs withdrawn)
-    Quarantined --> Running: owner reported alive again<br/>(re-enabled, clock recomputed)
+    Running --> Quarantined: owner reported gone<br/>(clock stopped, queued runs withdrawn)
+    Quarantined --> Running: owner reported alive again<br/>(clock recomputed)
     Quarantined --> [*]: still gone past the grace period<br/>(deleted)
     Running --> Running: owner reported alive
 ```
 
-- A job whose owner is reported gone is **disabled and stamped**, and its already-queued
-  runs are withdrawn, so it stops firing immediately.
+- A job whose owner is reported gone has its **clock stopped and is stamped**, and its
+  already-queued runs are withdrawn, so it stops firing immediately. Its `enabled` flag is
+  left as it was: the sweep never turns a job on or off.
 - It is **deleted only once that stamp is older than the quarantine grace** (a day by
   default), and only while its owner is still reported gone.
-- A stamped job whose owner turns out to exist after all is **re-enabled** with a freshly
-  computed clock, so a resolver bug corrected inside the grace window destroys nothing.
+- A stamped job whose owner turns out to exist after all is **revived** with a freshly
+  computed clock, so a resolver bug corrected inside the grace window destroys nothing. A
+  job that was disabled before the quarantine comes back disabled, with no clock.
 
 A resolver answers whether an owner exists, not what it currently wants, so a revival
 restores the job exactly as it was stored. A job the owner would no longer provision
