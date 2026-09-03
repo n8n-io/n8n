@@ -289,6 +289,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 	}
 
+	async findNameById(workflowId: string): Promise<string | undefined> {
+		const workflow = await this.findOne({ select: ['name'], where: { id: workflowId } });
+
+		return workflow?.name;
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },

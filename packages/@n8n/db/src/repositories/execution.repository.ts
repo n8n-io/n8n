@@ -30,6 +30,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 	IRunExecutionDataAll,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
@@ -65,6 +66,12 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
 }
+
+export type CrashedExecution = {
+	id: string;
+	workflowId: string;
+	mode: WorkflowExecuteMode;
+};
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
@@ -372,23 +379,42 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	async markAsCrashed(executionIds: string | string[]) {
+	async markAsCrashed(executionIds: string | string[]): Promise<CrashedExecution[]> {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+
+		const crashed: CrashedExecution[] = [];
 
 		let processed: number = 0;
 		while (processed < executionIds.length) {
 			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
-			await this.update(
-				// Guard against overwriting executions that have since moved to a `waiting` or
-				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
-			);
+
+			const transitioned = await this.runInTransaction({}, async (tx) => {
+				const rows = await tx.find(ExecutionEntity, {
+					select: ['id', 'workflowId', 'mode'],
+					// Guard against overwriting executions that have since moved to a `waiting` or
+					// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+					// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+					where: { id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
+				});
+
+				if (rows.length === 0) return [];
+
+				await tx.update(
+					ExecutionEntity,
+					{ id: In(rows.map(({ id }) => id)), status: In(CRASHABLE_EXECUTION_STATUSES) },
+					{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
+				);
+
+				return rows.map(({ id, workflowId, mode }) => ({ id, workflowId, mode }));
+			});
+
+			crashed.push(...transitioned);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;
 		}
+
+		return crashed;
 	}
 
 	async setRunning(executionId: string) {
