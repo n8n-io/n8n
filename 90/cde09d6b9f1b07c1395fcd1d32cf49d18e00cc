@@ -1,6 +1,7 @@
 packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
   s_14f52ab61740a5::t_810583e90cd842 58,115
   s_14f52ab61740a5::t_aaa9bbeb6a8066 12
+  s_14f52ab61740a5::t_cbca32abb72124 8
 packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
   s_14f52ab61740a5::t_d2396eeb62fbde 42-44,46-66
 packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
