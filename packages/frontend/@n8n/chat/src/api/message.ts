@@ -70,7 +70,7 @@ export async function sendMessage(
 				action: 'sendMessage',
 				[options.chatSessionKey as string]: sessionId,
 				[options.chatInputKey as string]: message,
-				...(query ? { query } : {}),
+				...(query ? { chatQueryParameters: query } : {}),
 				...(options.metadata ? { metadata: options.metadata } : {}),
 			},
 			files,
@@ -86,7 +86,7 @@ export async function sendMessage(
 				action: 'sendMessage',
 				[options.chatSessionKey as string]: sessionId,
 				[options.chatInputKey as string]: message,
-				...(query ? { query } : {}),
+				...(query ? { chatQueryParameters: query } : {}),
 				...(options.metadata ? { metadata: options.metadata } : {}),
 			},
 			{
@@ -257,7 +257,7 @@ async function sendWithFiles(
 	formData.append(options.chatInputKey as string, message);
 
 	if (query) {
-		formData.append('query', JSON.stringify(query));
+		formData.append('chatQueryParameters', JSON.stringify(query));
 	}
 
 	if (options.metadata) {
@@ -293,7 +293,7 @@ async function sendTextOnly(
 		action: 'sendMessage',
 		[options.chatSessionKey as string]: sessionId,
 		[options.chatInputKey as string]: message,
-		...(query ? { query } : {}),
+		...(query ? { chatQueryParameters: query } : {}),
 		...(options.metadata ? { metadata: options.metadata } : {}),
 	};
 

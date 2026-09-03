@@ -252,7 +252,7 @@ describe('ChatTrigger Node', () => {
 			mockContext.getBodyData.mockReturnValue({
 				action: 'sendMessage',
 				chatInput: 'Hello',
-				query: '{"q":"123","foo":"bar"}',
+				chatQueryParameters: '{"q":"123","foo":"bar"}',
 			});
 
 			await chatTrigger.webhook(mockContext);
@@ -262,7 +262,7 @@ describe('ChatTrigger Node', () => {
 					json: {
 						action: 'sendMessage',
 						chatInput: 'Hello',
-						query: { test: '123', q: '123', foo: 'bar' },
+						chatQueryParameters: { test: '123', q: '123', foo: 'bar' },
 					},
 				},
 			]);
@@ -273,7 +273,7 @@ describe('ChatTrigger Node', () => {
 			mockContext.getBodyData.mockReturnValue({
 				action: 'sendMessage',
 				chatInput: 'Hello',
-				query: { q: 'override', baz: 'qux' },
+				chatQueryParameters: { q: 'override', baz: 'qux' },
 			});
 
 			await chatTrigger.webhook(mockContext);
@@ -283,7 +283,7 @@ describe('ChatTrigger Node', () => {
 					json: {
 						action: 'sendMessage',
 						chatInput: 'Hello',
-						query: { q: '123', foo: 'bar', baz: 'qux' },
+						chatQueryParameters: { q: '123', foo: 'bar', baz: 'qux' },
 					},
 				},
 			]);
@@ -332,7 +332,7 @@ describe('ChatTrigger Node', () => {
 					json: {
 						action: 'sendMessage',
 						chatInput: 'Hello',
-						query: expectedQuery,
+						chatQueryParameters: expectedQuery,
 					},
 				},
 			]);
@@ -352,7 +352,7 @@ describe('ChatTrigger Node', () => {
 					json: {
 						action: 'sendMessage',
 						chatInput: 'Hello',
-						query: { test: '123' },
+						chatQueryParameters: { test: '123' },
 					},
 				},
 			]);
@@ -365,7 +365,7 @@ describe('ChatTrigger Node', () => {
 				data: {
 					action: 'sendMessage',
 					chatInput: 'Hello',
-					query: '{"q":"from-payload","foo":"bar"}',
+					chatQueryParameters: '{"q":"from-payload","foo":"bar"}',
 				},
 				files: {},
 			};
@@ -379,7 +379,7 @@ describe('ChatTrigger Node', () => {
 			expect(result.workflowData?.[0][0].json).toEqual({
 				action: 'sendMessage',
 				chatInput: 'Hello',
-				query: { q: 'from-url', foo: 'bar', test: '123' },
+				chatQueryParameters: { q: 'from-url', foo: 'bar', test: '123' },
 			});
 
 			// Assigned properties survive `clearAllMocks`, so don't leak into later tests

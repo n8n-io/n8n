@@ -91,7 +91,6 @@ function withAuthenticatedUser(
 	};
 }
 
-
 function getQueryParameters(
 	queryParameters: Request['query'],
 	excludedKey?: string,
@@ -132,18 +131,23 @@ function appendQueryParameters(url: string, queryParameters: Request['query']): 
 	return result.toString();
 }
 
+/** The output key that carries the page query. Also the key the chat page sends it under. */
+const CHAT_QUERY_PARAMETERS_KEY = 'chatQueryParameters';
+
 /**
- * Puts the page query on a webhook payload. `query` arrives as a JSON string on
- * multipart sends (form fields are always strings) and as an object otherwise, and
- * the URL's own parameters win over whatever the client put into the payload.
+ * Puts the page query on a webhook payload. `chatQueryParameters` arrives as a JSON string
+ * on multipart sends (form fields are always strings) and as an object otherwise, and the
+ * URL's own parameters win over whatever the client put into the payload.
  */
 function applyPageQuery(json: IDataObject, pageQuery: Record<string, string | string[]>): void {
-	if (typeof json.query === 'string') {
+	const claimed = json[CHAT_QUERY_PARAMETERS_KEY];
+
+	if (typeof claimed === 'string') {
 		try {
-			const parsed: unknown = JSON.parse(json.query);
+			const parsed: unknown = JSON.parse(claimed);
 			// Only a parsed object replaces the raw value, so a payload that happens to be
 			// valid JSON (`"123"`, `"true"`) keeps the type the client sent.
-			if (isPlainObject(parsed)) json.query = parsed;
+			if (isPlainObject(parsed)) json[CHAT_QUERY_PARAMETERS_KEY] = parsed;
 		} catch {
 			// Ignore malformed query payloads and keep the original raw value for compatibility.
 		}
@@ -152,9 +156,10 @@ function applyPageQuery(json: IDataObject, pageQuery: Record<string, string | st
 	if (Object.keys(pageQuery).length === 0) return;
 
 	const mergedQuery = Object.create(null) as Record<string, string | string[]>;
-	if (isPlainObject(json.query)) Object.assign(mergedQuery, json.query);
+	const current = json[CHAT_QUERY_PARAMETERS_KEY];
+	if (isPlainObject(current)) Object.assign(mergedQuery, current);
 	Object.assign(mergedQuery, pageQuery);
-	json.query = mergedQuery;
+	json[CHAT_QUERY_PARAMETERS_KEY] = mergedQuery;
 }
 
 const allowFileUploadsOption: INodeProperties = {
