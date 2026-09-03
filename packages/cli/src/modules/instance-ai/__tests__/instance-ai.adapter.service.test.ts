@@ -102,6 +102,9 @@ function globalConfigStub(
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		// Node usage is gated on the dependency index being wired too, which these tests do not
+		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
+		instanceAi: { nodeUsageEnabled: false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
