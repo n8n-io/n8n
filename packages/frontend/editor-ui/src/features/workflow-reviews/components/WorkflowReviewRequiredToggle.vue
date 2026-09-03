@@ -47,7 +47,6 @@ const reviewRequired = computed({
 				<N8nSwitch
 					:model-value="reviewRequired"
 					:disabled="hasOpenReview"
-					aria-hidden="true"
 					tabindex="-1"
 					data-test-id="workflow-review-required-switch"
 					:class="[ui.class, $style.switch]"

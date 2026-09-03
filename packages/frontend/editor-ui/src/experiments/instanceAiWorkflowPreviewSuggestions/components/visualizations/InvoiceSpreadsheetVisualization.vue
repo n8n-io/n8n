@@ -117,6 +117,7 @@ onUnmounted(clearTimers);
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 $border: light-dark(
 	oklch(from var(--color--neutral-black) l c h / 0.1),
 	oklch(from var(--color--neutral-white) l c h / 0.12)
@@ -136,6 +137,7 @@ $border: light-dark(
 		opacity 0.3s ease,
 		transform 0.3s ease;
 	overflow: hidden;
+	@include motion.reduced-motion;
 }
 
 .cardVisible {
@@ -163,6 +165,7 @@ $border: light-dark(
 	display: grid;
 	grid-template-rows: 0fr;
 	transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	@include motion.reduced-motion;
 }
 
 .rowCollapseOpen {
@@ -225,6 +228,7 @@ $border: light-dark(
 	stroke-dasharray: 20;
 	stroke-dashoffset: 20;
 	animation: draw-check 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+	@include motion.reduced-motion;
 }
 
 @keyframes draw-check {

@@ -16,6 +16,7 @@ withDefaults(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	padding: 4px;
@@ -42,5 +43,6 @@ withDefaults(
 		background: light-dark(var(--color--neutral-100), var(--color--neutral-700));
 		transform: rotate(45deg) scale(1.2);
 	}
+	@include motion.reduced-motion;
 }
 </style>

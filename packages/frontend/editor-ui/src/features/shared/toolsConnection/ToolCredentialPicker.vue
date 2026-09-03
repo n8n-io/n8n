@@ -192,6 +192,10 @@ function editCredential(credentialId: string) {
 					:data-credential-id="cred.id"
 					:data-auth-type="cred.authType"
 					@click="pickCredential(cred.authType, cred.id)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="pickCredential(cred.authType, cred.id)"
+					@keydown.space.self.prevent="pickCredential(cred.authType, cred.id)"
 				>
 					<span :class="$style.rowLabel">{{ cred.name }}</span>
 					<span :class="$style.rowActions">
@@ -235,6 +239,7 @@ function editCredential(credentialId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .triggerCaret {
 	margin-left: var(--spacing--4xs);
 }
@@ -305,6 +310,7 @@ function editCredential(credentialId: string) {
 			color: var(--color--text);
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .rowLabel {

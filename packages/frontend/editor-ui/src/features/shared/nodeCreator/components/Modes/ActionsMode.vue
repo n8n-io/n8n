@@ -312,6 +312,10 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 							:class="$style.resetSearch"
 							@click="resetSearch"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="resetSearch"
+							@keydown.space.self.prevent="resetSearch"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -352,6 +356,10 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 							:class="$style.resetSearch"
 							data-test-id="actions-panel-no-matching-actions"
 							@click="resetSearch"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="resetSearch"
+							@keydown.space.self.prevent="resetSearch"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -365,6 +373,10 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 					})
 				"
 				@click.prevent="addHttpNode"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="addHttpNode"
+				@keydown.space.self.prevent="addHttpNode"
 			/>
 		</div>
 		<CommunityNodeFooter

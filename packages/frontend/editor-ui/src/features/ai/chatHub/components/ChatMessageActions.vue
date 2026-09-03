@@ -155,10 +155,12 @@ function handleReadAloud() {
 }
 </style>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .fade-enter-from,

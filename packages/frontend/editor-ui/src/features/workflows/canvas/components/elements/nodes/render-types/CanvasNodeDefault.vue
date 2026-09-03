@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
@@ -220,6 +221,10 @@ function onActivate(event: MouseEvent) {
 		:data-test-id="dataTestId"
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="dispatchClickOnKeyboardActivation"
+		@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 	>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon

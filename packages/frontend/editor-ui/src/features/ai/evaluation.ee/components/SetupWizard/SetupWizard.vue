@@ -214,7 +214,13 @@ function onSeePlans() {
 						<N8nText size="xsmall" color="text-base">
 							<I18nT keypath="evaluations.setupWizard.step3.notice" scope="global">
 								<template #link>
-									<a style="text-decoration: underline; color: inherit" @click="onSeePlans"
+									<a
+										style="text-decoration: underline; color: inherit"
+										@click="onSeePlans"
+										role="button"
+										tabindex="0"
+										@keydown.enter.self="onSeePlans"
+										@keydown.space.self.prevent="onSeePlans"
 										>{{ locale.baseText('evaluations.setupWizard.step3.notice.link') }}
 									</a>
 								</template>
@@ -270,6 +276,7 @@ function onSeePlans() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	background-color: var(--color--background--light-2);
 }
@@ -287,6 +294,7 @@ function onSeePlans() {
 .stepContent {
 	padding: 0 0 0 calc(var(--spacing--xs) + 28px);
 	animation: slideDown 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .bulletPoints {

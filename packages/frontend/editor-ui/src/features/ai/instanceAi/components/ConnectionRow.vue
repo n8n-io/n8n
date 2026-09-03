@@ -37,7 +37,14 @@ function handleRowClick() {
 </script>
 
 <template>
-	<div :class="[$style.row, !clickable && $style.rowStatic]" @click="handleRowClick">
+	<div
+		:class="[$style.row, !clickable && $style.rowStatic]"
+		@click="handleRowClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="handleRowClick"
+		@keydown.space.self.prevent="handleRowClick"
+	>
 		<ToolIcon :source="iconSource" />
 		<div :class="$style.labels">
 			<N8nText bold size="medium" :class="$style.name">{{ name }}</N8nText>

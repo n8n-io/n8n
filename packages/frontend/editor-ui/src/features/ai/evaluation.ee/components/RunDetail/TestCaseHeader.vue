@@ -192,5 +192,6 @@ const cyclingVerbKey = useCyclingVerb(isRunning);
 	&:hover {
 		color: var(--color--text);
 	}
+	@include motion.reduced-motion;
 }
 </style>

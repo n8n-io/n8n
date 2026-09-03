@@ -134,6 +134,10 @@ onUnmounted(() => {
 					]"
 					@click="handleSelect(node)"
 					@mouseenter="handleMouseEnter(index)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="handleSelect(node)"
+					@keydown.space.self.prevent="handleSelect(node)"
 				>
 					<NodeIcon :node-type="getNodeType(node.type)" :size="16" />
 					<span :class="$style.nodeName">{{ node.name }}</span>
@@ -155,6 +159,7 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .dropdown {
 	background: var(--color--background--light-3);
 	border: 0.5px solid var(--color--foreground);
@@ -225,6 +230,7 @@ onUnmounted(() => {
 	&.selected.highlighted {
 		background-color: light-dark(var(--color--success--tint-2), var(--color--success--tint-3));
 	}
+	@include motion.reduced-motion;
 }
 
 .nodeName {

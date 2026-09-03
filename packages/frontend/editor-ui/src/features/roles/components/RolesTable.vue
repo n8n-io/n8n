@@ -119,7 +119,14 @@ function resolveCountRoute(row: RoleRow): RouteLocationRaw {
 		<template v-else>
 			<N8nDatatable :columns="columns" :rows="rows" :pagination="false">
 				<template #row="{ row }">
-					<tr :class="[$style.tallRow, $style.clickableRow]" @click="emit('row-click', row)">
+					<tr
+						:class="[$style.tallRow, $style.clickableRow]"
+						@click="emit('row-click', row)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="emit('row-click', row)"
+						@keydown.space.self.prevent="emit('row-click', row)"
+					>
 						<td>
 							<N8nText tag="div" class="mb-4xs">{{ row.displayName }}</N8nText>
 							<N8nText tag="div" size="small" color="text-light">{{ row.description }}</N8nText>

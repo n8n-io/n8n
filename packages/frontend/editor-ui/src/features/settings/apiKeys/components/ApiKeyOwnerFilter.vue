@@ -193,7 +193,6 @@ watch(open, (isOpen, wasOpen) => {
 								:model-value="allSelected"
 								:indeterminate="someSelected"
 								:class="$style.checkbox"
-								aria-hidden="true"
 								tabindex="-1"
 							/>
 							<span :class="$style.allAvatar"><N8nIcon icon="users" /></span>
@@ -223,7 +222,6 @@ watch(open, (isOpen, wasOpen) => {
 								<N8nCheckbox
 									:model-value="selectedSet.has(user.id)"
 									:class="$style.checkbox"
-									aria-hidden="true"
 									tabindex="-1"
 								/>
 								<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="xsmall" />
@@ -268,6 +266,7 @@ watch(open, (isOpen, wasOpen) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 // A subtle coral wash for selected rows. Mixed into whatever
 // surface sits behind it, so it stays light on the light panel and becomes a
 // muted dark coral on the dark panel — unlike --color--primary--tint-3, which
@@ -299,6 +298,7 @@ watch(open, (isOpen, wasOpen) => {
 	transition:
 		border-color 0.12s ease,
 		box-shadow 0.12s ease;
+	@include motion.reduced-motion;
 }
 
 .triggerOpen {

@@ -76,9 +76,11 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .highlighted {
 	border-radius: var(--radius);
 	animation: flash 1.2s ease-in-out 2;
+	@include motion.reduced-motion;
 }
 
 @keyframes flash {

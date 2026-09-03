@@ -756,6 +756,7 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -765,6 +766,7 @@ const tags = computed(
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardHeading {

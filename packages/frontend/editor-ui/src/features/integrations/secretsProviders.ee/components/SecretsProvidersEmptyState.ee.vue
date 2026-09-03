@@ -116,6 +116,7 @@ function onAddSecretsStore() {
 </template>
 
 <style lang="css" module>
+@use '@n8n/design-system/css/mixins/motion';
 .iconCardContainer {
 	display: flex;
 	justify-content: center;
@@ -164,6 +165,7 @@ function onAddSecretsStore() {
 	transition:
 		opacity 300ms ease-in-out,
 		filter 300ms ease-in-out;
+	@include motion.reduced-motion;
 }
 
 .fading {

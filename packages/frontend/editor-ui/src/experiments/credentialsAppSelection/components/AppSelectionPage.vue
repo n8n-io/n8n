@@ -379,6 +379,7 @@ watch(isCredentialModalOpen, async (isOpen, wasOpen) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	display: flex;
 	flex-direction: column;
@@ -421,6 +422,7 @@ watch(isCredentialModalOpen, async (isOpen, wasOpen) => {
 	&:hover {
 		color: var(--color--text);
 	}
+	@include motion.reduced-motion;
 }
 
 .footer {

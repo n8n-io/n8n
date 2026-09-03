@@ -423,10 +423,12 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 /* Fade transition animations for issue list */
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.5s ease;
+	@include motion.reduced-motion;
 }
 
 .fade-enter-from,

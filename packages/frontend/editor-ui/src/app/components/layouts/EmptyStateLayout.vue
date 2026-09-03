@@ -213,6 +213,7 @@ const handleAppSelectionContinue = () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '@/app/css/variables' as vars;
 
 .emptyStateLayout {
@@ -259,10 +260,12 @@ const handleAppSelectionContinue = () => {
 .fallbackDescription {
 	animation: contentDropIn var(--duration--base) var(--easing--ease-out)
 		calc(var(--duration--base) / 4) both;
+	@include motion.reduced-motion;
 }
 
 .fallbackHeading {
 	animation: headingLift var(--duration--base) var(--easing--ease-out) both;
+	@include motion.reduced-motion;
 }
 
 .actionCardsContainer {
@@ -310,6 +313,7 @@ const handleAppSelectionContinue = () => {
 	&:nth-child(3) {
 		--action-card-index: 2;
 	}
+	@include motion.reduced-motion;
 }
 
 @keyframes headingLift {
@@ -374,6 +378,7 @@ const handleAppSelectionContinue = () => {
 
 	svg {
 		transition: color 0.3s ease;
+		@include motion.reduced-motion;
 	}
 }
 </style>

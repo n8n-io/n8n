@@ -238,7 +238,13 @@ const sharingCountText = computed(() => {
 								<template #content>
 									<I18nT :keypath="mfaTooltipKey" tag="span" scope="global">
 										<template #action>
-											<a @click="goToUpgrade">
+											<a
+												@click="goToUpgrade"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="goToUpgrade"
+												@keydown.space.self.prevent="goToUpgrade"
+											>
 												{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
 											</a>
 										</template>
@@ -300,7 +306,13 @@ const sharingCountText = computed(() => {
 								<template #content>
 									<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
 										<template #action>
-											<a @click="goToUpgrade">
+											<a
+												@click="goToUpgrade"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="goToUpgrade"
+												@keydown.space.self.prevent="goToUpgrade"
+											>
 												{{
 													i18n.baseText('settings.security.personalSpace.unlicensed_tooltip.link')
 												}}
@@ -357,7 +369,13 @@ const sharingCountText = computed(() => {
 								<template #content>
 									<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
 										<template #action>
-											<a @click="goToUpgrade">
+											<a
+												@click="goToUpgrade"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="goToUpgrade"
+												@keydown.space.self.prevent="goToUpgrade"
+											>
 												{{
 													i18n.baseText('settings.security.personalSpace.unlicensed_tooltip.link')
 												}}

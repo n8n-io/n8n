@@ -119,11 +119,13 @@ const rows = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	flex-direction: column;
 	align-items: stretch;
 	gap: var(--spacing--xs);
 	transition: opacity var(--animation--duration--snappy) var(--animation--easing);
+	@include motion.reduced-motion;
 }
 
 .opaque {
@@ -146,10 +148,12 @@ const rows = computed(() => {
 	.tc-rows-fade-in-enter-active,
 	.tc-rows-fade-in-appear-active {
 		animation: tc-rows-fade-in var(--animation--duration--snappy) var(--animation--easing);
+		@include motion.reduced-motion;
 	}
 
 	.tc-rows-fade-in-leave-active {
 		animation: tc-rows-fade-in var(--animation--duration--snappy) var(--easing--ease-in) reverse;
+		@include motion.reduced-motion;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

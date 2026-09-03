@@ -609,6 +609,7 @@ function onRenameNode(value: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .content {
 	display: flex;
 	flex-direction: column;
@@ -724,6 +725,7 @@ function onRenameNode(value: string) {
 	opacity: 0;
 	transition: opacity 0.1s none;
 	animation: triggerShow 0.1s normal 0.1s forwards;
+	@include motion.reduced-motion;
 }
 
 @keyframes triggerShow {

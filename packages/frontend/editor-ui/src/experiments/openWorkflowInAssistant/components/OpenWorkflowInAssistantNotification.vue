@@ -70,6 +70,8 @@ async function onSettingsLink() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .notification {
 	position: absolute;
 	right: var(--spacing--lg);
@@ -94,6 +96,8 @@ async function onSettingsLink() {
 	@media (prefers-reduced-motion: no-preference) {
 		animation: slide-in 200ms ease-out;
 	}
+
+	@include motion.reduced-motion;
 }
 
 @keyframes slide-in {

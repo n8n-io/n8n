@@ -143,6 +143,7 @@ function handleSeeMoreClick() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .examples {
 	display: flex;
 	flex-direction: column;
@@ -244,6 +245,7 @@ function handleSeeMoreClick() {
 		cursor: not-allowed;
 		opacity: 0;
 	}
+	@include motion.reduced-motion;
 }
 
 .loadingBar {
@@ -254,6 +256,7 @@ function handleSeeMoreClick() {
 	width: 0;
 	background-color: var(--color--primary);
 	animation: progressBar linear forwards;
+	@include motion.reduced-motion;
 }
 
 @keyframes progressBar {

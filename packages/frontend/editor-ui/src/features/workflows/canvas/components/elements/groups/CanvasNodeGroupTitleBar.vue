@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import {
 	computed,
 	inject,
@@ -416,6 +417,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@contextmenu="onOpenContextMenu"
 		@mouseenter="onGroupMouseEnter"
 		@mouseleave="onGroupMouseLeave"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="dispatchClickOnKeyboardActivation"
+		@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -618,6 +623,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 			data-test-id="canvas-node-group-description-panel"
 			@pointerdown="onDescriptionPanelPointerDown"
 			@click="onDescriptionPanelClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="onDescriptionPanelClick"
+			@keydown.space.self.prevent="onDescriptionPanelClick"
 		>
 			<div :class="$style.descriptionPanelContent">
 				<textarea
@@ -714,6 +723,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/common/var';
 @use '../../../components/elements/nodes/render-types/_canvasNodeStyles.scss' as styles;
 
@@ -915,6 +925,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	border-radius: var(--radius);
 	opacity: 0;
 	transition: opacity 0.1s ease-in;
+	@include motion.reduced-motion;
 }
 
 .titleBar:hover .toolbarItems {

@@ -149,6 +149,10 @@ defineExpose({ currentSettings, validationError, isDirty });
 				:class="[$style.tagInput, { [$style.tagInputDisabled]: disabled }]"
 				data-testid="telegram-user-ids"
 				@click="onContainerClick"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="onContainerClick"
+				@keydown.space.self.prevent="onContainerClick"
 			>
 				<span
 					v-for="(entry, idx) in entries"

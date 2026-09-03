@@ -26,7 +26,15 @@ const handleClick = () => {
 
 <template>
 	<N8nTooltip placement="top">
-		<span class="usageSyntax" @click="handleClick">{{ usage }}</span>
+		<span
+			class="usageSyntax"
+			@click="handleClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="handleClick"
+			@keydown.space.self.prevent="handleClick"
+			>{{ usage }}</span
+		>
 		<template #content>
 			{{ i18n.baseText('variables.row.usage.copyToClipboard') }}
 		</template>

@@ -202,6 +202,7 @@ onUnmounted(clearHoverTimer);
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 @use '@/features/ai/shared/styles/prompt-suggestion-buttons' as promptSuggestions;
 
 .suggestions {
@@ -245,6 +246,7 @@ onUnmounted(clearHoverTimer);
 	pointer-events: none;
 	animation: suggestionSlideOut 0.18s cubic-bezier(0.4, 0, 0.2, 1) both;
 	animation-delay: var(--suggestion-leave-delay, 0ms);
+	@include motion.reduced-motion;
 }
 
 @keyframes suggestionSlideOut {

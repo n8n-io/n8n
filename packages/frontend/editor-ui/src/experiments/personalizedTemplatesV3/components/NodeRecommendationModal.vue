@@ -105,6 +105,7 @@ watchEffect(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .modal {
 	background-color: var(--color--background--light-3);
 }
@@ -140,6 +141,7 @@ watchEffect(async () => {
 		border-color: var(--color--primary);
 		color: var(--color--primary);
 	}
+	@include motion.reduced-motion;
 }
 
 .footerContent {

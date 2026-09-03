@@ -977,6 +977,10 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						:class="$style.optionCard"
 						:data-test-id="`assistant-sandbox-${provider.id}`"
 						@click="selectSandboxProvider(provider.id)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="selectSandboxProvider(provider.id)"
+						@keydown.space.self.prevent="selectSandboxProvider(provider.id)"
 					>
 						<N8nRadioGroupItem
 							:id="`assistant-sandbox-radio-${provider.id}`"
@@ -1151,6 +1155,10 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						:class="$style.optionCard"
 						:data-test-id="`assistant-search-${provider.id}`"
 						@click="selectSearchProvider(provider.id)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="selectSearchProvider(provider.id)"
+						@keydown.space.self.prevent="selectSearchProvider(provider.id)"
 					>
 						<N8nRadioGroupItem
 							:id="`assistant-search-radio-${provider.id}`"

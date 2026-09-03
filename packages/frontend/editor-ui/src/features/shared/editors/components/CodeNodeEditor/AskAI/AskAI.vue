@@ -336,12 +336,14 @@ onMounted(() => {
 	</div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .text-fade-in-out-enter-active,
 .text-fade-in-out-leave-active {
 	transition:
 		opacity 0.5s ease-in-out,
 		transform 0.5s ease-in-out;
+	@include motion.reduced-motion;
 }
 .text-fade-in-out-enter,
 .text-fade-in-out-leave-to {

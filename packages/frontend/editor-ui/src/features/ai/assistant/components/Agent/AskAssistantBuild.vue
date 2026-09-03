@@ -917,9 +917,11 @@ defineExpose({
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .slide-enter-active,
 .slide-leave-active {
 	transition: transform var(--animation--duration) var(--animation--easing);
+	@include motion.reduced-motion;
 }
 
 .slide-enter-from,

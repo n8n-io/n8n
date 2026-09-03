@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { dispatchDoubleClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeSettingsTabs from '@/features/ndv/settings/components/NodeSettingsTabs.vue';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -29,7 +30,14 @@ defineSlots<{ actions?: {} }>();
 
 <template>
 	<div :class="[$style.component, node.disabled ? $style.disabled : '']">
-		<div :class="$style.title" @dblclick="emit('dblclick-title', $event)">
+		<div
+			:class="$style.title"
+			@dblclick="emit('dblclick-title', $event)"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="dispatchDoubleClickOnKeyboardActivation"
+			@keydown.space.self.prevent="dispatchDoubleClickOnKeyboardActivation"
+		>
 			<NodeIcon :node-type="nodeType" :size="16" />
 			<div :class="$style.titleText">
 				<N8nInlineTextEdit

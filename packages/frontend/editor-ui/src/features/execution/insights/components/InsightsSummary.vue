@@ -171,6 +171,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .insightsWrapper {
 	position: relative;
 	padding: var(--spacing--xs) 0 0;
@@ -227,6 +228,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				background-color: var(--color--background--light-3);
 				border-color: var(--color--primary);
 				transition: background-color 0.3s ease-in-out;
+				@include motion.reduced-motion;
 			}
 
 			strong {

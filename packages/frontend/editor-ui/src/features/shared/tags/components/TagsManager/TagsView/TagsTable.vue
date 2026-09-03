@@ -287,9 +287,11 @@ tr:hover .ops:not(.disabled) {
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s;
+	@include motion.reduced-motion;
 }
 .fade-enter,
 .fade-leave-to {

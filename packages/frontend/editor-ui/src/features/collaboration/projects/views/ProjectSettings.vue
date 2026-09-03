@@ -726,9 +726,7 @@ onMounted(async () => {
 
 			<template v-if="canUpdateProject">
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
-					<h3>
-						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
-					</h3>
+					<h3>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</h3>
 					<ProjectSettingsCustomTelemetryTags
 						ref="telemetryTagsRef"
 						v-model="formData.customTelemetryTags"

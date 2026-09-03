@@ -107,6 +107,7 @@ const handleUseTemplate = async () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .nodes {
 	display: flex;
 	flex-direction: row;
@@ -150,6 +151,7 @@ const handleUseTemplate = async () => {
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	}
+	@include motion.reduced-motion;
 }
 
 .content {

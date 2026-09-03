@@ -641,9 +641,16 @@ watch(
 									>
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
-											<a @click="switchToJsonView">{{
-												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
-											}}</a>
+											<a
+												@click="switchToJsonView"
+												role="button"
+												tabindex="0"
+												@keydown.enter.self="switchToJsonView"
+												@keydown.space.self.prevent="switchToJsonView"
+												>{{
+													i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+												}}</a
+											>
 										</template>
 									</I18nT>
 								</div>

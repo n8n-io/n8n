@@ -200,6 +200,7 @@ onMounted(() => observe(cardRef.value));
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	display: flex;
 	flex-direction: column;
@@ -214,6 +215,7 @@ onMounted(() => observe(cardRef.value));
 	&:hover {
 		border-color: var(--border-color--strong);
 	}
+	@include motion.reduced-motion;
 }
 
 // Title + meta on the left, CTA on the right, on the same row.

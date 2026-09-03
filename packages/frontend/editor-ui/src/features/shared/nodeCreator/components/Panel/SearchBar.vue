@@ -68,7 +68,15 @@ defineExpose({
 				@input="onInput"
 			/>
 		</div>
-		<div v-if="modelValue.length > 0" :class="[$style.suffix, $style.clickable]" @click="clear">
+		<div
+			v-if="modelValue.length > 0"
+			:class="[$style.suffix, $style.clickable]"
+			@click="clear"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="clear"
+			@keydown.space.self.prevent="clear"
+		>
 			<N8nIcon size="small" icon="circle-x" />
 		</div>
 	</div>

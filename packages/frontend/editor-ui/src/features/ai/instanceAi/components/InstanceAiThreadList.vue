@@ -239,6 +239,7 @@ function handleThreadAction(action: string, threadId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	display: flex;
 	flex-direction: column;
@@ -311,6 +312,7 @@ function handleThreadAction(action: string, threadId: string) {
 	&.active {
 		background-color: var(--color--background--light-1);
 	}
+	@include motion.reduced-motion;
 }
 
 .threadLink {

@@ -474,9 +474,9 @@ defineExpose({
 			:class="$style.field"
 			data-test-id="agent-workflow-tool-inputs"
 		>
-			<label :class="$style.label">
+			<div :class="$style.label">
 				{{ i18n.baseText('agents.toolConfig.workflow.inputs') }}
-			</label>
+			</div>
 			<N8nText size="xsmall" color="text-light">
 				{{ i18n.baseText('agents.toolConfig.workflow.inputs.hint') }}
 			</N8nText>

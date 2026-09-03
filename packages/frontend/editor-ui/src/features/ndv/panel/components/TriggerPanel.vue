@@ -341,11 +341,9 @@ const openWebhookUrl = () => {
 	window.open(webhookTestUrl.value, '_blank', 'noreferrer');
 };
 
-const onLinkClick = (e: MouseEvent) => {
-	if (!e.target) {
-		return;
-	}
-	const target = e.target as HTMLElement;
+const onLinkClick = (e: MouseEvent | KeyboardEvent) => {
+	if (!(e.target instanceof HTMLElement)) return;
+	const target = e.target;
 	if (target.localName !== 'a') return;
 
 	if (target.dataset?.key) {
@@ -498,6 +496,7 @@ const onNodeExecute = () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	position: relative;
 	width: 100%;
@@ -536,6 +535,7 @@ const onNodeExecute = () => {
 
 .shake {
 	animation: shake 8s infinite;
+	@include motion.reduced-motion;
 }
 
 @keyframes shake {
@@ -565,9 +565,11 @@ const onNodeExecute = () => {
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 200ms;
+	@include motion.reduced-motion;
 }
 .fade-enter,
 .fade-leave-to {

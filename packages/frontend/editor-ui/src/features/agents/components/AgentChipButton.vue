@@ -77,6 +77,7 @@ const emit = defineEmits<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 .chip {
 	display: inline-flex;
@@ -132,6 +133,7 @@ const emit = defineEmits<{
 		color 0.15s ease,
 		box-shadow 0.15s ease,
 		transform 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .suggestion:not(:disabled):hover,
@@ -164,6 +166,7 @@ const emit = defineEmits<{
 	opacity: 0.7;
 	flex-shrink: 0;
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .suggestion:not(:disabled):hover .suggestionIcon,

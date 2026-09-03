@@ -206,6 +206,10 @@ onUnmounted(() => {
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 		@click="onHeaderClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="onHeaderClick"
+		@keydown.space.self.prevent="onHeaderClick"
 	>
 		<div class="data-table-column-header-icon-wrapper">
 			<N8nIcon v-if="typeIcon" :icon="typeIcon" />

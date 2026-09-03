@@ -745,6 +745,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .confirmation-slide-enter-from {
 	opacity: 0;
 	transform: translateY(8px);
@@ -752,6 +753,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 .confirmation-slide-enter-active {
 	transition: all var(--animation--duration--snappy) cubic-bezier(0.16, 1, 0.3, 1);
+	@include motion.reduced-motion;
 }
 
 .confirmation-slide-leave-to {
@@ -761,5 +763,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 .confirmation-slide-leave-active {
 	transition: all var(--animation--duration--snappy) var(--easing--ease-in);
+	@include motion.reduced-motion;
 }
 </style>

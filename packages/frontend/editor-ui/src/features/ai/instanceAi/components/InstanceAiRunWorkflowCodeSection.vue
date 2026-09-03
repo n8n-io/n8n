@@ -46,6 +46,7 @@ function formatCharCount(count: number): string {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .section {
 	display: flex;
 	flex-direction: column;
@@ -89,6 +90,7 @@ function formatCharCount(count: number): string {
 		margin-left: var(--spacing--3xs);
 		color: var(--color--text--tint-1);
 		transition: transform var(--duration--fast) ease;
+		@include motion.reduced-motion;
 	}
 
 	&[open] .headerMeta::after {

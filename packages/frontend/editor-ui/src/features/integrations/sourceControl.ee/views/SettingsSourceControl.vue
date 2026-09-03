@@ -408,7 +408,7 @@ watch(connectionType, () => {
 				v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
 				:class="$style.group"
 			>
-				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
+				<label for="keyGeneratorType">{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
 					<N8nFormInput
 						v-if="!isConnected"
@@ -473,7 +473,7 @@ watch(connectionType, () => {
 					<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.sourceControl.instanceSettings')
 					}}</N8nHeading>
-					<label>{{ locale.baseText('settings.sourceControl.branches') }}</label>
+					<label for="branchName">{{ locale.baseText('settings.sourceControl.branches') }}</label>
 					<div :class="$style.branchSelection">
 						<N8nFormInput
 							id="branchName"
@@ -522,9 +522,13 @@ watch(connectionType, () => {
 					</N8nCheckbox>
 				</div>
 				<div :class="$style.group">
-					<label>{{ locale.baseText('settings.sourceControl.color') }}</label>
+					<label for="branchColor">{{ locale.baseText('settings.sourceControl.color') }}</label>
 					<div>
-						<N8nColorPicker v-model="sourceControlStore.preferences.branchColor" size="small" />
+						<N8nColorPicker
+							id="branchColor"
+							v-model="sourceControlStore.preferences.branchColor"
+							size="small"
+						/>
 					</div>
 				</div>
 				<div :class="[$style.group, 'pt-s']">

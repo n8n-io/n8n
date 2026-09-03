@@ -27,6 +27,7 @@ defineProps<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .stepIndicator {
 	display: flex;
 	align-items: center;
@@ -57,5 +58,6 @@ defineProps<{
 		border-color: var(--color--text);
 		opacity: 0.7;
 	}
+	@include motion.reduced-motion;
 }
 </style>

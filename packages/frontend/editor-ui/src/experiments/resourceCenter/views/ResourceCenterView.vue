@@ -299,6 +299,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	--resource-center--color--background--page: white;
 	--resource-center--color--text: var(--color--text--shade-1);
@@ -432,6 +433,7 @@ onMounted(() => {
 		border-color: color-mix(in srgb, var(--color--primary) 36%, transparent);
 		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color--primary) 12%, transparent);
 	}
+	@include motion.reduced-motion;
 }
 
 .heroGrid {

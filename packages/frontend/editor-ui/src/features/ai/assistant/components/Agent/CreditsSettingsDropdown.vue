@@ -155,6 +155,7 @@ function onGetMoreCredits() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	display: flex;
@@ -233,6 +234,7 @@ function onGetMoreCredits() {
 	&.low {
 		background: var(--color--danger);
 	}
+	@include motion.reduced-motion;
 }
 
 .active {
@@ -245,16 +247,19 @@ function onGetMoreCredits() {
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .dropdown-enter-active {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .dropdown-leave-active {
 	transition:
 		opacity 0.1s ease,
 		transform 0.1s ease;
+	@include motion.reduced-motion;
 }
 
 .dropdown-enter-from,

@@ -89,6 +89,7 @@ function handleClick(e: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	cursor: pointer;
 	background-color: var(--color--background--light-3);
@@ -97,6 +98,7 @@ function handleClick(e: MouseEvent) {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardArchived {

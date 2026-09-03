@@ -412,7 +412,7 @@ onUpdated(() => {
 </script>
 
 <template>
-	<div ref="wrapperRef" @click="handleLinkClick">
+	<div ref="wrapperRef" @click.capture="handleLinkClick">
 		<ChatMarkdownChunk :source="source" />
 	</div>
 </template>

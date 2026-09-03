@@ -172,7 +172,15 @@ function onListBackgroundClick() {
 			/>
 		</div>
 
-		<div ref="listRef" :class="$style.list" @click.self="onListBackgroundClick">
+		<div
+			ref="listRef"
+			:class="$style.list"
+			@click.self="onListBackgroundClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="onListBackgroundClick"
+			@keydown.space.self.prevent="onListBackgroundClick"
+		>
 			<N8nLoading
 				v-if="loading"
 				:loading="true"
@@ -236,7 +244,7 @@ function onListBackgroundClick() {
 							:aria-selected="selectedId === item.id"
 							@click="emit('select', item.id)"
 							@keydown.enter.prevent="emit('select', item.id)"
-							@keydown.space.prevent="emit('select', item.id)"
+							@keydown.space.self.prevent="emit('select', item.id)"
 						>
 							<div :class="$style.cardContent">
 								<div :class="$style.cardHeader">
@@ -321,6 +329,7 @@ function onListBackgroundClick() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .sidebar {
 	display: flex;
 	flex-direction: column;
@@ -393,6 +402,7 @@ function onListBackgroundClick() {
 .chevron {
 	transition: transform 0.2s ease;
 	color: var(--color--text--tint-1);
+	@include motion.reduced-motion;
 }
 
 .chevronCollapsed {
@@ -422,6 +432,7 @@ function onListBackgroundClick() {
 	&:focus-visible {
 		border-color: var(--focus--border-color);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardSelected {

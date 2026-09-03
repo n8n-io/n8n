@@ -31,7 +31,14 @@ const handleClick = (event: Event) => {
 </script>
 
 <template>
-	<div :class="$style.stepHeader" @click="handleClick">
+	<div
+		:class="$style.stepHeader"
+		@click="handleClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="handleClick"
+		@keydown.space.self.prevent="handleClick"
+	>
 		<StepIndicator :step-number="stepNumber" :is-completed="isCompleted" :is-active="isActive" />
 		<!-- Use slot if provided, otherwise use title prop -->
 		<div :class="$style.titleSlot">

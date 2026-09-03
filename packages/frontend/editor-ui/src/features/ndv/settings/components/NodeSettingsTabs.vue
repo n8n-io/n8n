@@ -153,8 +153,12 @@ function onTabSelect(tab: NodeSettingsTab) {
 	}
 }
 
-function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
-	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
+function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent | KeyboardEvent) {
+	if (
+		tab === 'communityNode' &&
+		event.target instanceof Element &&
+		event.target.localName === 'a'
+	) {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}
 }

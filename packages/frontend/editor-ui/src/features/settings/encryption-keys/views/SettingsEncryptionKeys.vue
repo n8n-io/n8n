@@ -413,6 +413,7 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .page {
 	display: flex;
 	flex-direction: column;
@@ -482,10 +483,12 @@ onMounted(async () => {
 .rotateIcon {
 	margin-right: var(--spacing--3xs);
 	transition: transform 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .isRotating {
 	animation: settings-encryption-keys-spin 0.8s linear infinite;
+	@include motion.reduced-motion;
 }
 
 @keyframes settings-encryption-keys-spin {

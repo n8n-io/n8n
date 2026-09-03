@@ -119,18 +119,36 @@ function formatDate(dateStr: string | null): string {
 			<N8nTableBase>
 				<thead>
 					<tr>
-						<th :class="$style.sortableHeader" @click="toggleSort('projectName')">
+						<th
+							:class="$style.sortableHeader"
+							@click="toggleSort('projectName')"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="toggleSort('projectName')"
+							@keydown.space.self.prevent="toggleSort('projectName')"
+						>
 							{{ i18n.baseText('projectRoles.assignments.projectColumn')
 							}}{{ sortIndicator('projectName') }}
 						</th>
 						<th
 							:class="[$style.alignRight, $style.sortableHeader]"
 							@click="toggleSort('memberCount')"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="toggleSort('memberCount')"
+							@keydown.space.self.prevent="toggleSort('memberCount')"
 						>
 							{{ i18n.baseText('projectRoles.assignments.membersColumn')
 							}}{{ sortIndicator('memberCount') }}
 						</th>
-						<th :class="$style.sortableHeader" @click="toggleSort('lastAssigned')">
+						<th
+							:class="$style.sortableHeader"
+							@click="toggleSort('lastAssigned')"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="toggleSort('lastAssigned')"
+							@keydown.space.self.prevent="toggleSort('lastAssigned')"
+						>
 							{{ i18n.baseText('projectRoles.assignments.lastAssignedColumn')
 							}}{{ sortIndicator('lastAssigned') }}
 						</th>

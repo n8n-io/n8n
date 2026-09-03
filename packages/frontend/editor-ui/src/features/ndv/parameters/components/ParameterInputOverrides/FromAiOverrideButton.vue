@@ -27,6 +27,10 @@ const emit = defineEmits<{
 			:class="[$style.overrideButton, $style[position]]"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="emit('click')"
+			@keydown.space.self.prevent="emit('click')"
 		>
 			<AiStarsIcon size="large" />
 		</div>

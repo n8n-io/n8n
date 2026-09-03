@@ -88,6 +88,7 @@ onUnmounted(clearTimers);
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	width: 280px;
 	padding: var(--spacing--sm) var(--spacing--md);
@@ -106,6 +107,7 @@ onUnmounted(clearTimers);
 	transition:
 		opacity 0.3s ease,
 		transform 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .slideLeft {
@@ -142,6 +144,7 @@ onUnmounted(clearTimers);
 	transition:
 		transform 0.3s ease,
 		opacity 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .swipe:global(-enter-from) {

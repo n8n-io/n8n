@@ -32,6 +32,10 @@ function copyUrl(url: string) {
 		<div
 			:class="[$style.header, { [$style.expanded]: !isCollapsed }]"
 			@click="isCollapsed = !isCollapsed"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="isCollapsed = !isCollapsed"
+			@keydown.space.self.prevent="isCollapsed = !isCollapsed"
 		>
 			<N8nIcon icon="chevron-right" :class="$style['chevron-icon']" />
 			<span :class="$style['header-label']">
@@ -50,6 +54,10 @@ function copyUrl(url: string) {
 						data-test-id="webhook-url-item"
 						:class="$style['url-row']"
 						@click="copyUrl(item.url)"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="copyUrl(item.url)"
+						@keydown.space.self.prevent="copyUrl(item.url)"
 					>
 						<span v-if="item.isMethodVisible" :class="$style['method-badge']">
 							{{ item.httpMethod }}
@@ -63,6 +71,7 @@ function copyUrl(url: string) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	padding: 0 var(--spacing--xs);
 }
@@ -82,6 +91,7 @@ function copyUrl(url: string) {
 	.expanded & {
 		transform: rotate(90deg);
 	}
+	@include motion.reduced-motion;
 }
 
 .header-label {

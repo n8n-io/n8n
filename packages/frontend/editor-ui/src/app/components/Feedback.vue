@@ -30,6 +30,10 @@ function onFeedback(feedback: 'positive' | 'negative') {
 				class="feedback-button"
 				data-test-id="feedback-button-positive"
 				@click="onFeedback('positive')"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="onFeedback('positive')"
+				@keydown.space.self.prevent="onFeedback('positive')"
 			>
 				<N8nIcon icon="thumbs-up" />
 			</span>
@@ -39,6 +43,10 @@ function onFeedback(feedback: 'positive' | 'negative') {
 				class="feedback-button"
 				data-test-id="feedback-button-negative"
 				@click="onFeedback('negative')"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="onFeedback('negative')"
+				@keydown.space.self.prevent="onFeedback('negative')"
 			>
 				<N8nIcon icon="thumbs-down" />
 			</span>

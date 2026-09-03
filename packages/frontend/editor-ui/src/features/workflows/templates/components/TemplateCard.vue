@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { abbreviateNumber } from '@/app/utils/typesUtils';
 import NodeList from '@/app/components/NodeList.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -53,6 +54,10 @@ function onCardClick(e: MouseEvent) {
 		]"
 		data-test-id="template-card"
 		@click="onCardClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="dispatchClickOnKeyboardActivation"
+		@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 	>
 		<div v-if="loading" :class="$style.loading">
 			<N8nLoading :rows="2" :shrink-last="false" :loading="loading" />

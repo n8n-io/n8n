@@ -163,5 +163,9 @@ watch(
 	& :global(.el-icon) {
 		display: none;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		scroll-behavior: auto;
+	}
 }
 </style>

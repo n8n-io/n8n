@@ -134,6 +134,7 @@ function onClose() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	display: flex;
 	flex-direction: column;
@@ -214,6 +215,7 @@ function onClose() {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
+	@include motion.reduced-motion;
 }
 
 .tabActive {

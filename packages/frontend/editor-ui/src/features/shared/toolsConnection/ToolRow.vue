@@ -287,6 +287,7 @@ function handleConnect() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .row {
 	display: flex;
 	align-items: center;
@@ -300,6 +301,7 @@ function handleConnect() {
 	&:hover {
 		background: var(--color--background--light-1);
 	}
+	@include motion.reduced-motion;
 }
 
 .rowDisabled {

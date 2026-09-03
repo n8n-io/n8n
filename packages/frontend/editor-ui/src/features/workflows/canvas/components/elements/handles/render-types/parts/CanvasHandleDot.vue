@@ -20,6 +20,7 @@ const isOutputHandle = computed(() => props.handleClasses === 'source');
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	padding: 4px;
@@ -51,5 +52,6 @@ const isOutputHandle = computed(() => props.handleClasses === 'source');
 		background: light-dark(var(--color--neutral-100), var(--color--neutral-700));
 		transform: scale(1.5);
 	}
+	@include motion.reduced-motion;
 }
 </style>

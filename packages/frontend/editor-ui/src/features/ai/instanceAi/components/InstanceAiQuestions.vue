@@ -574,6 +574,7 @@ function onOptionMouseEnter(idx: number) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '../../shared/styles/question-option-rows' as questionOptions;
 
 .wrapper {
@@ -683,6 +684,7 @@ function onOptionMouseEnter(idx: number) {
 			}
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .somethingElseRowMulti {
@@ -699,6 +701,7 @@ function onOptionMouseEnter(idx: number) {
 	&.highlighted {
 		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
+	@include motion.reduced-motion;
 }
 
 .pencilIconContainer {
@@ -746,6 +749,7 @@ function onOptionMouseEnter(idx: number) {
 .questionFade-enter-active,
 .questionFade-leave-active {
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .questionFade-enter-from,

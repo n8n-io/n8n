@@ -67,6 +67,7 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .node {
 	position: absolute;
 	display: flex;
@@ -109,7 +110,9 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 			rgba(255, 109, 90, 1)
 		);
 		transition: opacity 0.15s ease;
+		@include motion.reduced-motion;
 	}
+	@include motion.reduced-motion;
 }
 
 .trigger .iconWrapper {
@@ -126,6 +129,7 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 	&::after {
 		opacity: 1;
 		animation: border-rotate 1.5s linear infinite;
+		@include motion.reduced-motion;
 	}
 }
 
@@ -178,6 +182,7 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 	transition:
 		transform 0.3s ease,
 		opacity 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .swipe:global(-enter-from) {

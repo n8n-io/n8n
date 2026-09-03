@@ -206,6 +206,10 @@ watch(
 			:class="{ expanded: !isMinimized }"
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="isMinimized = !isMinimized"
+			@keydown.space.self.prevent="isMinimized = !isMinimized"
 		>
 			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
@@ -232,14 +236,28 @@ watch(
 							<div class="http-method">{{ item.httpMethod }}<br /></div>
 						</div>
 						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+							<div
+								class="webhook-url left-ellipsis clickable"
+								@click="copyWebhookUrl(item)"
+								role="button"
+								tabindex="0"
+								@keydown.enter.self="copyWebhookUrl(item)"
+								@keydown.space.self.prevent="copyWebhookUrl(item)"
+							>
 								{{ item.url }}<br />
 							</div>
 						</div>
 					</div>
 					<div v-else class="webhook-wrapper">
 						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+							<div
+								class="webhook-url left-ellipsis clickable"
+								@click="copyWebhookUrl(item)"
+								role="button"
+								tabindex="0"
+								@keydown.enter.self="copyWebhookUrl(item)"
+								@keydown.space.self.prevent="copyWebhookUrl(item)"
+							>
 								{{ item.url }}<br />
 							</div>
 						</div>
@@ -251,6 +269,7 @@ watch(
 </template>
 
 <style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .webhooks {
 	padding-bottom: var(--spacing--xs);
 	margin: var(--spacing--xs) 0;
@@ -321,6 +340,7 @@ watch(
 	-moz-transition-property: -moz-transform;
 	-o-transition-property: -o-transform;
 	transition-property: transform;
+	@include motion.reduced-motion;
 }
 .expanded .minimize-button {
 	-webkit-transform: rotate(90deg);

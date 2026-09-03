@@ -94,7 +94,14 @@ watch(
 
 <template>
 	<div :class="$style.block">
-		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
+		<header
+			:class="$style.blockHeader"
+			@click="onBlockHeaderClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="onBlockHeaderClick"
+			@keydown.space.self.prevent="onBlockHeaderClick"
+		>
 			<button :class="$style.blockToggle">
 				<N8nIcon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" size="large" />
 			</button>

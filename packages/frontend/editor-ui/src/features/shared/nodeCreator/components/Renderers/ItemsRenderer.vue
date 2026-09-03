@@ -183,6 +183,10 @@ watch(
 					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
 					:data-keyboard-nav-id="item.uuid"
 					@click="wrappedEmit('selected', item)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="wrappedEmit('selected', item)"
+					@keydown.space.self.prevent="wrappedEmit('selected', item)"
 				>
 					<LabelItem v-if="item.type === 'label'" :item="item" />
 

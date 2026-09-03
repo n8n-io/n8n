@@ -2569,6 +2569,7 @@ const onNameSubmit = async (name: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);
@@ -2612,6 +2613,7 @@ const onNameSubmit = async (name: string) => {
 	opacity: 0.3;
 	border-style: dashed;
 	pointer-events: none;
+	@include motion.reduced-motion;
 }
 
 .drop-active {

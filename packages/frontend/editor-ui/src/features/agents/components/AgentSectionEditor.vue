@@ -179,6 +179,7 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 	display: flex;
@@ -192,6 +193,7 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 	&:hover .buttonWrapper {
 		opacity: 1;
 		transition: opacity 0.2s;
+		@include motion.reduced-motion;
 	}
 }
 
@@ -204,6 +206,7 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 	z-index: 1;
 	opacity: 0;
 	transition: opacity 0.2s;
+	@include motion.reduced-motion;
 }
 
 .editor {

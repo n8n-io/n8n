@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { computed, useCssModule } from 'vue';
 import { useCanvas } from '../../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../../composables/useZoomAdjustedValues';
@@ -124,6 +125,10 @@ function onClick(event: MouseEvent) {
 				:class="[$style.plus, handleClasses, 'clickable']"
 				:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
 				@click.stop="onClick"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="dispatchClickOnKeyboardActivation"
+				@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 			>
 				<rect
 					:class="[handleClasses, 'clickable']"

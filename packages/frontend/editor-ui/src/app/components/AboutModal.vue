@@ -116,7 +116,14 @@ const copyDebugInfoToClipboard = async () => {
 						<N8nText>{{ i18n.baseText('about.debug.title') }}</N8nText>
 					</ElCol>
 					<ElCol :span="16">
-						<div :class="$style.debugInfo" @click="copyDebugInfoToClipboard">
+						<div
+							:class="$style.debugInfo"
+							@click="copyDebugInfoToClipboard"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="copyDebugInfoToClipboard"
+							@keydown.space.self.prevent="copyDebugInfoToClipboard"
+						>
 							<N8nLink>{{ i18n.baseText('about.debug.message') }}</N8nLink>
 						</div>
 					</ElCol>

@@ -434,7 +434,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #no-output-data>
 			<NDVEmptyState :title="i18n.baseText('ndv.output.noOutputData.title')">
 				{{ i18n.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				<a
+					@click="openSettings"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="openSettings"
+					@keydown.space.self.prevent="openSettings"
+					>{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a
+				>
 				{{ i18n.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</NDVEmptyState>
 		</template>

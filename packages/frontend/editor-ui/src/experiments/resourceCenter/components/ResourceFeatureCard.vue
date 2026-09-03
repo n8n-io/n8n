@@ -97,6 +97,7 @@ const resolvedArtworkNodeTypes = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	--feature--color--accent: #e63b97;
 	--feature--color--accent-soft: rgba(230, 59, 151, 0.16);
@@ -178,6 +179,7 @@ const resolvedArtworkNodeTypes = computed(() => {
 			0 0 0 0.5px color-mix(in srgb, var(--feature--color--accent) 28%, transparent),
 			0 1px 3px -1px rgba(0, 0, 0, 0.18);
 	}
+	@include motion.reduced-motion;
 }
 
 .toneRose {
@@ -252,6 +254,7 @@ const resolvedArtworkNodeTypes = computed(() => {
 		filter: brightness(0.96);
 		transform: translateY(-1px);
 	}
+	@include motion.reduced-motion;
 }
 
 .artwork {

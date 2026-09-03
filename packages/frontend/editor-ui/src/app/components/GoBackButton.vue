@@ -12,7 +12,14 @@ const navigateTo = () => {
 </script>
 
 <template>
-	<div :class="$style.wrapper" @click="navigateTo">
+	<div
+		:class="$style.wrapper"
+		@click="navigateTo"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="navigateTo"
+		@keydown.space.self.prevent="navigateTo"
+	>
 		<N8nIcon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
 	</div>

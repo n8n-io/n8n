@@ -235,6 +235,7 @@ defineExpose({ scrollToOutput });
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .root {
 	display: flex;
 	flex-direction: column;
@@ -311,6 +312,7 @@ defineExpose({ scrollToOutput });
 		margin-left: var(--spacing--3xs);
 		color: var(--color--text--tint-1);
 		transition: transform var(--duration--fast) ease;
+		@include motion.reduced-motion;
 	}
 
 	&[open] .headerMeta::after {

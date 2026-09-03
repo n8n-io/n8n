@@ -243,6 +243,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	height: fit-content;
 	width: 100%;
@@ -279,6 +280,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	&:hover {
 		color: var(--color--primary);
 	}
+	@include motion.reduced-motion;
 }
 
 .runHeading {

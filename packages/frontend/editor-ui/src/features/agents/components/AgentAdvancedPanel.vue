@@ -694,7 +694,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	</div>
 </template>
 
-<style module>
+<style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .panel {
 	width: 100%;
 }
@@ -734,6 +735,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	color: var(--text-color--subtler);
 	transform: rotate(0deg);
 	transition: transform var(--animation--duration) var(--animation--easing);
+	@include motion.reduced-motion;
 }
 
 .panel[data-state='open'] .chevron {

@@ -128,6 +128,12 @@ watch(hoveredSection, (section) => {
 		<header
 			:class="[$style.header, { [$style.headerClickable]: !!nodeGroup.parentState }]"
 			@click="nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)"
+			@keydown.space.self.prevent="
+				nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)
+			"
 		>
 			<NodeIcon :node-type="parentNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
@@ -189,6 +195,10 @@ watch(hoveredSection, (section) => {
 					:class="$style.sectionHeader"
 					data-test-id="builder-node-group-section-header"
 					@click="toggleSection(section.node.id)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="toggleSection(section.node.id)"
+					@keydown.space.self.prevent="toggleSection(section.node.id)"
 				>
 					<N8nIcon
 						v-if="section.isComplete"

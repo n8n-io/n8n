@@ -1492,6 +1492,7 @@ async function dismissComposerContextChip() {
 	position: relative;
 	transition: --instance-ai-artifacts-layout-width var(--instance-ai-panel-transition-duration)
 		var(--instance-ai-panel-transition-easing);
+	@include motion.reduced-motion;
 }
 
 .artifactsPanelSlot {
@@ -1706,6 +1707,7 @@ async function dismissComposerContextChip() {
 
 .message-slide-enter-active {
 	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	@include motion.reduced-motion;
 }
 
 .fade-enter-from,
@@ -1716,6 +1718,7 @@ async function dismissComposerContextChip() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .scroll-button-fade-enter-from,
@@ -1726,6 +1729,7 @@ async function dismissComposerContextChip() {
 .scroll-button-fade-enter-active,
 .scroll-button-fade-leave-active {
 	transition: opacity 0.12s ease;
+	@include motion.reduced-motion;
 }
 
 .preview-panel-slide-enter-active,
@@ -1746,6 +1750,7 @@ async function dismissComposerContextChip() {
 		transition: none;
 		will-change: auto;
 	}
+	@include motion.reduced-motion;
 }
 
 .preview-panel-slide-enter-active {
@@ -1786,6 +1791,7 @@ async function dismissComposerContextChip() {
 		transition: none;
 		will-change: auto;
 	}
+	@include motion.reduced-motion;
 }
 
 .preview-toggle-opacity-enter-from,
@@ -1830,6 +1836,7 @@ async function dismissComposerContextChip() {
 	@media (prefers-reduced-motion: reduce) {
 		will-change: auto;
 	}
+	@include motion.reduced-motion;
 }
 
 .artifacts-panel-preview-enter-from,
@@ -1862,6 +1869,7 @@ async function dismissComposerContextChip() {
 .input-swap-enter-active,
 .input-swap-leave-active {
 	transition: opacity 120ms ease;
+	@include motion.reduced-motion;
 }
 
 .input-swap-leave-active {

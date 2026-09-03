@@ -146,9 +146,9 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.mcp.access.token.notice') }}
 			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
-				<label :class="$style.label">
+				<div :class="$style.label">
 					{{ i18n.baseText('settings.mcp.connectDialog.jsonConfig') }}
-				</label>
+				</div>
 				<McpConfigSnippet
 					:value="connectionString"
 					:disabled="keyRotating"
