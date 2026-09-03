@@ -8,7 +8,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [agent_background_job](agent_background_job.md) | 16 |  | table |
+| [agent_background_job](agent_background_job.md) | 17 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
@@ -354,6 +354,7 @@ erDiagram
   datetime_3_ settledAt
   varchar_16_ status
   varchar_36_ subAgentId
+  TEXT suspension
   datetime_3_ timeoutAt
   varchar_255_ title
   datetime_3_ updatedAt

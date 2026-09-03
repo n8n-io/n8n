@@ -127,14 +127,21 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			});
 		}
 		if (filters.status) {
-			const latestStatus = this.latestExecutionStatusSubquery(query);
+			const latestStatus = this.latestExecutionColumnSubquery(query, 'status');
+			const latestHitlStatus = this.latestExecutionColumnSubquery(query, 'hitlStatus');
 			const failureExists = this.failureExistsSubquery(query);
-			if (filters.status === 'succeeded') {
-				query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
+			// COALESCE: a NULL hitlStatus must count as "not waiting", not as unknown.
+			const notWaiting = `COALESCE((${latestHitlStatus}), '') <> 'suspended'`;
+			if (filters.status === 'waiting') {
+				query.andWhere(`(${latestStatus}) = 'success' AND (${latestHitlStatus}) = 'suspended'`);
+			} else if (filters.status === 'succeeded') {
+				query.andWhere(
+					`(${latestStatus}) = 'success' AND ${notWaiting} AND NOT EXISTS ${failureExists}`,
+				);
 			} else if (filters.status === 'error') {
 				query.andWhere(
 					`((${latestStatus}) = 'error' OR ` +
-						`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
+						`((${latestStatus}) = 'success' AND ${notWaiting} AND EXISTS ${failureExists}))`,
 				);
 			} else {
 				query.andWhere(`(${latestStatus}) = :sessionStatus`, {
@@ -157,10 +164,13 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		};
 	}
 
-	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
+	private latestExecutionColumnSubquery(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		column: 'status' | 'hitlStatus',
+	): string {
 		return query
 			.subQuery()
-			.select('latestExecution.status')
+			.select(`latestExecution.${column}`)
 			.from(AgentExecution, 'latestExecution')
 			.where('latestExecution.threadId = thread.id')
 			.orderBy('latestExecution.createdAt', 'DESC')

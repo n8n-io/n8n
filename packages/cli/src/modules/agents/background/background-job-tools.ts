@@ -1,6 +1,12 @@
-import type { BuiltTool, ToolContext } from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
-import { Tool } from '@n8n/agents/tool';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type ApprovalResumePayload,
+	type ApprovalSuspendPayload,
+} from '@n8n/agents/tool';
 import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -11,6 +17,9 @@ import type { SubAgentRunContext } from '../sub-agents/sub-agent-runner';
 
 /** Cap on the result text echoed to the model; the full text stays on the row. */
 const RESULT_ECHO_MAX_CHARS = 8000;
+
+/** Private checkpoint state of a check_background_jobs call parked on a child's approval. */
+const CHECK_CONTINUATION_SCHEMA = z.object({ jobId: z.string() });
 
 export interface BackgroundJobToolsOptions {
 	jobService: AgentBackgroundJobService;
@@ -150,11 +159,24 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 		.build();
 }
 
-export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobService): BuiltTool {
+type CheckBackgroundJobsOptions = Pick<
+	BackgroundJobToolsOptions,
+	'jobService' | 'backgroundRunner' | 'projectId' | 'runContext'
+>;
+
+/**
+ * Besides listing, this tool is how a parked child's approval reaches the
+ * human: the call suspends with the child's own approval payload, so the
+ * existing card rendering and resume paths of the parent's surface apply, and
+ * on resume it hands the decision to the child.
+ */
+export function createCheckBackgroundJobsTool(options: CheckBackgroundJobsOptions): BuiltTool {
 	return new Tool('check_background_jobs')
 		.description(
 			'List the background jobs of this conversation with their status and, once settled, ' +
 				'their result or error. Pass an empty object {} to list all jobs (required — do not pass null). ' +
+				'When a job waits for a human decision, this call pauses and shows the approval card to ' +
+				'the user; it returns after they answered and the decision was forwarded to the job. ' +
 				'Call this at most once per turn: when jobs are still running, tell the user and end your ' +
 				'turn — repeated checks within one turn only burn time and tokens.',
 		)
@@ -163,28 +185,76 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 				jobIds: z.array(z.string()).max(50).optional().describe('Limit the check to these job ids'),
 			}),
 		)
-		.handler(async (input, ctx) => {
-			const parentThreadId = threadIdOf(ctx);
-			if (!parentThreadId) {
-				return { jobs: [], note: 'No persisted conversation thread is active.' };
-			}
+		.suspend(APPROVAL_SUSPEND_SCHEMA)
+		.resume(APPROVAL_RESUME_SCHEMA)
+		.handler(
+			async (
+				input,
+				ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+			) => {
+				const parentThreadId = threadIdOf(ctx);
+				if (!parentThreadId) {
+					return { jobs: [], note: 'No persisted conversation thread is active.' };
+				}
 
-			const jobs = await jobService.listForThread(parentThreadId, input.jobIds);
-			return {
-				jobs: jobs.map((job) => ({
-					jobId: job.id,
-					kind: job.kind,
-					title: job.title,
-					status: job.status,
-					...(job.result !== null ? { result: truncateResult(job.result) } : {}),
-					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
-					startedAt: job.createdAt.toISOString(),
-					...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
-				})),
-				runningCount: jobs.filter((job) => job.status === 'running').length,
-			};
-		})
+				const answered = CHECK_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
+				const note =
+					answered.success && ctx.resumeData !== undefined
+						? await forwardDecision(options, parentThreadId, answered.data.jobId, ctx.resumeData)
+						: undefined;
+
+				const jobs = await options.jobService.listForThread(parentThreadId, input.jobIds);
+
+				// One card per call: after an answer the listing goes back to the model.
+				const parked = answered.success
+					? undefined
+					: jobs.find((job) => job.suspendPayload !== null);
+				if (parked?.suspendPayload) {
+					const label = parked.suspendPayload.displayName ?? parked.suspendPayload.toolName;
+					return await ctx.suspend(
+						{ ...parked.suspendPayload, displayName: `${parked.title}: ${label}` },
+						{ continuation: { jobId: parked.id } },
+					);
+				}
+
+				return {
+					jobs: jobs.map((job) => ({
+						jobId: job.id,
+						kind: job.kind,
+						title: job.title,
+						status: job.status,
+						...(job.suspendPayload !== null ? { awaitingHumanInput: true } : {}),
+						...(job.result !== null ? { result: truncateResult(job.result) } : {}),
+						...(job.error !== null ? { error: truncateResult(job.error) } : {}),
+						startedAt: job.createdAt.toISOString(),
+						...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
+					})),
+					runningCount: jobs.filter((job) => job.status === 'running').length,
+					...(note ? { note } : {}),
+				};
+			},
+		)
 		.build();
+}
+
+async function forwardDecision(
+	{ jobService, backgroundRunner, projectId, runContext }: CheckBackgroundJobsOptions,
+	parentThreadId: string,
+	jobId: string,
+	resumeData: ApprovalResumePayload,
+): Promise<string> {
+	const job = await jobService.findJob(jobId);
+	if (
+		!job?.suspension ||
+		job.parentThreadId !== parentThreadId ||
+		!(await jobService.claimSuspendedForResume(job.id))
+	) {
+		return `Job ${jobId} no longer waits for a decision; nothing was forwarded.`;
+	}
+
+	backgroundRunner.resume(job, job.suspension, resumeData, { projectId, ...runContext });
+	const decision = resumeData.approved ? 'approved' : 'declined';
+	return `The user's decision (${decision}) was forwarded to job "${job.title}"; it continues in the background.`;
 }
 
 export function createCancelBackgroundJobTool(jobService: AgentBackgroundJobService): BuiltTool {

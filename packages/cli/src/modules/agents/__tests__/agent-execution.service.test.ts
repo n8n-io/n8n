@@ -820,6 +820,7 @@ describe('AgentExecutionService', () => {
 			const failedThread = makeThread({ id: 'thread-failed' });
 			const cleanThread = makeThread({ id: 'thread-clean' });
 			const runningThread = makeThread({ id: 'thread-running' });
+			const waitingThread = makeThread({ id: 'thread-waiting' });
 			const emptyThread = makeThread({ id: 'thread-empty' });
 			const failureSummary = {
 				count: 2,
@@ -832,19 +833,23 @@ describe('AgentExecutionService', () => {
 				},
 			};
 			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
-				threads: [failedThread, cleanThread, runningThread, emptyThread],
+				threads: [failedThread, cleanThread, runningThread, waitingThread, emptyThread],
 				nextCursor: null,
 			});
 			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
-				new Map([[failedThread.id, failureSummary]]),
+				new Map([
+					[failedThread.id, failureSummary],
+					[waitingThread.id, failureSummary],
+				]),
 			);
 			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
 				new Map([
-					[failedThread.id, 'success'],
-					[cleanThread.id, 'success'],
-					[runningThread.id, 'running'],
+					[failedThread.id, { status: 'success', hitlStatus: null }],
+					[cleanThread.id, { status: 'success', hitlStatus: null }],
+					[runningThread.id, { status: 'running', hitlStatus: null }],
+					[waitingThread.id, { status: 'success', hitlStatus: 'suspended' }],
 				]),
 			);
 
@@ -862,6 +867,8 @@ describe('AgentExecutionService', () => {
 					failureSummary: null,
 					status: 'running',
 				}),
+				// A pending human decision outranks an earlier failure in the thread.
+				expect.objectContaining({ id: waitingThread.id, failureSummary, status: 'waiting' }),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
 			]);
 		});

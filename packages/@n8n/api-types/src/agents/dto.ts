@@ -25,6 +25,7 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 
 export const AGENT_SESSION_STATUSES = [
 	'running',
+	'waiting',
 	'succeeded',
 	'error',
 	'cancelled',

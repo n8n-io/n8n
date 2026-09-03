@@ -1,10 +1,11 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 
 import {
 	AgentBackgroundJob,
 	type AgentBackgroundJobKind,
 	type AgentBackgroundJobStatus,
+	type AgentBackgroundJobSuspension,
 } from '../entities/agent-background-job.entity';
 
 type NewAgentBackgroundJobBase = {
@@ -56,6 +57,29 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		});
 	}
 
+	async findById(id: string): Promise<AgentBackgroundJob | null> {
+		return await this.findOneBy({ id });
+	}
+
+	async parkIfRunning(id: string, suspension: AgentBackgroundJobSuspension): Promise<boolean> {
+		const result = await this.update({ id, status: 'running' }, { suspension, timeoutAt: null });
+		return result.affected === 1;
+	}
+
+	async claimSuspended(id: string, timeoutAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'running', suspension: Not(IsNull()) },
+			{ suspension: null, timeoutAt },
+		);
+		return result.affected === 1;
+	}
+
+	async findParkedJobs(): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where: { status: 'running', suspension: Not(IsNull()) },
+		});
+	}
+
 	async findRunningWorkflowJobByExecutionId(
 		executionId: string,
 	): Promise<AgentBackgroundJob | null> {
@@ -86,6 +110,24 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				result: settlement.result ?? null,
 				error: settlement.error ?? null,
 				settledAt: new Date(),
+				suspension: null,
+			},
+		);
+		return result.affected === 1;
+	}
+
+	async settleSuspendedIfRunning(
+		id: string,
+		settlement: AgentBackgroundJobSettlement,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'running', suspension: Not(IsNull()) },
+			{
+				status: settlement.status,
+				result: settlement.result ?? null,
+				error: settlement.error ?? null,
+				settledAt: new Date(),
+				suspension: null,
 			},
 		);
 		return result.affected === 1;

@@ -16,6 +16,7 @@
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
+| suspension | json |  | true |  |  | Sub-agent request for human input, including the checkpoint and resume context |
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
 | title | varchar(255) |  | false |  |  | Task name or workflow name, echoed in status-check listings |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -69,6 +70,7 @@ erDiagram
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
   varchar_36_ subAgentId
+  json suspension
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

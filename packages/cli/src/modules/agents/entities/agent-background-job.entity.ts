@@ -1,8 +1,23 @@
-import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
+import type { ApprovalSuspendPayload, JSONValue } from '@n8n/agents';
+import type { SubAgentTaskDifficulty } from '@n8n/api-types';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
 export type AgentBackgroundJobKind = 'subagent' | 'workflow';
 export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+
+/** What `check_background_jobs` needs to proxy the approval and continue the child. */
+export interface AgentBackgroundJobSuspension {
+	childRunId: string;
+	childToolCallId: string;
+	childAgentId: string;
+	/** The child's approval request; `args` are pinned to JSON because the column stores them. */
+	suspendPayload: Omit<ApprovalSuspendPayload, 'args'> & { args?: JSONValue };
+	taskPath: string;
+	resumeContext: JSONValue;
+	goal: string;
+	difficulty?: SubAgentTaskDifficulty;
+}
 
 /**
  * Durable registry of background jobs dispatched by top-level agents: detached
@@ -66,4 +81,7 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
+
+	@JsonColumn({ nullable: true })
+	suspension: AgentBackgroundJobSuspension | null;
 }

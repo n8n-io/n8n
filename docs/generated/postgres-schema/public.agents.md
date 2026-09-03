@@ -112,6 +112,7 @@ erDiagram
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
   varchar_36_ subAgentId
+  json suspension
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt

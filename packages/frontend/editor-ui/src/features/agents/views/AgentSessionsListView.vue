@@ -119,6 +119,8 @@ function statusLabel(status: AgentSessionStatus): string {
 	switch (status) {
 		case 'running':
 			return i18n.baseText('agentSessions.status.running');
+		case 'waiting':
+			return i18n.baseText('agentSessions.status.waiting');
 		case 'succeeded':
 			return i18n.baseText('agentSessions.status.succeeded');
 		case 'error':
@@ -295,7 +297,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 											{{ statusLabel(thread.status) }}
 										</N8nText>
 										<N8nText
-											v-if="thread.status !== 'running'"
+											v-if="thread.status !== 'running' && thread.status !== 'waiting'"
 											color="text-base"
 											size="small"
 											data-testid="agent-session-status-duration"
@@ -547,6 +549,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 		border-left-color: var(--execution-card--border-color--error);
 	}
 
+	&[data-status='waiting'] .titleCell,
 	&[data-status='cancelled'] .titleCell,
 	&[data-status='interrupted'] .titleCell {
 		border-left-color: var(--border-color--warning);
