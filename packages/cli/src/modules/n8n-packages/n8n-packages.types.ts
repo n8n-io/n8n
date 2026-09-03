@@ -9,6 +9,7 @@ import type {
 	VariableResolutionFailure,
 } from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
+import type { PackageManifest } from './spec/manifest.schema';
 import type {
 	WorkflowConflict,
 	WorkflowFolderConflict,
@@ -411,6 +412,16 @@ export interface ExportPackageSummary {
  */
 export interface ExportPackageResult extends ExportPackageSummary {
 	stream: Readable;
+}
+
+/**
+ * Result of an export written to a directory. It carries the manifest as the
+ * export wrote it: the package holds the same thing in `manifest.json`, and a
+ * caller that keeps working with the directory takes it from here instead of
+ * reading the file back.
+ */
+export interface ExportPackageDirectoryResult extends ExportPackageSummary {
+	manifest: PackageManifest;
 }
 
 /**

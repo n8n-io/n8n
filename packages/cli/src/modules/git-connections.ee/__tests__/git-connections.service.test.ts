@@ -17,7 +17,8 @@ import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities
 import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
-import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
+import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
@@ -34,7 +35,14 @@ import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 
-const packageRequirements = new PackageRequirementsReader(
+const emptyManifest = packageManifestSchema.parse({
+	packageFormatVersion: '1',
+	exportedAt: '2026-01-01T00:00:00.000Z',
+	sourceN8nVersion: '1.0.0',
+	sourceId: 'inst-1',
+});
+
+const packageContents = new PackageContentsReader(
 	new WorkflowSerializer(),
 	new CredentialRequirementsExtractor(),
 	new DataTableRequirementsExtractor(),
@@ -85,7 +93,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageRequirements),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageContents),
 		logger,
 	);
 
@@ -304,7 +312,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig, packageRequirements),
+				new WorkingCopyUpdater(settings, packageImportConfig, packageContents),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -318,6 +326,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					await writeFile(path.join(targetDir, 'manifest.json'), '{"projects":[]}');
 					await writeFile(path.join(targetDir, 'projects', 'alpha', 'project.json'), '{}');
 					return {
+						manifest: emptyManifest,
 						counts: {
 							workflows: 0,
 							folders: 0,
@@ -529,6 +538,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				async (_request, { targetDir }) => {
 					await writeExportTree(targetDir, files);
 					return {
+						manifest: packageManifestSchema.parse(JSON.parse(files['manifest.json'])),
 						counts: {
 							workflows: 0,
 							folders: 0,
@@ -570,7 +580,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				selectiveInstanceSettings,
-				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig, packageRequirements),
+				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig, packageContents),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -867,7 +877,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig, packageRequirements),
+				new WorkingCopyUpdater(settings, packageImportConfig, packageContents),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());

@@ -8,7 +8,7 @@ import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities
 import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
-import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
+import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -108,7 +108,7 @@ describe('WorkingCopyUpdater', () => {
 	const updater = new WorkingCopyUpdater(
 		mock<InstanceSettings>({ instanceId: 'inst-1' }),
 		packageImportConfig,
-		new PackageRequirementsReader(
+		new PackageContentsReader(
 			new WorkflowSerializer(),
 			new CredentialRequirementsExtractor(),
 			new DataTableRequirementsExtractor(),
@@ -148,7 +148,13 @@ describe('WorkingCopyUpdater', () => {
 		});
 		await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging), ...stagingFiles });
 		const branch = await updater.readBranchState(exportFolder);
-		return await updater.applySelection(exportFolder, stagingFolder, branch, new Set(deleted));
+		return await updater.applySelection(
+			exportFolder,
+			stagingFolder,
+			staging,
+			branch,
+			new Set(deleted),
+		);
 	};
 
 	beforeEach(async () => {
@@ -472,13 +478,20 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
 			await writeTree(stagingFolder, {
-				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'manifest.json': manifestFile(staging),
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, { projects: [alpha] }, new Set()),
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha] },
+					new Set(),
+				),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(outside)).toEqual([]);
 		});
@@ -502,13 +515,12 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
-			await writeTree(stagingFolder, {
-				'manifest.json': manifestFile(makeManifest({ projects: [alpha] })),
-			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 			const branch: BranchState = { projects: [alpha], workflows: [wf('w1')] };
 
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, branch, new Set(['w1'])),
+				updater.applySelection(exportFolder, stagingFolder, staging, branch, new Set(['w1'])),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(path.join(outside, 'w1'))).toEqual(['workflow.json']);
 		});

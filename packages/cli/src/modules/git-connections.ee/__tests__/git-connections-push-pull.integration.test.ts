@@ -20,8 +20,7 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { readPackageEntries } from '@/modules/n8n-packages/engine/package-entries';
-import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
+import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -52,7 +51,7 @@ type TestRemote = {
 };
 
 const packageImportConfig = Container.get(PackageImportConfig);
-const packageRequirements = Container.get(PackageRequirementsReader);
+const packageContents = Container.get(PackageContentsReader);
 
 const licenseMocker = new LicenseMocker();
 
@@ -120,7 +119,7 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageRequirements),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageContents),
 		logger,
 	);
 });
@@ -632,7 +631,7 @@ describe('Selective push', () => {
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const reader = new DirectoryPackageReader(path.join(dir, 'n8n-export'), packageImportConfig);
-		const derived = await packageRequirements.read(reader, await readPackageEntries(reader));
+		const derived = (await packageContents.read(reader)).requirements;
 
 		// The exporter states the requirements from the database; the reader
 		// derives them from the files it wrote. They have to agree, because the

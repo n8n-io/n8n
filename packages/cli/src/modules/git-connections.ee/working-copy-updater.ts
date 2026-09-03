@@ -8,8 +8,7 @@ import { z } from 'zod';
 
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { readPackageEntries } from '@/modules/n8n-packages/engine/package-entries';
-import { PackageRequirementsReader } from '@/modules/n8n-packages/engine/package-requirements';
+import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -38,7 +37,7 @@ export class WorkingCopyUpdater {
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageImportConfig: PackageImportConfig,
-		private readonly packageRequirements: PackageRequirementsReader,
+		private readonly packageContents: PackageContentsReader,
 	) {}
 
 	validateSelection(selection: SelectivePushOptions): void {
@@ -83,9 +82,9 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * What the branch holds, read from the directories on disk: the entries
-	 * from the entity files, and who uses which dependency from the workflow
-	 * files. A manifest that drifted from the tree cannot steer the push.
+	 * What the branch holds, read from the directories on disk: one entry for
+	 * each entity, and who uses which dependency. A manifest that drifted from
+	 * the tree cannot steer the push.
 	 *
 	 * The one thing still taken from the manifest is the variable ids, which
 	 * the package format leaves out of a variable file on purpose. They are
@@ -96,16 +95,15 @@ export class WorkingCopyUpdater {
 		// The same reader a pull uses, so a branch this push accepts is a branch
 		// an import can read: it rejects symbolic links and applies the package
 		// limits.
-		const reader = new DirectoryPackageReader(exportFolder, this.packageImportConfig);
-		const tree = await readPackageEntries(reader);
-		const requirements = await this.packageRequirements.read(reader, tree);
+		const contents = await this.packageContents.read(
+			new DirectoryPackageReader(exportFolder, this.packageImportConfig),
+		);
 		const manifest = await this.readManifestIfPresent(exportFolder);
 
 		const idByTarget = new Map((manifest?.variables ?? []).map((v) => [v.target, v.id]));
 		return {
-			...tree,
-			variables: tree.variables?.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
-			...(requirements ? { requirements } : {}),
+			...contents,
+			variables: contents.variables?.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
 		};
 	}
 
@@ -147,15 +145,16 @@ export class WorkingCopyUpdater {
 	 * Merge the staging export into `exportFolder`: remove the directories the
 	 * selection replaces or drops, then overlay the staging files at the place
 	 * the branch keeps for them. `manifest.json` is rewritten last, to restate
-	 * the resulting directories.
+	 * the resulting directories. `staging` is the manifest the exporter just
+	 * wrote into `stagingFolder`.
 	 */
 	async applySelection(
 		exportFolder: string,
 		stagingFolder: string,
+		staging: PackageManifest,
 		existing: BranchState,
 		deletedWorkflowIds: Set<string>,
 	): Promise<PackageManifest> {
-		const staging = await this.readManifest(stagingFolder);
 		const merged = mergeManifests(existing, staging, deletedWorkflowIds);
 
 		for (const target of staleTargets(existing, merged, staging)) {

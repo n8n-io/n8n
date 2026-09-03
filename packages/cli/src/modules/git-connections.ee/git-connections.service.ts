@@ -319,7 +319,7 @@ export class GitConnectionsService {
 			// The exporter writes only the selected workflows, the folders on the
 			// path to them, and the dependencies they use. Ids outside the project
 			// make it throw.
-			await this.n8nPackagesService.exportPackageToDirectory(
+			const { manifest: staging } = await this.n8nPackagesService.exportPackageToDirectory(
 				{
 					user: actor,
 					projectIds: [selection.projectId],
@@ -336,6 +336,7 @@ export class GitConnectionsService {
 			const mergedManifest = await this.workingCopy.applySelection(
 				exportFolder,
 				stagingFolder,
+				staging,
 				branchState,
 				new Set(selection.deletedWorkflowIds),
 			);
