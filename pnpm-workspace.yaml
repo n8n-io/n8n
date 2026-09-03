@@ -263,6 +263,7 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
+  typescript-eslint: ^8.68.0
   uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
