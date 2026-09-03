@@ -4,6 +4,12 @@ const terminalOutcomeStorageMock = {
 	upsert: vi.fn(),
 };
 
+const workflowLoopStorageMock = {
+	listWorkItems: vi.fn(async () => [] as unknown[]),
+};
+
+const buildVerdictDisclosureEventMock = vi.fn();
+
 // Manual mock — must be declared before any import that touches the mocked module.
 vi.mock('@n8n/instance-ai', () => ({
 	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
@@ -97,6 +103,10 @@ vi.mock('@n8n/instance-ai', () => ({
 		markDelivered = terminalOutcomeStorageMock.markDelivered;
 		upsert = terminalOutcomeStorageMock.upsert;
 	},
+	WorkflowLoopStorage: class {
+		listWorkItems = workflowLoopStorageMock.listWorkItems;
+	},
+	buildVerdictDisclosureEvent: (args: unknown) => buildVerdictDisclosureEventMock(args),
 }));
 
 import type { Mock } from 'vitest';
@@ -198,6 +208,97 @@ beforeEach(() => {
 	terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([]);
 	terminalOutcomeStorageMock.markDelivered.mockResolvedValue(undefined);
 	terminalOutcomeStorageMock.upsert.mockResolvedValue(undefined);
+	workflowLoopStorageMock.listWorkItems.mockResolvedValue([]);
+	buildVerdictDisclosureEventMock.mockReturnValue(undefined);
+});
+
+describe('InstanceAiTerminalOutcomeService — verification verdict disclosure', () => {
+	const disclosure: InstanceAiEvent = {
+		type: 'text-delta',
+		runId: 'run-1',
+		agentId: 'orchestrator-run-1',
+		responseId: 'verdict-disclosure:wi_1:2026-09-03T10:00:00.000Z',
+		payload: { text: '**Not fully verified**' },
+	};
+
+	it('publishes the verdict block when a run completes', async () => {
+		const { service, deps } = createService();
+		buildVerdictDisclosureEventMock.mockReturnValue(disclosure);
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed');
+
+		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', disclosure);
+		expect(deps.telemetry.track).toHaveBeenCalledWith(
+			'instance_ai_verification_verdict_disclosed',
+			expect.objectContaining({ thread_id: 'thread-a', run_id: 'run-1' }),
+		);
+	});
+
+	it('publishes the verdict block when a run suspends for a confirmation', async () => {
+		const { service, deps } = createService();
+		buildVerdictDisclosureEventMock.mockReturnValue(disclosure);
+
+		// The build summary often lands in the turn that opens the setup card.
+		await service.evaluateWaitingResponse('thread-a', 'run-1', {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { requestId: 'r1', message: 'Configure credentials' },
+		} as never);
+
+		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', disclosure);
+	});
+
+	it('does not disclose on a cancelled or errored run', async () => {
+		const { service, deps } = createService();
+		buildVerdictDisclosureEventMock.mockReturnValue(disclosure);
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'cancelled');
+		await service.evaluateTerminalResponse('thread-a', 'run-2', 'errored');
+
+		expect(deps.eventBus.publish).not.toHaveBeenCalledWith('thread-a', disclosure);
+	});
+
+	it('publishes nothing when the claim needs no disclosure', async () => {
+		const { service, deps } = createService();
+		buildVerdictDisclosureEventMock.mockReturnValue(undefined);
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed');
+
+		expect(deps.eventBus.publish).not.toHaveBeenCalledWith('thread-a', disclosure);
+		expect(deps.telemetry.track).not.toHaveBeenCalledWith(
+			'instance_ai_verification_verdict_disclosed',
+			expect.anything(),
+		);
+	});
+
+	it('passes the run events through so a repeat hand-back can be detected', async () => {
+		const { service } = createService();
+		buildVerdictDisclosureEventMock.mockReturnValue(undefined);
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed');
+
+		expect(buildVerdictDisclosureEventMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: 'run-1',
+				agentId: 'orchestrator-run-1',
+				events: expect.any(Array),
+			}),
+		);
+	});
+
+	it('keeps the run outcome when the work-item read fails', async () => {
+		const { service, deps } = createService();
+		workflowLoopStorageMock.listWorkItems.mockRejectedValue(new Error('storage down'));
+
+		const decision = await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed');
+
+		expect(decision?.status).toBe('completed');
+		expect(deps.logger.warn).toHaveBeenCalledWith(
+			'Failed to publish the verification verdict disclosure',
+			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
+		);
+	});
 });
 
 describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {

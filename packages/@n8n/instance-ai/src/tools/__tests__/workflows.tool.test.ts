@@ -2418,8 +2418,9 @@ describe('workflows tool', () => {
 			});
 		});
 
-		function contextWithClaim(claim: unknown) {
+		function contextWithClaim(claim: unknown, permissions?: Partial<InstanceAiPermissions>) {
 			return createMockContext({
+				...(permissions ? { permissions } : {}),
 				workflowBuildContext: {
 					threadId: 't1',
 					runId: 'run-1',
@@ -2467,8 +2468,7 @@ describe('workflows tool', () => {
 		});
 
 		it('should refuse an unverified publish even when approval is not required', async () => {
-			const context = contextWithClaim(partialClaim);
-			context.permissions = { publishWorkflow: 'always_allow' };
+			const context = contextWithClaim(partialClaim, { publishWorkflow: 'always_allow' });
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);

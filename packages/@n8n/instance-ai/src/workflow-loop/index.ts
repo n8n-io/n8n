@@ -58,6 +58,11 @@ export {
 } from './workflow-loop-controller';
 
 export { formatWorkflowLoopGuidance } from './guidance';
+export {
+	buildVerdictDisclosureEvent,
+	VERDICT_DISCLOSURE_RESPONSE_PREFIX,
+	type VerdictDisclosureRecord,
+} from './verdict-disclosure';
 export { WorkflowTaskCoordinator } from './workflow-task-service';
 export {
 	deriveWorkflowVerificationObligation,

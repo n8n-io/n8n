@@ -64,3 +64,39 @@ export function formatClaimDisclosure(claim: VerificationClaim): string | undefi
 	if (claim.level === 'verified') return undefined;
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim)].join(' ');
 }
+
+/**
+ * The verdict block shown to the user, as markdown. Rendered by code so the
+ * claim cannot be softened by the surrounding prose. Undefined for a verified
+ * claim: a block on every successful build is noise, and noise teaches people
+ * to skip it.
+ */
+export function formatClaimVerdictBlock(claim: VerificationClaim): string | undefined {
+	if (claim.level === 'verified') return undefined;
+
+	const facts = [
+		claim.unprovenTargets.length > 0
+			? `This change was about ${formatClaimNodeList(claim.unprovenTargets)}, and that was never proven.`
+			: '',
+		...describeClaimCoverage(claim),
+	].filter((fact) => fact !== '');
+
+	const lines = [`**${verdictBlockTitle(claim.level)}**`, '', ...facts.map((fact) => `- ${fact}`)];
+	if (claim.liveTestRecommended) {
+		lines.push('', 'Want me to run a live end-to-end test to confirm the rest?');
+	}
+	return lines.join('\n');
+}
+
+function verdictBlockTitle(level: VerificationClaim['level']): string {
+	switch (level) {
+		case 'verified':
+			return 'Verified end to end';
+		case 'unproven':
+			return 'Changed, but not verified';
+		case 'partial':
+			return 'Not fully verified';
+		case 'failed':
+			return 'Verification did not pass';
+	}
+}
