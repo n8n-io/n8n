@@ -1,0 +1,41 @@
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_0b4fdfbac98492::t_2497a1b579c7b0 1,3,32-44,46,48-54
+  h_32d8cd6a0d6aad 45,47
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_ec33494fbdf925::t_e860237876fbc7 788
+  h_32d8cd6a0d6aad 785,787
+  s_0b4fdfbac98492::t_2497a1b579c7b0 19-22,782-784,786,792
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_0b4fdfbac98492::t_2497a1b579c7b0 4,96-159
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatOpenAi.test.ts
+  s_0b4fdfbac98492::t_2497a1b579c7b0 467-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8014c4e7f3b4dd19a364835a5aba6dfdf73d6a59",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0b4fdfbac98492": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95a594ed-c5bf-4cb3-a0eb-748c3416e949",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_ec33494fbdf925": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b03a28de-c54a-4241-99b6-ec2a445457f7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
