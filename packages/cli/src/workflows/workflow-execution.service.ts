@@ -40,10 +40,14 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import {
+	SubworkflowPolicyChecker,
+	WorkflowPreExecuteGate,
+} from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -75,6 +79,7 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly preExecuteGate: WorkflowPreExecuteGate,
 	) {}
 
 	async runWorkflow(
@@ -181,6 +186,24 @@ export class WorkflowExecutionService {
 			responsePromise?.reject(ensureError(establishContextError));
 
 			return undefined;
+		}
+
+		try {
+			await this.preExecuteGate.assertCanStart(workflowData, mode, runData.source);
+		} catch (error) {
+			if (error instanceof PreExecuteBlockedError) {
+				this.logger.error('Blocked a polled execution before its row was committed', {
+					workflowId: workflowData.id,
+					nodeName: node.name,
+					error: error.cause,
+				});
+
+				responsePromise?.reject(error.cause);
+
+				return undefined;
+			}
+
+			throw error;
 		}
 
 		const payload: CreateExecutionPayload = {

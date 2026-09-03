@@ -32,12 +32,15 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
+import { EventService } from './events/event.service';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 // `no-cycle` still reports a cycle here, but only through the dynamic import
 // in `execute-error-workflow`, which creates no evaluation-order edge.
-// eslint-disable-next-line import-x/no-cycle
+
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
@@ -45,7 +48,10 @@ import {
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import {
+	CredentialsPermissionChecker,
+	WorkflowPreExecuteGate,
+} from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -57,7 +63,6 @@ import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { EventService } from './events/event.service';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -98,6 +103,7 @@ export class WorkflowRunner {
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
 		private readonly engineV2Dispatcher: EngineV2Dispatcher,
+		private readonly preExecuteGate: WorkflowPreExecuteGate,
 	) {}
 
 	/** The process did error */
@@ -258,6 +264,19 @@ export class WorkflowRunner {
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);
+
+		// Resume / poll claim / crash recovery already passed this gate when the row was created.
+		if (!existingExecution) {
+			try {
+				await this.preExecuteGate.assertCanStart(
+					data.workflowData,
+					data.executionMode,
+					data.source,
+				);
+			} catch (error) {
+				throw PreExecuteBlockedError.unwrap(error);
+			}
+		}
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);

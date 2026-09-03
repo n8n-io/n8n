@@ -35,6 +35,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
+	WorkflowPreExecuteGate,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
@@ -127,6 +128,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
+	const preExecuteGate = mockInstance(WorkflowPreExecuteGate);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
@@ -186,10 +188,25 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
+			preExecuteGate.assertCanStart.mockResolvedValue(undefined);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(
 				mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
 			);
+		});
+
+		it('does not persist when preExecute blocks the run', async () => {
+			preExecuteGate.assertCanStart.mockRejectedValue(new Error('blocked'));
+
+			await expect(
+				executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				),
+			).rejects.toThrow('blocked');
+
+			expect(activeExecutions.add).not.toHaveBeenCalled();
 		});
 
 		it('should execute workflow, return data and execution id', async () => {

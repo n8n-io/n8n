@@ -8,6 +8,9 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
@@ -36,16 +39,16 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import {
+	CredentialsPermissionChecker,
+	WorkflowPreExecuteGate,
+} from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
@@ -849,6 +852,7 @@ describe('pre-persist context establishment', () => {
 	const callOrder: string[] = [];
 	let establishSpy: MockInstance;
 	let addSpy: MockInstance;
+	let gateSpy: MockInstance | undefined;
 	let capturedAddData: IWorkflowExecutionDataProcess | undefined;
 
 	const buildRunData = (
@@ -935,6 +939,8 @@ describe('pre-persist context establishment', () => {
 	afterEach(() => {
 		establishSpy.mockRestore();
 		addSpy.mockRestore();
+		gateSpy?.mockRestore();
+		gateSpy = undefined;
 	});
 
 	it('calls establishExecutionContext before activeExecutions.add', async () => {
@@ -956,6 +962,31 @@ describe('pre-persist context establishment', () => {
 			headers: { authorization: '**********' },
 		});
 		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
+	});
+
+	it('does not persist when preExecute blocks the run', async () => {
+		const gate = Container.get(WorkflowPreExecuteGate);
+		gateSpy = vi.spyOn(gate, 'assertCanStart').mockRejectedValue(new Error('blocked'));
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('blocked');
+
+		expect(addSpy).not.toHaveBeenCalled();
+	});
+
+	it('skips the preExecute gate when claiming an existing execution', async () => {
+		const gate = Container.get(WorkflowPreExecuteGate);
+		gateSpy = vi.spyOn(gate, 'assertCanStart');
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(
+			runner.run(data, undefined, undefined, { executionId: 'e1', expectedStatus: 'waiting' }),
+		).rejects.toThrow('short-circuit for test');
+
+		expect(gateSpy).not.toHaveBeenCalled();
+		expect(addSpy).toHaveBeenCalled();
 	});
 
 	it('skips establishExecutionContext when data.executionData is undefined', async () => {
