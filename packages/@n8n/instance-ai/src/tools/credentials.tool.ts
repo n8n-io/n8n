@@ -765,13 +765,15 @@ async function announceSetupItems(
 			workflowId,
 			error: error instanceof Error ? error.message : String(error),
 		});
-		try {
-			context.setupItemsEmitter.merge(
-				workflowId,
-				buildSetupItemsFromCredentialRequests(workflowId, credentials),
-			);
-		} catch {
-			// The panel is a side channel: never fail the tool over it.
+		// Generic auth types have no node-less row, so this list can be empty;
+		// an empty merge would publish an empty snapshot over the durable one.
+		const fallback = buildSetupItemsFromCredentialRequests(workflowId, credentials);
+		if (fallback.length > 0) {
+			try {
+				context.setupItemsEmitter.merge(workflowId, fallback);
+			} catch {
+				// The panel is a side channel: never fail the tool over it.
+			}
 		}
 	}
 

@@ -149,7 +149,7 @@ describe('createSetupItemsEmitter', () => {
 		expect(published).toHaveLength(1);
 	});
 
-	it('remembers the workflow of the latest emission, even when the snapshot did not change', () => {
+	it('remembers the workflow of the latest replace, even when the snapshot did not change', () => {
 		const { emitter } = makeEmitter();
 		const slack = {
 			id: 'wf-1:credential:slackApi',
@@ -163,6 +163,18 @@ describe('createSetupItemsEmitter', () => {
 		expect(emitter.lastWorkflowId()).toBe('wf-2');
 		expect(emitter.emit('wf-1', [slack])).toBe(false);
 		expect(emitter.lastWorkflowId()).toBe('wf-1');
+	});
+
+	it('does not move the latest workflow on a merge, which may target an older one', () => {
+		const { emitter } = makeEmitter();
+		emitter.emit('wf-old', []);
+		emitter.emit('wf-new', []);
+
+		emitter.merge('wf-old', [
+			{ id: 'wf-old:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+		]);
+
+		expect(emitter.lastWorkflowId()).toBe('wf-new');
 	});
 
 	it('merges partial announcements into the last snapshot instead of replacing it', () => {

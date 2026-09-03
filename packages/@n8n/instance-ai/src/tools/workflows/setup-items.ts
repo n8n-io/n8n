@@ -40,9 +40,7 @@ export function createSetupItemsEmitter(options: {
 	const lastSnapshots = new Map<string, { fingerprint: string; items: InstanceAiSetupItem[] }>();
 	let lastWorkflowId: string | undefined;
 
-	const emit = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
-		// Tracked before the dedupe: an unchanged snapshot is still the latest save.
-		lastWorkflowId = workflowId;
+	const publish = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
 		const next = fingerprint(items);
 		if (lastSnapshots.get(workflowId)?.fingerprint === next) return false;
 		eventBus.publish(threadId, {
@@ -58,7 +56,13 @@ export function createSetupItemsEmitter(options: {
 	};
 
 	return {
-		emit,
+		emit(workflowId, items) {
+			// A replace is a save. Tracked before the dedupe, since an unchanged
+			// snapshot is still the latest save; a merge (announcement) does not
+			// move it, the agent may announce against an older workflow.
+			lastWorkflowId = workflowId;
+			return publish(workflowId, items);
+		},
 		merge(workflowId, items) {
 			const byId = new Map<string, InstanceAiSetupItem>();
 			for (const item of lastSnapshots.get(workflowId)?.items ?? []) byId.set(item.id, item);
@@ -66,7 +70,7 @@ export function createSetupItemsEmitter(options: {
 				const existing = byId.get(item.id);
 				byId.set(item.id, existing ? mergeSetupItem(existing, item) : item);
 			}
-			return emit(workflowId, [...byId.values()]);
+			return publish(workflowId, [...byId.values()]);
 		},
 		lastWorkflowId: () => lastWorkflowId,
 	};

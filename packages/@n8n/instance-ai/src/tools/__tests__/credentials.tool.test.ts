@@ -1037,6 +1037,24 @@ describe('credentials tool', () => {
 			);
 		});
 
+		it('should not publish an empty snapshot when only generic auth types fall back', async () => {
+			const { context, emitter } = panelContext();
+			vi.mocked(analyzeWorkflow).mockRejectedValue(new Error('workflow gone'));
+
+			const result = await executeTool<{ announced?: boolean }>(
+				createCredentialsTool(context),
+				{
+					action: 'setup' as const,
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'httpTemplatedCustomAuth' }],
+				},
+				suspendCtx(),
+			);
+
+			expect(result.announced).toBe(true);
+			expect(emitter.merge).not.toHaveBeenCalled();
+		});
+
 		it('should keep the card when an entry asks for a new credential', async () => {
 			const { context, emitter } = panelContext();
 			const suspendFn = vi.fn();
