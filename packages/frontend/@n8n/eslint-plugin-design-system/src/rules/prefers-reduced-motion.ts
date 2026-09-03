@@ -167,12 +167,25 @@ function addDisabledKind(
 	}
 }
 
+function addReducedMotionMixin(state: CssState, selectors: string[]): void {
+	for (const selector of selectors) {
+		const disabledKinds = state.disabledBySelector.get(selector) ?? new Set<MotionKind>();
+		disabledKinds.add('animation');
+		disabledKinds.add('transition');
+		state.disabledBySelector.set(selector, disabledKinds);
+	}
+}
+
 function inspectDeclaration(
 	declaration: string,
 	selectors: string[],
 	inReducedMotionQuery: boolean,
 	state: CssState,
 ): void {
+	if (/^\s*@include\s+(?:[\w-]+\.)?reduced-motion(?:\(\s*\))?\s*$/.test(declaration)) {
+		addReducedMotionMixin(state, selectors);
+		return;
+	}
 	const match = /^\s*([\w-]+)\s*:\s*([\s\S]*?)\s*$/.exec(declaration);
 	if (!match?.[1] || match[2] === undefined || selectors.length === 0) return;
 	const property = match[1].toLowerCase();
