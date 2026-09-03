@@ -119,6 +119,7 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
           owner: n8n-io
           repositories: n8n-cloud
+          permission-contents: read
 
       - name: Set up Helm
         uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0

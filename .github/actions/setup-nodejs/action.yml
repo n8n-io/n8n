@@ -30,6 +30,7 @@ inputs:
     description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
     required: false
     default: 'pnpm-lock.yaml'
+
 runs:
   using: 'composite'
   steps:
