@@ -170,6 +170,10 @@ const onBodyInteracted = () => {
 					:class="$style.sectionHeader"
 					data-test-id="node-group-section-header"
 					@click="toggleSection(section.node.id)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="toggleSection(section.node.id)"
+					@keydown.space.self.prevent="toggleSection(section.node.id)"
 				>
 					<N8nIcon
 						v-if="section.isComplete"

@@ -131,11 +131,14 @@ onMounted(() => {
 		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
 			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
 				<div :class="shared.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+					<label for="sso-auth-protocol">{{
+						i18n.baseText('settings.sso.settings.authProtocol.label')
+					}}</label>
 					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
 				</div>
 				<div :class="shared.settingsItemControl">
 					<N8nSelect
+						id="sso-auth-protocol"
 						filterable
 						size="medium"
 						:disabled="ssoStore.ssoManagedByEnv"

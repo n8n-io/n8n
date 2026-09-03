@@ -36,6 +36,7 @@ const emit = defineEmits<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 :global(.el-dropdown-menu__item.workflow-diff-node-item) {
 	display: flex;
 	align-items: center;
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 	&:hover {
 		background-color: var(--color--background--light-3);
 	}
+	@include motion.reduced-motion;
 }
 
 :global(.el-dropdown-menu__item.workflow-diff-node-item.workflow-diff-node-item--compact) {

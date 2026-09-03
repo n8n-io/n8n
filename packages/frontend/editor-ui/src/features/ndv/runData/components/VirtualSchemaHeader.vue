@@ -29,7 +29,14 @@ const emit = defineEmits<{
 <template>
 	<div class="schema-header-wrapper">
 		<div class="schema-header" data-test-id="run-data-schema-header">
-			<div class="toggle" @click.capture.stop="emit('click:toggle')">
+			<div
+				class="toggle"
+				@click.capture.stop="emit('click:toggle')"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="emit('click:toggle')"
+				@keydown.space.self.prevent="emit('click:toggle')"
+			>
 				<N8nIcon size="medium" icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 
@@ -90,6 +97,7 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .schema-header-wrapper {
 	padding-bottom: var(--spacing--2xs);
 }
@@ -109,6 +117,7 @@ const emit = defineEmits<{
 }
 .collapse-icon {
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+	@include motion.reduced-motion;
 }
 .collapsed {
 	transform: rotateZ(-90deg);

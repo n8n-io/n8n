@@ -259,6 +259,7 @@ function onAction(action: string) {
 </template>
 
 <style lang="css" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	--card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
@@ -268,6 +269,7 @@ function onAction(action: string) {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+	@include motion.reduced-motion;
 }
 
 .providerImage {

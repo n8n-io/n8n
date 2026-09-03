@@ -197,6 +197,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	width: 100%;
 	max-width: 1014px;
@@ -216,6 +217,7 @@ onMounted(() => {
 	overflow: visible;
 	opacity: 0;
 	transition: opacity 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .gridRevealed {
@@ -239,6 +241,7 @@ onMounted(() => {
 	opacity: 0.5;
 	pointer-events: none;
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .skeletonCard {
@@ -297,6 +300,7 @@ onMounted(() => {
 	&:last-child {
 		right: -48px;
 	}
+	@include motion.reduced-motion;
 }
 
 .bottomNav {
@@ -323,5 +327,6 @@ onMounted(() => {
 	&:hover {
 		background: var(--color--foreground--tint-1);
 	}
+	@include motion.reduced-motion;
 }
 </style>

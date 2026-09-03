@@ -321,6 +321,7 @@ const totalNodeCount = computed(() =>
 						:class="$style.panel"
 						:style="panelStyle"
 						data-test-id="nodes-chip-panel"
+						role="list"
 						@focusout="handlePanelFocusOut(chip.setIndex)"
 					>
 						<div
@@ -329,7 +330,7 @@ const totalNodeCount = computed(() =>
 							:class="$style.panelRow"
 							data-test-id="nodes-chip-panel-row"
 							tabindex="-1"
-							role="option"
+							role="listitem"
 							:aria-label="node.name"
 							@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 						>

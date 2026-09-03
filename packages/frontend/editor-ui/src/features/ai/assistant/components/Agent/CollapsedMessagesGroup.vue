@@ -119,9 +119,14 @@ function toggleExpanded() {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.collapsedHeader" :aria-expanded="isExpanded" @click="toggleExpanded">
+		<div :class="$style.collapsedHeader">
 			<div :class="$style.dividerLine" />
-			<button :class="$style.toggleButton" type="button">
+			<button
+				:class="$style.toggleButton"
+				type="button"
+				:aria-expanded="isExpanded"
+				@click="toggleExpanded"
+			>
 				<span :class="$style.count">
 					{{
 						i18n.baseText('aiAssistant.builder.collapsedMessages.count', {
@@ -186,7 +191,6 @@ function toggleExpanded() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	cursor: pointer;
 }
 
 .dividerLine {

@@ -491,6 +491,7 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .canvas {
 	position: relative;
 	width: 100%;
@@ -532,6 +533,7 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 	stroke-width: 2;
 	stroke-linecap: round;
 	transition: stroke 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .edgeSuccess {

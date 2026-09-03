@@ -353,13 +353,20 @@ onMounted(async () => {
 			<slot name="protocol-select" />
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+					<label for="saml-redirect-url">{{
+						i18n.baseText('settings.sso.settings.redirectUrl.label')
+					}}</label>
 					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<div :class="$style.copyInputGroup" data-test-id="copy-input">
 						<div :class="$style.copyInputField">
-							<N8nInput :model-value="redirectUrl" type="text" :readonly="true" />
+							<N8nInput
+								id="saml-redirect-url"
+								:model-value="redirectUrl"
+								type="text"
+								:readonly="true"
+							/>
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
@@ -374,13 +381,15 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+					<label for="saml-entity-id">{{
+						i18n.baseText('settings.sso.settings.entityId.label')
+					}}</label>
 					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<div :class="$style.copyInputGroup" data-test-id="copy-input">
 						<div :class="$style.copyInputField">
-							<N8nInput :model-value="entityId" type="text" :readonly="true" />
+							<N8nInput id="saml-entity-id" :model-value="entityId" type="text" :readonly="true" />
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
@@ -396,10 +405,13 @@ onMounted(async () => {
 			<div :class="$style.ipsBlock">
 				<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 					<div :class="$style.settingsItemLabel">
-						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+						<label for="saml-identity-provider-settings">{{
+							i18n.baseText('settings.sso.settings.ips.label')
+						}}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
 						<N8nSegmentControl
+							id="saml-identity-provider-settings"
 							v-model="ipsType"
 							:disabled="isSsoManagedByEnv"
 							:options="ipsOptions"
@@ -463,11 +475,14 @@ onMounted(async () => {
 		<div :class="$style.card">
 			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<label for="saml-sso-enabled">{{
+						i18n.baseText('settings.sso.settings.ssoToggle.label')
+					}}</label>
 					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
+						id="saml-sso-enabled"
 						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
 						:disabled="isSsoManagedByEnv"

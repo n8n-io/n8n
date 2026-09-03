@@ -243,6 +243,7 @@ onUnmounted(() => {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .sidebar-slide-enter-active,
 .sidebar-slide-leave-active {
 	transition:
@@ -250,6 +251,7 @@ onUnmounted(() => {
 		min-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
 		opacity 0.2s ease;
 	overflow: hidden;
+	@include motion.reduced-motion;
 }
 
 .sidebar-slide-enter-from,

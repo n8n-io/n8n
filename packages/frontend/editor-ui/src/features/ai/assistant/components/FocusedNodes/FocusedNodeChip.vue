@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { computed } from 'vue';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -50,7 +51,14 @@ function handleRemove(event: MouseEvent) {
 		placement="top"
 		:show-after="300"
 	>
-		<span :class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]" @click="handleClick">
+		<span
+			:class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]"
+			@click="handleClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="dispatchClickOnKeyboardActivation"
+			@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
+		>
 			<span :class="[$style.iconWrapper, { [$style.confirmedIcon]: isConfirmed }]">
 				<N8nIcon v-if="isUnconfirmed" icon="plus" size="xsmall" :class="$style.prefixIcon" />
 				<template v-else>

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { ComponentInstance } from 'vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -135,6 +136,10 @@ onBeforeUnmount(() => {
 				:key="tag.id"
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="dispatchClickOnKeyboardActivation"
+				@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 			>
 				<N8nTag
 					v-if="tag.isCount"

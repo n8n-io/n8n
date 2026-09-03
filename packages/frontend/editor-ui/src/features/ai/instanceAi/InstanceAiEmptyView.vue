@@ -716,6 +716,7 @@ function handleShelfSuggestionInsert(payload: {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
@@ -769,6 +770,7 @@ function handleShelfSuggestionInsert(payload: {
 
 .inputPulse {
 	animation: inputScaleUp 0.25s ease;
+	@include motion.reduced-motion;
 }
 
 @keyframes inputScaleUp {
@@ -796,6 +798,7 @@ function handleShelfSuggestionInsert(payload: {
 	transition:
 		transform 0.2s ease,
 		height 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .workflowPreview {
@@ -835,12 +838,14 @@ function handleShelfSuggestionInsert(payload: {
 	transition:
 		opacity 0.08s ease-out,
 		transform 0.08s ease-out;
+	@include motion.reduced-motion;
 }
 
 :global(.workflow-preview-fade-leave-active) {
 	transition:
 		opacity 0.18s ease,
 		transform 0.18s ease;
+	@include motion.reduced-motion;
 }
 
 :global(.workflow-preview-fade-enter-from) {

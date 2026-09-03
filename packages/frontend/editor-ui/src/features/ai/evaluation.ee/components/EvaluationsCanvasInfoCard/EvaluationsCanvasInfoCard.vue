@@ -183,12 +183,7 @@ function openWizard() {
 </script>
 
 <template>
-	<aside
-		v-if="isVisible"
-		:class="$style.card"
-		role="complementary"
-		data-test-id="evaluations-canvas-info-card"
-	>
+	<aside v-if="isVisible" :class="$style.card" data-test-id="evaluations-canvas-info-card">
 		<button
 			type="button"
 			:class="$style.dismiss"

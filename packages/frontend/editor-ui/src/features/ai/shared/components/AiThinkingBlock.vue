@@ -155,8 +155,10 @@ const title = computed<{ key: string; text: string }>(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .thinking-title-enter-active {
 	transition: opacity var(--duration--snappy) ease;
+	@include motion.reduced-motion;
 }
 
 .thinking-title-enter-from {

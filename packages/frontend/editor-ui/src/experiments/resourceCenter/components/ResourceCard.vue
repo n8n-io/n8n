@@ -135,6 +135,7 @@ const videoSourceLabel = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	display: flex;
 	flex-direction: column;
@@ -167,6 +168,7 @@ const videoSourceLabel = computed(() => {
 		outline: 2px solid var(--color--primary);
 		outline-offset: 2px;
 	}
+	@include motion.reduced-motion;
 }
 
 .tag {

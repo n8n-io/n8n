@@ -473,6 +473,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .scope-badge {
 	text-transform: none;
 	display: flex;
@@ -484,6 +485,7 @@ onMounted(() => {
 	justify-content: end;
 	opacity: 0;
 	transition: opacity 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 :deep(.datatable) {

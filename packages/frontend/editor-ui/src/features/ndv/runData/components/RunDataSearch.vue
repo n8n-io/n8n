@@ -187,6 +187,7 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '@/app/css/variables' as *;
 
 .ioSearch {
@@ -206,6 +207,7 @@ watch(
 		opacity: 0;
 		cursor: pointer;
 	}
+	@include motion.reduced-motion;
 }
 
 .ioSearchOpened {

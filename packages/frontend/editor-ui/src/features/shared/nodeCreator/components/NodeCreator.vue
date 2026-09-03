@@ -200,6 +200,8 @@ onClickOutside(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 :global(strong) {
 	font-weight: var(--font-weight--bold);
 }
@@ -230,6 +232,8 @@ onClickOutside(
 	&.active {
 		opacity: 0.7;
 	}
+
+	@include motion.reduced-motion;
 }
 
 .close {

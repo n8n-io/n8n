@@ -241,6 +241,7 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 	&.skeleton {
 		cursor: default;
 	}
+	@include motion.reduced-motion;
 }
 
 .skeletonIcon {
@@ -361,10 +362,12 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 }
 </style>
 
-<style>
+<style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .fade-enter-from,

@@ -26,12 +26,14 @@ const props = withDefaults(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	animation: fadeIn 0.3s ease-out;
+	@include motion.reduced-motion;
 }
 
 @keyframes fadeIn {

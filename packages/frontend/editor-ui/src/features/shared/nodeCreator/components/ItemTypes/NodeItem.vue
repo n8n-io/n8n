@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { dispatchClickOnKeyboardActivation } from '@/app/utils/keyboard';
 import type { SimplifiedNodeType } from '@/Interface';
 import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -248,6 +249,10 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						"
 						:class="$style.communityNodeIcon"
 						@click="onCommunityNodeTooltipClick"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="dispatchClickOnKeyboardActivation"
+						@keydown.space.self.prevent="dispatchClickOnKeyboardActivation"
 					/>
 				</template>
 				<N8nIcon size="small" :class="$style.icon" icon="box" />

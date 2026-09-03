@@ -171,6 +171,7 @@ onUnmounted(() => {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .status-bar-enter-from,
 .status-bar-leave-to {
 	opacity: 0;
@@ -179,9 +180,11 @@ onUnmounted(() => {
 
 .status-bar-enter-active {
 	transition: all 0.2s ease-out;
+	@include motion.reduced-motion;
 }
 
 .status-bar-leave-active {
 	transition: all 0.15s ease-in;
+	@include motion.reduced-motion;
 }
 </style>

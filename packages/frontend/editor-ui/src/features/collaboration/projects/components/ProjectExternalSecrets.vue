@@ -293,9 +293,7 @@ defineExpose({
 <template>
 	<fieldset v-if="showExternalSecretsSection" data-test-id="external-secrets-section">
 		<h3 class="mb-s">
-			<label for="projectExternalSecrets">{{
-				i18n.baseText('projects.settings.externalSecrets')
-			}}</label>
+			{{ i18n.baseText('projects.settings.externalSecrets') }}
 		</h3>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
@@ -427,6 +425,7 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .description {
 	max-width: 40rem;
 	display: block;
@@ -516,6 +515,7 @@ defineExpose({
 	&:disabled {
 		cursor: not-allowed;
 	}
+	@include motion.reduced-motion;
 }
 
 .secretName {

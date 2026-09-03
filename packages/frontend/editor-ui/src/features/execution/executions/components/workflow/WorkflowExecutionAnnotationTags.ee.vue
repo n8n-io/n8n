@@ -118,6 +118,10 @@ const onTagsEditEsc = () => {
 				]"
 				data-test-id="execution-annotation-tags"
 				@click="onTagsEditEnable"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="onTagsEditEnable"
+				@keydown.space.self.prevent="onTagsEditEnable"
 			>
 				<span v-for="tag in tags" :key="tag.id" class="clickable">
 					<ElTag :title="tag.name" type="info" size="small" :disable-transitions="true">

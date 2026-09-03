@@ -284,6 +284,7 @@ const onClose = () => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .content {
 	display: flex;
 	flex-direction: column;
@@ -313,6 +314,7 @@ const onClose = () => {
 		&:hover {
 			background-color: var(--color--background);
 		}
+		@include motion.reduced-motion;
 	}
 
 	:global(input[type='file']) {

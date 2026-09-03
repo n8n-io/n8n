@@ -449,6 +449,7 @@ onBeforeMount(() => {
 	</div>
 </template>
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
@@ -572,6 +573,7 @@ onBeforeMount(() => {
 			pointer-events: auto;
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .editContainer {

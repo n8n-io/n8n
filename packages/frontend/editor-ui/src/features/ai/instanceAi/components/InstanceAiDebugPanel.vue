@@ -262,6 +262,10 @@ onMounted(() => {
 					:key="index"
 					:class="$style.eventRow"
 					@click="toggleEvent(index)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="toggleEvent(index)"
+					@keydown.space.self.prevent="toggleEvent(index)"
 				>
 					<div :class="$style.eventHeader">
 						<span :class="$style.eventTime">{{ formatTime(entry.timestamp) }}</span>
@@ -305,6 +309,10 @@ onMounted(() => {
 						debugStore.selectedThreadId === thread.id && $style.threadRowSelected,
 					]"
 					@click="handleSelectThread(thread.id)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="handleSelectThread(thread.id)"
+					@keydown.space.self.prevent="handleSelectThread(thread.id)"
 				>
 					<div :class="$style.threadRowMain">
 						<span :class="$style.threadTitle">{{ thread.title || thread.id.slice(0, 8) }}</span>
@@ -337,6 +345,10 @@ onMounted(() => {
 							:key="msg.id"
 							:class="$style.messageRow"
 							@click="toggleMessage(mIdx)"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="toggleMessage(mIdx)"
+							@keydown.space.self.prevent="toggleMessage(mIdx)"
 						>
 							<div :class="$style.messageHeader">
 								<span :class="[$style.eventType, $style[getRoleBadgeClass(msg.role)]]">
@@ -385,6 +397,10 @@ onMounted(() => {
 					]"
 					data-test-id="instance-ai-debug-run-row"
 					@click="handleSelectDebugRun(run.runId)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="handleSelectDebugRun(run.runId)"
+					@keydown.space.self.prevent="handleSelectDebugRun(run.runId)"
 				>
 					<div :class="$style.threadRowMain">
 						<div :class="$style.runMeta">
@@ -434,6 +450,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .panel {
 	position: absolute;
 	top: 0;
@@ -507,6 +524,7 @@ onMounted(() => {
 	&:hover {
 		color: var(--color--text);
 	}
+	@include motion.reduced-motion;
 }
 
 .tabActive {

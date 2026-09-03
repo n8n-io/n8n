@@ -196,6 +196,8 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 @keyframes backgroundAnimation {
 	0% {
 		background-color: none;
@@ -212,6 +214,7 @@ defineExpose({
 	:deep(.cm-editor),
 	:deep(.cm-gutter) {
 		animation: backgroundAnimation 1.5s ease-in-out;
+		@include motion.reduced-motion;
 	}
 }
 </style>

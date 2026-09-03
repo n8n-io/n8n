@@ -15,7 +15,14 @@ function handleClick() {
 </script>
 
 <template>
-	<header :class="[$style.container, { [$style.clickable]: isClickable }]" @click="handleClick">
+	<header
+		:class="[$style.container, { [$style.clickable]: isClickable }]"
+		@click="handleClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="handleClick"
+		@keydown.space.self.prevent="handleClick"
+	>
 		<N8nText :class="$style.title" :bold="true" size="small">
 			<slot name="title">{{ title }}</slot>
 		</N8nText>

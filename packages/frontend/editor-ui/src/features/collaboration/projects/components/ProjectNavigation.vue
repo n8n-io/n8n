@@ -230,6 +230,22 @@ onBeforeUnmount(() => {
 										? onFavoriteWorkflowClick()
 										: undefined
 							"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="
+								group.type === 'project'
+									? onFavoriteProjectClick(entry.resourceId)
+									: group.type === 'workflow'
+										? onFavoriteWorkflowClick()
+										: undefined
+							"
+							@keydown.space.self.prevent="
+								group.type === 'project'
+									? onFavoriteProjectClick(entry.resourceId)
+									: group.type === 'workflow'
+										? onFavoriteWorkflowClick()
+										: undefined
+							"
 						>
 							<N8nMenuItem
 								:item="entry.menuItem"
@@ -289,6 +305,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .projects {
 	width: 100%;
 	align-items: start;
@@ -342,6 +359,7 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 	transition: transform 0.15s ease;
 	flex-shrink: 0;
+	@include motion.reduced-motion;
 }
 
 .chevronCollapsed {
@@ -431,5 +449,6 @@ onBeforeUnmount(() => {
 	&:focus-visible {
 		color: var(--color--text);
 	}
+	@include motion.reduced-motion;
 }
 </style>

@@ -108,6 +108,10 @@ const onSave = () => emit('save', result.value);
 					:class="[$style['mode-card'], mode === option && $style['mode-card-active']]"
 					:data-test-id="`mcp-callback-urls-mode-${option}`"
 					@click="mode = option"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="mode = option"
+					@keydown.space.self.prevent="mode = option"
 				>
 					<N8nRadioGroupItem
 						:value="option"

@@ -197,6 +197,7 @@ function onEdgeLabelMouseLeave() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .edge {
 	transition: fill 0.3s ease;
 	// @bugfix cat-1639-connection-colors-not-rendering-correctly
@@ -211,6 +212,7 @@ function onEdgeLabelMouseLeave() {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1)) !important;
 	stroke-linecap: square;
+	@include motion.reduced-motion;
 }
 
 .edgeLabelWrapper {

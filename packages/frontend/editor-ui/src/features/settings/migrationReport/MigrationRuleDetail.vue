@@ -138,7 +138,7 @@ function openMigrateModal(workflow: AffectedWorkflow) {
 	});
 }
 
-function handleRowClick(_event: MouseEvent, { item }: { item: AffectedWorkflow }) {
+function handleRowClick(_event: MouseEvent | KeyboardEvent, { item }: { item: AffectedWorkflow }) {
 	window.open(
 		router.resolve({
 			name: VIEWS.WORKFLOW,

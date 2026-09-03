@@ -27,7 +27,15 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
+		<div
+			:class="$style.returnButton"
+			data-test-id="settings-back"
+			@click="emit('return')"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="emit('return')"
+			@keydown.space.self.prevent="emit('return')"
+		>
 			<i>
 				<N8nIcon icon="arrow-left" />
 			</i>

@@ -70,9 +70,11 @@ const visible = computed(() =>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .pinDataButton {
 	svg {
 		transition: transform 0.3s ease;
+		@include motion.reduced-motion;
 	}
 }
 </style>

@@ -192,6 +192,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @property --right--fade {
 	syntax: '<length>';
 	inherits: false;
@@ -234,6 +235,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 		animation-timeline: --scrollfade;
 		scroll-timeline: --scrollfade x;
 	}
+
+	@include motion.reduced-motion;
 }
 
 .tab {
@@ -282,6 +285,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	transform: translateX(var(--reka-tabs-indicator-position));
 	transition-property: width, transform;
 	transition-duration: 200ms;
+	@include motion.reduced-motion;
 }
 
 .tabsIndicatorBar {

@@ -279,8 +279,9 @@ onMounted(async () => {
 		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
-				<label>Redirect URL</label>
+				<label for="oidc-redirect-url">Redirect URL</label>
 				<CopyInput
+					id="oidc-redirect-url"
 					:value="ssoStore.oidc.callbackUrl"
 					:copy-button-text="i18n.baseText('generic.clickToCopy')"
 					toast-title="Redirect URL copied to clipboard"
@@ -288,8 +289,9 @@ onMounted(async () => {
 				<small>Copy the Redirect URL to configure your OIDC provider </small>
 			</div>
 			<div :class="$style.group">
-				<label>Discovery Endpoint</label>
+				<label for="oidc-discovery-endpoint">Discovery Endpoint</label>
 				<N8nInput
+					id="oidc-discovery-endpoint"
 					:model-value="discoveryEndpoint"
 					:disabled="isSsoManagedByEnv"
 					type="text"
@@ -300,8 +302,9 @@ onMounted(async () => {
 				<small>Paste here your discovery endpoint</small>
 			</div>
 			<div :class="$style.group">
-				<label>Client ID</label>
+				<label for="oidc-client-id">Client ID</label>
 				<N8nInput
+					id="oidc-client-id"
 					:model-value="clientId"
 					:disabled="isSsoManagedByEnv"
 					type="text"
@@ -313,8 +316,9 @@ onMounted(async () => {
 				>
 			</div>
 			<div :class="$style.group">
-				<label>Client Secret</label>
+				<label for="oidc-client-secret">Client Secret</label>
 				<N8nInput
+					id="oidc-client-secret"
 					:model-value="clientSecret"
 					:disabled="isSsoManagedByEnv"
 					type="password"
@@ -327,8 +331,9 @@ onMounted(async () => {
 				>
 			</div>
 			<div :class="$style.group">
-				<label>Prompt</label>
+				<label for="oidc-prompt">Prompt</label>
 				<N8nSelect
+					id="oidc-prompt"
 					:model-value="prompt"
 					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-prompt"
@@ -372,8 +377,11 @@ onMounted(async () => {
 				"
 			/>
 			<div :class="$style.group">
-				<label>Authentication Context Class Reference</label>
+				<label for="oidc-authentication-context-class-reference">
+					Authentication Context Class Reference
+				</label>
 				<N8nInput
+					id="oidc-authentication-context-class-reference"
 					:model-value="authenticationContextClassReference"
 					type="textarea"
 					:disabled="isSsoManagedByEnv"
@@ -387,11 +395,12 @@ onMounted(async () => {
 				>
 			</div>
 			<div :class="$style.group">
-				<label
+				<label for="oidc-additional-scopes"
 					>Additional scopes
 					<span :class="$style.optional">(Optional)</span>
 				</label>
 				<N8nInput
+					id="oidc-additional-scopes"
 					:model-value="additionalScopes"
 					:disabled="isSsoManagedByEnv"
 					type="text"
@@ -411,11 +420,12 @@ onMounted(async () => {
 		<div :class="$style.card">
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>Single sign-on (SSO)</label>
+					<label for="oidc-sso-enabled">Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
+						id="oidc-sso-enabled"
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
 						data-test-id="sso-oidc-toggle"
@@ -432,11 +442,12 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
-					<label>Log out from identity provider</label>
+					<label for="oidc-rp-initiated-logout">Log out from identity provider</label>
 					<small>Also end your session at the identity provider when signing out of n8n</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
+						id="oidc-rp-initiated-logout"
 						:model-value="rpInitiatedLogoutEnabled ? 'enabled' : 'disabled'"
 						size="medium"
 						data-test-id="sso-oidc-logout-toggle"

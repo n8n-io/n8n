@@ -341,6 +341,10 @@ watch(
 					@mouseenter="() => onItemHover(0)"
 					@mouseleave="() => onItemHoverLeave()"
 					@click="() => emit('addResourceClick')"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="() => emit('addResourceClick')"
+					@keydown.space.self.prevent="() => emit('addResourceClick')"
 				>
 					<div :class="$style.resourceNameContainer">
 						<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
@@ -362,6 +366,10 @@ watch(
 					@click="() => onItemClick(result.value, result)"
 					@mouseenter="() => onItemHover(i + 1)"
 					@mouseleave="() => onItemHoverLeave()"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="() => onItemClick(result.value, result)"
+					@keydown.space.self.prevent="() => onItemClick(result.value, result)"
 				>
 					<div :class="$style.resourceNameContainer">
 						<span>{{ result.name }}</span>

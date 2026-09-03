@@ -27,6 +27,7 @@ const i18n = useI18n();
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .waiting {
 	display: flex;
 	flex-direction: column;
@@ -53,6 +54,7 @@ const i18n = useI18n();
 	&:nth-child(3) {
 		animation-delay: 0.36s;
 	}
+	@include motion.reduced-motion;
 }
 
 .text {
