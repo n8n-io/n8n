@@ -218,9 +218,7 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'mcpOAuth2Api',
 ]);
 
-export const McpOAuth2CredentialTypeSchema = z
-	.string()
-	.regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
+export const McpOAuth2CredentialTypeSchema = z.string().regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
 
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
