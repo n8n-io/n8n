@@ -24,6 +24,7 @@ export interface ProjectExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	workflowVersionPolicy: WorkflowVersionPolicy;
+	includeArchivedWorkflows: boolean;
 }
 
 interface ProjectExportResult {
@@ -118,6 +119,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
+			includeArchivedWorkflows: request.includeArchivedWorkflows,
 			basePrefix: target,
 		});
 	}
@@ -127,7 +129,9 @@ export class ProjectExporter {
 		target: string,
 		request: ProjectExportRequest,
 	): Promise<WorkflowExportResult> {
-		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
+		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
+			includeArchived: request.includeArchivedWorkflows,
+		});
 		if (rootWorkflowIds.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}

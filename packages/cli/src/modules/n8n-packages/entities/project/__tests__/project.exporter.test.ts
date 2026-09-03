@@ -94,7 +94,7 @@ function makeExporter({
 describe('ProjectExporter', () => {
 	it('checks project:export scope for the requested projects', async () => {
 		const project = makeProject();
-		const { exporter, projectService } = makeExporter({ projects: [project] });
+		const { exporter, projectService, workflowFinder } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
 		await exporter.export({
@@ -103,6 +103,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
@@ -110,6 +111,27 @@ describe('ProjectExporter', () => {
 			[project.id],
 			['project:export'],
 		);
+		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
+			includeArchived: false,
+		});
+	});
+
+	it('includes archived workflows when requested', async () => {
+		const project = makeProject();
+		const { exporter, workflowFinder } = makeExporter({ projects: [project] });
+
+		await exporter.export({
+			user,
+			projectIds: [project.id],
+			writer: new CapturingWriter(),
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: true,
+		});
+
+		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
+			includeArchived: true,
+		});
 	});
 
 	it('throws when the user lacks access to a requested project', async () => {
@@ -124,6 +146,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
@@ -140,6 +163,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -156,6 +180,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -171,6 +196,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
@@ -211,6 +237,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
@@ -238,6 +265,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		expect(entries).toEqual([
