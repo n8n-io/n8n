@@ -80,7 +80,7 @@ function setup() {
 		publisher,
 		logger,
 	);
-	return { service, jobRepository, executionRepository, executionPersistence, publisher };
+	return { service, jobRepository, executionRepository, executionPersistence, publisher, logger };
 }
 
 const registerParams = {
@@ -462,8 +462,8 @@ describe('cancel — workflow jobs', () => {
 		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
 	});
 
-	it('rethrows an unexpected stop failure with the row still running', async () => {
-		const { service, jobRepository } = setup();
+	it('logs and rethrows an unexpected stop failure with the row still running', async () => {
+		const { service, jobRepository, logger } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
 		const executionService = mock<ExecutionService>();
 		executionService.stop.mockRejectedValue(new Error('db down'));
@@ -471,6 +471,10 @@ describe('cancel — workflow jobs', () => {
 
 		await expect(service.cancel('thread-1', 'wf-job-1')).rejects.toThrow('db down');
 		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith(
+			expect.stringContaining('may still be running'),
+			expect.objectContaining({ jobId: 'wf-job-1', executionId: 'exec-1', error: 'db down' }),
+		);
 	});
 
 	it('reports already-settled for a row that is no longer running', async () => {
