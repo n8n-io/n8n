@@ -7,7 +7,10 @@ import type WebSocket from 'ws';
 import { WsStatusCodes } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import {
+	SHUTDOWN_TASK_BUDGET_RATIO,
+	TaskBrokerWsServer,
+} from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -293,7 +296,9 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
 				Date.now() +
-					0.8 * globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds,
+					globalConfig.generic.gracefulShutdownTimeout *
+						SHUTDOWN_TASK_BUDGET_RATIO *
+						Time.seconds.toMilliseconds,
 			);
 		});
 	});

@@ -28,6 +28,12 @@ function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
 
+/**
+ * Share of the graceful-shutdown window that task work may use. The remainder is
+ * the budget for failed executions to persist before the force-kill timer fires.
+ */
+export const SHUTDOWN_TASK_BUDGET_RATIO = 0.8;
+
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
 type RemoveConnectionOptions = {
@@ -114,7 +120,9 @@ export class TaskBrokerWsServer {
 	capTaskTimeoutsForShutdown() {
 		const deadline =
 			Date.now() +
-			this.globalConfig.generic.gracefulShutdownTimeout * 0.8 * Time.seconds.toMilliseconds;
+			this.globalConfig.generic.gracefulShutdownTimeout *
+				SHUTDOWN_TASK_BUDGET_RATIO *
+				Time.seconds.toMilliseconds;
 
 		this.taskBroker.capTaskTimeoutsForShutdown(deadline);
 	}
@@ -307,7 +315,9 @@ export class TaskBrokerWsServer {
 	}
 
 	private async drainActiveTasks() {
-		const drainTimeout = Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8);
+		const drainTimeout = Math.floor(
+			this.globalConfig.generic.gracefulShutdownTimeout * SHUTDOWN_TASK_BUDGET_RATIO,
+		);
 
 		const drainTimeoutMs = drainTimeout * Time.seconds.toMilliseconds;
 
