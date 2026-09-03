@@ -712,6 +712,26 @@ describe('workflows tool', () => {
 				});
 			});
 
+			it('forwards an empty folderPath so the adapter reports the miss', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderPath: '' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderPath: '' });
+			});
+
+			it('forwards an empty folderId so the adapter reports the miss', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderId: '' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderId: '' });
+			});
+
 			const folderRow = {
 				id: 'wf1',
 				name: 'Slack inbound',
@@ -772,6 +792,71 @@ describe('workflows tool', () => {
 				expect(result.note).toContain('matches more than one folder');
 				expect(result.note).toContain('Archive/Acme');
 				expect(result.note).toContain('Clients/Acme');
+			});
+
+			it('explains identical ambiguous paths as a cross-project collision', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Clients/Acme',
+						reason: 'ambiguous',
+						candidates: ['Clients/Acme', 'Clients/Acme'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Clients/Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('more than one project');
+				expect(result.note).toContain('projectId');
+			});
+
+			it('asks for a projectId when the listing spans too many projects to scan', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: { requested: 'Clients', reason: 'scope-too-wide', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', scope: 'instance', folderPath: 'Clients' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('spans too many projects');
+				expect(result.note).toContain('workspace(action="list-projects")');
+				expect(result.note).toContain('narrow to one project');
+			});
+
+			it('keeps the folder note ahead of the name-filter note', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 1,
+					totalInScope: 3,
+					folderResolution: { requested: 'Trigger', reason: 'not-found', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Trigger', query: 'x' },
+					{} as never,
+				);
+
+				expect(result.note.startsWith('Folder "')).toBe(true);
+				expect(result.note).toContain('matched 1 of 3');
 			});
 
 			it('says folders are unavailable when the instance does not support them', async () => {

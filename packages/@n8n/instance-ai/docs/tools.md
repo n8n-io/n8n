@@ -305,7 +305,8 @@ to one. It is what makes membership readable in a cross-project listing instead
 of guessable by comparing per-scope counts.
 
 `folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
-path (`Clients/Acme`). Absent for root-level workflows, and absent on every row
+path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
+unambiguous. Absent for root-level workflows, and absent on every row
 while folder exploration is off for the run (PostHog flag
 `110_instance_ai_folder_exploration`, force-on via
 `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
@@ -314,8 +315,9 @@ while folder exploration is off for the run (PostHog flag
 requested folder did not resolve. `workflows` is then empty on purpose, and
 `note` says so first: the rows must never be read as the folder, and a `query`
 name filter is not a substitute. `reason` is `not-found`, `ambiguous` (more
-than one folder matched; `candidates` lists them) or `unsupported` (folders are
-not licensed on the instance).
+than one folder matched; `candidates` lists them), `unsupported` (folders are
+not licensed on the instance) or `scope-too-wide` (the listing spans more
+projects than the folder scan covers, so the caller must pass `projectId`).
 
 `projectId` is a read-only narrowing: the adapter passes it as a filter on a query
 that still resolves readability from the caller's own project and workflow roles,

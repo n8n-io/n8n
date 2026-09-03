@@ -86,7 +86,11 @@ export interface WorkflowFolderRef {
  */
 export interface FolderResolutionFailure {
 	requested: string;
-	reason: 'not-found' | 'ambiguous' | 'unsupported';
+	/**
+	 * `scope-too-wide`: the listing spans more projects than the folder scan
+	 * will cover; the caller must pass `projectId`.
+	 */
+	reason: 'not-found' | 'ambiguous' | 'unsupported' | 'scope-too-wide';
 	candidates: string[];
 }
 

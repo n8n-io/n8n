@@ -351,7 +351,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('How the caller addressed a folder, if at all'),
 			recursive: z.boolean().optional().describe('Only when a folder was addressed'),
 			folder_resolution: z
-				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported'])
+				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported', 'scope_too_wide'])
 				.optional()
 				.describe('Only when a folder was addressed'),
 			candidate_count: z

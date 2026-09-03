@@ -103,7 +103,7 @@ const FOLDER_PATH_FIELD_DESCRIPTION =
 	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
 
 const FOLDER_ID_FIELD_DESCRIPTION =
-	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said.';
+	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said. When both are given, `folderId` wins.';
 
 const RECURSIVE_FIELD_DESCRIPTION =
 	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
@@ -644,9 +644,11 @@ function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
 
 	switch (failure.reason) {
 		case 'ambiguous':
-			return `Folder "${failure.requested}" matches more than one folder, so no rows were returned.${candidates}${guidance}`;
+			return `Folder "${failure.requested}" matches more than one folder, so no rows were returned.${candidates}${guidance} Identical paths mean the same folder path exists in more than one project; pass \`projectId\` to pick one.`;
 		case 'unsupported':
 			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Tell the user and ask the user how to proceed.`;
+		case 'scope-too-wide':
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
 		default:
 			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
 	}
@@ -660,8 +662,11 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		...(input.scope ? { scope: input.scope } : {}),
 		...(input.projectId ? { projectId: input.projectId } : {}),
 		...(input.nodeTypes?.length ? { nodeTypes: input.nodeTypes } : {}),
-		...(input.folderPath ? { folderPath: input.folderPath } : {}),
-		...(input.folderId ? { folderId: input.folderId } : {}),
+		// Forwarded on presence, not on truthiness: an empty folder name is still a
+		// folder request, and the adapter must report the miss instead of returning
+		// the unfiltered inventory.
+		...(input.folderPath !== undefined ? { folderPath: input.folderPath } : {}),
+		...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
 		...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
 	});
 
