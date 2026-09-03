@@ -731,10 +731,6 @@ catalogs:
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
-  undici-v6:
-    undici:
-      specifier: ^6.28.0
-      version: 6.28.0
   undici-v7:
     undici:
       specifier: ^7.29.0
@@ -1331,9 +1327,6 @@ importers:
       turndown:
         specifier: 'catalog:'
         version: 7.2.4
-      undici:
-        specifier: catalog:undici-v6
-        version: 6.28.0
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -3103,10 +3096,10 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-import-resolver-typescript:
         specifier: ^4.4.3
-        version: 4.4.3(eslint-plugin-import-x@4.15.2(@typescript-eslint/utils@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-plugin-import@2.32.0)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 4.4.3(eslint-plugin-import-x@4.15.2(@typescript-eslint/utils@8.68.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-plugin-import@2.32.0)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-import-x:
         specifier: ^4.15.2
-        version: 4.15.2(@typescript-eslint/utils@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 4.15.2(@typescript-eslint/utils@8.68.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
         version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
@@ -6990,9 +6983,6 @@ importers:
       ts-ics:
         specifier: 1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b))(zod@3.25.76)
-      undici:
-        specifier: catalog:undici-v6
-        version: 6.28.0
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
