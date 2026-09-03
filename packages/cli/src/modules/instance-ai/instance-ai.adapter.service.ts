@@ -27,7 +27,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { redactTelemetryText } from '@n8n/telemetry';
+import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
@@ -275,6 +275,14 @@ function hasCredentialValue(value: unknown): boolean {
 	if (Array.isArray(value)) return value.length > 0;
 	if (typeof value === 'object') return Object.keys(value).length > 0;
 	return true;
+}
+
+/** The telemetry taxonomy collapses `resolveRequestedFolder`'s `not-found` into
+ *  `not_found` (a valid BigQuery column name); the other reasons pass through. */
+function toTelemetryReason(
+	reason: FolderResolutionFailure['reason'],
+): 'not_found' | 'ambiguous' | 'unsupported' {
+	return reason === 'not-found' ? 'not_found' : reason;
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -842,6 +850,38 @@ export class InstanceAiAdapterService {
 			}
 		};
 
+		/** Every `list()` call is tracked in both rollout arms, so folder-scoped
+		 *  calls have a denominator. Carries no folder names. */
+		const trackListed = (props: {
+			folderScope: 'none' | 'path' | 'id';
+			recursive?: boolean;
+			folderResolution?: 'resolved' | 'not_found' | 'ambiguous' | 'unsupported';
+			candidateCount?: number;
+			scope: 'project' | 'instance';
+			hasQuery: boolean;
+			resultCount: number;
+			total: number;
+		}) => {
+			// Telemetry must never fail a read.
+			try {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_LISTED_WORKFLOWS, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					folder_exploration_enabled: foldersOn,
+					folder_scope: props.folderScope,
+					...(props.recursive !== undefined ? { recursive: props.recursive } : {}),
+					...(props.folderResolution ? { folder_resolution: props.folderResolution } : {}),
+					...(props.candidateCount !== undefined ? { candidate_count: props.candidateCount } : {}),
+					scope: props.scope,
+					has_query: props.hasQuery,
+					result_count: props.resultCount,
+					total: props.total,
+				});
+			} catch {
+				// swallowed on purpose
+			}
+		};
+
 		return {
 			// Present only when the index is wired and the flag is on; the tool reads that presence
 			// to decide whether the action exists at all.
@@ -879,6 +919,19 @@ export class InstanceAiAdapterService {
 				// `resolveBoundProjectId` and stay locked to the bound project.
 				const targetProjectId = resolveTargetProjectId(options);
 
+				// Telemetry dimensions, computed once so both early returns and the
+				// normal return report the same scope kind. A folder-addressed call
+				// only counts as folder-scoped when the flag is actually on.
+				const folderScope: 'none' | 'path' | 'id' = foldersOn
+					? options?.folderPath !== undefined
+						? 'path'
+						: options?.folderId !== undefined
+							? 'id'
+							: 'none'
+					: 'none';
+				const listScope: 'project' | 'instance' =
+					options?.scope === 'instance' ? 'instance' : 'project';
+
 				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
 				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
 				let folderIds: string[] | undefined;
@@ -894,6 +947,16 @@ export class InstanceAiAdapterService {
 					);
 					if (!('folderId' in resolved)) {
 						const folderResolution: FolderResolutionFailure = { requested, ...resolved };
+						trackListed({
+							folderScope,
+							recursive: options?.recursive !== false,
+							folderResolution: toTelemetryReason(resolved.reason),
+							candidateCount: resolved.candidates.length,
+							scope: listScope,
+							hasQuery: Boolean(options?.query),
+							resultCount: 0,
+							total: 0,
+						});
 						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
 					}
 					// Expanded here, not in the repository: the plain list query treats
@@ -914,6 +977,16 @@ export class InstanceAiAdapterService {
 							reason: 'not-found',
 							candidates: listCandidatePaths(foldersInScope ?? []),
 						};
+						trackListed({
+							folderScope,
+							recursive: options?.recursive !== false,
+							folderResolution: toTelemetryReason(folderResolution.reason),
+							candidateCount: folderResolution.candidates.length,
+							scope: listScope,
+							hasQuery: Boolean(options?.query),
+							resultCount: 0,
+							total: 0,
+						});
 						return { workflows: [], total: 0, totalInScope: 0, folderResolution };
 					}
 					folderIds = expanded;
@@ -963,6 +1036,17 @@ export class InstanceAiAdapterService {
 								rows.flatMap((wf) => readParentFolder(wf)?.id ?? []),
 							)
 						: new Map<string, string>();
+
+				trackListed({
+					folderScope,
+					...(folderIds
+						? { recursive: options?.recursive !== false, folderResolution: 'resolved' }
+						: {}),
+					scope: listScope,
+					hasQuery: Boolean(options?.query),
+					resultCount: rows.length,
+					total: count,
+				});
 
 				return {
 					workflows: rows.map((wf): WorkflowSummary => {

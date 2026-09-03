@@ -2585,6 +2585,72 @@ describe('createWorkflowAdapter', () => {
 			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
 			expect(result.folderResolution?.reason).toBe('not-found');
 		});
+
+		it('tracks every list call with the folder outcome, without folder names', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				{
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					folder_exploration_enabled: true,
+					folder_scope: 'path',
+					recursive: true,
+					folder_resolution: 'resolved',
+					scope: 'project',
+					has_query: false,
+					result_count: 1,
+					total: 1,
+				},
+			);
+			const [, props] = mockTelemetry.track.mock.calls.at(-1) as [unknown, Record<string, unknown>];
+			expect(JSON.stringify(props)).not.toContain('Acme');
+		});
+
+		it('tracks list calls with the flag off too, so folder-scoped calls have a denominator', async () => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests();
+
+			await adapter.list({ query: 'x' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_exploration_enabled: false,
+					folder_scope: 'none',
+					has_query: true,
+				}),
+			);
+		});
+
+		it('tracks an unresolved folder with the candidate count', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			await adapter.list({ folderPath: 'Globex' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_scope: 'path',
+					folder_resolution: 'not_found',
+					candidate_count: 2,
+					result_count: 0,
+				}),
+			);
+		});
+
+		it('does not fail the read when telemetry throws', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+			mockTelemetry.track.mockImplementation(() => {
+				throw new Error('rudderstack down');
+			});
+
+			await expect(adapter.list({ folderPath: 'Clients/Acme' })).resolves.toMatchObject({
+				total: 1,
+			});
+		});
 	});
 
 	it('lists archived workflows when requested', async () => {
