@@ -334,6 +334,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {

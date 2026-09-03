@@ -203,6 +203,51 @@ describe('scheduled job owner teardown', () => {
 		expect(revived.nextRunAt).not.toBeNull();
 	});
 
+	it('lifts a quarantine on a rule that must never fire, which no redefine would reach', async () => {
+		// A rule with no clock is stored exactly as a quarantined one looks (no
+		// `nextRunAt`), so the provisioning diff finds it unchanged and rewrites
+		// nothing. Lifting the quarantine before the diff is the only thing that
+		// brings this job back.
+		const workflow = await publishWorkflow();
+		const nodeId = uuid();
+		const desired = [
+			{
+				name: `${workflow.id}:${nodeId}:0`,
+				schedule: { kind: 'interval', intervalSeconds: 3600 } as const,
+				firstRunAt: null,
+			},
+		];
+		const provisionOnce = async () =>
+			await provisioner.provision({
+				owner: owner.member(workflow.id, nodeId),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: workflow.id, nodeId },
+				desired,
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			});
+
+		const { inserted } = await provisionOnce();
+		const jobId = inserted[0].id;
+		await jobRepo.quarantineByOwnerIds(
+			'workflow',
+			[workflow.id],
+			new Date(),
+			new Date(Date.now() + 60_000),
+		);
+		const quarantined = await jobRepo.findOneByOrFail({ id: jobId });
+		expect(quarantined.orphanedAt).not.toBeNull();
+
+		const summary = await provisionOnce();
+
+		expect(summary.redefined).toEqual([]);
+		expect(summary.unchanged).toHaveLength(1);
+		expect(await jobRepo.findOneByOrFail({ id: jobId })).toMatchObject({
+			enabled: true,
+			orphanedAt: null,
+			nextRunAt: null,
+		});
+	});
+
 	it('provisions a workflow owner, whose type the workflow owner module claims', async () => {
 		const workflow = await publishWorkflow();
 		const nodeId = uuid();
