@@ -45,7 +45,6 @@ export const retriedExecutionAnnotationOpenApi: ZodOpenAPIMetadata = {
 };
 
 export const executionAnnotationVoteOpenApi: ZodOpenAPIMetadata = alsoNullable({
-	// `AnnotationVote` is a bare union type with no runtime list to derive from.
 	enum: ['up', 'down'],
 	description: 'Vote left on the original execution.',
 });

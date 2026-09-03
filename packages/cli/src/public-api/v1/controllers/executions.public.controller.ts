@@ -236,7 +236,6 @@ export class ExecutionsPublicController {
 		}
 
 		try {
-			// This route documents no query parameter, so redaction follows the workflow policy.
 			const retriedExecution = await this.executionService.retry(
 				req.user,
 				executionId,
@@ -325,10 +324,6 @@ function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt
 function toRetriedExecutionPublicDto(
 	retried: Omit<IExecutionResponse, 'createdAt'>,
 ): RetriedExecutionPublicDto {
-	/**
-	 * The retry runs the stored run data back through the engine, so `data` and `workflowData` can
-	 * carry cycles that `res.json` would throw on.
-	 */
 	return replaceCircularReferences({
 		id: retried.id,
 		mode: retried.mode,
@@ -337,8 +332,6 @@ function toRetriedExecutionPublicDto(
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,
-		// `waitTill` is `Date | null | undefined`, and the response drops the key when it is
-		// undefined rather than sending null.
 		waitTill: retried.waitTill instanceof Date ? retried.waitTill.toISOString() : retried.waitTill,
 		data: retried.data,
 		workflowData: retried.workflowData,
