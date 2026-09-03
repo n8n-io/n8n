@@ -3,6 +3,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -373,6 +374,33 @@ describe('useSetupPanelActions', () => {
 		expect(documentStore.checksum).toBe('c2');
 	});
 
+	it('merges the mirror into the document node, keeping unsaved local edits', async () => {
+		const { actions } = createHarness();
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
+		documentStore.hydrate(makeWorkflow());
+		documentStore.updateNodeProperties({
+			name: 'Slack',
+			properties: {
+				parameters: { text: 'unsaved edit' },
+				credentials: { httpBasicAuth: { id: 'cred-basic', name: 'Basic' } },
+			},
+		});
+
+		await expect(actions.applyParameterValues('Slack', { channel: '#general' })).resolves.toBe(
+			'applied',
+		);
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
+
+		expect(documentStore.allNodes[0].parameters).toEqual({
+			text: 'unsaved edit',
+			channel: '#general',
+		});
+		expect(documentStore.allNodes[0].credentials).toEqual({
+			httpBasicAuth: { id: 'cred-basic', name: 'Basic' },
+			slackApi: { id: 'cred-1', name: 'My Slack' },
+		});
+	});
+
 	it('sends the Execute message through the normal send endpoint with the setup panel context', async () => {
 		const { actions, sendMessage } = createHarness();
 
@@ -381,7 +409,7 @@ describe('useSetupPanelActions', () => {
 		expect(sendMessage).toHaveBeenCalledExactlyOnceWith(
 			'Run a test execution of this workflow.',
 			undefined,
-			undefined,
+			useRootStore().pushRef,
 			{ source: 'setup-panel-execute', workflowId: WORKFLOW_ID },
 		);
 	});

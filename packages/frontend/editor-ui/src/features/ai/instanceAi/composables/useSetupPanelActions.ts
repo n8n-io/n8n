@@ -166,29 +166,36 @@ export function useSetupPanelActions(options: {
 	 * Mirrors an applied delta into a live canvas document, if a host has one
 	 * hydrated: the derivation reads the document's nodes while it exists, and
 	 * the document's next save would otherwise clobber the bind (its nodes) or
-	 * version-conflict (its stale versionId/checksum).
+	 * version-conflict (its stale versionId/checksum). The delta merges into the
+	 * document's own nodes (not the server copy) so unsaved local edits on the
+	 * same node survive the mirror.
 	 */
 	function syncHydratedDocument(workflowId: string, delta: NodesDelta, updated: IWorkflowDb) {
 		const documentStore = useExistingWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		if (!documentStore?.hydrated) return;
 
-		const nodesByName = new Map(updated.nodes.map((node) => [node.name, node]));
-		for (const { item } of delta.credentialBinds) {
+		// Only mirror nodes the PATCH actually landed on.
+		const updatedNodeNames = new Set(updated.nodes.map((node) => node.name));
+		for (const { item, credential } of delta.credentialBinds) {
 			for (const binding of item.nodeBindings ?? []) {
-				const node = nodesByName.get(binding.nodeName);
-				if (!node) continue;
+				if (!updatedNodeNames.has(binding.nodeName)) continue;
+				const docNode = documentStore.getNodeByName(binding.nodeName);
+				if (!docNode) continue;
 				documentStore.updateNodeProperties({
 					name: binding.nodeName,
-					properties: { credentials: node.credentials },
+					properties: {
+						credentials: { ...docNode.credentials, [item.credentialType]: { ...credential } },
+					},
 				});
 			}
 		}
-		for (const { nodeName } of delta.parameterApplies) {
-			const node = nodesByName.get(nodeName);
-			if (!node) continue;
+		for (const { nodeName, values } of delta.parameterApplies) {
+			if (!updatedNodeNames.has(nodeName)) continue;
+			const docNode = documentStore.getNodeByName(nodeName);
+			if (!docNode) continue;
 			documentStore.updateNodeProperties({
 				name: nodeName,
-				properties: { parameters: node.parameters },
+				properties: { parameters: { ...docNode.parameters, ...values } },
 			});
 		}
 
@@ -356,7 +363,7 @@ export function useSetupPanelActions(options: {
 		return await options.thread.sendMessage(
 			i18n.baseText('instanceAi.setupPanel.executeMessage'),
 			undefined,
-			undefined,
+			rootStore.pushRef,
 			{ source: 'setup-panel-execute', workflowId },
 		);
 	}
