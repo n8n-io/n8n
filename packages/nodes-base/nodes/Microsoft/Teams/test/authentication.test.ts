@@ -1,4 +1,8 @@
-import type { INodeCredentialDescription, INodeProperties } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../MicrosoftTeamsTrigger.node';
 import { versionDescription } from '../v2/actions/versionDescription';
@@ -81,5 +85,23 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 		);
 
 		expect(credentialGatedByDefault?.name).toBe('microsoftTeamsOAuth2Api');
+	});
+});
+
+// Outside the describe.each above: the trigger carries its own separately-worded
+// description, which this contract does not cover.
+describe('Microsoft Teams action (v2) generic credential scope hint', () => {
+	it('names ChatMember.ReadWrite and User.Read.All in the microsoftOAuth2Api option', () => {
+		const authProperty = versionDescription.properties.find(
+			(property) => property.name === 'authentication',
+		);
+		const genericOption = (authProperty?.options ?? []).find(
+			(option) => 'value' in option && option.value === 'microsoftOAuth2Api',
+		);
+
+		expect(genericOption).toBeDefined();
+		const description = (genericOption as INodePropertyOptions).description ?? '';
+		expect(description).toContain('ChatMember.ReadWrite');
+		expect(description).toContain('User.Read.All');
 	});
 });
