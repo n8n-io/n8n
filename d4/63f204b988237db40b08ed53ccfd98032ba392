@@ -13,6 +13,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.per
   s_14f52ab61740a5::t_325ae55f01f068 76
 packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
   s_14f52ab61740a5::t_2e82bce01dec83 47,103-104,111
+  s_14f52ab61740a5::t_1f292d5ac48cab 5-11
 packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/create.operation.ts
   s_14f52ab61740a5::t_2e82bce01dec83 5-6,41,87-88,95
 ---
