@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -138,6 +139,15 @@ export class InstanceAiMcpRegistryService {
 		const server = await this.mcpRegistryService.get(input.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
+		}
+
+		// This path cannot resolve a templated server URL, so `getRegistryMcpServers`
+		// skips such a row at load time. Reject it here too, otherwise the connection
+		// persists and reads as connected while contributing nothing.
+		if (resolveMcpRegistryConnection(server)?.isTemplated) {
+			throw new BadRequestError(
+				`MCP registry server "${input.serverSlug}" cannot be connected here`,
+			);
 		}
 
 		// v1 invariant: at most one connection per (user, serverSlug). To switch
