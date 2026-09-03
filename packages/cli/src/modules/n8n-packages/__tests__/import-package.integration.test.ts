@@ -2411,6 +2411,40 @@ describe('Package import workflow publishing policy', () => {
 		);
 	});
 
+	it('creates an archived workflow as archived and never publishes it', async () => {
+		const owner = await createOwner();
+
+		// A create carries the archived flag on the entity into the real
+		// `WorkflowCreationService`. Assert the stored state, because publishing
+		// reads it back to skip the workflow.
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'STILTON',
+					name: 'Stilton',
+					isArchived: true,
+					isPublished: true,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			localId: 'STILTON',
+			status: 'created',
+			isArchived: true,
+			activeVersionId: null,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'STILTON' });
+		expect(stored.isArchived).toBe(true);
+		expect(stored.active).toBe(false);
+		expect(stored.activeVersionId).toBeNull();
+	});
+
 	it('"match-source" publishes only workflows that were active in the package', async () => {
 		const owner = await createOwner();
 
