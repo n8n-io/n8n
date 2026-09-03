@@ -72,6 +72,24 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
+	it.each(['getAll'])(
+		'chatMember:%s throws a static error and issues no request under SP',
+		async (operation) => {
+			selectSp({
+				resource: 'chatMember',
+				operation,
+				chatId: 'chatID',
+				returnAll: true,
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'Chat members are not available with the Service Principal credential',
+			);
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each([
 		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
 		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
