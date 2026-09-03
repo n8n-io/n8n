@@ -1129,6 +1129,12 @@ async function buildWorkflowTool(
 				};
 			}
 
+			// A wait due within the poll window resolves inline. Only a wait the poll
+			// did not settle is handed to the background.
+			if (result.status === 'waiting') {
+				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
+			}
+
 			if (result.status === 'waiting' && context.backgroundTasksEnabled) {
 				const backgrounded = await backgroundWaitingExecution(
 					result,
@@ -1140,9 +1146,6 @@ async function buildWorkflowTool(
 				if (backgrounded) return backgrounded;
 			}
 
-			if (result.status === 'waiting') {
-				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
-			}
 			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
 			current ??= await loadCurrentWorkflow(context, reference, triggerType);

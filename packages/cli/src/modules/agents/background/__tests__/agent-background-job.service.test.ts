@@ -63,7 +63,7 @@ function setup() {
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 
-	jobRepository.countRunningByParentThread.mockResolvedValue(0);
+	jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(0);
 	jobRepository.insertJob.mockResolvedValue(undefined);
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfRunning.mockResolvedValue(true);
@@ -107,12 +107,23 @@ describe('registerSubAgentJob', () => {
 
 	it('returns limit-reached when the thread is at the running-job cap', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.countRunningByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
+		jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(
+			MAX_RUNNING_JOBS_PER_THREAD,
+		);
 
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'limit-reached' });
 		expect(jobRepository.insertJob).not.toHaveBeenCalled();
+	});
+
+	it('counts only running sub-agent jobs toward the cap', async () => {
+		const { service, jobRepository } = setup();
+
+		const receipt = await service.registerSubAgentJob(registerParams);
+
+		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
+		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
 	});
 });
 
@@ -360,7 +371,7 @@ describe('registerWorkflowJob', () => {
 		expect(jobRepository.insertWorkflowJobOrGetExisting.mock.calls[0][0]).not.toHaveProperty(
 			'timeoutAt',
 		);
-		expect(jobRepository.countRunningByParentThread).not.toHaveBeenCalled();
+		expect(jobRepository.countRunningSubAgentsByParentThread).not.toHaveBeenCalled();
 	});
 
 	it('converges a replayed registration on the job already tracking the execution', async () => {
@@ -467,19 +478,18 @@ describe('reconcile — workflow jobs', () => {
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
 		);
-		executionPersistence.findSingleExecution.mockImplementation(async (_id, options) =>
-			options?.includeData
-				? ({
-						status: 'success',
-						data: {
-							resultData: { runData: { Set: [{ data: { main: [[{ json: { ok: true } }]] } }] } },
-						},
-					} as never)
-				: ({ status: 'success' } as never),
-		);
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
+		executionPersistence.findSingleExecution.mockResolvedValue({
+			status: 'success',
+			data: {
+				resultData: { runData: { Set: [{ data: { main: [[{ json: { ok: true } }]] } }] } },
+			},
+		} as never);
 
 		await service.reconcile();
 
+		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledWith(['exec-1']);
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
 			'wf-job-1',
 			expect.objectContaining({ status: 'completed', result: '{"Set":[{"ok":true}]}' }),
@@ -491,7 +501,7 @@ describe('reconcile — workflow jobs', () => {
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
 		);
-		executionPersistence.findSingleExecution.mockResolvedValue(undefined);
+		executionPersistence.findStatusesByIds.mockResolvedValue([]);
 
 		await service.reconcile();
 
@@ -509,10 +519,8 @@ describe('reconcile — workflow jobs', () => {
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
 		);
-		executionPersistence.findSingleExecution.mockImplementation(async (_id, options) => {
-			if (options?.includeData) throw new Error('data bundle unreadable');
-			return { status: 'success' } as never;
-		});
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
+		executionPersistence.findSingleExecution.mockRejectedValue(new Error('data bundle unreadable'));
 
 		await service.reconcile();
 
@@ -522,25 +530,42 @@ describe('reconcile — workflow jobs', () => {
 		);
 	});
 
-	it('still reconciles the rest of the batch when one execution lookup fails', async () => {
+	it('reads all candidate statuses in one batch and settles the rest when one settle fails', async () => {
 		const { service, jobRepository, executionPersistence } = setup();
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow'
 				? [makeWorkflowJob(), makeWorkflowJob({ id: 'wf-job-2', childExecutionId: 'exec-2' })]
 				: [],
 		);
-		executionPersistence.findSingleExecution.mockImplementation(async (id) => {
-			if (id === 'exec-1') throw new Error('db down');
-			return { status: 'error' } as never;
+		executionPersistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'exec-1', status: 'error' },
+			{ id: 'exec-2', status: 'error' },
+		]);
+		jobRepository.settleIfRunning.mockImplementation(async (id) => {
+			if (id === 'wf-job-1') throw new Error('db down');
+			return true;
 		});
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledWith(['exec-1', 'exec-2']);
+		expect(jobRepository.settleIfRunning).toHaveBeenCalledTimes(2);
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
 			'wf-job-2',
 			expect.objectContaining({ status: 'failed' }),
 		);
+	});
+
+	it('settles nothing when the batched status read fails', async () => {
+		const { service, jobRepository, executionPersistence } = setup();
+		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+			kind === 'workflow' ? [makeWorkflowJob()] : [],
+		);
+		executionPersistence.findStatusesByIds.mockRejectedValue(new Error('db down'));
+
+		await service.reconcile();
+
+		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
 	});
 
 	it('leaves a still-waiting execution alone — workflow jobs have no timeout', async () => {
@@ -548,7 +573,7 @@ describe('reconcile — workflow jobs', () => {
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
 		);
-		executionPersistence.findSingleExecution.mockResolvedValue({ status: 'waiting' } as never);
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'waiting' }]);
 
 		await service.reconcile();
 
@@ -562,7 +587,9 @@ describe('listForThread — workflow jobs', () => {
 		jobRepository.findByParentThread
 			.mockResolvedValueOnce([makeWorkflowJob()])
 			.mockResolvedValueOnce([makeWorkflowJob({ status: 'cancelled' })]);
-		executionPersistence.findSingleExecution.mockResolvedValue({ status: 'canceled' } as never);
+		executionPersistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'exec-1', status: 'canceled' },
+		]);
 
 		const jobs = await service.listForThread('thread-1');
 

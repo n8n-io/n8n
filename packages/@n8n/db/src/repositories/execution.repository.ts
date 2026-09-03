@@ -1141,6 +1141,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return result.map((r) => r.workflowVersionId);
 	}
 
+	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({ select: ['id', 'status'], where: { id: In(ids) } });
+	}
+
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
 

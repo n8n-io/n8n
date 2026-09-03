@@ -69,8 +69,9 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		throw new OperationalError('Failed to register workflow background job');
 	}
 
-	async countRunningByParentThread(parentThreadId: string): Promise<number> {
-		return await this.count({ where: { parentThreadId, status: 'running' } });
+	/** Running sub-agent jobs only: parked workflow jobs do not count toward the cap. */
+	async countRunningSubAgentsByParentThread(parentThreadId: string): Promise<number> {
+		return await this.count({ where: { parentThreadId, kind: 'subagent', status: 'running' } });
 	}
 
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {

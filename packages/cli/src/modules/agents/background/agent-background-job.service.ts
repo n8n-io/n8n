@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -17,6 +17,7 @@ import {
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
+/** Bounds live sub-agent runs per thread. Workflow jobs are parked executions and are exempt. */
 export const MAX_RUNNING_JOBS_PER_THREAD = 5;
 export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * Time.minutes.toMilliseconds;
 export const SETTLED_JOB_RETENTION_MS = 30 * Time.days.toMilliseconds;
@@ -129,13 +130,15 @@ export class AgentBackgroundJobService {
 
 	/**
 	 * Register a sub-agent job. The receipt follows the spawn contract:
-	 * `limit-reached` when the thread already has the maximum running jobs,
-	 * else `started`.
+	 * `limit-reached` when the thread already has the maximum running sub-agent
+	 * jobs, else `started`.
 	 */
 	async registerSubAgentJob(
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
-		const running = await this.jobRepository.countRunningByParentThread(params.parentThreadId);
+		const running = await this.jobRepository.countRunningSubAgentsByParentThread(
+			params.parentThreadId,
+		);
 		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
 
 		await this.jobRepository.insertJob({
@@ -335,17 +338,31 @@ export class AgentBackgroundJobService {
 	 */
 	private async settleFinishedWorkflowJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
 		const candidates = jobs.filter(
-			(job) => job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
+			(job): job is AgentBackgroundJob & { childExecutionId: string } =>
+				job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
 		);
+		if (candidates.length === 0) return false;
+
+		let statuses: Map<string, ExecutionStatus>;
+		try {
+			const rows = await this.executionPersistence.findStatusesByIds(
+				candidates.map((job) => job.childExecutionId),
+			);
+			statuses = new Map(rows.map((row) => [row.id, row.status]));
+		} catch (error) {
+			this.logger.error('Failed to read execution statuses for workflow background jobs', {
+				error,
+			});
+			return false;
+		}
 
 		let settledAny = false;
 		for (const job of candidates) {
 			const executionId = job.childExecutionId;
-			if (executionId === null) continue;
+			const executionStatus = statuses.get(executionId);
 
 			try {
-				const execution = await this.executionPersistence.findSingleExecution(executionId);
-				if (!execution) {
+				if (executionStatus === undefined) {
 					settledAny =
 						(await this.settle(job.id, {
 							status: 'failed',
@@ -353,14 +370,14 @@ export class AgentBackgroundJobService {
 						})) || settledAny;
 					continue;
 				}
-				if (!isTerminalExecutionStatus(execution.status)) continue;
+				if (!isTerminalExecutionStatus(executionStatus)) continue;
 
-				const status = settlementStatusForExecution(execution.status);
+				const status = settlementStatusForExecution(executionStatus);
 				settledAny =
 					(await this.settle(job.id, {
 						status,
 						result: status === 'completed' ? await this.loadExecutionResult(executionId) : null,
-						error: execution.status === 'success' ? null : `Execution ${execution.status}`,
+						error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
 					})) || settledAny;
 			} catch (error) {
 				this.logger.error('Failed to reconcile workflow background job', {

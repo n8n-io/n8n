@@ -782,16 +782,16 @@ describe('workflow tool → background job handoff', () => {
 		connections: {},
 	} as unknown as WorkflowEntity;
 
-	const parkedRun = (): IRun => ({
+	const parkedRun = (waitTill = WAIT_INDEFINITELY): IRun => ({
 		mode: 'integrated',
 		status: 'waiting',
 		finished: false,
 		startedAt: new Date(),
 		storedAt: 'db',
-		waitTill: WAIT_INDEFINITELY,
+		waitTill,
 		data: createRunExecutionData({
 			resultData: { runData: {} },
-			waitTill: WAIT_INDEFINITELY,
+			waitTill,
 		}),
 	});
 
@@ -814,10 +814,10 @@ describe('workflow tool → background job handoff', () => {
 		}),
 	});
 
-	const parkedActiveExecutions = () =>
+	const parkedActiveExecutions = (waitTill = WAIT_INDEFINITELY) =>
 		({
 			has: vi.fn().mockReturnValue(true),
-			getPostExecutePromise: vi.fn().mockResolvedValue(parkedRun()),
+			getPostExecutePromise: vi.fn().mockResolvedValue(parkedRun(waitTill)),
 		}) as unknown as ActiveExecutions;
 
 	function setPersistence(...results: unknown[]) {
@@ -838,13 +838,13 @@ describe('workflow tool → background job handoff', () => {
 		return jobService;
 	}
 
-	async function buildBackgroundTool() {
+	async function buildBackgroundTool(waitTill = WAIT_INDEFINITELY) {
 		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
 			...buildContext(vi.fn().mockResolvedValue('exec-1'), {
 				workflowLoader,
-				activeExecutions: parkedActiveExecutions(),
+				activeExecutions: parkedActiveExecutions(waitTill),
 				agentId: 'agent-1',
 				backgroundTasksEnabled: true,
 			}),
@@ -896,6 +896,23 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 		// One recheck read; the inline wait polling stays off.
 		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+	});
+
+	it('polls a wait due soon to completion instead of backgrounding it', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool(new Date(Date.now() + 30_000));
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { Result: [{ approved: true }] },
+		});
 	});
 
 	it('settles inline and returns the real result when the workflow finished during registration', async () => {
