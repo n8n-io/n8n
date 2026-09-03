@@ -310,3 +310,44 @@ export const meetingRLC: INodeProperties = {
 		},
 	],
 };
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a User...',
+			typeOptions: {
+				searchListMethod: 'getUsers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. jacob@contoso.com',
+			// `validation` only, never an `extractValue`: a GUID-only extractor makes core
+			// reject any expression that resolves to a user principal name before the node
+			// runs, and Graph binds a principal name directly.
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@]+@[^\\s@]+)[ \t]*$',
+						errorMessage: 'Not a valid user ID or user principal name',
+					},
+				},
+			],
+		},
+	],
+};
