@@ -97,10 +97,11 @@ export class McpRegistryService {
 	/**
 	 * Refreshes the registry from the remote API and reloads the generated node
 	 * types. Skips the write and the reload when nothing changed.
-	 * Not safe to run concurrently with itself.
-	 * @throws when the remote API or the database write fails.
+	 * Callers must serialize runs.
+	 * @throws when the remote API or the database write fails, or when the
+	 * signal aborts before the write starts.
 	 */
-	async refreshFromApi(): Promise<void> {
+	async refreshFromApi(signal?: AbortSignal): Promise<void> {
 		const existingServers = await this.getAll({ includeDeprecated: true });
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
@@ -115,6 +116,7 @@ export class McpRegistryService {
 			updatedServers = result;
 		}
 
+		signal?.throwIfAborted();
 		await this.saveServers(updatedServers);
 		await this.refreshRegistryNodeTypes(true);
 		this.notifyNodeDescriptionsUpdated();

@@ -294,6 +294,20 @@ describe('McpRegistryService', () => {
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 		});
 
+		it('refreshFromApi stops before the write when the signal aborts during the fetch', async () => {
+			const { service, apiClient, repository, push } = createService({ storedServers: null });
+			const controller = new AbortController();
+			apiClient.fetchAllServers.mockImplementation(async () => {
+				controller.abort();
+				return [notionMockServer];
+			});
+
+			await expect(service.refreshFromApi(controller.signal)).rejects.toThrow();
+
+			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
+		});
+
 		it('refreshFromApi rethrows an API failure and writes nothing', async () => {
 			const { service, apiClient, repository, push } = createService();
 			apiClient.fetchServersMetadata.mockRejectedValue(new Error('api down'));
