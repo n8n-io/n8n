@@ -2,7 +2,11 @@ import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { DatabricksOAuth2Credential } from '../token-provider';
-import { createDatabricksFetch, getDatabricksTokenProvider } from '../token-provider';
+import {
+	CHAT_MODEL_USER_AGENT,
+	createDatabricksFetch,
+	getDatabricksTokenProvider,
+} from '../token-provider';
 
 const { MockClientOAuth2, mockGetToken } = vi.hoisted(() => {
 	const mockGetToken = vi.fn();
@@ -246,6 +250,20 @@ describe('createDatabricksFetch', () => {
 		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
 		expect(new Headers(init.headers).get('authorization')).toBe('Bearer fresh-token');
 		expect(init.method).toBe('POST');
+	});
+
+	it('should set the partner User-Agent, overwriting the SDK-supplied one', async () => {
+		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
+		globalThis.fetch = mockFetch;
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+
+		await wrappedFetch('https://my.databricks.com/serving-endpoints/chat/completions', {
+			method: 'POST',
+			headers: { 'user-agent': 'OpenAI/JS 4.0.0' },
+		});
+
+		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(new Headers(init.headers).get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
 	});
 
 	it('should preserve the headers of a Request input when init sets none', async () => {
