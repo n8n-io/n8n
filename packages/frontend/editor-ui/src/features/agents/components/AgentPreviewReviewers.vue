@@ -188,11 +188,13 @@ async function submitAdd() {
 					<N8nIcon v-if="isRunning || summary.running > 0" icon="loader-circle" :size="13" spin />
 					<N8nIcon v-else icon="flask-conical" :size="13" />
 				</span>
-				<Transition name="wireframe-bar-fade" mode="out-in">
-					<span :key="barLabel" :class="$style.badgeLabel" data-testid="agent-preview-bar-label">{{
-						barLabel
-					}}</span>
-				</Transition>
+				<!-- Keyed so each label re-mounts and fades in; no Transition wrapper (it tripped the async layout on route change). -->
+				<span
+					:key="barLabel"
+					:class="[$style.badgeLabel, $style.fadeIn]"
+					data-testid="agent-preview-bar-label"
+					>{{ barLabel }}</span
+				>
 				<span :class="$style.grow" />
 				<template v-if="shouldOfferAuto && !popoverOpen">
 					<span :class="$style.offerText">{{
@@ -896,12 +898,16 @@ async function submitAdd() {
 	color: var(--background--surface);
 }
 
-:global(.wireframe-bar-fade-enter-active),
-:global(.wireframe-bar-fade-leave-active) {
-	transition: opacity 250ms ease;
+@keyframes wireframeBarFadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
-:global(.wireframe-bar-fade-enter-from),
-:global(.wireframe-bar-fade-leave-to) {
-	opacity: 0;
+
+.fadeIn {
+	animation: wireframeBarFadeIn 300ms ease;
 }
 </style>
