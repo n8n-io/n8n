@@ -300,17 +300,29 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
-		if (shouldEnqueue) {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
-				data,
-				loadStaticData,
-				realtime,
-				existingExecution?.executionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+		try {
+			if (shouldEnqueue) {
+				await this.enqueueExecution(
+					executionId,
+					workflowId,
+					data,
+					loadStaticData,
+					realtime,
+					existingExecution?.executionId,
+				);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					loadStaticData,
+					existingExecution?.executionId,
+				);
+			}
+		} catch (error) {
+			// A failed start means the post-execute promise that normally clears the
+			// heartbeat never settles, so clear it here.
+			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			throw error;
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -542,34 +554,34 @@ export class WorkflowRunner {
 			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
-		const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
-
-		const jobData: JobData = {
-			workflowId,
-			executionId,
-			loadStaticData: !!loadStaticData,
-			pushRef: data.pushRef,
-			streamingEnabled: data.streamingEnabled,
-			restartExecutionId,
-			projectId: data.projectId,
-			projectName: data.projectName,
-			// Carry the manual-execution identity for private credential resolution on the worker.
-			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
-			poolName,
-			// MCP-specific fields for queue mode support
-			isMcpExecution: data.isMcpExecution,
-			mcpType: data.mcpType,
-			mcpSessionId: data.mcpSessionId,
-			mcpMessageId: data.mcpMessageId,
-			mcpToolCall: data.mcpToolCall,
-			mcpToolInput: data.mcpToolInput,
-		};
-
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
+			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
+
+			const jobData: JobData = {
+				workflowId,
+				executionId,
+				loadStaticData: !!loadStaticData,
+				pushRef: data.pushRef,
+				streamingEnabled: data.streamingEnabled,
+				restartExecutionId,
+				projectId: data.projectId,
+				projectName: data.projectName,
+				// Carry the manual-execution identity for private credential resolution on the worker.
+				encryptedRunnerIdentity: data.encryptedRunnerIdentity,
+				poolName,
+				// MCP-specific fields for queue mode support
+				isMcpExecution: data.isMcpExecution,
+				mcpType: data.mcpType,
+				mcpSessionId: data.mcpSessionId,
+				mcpMessageId: data.mcpMessageId,
+				mcpToolCall: data.mcpToolCall,
+				mcpToolInput: data.mcpToolInput,
+			};
+
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
