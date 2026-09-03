@@ -10,7 +10,7 @@ import { PoolConfigService } from '@/scaling/pool-config.service';
 export class ProjectPoolSettingsController {
 	constructor(private readonly poolConfigService: PoolConfigService) {}
 
-	@Licensed(LICENSE_FEATURES.WORKER_VIEW)
+	@Licensed(LICENSE_FEATURES.WORKER_POOLS)
 	@ProjectScope('project:read')
 	@Get('/')
 	async getPoolSettings(
@@ -21,7 +21,7 @@ export class ProjectPoolSettingsController {
 		return await this.poolConfigService.getProjectPoolSettings(projectId);
 	}
 
-	@Licensed(LICENSE_FEATURES.WORKER_VIEW)
+	@Licensed(LICENSE_FEATURES.WORKER_POOLS)
 	@ProjectScope('project:update')
 	@Patch('/')
 	async updatePoolSettings(
