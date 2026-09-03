@@ -134,6 +134,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
@@ -565,12 +566,14 @@ jobs:
           done
 
       - name: Verify image architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.platform }}
         run: |
           for image in "$N8N_IMAGE" "$N8N_PC_IMAGE" "$RUNNERS_IMAGE" "$RUNNERS_DISTROLESS_IMAGE"; do
             [[ -n "$image" ]] || continue
             actual="$(docker image inspect --format '{{.Architecture}}' "$image")"
-            if [[ "$actual" != "${{ matrix.platform }}" ]]; then
-              echo "::error::$image has architecture $actual, expected ${{ matrix.platform }}"
+            if [[ "$actual" != "$EXPECTED_ARCH" ]]; then
+              echo "::error::$image has architecture $actual, expected $EXPECTED_ARCH"
               exit 1
             fi
           done
