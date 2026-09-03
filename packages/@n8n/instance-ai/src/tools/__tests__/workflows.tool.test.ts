@@ -155,9 +155,10 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
-	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
-		.inputSchema;
+type SafeParseResult = { success: true; data: unknown } | { success: false; error: unknown };
+
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => SafeParseResult } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => SafeParseResult } }).inputSchema;
 }
 
 function getDescription(tool: unknown): string {
@@ -650,6 +651,66 @@ describe('workflows tool', () => {
 			const result = await executeTool(tool, { action: 'list' }, {} as never);
 
 			expect(result).toEqual({ workflows: [], total: 0, totalInScope: 0 });
+		});
+
+		describe('folder scope', () => {
+			it('does not advertise folder fields while folder exploration is off', () => {
+				const context = createMockContext();
+				const schema = getInputSchema(createWorkflowsTool(context, 'full'));
+
+				const parsed = schema.safeParse({ action: 'list', folderPath: 'Triggers' });
+
+				// Either rejected or stripped — an agent with the flag off must never be able to pass it.
+				expect(parsed.success && 'folderPath' in (parsed.data as object)).toBe(false);
+			});
+
+			it('advertises folderPath, folderId and recursive while folder exploration is on', () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				const schema = getInputSchema(createWorkflowsTool(context, 'full'));
+
+				const parsed = schema.safeParse({
+					action: 'list',
+					folderPath: 'Clients/Acme',
+					folderId: 'f1',
+					recursive: false,
+				});
+
+				expect(parsed.success).toBe(true);
+				expect(parsed.success && parsed.data).toMatchObject({
+					folderPath: 'Clients/Acme',
+					folderId: 'f1',
+					recursive: false,
+				});
+			});
+
+			it('still builds the orchestrator surface with folder exploration on', () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+
+				expect(() => createWorkflowsTool(context, 'orchestrator')).not.toThrow();
+			});
+
+			it('forwards folderPath and omits recursive when not given', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderPath: 'Clients/Acme' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderPath: 'Clients/Acme' });
+			});
+
+			it('forwards folderId and recursive: false', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderId: 'f1', recursive: false }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({
+					folderId: 'f1',
+					recursive: false,
+				});
+			});
 		});
 	});
 
