@@ -25,7 +25,7 @@ type FiredTrigger = {
 };
 
 /** Execution modes the v2 path serves today. */
-const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook']);
+const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
 
 /** v1's payload for a manual run with no trigger data: one slot, one empty item. */
 const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
@@ -59,9 +59,8 @@ export class EngineV2Dispatcher {
 	) {}
 
 	/**
-	 * Manual and webhook runs for now; the trigger entry path (CAT-2921) reuses
-	 * this seam later. A resume must not start a fresh data-plane execution,
-	 * hence the `existingExecution` check.
+	 * Manual, webhook and active trigger runs. A resume must not start a fresh
+	 * data-plane execution, hence the `existingExecution` check.
 	 */
 	routesToEngineV2(
 		data: IWorkflowExecutionDataProcess,
@@ -108,7 +107,8 @@ export class EngineV2Dispatcher {
 				workflowId: workflowData.id,
 				graph,
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
-				// Only manual and webhook route here, so anything else is a production run.
+				// Only manual, webhook and trigger route here, so anything that is not a
+				// manual run is a production run.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
 			});
 		} catch (error) {
