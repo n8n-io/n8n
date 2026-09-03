@@ -265,7 +265,7 @@ function progressText(tools, textParts) {
 		return `Working: ${title}`;
 	});
 	const answer = [...textParts.values()].join('').trim();
-	const prefix = progress.length ? progress.join('\n') : 'OpenCode is working…';
+	const prefix = progress.length ? progress.join('\n') : 'Flaky is working…';
 	const remaining = Math.max(0, 3900 - prefix.length - 2);
 	return answer ? `${prefix}\n\n${answer.slice(-remaining)}` : prefix;
 }
@@ -285,7 +285,7 @@ export async function startSlackProgress(
 		message = await callSlack('chat.postMessage', {
 			channel,
 			thread_ts: threadTs,
-			text: 'OpenCode is working…',
+			text: 'Flaky is working…',
 		});
 	} catch (error) {
 		console.error(`turn ${turn.turnId}: Slack placeholder failed: ${error.message}`);
