@@ -158,6 +158,39 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 		expect(build.priorRunFailed).toContain('sEeDeDwF1234567a');
 	});
 
+	// A throw from staging is an authoring/harness fault. Without `seedingFailed` the
+	// outer catch returns a plain failed build and the case is scored `build_failure` /
+	// `builder_issue` — a builder red for something the builder had no part in.
+	it('flags seedingFailed when a prior run names an id the seed never created', async () => {
+		const client = makeClient({
+			restoreThread: vi.fn().mockResolvedValue({
+				restored: 0,
+				workflowIds: [],
+				dataTableIds: ['scenario-dt-1'],
+				agentIds: [],
+			}),
+			listWorkflows: vi.fn().mockResolvedValue([]),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			seed: {
+				mode: 'inline' as const,
+				messages: [],
+				workflows: [{ id: 'sEeDeDwF1234567a', name: 'Daily Sync', nodes: [], connections: {} }],
+				dataTables: [],
+				agents: [],
+				projects: [],
+				// Not the declared id — `executePriorRuns` throws.
+				priorRuns: [{ workflow: 'nOtDeClArEd1234a' }],
+			},
+		});
+
+		expect(build.success).toBe(false);
+		expect(build.seedingFailed).toBe(true);
+	});
+
 	it('returns the built workflow, both tables, and the name→id map on success', async () => {
 		const client = makeClient();
 

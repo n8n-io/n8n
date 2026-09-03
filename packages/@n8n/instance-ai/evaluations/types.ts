@@ -320,7 +320,8 @@ export interface ExecutionScenarioResult {
  * workflow *after* a build.
  */
 export interface SeedPriorRun {
-	/** Seeded workflow to run, by the `name` the seed declares. */
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
 	workflow: string;
 	/**
 	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is

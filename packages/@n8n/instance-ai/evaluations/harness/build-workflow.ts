@@ -826,24 +826,33 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
 			// not. Before the live turn, so the agent's first look already sees it.
 			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
-				const outcomes = await executePriorRuns({
-					client,
-					priorRuns: config.seed.priorRuns,
-					// Already maps authored seed id → the restored workflow, and it is built
-					// from `remapped`, which the server pins its ids to.
-					seedWorkflows: seedWorkflowsBySeedId,
-					logger,
-					laneTag: config.laneTag,
-				});
-				// A staged run that never produced an execution record leaves the case's
-				// premise missing, so the graded turn answers a question the instance cannot
-				// support. Recorded rather than thrown: the build itself is fine, and the
-				// case is routed to infra instead of scored.
-				const missing = outcomes.filter((outcome) => !outcome.ran);
-				if (missing.length > 0) {
-					priorRunFailed = missing
-						.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
-						.join(' | ');
+				// A throw here (an id the seed never created) is an authoring/harness fault.
+				// Without the flag the outer catch returns a plain failed build and the case
+				// is recorded as `build_failure` / `builder_issue` — a builder red for
+				// something the builder had no part in.
+				try {
+					const outcomes = await executePriorRuns({
+						client,
+						priorRuns: config.seed.priorRuns,
+						// Already maps authored seed id → the restored workflow, and it is built
+						// from `remapped`, which the server pins its ids to.
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+					// A staged run that never produced an execution record leaves the case's
+					// premise missing, so the graded turn answers a question the instance cannot
+					// support. Recorded rather than thrown: the build itself is fine, and the
+					// case is routed to infra instead of scored.
+					const missing = outcomes.filter((outcome) => !outcome.ran);
+					if (missing.length > 0) {
+						priorRunFailed = missing
+							.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+							.join(' | ');
+					}
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw error;
 				}
 			}
 		}

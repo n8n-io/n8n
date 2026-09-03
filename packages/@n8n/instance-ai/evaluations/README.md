@@ -811,8 +811,8 @@ requires the agent to read it.
 - **A run that never happens is not a staged failure.** If no execution record lands, the
   case is reported as a framework issue rather than scored — it would otherwise be graded
   against history the instance does not have.
-- Runs execute sequentially in declared order, before the live turn, on a tighter budget
-  than the graded turn.
+- Runs execute sequentially in declared order, before the live turn, on a 120s budget —
+  tighter than a scenario execution, which gets the case's build budget (900s by default).
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 

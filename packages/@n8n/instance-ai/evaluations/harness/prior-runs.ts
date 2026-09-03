@@ -12,9 +12,11 @@ import type { N8nClient } from '../clients/n8n-client';
 import type { SeedPriorRun } from '../types';
 
 /**
- * Staging is not the graded turn, so it gets its own, much tighter budget. The build
- * budget is 15 minutes and a prior run may retry, which would let scene-setting outspend
- * the thing under test.
+ * Staging is not the graded turn, so it gets its own budget. A scenario execution is
+ * given `effectiveTimeoutMs(complexity, args.timeoutMs)` — 900s by default, 1350s for a
+ * complex case — and a prior run may retry, which would let scene-setting outspend the
+ * thing under test. Passed explicitly rather than left to the client default, which
+ * happens to match today but is not staging's to inherit.
  */
 export const STAGING_TIMEOUT_MS = 120_000;
 
@@ -42,8 +44,6 @@ export interface PriorRunsOptions {
 	/** Authored seed id → the restored workflow, as `seedWorkflowsBySeedId` holds it. */
 	seedWorkflows: Map<string, { id: string; name: string }>;
 	logger: EvalLogger;
-	/** Defaults to `STAGING_TIMEOUT_MS`. */
-	timeoutMs?: number;
 	laneTag?: string;
 	/** Injectable for tests. */
 	sleep?: (ms: number) => Promise<void>;
@@ -68,7 +68,6 @@ export interface PriorRunsOptions {
 export async function executePriorRuns(options: PriorRunsOptions): Promise<PriorRunOutcome[]> {
 	const { client, priorRuns, seedWorkflows, logger, laneTag } = options;
 	const delay = options.sleep ?? sleep;
-	const timeoutMs = options.timeoutMs ?? STAGING_TIMEOUT_MS;
 	const outcomes: PriorRunOutcome[] = [];
 
 	for (const priorRun of priorRuns) {
@@ -83,7 +82,7 @@ export async function executePriorRuns(options: PriorRunsOptions): Promise<Prior
 		}
 
 		const label = `${restored.name} (${priorRun.workflow})`;
-		const outcome = await runOnce(client, priorRun, restored.id, label, logger, delay, timeoutMs);
+		const outcome = await runOnce(client, priorRun, restored.id, label, logger, delay);
 		outcomes.push(outcome);
 		logger.info(
 			`  Prior run "${label}": ${
@@ -132,7 +131,6 @@ async function runOnce(
 	label: string,
 	logger: EvalLogger,
 	delay: (ms: number) => Promise<void>,
-	timeoutMs: number,
 ): Promise<PriorRunOutcome> {
 	const base = { workflow: priorRun.workflow, workflowId };
 	let lastErrors: string[] = [];
@@ -140,7 +138,11 @@ async function runOnce(
 	for (let attempt = 1; attempt <= MAX_EXEC_ATTEMPTS; attempt++) {
 		let retryReason: string;
 		try {
-			const result = await client.executeWithLlmMock(workflowId, priorRun.hints, timeoutMs);
+			const result = await client.executeWithLlmMock(
+				workflowId,
+				priorRun.hints,
+				STAGING_TIMEOUT_MS,
+			);
 			// A run the server stopped for exceeding its budget comes back in-band. Recording
 			// it as a staged failure would put HARNESS text in the execution record the graded
 			// agent then reads as the workflow's own failure reason.
