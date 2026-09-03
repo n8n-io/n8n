@@ -2,14 +2,14 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
 import * as get from './get.operation';
+import { SERVICE_PRINCIPAL_UNSUPPORTED } from './shared';
 import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
 
 export { create, get };
 
 export const description: INodeProperties[] = [
 	{
-		displayName:
-			'Online meetings are not available with the Service Principal credential. Online meeting operations run on the signed-in user (/me); use an OAuth2 credential instead.',
+		displayName: `Online meetings are not available with the Service Principal credential. ${SERVICE_PRINCIPAL_UNSUPPORTED}`,
 		name: 'onlineMeetingServicePrincipalNotice',
 		type: 'notice',
 		default: '',
