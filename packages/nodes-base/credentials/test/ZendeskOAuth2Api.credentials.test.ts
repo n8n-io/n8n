@@ -20,6 +20,18 @@ describe('ZendeskOAuth2Api Credential', () => {
 		);
 	});
 
+	it('should allow selection of the grant type', () => {
+		const grantTypeProperty = credential.properties.find((p) => p.name === 'grantType');
+		expect(grantTypeProperty?.type).toBe('options');
+		expect(grantTypeProperty?.options).toEqual([
+			{ name: 'Authorization Code', value: 'authorizationCode' },
+			{ name: 'Client Credentials', value: 'clientCredentials' },
+			{ name: 'PKCE', value: 'pkce' },
+		]);
+		// authorizationCode stays the default so already-saved credentials keep working
+		expect(grantTypeProperty?.default).toBe('authorizationCode');
+	});
+
 	it('should use body authentication', () => {
 		const authenticationProperty = credential.properties.find((p) => p.name === 'authentication');
 		expect(authenticationProperty?.type).toBe('hidden');

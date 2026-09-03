@@ -24,7 +24,22 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',
-			type: 'hidden',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Client Credentials',
+					value: 'clientCredentials',
+				},
+				{
+					name: 'PKCE',
+					value: 'pkce',
+				},
+			],
+			// Default stays authorizationCode so already-saved credentials keep working
 			default: 'authorizationCode',
 		},
 		{
