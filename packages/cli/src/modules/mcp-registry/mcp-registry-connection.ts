@@ -81,6 +81,7 @@ export function prepareMcpRegistryConnection({
 	connection,
 	credentialType,
 	credentialData,
+	oauth2,
 	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
 	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
@@ -93,10 +94,12 @@ export function prepareMcpRegistryConnection({
 		};
 	}
 
-	const headers = preparedHeaders ?? getMcpAuthHeaders(credentialType, credentialData);
-	const authorization = new Headers(headers).get('authorization')?.trim();
+	const headers = preparedHeaders ?? getMcpAuthHeaders(credentialType, credentialData, oauth2);
+	const normalizedHeaders = new Headers(headers);
+	const authorization = normalizedHeaders.get('authorization')?.trim();
 	const [scheme, accessToken] = authorization?.split(/\s+/, 2) ?? [];
-	if (scheme?.toLowerCase() !== 'bearer' || !accessToken) {
+	const expectedTokenType = oauth2?.tokenType ?? 'Bearer';
+	if (scheme?.toLowerCase() !== expectedTokenType.toLowerCase() || !accessToken) {
 		return {
 			ok: false,
 			error: {

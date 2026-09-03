@@ -6,6 +6,11 @@ describe('SlackOAuth2Api Credential', () => {
 	it('should have correct credential metadata', () => {
 		expect(credential.name).toBe('slackOAuth2Api');
 		expect(credential.extends).toEqual(['oAuth2Api']);
+		expect(credential.oauth2).toEqual({
+			tokenType: 'Bearer',
+			property: 'authed_user.access_token',
+			refreshProperty: 'access_token',
+		});
 
 		const authUrlProperty = credential.properties.find((p) => p.name === 'authUrl');
 		expect(authUrlProperty?.default).toBe('https://slack.com/oauth/v2/authorize');

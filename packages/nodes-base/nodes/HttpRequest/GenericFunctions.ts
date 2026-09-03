@@ -218,10 +218,6 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 			tokenType: 'Bearer',
 			keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
 		},
-		slackOAuth2Api: {
-			tokenType: 'Bearer',
-			property: 'authed_user.access_token',
-		},
 		stravaOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
 		},

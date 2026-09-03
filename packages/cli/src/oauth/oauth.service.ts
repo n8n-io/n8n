@@ -12,8 +12,19 @@ import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import type {
+	CredentialOAuth2Options,
+	ICredentialDataDecryptedObject,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import {
+	applyOAuth2RefreshToken,
+	getOAuth2AuthHeaders,
+	jsonParse,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -156,6 +167,10 @@ export class OauthService {
 	 */
 	getSsrfBridge(): SsrfBridge | undefined {
 		return this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+	}
+
+	getOAuth2Options(credentialType: string): CredentialOAuth2Options | undefined {
+		return this.credentialsHelper.getOAuth2Options(credentialType);
 	}
 
 	private oauthFlowCacheKey(token: string): string {
@@ -770,11 +785,13 @@ export class OauthService {
 			return null;
 		}
 
+		const oauth2 = this.getOAuth2Options(credential.type);
 		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
 			oauthTokenData,
 			refreshed.data,
 			resource,
 		);
+		applyOAuth2RefreshToken(refreshedTokenData, refreshed.data, oauth2);
 
 		try {
 			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
@@ -785,7 +802,7 @@ export class OauthService {
 			});
 		}
 
-		return { Authorization: `Bearer ${refreshed.accessToken}` };
+		return getOAuth2AuthHeaders({ oauthTokenData: refreshedTokenData }, oauth2);
 	}
 
 	/**

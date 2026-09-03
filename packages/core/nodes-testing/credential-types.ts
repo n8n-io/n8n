@@ -19,7 +19,14 @@ export class CredentialTypes implements ICredentialTypes {
 		return this.loadNodesAndCredentials.known.credentials[type]?.supportedNodes ?? [];
 	}
 
-	getParentTypes(_type: string): string[] {
-		return [];
+	getParentTypes(type: string): string[] {
+		const parentTypes = this.loadNodesAndCredentials.known.credentials[type]?.extends ?? [];
+		const resolvedParentTypes = [...parentTypes];
+
+		for (const parentType of resolvedParentTypes) {
+			resolvedParentTypes.push(...this.getParentTypes(parentType));
+		}
+
+		return resolvedParentTypes;
 	}
 }

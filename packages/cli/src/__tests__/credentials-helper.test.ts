@@ -1876,6 +1876,55 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('getOAuth2Options', () => {
+		const credentialType = (name: string, oauth2?: ICredentialType['oauth2']): ICredentialType => ({
+			name,
+			displayName: name,
+			properties: [],
+			oauth2,
+		});
+
+		const buildHelper = (credentialTypes: CredentialTypes) =>
+			new CredentialsHelper(
+				credentialTypes,
+				mock<CredentialsOverwrites>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				mock<SecretsProviderConnectionRepository>(),
+				mock<LicenseState>(),
+				mock<ExternalSecretsConfig>(),
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+
+		it('falls back to the OAuth2 options defined by a parent credential type', () => {
+			const parentOAuth2 = { property: 'parentToken', tokenType: 'Bearer' };
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.isOAuthCredentialType.mockReturnValue(true);
+			credentialTypes.getParentTypes.mockReturnValue(['parentOAuth2Api', 'oAuth2Api']);
+			credentialTypes.getByName.mockImplementation((type) =>
+				type === 'parentOAuth2Api' ? credentialType(type, parentOAuth2) : credentialType(type),
+			);
+
+			expect(buildHelper(credentialTypes).getOAuth2Options('childOAuth2Api')).toBe(parentOAuth2);
+		});
+
+		it('uses the child OAuth2 options without merging in parent options', () => {
+			const childOAuth2 = { property: 'childToken' };
+			const parentOAuth2 = { property: 'parentToken', tokenType: 'Bearer' };
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.isOAuthCredentialType.mockReturnValue(true);
+			credentialTypes.getParentTypes.mockReturnValue(['parentOAuth2Api']);
+			credentialTypes.getByName.mockImplementation((type) =>
+				type === 'childOAuth2Api'
+					? credentialType(type, childOAuth2)
+					: credentialType(type, parentOAuth2),
+			);
+
+			expect(buildHelper(credentialTypes).getOAuth2Options('childOAuth2Api')).toBe(childOAuth2);
+		});
+	});
+
 	describe('isCredentialUsableByNode', () => {
 		const buildHelper = (credentialTypes: CredentialTypes) =>
 			new CredentialsHelper(

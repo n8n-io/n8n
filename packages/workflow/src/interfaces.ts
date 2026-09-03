@@ -76,19 +76,34 @@ export interface IBinaryData {
 	id?: string;
 }
 
+// NODE-5850
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
 // credentials file.
 export interface IOAuth2Options {
+	// Whether to send the client credentials in the refresh request body
 	includeCredentialsOnRefreshOnBody?: boolean;
+	// Whether to return token-expiration errors without attempting a refresh
 	skipTokenRefresh?: boolean;
+	// Which key to use to get the token from stored credentials
 	property?: string;
+	// Which key to use to get the refreshed access token from stored credentials. The destination is `property` field
+	refreshProperty?: string;
+	// Type of the token, e.g. "Bearer"
 	tokenType?: string;
+	// Whether to retain the token type prefix in the Authorization header
 	keepBearer?: boolean;
+	// Status code to check for token expiration
 	tokenExpiredStatusCode?: number;
+	// Additional header name under which to include the raw access token
 	keyToIncludeInAccessTokenHeader?: string;
 }
+
+export type CredentialOAuth2Options = Pick<
+	IOAuth2Options,
+	'property' | 'refreshProperty' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
+>;
 
 export interface IConnection {
 	// The node the connection is to
@@ -225,6 +240,8 @@ export interface IHttpRequestHelper {
 }
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
+
+	abstract getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
 
 	/**
 	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
@@ -389,6 +406,8 @@ export interface ICredentialType {
 	 */
 	iconBasePath?: string;
 	extends?: string[];
+	// TODO: extend with more options from IOAuth2Options
+	oauth2?: CredentialOAuth2Options;
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
@@ -1102,6 +1121,7 @@ export interface FunctionsBase {
 		itemIndex?: number,
 	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
+	getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;

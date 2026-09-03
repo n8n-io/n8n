@@ -374,7 +374,11 @@ export async function getAuthHeaders(
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
 
-	const headers = getMcpAuthHeaders(authentication, credentials);
+	const headers = getMcpAuthHeaders(
+		authentication,
+		credentials,
+		ctx.getOAuth2Options(authentication),
+	);
 	return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
 }
 
@@ -394,34 +398,36 @@ export async function tryRefreshOAuth2Token(
 		return null;
 	}
 
-	let access_token: string | null = null;
+	let refreshedTokenData: ClientOAuth2TokenData;
 	try {
-		const result = (await ctx.helpers.refreshOAuth2Token.call(
+		refreshedTokenData = (await ctx.helpers.refreshOAuth2Token.call(
 			ctx,
 			authentication,
 		)) as ClientOAuth2TokenData;
-		access_token = result?.access_token;
 	} catch (error) {
 		return null;
 	}
 
-	if (!access_token) {
+	const refreshedHeaders = getMcpAuthHeaders(
+		authentication,
+		{ oauthTokenData: refreshedTokenData },
+		ctx.getOAuth2Options(authentication),
+	);
+	if (Object.keys(refreshedHeaders).length === 0) {
 		return null;
 	}
 
 	if (!headers) {
-		return {
-			Authorization: `Bearer ${access_token}`,
-		};
+		return refreshedHeaders;
 	}
 
-	const headersWithoutAuthorization = Object.fromEntries(
-		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	const refreshedHeaderNames = new Set(
+		Object.keys(refreshedHeaders).map((name) => name.toLowerCase()),
 	);
-	return {
-		...headersWithoutAuthorization,
-		Authorization: `Bearer ${access_token}`,
-	};
+	const retainedHeaders = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => !refreshedHeaderNames.has(name.toLowerCase())),
+	);
+	return { ...retainedHeaders, ...refreshedHeaders };
 }
 
 /**
@@ -461,6 +467,7 @@ export async function connectMcpClientForCredential(
 			connection: config.registryCredential.connection,
 			credentialType: config.registryCredential.credentialType,
 			credentialData: credentials,
+			oauth2: ctx.getOAuth2Options(config.authentication),
 			headers,
 		});
 		if (!prepared.ok) {
