@@ -336,9 +336,10 @@ stateDiagram-v2
 
 A resolver answers whether an owner exists, not what it currently wants, so a revival
 restores the job exactly as it was stored. A job the owner would no longer provision
-(a part of it dropped while its jobs were quarantined) comes back too, and its runs
-fail until the owner provisions again. Provisioning is what reconciles an owner's set
-of jobs; the sweep only decides whether they may run at all.
+(a part of it dropped while its jobs were quarantined) comes back too, and stays
+runnable until the owner provisions or deprovisions again and removes it. Provisioning
+is what reconciles an owner's set of jobs; the sweep only decides whether they may run
+at all.
 
 Two more guardrails: an owner type whose resolver throws, or that nothing claimed, is
 left entirely alone; and jobs younger than a short settle period are skipped, so an
