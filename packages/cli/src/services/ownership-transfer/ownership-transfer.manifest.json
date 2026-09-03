@@ -31,7 +31,7 @@
 		},
 		{
 			"name": "ProjectPoolSettings",
-			"path": "packages/@n8n/db/src/entities/project-pool-settings.ts",
+			"path": "packages/@n8n/db/src/entities/project-pool-settings.ee.ts",
 			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
 		},
 		{

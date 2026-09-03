@@ -2,7 +2,7 @@ import type { InstanceRegistration } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRegistryService } from '@/modules/instance-registry/instance-registry.service';
-import { WorkerPoolsService } from '@/scaling/worker-pools.service';
+import { WorkerPoolsService } from '@/scaling/worker-pools.service.ee';
 
 const buildWorker = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1 as const,

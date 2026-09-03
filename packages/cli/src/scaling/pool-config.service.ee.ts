@@ -8,7 +8,7 @@ import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { DEFAULT_QUEUE_NAME, poolQueueName } from './queue-name';
-import { WorkerPoolsService } from './worker-pools.service';
+import { WorkerPoolsService } from './worker-pools.service.ee';
 
 /**
  * Single resolution seam for routing executions to worker pools.

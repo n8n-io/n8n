@@ -3,8 +3,8 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ProjectPoolSettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { PoolConfigService } from '@/scaling/pool-config.service';
-import type { WorkerPoolsService } from '@/scaling/worker-pools.service';
+import { PoolConfigService } from '@/scaling/pool-config.service.ee';
+import type { WorkerPoolsService } from '@/scaling/worker-pools.service.ee';
 import type { CacheService } from '@/services/cache/cache.service';
 
 describe('PoolConfigService', () => {
