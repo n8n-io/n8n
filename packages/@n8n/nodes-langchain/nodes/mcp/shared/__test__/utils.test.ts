@@ -849,6 +849,7 @@ describe('utils', () => {
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
 					transport: 'httpStreamable' as const,
+					isTemplated: false,
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,

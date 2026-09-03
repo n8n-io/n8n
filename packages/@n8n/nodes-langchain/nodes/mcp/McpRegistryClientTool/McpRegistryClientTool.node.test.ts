@@ -91,6 +91,7 @@ describe('McpRegistryClientTool', () => {
 							endpointUrl: 'https://mcp.notion.com/mcp',
 							endpointHostname: 'mcp.notion.com',
 							transport: 'httpStreamable',
+							isTemplated: false,
 						}
 					: undefined,
 			prepareConnection: ({ connection }) => ({
@@ -331,6 +332,7 @@ describe('McpRegistryClientTool', () => {
 						endpointUrl: 'https://mcp.notion.com/mcp',
 						endpointHostname: 'mcp.notion.com',
 						transport: 'httpStreamable',
+						isTemplated: false,
 					},
 					credentialData: { oauthTokenData: { access_token: 'token' } },
 				}),

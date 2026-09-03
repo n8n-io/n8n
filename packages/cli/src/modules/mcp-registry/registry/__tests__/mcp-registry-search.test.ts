@@ -85,4 +85,18 @@ describe('searchMcpRegistryServers', () => {
 		const noRemote = server({ slug: 'no-remote', remotes: [] });
 		expect(searchMcpRegistryServers([noRemote], ['no-remote'])).toEqual([]);
 	});
+
+	it('keeps a streamable-http-templated tile in results, surfacing its unresolved url as-is', () => {
+		const templated = server({
+			slug: 'databricks-genie',
+			title: 'Databricks Genie',
+			remotes: [{ type: 'streamable-http-templated', url: '={{$self["host"]}}/api/2.0/mcp/genie' }],
+		});
+
+		const [result] = searchMcpRegistryServers([templated], ['databricks-genie']);
+
+		expect(result.transport).toBe('streamableHttp');
+		expect(result.url).toBe('={{$self["host"]}}/api/2.0/mcp/genie');
+		expect(result.metadata).toEqual({ nodeTypeName: '@n8n/mcp-registry.databricksGenie' });
+	});
 });

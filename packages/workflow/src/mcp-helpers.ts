@@ -11,6 +11,13 @@ export interface McpRegistryConnection {
 	endpointUrl: string;
 	endpointHostname: string;
 	transport: 'httpStreamable' | 'sse';
+	/**
+	 * `true` when `endpointUrl` is an unresolved `$self`-expression template
+	 * (e.g. `={{$self["host"]}}/api/2.0/mcp/genie`) rather than a literal URL.
+	 * `endpointHostname` is empty in that case; `prepareMcpRegistryConnection`
+	 * resolves the real endpoint and domain from the credential's own data.
+	 */
+	isTemplated: boolean;
 }
 
 export interface PrepareMcpRegistryConnectionInput {
@@ -30,7 +37,7 @@ export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: false;
 			error: {
-				code: 'missing_access_token' | 'not_registered';
+				code: 'missing_access_token' | 'not_registered' | 'unresolved_server_url';
 				message: string;
 			};
 	  };

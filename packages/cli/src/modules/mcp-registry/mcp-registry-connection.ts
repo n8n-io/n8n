@@ -24,18 +24,37 @@ export function resolveMcpRegistryConnection(
 	server: McpRegistryServer,
 ): McpRegistryConnection | null {
 	const remote =
-		server.remotes.find(({ type }) => type === 'streamable-http') ??
-		server.remotes.find(({ type }) => type === 'sse');
+		server.remotes.find(
+			({ type }) => type === 'streamable-http' || type === 'streamable-http-templated',
+		) ?? server.remotes.find(({ type }) => type === 'sse');
 	if (!remote) return null;
+
+	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
+	const credentialType = getMcpRegistryCredentialTypeName(server);
+
+	// A templated remote's url is an unresolved `$self`-expression, not a
+	// literal URL, resolves per-credential once `prepareMcpRegistryConnection`
+	// has the decrypted credential data.
+	if (remote.type === 'streamable-http-templated') {
+		return {
+			nodeTypeName,
+			credentialType,
+			endpointUrl: remote.url,
+			endpointHostname: '',
+			transport: 'httpStreamable',
+			isTemplated: true,
+		};
+	}
 
 	try {
 		const endpoint = new URL(remote.url);
 		return {
-			nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`,
-			credentialType: getMcpRegistryCredentialTypeName(server),
+			nodeTypeName,
+			credentialType,
 			endpointUrl: endpoint.toString(),
 			endpointHostname: endpoint.hostname,
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
+			isTemplated: false,
 		};
 	} catch {
 		return null;
@@ -57,6 +76,25 @@ export function prepareMcpRegistryConnection({
 				code: 'missing_access_token',
 				message: `Credential type "${connection.credentialType}" does not contain an OAuth2 access token`,
 			},
+		};
+	}
+
+	if (connection.isTemplated) {
+		const serverUrl = credentialData.serverUrl;
+		if (typeof serverUrl !== 'string' || serverUrl.length === 0) {
+			return {
+				ok: false,
+				error: {
+					code: 'unresolved_server_url',
+					message: `Credential type "${connection.credentialType}" did not resolve a server URL`,
+				},
+			};
+		}
+		const allowedDomains =
+			typeof credentialData.allowedDomains === 'string' ? credentialData.allowedDomains : '';
+		return {
+			ok: true,
+			value: { ...connection, endpointUrl: serverUrl, headers, allowedDomains },
 		};
 	}
 

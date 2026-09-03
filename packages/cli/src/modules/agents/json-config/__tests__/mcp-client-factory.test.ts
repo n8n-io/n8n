@@ -440,6 +440,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 					endpointUrl: 'https://example.test/mcp',
 					endpointHostname: 'example.test',
 					transport: 'httpStreamable',
+					isTemplated: false,
 				}),
 			},
 		);

@@ -53,16 +53,20 @@ function getMcpRegistryCredentialHeader(
 	};
 }
 
+type CredentialRemote =
+	| { endpointUrl: string; hostname: string; isTemplated: false }
+	| { endpointUrl: string; isTemplated: true };
+
 /**
- * Picks the server's remote endpoint and parses its hostname.
+ * Picks the server's remote endpoint. A templated remote has no hostname to
+ * parse yet, it resolves per-credential at runtime.
  */
-function resolveCredentialRemote(
-	server: McpRegistryServer,
-): { endpointUrl: string; hostname: string } | null {
+function resolveCredentialRemote(server: McpRegistryServer): CredentialRemote | null {
 	const connection = resolveMcpRegistryConnection(server);
-	return connection
-		? { endpointUrl: connection.endpointUrl, hostname: connection.endpointHostname }
-		: null;
+	if (!connection) return null;
+	return connection.isTemplated
+		? { endpointUrl: connection.endpointUrl, isTemplated: true }
+		: { endpointUrl: connection.endpointUrl, hostname: connection.endpointHostname, isTemplated: false };
 }
 
 /**
@@ -86,11 +90,14 @@ function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
 }
 
 /**
- * Registry MCP server → service-specific credential type for OAuth2 auth type
+ * Registry MCP server → service-specific credential type for OAuth2 auth type.
+ * Plain `oauth2` credentials have no user-editable, host-bearing field of
+ * their own to resolve a templated URL against, so templated remotes are
+ * unsupported here and drop the row, same as an unparseable URL.
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
 	const remote = resolveCredentialRemote(server);
-	if (!remote) return null;
+	if (!remote || remote.isTemplated) return null;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -145,7 +152,11 @@ function getValidatedExtendsCredential(
 }
 
 /**
- * Builds a dedicated credential type extending a known n8n credential.
+ * Builds a dedicated credential type extending a known n8n credential. A
+ * templated remote has no literal hostname, so the endpoint and the domain
+ * pin are both written as `$self`-expressions resolved against the parent
+ * credential's own `host` field, the same field the Strapi-authored URL
+ * template itself already depends on.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
@@ -166,10 +177,26 @@ function serverToExtendedCredentialDescription(
 		}),
 	);
 
+	const serverUrlProperty: INodeProperties = {
+		displayName: 'Server URL',
+		name: 'serverUrl',
+		type: 'hidden',
+		default: remote.endpointUrl,
+	};
+	const serverUrlOverride = remote.isTemplated ? [serverUrlProperty] : [];
+
+	const allowedDomainsDefault = remote.isTemplated
+		? '={{$self["host"].extractDomain()}}'
+		: remote.hostname;
+
 	return {
 		...getMcpRegistryCredentialHeader(server),
 		extends: [validated.parentType],
-		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
+		properties: [
+			...overrideProperties,
+			...serverUrlOverride,
+			...buildDomainRestrictionProperties(allowedDomainsDefault),
+		],
 	};
 }
 
