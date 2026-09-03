@@ -10,8 +10,12 @@ import {
 	DEFAULT_Y,
 	DEFAULT_NODE_SIZE,
 } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
-import type { GraphNode, ConnectionTarget } from '../types/base';
+import {
+	calculateFreshLayout,
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+} from './layout-utils';
+import type { GraphNode, ConnectionTarget, WorkflowJSON } from '../types/base';
 
 // Helper to create connection targets
 function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
@@ -463,5 +467,124 @@ describe('calculateNodePositionsDagre', () => {
 			expect(y).toBeLessThanOrEqual(600);
 			expect(y + 300).toBeGreaterThanOrEqual(600 + DEFAULT_NODE_SIZE[1]);
 		});
+	});
+});
+
+// ===========================================================================
+// Fresh Layout Tests (calculateFreshLayout)
+// ===========================================================================
+
+describe('calculateFreshLayout', () => {
+	const jsonNode = (
+		name: string,
+		position: [number, number],
+		type = 'n8n-nodes-base.set',
+	): WorkflowJSON['nodes'][number] => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position,
+		parameters: {},
+	});
+
+	it('lays out every node in one frame, ignoring the positions the JSON carries', () => {
+		const json: WorkflowJSON = {
+			name: 'wf',
+			nodes: [jsonNode('a', [5000, 5000]), jsonNode('b', [-300, 42])],
+			connections: { a: { main: [[{ node: 'b', type: 'main', index: 0 }]] } },
+		};
+
+		const boxes = calculateFreshLayout(json);
+
+		const a = boxes.get('a');
+		const b = boxes.get('b');
+		expect(a).toBeDefined();
+		expect(b).toBeDefined();
+		// Same row, one rank apart — the carried positions had no influence.
+		expect(b?.y).toBe(a?.y);
+		expect(b?.x ?? 0).toBeGreaterThan(a?.x ?? 0);
+	});
+
+	it('excludes sticky notes', () => {
+		const json: WorkflowJSON = {
+			name: 'wf',
+			nodes: [jsonNode('a', [0, 0]), jsonNode('note', [0, 0], STICKY_NODE_TYPE)],
+			connections: {},
+		};
+
+		const boxes = calculateFreshLayout(json);
+
+		expect(boxes.has('a')).toBe(true);
+		expect(boxes.has('note')).toBe(false);
+	});
+
+	it('reports rendered sizes: wide card for an AI host, small circle for its config node', () => {
+		const json: WorkflowJSON = {
+			name: 'wf',
+			nodes: [jsonNode('agent', [0, 0]), jsonNode('model', [0, 0])],
+			connections: {
+				model: { ai_languageModel: [[{ node: 'agent', type: 'ai_languageModel', index: 0 }]] },
+			},
+		};
+
+		const boxes = calculateFreshLayout(json);
+
+		expect(boxes.get('agent')?.width ?? 0).toBeGreaterThan(DEFAULT_NODE_SIZE[0]);
+		expect(boxes.get('model')?.width ?? Infinity).toBeLessThan(DEFAULT_NODE_SIZE[0]);
+	});
+
+	it('resolved slot counts beat the heuristics in both directions', () => {
+		const json: WorkflowJSON = {
+			name: 'wf',
+			nodes: [
+				// Plain type the fallback list knows nothing about, but whose real
+				// description (per the caller) has two sub-input slots.
+				jsonNode('custom host', [0, 0], 'n8n-nodes-base.someVendorNode'),
+				// AI-root type whose resolved variant has no sub-inputs at all.
+				jsonNode('plain variant', [0, 0], '@n8n/n8n-nodes-langchain.openAi'),
+			],
+			connections: {
+				'custom host': { main: [[{ node: 'plain variant', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const boxes = calculateFreshLayout(
+			json,
+			new Map([
+				['custom host', 2],
+				['plain variant', 0],
+			]),
+		);
+
+		expect(boxes.get('custom host')?.width ?? 0).toBeGreaterThan(DEFAULT_NODE_SIZE[0]);
+		expect(boxes.get('plain variant')?.width).toBe(DEFAULT_NODE_SIZE[0]);
+	});
+
+	it('sizes an AI host wide even when nothing is wired into its sub-inputs', () => {
+		// The editor renders vendor LLM nodes (and agents/chains) as wide
+		// configurable cards regardless of wiring — the sub-input slots come
+		// from the type. Sizing by connections alone put the next node flush
+		// against the rendered box.
+		const json: WorkflowJSON = {
+			name: 'wf',
+			nodes: [
+				jsonNode('Classify Articles', [0, 0], '@n8n/n8n-nodes-langchain.openAi'),
+				jsonNode('Parse Classified', [0, 0]),
+			],
+			connections: {
+				'Classify Articles': {
+					main: [[{ node: 'Parse Classified', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const boxes = calculateFreshLayout(json);
+
+		const host = boxes.get('Classify Articles');
+		const next = boxes.get('Parse Classified');
+		expect(host?.width ?? 0).toBeGreaterThan(DEFAULT_NODE_SIZE[0]);
+		// The next rank clears the host's rendered width, not just a 96px card.
+		expect(next?.x ?? 0).toBeGreaterThanOrEqual((host?.x ?? 0) + (host?.width ?? 0));
 	});
 });

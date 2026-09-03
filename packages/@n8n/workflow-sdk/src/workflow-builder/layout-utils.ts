@@ -31,7 +31,9 @@ import {
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
-import { isAnchoredStickyNote, type GraphNode } from '../types/base';
+import { parseWorkflowJSON } from './workflow-import';
+import { isAiRootNodeType } from '../mock-data/ai-root-shapes';
+import { isAnchoredStickyNote, type GraphNode, type WorkflowJSON } from '../types/base';
 
 // ===========================================================================
 // BFS Layout (default)
@@ -230,6 +232,7 @@ export function getNodeDimensions(
 	aiParentNames: Set<string>,
 	aiConfigNames: Set<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
+	nonMainInputCounts?: ReadonlyMap<string, number>,
 ): { width: number; height: number } {
 	const graphNode = nodes.get(nodeName);
 	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
@@ -240,7 +243,28 @@ export function getNodeDimensions(
 		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
 	}
 
-	if (aiParentNames.has(nodeName)) {
+	// A resolved slot count from the real node type description (the FE's
+	// NodeHelpers.getNodeInputs path, which evaluates expression-valued
+	// `inputs` against the node's parameters and version) beats every
+	// heuristic below — in both directions: >0 renders wide, 0 renders as a
+	// standard card even for types the fallback list would call hosts.
+	const resolvedNonMain = nonMainInputCounts?.get(nodeName);
+	if (resolvedNonMain !== undefined && resolvedNonMain > 0) {
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, resolvedNonMain);
+		const width = CONFIGURATION_NODE_RADIUS * 2 + GRID_SIZE * (portCount - 1) * 3;
+		return { width, height: CONFIGURABLE_NODE_SIZE[1] };
+	}
+
+	// Fallback for callers without node type access (sandbox, standalone SDK):
+	// AI hosts (agents, chains, vendor LLM nodes) render as wide configurable
+	// nodes even with nothing wired into their sub-inputs — the slots are part
+	// of the type, not the wiring — so sizing by connections alone would let
+	// the next rank sit flush against the host's rendered box.
+	const nodeType = nodes.get(nodeName)?.instance.type;
+	if (
+		resolvedNonMain === undefined &&
+		(aiParentNames.has(nodeName) || (typeof nodeType === 'string' && isAiRootNodeType(nodeType)))
+	) {
 		const aiInputTypes = new Set<string>();
 		for (const graphNode of nodes.values()) {
 			for (const [connType, outputMap] of graphNode.connections) {
@@ -611,6 +635,7 @@ export function resolveStickyGeometry(
  */
 export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
+	nonMainInputCounts?: ReadonlyMap<string, number>,
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
 
@@ -647,7 +672,13 @@ export function calculateNodePositionsDagre(
 	parentGraph.setDefaultEdgeLabel(() => ({}));
 
 	for (const name of nonStickyNames) {
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			nonMainInputCounts,
+		);
 		const explicitPosition = nodes.get(name)?.instance.config?.position;
 		parentGraph.setNode(name, {
 			width,
@@ -815,7 +846,13 @@ export function calculateNodePositionsDagre(
 		const positionsBefore = new Map<string, BoundingBox>();
 		for (const [name, graphNode] of nodes) {
 			const pos = graphNode.instance.config?.position;
-			const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+			const { width, height } = getNodeDimensions(
+				name,
+				aiParentNames,
+				aiConfigNames,
+				nodes,
+				nonMainInputCounts,
+			);
 			positionsBefore.set(name, {
 				x: pos ? pos[0] : 0,
 				y: pos ? pos[1] : 0,
@@ -828,7 +865,13 @@ export function calculateNodePositionsDagre(
 		for (const [name, graphNode] of nodes) {
 			const explicitPosition = graphNode.instance.config?.position;
 			if (explicitPosition) {
-				const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+				const { width, height } = getNodeDimensions(
+					name,
+					aiParentNames,
+					aiConfigNames,
+					nodes,
+					nonMainInputCounts,
+				);
 				positionsAfter.set(name, {
 					x: explicitPosition[0],
 					y: explicitPosition[1],
@@ -848,4 +891,64 @@ export function calculateNodePositionsDagre(
 	}
 
 	return positions;
+}
+
+// ---------------------------------------------------------------------------
+// Fresh layout of a workflow JSON
+// ---------------------------------------------------------------------------
+
+/** Position and rendered size of one node in a fresh layout, canvas coordinates. */
+export interface FreshLayoutBox {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * Lay out a workflow JSON from scratch, ignoring any positions it carries.
+ *
+ * Node names must be unique, like everywhere else in n8n — connections address
+ * nodes by name, so a duplicate-named graph is ambiguous before layout ever
+ * runs (the builder dedupes names at compile time; the import path renames).
+ *
+ * Runs the same Dagre layout as `toJSON({ tidyUp: true })`, but unconditionally:
+ * explicit positions are stripped first, so the result is one coherent frame even
+ * when the JSON mixes authored and engine-generated positions. Returns a box per
+ * non-sticky node, keyed by node name. Sticky notes are excluded — they decorate
+ * nodes rather than participate in the graph.
+ */
+export function calculateFreshLayout(
+	json: WorkflowJSON,
+	nonMainInputCounts?: ReadonlyMap<string, number>,
+): Map<string, FreshLayoutBox> {
+	const parsed = parseWorkflowJSON(json);
+
+	const stripped = new Map<string, GraphNode>();
+	for (const [key, graphNode] of parsed.nodes) {
+		const { position: _position, ...config } = graphNode.instance.config;
+		stripped.set(key, {
+			instance: { ...graphNode.instance, config },
+			connections: graphNode.connections,
+		});
+	}
+
+	const positions = calculateNodePositionsDagre(stripped, nonMainInputCounts);
+	const aiParentNames = getAiParentNames(stripped);
+	const aiConfigNames = getAiConfigNames(stripped);
+
+	const boxes = new Map<string, FreshLayoutBox>();
+	for (const [name, position] of positions) {
+		const graphNode = stripped.get(name);
+		if (!graphNode || graphNode.instance.type === STICKY_NODE_TYPE) continue;
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			stripped,
+			nonMainInputCounts,
+		);
+		boxes.set(name, { x: position[0], y: position[1], width, height });
+	}
+	return boxes;
 }

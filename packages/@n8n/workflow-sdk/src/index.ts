@@ -253,3 +253,7 @@ export {
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
 } from './workflow-builder/constants';
+
+// Fresh tidy-up layout of a workflow JSON, for consumers that reconcile
+// engine-generated positions with an existing canvas.
+export { calculateFreshLayout, type FreshLayoutBox } from './workflow-builder/layout-utils';
