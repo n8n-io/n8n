@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 
 import { indexColumnsInOrder } from './shared/index-columns';
 
-const MIGRATION_NAME = 'CreateActivityEventTable1788253087010';
+const MIGRATION_NAME = 'CreateActivityEventTable1788425788714';
 const ACTIVITY_TABLE = 'activity_event';
 
 type ActivityRow = {
