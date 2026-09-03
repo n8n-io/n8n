@@ -915,6 +915,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
+				nodeUsageEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };

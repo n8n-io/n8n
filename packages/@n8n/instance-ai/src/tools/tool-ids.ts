@@ -39,6 +39,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
+	LIST_AGENT_CAPABILITIES: 'list-agent-capabilities',
 	GET_SESSION: 'get-session',
 } as const;
 
@@ -82,6 +83,12 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
 	// on every agent build.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
+	// Paired with build-agent: the model must be able to check supported agent
+	// channels/capabilities during intent recognition — before committing to a
+	// path — so an unsupported channel (e.g. WhatsApp) is explained rather than
+	// improvised as a workflow. Deferring it costs a search_tools + load_tool
+	// round-trip and lets the model fall back to workflow assumptions first.
+	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES] : []),
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

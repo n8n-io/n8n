@@ -44,6 +44,10 @@ const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
 );
+const loadListAgentCapabilitiesTool = lazyMod(
+	() =>
+		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
+);
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
@@ -218,6 +222,10 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
+			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
 		]);
 		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}

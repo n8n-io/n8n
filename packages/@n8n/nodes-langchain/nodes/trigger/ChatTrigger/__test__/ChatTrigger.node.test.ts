@@ -1,7 +1,15 @@
 import { ChatTriggerConfig } from '@n8n/config/src';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
-import type { CredentialCheckResult, INode, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	CredentialCheckResult,
+	IDataObject,
+	INode,
+	INodeExecutionData,
+	IUser,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
@@ -30,6 +38,9 @@ describe('ChatTrigger Node', () => {
 	const mockResponse = mock<Response>();
 	let chatTrigger: ChatTrigger;
 	let chatTriggerConfig: ChatTriggerConfig;
+	// Optional on `IWebhookFunctions`, so `mock<T>()` leaves it a plain function rather
+	// than a mock. Keep a typed handle and assign it onto the context each run.
+	const getTestWebhookUser = vi.fn<() => Promise<IUser | undefined>>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -64,18 +75,25 @@ describe('ChatTrigger Node', () => {
 			setKeepAlive: vi.fn(),
 		} as unknown as Request['socket'];
 
+		mockRequest.contentType = undefined;
+		mockContext.customData = mock<IWebhookFunctions['customData']>();
+		mockContext.getTestWebhookUser = getTestWebhookUser;
+
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
 		mockContext.getNode.mockReturnValue({
 			name: 'Chat Trigger',
 			type: 'n8n-nodes-langchain.chatTrigger',
-			typeVersion: 1,
+			// At or above 1.5, so `includeUserInOutput` defaults on where a test does not
+			// override the version.
+			typeVersion: 1.5,
 		} as INode);
 		mockContext.getMode.mockReturnValue('webhook');
 		mockContext.getWebhookName.mockReturnValue('default');
 		mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
 		mockContext.helpers = {
-			returnJsonArray: vi.fn().mockReturnValue([]),
+			// Pass through, so tests can assert on the item the node actually emits.
+			returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
 		} as unknown as IWebhookFunctions['helpers'];
 		mockContext.getNodeParameter.mockImplementation(
 			(
@@ -507,7 +525,10 @@ describe('ChatTrigger Node', () => {
 			});
 			expect(mockContext.logger.error).toHaveBeenCalledWith(
 				'Chat trigger credential readiness check failed',
-				{ error },
+			);
+			expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ error: expect.anything() }),
 			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
@@ -521,6 +542,388 @@ describe('ChatTrigger Node', () => {
 			expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
 			expect(mockResponse.status).not.toHaveBeenCalledWith(428);
 			expect(result).toEqual({ webhookResponse: { data: [] } });
+		});
+	});
+
+	describe('includeUserInOutput', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+
+		/** The default parameter set for a public `n8nUserAuth` chat, with overrides. */
+		const setParams = (overrides: Record<string, boolean | string | object> = {}) => {
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName in overrides) return overrides[paramName];
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'n8nUserAuth';
+					return defaultValue;
+				},
+			);
+		};
+
+		const emittedJson = (result: IWebhookResponseData) =>
+			(result.workflowData as INodeExecutionData[][])[0][0].json;
+
+		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
+			vi.mocked(validateAuth).mockResolvedValue(authedUser);
+		});
+
+		it('exposes one toggle per version band, scoped to n8nUserAuth public chats', () => {
+			const includeUserParams = chatTrigger.description.properties.filter(
+				(property) => property.name === 'includeUserInOutput',
+			);
+
+			expect(includeUserParams).toHaveLength(2);
+			// The `gte` variant comes first: some consumers resolve a name with `.find()`,
+			// and 1.5 is `defaultVersion`, so first-match must be the current shape.
+			expect(includeUserParams[0]).toMatchObject({
+				type: 'boolean',
+				default: true,
+				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			});
+			// Off below 1.5, but still shown, so an existing chat can opt in.
+			expect(includeUserParams[1]).toMatchObject({
+				type: 'boolean',
+				default: false,
+				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { lt: 1.5 } }],
+					},
+				},
+			});
+		});
+
+		it('adds the authenticated user to a JSON message', async () => {
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
+		});
+
+		it('adds the authenticated user to a streamed message', async () => {
+			setParams({ availableInChat: true });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(result).toMatchObject({ noWebhookResponse: true });
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
+		});
+
+		it('adds the authenticated user to a multipart message', async () => {
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = { data: { message: 'Hello' }, files: {} };
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
+		});
+
+		// An array body has no `user` key to merge, and must survive as an array —
+		// object rest/spread would rewrite it to `{ 0: …, 1: … }`.
+		it('passes an array body through unchanged', async () => {
+			const arrayBody = [{ a: 1 }, { b: 2 }];
+			mockContext.getBodyData.mockReturnValue(arrayBody as unknown as IDataObject);
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+			const json = emittedJson(result);
+
+			expect(Array.isArray(json)).toBe(true);
+			expect(json).toEqual(arrayBody);
+		});
+
+		// A `text/plain` request body reaches the node as a string. Object rest would shred
+		// it into `{ 0: 'H', 1: 'e', … }`, so it must pass through untouched.
+		it('passes a string body through unchanged', async () => {
+			mockContext.getBodyData.mockReturnValue('Hello' as unknown as IDataObject);
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toBe('Hello');
+		});
+
+		it('omits the user when the toggle is off', async () => {
+			setParams({ includeUserInOutput: false });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('omits the user for basicAuth, which identifies nobody', async () => {
+			setParams({ authentication: 'basicAuth' });
+			vi.mocked(validateAuth).mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('omits the user for unauthenticated chats', async () => {
+			setParams({ authentication: 'none' });
+			vi.mocked(validateAuth).mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		// `n8nUserAuth` has been selectable since the node shipped, so a chat built before
+		// this feature must keep its output shape until its owner opts in.
+		it('omits the user below 1.5 when the toggle was never saved', async () => {
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1.4,
+			} as INode);
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('adds the user below 1.5 once the toggle is turned on', async () => {
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1.4,
+			} as INode);
+			setParams({ includeUserInOutput: true });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
+		});
+
+		// The flag gates writing the verified user, not ownership of the key. A claimed
+		// `user` is still dropped, so a workflow built while the flag was on cannot be
+		// spoofed if the flag is later turned off.
+		it('emits no user but still strips a claimed one when the feature flag is off', async () => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
+			mockContext.getBodyData.mockReturnValue({
+				message: 'Hello',
+				user: { email: 'ceo@acme.com' },
+			});
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+	});
+
+	// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+	// route skips auth. The editor user who started the run is known instead, so test
+	// output keeps the same shape as production.
+	describe('canvas test route', () => {
+		const editorUser = {
+			id: 'editor-1',
+			email: 'editor@example.com',
+			firstName: 'Ed',
+			lastName: 'Itor',
+		};
+
+		const setParams = (authentication = 'n8nUserAuth') => {
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return authentication;
+					return defaultValue;
+				},
+			);
+		};
+
+		const emittedJson = (result: IWebhookResponseData) =>
+			(result.workflowData as INodeExecutionData[][])[0][0].json;
+
+		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
+			mockContext.getMode.mockReturnValue('manual');
+			mockContext.isChatSessionTest.mockReturnValue(true);
+			getTestWebhookUser.mockResolvedValue(editorUser);
+		});
+
+		it('reports the editor user without running webhook auth', async () => {
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).not.toHaveBeenCalled();
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: editorUser });
+		});
+
+		it('does not consult the editor user when auth is none', async () => {
+			setParams('none');
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(getTestWebhookUser).not.toHaveBeenCalled();
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('does not consult the editor user when auth is basicAuth', async () => {
+			setParams('basicAuth');
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(getTestWebhookUser).not.toHaveBeenCalled();
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('emits no user, and does not throw, when the editor user cannot be resolved', async () => {
+			setParams();
+			getTestWebhookUser.mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		// The lookup is identity, not authorization. Handling its failure as an auth
+		// challenge would write a response with an undefined status code.
+		it('surfaces a failed lookup as an error rather than an auth challenge', async () => {
+			setParams();
+			getTestWebhookUser.mockRejectedValue(new Error('lookup failed'));
+
+			await expect(chatTrigger.webhook(mockContext)).rejects.toThrow('lookup failed');
+			expect(mockResponse.writeHead).not.toHaveBeenCalled();
+		});
+	});
+
+	// `json` starts life as the caller's own request body, so a caller can put a `user`
+	// key in it. Under `n8nUserAuth` that key is the server's, so a claimed one must never
+	// survive into the output and look authoritative. Under the other auth modes there is
+	// no server identity to shadow, so the body is left exactly as it arrived.
+	describe('user spoofing', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const forgedUser = { email: 'ceo@acme.com' };
+
+		const setParams = (overrides: Record<string, boolean | string | object> = {}) => {
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName in overrides) return overrides[paramName];
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'n8nUserAuth';
+					return defaultValue;
+				},
+			);
+		};
+
+		const emittedJson = (result: IWebhookResponseData) =>
+			(result.workflowData as INodeExecutionData[][])[0][0].json;
+
+		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
+			mockContext.getBodyData.mockReturnValue({ chatInput: 'hi', user: forgedUser });
+			vi.mocked(validateAuth).mockResolvedValue(authedUser);
+		});
+
+		it('overwrites a caller-supplied user with the authenticated one', async () => {
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: authedUser });
+		});
+
+		it('leaves a caller-supplied user alone when the chat is unauthenticated', async () => {
+			setParams({ authentication: 'none' });
+			vi.mocked(validateAuth).mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: forgedUser });
+		});
+
+		it('leaves a caller-supplied user alone under basicAuth', async () => {
+			setParams({ authentication: 'basicAuth' });
+			vi.mocked(validateAuth).mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: forgedUser });
+		});
+
+		it('strips a caller-supplied user when the toggle is off', async () => {
+			setParams({ includeUserInOutput: false });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
+		});
+
+		// The key's owner is the auth mode, not the rollout flag. An instance that turns the
+		// flag off must not start trusting a claimed `user` in a workflow built while it was on.
+		it('strips a caller-supplied user with the feature flag off', async () => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
+		});
+
+		it('strips a caller-supplied user on the canvas test route with no resolvable user', async () => {
+			setParams();
+			mockContext.getMode.mockReturnValue('manual');
+			mockContext.isChatSessionTest.mockReturnValue(true);
+			getTestWebhookUser.mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
+		});
+
+		it('strips a caller-supplied user from multipart form data', async () => {
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = { data: { chatInput: 'hi', user: forgedUser }, files: {} };
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ chatInput: 'hi', user: authedUser });
 		});
 	});
 
@@ -552,6 +955,10 @@ describe('ChatTrigger Node', () => {
 
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
+		const renderedView = () =>
+			(vi.mocked(mockResponse.render).mock.calls.at(-1)?.[1] ?? {}) as Record<string, unknown>;
+		const renderedTemplate = () => vi.mocked(mockResponse.render).mock.calls.at(-1)?.[0];
+
 		// Every body and header this request produced, so a `/signin` anywhere in the
 		// response — a redirect Location as much as a rendered page — shows up.
 		const everySentResponse = () =>
@@ -573,7 +980,11 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
-			vi.mocked(establishChatSessionIdentity).mockResolvedValue({ expiresIn: 3600 });
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue({
+				visitor,
+				authToken: 'outer-token',
+				expiresIn: 3600,
+			});
 			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue({
 				visitor,
 				authToken: 'as-token',
@@ -601,12 +1012,14 @@ describe('ChatTrigger Node', () => {
 				'Content-Security-Policy',
 				"frame-ancestors 'none'",
 			);
-			expect(renderedPage()).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
-			expect(renderedPage()).toContain(
-				'sandbox="allow-scripts allow-forms allow-modals allow-popups"',
-			);
-			// No author-supplied CSS or markup on the trusted document.
-			expect(renderedPage()).not.toContain('createChat');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView()).toMatchObject({
+				iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
+				sandbox: 'allow-scripts allow-forms allow-modals allow-popups',
+			});
+			// The frame must have no origin of its own.
+			expect(renderedView().sandbox).not.toContain('allow-same-origin');
+			expect(renderedView().sandbox).not.toContain('allow-popups-to-escape-sandbox');
 		});
 
 		it('renders the author chat for the frame own request', async () => {
@@ -670,8 +1083,8 @@ describe('ChatTrigger Node', () => {
 
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('data-src=');
-			expect(renderedPage()).not.toContain('createChat');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView().iframeSrc).toBeTruthy();
 		});
 
 		// The page used to bounce a visitor with no editor session to `/signin` before the
@@ -700,6 +1113,8 @@ describe('ChatTrigger Node', () => {
 			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			expect(renderedPage()).not.toContain('n8nShellInner');
+			// The unsplit render is the page itself, not a shell around a frame.
+			expect(mockResponse.render).not.toHaveBeenCalled();
 			expect(renderedPage()).not.toContain('n8nChatRefresh');
 		});
 
@@ -712,6 +1127,7 @@ describe('ChatTrigger Node', () => {
 				expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 				expect(renderedPage()).toContain('createChat');
 				expect(renderedPage()).not.toContain('n8nShellInner');
+				expect(mockResponse.render).not.toHaveBeenCalled();
 				expect(renderedPage()).not.toContain('n8nChatRefresh');
 			},
 		);
@@ -719,11 +1135,13 @@ describe('ChatTrigger Node', () => {
 		it('carries the refresh endpoint and schedule into the shell', async () => {
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('/webhook/abc/chat?n8nChatRefresh=1');
-			expect(renderedPage()).toContain("'x-n8n-chat-refresh': '1'");
-			// The session's duration, passed straight through — no timestamp of ours
-			// for the page's clock to disagree with.
-			expect(renderedPage()).toContain('planFor(3600)');
+			expect(renderedTemplate()).toBe('chat-shell');
+			expect(renderedView()).toMatchObject({
+				refreshUrl: '/webhook/abc/chat?n8nChatRefresh=1',
+				// The session's duration, passed straight through — no timestamp of ours
+				// for the page's clock to disagree with.
+				refreshExpiresIn: 3600,
+			});
 		});
 
 		// The leg answers with JSON, not a page, and authenticates from its own httpOnly
@@ -747,6 +1165,7 @@ describe('ChatTrigger Node', () => {
 			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
 			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(mockResponse.render).not.toHaveBeenCalled();
 		});
 
 		// Without the custom header the request is forgeable by shape alone, so it must
@@ -768,7 +1187,136 @@ describe('ChatTrigger Node', () => {
 
 			await renderSetupPage();
 
-			expect(renderedPage()).toContain('data-src="/webhook-test/abc/chat?n8nShellInner=1"');
+			expect(renderedView()).toMatchObject({
+				iframeSrc: '/webhook-test/abc/chat?n8nShellInner=1',
+			});
+		});
+
+		describe('connect status', () => {
+			it('embeds no connect script or dialog when the workflow needs no end-user credentials', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({ hasCredentials: false });
+				expect(renderedView().credentials).toBeUndefined();
+			});
+
+			it('embeds no connect script or dialog when the credential check reports nothing (dynamic credentials off)', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({ hasCredentials: false });
+				expect(renderedView().credentials).toBeUndefined();
+			});
+
+			it('embeds the credential and visitor data for a single required credential, with no dialog', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Slack account',
+							credentialType: 'slackOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+						},
+					],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({
+					hasCredentials: true,
+					ready: false,
+					visitorEmail: 'visitor@example.com',
+					barText: 'Connect Slack account to start this chat',
+					// One required account connects straight from the bar, so the template
+					// keeps the no-dialog shortcut — but still renders the dialog, since it
+					// is the only place carrying Disconnect once that account is connected.
+					useDialog: false,
+					total: 1,
+					connectedCount: 0,
+				});
+				expect(renderedView().credentials).toMatchObject([
+					{
+						id: 'cred-1',
+						name: 'Slack account',
+						connected: false,
+						authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+					},
+				]);
+			});
+
+			// Matches the message-send path: a readiness check we cannot answer must not
+			// render a chat that looks usable and then fails on the first send.
+			it('fails closed with 503 when the readiness check throws on the shell GET', async () => {
+				const error = new Error('could not decrypt credential context');
+				mockContext.checkTriggerCredentialStatus.mockRejectedValue(error);
+
+				const result = await renderSetupPage();
+
+				expect(mockResponse.status).toHaveBeenCalledWith(503);
+				expect(mockContext.logger.error).toHaveBeenCalledWith(
+					'Chat trigger credential readiness check failed',
+				);
+				expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ error: expect.anything() }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockResponse.render).not.toHaveBeenCalled();
+			});
+
+			it('renders the "Connect your accounts" dialog when two or more end-user credentials are required', async () => {
+				mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Slack account',
+							credentialType: 'slackOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+						},
+						{
+							credentialId: 'cred-2',
+							credentialName: 'Google account',
+							credentialType: 'googleOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.example.com/credentials/cred-2/authorize',
+						},
+					],
+				});
+
+				await renderSetupPage();
+
+				expect(renderedView()).toMatchObject({
+					hasCredentials: true,
+					useDialog: true,
+					total: 2,
+					connectedCount: 0,
+					footerText: '0 of 2 accounts connected',
+					barText: '2 accounts needed to start this chat',
+				});
+			});
+
+			it("never checks credential status for the frame's own request", async () => {
+				mockRequest.query = { n8nShellInner: '1' };
+				mockRequest.headers = {
+					'x-forwarded-proto': 'http',
+					host: 'localhost:5678',
+					'sec-fetch-dest': 'iframe',
+				};
+
+				await renderSetupPage();
+
+				expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

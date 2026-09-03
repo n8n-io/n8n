@@ -11,13 +11,20 @@ import {
 
 describe('validateAuth', () => {
 	const mockContext = mock<IWebhookFunctions>();
+	/** The n8n user every successful `n8nUserAuth` leg below resolves to. */
+	const authedUser = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
 	describe('authentication = none', () => {
-		it('should pass without error', async () => {
+		it('should pass without error, and identify nobody', async () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
@@ -70,7 +77,7 @@ describe('validateAuth', () => {
 			});
 		});
 
-		it('should pass with correct credentials', async () => {
+		it('should pass with correct credentials, and identify nobody', async () => {
 			mockContext.getCredentials.mockResolvedValue({
 				user: 'admin',
 				password: 'secret',
@@ -90,7 +97,7 @@ describe('validateAuth', () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
 		});
 
-		it('should skip validation for setup webhook', async () => {
+		it('should skip validation for the setup webhook, and identify nobody', async () => {
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getHeaderData.mockReturnValue({});
 
@@ -141,14 +148,9 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'n8n-auth=valid.jwt.token',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue({
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			});
+			mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+			await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 		});
 
@@ -157,14 +159,9 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'other=value; n8n-auth=valid.jwt.token; another=thing',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue({
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			});
+			mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+			await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 		});
 
@@ -174,12 +171,6 @@ describe('validateAuth', () => {
 		// identity — through the shared trigger-identity pipeline.
 		describe('x-auth-token from the sandboxed frame', () => {
 			const resourceUrl = 'http://localhost:5678/webhook/abc/chat';
-			const user = {
-				id: 'user-1',
-				email: 'user@example.com',
-				firstName: 'Test',
-				lastName: 'User',
-			};
 
 			beforeEach(() => {
 				mockContext.getWebhookName.mockReturnValue('default');
@@ -194,15 +185,15 @@ describe('validateAuth', () => {
 
 			it('establishes the trigger identity and passes for a valid token', async () => {
 				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
-				mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
 
-				await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+				await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 
 				expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
 				expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
 					'as-token',
 					resourceUrl,
-					user.id,
+					authedUser.id,
 				);
 				expect(mockContext.validateCookieAuth).not.toHaveBeenCalled();
 			});
@@ -268,14 +259,9 @@ describe('validateAuth', () => {
 					'x-auth-token': 'as-token',
 					cookie: 'n8n-auth=valid.jwt.token',
 				});
-				mockContext.validateCookieAuth.mockResolvedValue({
-					id: 'user-1',
-					email: 'user@example.com',
-					firstName: 'Test',
-					lastName: 'User',
-				});
+				mockContext.validateCookieAuth.mockResolvedValue(authedUser);
 
-				await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+				await expect(validateAuth(mockContext)).resolves.toEqual(authedUser);
 				expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 			});
 		});
@@ -396,11 +382,17 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
+		expect(result).toMatchObject({ visitor: user, authToken: 'as-token' });
 		// Converted from the cookie's absolute expiry here, on the clock that wrote it,
 		// so no server timestamp reaches the shell.
 		expect(result?.expiresIn).toBeGreaterThan(3590);
 		expect(result?.expiresIn).toBeLessThanOrEqual(3600);
 		expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+		expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
+			'as-token',
+			resourceUrl,
+			user.id,
+		);
 		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
 		expect(mockContext.refreshN8nOAuth2Flow).not.toHaveBeenCalled();
 	});
@@ -435,13 +427,21 @@ describe('establishChatSessionIdentity', () => {
 			refreshToken: 'rotated-token',
 			expiresIn: 3600,
 		});
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
 		expect(mockContext.refreshN8nOAuth2Flow).toHaveBeenCalledWith('refresh-token', resourceUrl);
 		// The AS's own duration, handed on untouched — the shell schedules off its own clock.
-		expect(result).toEqual({ expiresIn: 3600 });
+		expect(result).toEqual({ visitor: user, authToken: 'fresh-token', expiresIn: 3600 });
 		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+		// A refresh result names no user, so the fresh token is validated to recover the
+		// visitor the connect panel is rendered for.
+		expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
+			'fresh-token',
+			resourceUrl,
+			user.id,
+		);
 		// Both cookies are rewritten: the frame's next GET needs the new access token,
 		// and the rotated refresh token replaces the one just consumed.
 		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(

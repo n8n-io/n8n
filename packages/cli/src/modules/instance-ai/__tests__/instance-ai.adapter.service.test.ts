@@ -44,6 +44,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 	searxngSearch: vi.fn(),
 }));
 
+import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -61,6 +62,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -103,7 +105,15 @@ function globalConfigStub(
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		// Node usage is gated on the dependency index being wired too, which these tests do not
+		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
+		instanceAi: { nodeUsageEnabled: false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
+}
+
+/** Clears every save: the adapter's own tests are not exercising policy decisions. */
+function createMockPolicyEnforcementService() {
+	return { enforceWorkflowSave: vi.fn().mockResolvedValue(mock()) };
 }
 
 function createMockCollaborationService() {
@@ -1360,6 +1370,9 @@ function createNodeAdapterServiceForTests(
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 		nodeCatalogService,
 	);
 
@@ -1723,6 +1736,9 @@ function createDataTableAdapterForTests(overrides?: {
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1941,15 +1957,13 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(undefined),
-		manager: {
-			transaction: vi.fn(
-				async (fn: (transactionManager: { save: Mock }) => Promise<unknown>): Promise<unknown> => {
-					return await fn({
-						save: vi.fn().mockResolvedValue(savedWorkflow),
-					});
-				},
-			),
-		},
+		createContent: vi.fn().mockResolvedValue(savedWorkflow),
+		runInTransaction: vi.fn(
+			async (
+				ctx: unknown,
+				fn: (transactionManager: { save: Mock }, ctx: unknown) => Promise<unknown>,
+			): Promise<unknown> => await fn({ save: vi.fn().mockResolvedValue(savedWorkflow) }, ctx),
+		),
 	};
 
 	const mockWorkflowFinderService = {
@@ -1990,6 +2004,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	mockLogger.scoped.mockReturnValue(mockLogger);
 	const mockCollaborationService = createMockCollaborationService();
+	const mockPolicyEnforcementService = createMockPolicyEnforcementService();
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -2051,6 +2066,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockCollaborationService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		mockPolicyEnforcementService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const boundProjectId =
@@ -2074,6 +2092,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowHistoryService,
 		mockEnterpriseWorkflowService,
 		mockCollaborationService,
+		mockPolicyEnforcementService,
 		mockTelemetry,
 		mockLogger,
 		mockUser,
@@ -2369,6 +2388,41 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	// The shell carries no nodes; the generated content is policed by the sealed `update()`
+	// below. Enforced here anyway, because no `WorkflowEntity` write may skip the funnel.
+	it('enforces the save for the shell and threads the clearance to the write', async () => {
+		const { adapter, mockWorkflowRepository, mockPolicyEnforcementService } =
+			createWorkflowAdapterForTests();
+		const cleared = mock<PolicyCleared<'workflowSave'>>();
+		mockPolicyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
+			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+			storedWorkflow: null,
+			projectId: 'team-project-id',
+		});
+		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
+			{ policyCleared: cleared },
+			expect.any(Function),
+		);
+		expect(mockWorkflowRepository.createContent).toHaveBeenCalledWith(
+			expect.objectContaining({ nodes: [] }),
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+	});
+
+	it('does not write the shell when the policy blocks the save', async () => {
+		const { adapter, mockWorkflowRepository, mockPolicyEnforcementService } =
+			createWorkflowAdapterForTests();
+		mockPolicyEnforcementService.enforceWorkflowSave.mockRejectedValue(new Error('blocked'));
+
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow('blocked');
+
+		expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+	});
+
 	it('throws when the run has no bound project', async () => {
 		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
 
@@ -2414,7 +2468,7 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
 		);
-		expect(mockWorkflowRepository.manager.transaction).toHaveBeenCalled();
+		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
 			'team-project-id',
@@ -3180,6 +3234,9 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -3447,6 +3504,9 @@ function createRunAdapterForTests(
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[34],
+		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -4386,7 +4446,7 @@ describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
 
 	/** Route `Container.get` by token: PostHog for the flags, ModuleRegistry for the MCP precondition. */
-	function stubContainer(flags: Record<string, string>, mcpModuleActive = true) {
+	function stubContainer(flags: Record<string, string | boolean>, mcpModuleActive = true) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
@@ -4405,6 +4465,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 	};
 
 	it('resolves every gate from one flag fetch', async () => {
@@ -4414,6 +4475,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
+			nodeUsageEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -4424,12 +4486,14 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			nodeUsageEnabled: false,
 		});
 	});
 
@@ -4440,6 +4504,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			nodeUsageEnabled: false,
 		});
 	});
 
