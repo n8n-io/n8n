@@ -770,6 +770,52 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 			{ type: 'text', text: 'Here is what I found.' },
 		]);
 	});
+	it('keeps provider result metadata only on provider-executed tool results', () => {
+		const providerOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						output: { type: 'json', value: [] },
+						providerOptions,
+					},
+					{ type: 'tool-call', toolCallId: 'call_1', toolName: 'local', input: {} },
+				],
+			},
+			{
+				role: 'tool',
+				content: [
+					{
+						type: 'tool-result',
+						toolCallId: 'call_1',
+						toolName: 'local',
+						output: { type: 'json', value: 'ok' },
+						providerOptions,
+					},
+				],
+			},
+		];
+
+		const replayed = toAiMessages(fromAiMessages(aiMessages) as Message[]);
+
+		expect(replayed[0].content).toMatchObject([
+			{ type: 'tool-call', toolCallId: 'srvtoolu_1' },
+			{ type: 'tool-result', toolCallId: 'srvtoolu_1', providerOptions },
+			{ type: 'tool-call', toolCallId: 'call_1' },
+		]);
+		expect(replayed[1].content[0]).not.toHaveProperty('providerOptions');
+	});
 
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {
 		const original: Message[] = [
