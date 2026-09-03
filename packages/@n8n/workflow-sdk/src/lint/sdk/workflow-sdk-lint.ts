@@ -254,7 +254,8 @@ export function lintWorkflowSdkAst(
 						code: 'SDK_UNSOLICITED_STICKY',
 						message:
 							'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
-							'Put explanations in the chat reply instead.',
+							'Put explanations in the chat reply instead. This applies to sticky notes only: node groups ' +
+							'are not optional decoration, so keep the grouping decision the guidance requires.',
 						...locationOf(call),
 						lintTarget: 'sdk',
 					}),

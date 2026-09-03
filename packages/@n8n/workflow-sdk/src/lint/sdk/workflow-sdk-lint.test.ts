@@ -109,6 +109,20 @@ export default workflow('id', 'name').add(start).add(note);
 		expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_UNSOLICITED_STICKY');
 	});
 
+	it('scopes the unsolicited-sticky warning so it does not read as a ban on node groups', () => {
+		// A build took this warning as "add no canvas scaffolding" and skipped grouping
+		// entirely, then called it an omission rather than a decision.
+		const source = `
+const note = sticky({ config: { content: 'hi' } });
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+export default workflow('id', 'name').add(start).add(note);
+`;
+		const issue = lintWorkflowSdkSource(source).find((i) => i.code === 'SDK_UNSOLICITED_STICKY');
+
+		expect(issue?.message).toMatch(/applies to sticky notes only/i);
+		expect(issue?.message).toMatch(/node groups are not optional decoration/i);
+	});
+
 	it('flags .map() in builder code', () => {
 		const source = `
 const names = ['a', 'b'].map((x) => x);
