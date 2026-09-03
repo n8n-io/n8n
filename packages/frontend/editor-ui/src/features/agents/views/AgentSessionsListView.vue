@@ -4,6 +4,17 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentReviewStore } from '@/features/agents/agentReview.store';
+import WireframeExportDialog from '@/app/components/wireframe/WireframeExportDialog.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getChatMessages } from '@/features/agents/composables/useAgentApi';
+import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
+import {
+	buildOtelTraces,
+	downloadJson,
+	type ExportDestination,
+	type ExportInclude,
+	type ExportItem,
+} from '@/app/utils/wireframeOtelExport';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
@@ -73,6 +84,133 @@ const testerRows = computed(() => {
 	const withResult = rows.filter((r) => r.state !== 'idle');
 	return needsEyeOnly.value ? withResult.filter((r) => r.state === 'needsEye') : withResult;
 });
+// Wireframe: export selected sessions and checks as OpenTelemetry traces.
+const rootStore = useRootStore();
+const langsmith = useAgentSessionLangSmithExport();
+const selected = ref<Set<string>>(new Set());
+const exportOpen = ref(false);
+const exporting = ref(false);
+const exportResult = ref<string | null>(null);
+function toggleSelected(key: string) {
+	const next = new Set(selected.value);
+	if (next.has(key)) next.delete(key);
+	else next.add(key);
+	selected.value = next;
+}
+const selectedThreads = computed(() =>
+	selected.value.size === 0
+		? visibleThreads.value
+		: visibleThreads.value.filter((t) => selected.value.has(`s:${t.id}`)),
+);
+const selectedChecks = computed(() =>
+	selected.value.size === 0
+		? testerRows.value
+		: testerRows.value.filter((r) => selected.value.has(`c:${r.rowId}`)),
+);
+const exportSummary = computed(() => ({
+	sessions: selectedThreads.value.length,
+	checks: selectedChecks.value.length,
+	verdicts: selectedChecks.value.filter((r) => r.vote !== null).length,
+}));
+function openExport() {
+	exportResult.value = null;
+	exportOpen.value = true;
+}
+async function runExport(payload: {
+	include: ExportInclude;
+	destination: ExportDestination;
+	endpoint: string;
+	project: string;
+}) {
+	exporting.value = true;
+	try {
+		const items: ExportItem[] = [];
+		for (const t of selectedThreads.value.slice(0, 25)) {
+			let messages: Array<{ role: string; text: string; toolCalls?: string[] }> | undefined;
+			if (payload.include.messages) {
+				try {
+					const res = await getChatMessages(
+						rootStore.restApiContext,
+						projectId.value,
+						agentId.value,
+						t.id,
+					);
+					messages = res.messages.map((m) => ({
+						role: m.role,
+						text: m.content
+							.filter((p) => p.type === 'text' && p.text)
+							.map((p) => p.text ?? '')
+							.join('\n'),
+						toolCalls: m.content
+							.filter((p) => p.type === 'tool-call')
+							.map((p) => p.toolName ?? 'tool'),
+					}));
+				} catch {
+					messages = undefined;
+				}
+			}
+			items.push({
+				kind: 'session',
+				id: t.id,
+				title: threadTitleOf(t),
+				agentId: t.agentId,
+				agentName: t.agentName,
+				origin: t.source ?? null,
+				status: t.status ?? null,
+				createdAt: t.createdAt,
+				updatedAt: t.updatedAt,
+				durationMs: t.totalDuration,
+				promptTokens: t.totalPromptTokens,
+				completionTokens: t.totalCompletionTokens,
+				cost: t.totalCost,
+				messages,
+			});
+		}
+		for (const c of selectedChecks.value) {
+			items.push({
+				kind: 'check',
+				id: String(c.rowId),
+				agentId: agentId.value,
+				checkKind: c.label,
+				input: c.input,
+				whatToCheck: c.whatToCheck,
+				answer: c.answer,
+				state: c.state,
+				verdict: c.vote ? { vote: c.vote } : null,
+				at: c.at,
+			});
+		}
+		const traces = buildOtelTraces(items, payload.include, rootStore.baseUrl);
+		if (payload.destination === 'json') {
+			downloadJson(`n8n-sessions-${agentId.value}.json`, traces);
+			exportResult.value = i18n.baseText('wireframe.export.result.downloaded', {
+				interpolate: { count: String(items.length) },
+			});
+		} else if (payload.destination === 'langsmith') {
+			for (const t of selectedThreads.value) {
+				await langsmith.sendSession({
+					projectId: projectId.value,
+					agentId: agentId.value,
+					threadId: t.id,
+				});
+			}
+			exportResult.value = i18n.baseText('wireframe.export.result.sent', {
+				interpolate: { count: String(items.length), where: 'LangSmith' },
+			});
+		} else {
+			// Stub: the payload is built, but the prototype doesn't open a network path to arbitrary endpoints.
+			exportResult.value = i18n.baseText('wireframe.export.result.sent', {
+				interpolate: {
+					count: String(items.length),
+					where: payload.endpoint.replace(/^https?:\/\//, ''),
+				},
+			});
+		}
+	} finally {
+		exporting.value = false;
+	}
+}
+
 function openCheck(rowId: number) {
 	reviewStore.requestReview(agentId.value, `check:${rowId}`);
 }
@@ -298,6 +436,14 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				@update:model-value="onAutoRefreshChange"
 			/>
 			<button
+				:class="$style.exportButton"
+				type="button"
+				data-testid="agent-sessions-export"
+				@click="openExport"
+			>
+				{{ i18n.baseText('wireframe.export.button') }}
+			</button>
+			<button
 				v-if="attention > 0"
 				:class="$style.reviewButton"
 				type="button"
@@ -316,6 +462,14 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				@filter-changed="onFiltersChange"
 			/>
 		</div>
+		<WireframeExportDialog
+			v-model:open="exportOpen"
+			:summary="exportSummary"
+			:can-langsmith="langsmith.isEnabled.value"
+			:exporting="exporting"
+			:result="exportResult"
+			@export="runExport"
+		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
@@ -330,6 +484,16 @@ async function onFiltersChange(value: AgentSessionFilters) {
 						<td :class="$style.titleCell">
 							<button type="button" :class="$style.sessionOpen">
 								<span :class="$style.sessionTitleRow">
+									<span
+										:class="[
+											$style.selectBox,
+											{ [$style.selectBoxOn]: selected.has(`c:${row.rowId}`) },
+										]"
+										role="checkbox"
+										:aria-checked="selected.has(`c:${row.rowId}`)"
+										data-testid="agent-session-select"
+										@click.stop="toggleSelected(`c:${row.rowId}`)"
+									/>
 									<span :class="$style.sessionTitle">
 										<span v-if="row.label" :class="$style.testerKind">{{ row.label }}</span>
 										{{ row.input }}
@@ -363,6 +527,16 @@ async function onFiltersChange(value: AgentSessionFilters) {
 						<td :class="$style.titleCell">
 							<button type="button" :class="$style.sessionOpen" data-test-id="agent-session-open">
 								<span :class="$style.sessionTitleRow">
+									<span
+										:class="[
+											$style.selectBox,
+											{ [$style.selectBoxOn]: selected.has(`s:${thread.id}`) },
+										]"
+										role="checkbox"
+										:aria-checked="selected.has(`s:${thread.id}`)"
+										data-testid="agent-session-select"
+										@click.stop="toggleSelected(`s:${thread.id}`)"
+									/>
 									<span :class="$style.sessionTitle" data-test-id="agent-session-title">
 										{{ threadTitleOf(thread) }}
 									</span>
@@ -544,6 +718,42 @@ async function onFiltersChange(value: AgentSessionFilters) {
 .checkState_running,
 .checkState_idle {
 	color: var(--text-color--subtler);
+}
+
+.selectBox {
+	display: inline-block;
+	width: 0.9rem;
+	height: 0.9rem;
+	margin-right: var(--spacing--2xs);
+	border: var(--wireframe--border);
+	border-radius: 3px;
+	background: var(--background--surface);
+	vertical-align: middle;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.selectBoxOn {
+	background: var(--wireframe--ink);
+}
+
+.exportButton {
+	margin-left: auto;
+	margin-right: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--background--surface);
+	color: var(--wireframe--ink);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	cursor: pointer;
+}
+
+.exportButton + .reviewButton {
+	margin-left: 0;
 }
 
 .reviewButton {

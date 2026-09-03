@@ -20,6 +20,9 @@ export const useAgentReviewStore = defineStore('agentReview', () => {
 		rowId: number;
 		label: string;
 		input: string;
+		whatToCheck: string;
+		answer: string | null;
+		vote: 'up' | 'down' | null;
 		state: 'idle' | 'running' | 'needsEye' | 'ok' | 'flagged' | 'error';
 		at: string | null;
 	};

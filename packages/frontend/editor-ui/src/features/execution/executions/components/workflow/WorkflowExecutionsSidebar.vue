@@ -6,6 +6,17 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
+import WireframeExportDialog from '@/app/components/wireframe/WireframeExportDialog.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useStorage } from '@vueuse/core';
+import {
+	buildOtelTraces,
+	downloadJson,
+	type ExportDestination,
+	type ExportInclude,
+	type ExportItem,
+} from '@/app/utils/wireframeOtelExport';
+import type { OutputVerdict } from '@/app/composables/useWorkflowOutputStack';
 import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
@@ -43,6 +54,68 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
+
+// Wireframe: export the listed executions with their output verdicts as traces.
+const rootStore = useRootStore();
+const exportOpen = ref(false);
+const exporting = ref(false);
+const exportResult = ref<string | null>(null);
+const stackVerdicts = useStorage<Record<string, OutputVerdict>>(
+	computed(() => `N8N_WIREFRAME_STACK_VERDICTS:${props.workflow?.id ?? ''}`),
+	{},
+);
+const exportSummary = computed(() => ({
+	executions: props.executions.length,
+	verdicts: Object.keys(stackVerdicts.value).filter((k) =>
+		props.executions.some((e) => k.startsWith(`${e.id}:`)),
+	).length,
+}));
+function openExport() {
+	exportResult.value = null;
+	exportOpen.value = true;
+}
+function runExport(payload: {
+	include: ExportInclude;
+	destination: ExportDestination;
+	endpoint: string;
+}) {
+	exporting.value = true;
+	try {
+		const items: ExportItem[] = props.executions.slice(0, 50).map((e) => ({
+			kind: 'execution' as const,
+			id: e.id,
+			workflowId: e.workflowId,
+			workflowName: props.workflow?.name,
+			status: e.status,
+			mode: e.mode,
+			startedAt: e.startedAt ? new Date(e.startedAt).toISOString() : undefined,
+			stoppedAt: e.stoppedAt ? new Date(e.stoppedAt).toISOString() : undefined,
+			outputs: Object.entries(stackVerdicts.value)
+				.filter(([k]) => k.startsWith(`${e.id}:`))
+				.map(([k, v]) => ({
+					node: k.slice(e.id.length + 1),
+					sample: v.sample ?? null,
+					verdict: v,
+				})),
+		}));
+		const traces = buildOtelTraces(items, payload.include, rootStore.baseUrl);
+		if (payload.destination === 'json') {
+			downloadJson(`n8n-executions-${props.workflow?.id ?? 'workflow'}.json`, traces);
+			exportResult.value = i18n.baseText('wireframe.export.result.downloaded', {
+				interpolate: { count: String(items.length) },
+			});
+		} else {
+			exportResult.value = i18n.baseText('wireframe.export.result.sent', {
+				interpolate: {
+					count: String(items.length),
+					where: payload.endpoint.replace(/^https?:\/\//, ''),
+				},
+			});
+		}
+	} finally {
+		exporting.value = false;
+	}
+}
 
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -194,6 +267,22 @@ const goToUpgrade = () => {
 				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
 			/>
+			<button
+				:class="$style.wireframeExport"
+				type="button"
+				data-testid="executions-export"
+				@click="openExport"
+			>
+				{{ i18n.baseText('wireframe.export.button') }}
+			</button>
+			<WireframeExportDialog
+				v-model:open="exportOpen"
+				:summary="exportSummary"
+				:can-langsmith="false"
+				:exporting="exporting"
+				:result="exportResult"
+				@export="runExport"
+			/>
 			<ExecutionsFilter
 				popover-side="right"
 				popover-align="start"
@@ -257,6 +346,19 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
+.wireframeExport {
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: var(--wireframe--border);
+	border-radius: var(--wireframe--radius);
+	background: var(--background--surface);
+	color: var(--wireframe--ink);
+	font-family: var(--wireframe--font-family);
+	font-weight: var(--wireframe--font-weight);
+	font-size: var(--font-size--2xs);
+	letter-spacing: var(--wireframe--letter-spacing);
+	cursor: pointer;
+}
+
 .container {
 	flex: 310px 0 0;
 	background-color: var(--color--background--light-3);

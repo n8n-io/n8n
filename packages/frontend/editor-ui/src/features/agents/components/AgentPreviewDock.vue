@@ -139,6 +139,9 @@ watch(
 					? i18n.baseText(`agents.builder.preview.wireframe.evalPill.type.${c.flavor}.name`)
 					: (c.label ?? ''),
 				input: c.input,
+				whatToCheck: c.whatToCheck,
+				answer: c.answer,
+				vote: c.vote,
 				state: c.state,
 				at: c.result?.completedAt ?? c.result?.runAt ?? null,
 			})),
