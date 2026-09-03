@@ -139,11 +139,7 @@ async function runConnect(attempt: () => Promise<unknown>) {
 	}
 }
 
-async function connect(
-	row: CardRow,
-	credentialType: string,
-	credentialTypes?: readonly string[],
-) {
+async function connect(row: CardRow, credentialType: string, credentialTypes?: readonly string[]) {
 	await runConnect(
 		async () =>
 			await connectServer({
