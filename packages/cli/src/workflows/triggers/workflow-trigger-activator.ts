@@ -900,7 +900,10 @@ export class WorkflowTriggerActivator {
 		await Promise.all(
 			triggerNodeIds.map(async (nodeId) => {
 				try {
-					await raceAbort(this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId), abort);
+					await raceAbort(
+						this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId, abort.onDetached),
+						abort,
+					);
 				} catch (error) {
 					if (!this.shouldAbandonFailedTeardown(ensureError(error))) throw error;
 					this.logger.warn('Abandoned trigger whose deregistration can never succeed', {

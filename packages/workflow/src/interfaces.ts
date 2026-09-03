@@ -953,14 +953,16 @@ interface NodeHelperFunctions {
 
 /**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
- * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
- * validation and a connect-time secure DNS lookup.
+ * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
+ * validation, a connect-time secure DNS lookup, and per-redirect validation.
  */
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
+	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
+	validateRedirectSync(url: string): void;
 }
 
 export interface RequestHelperFunctions {
