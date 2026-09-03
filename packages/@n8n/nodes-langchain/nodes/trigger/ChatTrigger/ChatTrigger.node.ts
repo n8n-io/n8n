@@ -95,6 +95,19 @@ const allowFileUploadsOption: INodeProperties = {
 	default: false,
 	description: 'Whether to allow file uploads in the chat',
 };
+const includeUserInOutputOption: INodeProperties = {
+	displayName: 'Include User in Output',
+	name: 'includeUserInOutput',
+	type: 'boolean',
+	default: true,
+	// Hidden until the chat OAuth2 rollout reaches GA. Display only — `webhook()`
+	// checks the same flag itself.
+	envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
+	// No `mode` gate, unlike its neighbour: `n8nUserAuth` also works in `webhook`
+	// mode through the cookie check, and that path emits an item too.
+	description: "Whether to include the logged-in user's ID, email and name in the trigger output",
+};
+
 const allowedFileMimeTypeOption: INodeProperties = {
 	displayName: 'Allowed File Mime Types',
 	name: 'allowedFilesMimeTypes',
@@ -500,10 +513,7 @@ export class ChatTrigger extends Node {
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 			},
 			{
-				displayName: 'Include User in Output',
-				name: 'includeUserInOutput',
-				type: 'boolean',
-				default: true,
+				...includeUserInOutputOption,
 				displayOptions: {
 					show: {
 						authentication: ['n8nUserAuth'],
@@ -511,10 +521,20 @@ export class ChatTrigger extends Node {
 						'@version': [{ _cnd: { gte: 1.5 } }],
 					},
 				},
-				// No `mode` gate, unlike its neighbour: `n8nUserAuth` also works in `webhook`
-				// mode through the cookie check, and that path emits an item too.
-				description:
-					"Whether to include the logged-in user's ID, email and name in the trigger output",
+			},
+			{
+				...includeUserInOutputOption,
+				// Off below 1.5: `n8nUserAuth` has been selectable since the node shipped, so chats
+				// built long before this feature must keep their output shape. Still visible, so they
+				// can opt in without being rebuilt — which would change their public chat URL.
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { lt: 1.5 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Initial Message(s)',
@@ -957,7 +977,7 @@ export class ChatTrigger extends Node {
 			// report them under the same conditions production would. This lookup is identity,
 			// not authorization: it stays outside the `catch` below, which reads its error as
 			// an auth challenge and would answer with an undefined status code.
-			if (authentication === 'n8nUserAuth') {
+			if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
 				authedUser = await ctx.getTestWebhookUser?.();
 			}
 		} else {
@@ -1180,14 +1200,22 @@ export class ChatTrigger extends Node {
 		const isMultipart = req.contentType === 'multipart/form-data';
 		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
 
+		// Gated until GA: with the flag off this node behaves exactly as it did before the feature.
+		const userOutputEnabled = isChatOAuth2Enabled() && authentication === 'n8nUserAuth';
+		// The declared `default` only drives the editor. An absent parameter resolves to this
+		// fallback, so it is what decides for a node that never had the key saved.
+		const includeUser =
+			userOutputEnabled &&
+			ctx.getNodeParameter('includeUserInOutput', ctx.getNode().typeVersion >= 1.5) !== false;
+
 		// The single merge point for all three emission paths — see `withAuthenticatedUser`.
 		// Spread so the multipart path keeps its `binary` attachments.
 		const returnItem: INodeExecutionData = {
 			...item,
 			json: withAuthenticatedUser(
 				item.json,
-				ctx.getNodeParameter('includeUserInOutput', true) !== false ? authedUser : undefined,
-				authentication === 'n8nUserAuth',
+				includeUser ? authedUser : undefined,
+				userOutputEnabled,
 			),
 		};
 

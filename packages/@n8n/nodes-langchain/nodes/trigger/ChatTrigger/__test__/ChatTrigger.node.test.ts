@@ -84,7 +84,9 @@ describe('ChatTrigger Node', () => {
 		mockContext.getNode.mockReturnValue({
 			name: 'Chat Trigger',
 			type: 'n8n-nodes-langchain.chatTrigger',
-			typeVersion: 1,
+			// At or above 1.5, so `includeUserInOutput` defaults on where a test does not
+			// override the version.
+			typeVersion: 1.5,
 		} as INode);
 		mockContext.getMode.mockReturnValue('webhook');
 		mockContext.getWebhookName.mockReturnValue('default');
@@ -573,22 +575,40 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			vi.mocked(validateAuth).mockResolvedValue(authedUser);
 		});
 
-		it('exposes the toggle, on by default and scoped to n8nUserAuth public chats', () => {
-			const includeUserParam = chatTrigger.description.properties.find(
+		it('exposes one toggle per version band, scoped to n8nUserAuth public chats', () => {
+			const includeUserParams = chatTrigger.description.properties.filter(
 				(property) => property.name === 'includeUserInOutput',
 			);
 
-			expect(includeUserParam).toMatchObject({
+			expect(includeUserParams).toHaveLength(2);
+			// The `gte` variant comes first: some consumers resolve a name with `.find()`,
+			// and 1.5 is `defaultVersion`, so first-match must be the current shape.
+			expect(includeUserParams[0]).toMatchObject({
 				type: 'boolean',
 				default: true,
+				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
 				displayOptions: {
 					show: {
 						authentication: ['n8nUserAuth'],
 						public: [true],
 						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			});
+			// Off below 1.5, but still shown, so an existing chat can opt in.
+			expect(includeUserParams[1]).toMatchObject({
+				type: 'boolean',
+				default: false,
+				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						public: [true],
+						'@version': [{ _cnd: { lt: 1.5 } }],
 					},
 				},
 			});
@@ -671,6 +691,49 @@ describe('ChatTrigger Node', () => {
 
 			expect(emittedJson(result)).toEqual({ message: 'Hello' });
 		});
+
+		// `n8nUserAuth` has been selectable since the node shipped, so a chat built before
+		// this feature must keep its output shape until its owner opts in.
+		it('omits the user below 1.5 when the toggle was never saved', async () => {
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1.4,
+			} as INode);
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello' });
+		});
+
+		it('adds the user below 1.5 once the toggle is turned on', async () => {
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1.4,
+			} as INode);
+			setParams({ includeUserInOutput: true });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
+		});
+
+		// With the flag off the node must behave exactly as it did before the feature: no
+		// verified user added, and no caller-supplied `user` stripped.
+		it('emits no user and strips nothing when the feature flag is off', async () => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
+			mockContext.getBodyData.mockReturnValue({
+				message: 'Hello',
+				user: { email: 'ceo@acme.com' },
+			});
+			setParams();
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(emittedJson(result)).toEqual({ message: 'Hello', user: { email: 'ceo@acme.com' } });
+		});
 	});
 
 	// The editor's canvas chat can't supply webhook credentials, so its session-scoped
@@ -704,6 +767,7 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			mockContext.getMode.mockReturnValue('manual');
 			mockContext.isChatSessionTest.mockReturnValue(true);
 			getTestWebhookUser.mockResolvedValue(editorUser);
@@ -790,6 +854,7 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			mockContext.getBodyData.mockReturnValue({ chatInput: 'hi', user: forgedUser });
 			vi.mocked(validateAuth).mockResolvedValue(authedUser);
 		});
