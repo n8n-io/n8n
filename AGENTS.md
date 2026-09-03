@@ -238,6 +238,24 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
 
+### Encryption boundary
+
+New code encrypts and decrypts only through `cipher.encryptV2()` /
+`cipher.decryptV2()` — the key-manager module decides which key is used and in
+which output format. Enforced in CI by the rules in
+`packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
+`nodeConfig`, also composed into `@n8n/db` and `@n8n/task-runner`):
+
+- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
+- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
+  `packages/core/src/encryption/` and database migrations.
+- **Deployment keys are never deleted** — data encrypted with a key becomes
+  unreadable without it. Deactivate keys instead; the repository's delete
+  surface throws at runtime and the lint rule rejects call sites.
+- Inline `eslint-disable` of these rules is itself a lint error. Widening the
+  boundary happens in `encryption-boundary.ts`, which requires security (IAM)
+  approval via OWNERS.
+
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
