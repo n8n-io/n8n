@@ -47,14 +47,30 @@ export default defineConfig(
 
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// The allowlist below is the only place @n8n/typeorm exceptions may live; block inline disables.
-			'n8n-local-rules/no-misplaced-typeorm-import-disable': 'error',
-			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
-			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
+			// Ratchets whose allowlists below are the only escape hatch; block inline disables.
+			// `no-unsealed-workflow-entity-write` (on for every package via the plugin) has no allowlist at all.
+			'n8n-local-rules/no-guardrail-disable': [
+				'error',
+				{
+					guarded: [
+						{
+							rule: 'misplaced-n8n-typeorm-import',
+							message:
+								'Keep TypeORM in the persistence layer (add a use-case repository method), or add the file to the allowlist in packages/cli/eslint.config.mjs.',
+						},
+						{
+							rule: 'no-repository-in-public-api-handler',
+							message: 'Migrate to `@PublicApiController`.',
+						},
+						{ rule: 'require-public-api-controller', message: 'Migrate to `@PublicApiController`.' },
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
-			// Seal WorkflowEntity node-writes to the token-gated repository methods.
-			// Every write site is migrated; there is no allowlist left to grant an exception.
-			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
 			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
 			'n8n-local-rules/no-on-leader-takeover': 'error',
