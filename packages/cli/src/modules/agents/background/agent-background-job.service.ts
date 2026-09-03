@@ -320,13 +320,13 @@ export class AgentBackgroundJobService {
 					});
 					return 'already-settled';
 				}
-				// The tool call fails with this error, but the executor keeps no
-				// server-side record that names the execution that may still run.
+
 				this.logger.error('Failed to stop a workflow job execution — it may still be running', {
 					jobId: job.id,
 					executionId: job.childExecutionId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+
 				throw error;
 			}
 		}
