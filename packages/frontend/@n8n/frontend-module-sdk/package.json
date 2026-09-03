@@ -20,6 +20,7 @@
   "dependencies": {
     "@n8n/api-types": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },

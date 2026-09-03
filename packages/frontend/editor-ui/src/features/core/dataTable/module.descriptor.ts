@@ -1,4 +1,3 @@
-import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	DATA_TABLE_DETAILS,
@@ -9,8 +8,6 @@ import {
 	DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
 	DATA_TABLE_MODALS,
 } from '@/features/core/dataTable/modals';
-
-const i18n = useI18n();
 
 const DataTableView = async () => await import('@/features/core/dataTable/DataTableView.vue');
 const DataTableDetailsView = async () =>
@@ -71,7 +68,7 @@ export const DataTableModule: FrontendModuleDescription = {
 	projectTabs: {
 		overview: [
 			{
-				label: i18n.baseText('dataTable.dataTables'),
+				labelKey: 'dataTable.dataTables',
 				value: DATA_TABLE_VIEW,
 				to: {
 					name: DATA_TABLE_VIEW,
@@ -80,7 +77,7 @@ export const DataTableModule: FrontendModuleDescription = {
 		],
 		project: [
 			{
-				label: i18n.baseText('dataTable.dataTables'),
+				labelKey: 'dataTable.dataTables',
 				value: PROJECT_DATA_TABLES,
 				dynamicRoute: {
 					name: PROJECT_DATA_TABLES,

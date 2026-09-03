@@ -1,29 +1,35 @@
 import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import type { RouteLocationRaw } from 'vue-router';
 import type { TabOptions } from '@n8n/design-system';
+import { resolveContributionLabel } from './labelUtils';
 
 export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
 
 /**
  * Process dynamic route configuration for tabs
- * Resolves dynamic routes with project IDs and other parameters
+ * Resolves dynamic routes with project IDs and other parameters, and translates a
+ * declared `labelKey`. Call this from inside the computed that renders the tabs, so
+ * the label follows a locale change.
  */
 export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): ProcessedDynamicTab {
-	if (!tab.dynamicRoute) {
-		return tab;
+	const { dynamicRoute, labelKey, ...rest } = tab;
+	const label = resolveContributionLabel(tab);
+	const processed: ProcessedDynamicTab = label === undefined ? rest : { ...rest, label };
+
+	if (!dynamicRoute) {
+		return processed;
 	}
 
 	const tabRoute: RouteLocationRaw = {
-		name: tab.dynamicRoute.name,
+		name: dynamicRoute.name,
 	};
 
-	if (tab.dynamicRoute.includeProjectId && projectId) {
+	if (dynamicRoute.includeProjectId && projectId) {
 		tabRoute.params = { projectId };
 	}
 
-	const { dynamicRoute, ...tabWithoutDynamic } = tab;
 	return {
-		...tabWithoutDynamic,
+		...processed,
 		to: tabRoute,
 	};
 }

@@ -35,6 +35,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
+import type { ModuleSettingsPage } from '@n8n/frontend-module-sdk';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { resolveContributionLabel } from '@/app/utils/modules/labelUtils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
@@ -173,7 +176,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Modules can register items and SettingsSidebar will render them
 	 * when the corresponding module is active.
 	 */
-	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
+	const registeredSettingsPages = ref<Record<string, ModuleSettingsPage[]>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -184,6 +187,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
+	const rbacStore = useRBACStore();
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -283,11 +287,31 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
+	/**
+	 * Resolve the two fields a module declares as data instead of as a value: the
+	 * label's translation key and the scopes that reveal the page. Both reads happen
+	 * here, inside `settingsSidebarItems`, so the item follows a locale change and a
+	 * scope change after registration.
+	 */
+	const resolveSettingsPage = (page: ModuleSettingsPage): IMenuItem => {
+		const { labelKey, requiredScopes, ...item } = page;
+
+		return {
+			...item,
+			label: resolveContributionLabel(page) ?? '',
+			// A page may declare both gates, and then it has to pass both. An undeclared
+			// `available` defaults to true, which is what the shell assumed before.
+			available:
+				(item.available ?? true) &&
+				(requiredScopes === undefined || rbacStore.hasScope(requiredScopes)),
+		};
+	};
+
 	const settingsSidebarItems = computed<IMenuItem[]>(() => {
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
-				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
+				items.push(...moduleItems.map(resolveSettingsPage));
 			}
 		});
 		return items;
@@ -581,7 +605,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+	const registerSettingsPages = (moduleName: string, items: ModuleSettingsPage[]) => {
 		registeredSettingsPages.value[moduleName] = items;
 	};
 

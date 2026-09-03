@@ -1,4 +1,3 @@
-import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS } from '@/experiments/exposeAllWorkflowsToMcp/modals';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
@@ -10,9 +9,6 @@ import {
 	MCP_SETTINGS_VIEW,
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
-
-const i18n = useI18n();
 
 const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/SettingsMCPView.vue');
 const SettingsMCPWorkflowsView = async () =>
@@ -81,14 +77,10 @@ export const MCPModule: FrontendModuleDescription = {
 		{
 			id: 'settings-mcp',
 			icon: 'mcp',
-			label: i18n.baseText('settings.mcp'),
+			labelKey: 'settings.mcp',
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
-			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
-				});
-			},
+			requiredScopes: ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
 		},
 	],
 	modals: [

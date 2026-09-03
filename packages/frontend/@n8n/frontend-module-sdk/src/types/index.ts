@@ -1,4 +1,5 @@
 export type * from './descriptor';
+export type * from './menu';
 export type * from './modal';
 export type * from './resource';
 export type * from './tabs';

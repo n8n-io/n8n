@@ -1,7 +1,3 @@
-import type { Scope } from '@n8n/permissions';
-import { useRBACStore } from '@n8n/stores/rbac.store';
-import { createPinia, setActivePinia } from 'pinia';
-
 import { OTEL_SETTINGS_VIEW } from './otel.constants';
 import { OtelModule } from './otel.module';
 
@@ -9,45 +5,28 @@ import { OtelModule } from './otel.module';
  * Guards the descriptor half of the shell-to-descriptor move of the otel settings
  * sidebar item.
  *
- * The old gate lived in the shell's `useSettingsItems.ts` as
- * `isModuleActive('otel') && hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } })`.
- * It is now split: the descriptor's `available` getter owns the scope half, which is
- * what this file covers, and `ui.store`'s `settingsSidebarItems` owns the
- * module-active half, covered by `ui.store.settingsPages.test.ts` in the shell.
+ * The descriptor declares the label and the scope gate as data; the shell resolves
+ * both in `ui.store`'s `settingsSidebarItems`, covered by
+ * `ui.store.settingsPages.test.ts`. So this file asserts the declaration, not the
+ * resolved value — a descriptor that resolves either itself has to import `@n8n/i18n`
+ * or an RBAC store, which is what the declarative form removes.
  */
 describe('OtelModule', () => {
 	const settingsPage = () =>
 		OtelModule.settingsPages?.find((item) => item.id === 'settings-opentelemetry');
 
-	const withScopes = (scopes: Scope[]) => {
-		useRBACStore().setGlobalScopes(scopes);
-		return settingsPage();
-	};
-
-	beforeEach(() => {
-		setActivePinia(createPinia());
-	});
-
 	describe('settings sidebar item', () => {
-		it('should hide the item from a user without the otel:manage scope', () => {
-			expect(withScopes([])?.available).toBe(false);
+		it('should declare the label as a translation key, not a translated string', () => {
+			expect(settingsPage()?.labelKey).toBe('settings.opentelemetry');
+			expect(settingsPage()?.label).toBeUndefined();
 		});
 
-		it('should hide the item from a user holding only an unrelated scope', () => {
-			expect(withScopes(['workflow:read'])?.available).toBe(false);
+		it('should declare the same scope the route middleware gates on', () => {
+			expect(settingsPage()?.requiredScopes).toBe('otel:manage');
 		});
 
-		it('should show the item to a user with the otel:manage scope', () => {
-			expect(withScopes(['otel:manage'])?.available).toBe(true);
-		});
-
-		it('should re-evaluate availability when scopes change after registration', () => {
-			const item = withScopes([]);
-			expect(item?.available).toBe(false);
-
-			useRBACStore().addGlobalScope('otel:manage');
-
-			expect(item?.available).toBe(true);
+		it('should leave availability to the shell, which knows the current scopes', () => {
+			expect(settingsPage()?.available).toBeUndefined();
 		});
 	});
 
