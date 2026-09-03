@@ -623,6 +623,126 @@ describe('GET /executions', () => {
 		}
 	});
 
+	test('should bound a forged cursor limit instead of querying with it', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const forge = (limit: unknown) =>
+			Buffer.from(JSON.stringify({ lastId: '999999', limit })).toString('base64');
+
+		const cases: Array<[unknown, number]> = [
+			[-1, 1],
+			[0, 1],
+			[2, 2],
+			['abc', 3],
+			[null, 3],
+		];
+
+		for (const [limit, expected] of cases) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: forge(limit) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(expected);
+		}
+	});
+
+	test('should keep dataTooLargeToDisplay on a list item that exceeds the display size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions').query({ includeData: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data[0].data?.resultData?.runData).toEqual({});
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/executions').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should keep the legacy accept and reject boundary for odd cursor shapes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const tolerated: Array<[unknown, number]> = [
+			[{}, 3],
+			[{ limit: 2 }, 2],
+			[{ lastId: null }, 3],
+			[{ lastId: { id: '1' } }, 3],
+			[[], 3],
+		];
+
+		for (const [payload, rows] of tolerated) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(rows);
+		}
+
+		for (const payload of ['a string', 42]) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe('An invalid cursor was provided');
+		}
+	});
+
+	test('should accept a numeric lastId, as the legacy handler did', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const first = await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const cursor = Buffer.from(
+			JSON.stringify({ lastId: Number(first.id) + 1, limit: 10 }),
+		).toString('base64');
+		const response = await authOwnerAgent.get('/executions').query({ cursor });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(first.id);
+	});
+
+	test('should accept a cursor in either the lastId or the offset form', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const cursorForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ lastId: '999999', limit: 1 }) });
+
+		expect(cursorForm.statusCode).toBe(200);
+		expect(cursorForm.body.data).toHaveLength(1);
+
+		const offsetForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ offset: 0, limit: 1 }) });
+
+		expect(offsetForm.statusCode).toBe(200);
+		expect(offsetForm.body.data).toHaveLength(1);
+	});
+
 	describe('with query status', () => {
 		type AllowedQueryStatus =
 			| 'canceled'
@@ -956,6 +1076,23 @@ describe('GET /executions', () => {
 			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
 				matching.id,
 			]);
+		});
+
+		test('should accept an RFC3339 value with a numeric timezone offset', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00+02:00',
+				startedBefore: '2020-09-01T00:00:00-05:00',
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should return 400 for a value with no timezone', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00',
+			});
+
+			expect(response.statusCode).toBe(400);
 		});
 
 		test('should return 400 for a malformed startedAfter value', async () => {
