@@ -24,6 +24,9 @@ export interface McpRegistrySearchResult {
 	credentialType: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
+	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
+	 *  that cannot resolve it against a credential have to skip the row. */
+	isTemplated: boolean;
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
@@ -43,6 +46,7 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 			...(tool.title ? { title: tool.title } : {}),
 		})),
 		metadata: { nodeTypeName: connection.nodeTypeName },
+		isTemplated: connection.isTemplated === true,
 	};
 }
 

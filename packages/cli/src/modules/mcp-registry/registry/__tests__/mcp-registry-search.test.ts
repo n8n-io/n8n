@@ -47,6 +47,7 @@ describe('searchMcpRegistryServers', () => {
 			credentialType: 'githubMcpOAuth2Api',
 			tools: [{ name: 'create_issue', title: 'Create issue' }],
 			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			isTemplated: false,
 		});
 	});
 
@@ -98,5 +99,13 @@ describe('searchMcpRegistryServers', () => {
 		expect(result.transport).toBe('streamableHttp');
 		expect(result.url).toBe('={{$self["host"]}}/api/2.0/mcp/genie');
 		expect(result.metadata).toEqual({ nodeTypeName: '@n8n/mcp-registry.databricksGenie' });
+		// Marks the url as unresolved so a consumer that cannot resolve it can skip.
+		expect(result.isTemplated).toBe(true);
+	});
+
+	it('marks a literal tile as not templated', () => {
+		const [result] = searchMcpRegistryServers([server({ slug: 'notion' })], ['notion']);
+
+		expect(result.isTemplated).toBe(false);
 	});
 });

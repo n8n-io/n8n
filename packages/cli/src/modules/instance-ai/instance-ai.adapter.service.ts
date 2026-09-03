@@ -499,14 +499,19 @@ export class InstanceAiAdapterService {
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {
+		// Templated rows are dropped rather than offered: this path reads credentials
+		// without resolving expressions, so `createConnection` refuses them. Offering
+		// one would walk the user to a credential picker and then an error.
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
-			servers.map((server) => ({
-				slug: server.slug,
-				title: server.title,
-				description: server.description,
-				credentialType: server.credentialType,
-				tools: server.tools.map((tool) => tool.name),
-			}));
+			servers
+				.filter((server) => !server.isTemplated)
+				.map((server) => ({
+					slug: server.slug,
+					title: server.title,
+					description: server.description,
+					credentialType: server.credentialType,
+					tools: server.tools.map((tool) => tool.name),
+				}));
 
 		return {
 			/** Connected servers are filtered out: `connected` answers what the user has,
