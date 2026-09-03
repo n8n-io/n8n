@@ -631,6 +631,47 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 		);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
+
+	it('keeps a templated URL parseable so the credential error is what surfaces', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		// No `oauthTokenData`, so `prepareMcpRegistryConnection` rejects before it
+		// substitutes the URL, leaving the raw `$self`-expression behind.
+		credentialProvider.resolve.mockResolvedValue({ host: 'https://tenant.test' } as never);
+		const oauthService = mock<OauthService>();
+
+		const templatedUrl = '={{$self["host"]}}/api/2.0/mcp/genie';
+
+		await buildMcpClientForServer(
+			makeServer({
+				url: templatedUrl,
+				authentication: 'databricksGenieMcpOAuth2Api' as never,
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.databricksGenie' },
+			}),
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.databricksGenie',
+					credentialType: 'databricksGenieMcpOAuth2Api',
+					endpointUrl: templatedUrl,
+					endpointHostname: '',
+					transport: 'httpStreamable',
+					isTemplated: true,
+				}),
+			},
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		expect(configs[0].url).not.toBe(templatedUrl);
+		expect(() => new URL(configs[0].url)).not.toThrow();
+		await expect(configs[0].fetch(configs[0].url)).rejects.toThrow(
+			'does not contain an OAuth2 access token',
+		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -650,6 +691,26 @@ describe('listMcpServerTools', () => {
 		listToolsMock.mockReset();
 		closeMock.mockReset();
 		closeMock.mockResolvedValue(undefined);
+	});
+
+	it('reports a connection failure instead of an empty tool list', async () => {
+		// The SDK drops a server that fails to connect rather than throwing, so
+		// the failure only reaches us through `onConnectionFailed`.
+		listToolsMock.mockImplementation(async () => {
+			const [configs] = mcpClientCtor.mock.calls[0] as [
+				Array<{ onConnectionFailed?: (e: { server: string; error: string }) => void }>,
+			];
+			configs[0].onConnectionFailed?.({
+				server: 'srv',
+				error: 'Credential type "x" does not contain an OAuth2 access token',
+			});
+			return [];
+		});
+
+		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow(
+			'does not contain an OAuth2 access token',
+		);
+		expect(closeMock).toHaveBeenCalled();
 	});
 
 	it('returns name/description pairs (empty description fallback) and closes the client', async () => {

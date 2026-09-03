@@ -85,6 +85,9 @@ export interface BuildMcpClientDeps {
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
+/** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
+const UNRESOLVED_CREDENTIAL_URL = 'https://credential-unresolved.invalid/';
+
 /**
  * Build a connected-but-lazy SDK `McpClient` for a single JSON-config MCP
  * server entry. The returned client opens its transport on first use
@@ -172,7 +175,11 @@ export async function buildMcpClientForServer(
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,
-		url: runtimeUrl,
+		// A templated registry URL is still an unresolved `$self`-expression when
+		// the credential fails, and the SDK rejects it with an opaque "Invalid URL"
+		// before `authFetch` runs, hiding the real cause. A parseable placeholder
+		// keeps the connect on the path where `authFetch` reports it.
+		url: credentialError ? UNRESOLVED_CREDENTIAL_URL : runtimeUrl,
 		transport: runtimeTransport,
 		fetch: authFetch,
 		toolFilter: server.toolFilter,
@@ -201,9 +208,20 @@ export async function listMcpServerTools(
 	deps: BuildMcpClientDeps,
 ): Promise<Array<{ name: string; description: string }>> {
 	let client: McpClient | undefined;
+	// A server that fails to connect contributes no tools rather than throwing,
+	// so without this an auth or endpoint failure verifies as a healthy server
+	// with an empty tool list. Verification has to report the real reason.
+	let connectionError: string | undefined;
 	try {
-		client = await buildMcpClientForServer(server, deps);
+		client = await buildMcpClientForServer(server, {
+			...deps,
+			onConnectionFailed: (event) => {
+				connectionError = event.error;
+				deps.onConnectionFailed?.(event);
+			},
+		});
 		const tools = await client.listTools();
+		if (connectionError !== undefined) throw new OperationalError(connectionError);
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});
