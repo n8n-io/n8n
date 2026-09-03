@@ -738,6 +738,22 @@ describe('SettingsSso View', () => {
 
 			expect(await waitFor(() => getByTestId('sso-redirect-login-switch'))).toBeInTheDocument();
 		});
+
+		it('enables Save when only the redirect toggle is changed', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByTestId } = renderView();
+
+			const saveButton = await waitFor(() => getByTestId('sso-save'));
+			expect(saveButton).toBeDisabled();
+
+			await userEvent.click(getByTestId('sso-redirect-login-switch'));
+
+			expect(getByTestId('sso-save')).not.toBeDisabled();
+		});
 	});
 
 	describe('Protocol Selection Persistence', () => {

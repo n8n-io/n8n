@@ -1,21 +1,13 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { N8nSwitch } from '@n8n/design-system';
 
 import { useSSOStore } from '../sso.store';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
-const toast = useToast();
 
-async function onChange(value: boolean) {
-	try {
-		await ssoStore.toggleRedirectLoginToSso(value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.sso.settings.redirectToSso.error'));
-	}
-}
+const modelValue = defineModel<boolean>({ required: true });
 </script>
 
 <template>
@@ -30,10 +22,9 @@ async function onChange(value: boolean) {
 			</div>
 			<div :class="$style.settingsItemControl">
 				<N8nSwitch
-					:model-value="ssoStore.redirectLoginToSso"
+					v-model="modelValue"
 					:disabled="ssoStore.ssoManagedByEnv"
 					data-test-id="sso-redirect-login-switch"
-					@update:model-value="onChange"
 				/>
 			</div>
 		</div>

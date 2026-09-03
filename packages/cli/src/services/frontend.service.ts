@@ -85,6 +85,8 @@ export type PublicFrontendSettings = {
 	};
 
 	sso: {
+		/** Controls whether the login page auto-redirects to the SSO provider */
+		redirectLoginToSso: FrontendSettings['sso']['redirectLoginToSso'];
 		saml: {
 			/** Config flag for SSO button*/
 			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
@@ -675,7 +677,7 @@ export class FrontendService {
 		const {
 			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
-			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc, redirectLoginToSso },
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
@@ -692,6 +694,7 @@ export class FrontendService {
 				passwordMinLength,
 			},
 			sso: {
+				redirectLoginToSso,
 				saml: {
 					loginEnabled: ssoSaml.loginEnabled,
 				},

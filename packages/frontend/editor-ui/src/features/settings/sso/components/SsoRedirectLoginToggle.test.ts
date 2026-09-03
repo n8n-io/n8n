@@ -5,11 +5,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SsoRedirectLoginToggle from './SsoRedirectLoginToggle.vue';
 import { useSSOStore } from '../sso.store';
 
-const showError = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError }),
-}));
-
 const renderComponent = createComponentRenderer(SsoRedirectLoginToggle);
 
 describe('SsoRedirectLoginToggle', () => {
@@ -24,30 +19,19 @@ describe('SsoRedirectLoginToggle', () => {
 		vi.clearAllMocks();
 	});
 
-	it('persists the toggle through the store when changed', async () => {
-		ssoStore.redirectLoginToSso = true;
+	it('emits update:modelValue when toggled (does not persist directly)', async () => {
+		const { getByTestId, emitted } = renderComponent({ props: { modelValue: true } });
 
-		const { getByTestId } = renderComponent();
 		await userEvent.click(getByTestId('sso-redirect-login-switch'));
 
-		expect(ssoStore.toggleRedirectLoginToSso).toHaveBeenCalledWith(false);
+		expect(emitted('update:modelValue')).toEqual([[false]]);
 	});
 
 	it('is disabled when SSO is managed by env', () => {
 		ssoStore.ssoManagedByEnv = true;
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId } = renderComponent({ props: { modelValue: true } });
 
 		expect(getByTestId('sso-redirect-login-switch')).toBeDisabled();
-	});
-
-	it('shows an error toast when persisting the toggle fails', async () => {
-		ssoStore.redirectLoginToSso = true;
-		ssoStore.toggleRedirectLoginToSso.mockRejectedValueOnce(new Error('nope'));
-
-		const { getByTestId } = renderComponent();
-		await userEvent.click(getByTestId('sso-redirect-login-switch'));
-
-		expect(showError).toHaveBeenCalled();
 	});
 });

@@ -46,6 +46,9 @@ const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> 
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
+// Global "redirect login page to SSO" setting. Pending value edited in the form
+// and persisted on Save, so it participates in the form's dirty state.
+const redirectLoginToSso = ref<boolean>(ssoStore.redirectLoginToSso);
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -110,6 +113,7 @@ const getSamlConfig = async () => {
 	metadata.value = config?.metadata;
 	metadataUrl.value = config?.metadataUrl;
 	samlLoginEnabled.value = config.loginEnabled ?? false;
+	redirectLoginToSso.value = ssoStore.redirectLoginToSso;
 };
 
 const isSaveEnabled = computed(() => {
@@ -125,11 +129,13 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	const isRedirectLoginToSsoChanged = redirectLoginToSso.value !== ssoStore.redirectLoginToSso;
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
 		isUserRoleProvisioningChanged.value ||
 		isIdentityProviderChanged() ||
 		isSamlLoginEnabledChanged ||
+		isRedirectLoginToSsoChanged ||
 		isRuleMappingDirty
 	);
 });
@@ -287,6 +293,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
+
+		if (redirectLoginToSso.value !== ssoStore.redirectLoginToSso) {
+			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+		}
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
@@ -491,7 +501,7 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<SsoRedirectLoginToggle />
+		<SsoRedirectLoginToggle v-model="redirectLoginToSso" />
 
 		<div :class="$style.buttons">
 			<N8nButton

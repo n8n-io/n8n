@@ -74,6 +74,9 @@ const promptDescriptions: PromptDescription[] = [
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
 const rpInitiatedLogoutEnabled = ref(false);
+// Global "redirect login page to SSO" setting. Pending value edited in the form
+// and persisted on Save, so it participates in the form's dirty state.
+const redirectLoginToSso = ref<boolean>(ssoStore.redirectLoginToSso);
 const isAdditionalScopesInvalid = computed(() =>
 	[',', ';'].some((c) => additionalScopes.value.includes(c)),
 );
@@ -89,6 +92,7 @@ const getOidcConfig = async () => {
 		config.authenticationContextClassReference?.join(',') || '';
 	additionalScopes.value = config.additionalScopes ?? '';
 	rpInitiatedLogoutEnabled.value = config.rpInitiatedLogoutEnabled ?? false;
+	redirectLoginToSso.value = ssoStore.redirectLoginToSso;
 };
 
 const loadOidcConfig = async () => {
@@ -122,6 +126,7 @@ const cannotSaveOidcSettings = computed(() => {
 			ssoStore.oidcConfig?.prompt === prompt.value &&
 			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
 			ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
+			redirectLoginToSso.value === ssoStore.redirectLoginToSso &&
 			!isUserRoleProvisioningChanged.value &&
 			!isRuleMappingDirty &&
 			storedAcrString === authenticationContextClassReference.value &&
@@ -215,6 +220,10 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
+
+		if (redirectLoginToSso.value !== ssoStore.redirectLoginToSso) {
+			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+		}
 
 		clientSecret.value = newConfig.clientSecret;
 
@@ -454,7 +463,7 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<SsoRedirectLoginToggle />
+		<SsoRedirectLoginToggle v-model="redirectLoginToSso" />
 
 		<div :class="$style.buttons">
 			<N8nButton

@@ -567,6 +567,7 @@ describe('FrontendService', () => {
 					passwordMinLength: 8,
 				},
 				sso: {
+					redirectLoginToSso: true,
 					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
 					oidc: {
@@ -597,6 +598,7 @@ describe('FrontendService', () => {
 					passwordMinLength: 8,
 				},
 				sso: {
+					redirectLoginToSso: true,
 					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
 					oidc: {
