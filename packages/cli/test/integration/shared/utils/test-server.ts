@@ -1,7 +1,6 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -416,7 +415,6 @@ export const setupTestServer = ({
 						await import(
 							'@/modules/type-availability-policies/type-availability-policies.module.js'
 						);
-						testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
 						break;
 				}
 			}
