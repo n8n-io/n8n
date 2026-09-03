@@ -213,7 +213,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled === true);
+	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled ?? false);
 
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
