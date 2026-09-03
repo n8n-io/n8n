@@ -23,11 +23,11 @@ inputs:
     required: false
     default: 'pnpm build'
   install-command:
-    description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
+    description: 'Command to install project dependencies. The default trusts the committed lockfile because SafeChain enforces the CI supply-chain policy. Leave empty to skip the install step.'
     required: false
-    default: 'pnpm install --frozen-lockfile'
+    default: 'pnpm install --frozen-lockfile --trust-lockfile'
   cache-dependency-path:
-    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm store and metadata cache keys. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset.'
     required: false
     default: 'pnpm-lock.yaml'
 
@@ -47,7 +47,7 @@ runs:
       uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
       with:
         install: false
-        version: 11.22.0
+        version: 11.25.0
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
@@ -103,6 +103,26 @@ runs:
         if [ ! -d "$PNPM_STORE_PATH" ]; then
             mkdir -p "$PNPM_STORE_PATH"
         fi
+
+    # pnpm keeps registry metadata and its lockfile verification log outside the package store.
+    - name: Resolve pnpm metadata cache directory
+      if: ${{ inputs.install-command != '' }}
+      id: pnpm-metadata-cache
+      shell: bash
+      run: |
+        PNPM_CACHE_PATH="$(pnpm cache path --silent)"
+        mkdir -p "$PNPM_CACHE_PATH"
+        echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
+        echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm metadata cache
+      if: ${{ inputs.install-command != '' }}
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+        key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
+        restore-keys: |
+          pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-
 
     - name: Configure SafeChain
       shell: bash
