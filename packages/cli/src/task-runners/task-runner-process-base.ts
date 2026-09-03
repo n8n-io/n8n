@@ -16,6 +16,9 @@ export type ChildProcess = ReturnType<typeof spawn>;
 const RESTART_RETRY_BASE_DELAY_MS = 5_000;
 const RESTART_RETRY_MAX_DELAY_MS = 30_000;
 
+/** How long a stopping runner gets to exit gracefully before it is force-killed. */
+const RUNNER_EXIT_GRACE_MS = 2_000;
+
 export function restartRetryDelay(attempt: number): number {
 	return Math.min(RESTART_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RESTART_RETRY_MAX_DELAY_MS);
 }
@@ -131,7 +134,13 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 		if (this.process) {
 			this.process.kill();
-			await this._runPromise;
+			// A runner wedged on an in-flight task never exits gracefully and would
+			// hold shutdown until the force-kill timer. Escalate after a short grace.
+			await Promise.race([this._runPromise, sleep(RUNNER_EXIT_GRACE_MS)]);
+			if (this.process) {
+				this.process.kill('SIGKILL');
+				await this._runPromise;
+			}
 		}
 	}
 
