@@ -470,6 +470,100 @@ describe('chat-shell.handlebars', () => {
 			return { rows, send, posted, overlay };
 		}
 
+		async function runSingleAccountBarScript() {
+			const html = await renderView({
+				...baseView,
+				hasCredentials: true,
+				ready: false,
+				useDialog: false,
+				total: 1,
+				connectedCount: 0,
+				credentials: [
+					{
+						key: 'cred-1::system-n8n',
+						id: 'cred-1',
+						name: 'Slack account',
+						connected: false,
+						authorizationUrl: 'https://n8n.example.com/credentials/cred-1/authorize',
+					},
+				],
+			});
+			const source = html.slice(html.lastIndexOf('<script>') + '<script>'.length);
+			const js = source.slice(0, source.indexOf('</script>'));
+
+			const connectButton = makeElement({
+				'data-url': 'https://n8n.example.com/credentials/cred-1/authorize',
+			});
+			const row = makeElement({ 'data-row-key': 'cred-1::system-n8n', 'data-id': 'cred-1' });
+			row.querySelector = (selector: string) => (selector === '.connect' ? connectButton : null);
+
+			const posted: Array<Record<string, unknown>> = [];
+			const frame = {
+				...makeElement(),
+				contentWindow: { postMessage: (message: Record<string, unknown>) => posted.push(message) },
+			};
+			const bar = makeElement({ 'data-test-mode': 'false', 'data-use-dialog': 'false' });
+			const overlay = makeElement();
+			const byId: Record<string, Row> = {
+				'n8n-chat-frame': frame,
+				'n8n-connect-bar': bar,
+				'n8n-connect-overlay': overlay,
+			};
+
+			const listeners: Array<(event: unknown) => void> = [];
+			const opened: string[] = [];
+			const doc = {
+				getElementById: (id: string) => byId[id] ?? makeElement(),
+				querySelector: (selector: string) => (selector === '.cred-row' ? row : makeElement()),
+				querySelectorAll: (selector: string) => (selector === '.cred-row' ? [row] : []),
+				addEventListener: () => {},
+				createElement: () => makeElement(),
+				body: makeElement(),
+			};
+			const win = {
+				addEventListener: (type: string, fn: (event: unknown) => void) => {
+					if (type === 'message') listeners.push(fn);
+				},
+				removeEventListener: () => {},
+				location: { reload: () => {}, href: '' },
+				parent: {},
+				open: (url: string) => {
+					opened.push(url);
+					return null;
+				},
+			};
+
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval
+			new Function(
+				'window',
+				'document',
+				'setTimeout',
+				'setInterval',
+				'clearTimeout',
+				'clearInterval',
+				'fetch',
+				'MessageChannel',
+				js,
+			)(
+				win,
+				doc,
+				() => 0,
+				() => 0,
+				() => {},
+				() => {},
+				async () => await Promise.resolve(new Response('{}')),
+				class {},
+			);
+
+			function send(data: unknown, source: unknown = frame.contentWindow) {
+				opened.length = 0;
+				listeners.forEach((fn) => fn({ source, data }));
+				return opened;
+			}
+
+			return { overlay, opened, send };
+		}
+
 		const rejection = (ids: unknown) => ({ type: 'n8n-chat-credentials-rejected', ids });
 
 		it('flips only the account the gate named, and re-signals the frame', async () => {
@@ -522,6 +616,15 @@ describe('chat-shell.handlebars', () => {
 
 			send({ type: 'n8n-chat-connect-requested' }, { notTheFrame: true });
 
+			expect([...(overlay.classes as Set<string>)]).not.toContain('open');
+		});
+
+		it('opens the provider popup directly for a single missing account, matching the bar shortcut', async () => {
+			const { overlay, opened, send } = await runSingleAccountBarScript();
+
+			send({ type: 'n8n-chat-connect-requested' });
+
+			expect(opened).toEqual(['https://n8n.example.com/credentials/cred-1/authorize']);
 			expect([...(overlay.classes as Set<string>)]).not.toContain('open');
 		});
 

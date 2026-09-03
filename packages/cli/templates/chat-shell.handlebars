@@ -493,15 +493,11 @@
 						});
 					});
 
-					// The frame refused a send because accounts are outstanding, and is asking for
-					// the panel. With two or more accounts the rows sit behind the summary line, so
-					// the visitor would otherwise have nothing to act on. Opens the dialog only -
-					// never a provider popup, for the reason given on the bar's own control below.
 					window.addEventListener('message', function (event) {
 						if (!frame || event.source !== frame.contentWindow) return;
 						var data = event.data;
 						if (!data || data.type !== 'n8n-chat-connect-requested') return;
-						if (overlay) overlay.classList.add('open');
+						openConnectOrDialog();
 					});
 
 					// The widget mounts asynchronously, so its message listener may not be
@@ -774,29 +770,22 @@
 						overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.classList.remove('open'); });
 					}
 
-					// The bar's own control, so the popup is opened by a real click on this
-					// document: one opened from a message posted up by the sandboxed frame is
-					// downgraded to a tab by some browsers.
-					var barAction = document.getElementById('n8n-connect-bar-action');
-					if (barAction) {
-						barAction.addEventListener('click', function () {
-							// The shortcut needs a live authorize link, which an account that
-							// arrived already connected never got. A previously failed attempt is
-							// fine to repeat: the intent behind the link is read without being
-							// consumed, so it stays valid for a retry within its TTL.
-							var row = onlyRow();
-							var key = row ? row.getAttribute('data-row-key') : null;
-							var btn = row ? row.querySelector('.connect') : null;
-							var url = btn ? btn.getAttribute('data-url') : null;
-							if (key && !connected[key] && url) {
-								openConnect(key, url);
-								return;
-							}
-							// Everything else, including a fully connected single account, lands
-							// in the dialog - that is what holds Disconnect.
-							if (overlay) overlay.classList.add('open');
-						});
+					function openConnectOrDialog() {
+						var row = onlyRow();
+						var key = row ? row.getAttribute('data-row-key') : null;
+						var btn = row ? row.querySelector('.connect') : null;
+						var url = btn ? btn.getAttribute('data-url') : null;
+						if (key && !connected[key] && url) {
+							openConnect(key, url);
+							return;
+						}
+						// Everything else, including a fully connected single account, lands
+						// in the dialog - that is what holds Disconnect.
+						if (overlay) overlay.classList.add('open');
 					}
+
+					var barAction = document.getElementById('n8n-connect-bar-action');
+					if (barAction) barAction.addEventListener('click', openConnectOrDialog);
 
 					// Tap toggle for the tooltip, for browsers that don't focus a tapped button.
 					var barInfo = document.getElementById('n8n-connect-bar-info');
