@@ -51,7 +51,9 @@ import type {
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	parseCanvasGroupNodeId,
 } from '@/features/workflows/canvas/canvas.types';
+import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -837,8 +839,38 @@ async function loadCredentials() {
  * Connections
  */
 
+/** Map a `group:<id>` endpoint onto the group's placeholder node main port. */
+function resolveGroupEndpoint(
+	id: string,
+	mode: CanvasConnectionMode,
+): { id: string; handle: string } | undefined {
+	const groupId = parseCanvasGroupNodeId(id);
+	if (groupId === undefined) return undefined;
+	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
+	if (!placeholder) return undefined;
+	return {
+		id: placeholder.id,
+		handle: createCanvasConnectionHandleString({
+			mode,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		}),
+	};
+}
+
 function onCreateConnection(connection: Connection) {
-	createConnection(connection, { trackHistory: true });
+	const source = resolveGroupEndpoint(connection.source, CanvasConnectionMode.Output);
+	const target = resolveGroupEndpoint(connection.target, CanvasConnectionMode.Input);
+	createConnection(
+		{
+			...connection,
+			source: source?.id ?? connection.source,
+			sourceHandle: source?.handle ?? connection.sourceHandle,
+			target: target?.id ?? connection.target,
+			targetHandle: target?.handle ?? connection.targetHandle,
+		},
+		{ trackHistory: true },
+	);
 }
 
 function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {

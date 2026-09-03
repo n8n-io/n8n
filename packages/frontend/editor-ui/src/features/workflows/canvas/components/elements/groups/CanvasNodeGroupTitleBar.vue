@@ -81,6 +81,7 @@ const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
+const isEmptyGroup = computed(() => props.data.isEmptyGroup);
 const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
@@ -423,14 +424,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 				type="target"
 				:position="Position.Left"
 				:class="$style.handle"
-				:is-connectable="false"
+				:is-connectable="isEmptyGroup && !readOnly"
 			/>
 			<Handle
 				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
 				type="source"
 				:position="Position.Right"
 				:class="$style.handle"
-				:is-connectable="false"
+				:is-connectable="isEmptyGroup && !readOnly"
 			/>
 
 			<div
