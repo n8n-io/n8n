@@ -20,7 +20,7 @@ concurrency:
 
 env:
   NODE_VERSION: '26.7.0'
-  TURBO_CANARY_VERSION: '2.9.18'
+  TURBO_CANARY_VERSION: '2.9.15'
 
 jobs:
   prime-cache:
@@ -73,20 +73,38 @@ jobs:
       - name: Pin the canary Turbo binary
         shell: bash
         run: |
-          expected="$TURBO_CANARY_VERSION"
           case "$(uname -m)" in
-            x86_64) binary_package='@turbo/linux-64' ;;
-            aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
+            x86_64)
+              binary_package='linux-64'
+              integrity='sha512-/bmxn+x/xE+oh0VzEXt/zf2zsORAYZPrL3db5/VrXzYt0Z4wxcvffwJBGlSfla2smfS1BLGBiyWldJlWDXJVXA=='
+              ;;
+            aarch64 | arm64)
+              binary_package='linux-arm64'
+              integrity='sha512-cbOaDe1ijz5As+mimOOHgmRMolZZZO7miNBHHp5xdiYMm2Q/Dwu1JVLx/Kw4s7xjocG/oEoHrpHrxpEAIEfNiw=='
+              ;;
             *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
           esac
 
           install_dir="$RUNNER_TEMP/turbo-canary"
-          npm install --prefix "$install_dir" --no-save --ignore-scripts --prefer-online \
-            "${binary_package}@${expected}"
-          binary="$install_dir/node_modules/$binary_package/bin/turbo"
+          archive="$RUNNER_TEMP/${binary_package}.tgz"
+          curl -fsSL --retry 3 \
+            "https://registry.npmjs.org/@turbo/${binary_package}/-/${binary_package}-${TURBO_CANARY_VERSION}.tgz?canary=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --output "$archive"
+          ARCHIVE="$archive" EXPECTED_INTEGRITY="$integrity" node <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+
+          const actual = `sha512-${crypto.createHash('sha512').update(fs.readFileSync(process.env.ARCHIVE)).digest('base64')}`;
+          if (actual !== process.env.EXPECTED_INTEGRITY) {
+            throw new Error(`Turbo archive integrity mismatch: ${actual}`);
+          }
+          NODE
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir"
+          binary="$install_dir/package/bin/turbo"
           actual="$("$binary" --version)"
-          if [ "$actual" != "$expected" ]; then
-            echo "Turbo binary $actual does not match package $expected" >&2
+          if [ "$actual" != "$TURBO_CANARY_VERSION" ]; then
+            echo "Turbo binary $actual does not match package $TURBO_CANARY_VERSION" >&2
             exit 1
           fi
 
@@ -194,20 +212,38 @@ jobs:
       - name: Pin the canary Turbo binary
         shell: bash
         run: |
-          expected="$TURBO_CANARY_VERSION"
           case "$(uname -m)" in
-            x86_64) binary_package='@turbo/linux-64' ;;
-            aarch64 | arm64) binary_package='@turbo/linux-arm64' ;;
+            x86_64)
+              binary_package='linux-64'
+              integrity='sha512-/bmxn+x/xE+oh0VzEXt/zf2zsORAYZPrL3db5/VrXzYt0Z4wxcvffwJBGlSfla2smfS1BLGBiyWldJlWDXJVXA=='
+              ;;
+            aarch64 | arm64)
+              binary_package='linux-arm64'
+              integrity='sha512-cbOaDe1ijz5As+mimOOHgmRMolZZZO7miNBHHp5xdiYMm2Q/Dwu1JVLx/Kw4s7xjocG/oEoHrpHrxpEAIEfNiw=='
+              ;;
             *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
           esac
 
           install_dir="$RUNNER_TEMP/turbo-canary"
-          npm install --prefix "$install_dir" --no-save --ignore-scripts --prefer-online \
-            "${binary_package}@${expected}"
-          binary="$install_dir/node_modules/$binary_package/bin/turbo"
+          archive="$RUNNER_TEMP/${binary_package}.tgz"
+          curl -fsSL --retry 3 \
+            "https://registry.npmjs.org/@turbo/${binary_package}/-/${binary_package}-${TURBO_CANARY_VERSION}.tgz?canary=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --output "$archive"
+          ARCHIVE="$archive" EXPECTED_INTEGRITY="$integrity" node <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+
+          const actual = `sha512-${crypto.createHash('sha512').update(fs.readFileSync(process.env.ARCHIVE)).digest('base64')}`;
+          if (actual !== process.env.EXPECTED_INTEGRITY) {
+            throw new Error(`Turbo archive integrity mismatch: ${actual}`);
+          }
+          NODE
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir"
+          binary="$install_dir/package/bin/turbo"
           actual="$("$binary" --version)"
-          if [ "$actual" != "$expected" ]; then
-            echo "Turbo binary $actual does not match package $expected" >&2
+          if [ "$actual" != "$TURBO_CANARY_VERSION" ]; then
+            echo "Turbo binary $actual does not match package $TURBO_CANARY_VERSION" >&2
             exit 1
           fi
 
