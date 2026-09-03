@@ -22,8 +22,9 @@ import { isTriggerNode } from './node-helpers';
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
 
-/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
-export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
+// ponytail: raised for the POC so an objective fits; the collapsed panel
+// was designed for 145 characters and will overflow past three lines.
+export const GROUP_DESCRIPTION_MAX_LENGTH = 1000;
 
 /**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
