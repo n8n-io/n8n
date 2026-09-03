@@ -139,6 +139,7 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
+	'create:empty-group': [];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -1537,6 +1538,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('create:node', 'context_menu');
 		case 'add_sticky':
 			return emit('create:sticky');
+		case 'add_empty_group':
+			return emit('create:empty-group');
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete':

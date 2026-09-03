@@ -70,6 +70,7 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
+import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -1075,6 +1076,20 @@ function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 }
 
+async function onCreateEmptyGroup() {
+	const name = workflowDocumentStore.value.getNextDefaultName(
+		i18n.baseText('canvas.nodeGroup.defaultTitle'),
+	);
+	await onAddNodesAndConnections({
+		nodes: [{ type: GROUP_PLACEHOLDER_NODE_TYPE, name }],
+		connections: [],
+	});
+	const placeholder = workflowDocumentStore.value.getNodeByName(name);
+	if (!placeholder) return;
+	// ponytail: not one undo step with the node; wrap in a history bulk later.
+	workflowDocumentStore.value.createGroup([placeholder.id], name);
+}
+
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
 	const isAddBetweenTool =
@@ -2065,6 +2080,7 @@ onBeforeUnmount(() => {
 			@click:pane="onClickPane"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
+			@create:empty-group="onCreateEmptyGroup"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"

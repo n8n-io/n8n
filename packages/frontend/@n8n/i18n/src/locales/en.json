@@ -2523,6 +2523,8 @@
 	"contextMenu.addNodesToChat": "Add node to chat | Add {count} nodes to chat",
 	"contextMenu.renameGroup": "Rename group",
 	"contextMenu.ungroupNodes": "Ungroup nodes",
+	"contextMenu.addEmptyGroup": "Add empty group",
+	"canvas.nodeGroup.generate": "Generate nodes for this group",
 	"contextMenu.expandAllGroups": "Expand all groups",
 	"contextMenu.collapseAllGroups": "Collapse all groups",
 	"contextMenu.expandSelectedGroups": "Expand selected",

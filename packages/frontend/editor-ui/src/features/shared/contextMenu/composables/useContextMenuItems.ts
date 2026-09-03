@@ -40,6 +40,7 @@ export type ContextMenuAction =
 	| 'deselect_all'
 	| 'add_node'
 	| 'add_sticky'
+	| 'add_empty_group'
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
@@ -452,6 +453,11 @@ export function useContextMenuItems(
 					id: 'add_sticky',
 					shortcut: { shiftKey: true, keys: ['s'] },
 					label: i18n.baseText('contextMenu.addSticky'),
+					disabled: isReadOnly.value,
+				},
+				{
+					id: 'add_empty_group',
+					label: i18n.baseText('contextMenu.addEmptyGroup'),
 					disabled: isReadOnly.value,
 				},
 				...layoutActions,
