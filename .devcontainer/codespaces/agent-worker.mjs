@@ -270,6 +270,15 @@ function progressText(tools, textParts) {
 	return answer ? `${prefix}\n\n${answer.slice(-remaining)}` : prefix;
 }
 
+function finalSlackText(text, sessionId, boxId) {
+	const metadata = [sessionId && `⟳session:${sessionId}`, boxId && `⟳box:${boxId}`]
+		.filter(Boolean)
+		.join(' ');
+	if (!metadata) return text.slice(0, 3900) || 'Flaky completed the turn';
+	const body = text.slice(0, Math.max(0, 3898 - metadata.length));
+	return `${body}\n\n${metadata}`;
+}
+
 export async function startSlackProgress(
 	turn,
 	{ token = SLACK_TOKEN, callSlack = slackApi, updateInterval = SLACK_UPDATE_INTERVAL_MS } = {},
@@ -327,14 +336,14 @@ export async function startSlackProgress(
 				schedule();
 			}
 		},
-		async finish(text) {
+		async finish(text, sessionId, boxId) {
 			stopped = true;
 			if (timer) clearTimeout(timer);
 			await inFlight;
 			const delay = Math.max(0, lastUpdate + updateInterval - Date.now());
 			if (delay) await sleep(delay);
 			lastUpdate = Date.now();
-			await update(text.slice(0, 3900) || 'OpenCode completed the turn');
+			await update(finalSlackText(text, sessionId, boxId));
 		},
 	};
 }
@@ -364,7 +373,7 @@ async function handle(turn) {
 			boxId: BOX_ID,
 		};
 	}
-	await progress.finish(result.output);
+	await progress.finish(result.output, result.sessionId, result.boxId);
 	// Send the result to the turn's resume URL. This continues the waiting n8n
 	// execution. Retry on a failed status or a network error, so a transient
 	// failure does not drop the result and leave the turn to time out.

@@ -131,11 +131,15 @@ test('replaces progress with the final answer', async () => {
 	await waitFor(() => slack.calls.filter((call) => call.method === 'chat.update').length === 1);
 	const firstUpdateAt = Date.now();
 
-	await progress.finish('Final answer');
+	await progress.finish('Final answer', 'ses_1', 'box-1');
 
 	assert.deepEqual(slack.calls.at(-1), {
 		method: 'chat.update',
-		body: { channel: 'C123', ts: '456.789', text: 'Final answer' },
+		body: {
+			channel: 'C123',
+			ts: '456.789',
+			text: 'Final answer\n\n⟳session:ses_1 ⟳box:box-1',
+		},
 	});
 	assert.ok(Date.now() - firstUpdateAt >= 40);
 });
