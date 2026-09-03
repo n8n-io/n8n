@@ -765,6 +765,78 @@ describe('AgentRuntime — empty stop turn retry', () => {
 	});
 });
 
+describe('AgentRuntime — volatile instruction provider', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('adds host instructions to the uncached system message without persisting them', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const provider = vi
+			.fn()
+			.mockResolvedValue('<background-updates>One result.</background-updates>');
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: provider,
+		});
+		const persistence = { threadId: 'thread-1', resourceId: 'resource-1' };
+
+		const result = await runtime.generate('hello', { persistence });
+
+		expect(provider).toHaveBeenCalledWith({ persistence });
+		const system = generateText.mock.calls[0]?.[0].instructions as Array<{ content: string }>;
+		expect(system[0]?.content).toBe('Base instructions.');
+		expect(system[1]?.content).toContain('<background-updates>');
+		expect(JSON.stringify(result.getState())).not.toContain('<background-updates>');
+	});
+
+	it('calls the provider before each model-loop iteration', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-provider',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const provider = vi.fn().mockResolvedValue(undefined);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: provider,
+		});
+
+		await runtime.generate('search');
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(provider).toHaveBeenCalledTimes(2);
+	});
+
+	it('continues the model call when the provider fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: vi.fn().mockRejectedValue(new Error('mail unavailable')),
+		});
+
+		await expect(runtime.generate('hello')).resolves.toEqual(
+			expect.objectContaining({ finishReason: 'stop' }),
+		);
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
 // ---------------------------------------------------------------------------
 // reasoning-only turn
 // ---------------------------------------------------------------------------

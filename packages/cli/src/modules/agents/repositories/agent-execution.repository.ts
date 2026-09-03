@@ -39,6 +39,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
+	async existsRunningByThread(threadId: string): Promise<boolean> {
+		return await this.existsBy({ threadId, status: 'running' });
+	}
+
 	async touchRunning(executionId: string): Promise<void> {
 		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
 	}

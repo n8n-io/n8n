@@ -145,6 +145,11 @@ export type PubSubCommandMap = {
 		jobId: string;
 	};
 
+	/** Ask mains to deliver settled background job mail to its parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;

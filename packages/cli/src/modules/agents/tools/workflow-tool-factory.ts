@@ -722,7 +722,9 @@ async function backgroundWaitingExecution(
 
 		const executionPersistence = Container.get(ExecutionPersistence);
 		const recheck = await executionPersistence.findSingleExecution(result.executionId);
-		if (!recheck) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+		if (!recheck) {
+			return await settleOutcomeUnknown(jobService, agentRun.threadId, jobId, result.executionId);
+		}
 
 		const rawStatus = recheck.status;
 		if (isTerminalExecutionStatus(rawStatus)) {
@@ -731,14 +733,16 @@ async function backgroundWaitingExecution(
 				unflattenData: true,
 			});
 			// Pruned between the status read and the data read.
-			if (!full) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+			if (!full) {
+				return await settleOutcomeUnknown(jobService, agentRun.threadId, jobId, result.executionId);
+			}
 
 			const fresh = formatResult(result.executionId, full.status, full.data, allOutputs);
 			// The job row keeps the last node's output for completed runs only,
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full.data?.resultData?.runData;
-			await jobService.settle(jobId, {
+			const claimed = await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
 					settlementStatus === 'completed' && runData
@@ -746,6 +750,8 @@ async function backgroundWaitingExecution(
 						: null,
 				error: fresh.error ?? null,
 			});
+			// The model receives this result inline, so no wake needs to repeat it.
+			if (claimed) await jobService.markMailConsumed(agentRun.threadId, [jobId]);
 
 			return { ...withoutWaitState(fresh), jobId };
 		}
@@ -775,6 +781,7 @@ async function backgroundWaitingExecution(
 /** The execution is gone, so its outcome cannot be known; a lost claim means the settle hook recorded it first. */
 async function settleOutcomeUnknown(
 	jobService: AgentBackgroundJobService,
+	parentThreadId: string,
 	jobId: string,
 	executionId: string,
 ): Promise<WorkflowToolResult & { jobId: string }> {
@@ -782,6 +789,8 @@ async function settleOutcomeUnknown(
 		status: 'failed',
 		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	});
+	// The model receives this outcome inline, so no wake needs to repeat it.
+	if (claimed) await jobService.markMailConsumed(parentThreadId, [jobId]);
 	return {
 		executionId,
 		status: 'unknown',

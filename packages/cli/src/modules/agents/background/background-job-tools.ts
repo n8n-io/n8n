@@ -174,6 +174,10 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 			}
 
 			const jobs = await jobService.listForThread(parentThreadId, input.jobIds);
+			await jobService.markMailConsumed(
+				parentThreadId,
+				jobs.filter((job) => job.status !== 'running').map((job) => job.id),
+			);
 			return {
 				jobs: jobs.map((job) => ({
 					jobId: job.id,

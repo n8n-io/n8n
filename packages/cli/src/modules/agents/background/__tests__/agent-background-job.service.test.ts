@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
 import { WorkflowOperationError } from 'n8n-workflow';
@@ -20,6 +21,7 @@ import {
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
 } from '../agent-background-job.service';
+import { AgentWakeService } from '../agent-wake.service';
 
 function makeWorkflowJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJob {
 	return makeJob({
@@ -59,12 +61,15 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 	} as AgentBackgroundJob;
 }
 
-function setup() {
+function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
+	});
 	(logger.scoped as Mock).mockReturnValue(logger);
 
 	jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(0);
@@ -82,6 +87,7 @@ function setup() {
 		executionPersistence,
 		publisher,
 		logger,
+		agentsConfig,
 	);
 	return { service, jobRepository, executionRepository, executionPersistence, publisher, logger };
 }
@@ -134,6 +140,40 @@ describe('registerSubAgentJob', () => {
 });
 
 describe('settle', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('requests a parent wake after the row settles', async () => {
+		const { service, jobRepository } = setup({ backgroundTasksEnabled: true });
+		const wakeService = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wakeService);
+		jobRepository.findById.mockResolvedValue(makeJob({ status: 'completed' }));
+
+		await expect(service.settle('job-1', { status: 'completed', result: 'done' })).resolves.toBe(
+			true,
+		);
+
+		expect(wakeService.requestWake).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('still settles when the wake request fails or the feature is off', async () => {
+		const failing = setup({ backgroundTasksEnabled: true });
+		const wakeService = mock<AgentWakeService>();
+		wakeService.requestWake.mockRejectedValue(new Error('pubsub down'));
+		Container.set(AgentWakeService, wakeService);
+		failing.jobRepository.findById.mockResolvedValue(makeJob({ status: 'completed' }));
+		await expect(
+			failing.service.settle('job-1', { status: 'completed', result: 'done' }),
+		).resolves.toBe(true);
+
+		const disabled = setup();
+		await expect(
+			disabled.service.settle('job-1', { status: 'completed', result: 'done' }),
+		).resolves.toBe(true);
+		expect(disabled.jobRepository.findById).not.toHaveBeenCalled();
+	});
+
 	it('drops the abort handle even when the settle write throws', async () => {
 		const { service, jobRepository, executionRepository } = setup();
 		jobRepository.settleIfRunning.mockRejectedValueOnce(new Error('db down'));
@@ -211,8 +251,20 @@ describe('cancel', () => {
 
 		expect(outcome).toBe('cancelled');
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(controller.signal.aborted).toBe(true);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('still stops the child and reports cancelled when consuming its mail fails', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+		jobRepository.markMailConsumed.mockRejectedValue(new Error('db down'));
+		const controller = new AbortController();
+		service.registerAbortController('job-1', controller);
+
+		expect(await service.cancel('thread-1', 'job-1')).toBe('cancelled');
+		expect(controller.signal.aborted).toBe(true);
 	});
 
 	it('still reports cancelled when the pubsub relay fails — the row is already claimed', async () => {

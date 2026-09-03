@@ -33,10 +33,27 @@ describe('AgentTestChatService', () => {
 		const messages = [{ id: 'message-1' }];
 		memory.getMessages.mockResolvedValue(messages as never);
 
-		await expect(service.getTestChatMessages(agentId, userId)).resolves.toBe(messages);
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual(messages);
 		expect(memory.getMessages).toHaveBeenCalledWith(`test-${agentId}:${userId}`, {
 			resourceId: `draft-chat:${userId}`,
 		});
+	});
+
+	it('hides synthetic wake input and keeps its assistant response', async () => {
+		const { service, memory } = makeService();
+		memory.getMessages.mockResolvedValue([
+			{
+				role: 'user',
+				content: [
+					{ type: 'text', text: '<background-jobs-settled>mail</background-jobs-settled>' },
+				],
+			},
+			{ role: 'assistant', content: [{ type: 'text', text: 'I handled the result.' }] },
+		] as never);
+
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual([
+			{ role: 'assistant', content: [{ type: 'text', text: 'I handled the result.' }] },
+		]);
 	});
 
 	it('clears one user thread without changing all-agent cleanup', async () => {

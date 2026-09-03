@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
@@ -15,6 +16,7 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -65,6 +67,12 @@ export class AgentInterruptedExecutionSweeper {
 			}
 		} catch (error) {
 			this.logger.error('Failed to reconcile background job rows', { error });
+		}
+
+		try {
+			await this.agentWakeService.drainUnconsumed();
+		} catch (error) {
+			this.logger.error('Failed to schedule pending background job mail', { error });
 		}
 	}
 }
