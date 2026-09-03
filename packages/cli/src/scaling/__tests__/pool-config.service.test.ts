@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectPoolSettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +12,7 @@ describe('PoolConfigService', () => {
 	const cacheService = mock<CacheService>();
 	const workerPoolsService = mock<WorkerPoolsService>();
 	const globalConfig = mock<GlobalConfig>();
+	const licenseState = mock<LicenseState>();
 
 	const setEnabled = (enabled: boolean) => {
 		globalConfig.queue = { workerPool: { enabled } } as GlobalConfig['queue'];
@@ -21,11 +23,13 @@ describe('PoolConfigService', () => {
 		cacheService,
 		workerPoolsService,
 		globalConfig,
+		licenseState,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setEnabled(true);
+		licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
 		// Default: cache miss, no workers registered
 		cacheService.get.mockResolvedValue(undefined);
 		workerPoolsService.getAvailablePools.mockResolvedValue([]);
@@ -41,6 +45,17 @@ describe('PoolConfigService', () => {
 			const result = await service.resolvePoolForExecution({ projectId });
 
 			expect(result).toEqual({ queueName: 'jobs-gpu', poolName: 'gpu' });
+		});
+
+		it('falls back to the default queue when worker pools are not licensed', async () => {
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(false);
+			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
+			workerPoolsService.getAvailablePools.mockResolvedValue(['gpu']);
+
+			const result = await service.resolvePoolForExecution({ projectId });
+
+			expect(result).toEqual({ queueName: 'jobs', poolName: undefined });
+			expect(projectPoolSettingsRepository.getDefaultPool).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the default queue when the project has no pool set', async () => {

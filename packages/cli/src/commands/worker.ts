@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, LicenseState } from '@n8n/backend-common';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -109,6 +109,17 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+
+		if (
+			resolveWorkerPoolName(this.globalConfig.queue.workerPool) !== '' &&
+			!Container.get(LicenseState).isWorkerPoolsLicensed()
+		) {
+			this.logger.error(
+				'A worker pool is configured (`N8N_WORKER_POOL_NAME`), but worker pools are not licensed. Either remove the worker pool configuration, or upgrade to a license that supports this feature.',
+			);
+			process.exit(1);
+		}
+
 		await this.initCommunityPackages();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');

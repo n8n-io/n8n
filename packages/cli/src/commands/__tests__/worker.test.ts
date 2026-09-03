@@ -153,6 +153,7 @@ describe('Worker', () => {
 				taskRunners: {},
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				queue: { workerPool: { enabled: false, name: '' } },
 			};
 			// Stub the init steps that go beyond `super.init()`, as in start.test.ts
 			worker.setConcurrency = vi.fn().mockResolvedValue(undefined);

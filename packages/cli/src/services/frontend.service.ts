@@ -424,7 +424,7 @@ export class FrontendService {
 				enabled: false,
 			},
 			workerPools: {
-				enabled: this.globalConfig.queue.workerPool.enabled,
+				enabled: false,
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
@@ -546,6 +546,9 @@ export class FrontendService {
 			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
 			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
+
+		this.settings.workerPools.enabled =
+			this.globalConfig.queue.workerPool.enabled && this.licenseState.isWorkerPoolsLicensed();
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {

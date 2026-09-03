@@ -1,4 +1,5 @@
 import type { ProjectPoolSettingsResponse, UpdateProjectPoolSettingsDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectPoolSettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,6 +25,7 @@ export class PoolConfigService {
 		private readonly cacheService: CacheService,
 		private readonly workerPoolsService: WorkerPoolsService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	/**
@@ -37,6 +39,7 @@ export class PoolConfigService {
 		const systemDefault = { queueName: DEFAULT_QUEUE_NAME, poolName: undefined };
 
 		if (!this.globalConfig.queue.workerPool.enabled) return systemDefault;
+		if (!this.licenseState.isWorkerPoolsLicensed()) return systemDefault;
 		if (!data.projectId) return systemDefault;
 
 		const pool = await this.getProjectDefaultPool(data.projectId);
