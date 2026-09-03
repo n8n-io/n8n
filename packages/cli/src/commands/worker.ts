@@ -64,8 +64,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		try {
 			await this.externalHooks?.run('n8n.stop');
 
-			// Wait for in-process executions not tracked as Bull jobs,
-			// which are instead drained by `ScalingService.stopWorker`
+			// Final wait for any execution still active after the shutdown hooks.
 			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
@@ -87,8 +86,12 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
-			this.gracefulShutdownTimeoutInS =
+			const timeout =
 				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// Set both fields: one arms the force-exit timer, the other sizes the
+			// shutdown drains.
+			this.gracefulShutdownTimeoutInS = timeout;
+			this.globalConfig.generic.gracefulShutdownTimeout = timeout;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
