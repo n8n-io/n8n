@@ -34,13 +34,13 @@ export function formatClaimHeadline(claim: VerificationClaim): string {
 /** One short sentence per fact the claim carries, most significant first. */
 export function describeClaimCoverage(claim: VerificationClaim): string[] {
 	const facts: string[] = [];
-	if (claim.plannedNodeCount > 0) {
-		facts.push(
-			`${String(claim.reachedNodeCount)} of ${String(claim.plannedNodeCount)} planned node(s) ran.`,
-		);
-	}
+	// No standalone ratio: on a fully reached run it says nothing, and the count
+	// only means something next to the nodes it refers to.
 	if (claim.nodesNotReached.length > 0) {
-		facts.push(`Never reached, so UNVERIFIED: ${formatClaimNodeList(claim.nodesNotReached)}.`);
+		facts.push(
+			`${String(claim.nodesNotReached.length)} of ${String(claim.plannedNodeCount)} node(s) were ` +
+				`never reached, so they are UNVERIFIED: ${formatClaimNodeList(claim.nodesNotReached)}.`,
+		);
 	}
 	if (claim.simulatedNodes.length > 0) {
 		facts.push(

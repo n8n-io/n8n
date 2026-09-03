@@ -47,7 +47,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('Workflow verified successfully');
 			expect(result).toContain('NOT fully verified');
-			expect(result).toContain('5 of 12 planned node(s) ran');
+			expect(result).toContain('2 of 12 node(s) were never reached');
 			expect(result).toContain('Send Email, Log Row');
 			expect(result).toContain('Do NOT offer to publish it.');
 			expect(result).toContain('Offer a live end-to-end test');

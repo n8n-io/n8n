@@ -42,7 +42,10 @@ export function deriveVerificationClaim(args: DeriveVerificationClaimArgs): Veri
 	return {
 		level,
 		plannedNodeCount,
-		reachedNodeCount: analysis.reachedNames.size,
+		// Counted over the simulation plan, the same set `nodesNotReached` comes
+		// from. `reachedNames` covers the whole run, and the plan skips mockable
+		// triggers, so comparing the two produced counts like "2 of 1".
+		reachedNodeCount: Math.max(plannedNodeCount - nodesNotReached.length, 0),
 		nodesNotReached,
 		simulatedNodes,
 		pinnedNodes: [...analysis.workflowPinnedNodeNames],

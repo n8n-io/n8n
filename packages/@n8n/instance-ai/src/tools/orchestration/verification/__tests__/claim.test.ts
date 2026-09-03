@@ -119,6 +119,31 @@ describe('deriveVerificationClaim', () => {
 		expect(claim.unprovenTargets).toEqual(['Send']);
 	});
 
+	it('counts reached nodes over the plan, not the whole run', () => {
+		// A mockable trigger is not classified, so it never appears in the plan.
+		// Counting every executed node against the plan length reported "2 of 1".
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis({
+				reachedNames: new Set(['Every Morning at 9', 'Send Slack Message']),
+				reachedSimulatedNodes: [{ nodeName: 'Send Slack Message', reason: 'Sends a message' }],
+			}),
+			plannedNodeCount: 1,
+		});
+
+		expect(claim.plannedNodeCount).toBe(1);
+		expect(claim.reachedNodeCount).toBe(1);
+		expect(claim.reachedNodeCount).toBeLessThanOrEqual(claim.plannedNodeCount);
+	});
+
+	it('never reports a negative reached count', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis({ nodesNotReached: ['A', 'B', 'C'] }),
+			plannedNodeCount: 1,
+		});
+
+		expect(claim.reachedNodeCount).toBe(0);
+	});
+
 	it('reports failed on a failed run regardless of coverage', () => {
 		const claim = deriveVerificationClaim({
 			analysis: makeAnalysis({
