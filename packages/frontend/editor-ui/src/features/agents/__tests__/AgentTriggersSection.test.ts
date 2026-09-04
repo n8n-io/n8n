@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import AgentChannelsSection from '../components/AgentChannelsSection.vue';
+import AgentTriggersSection from '../components/AgentTriggersSection.vue';
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
@@ -38,7 +38,7 @@ vi.mock('../components/AgentChannelModal.vue', () => ({
 }));
 
 function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
-	return mount(AgentChannelsSection, {
+	return mount(AgentTriggersSection, {
 		props: {
 			connectedTriggers: [],
 			projectId: 'project-id',
@@ -50,12 +50,13 @@ function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
 			stubs: {
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
+				AgentSchedulesRow: { template: '<div />' },
 			},
 		},
 	});
 }
 
-describe('AgentChannelsSection', () => {
+describe('AgentTriggersSection', () => {
 	describe('simpleChannelSetup', () => {
 		it('does not force simple setup on the channel modal by default', async () => {
 			const wrapper = mountSection();

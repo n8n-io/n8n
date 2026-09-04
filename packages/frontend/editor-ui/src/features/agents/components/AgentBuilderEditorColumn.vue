@@ -16,7 +16,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
-import AgentChannelsSection from './AgentChannelsSection.vue';
+import AgentTriggersSection from './AgentTriggersSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -121,7 +121,6 @@ const i18n = useI18n();
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
-						:show-instructions-toolbar="true"
 						instructions-max-height="none"
 						@update:config="emit('update:config', $event)"
 					/>
@@ -130,7 +129,7 @@ const i18n = useI18n();
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
-						<AgentChannelsSection
+						<AgentTriggersSection
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"

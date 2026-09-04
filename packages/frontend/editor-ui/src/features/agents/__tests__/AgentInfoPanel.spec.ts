@@ -171,7 +171,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 function mountPanel(
 	instructions = '# Role\nHelp users.',
 	overrides: Partial<{
-		showInstructionsToolbar: boolean;
 		showModel: boolean;
 		config: Record<string, unknown>;
 	}> = {},
@@ -217,13 +216,13 @@ describe('AgentInfoPanel', () => {
 		defaultModelHolder.value = null;
 	});
 
-	it('renders instructions as a contained markdown editor with a floating toolbar', () => {
+	it('renders instructions as a ghost markdown editor with a floating toolbar', () => {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'contained',
+			variant: 'ghost',
 			showToolbar: 'floating',
 			maxHeight: '360px',
 		});
@@ -231,16 +230,6 @@ describe('AgentInfoPanel', () => {
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
 		expect(wrapper.text()).not.toContain('Enter instructions here');
-	});
-
-	it('keeps the markdown toolbar floating when the instructions toolbar is enabled', () => {
-		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
-
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
-		expect(editor.props()).toMatchObject({
-			showToolbar: 'floating',
-			variant: 'contained',
-		});
 	});
 
 	it('does not pass placeholder text to the instructions editor', () => {

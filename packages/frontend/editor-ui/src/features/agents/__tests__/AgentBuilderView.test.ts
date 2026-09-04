@@ -1911,11 +1911,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
 
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		channels.vm.$emit('agent-changed');
+		triggers.vm.$emit('agent-changed');
 		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');

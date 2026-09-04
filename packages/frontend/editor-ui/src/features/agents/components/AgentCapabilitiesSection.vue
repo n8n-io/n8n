@@ -2,24 +2,23 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
+import { N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
-import { getAgentTasks } from '../composables/useAgentApi';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
-import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
+import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentChipRow from './AgentChipRow.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
 
@@ -73,9 +72,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
-const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 
 const projectIdRef = computed(() => props.projectId);
 const {
@@ -83,12 +81,6 @@ const {
 	ensureLoaded: ensureProjectAgentsLoaded,
 	refresh: refreshProjectAgents,
 } = useProjectAgentsList(projectIdRef);
-
-type TaskRow = AgentTaskDto & {
-	enabled: boolean;
-	invalid: boolean;
-	invalidReasons: string[];
-};
 
 const mcpServers = computed(() => props.config?.mcpServers ?? []);
 const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
@@ -118,26 +110,6 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-const taskBodies = ref<AgentTaskDto[]>([]);
-const taskErrorMessage = ref('');
-
-const taskRows = computed<TaskRow[]>(() => {
-	const bodiesById = new Map(taskBodies.value.map((body) => [body.id, body]));
-	return props.taskRefs
-		.map((taskRef) => {
-			const body = bodiesById.get(taskRef.id);
-			if (!body) return null;
-			const reasons = taskIssueMessages.value.get(taskRef.id) ?? [];
-			return {
-				...body,
-				enabled: taskRef.enabled,
-				invalid: reasons.length > 0,
-				invalidReasons: reasons,
-			};
-		})
-		.filter((task): task is TaskRow => task !== null);
-});
-
 // `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
 // @n8n/i18n's built type declarations — matches the same workaround already
 // used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
@@ -159,7 +131,6 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
 	'skill.missing_reference':
 		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
 	'tool.workflow.missing_reference':
 		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
 	'tool.workflow.incompatible_reference':
@@ -231,32 +202,9 @@ const mcpServerIssueMessages = computed(() =>
 const skillIssueMessages = computed(() =>
 	groupIssueMessages('skill', (issue) => issue.capability.id),
 );
-const taskIssueMessages = computed(() =>
-	groupIssueMessages('task', (issue) => issue.capability.id),
-);
 const subAgentIssueMessages = computed(() =>
 	groupIssueMessages('subAgent', (issue) => issue.capability.id),
 );
-
-async function reloadTasks() {
-	taskErrorMessage.value = '';
-	if (props.agentUnsaved) {
-		taskBodies.value = [];
-		return;
-	}
-	try {
-		taskBodies.value = await getAgentTasks(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-	} catch (error) {
-		taskErrorMessage.value =
-			error instanceof Error && error.message
-				? error.message
-				: i18n.baseText('agents.builder.tasks.loadError');
-	}
-}
 
 async function ensureSubAgentNamesLoaded() {
 	const agents = await ensureProjectAgentsLoaded();
@@ -267,36 +215,12 @@ async function ensureSubAgentNamesLoaded() {
 }
 
 onMounted(() => {
-	if (showSection('tasks')) void reloadTasks();
 	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
-});
-
-watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
-	if (showSection('tasks')) void reloadTasks();
 });
 
 watch([() => props.projectId, selectedSubAgentIds], () => {
 	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
-
-function openTaskModal(task: TaskRow | null) {
-	uiStore.openModalWithData({
-		name: AGENT_TASK_MODAL_KEY,
-		data: {
-			projectId: props.projectId,
-			agentId: props.agentId,
-			task,
-			isPublished: props.isPublished,
-			taskState: task
-				? {
-						enabled: task.enabled,
-					}
-				: undefined,
-			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
-			onSaved: () => emit('tasks-changed'),
-		},
-	});
-}
 
 type CapabilityToolEntry =
 	| {
@@ -424,6 +348,31 @@ const toolRows = computed<ToolRow[]>(() => {
 	);
 });
 
+const capabilitySectionItemCounts = computed<
+	Record<Exclude<AgentCapabilitySection, 'tasks'>, number>
+>(() => ({
+	tools: toolRows.value.length,
+	skills: props.skills.length,
+	subAgents: selectedSubAgents.value.length,
+}));
+
+const orderedCapabilitySections = computed(() => {
+	const sections = props.sections.filter(
+		(section): section is Exclude<AgentCapabilitySection, 'tasks'> => section !== 'tasks',
+	);
+	const sectionsWithItems = sections.filter(
+		(section) => capabilitySectionItemCounts.value[section] > 0,
+	);
+
+	if (sectionsWithItems.length === 0 || sectionsWithItems.length === sections.length)
+		return sections;
+
+	return [
+		...sectionsWithItems,
+		...sections.filter((section) => capabilitySectionItemCounts.value[section] === 0),
+	];
+});
+
 function toTargetKey(target: ToolOpenTarget): string {
 	if (target.kind === 'mcpServer') return `mcpServer:${encodeURIComponent(target.serverName)}`;
 	return `tool:${target.toolType}:${encodeURIComponent(target.id)}`;
@@ -543,17 +492,17 @@ function openExistingSubAgentModal(subAgent: {
 <template>
 	<div>
 		<div :class="$style.section" data-testid="agent-capabilities-section">
-			<div v-if="showSection('tools')" :class="$style.capabilityRow">
-				<N8nText v-if="toolRows.length > 0" bold :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.tools.title') }}
-				</N8nText>
-
-				<div :class="$style.chips">
-					<div
-						v-for="(tool, toolIndex) in toolRows"
-						:key="`tool-${tool.index}`"
-						:class="$style.chipGroup"
-					>
+			<template v-for="section in orderedCapabilitySections" :key="section">
+				<AgentChipRow
+					v-if="section === 'tools'"
+					:label="i18n.baseText('agents.builder.tools.title')"
+					:item-count="toolRows.length"
+					:add-label="i18n.baseText('agents.builder.tools.add')"
+					add-button-test-id="agent-capabilities-add-tool"
+					:disabled="props.disabled"
+					@add="emit('add-tool')"
+				>
+					<div v-for="tool in toolRows" :key="`tool-${tool.index}`" :class="$style.chipGroup">
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
@@ -632,54 +581,19 @@ function openExistingSubAgentModal(subAgent: {
 						>
 							{{ tool.label }}
 						</AgentChipButton>
-						<N8nTooltip
-							v-if="toolIndex === toolRows.length - 1"
-							:content="i18n.baseText('agents.builder.tools.add')"
-							placement="top"
-						>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-tool"
-								@click="emit('add-tool')"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
 					</div>
+				</AgentChipRow>
 
-					<div v-if="toolRows.length === 0" :class="$style.chipGroup">
-						<N8nTooltip
-							disabled
-							:content="i18n.baseText('agents.builder.tools.add')"
-							placement="top"
-						>
-							<N8nButton
-								:class="$style.addButtonEmpty"
-								variant="ghost"
-								size="medium"
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-tool"
-								@click="emit('add-tool')"
-							>
-								{{ i18n.baseText('agents.builder.tools.add') }}
-							</N8nButton>
-						</N8nTooltip>
-					</div>
-				</div>
-			</div>
-
-			<div v-if="showSection('skills')" :class="$style.capabilityRow">
-				<N8nText v-if="skills.length > 0" bold :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.skills.title') }}
-				</N8nText>
-
-				<div :class="$style.chips">
-					<div v-for="({ id, skill }, skillIndex) in skills" :key="id" :class="$style.chipGroup">
+				<AgentChipRow
+					v-else-if="section === 'skills'"
+					:label="i18n.baseText('agents.builder.skills.title')"
+					:item-count="skills.length"
+					:add-label="i18n.baseText('agents.builder.skills.add')"
+					add-button-test-id="agent-capabilities-add-skill"
+					:disabled="props.disabled"
+					@add="emit('add-skill')"
+				>
+					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
 						<AgentChipButton
 							icon="sparkles"
 							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
@@ -691,58 +605,19 @@ function openExistingSubAgentModal(subAgent: {
 						>
 							{{ skill.name || id }}
 						</AgentChipButton>
-
-						<N8nTooltip
-							v-if="skillIndex === skills.length - 1"
-							:content="i18n.baseText('agents.builder.skills.add')"
-							placement="top"
-						>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-skill"
-								@click="emit('add-skill')"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
 					</div>
+				</AgentChipRow>
 
-					<div v-if="skills.length === 0" :class="$style.chipGroup">
-						<N8nTooltip
-							disabled
-							:content="i18n.baseText('agents.builder.skills.add')"
-							placement="top"
-						>
-							<N8nButton
-								:class="$style.addButtonEmpty"
-								variant="ghost"
-								size="medium"
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-skill"
-								@click="emit('add-skill')"
-							>
-								{{ i18n.baseText('agents.builder.skills.add') }}
-							</N8nButton>
-						</N8nTooltip>
-					</div>
-				</div>
-			</div>
-			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
-				<N8nText v-if="selectedSubAgents.length > 0" bold :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.subAgents.title') }}
-				</N8nText>
-
-				<div :class="$style.chips">
-					<div
-						v-for="(subAgent, subAgentIndex) in selectedSubAgents"
-						:key="subAgent.id"
-						:class="$style.chipGroup"
-					>
+				<AgentChipRow
+					v-else
+					:label="i18n.baseText('agents.builder.subAgents.title')"
+					:item-count="selectedSubAgents.length"
+					:add-label="i18n.baseText('agents.builder.subAgents.add')"
+					add-button-test-id="agent-capabilities-add-sub-agent"
+					:disabled="props.disabled"
+					@add="openSubAgentsModal"
+				>
+					<div v-for="subAgent in selectedSubAgents" :key="subAgent.id" :class="$style.chipGroup">
 						<AgentChipButton
 							icon="bot"
 							:invalid="subAgent.invalid"
@@ -754,110 +629,9 @@ function openExistingSubAgentModal(subAgent: {
 						>
 							{{ subAgent.name }}
 						</AgentChipButton>
-
-						<N8nTooltip
-							v-if="subAgentIndex === selectedSubAgents.length - 1"
-							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
-							placement="top"
-						>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-sub-agent"
-								@click="openSubAgentsModal"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
 					</div>
-
-					<div v-if="selectedSubAgents.length === 0" :class="$style.chipGroup">
-						<N8nTooltip
-							disabled
-							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
-							placement="top"
-						>
-							<N8nButton
-								:class="$style.addButtonEmpty"
-								variant="ghost"
-								size="medium"
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-sub-agent"
-								@click="openSubAgentsModal"
-							>
-								{{ i18n.baseText('agents.builder.subAgents.add') }}
-							</N8nButton>
-						</N8nTooltip>
-					</div>
-				</div>
-			</div>
-			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
-				<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.tasks.title') }}
-				</N8nText>
-
-				<div :class="$style.chips">
-					<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
-						<AgentChipButton
-							icon="clipboard-list"
-							:invalid="task.invalid"
-							:invalid-reasons="task.invalidReasons"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-task-row"
-							@click="openTaskModal(task)"
-						>
-							{{ task.name }}
-						</AgentChipButton>
-
-						<N8nTooltip
-							v-if="taskIndex === taskRows.length - 1"
-							:content="i18n.baseText('agents.builder.tasks.add')"
-							placement="top"
-						>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-task"
-								@click="openTaskModal(null)"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
-					</div>
-
-					<div v-if="taskRows.length === 0" :class="$style.chipGroup">
-						<N8nTooltip
-							disabled
-							:content="i18n.baseText('agents.builder.tasks.add')"
-							placement="top"
-						>
-							<N8nButton
-								:class="$style.addButtonEmpty"
-								variant="ghost"
-								size="medium"
-								:disabled="props.disabled"
-								data-testid="agent-capabilities-add-task"
-								@click="openTaskModal(null)"
-							>
-								{{ i18n.baseText('agents.builder.tasks.add') }}
-							</N8nButton>
-						</N8nTooltip>
-					</div>
-
-					<N8nText v-if="taskErrorMessage" size="small" :class="$style.error">
-						{{ taskErrorMessage }}
-					</N8nText>
-				</div>
-			</div>
+				</AgentChipRow>
+			</template>
 		</div>
 	</div>
 </template>
@@ -868,27 +642,6 @@ function openExistingSubAgentModal(subAgent: {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.capabilityRow {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
-}
-
-.rowLabel {
-	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
-	flex: 0 0 var(--n8n--row-label-width);
-	line-height: var(--line-height--sm);
-	margin-top: var(--spacing--3xs);
-}
-
-.chips {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
-	min-width: 0;
 }
 
 .chipGroup {
@@ -905,31 +658,9 @@ function openExistingSubAgentModal(subAgent: {
 	}
 }
 
-.addButtonEmpty {
-	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--xs));
-	margin-top: calc(-1 * var(--spacing--4xs));
-}
-
 .groupChipLabel {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.error {
-	color: var(--color--danger);
-}
-
-@media (max-width: 768px) {
-	.capabilityRow {
-		flex-direction: column;
-		gap: var(--spacing--xs);
-	}
-
-	.rowLabel {
-		flex-basis: auto;
-		line-height: var(--line-height--sm);
-	}
 }
 </style>
