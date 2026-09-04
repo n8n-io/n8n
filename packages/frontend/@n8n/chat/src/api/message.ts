@@ -6,6 +6,39 @@ import type {
 	StructuredChunk,
 } from '@n8n/chat/types';
 
+function getCurrentPageQuery(): Record<string, string | string[]> | undefined {
+	if (typeof window === 'undefined') {
+		return undefined;
+	}
+
+	const params = new URLSearchParams(window.location.search);
+	if (params.size === 0) {
+		return undefined;
+	}
+
+	const query: Record<string, string | string[]> = Object.create(null);
+	for (const [key, value] of params.entries()) {
+		if (key === 'n8nShellInner') {
+			continue;
+		}
+
+		const existing = query[key];
+		if (existing === undefined) {
+			query[key] = value;
+			continue;
+		}
+
+		if (Array.isArray(existing)) {
+			existing.push(value);
+			continue;
+		}
+
+		query[key] = [existing, value];
+	}
+
+	return Object.keys(query).length > 0 ? query : undefined;
+}
+
 export async function loadPreviousSession(sessionId: string, options: ChatOptions) {
 	const method = options.webhookConfig?.method === 'POST' ? post : get;
 	return await method<LoadPreviousSessionResponse>(
@@ -28,6 +61,7 @@ export async function sendMessage(
 	options: ChatOptions,
 ) {
 	let response: SendMessageResponse;
+	const query = getCurrentPageQuery();
 
 	if (files.length > 0) {
 		response = await postWithFiles<SendMessageResponse>(
@@ -36,6 +70,7 @@ export async function sendMessage(
 				action: 'sendMessage',
 				[options.chatSessionKey as string]: sessionId,
 				[options.chatInputKey as string]: message,
+				...(query ? { chatQueryParameters: query } : {}),
 				...(options.metadata ? { metadata: options.metadata } : {}),
 			},
 			files,
@@ -51,6 +86,7 @@ export async function sendMessage(
 				action: 'sendMessage',
 				[options.chatSessionKey as string]: sessionId,
 				[options.chatInputKey as string]: message,
+				...(query ? { chatQueryParameters: query } : {}),
 				...(options.metadata ? { metadata: options.metadata } : {}),
 			},
 			{
@@ -215,9 +251,14 @@ async function sendWithFiles(
 	options: ChatOptions,
 ): Promise<Response> {
 	const formData = new FormData();
+	const query = getCurrentPageQuery();
 	formData.append('action', 'sendMessage');
 	formData.append(options.chatSessionKey as string, sessionId);
 	formData.append(options.chatInputKey as string, message);
+
+	if (query) {
+		formData.append('chatQueryParameters', JSON.stringify(query));
+	}
 
 	if (options.metadata) {
 		formData.append('metadata', JSON.stringify(options.metadata));
@@ -247,10 +288,12 @@ async function sendTextOnly(
 	sessionId: string,
 	options: ChatOptions,
 ): Promise<Response> {
+	const query = getCurrentPageQuery();
 	const body = {
 		action: 'sendMessage',
 		[options.chatSessionKey as string]: sessionId,
 		[options.chatInputKey as string]: message,
+		...(query ? { chatQueryParameters: query } : {}),
 		...(options.metadata ? { metadata: options.metadata } : {}),
 	};
 

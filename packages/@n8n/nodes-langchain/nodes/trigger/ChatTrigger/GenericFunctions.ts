@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import basicAuth from 'basic-auth';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n8n-workflow';
@@ -156,6 +157,34 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
  * The refresh token stays in its cookie and never reaches the caller, so it can't
  * reach a document either.
  */
+function getRedirectUrlWithPreservedQuery(req: Request, query: Record<string, unknown>): string {
+	const [path, existingQuery] = req.originalUrl.split('?');
+	const params = new URLSearchParams(existingQuery ?? '');
+
+	for (const [key, value] of Object.entries(query)) {
+		if (key === 'code' || key === 'state' || key === 'error' || key === 'error_description') {
+			params.delete(key);
+			continue;
+		}
+
+		if (value === undefined) continue;
+		if (Array.isArray(value)) {
+			params.delete(key);
+			for (const item of value) {
+				if (typeof item === 'string') params.append(key, item);
+			}
+			continue;
+		}
+
+		if (typeof value === 'string') {
+			params.set(key, value);
+		}
+	}
+
+	const nextQuery = params.toString();
+	return nextQuery ? `${path}?${nextQuery}` : path;
+}
+
 export async function establishChatSessionIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
@@ -187,7 +216,7 @@ export async function establishChatSessionIdentity(
 					expiresAt: expiryFrom(result.expiresIn),
 				});
 				setChatRefreshToken(res, req, resourceUrl, result.refreshToken);
-				const redirectPath = req.originalUrl.split('?')[0];
+				const redirectPath = getRedirectUrlWithPreservedQuery(req, req.query);
 				res.writeHead(302, { Location: redirectPath });
 				res.end();
 				return null;

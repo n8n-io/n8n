@@ -1,4 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { Request } from 'express';
 import pick from 'lodash/pick';
 import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
@@ -41,6 +42,7 @@ import {
 	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
+	CHAT_SHELL_INNER_PARAM,
 	isChatOAuth2Enabled,
 	isChatRefreshRequest,
 	isShellInnerRequest,
@@ -87,6 +89,77 @@ function withAuthenticatedUser(
 			lastName: user.lastName,
 		},
 	};
+}
+
+function getQueryParameters(
+	queryParameters: Request['query'],
+	excludedKey?: string,
+): Record<string, string | string[]> {
+	const query: Record<string, string | string[]> = Object.create(null);
+
+	for (const [key, rawValue] of Object.entries(queryParameters)) {
+		if (key === excludedKey) continue;
+
+		const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+		for (const value of values) {
+			if (typeof value !== 'string') continue;
+
+			const existing = query[key];
+			if (existing === undefined) {
+				query[key] = value;
+			} else if (Array.isArray(existing)) {
+				existing.push(value);
+			} else {
+				query[key] = [existing, value];
+			}
+		}
+	}
+
+	return query;
+}
+
+function appendQueryParameters(url: string, queryParameters: Request['query']): string {
+	const result = new URL(url);
+	const query = getQueryParameters(queryParameters, CHAT_SHELL_INNER_PARAM);
+
+	for (const [key, value] of Object.entries(query)) {
+		for (const item of Array.isArray(value) ? value : [value]) {
+			result.searchParams.append(key, item);
+		}
+	}
+
+	return result.toString();
+}
+
+/** The output key that carries the page query. Also the key the chat page sends it under. */
+const CHAT_QUERY_PARAMETERS_KEY = 'chatQueryParameters';
+
+/**
+ * Puts the page query on a webhook payload. `chatQueryParameters` arrives as a JSON string
+ * on multipart sends (form fields are always strings) and as an object otherwise, and the
+ * URL's own parameters win over whatever the client put into the payload.
+ */
+function applyPageQuery(json: IDataObject, pageQuery: Record<string, string | string[]>): void {
+	const claimed = json[CHAT_QUERY_PARAMETERS_KEY];
+
+	if (typeof claimed === 'string') {
+		try {
+			const parsed: unknown = JSON.parse(claimed);
+			// Only a parsed object replaces the raw value, so a payload that happens to be
+			// valid JSON (`"123"`, `"true"`) keeps the type the client sent.
+			if (isPlainObject(parsed)) json[CHAT_QUERY_PARAMETERS_KEY] = parsed;
+		} catch {
+			// Ignore malformed query payloads and keep the original raw value for compatibility.
+		}
+	}
+
+	if (Object.keys(pageQuery).length === 0) return;
+
+	const mergedQuery = Object.create(null) as Record<string, string | string[]>;
+	const current = json[CHAT_QUERY_PARAMETERS_KEY];
+	if (isPlainObject(current)) Object.assign(mergedQuery, current);
+	Object.assign(mergedQuery, pageQuery);
+	json[CHAT_QUERY_PARAMETERS_KEY] = mergedQuery;
 }
 
 const allowFileUploadsOption: INodeProperties = {
@@ -855,7 +928,10 @@ export class ChatTrigger extends Node {
 		],
 	};
 
-	private async handleFormData(context: IWebhookFunctions) {
+	private async handleFormData(
+		context: IWebhookFunctions,
+		pageQuery: Record<string, string | string[]>,
+	) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
 		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
@@ -864,6 +940,8 @@ export class ChatTrigger extends Node {
 		const returnItem: INodeExecutionData = {
 			json: data,
 		};
+
+		applyPageQuery(returnItem.json, pageQuery);
 
 		if (files && Object.keys(files).length) {
 			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
@@ -967,6 +1045,12 @@ export class ChatTrigger extends Node {
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
+		const pageQuery = getQueryParameters(req.query, CHAT_SHELL_INNER_PARAM);
+		// A multipart payload is built from `req.body.data` in `handleFormData`, so its query
+		// is applied there — `bodyData` is only the `{ data, files }` wrapper in that case.
+		if (req.contentType !== 'multipart/form-data') {
+			applyPageQuery(bodyData, pageQuery);
+		}
 
 		const authentication = ctx.getNodeParameter('authentication', 'none');
 		let authedUser: IUser | undefined;
@@ -1006,8 +1090,10 @@ export class ChatTrigger extends Node {
 					throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 				}
 
-				const webhookUrl =
-					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
+				const webhookUrl = appendQueryParameters(
+					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw,
+					req.query,
+				);
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
@@ -1199,7 +1285,7 @@ export class ChatTrigger extends Node {
 		}
 
 		const isMultipart = req.contentType === 'multipart/form-data';
-		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
+		const item = isMultipart ? await this.handleFormData(ctx, pageQuery) : { json: bodyData };
 
 		// Ownership of the `user` key follows the auth mode alone, never the rollout flag. A
 		// workflow built while the flag was on keeps trusting `json.user`, and it travels

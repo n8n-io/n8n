@@ -323,11 +323,11 @@ describe('establishChatSessionIdentity', () => {
 		});
 	});
 
-	it('completes the AS callback, hands both cookies off, and redirects to the clean shell URL', async () => {
+	it('completes the AS callback, hands both cookies off, and preserves the page query across the redirect', async () => {
 		mockContext.getRequestObject.mockReturnValue({
-			query: { code: 'auth-code', state: 'flow-state' },
+			query: { code: 'auth-code', state: 'flow-state', foo: 'bar' },
 			headers: {},
-			originalUrl: '/webhook/abc/chat?code=auth-code&state=flow-state',
+			originalUrl: '/webhook/abc/chat?code=auth-code&state=flow-state&foo=bar',
 		} as never);
 		mockContext.completeN8nOAuth2Flow.mockResolvedValue({
 			valid: true,
@@ -356,7 +356,7 @@ describe('establishChatSessionIdentity', () => {
 		// Redirects to the plain top-level URL — never to the inner-frame URL, which
 		// would render editor-ui/the AS callback inside the sandboxed frame.
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
-			Location: '/webhook/abc/chat',
+			Location: '/webhook/abc/chat?foo=bar',
 		});
 	});
 

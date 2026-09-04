@@ -76,11 +76,14 @@ describe('ChatTrigger Node', () => {
 		} as unknown as Request['socket'];
 
 		mockRequest.contentType = undefined;
+		// Assigned properties survive `clearAllMocks`, so a test's query must not leak into the next.
+		mockRequest.query = {};
 		mockContext.customData = mock<IWebhookFunctions['customData']>();
 		mockContext.getTestWebhookUser = getTestWebhookUser;
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
+		mockContext.customData = { set: vi.fn() } as unknown as IWebhookFunctions['customData'];
 		mockContext.getNode.mockReturnValue({
 			name: 'Chat Trigger',
 			type: 'n8n-nodes-langchain.chatTrigger',
@@ -242,6 +245,145 @@ describe('ChatTrigger Node', () => {
 				webhookResponse: { status: 200 },
 				workflowData: expect.any(Array),
 			});
+		});
+
+		it('passes serialized query parameters through the workflow payload', async () => {
+			mockRequest.query = { test: '123' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				chatQueryParameters: '{"q":"123","foo":"bar"}',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						chatQueryParameters: { test: '123', q: '123', foo: 'bar' },
+					},
+				},
+			]);
+		});
+
+		it('prefers the page URL query over any query previously set in the chat payload', async () => {
+			mockRequest.query = { q: '123', foo: 'bar' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				chatQueryParameters: { q: 'override', baz: 'qux' },
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						chatQueryParameters: { q: '123', foo: 'bar', baz: 'qux' },
+					},
+				},
+			]);
+		});
+
+		it('preserves special keys in the page query without mutating the prototype', async () => {
+			const pageQuery = Object.create(null) as Record<string, string>;
+			Object.defineProperty(pageQuery, 'constructor', {
+				value: 'abc',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			Object.defineProperty(pageQuery, '__proto__', {
+				value: 'danger',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			pageQuery.foo = 'bar';
+			mockRequest.query = pageQuery;
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			const expectedQuery = Object.create(null) as Record<string, string>;
+			Object.defineProperty(expectedQuery, 'constructor', {
+				value: 'abc',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			Object.defineProperty(expectedQuery, '__proto__', {
+				value: 'danger',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			expectedQuery.foo = 'bar';
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						chatQueryParameters: expectedQuery,
+					},
+				},
+			]);
+		});
+
+		it('does not include the internal shell parameter in the workflow payload', async () => {
+			mockRequest.query = { n8nShellInner: '1', test: '123' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						chatQueryParameters: { test: '123' },
+					},
+				},
+			]);
+		});
+
+		it('merges the page query into a message sent with files', async () => {
+			// Multipart payloads are built from `req.body.data`, and form fields are
+			// always strings — the widget sends the page query JSON-encoded there.
+			const body = {
+				data: {
+					action: 'sendMessage',
+					chatInput: 'Hello',
+					chatQueryParameters: '{"q":"from-payload","foo":"bar"}',
+				},
+				files: {},
+			};
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = body;
+			mockRequest.query = { q: 'from-url', test: '123' };
+			mockContext.getBodyData.mockReturnValue(body);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				chatQueryParameters: { q: 'from-url', foo: 'bar', test: '123' },
+			});
+
+			// Assigned properties survive `clearAllMocks`, so don't leak into later tests
+			mockRequest.contentType = undefined;
 		});
 
 		it('should enable streaming when availableInChat is true and responseMode is not set', async () => {
@@ -1020,6 +1162,17 @@ describe('ChatTrigger Node', () => {
 			// The frame must have no origin of its own.
 			expect(renderedView().sandbox).not.toContain('allow-same-origin');
 			expect(renderedView().sandbox).not.toContain('allow-popups-to-escape-sandbox');
+		});
+
+		it('forwards page query parameters to the chat webhook URL', async () => {
+			mockRequest.originalUrl = '/webhook/abc/chat?test=123';
+			mockRequest.query = { test: '123' };
+
+			await renderSetupPage('none');
+
+			expect(renderedPage()).toContain(
+				'webhookUrl: "http://localhost:5678/webhook/abc/chat?test=123",',
+			);
 		});
 
 		it('renders the author chat for the frame own request', async () => {
