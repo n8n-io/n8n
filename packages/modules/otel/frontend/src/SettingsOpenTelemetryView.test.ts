@@ -1,7 +1,7 @@
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 
 import type { OtelSettingsResponse } from './otel.api';
 import { useOtelStore } from './otel.store';
@@ -51,6 +51,7 @@ vi.mock('./otel.api', () => ({
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -85,6 +86,12 @@ const typeIntoUnitInput = async (input: HTMLElement, value: string) => {
 	await userEvent.tab();
 };
 
+const selectProtocol = async (optionLabel: string) => {
+	const select = screen.getByTestId('otel-exporter-protocol');
+	await userEvent.click(select.querySelector('input')!);
+	await userEvent.click(await screen.findByText(optionLabel));
+};
+
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 describe('SettingsOpenTelemetryView', () => {
@@ -113,6 +120,7 @@ describe('SettingsOpenTelemetryView', () => {
 			expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument();
 		});
 
+		expect(getByTestId('otel-exporter-protocol')).toBeInTheDocument();
 		expect(getByTestId('otel-service-name')).toBeInTheDocument();
 		expect(getByTestId('otel-tracing-path')).toBeInTheDocument();
 		expect(getByTestId('otel-sample-rate')).toBeInTheDocument();
@@ -300,7 +308,11 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				'Updated otel via UI',
-				expect.objectContaining({ enabled: true, tracesSampleRate: 0.5 }),
+				expect.objectContaining({
+					enabled: true,
+					tracesSampleRate: 0.5,
+					protocol: 'http/protobuf',
+				}),
 			);
 			expect(telemetryTrack).not.toHaveBeenCalledWith('Activated otel via UI', expect.anything());
 			expect(telemetryTrack).not.toHaveBeenCalledWith('Disabled otel via UI');
@@ -460,6 +472,100 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => {
 			expect(getAllByTestId('otel-header-key').length).toBe(2);
+		});
+	});
+
+	// ── exporter protocol ─────────────────────────────────────────────────────
+
+	it('shows the saved protocol in the select', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ exporterProtocol: 'grpc' }));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-protocol')).toBeInTheDocument());
+
+		const input = getByTestId('otel-exporter-protocol').querySelector('input');
+		expect(input).toHaveValue('gRPC');
+		expect(input).toHaveAttribute('aria-label', 'Protocol');
+	});
+
+	it('hides the trace path row and shows gRPC endpoint copy when the protocol is gRPC', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ exporterProtocol: 'grpc' }));
+
+		const { getByTestId, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
+
+		expect(queryByTestId('otel-tracing-path')).not.toBeInTheDocument();
+		expect(getByTestId('otel-exporter-endpoint')).toHaveAttribute(
+			'placeholder',
+			'http://collector.example.com:4317',
+		);
+	});
+
+	it('hides the trace path row after switching the protocol to gRPC', async () => {
+		const { getByTestId, queryByTestId, store } = render();
+		await waitFor(() => expect(getByTestId('otel-tracing-path')).toBeInTheDocument());
+
+		await selectProtocol('gRPC');
+
+		await waitFor(() => {
+			expect(store.settings.exporterProtocol).toBe('grpc');
+			expect(queryByTestId('otel-tracing-path')).not.toBeInTheDocument();
+		});
+	});
+
+	it('keeps the trace path across a switch to gRPC and back', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ exporterTracingPath: '/custom/traces' }));
+
+		const { getByTestId, queryByTestId, store } = render();
+		await waitFor(() => expect(getByTestId('otel-tracing-path')).toBeInTheDocument());
+
+		await selectProtocol('gRPC');
+		await waitFor(() => expect(queryByTestId('otel-tracing-path')).not.toBeInTheDocument());
+
+		await selectProtocol('HTTP (protobuf)');
+
+		await waitFor(() => expect(getByTestId('otel-tracing-path')).toBeInTheDocument());
+		expect(getByTestId('otel-tracing-path')).toHaveValue('/custom/traces');
+		expect(store.settings.exporterTracingPath).toBe('/custom/traces');
+	});
+
+	it('saves the protocol picked in the select', async () => {
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-protocol')).toBeInTheDocument());
+
+		await selectProtocol('gRPC');
+
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
+
+		await waitFor(() => {
+			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ exporterProtocol: 'grpc' }),
+			);
+		});
+	});
+
+	it('disables the protocol select when it is managed by an env var', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ envManagedFields: ['exporterProtocol'] }));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-protocol')).toBeInTheDocument());
+
+		expect(getByTestId('otel-exporter-protocol').querySelector('input')).toBeDisabled();
+	});
+
+	it('invalidates a previous test result when the protocol changes', async () => {
+		const { getByTestId, getByText, queryByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+		await waitFor(() => expect(getByText(/span sent to collector at/)).toBeInTheDocument());
+
+		await selectProtocol('gRPC');
+
+		await waitFor(() => {
+			expect(queryByText(/span sent to collector at/)).not.toBeInTheDocument();
 		});
 	});
 

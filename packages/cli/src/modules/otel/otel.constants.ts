@@ -1,7 +1,11 @@
+import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+
+export { OTLP_PROTOCOLS, type OtlpProtocol };
 
 export const OTEL_ENV_VARS = {
 	enabled: 'N8N_OTEL_ENABLED',
+	exporterProtocol: 'N8N_OTEL_EXPORTER_OTLP_PROTOCOL',
 	exporterEndpoint: 'N8N_OTEL_EXPORTER_OTLP_ENDPOINT',
 	exporterTracingPath: 'N8N_OTEL_EXPORTER_OTLP_TRACING_PATH',
 	exporterHeaders: 'N8N_OTEL_EXPORTER_OTLP_HEADERS',

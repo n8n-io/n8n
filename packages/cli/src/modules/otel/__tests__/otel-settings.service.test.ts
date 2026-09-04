@@ -2,6 +2,7 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { OtelConnectionParams } from '../otel-settings.service';
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
 import { OtelConfig } from '../otel.config';
 
@@ -36,6 +37,7 @@ describe('OtelSettingsService', () => {
 
 			expect(result).toEqual({
 				enabled: false,
+				exporterProtocol: 'http/protobuf',
 				exporterEndpoint: 'http://localhost:4318',
 				exporterTracingPath: '/v1/traces',
 				exporterHeaders: '',
@@ -93,6 +95,45 @@ describe('OtelSettingsService', () => {
 			expect(result.envManagedFields).not.toContain('enabled');
 		});
 
+		it('returns the persisted exporter protocol', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterProtocol: 'grpc' }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.getSettings().exporterProtocol).toBe('grpc');
+		});
+
+		it('falls back to the default protocol for a DB row written before the field existed', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ enabled: true, exporterEndpoint: 'https://from-db' }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(result.exporterProtocol).toBe('http/protobuf');
+			expect(result.envManagedFields).not.toContain('exporterProtocol');
+		});
+
+		it('the protocol env var overrides the DB value and is tracked in envManagedFields', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterProtocol: 'http/protobuf' }),
+			} as Settings);
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
+
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterProtocol = 'grpc';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
+
+			expect(result.exporterProtocol).toBe('grpc');
+			expect(result.envManagedFields).toContain('exporterProtocol');
+		});
+
 		it('env vars win over DB even after UI save', async () => {
 			settingsRepository.findByKey.mockResolvedValue({
 				value: JSON.stringify({ enabled: false, exporterEndpoint: 'https://from-db' }),
@@ -134,6 +175,7 @@ describe('OtelSettingsService', () => {
 	describe('saveSettings', () => {
 		const settings: OtelConfig = {
 			enabled: true,
+			exporterProtocol: 'grpc',
 			exporterEndpoint: 'https://collector.example.com',
 			exporterTracingPath: '/v1/traces',
 			exporterHeaders: 'auth=token',
@@ -170,24 +212,32 @@ describe('OtelSettingsService', () => {
 
 		it('replaces env-managed fields with env-var values before persisting', async () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
+			configWithEnv.exporterProtocol = 'grpc';
 			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
 			settingsRepository.findByKey.mockResolvedValue(null);
 
-			const incoming: OtelConfig = { ...settings, exporterEndpoint: 'https://tampered-by-client' };
+			const incoming: OtelConfig = {
+				...settings,
+				exporterEndpoint: 'https://tampered-by-client',
+				exporterProtocol: 'http/protobuf',
+			};
 			await serviceWithEnv.saveSettings(incoming);
 
 			const saved = JSON.parse(
 				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
 			) as OtelConfig;
 			expect(saved.exporterEndpoint).toBe('https://from-env');
+			expect(saved.exporterProtocol).toBe('grpc');
 			expect(saved.enabled).toBe(settings.enabled);
 		});
 	});
 
 	describe('resolveTestConnection', () => {
-		const incoming = {
+		const incoming: OtelConnectionParams = {
+			exporterProtocol: 'grpc',
 			exporterEndpoint: 'https://collector.example.com',
 			exporterTracingPath: '/v1/traces',
 			exporterServiceName: 'n8n-prod',
@@ -212,6 +262,20 @@ describe('OtelSettingsService', () => {
 
 			expect(result.exporterEndpoint).toBe('https://from-env');
 			expect(result.exporterServiceName).toBe('n8n-prod');
+		});
+
+		it('overrides an env-managed exporter protocol with the canonical env-var value', () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterProtocol = 'grpc';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			const result = serviceWithEnv.resolveTestConnection({
+				...incoming,
+				exporterProtocol: 'http/protobuf',
+			});
+
+			expect(result.exporterProtocol).toBe('grpc');
 		});
 	});
 });

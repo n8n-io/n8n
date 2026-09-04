@@ -431,7 +431,13 @@ export {
 	type ListWorkflowReviewActivityResponse,
 } from './workflow-reviews/workflow-review-activity.dto';
 
-export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export {
+	UpdateOtelSettingsDto,
+	OTLP_PROTOCOLS,
+	otlpProtocolSchema,
+	exporterEndpointSchema,
+	type OtlpProtocol,
+} from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

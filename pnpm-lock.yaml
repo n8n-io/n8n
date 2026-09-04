@@ -4191,6 +4191,9 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)(supports-color@8.1.1)
+      '@grpc/grpc-js':
+        specifier: ^1.14.3
+        version: 1.14.4
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
@@ -4314,6 +4317,9 @@ importers:
       '@opentelemetry/core':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/exporter-trace-otlp-grpc':
+        specifier: ^0.221.0
+        version: 0.221.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: ^0.221.0
         version: 0.221.0(@opentelemetry/api@1.9.1)
@@ -6586,6 +6592,9 @@ importers:
 
   packages/modules/otel/frontend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/composables':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/composables
