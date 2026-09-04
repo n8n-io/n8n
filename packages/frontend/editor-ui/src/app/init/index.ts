@@ -11,6 +11,7 @@ import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleCommands,
 	registerModuleModals,
+	registerModuleParameterInputs,
 	registerModuleProjectTabs,
 	registerModulePushHandlers,
 	registerModuleResources,
@@ -241,6 +242,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 	registerModulePushHandlers();
 	registerModuleCommands();
+	registerModuleParameterInputs();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
