@@ -446,6 +446,27 @@ describe('createModel', () => {
 			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
+		it('should create model for volcengine with default baseURL', () => {
+			const model = createModel({
+				id: 'volcengine/doubao-seed-2-1-pro-260628',
+				apiKey: 'ark-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('volcengine');
+			expect(model.modelId).toBe('doubao-seed-2-1-pro-260628');
+			expect(model.apiKey).toBe('ark-test');
+			expect(model.baseURL).toBe('https://ark.cn-beijing.volces.com/api/v3');
+		});
+
+		it('should allow custom baseURL for volcengine', () => {
+			const model = createModel({
+				id: 'volcengine/doubao-seed-2-1-pro-260628',
+				apiKey: 'ark-test',
+				url: 'https://custom-ark.example.com/api/v3',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('volcengine');
+			expect(model.baseURL).toBe('https://custom-ark.example.com/api/v3');
+		});
+
 		it('should create model for moonshotai', () => {
 			const model = createModel({
 				id: 'moonshotai/kimi-k3',

@@ -193,6 +193,28 @@ describe('model-discovery', () => {
 		});
 	});
 
+	describe('volcengine', () => {
+		it('keeps only supported Doubao models and drops unverified/test models', async () => {
+			const fetch = mockFetch({
+				data: [
+					{ id: 'doubao-seed-2-1-pro-260628' },
+					{ id: 'test-v1' },
+					{ id: 'doubao-seed-2-1-turbo-260628' },
+					{ id: 'ddd-1.0.0' },
+				],
+			});
+
+			const models = await listModelsForProvider('volcengine', { apiKey: 'key', fetch });
+
+			expect(calledUrl(fetch)).toBe('https://ark.cn-beijing.volces.com/api/v3/models');
+			expect(calledHeaders(fetch).Authorization).toBe('Bearer key');
+			expect(models.map((m) => m.id)).toEqual([
+				'doubao-seed-2-1-pro-260628',
+				'doubao-seed-2-1-turbo-260628',
+			]);
+		});
+	});
+
 	describe.each([
 		['deepseek', 'https://api.deepseek.com/models'],
 		['openrouter', 'https://openrouter.ai/api/v1/models'],
@@ -321,6 +343,7 @@ describe('model-discovery', () => {
 			'openai',
 			'openrouter',
 			'vercel',
+			'volcengine',
 			'xai',
 		]);
 	});

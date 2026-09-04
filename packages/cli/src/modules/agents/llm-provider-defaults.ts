@@ -84,6 +84,10 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'minimax',
 		defaultModel: 'MiniMax-M3',
 	},
+	volcengineApi: {
+		provider: 'volcengine',
+		defaultModel: 'doubao-seed-2-1-pro-260628',
+	},
 };
 
 /** Order in which resolve_llm auto-picks a provider when credentials span multiple providers. */
@@ -102,4 +106,5 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'moonshotai',
 	'alibaba',
 	'minimax',
+	'volcengine',
 ];

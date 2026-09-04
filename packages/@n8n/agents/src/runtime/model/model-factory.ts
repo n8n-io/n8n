@@ -131,7 +131,7 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
-type OpenAiCompatibleProviderId = 'nvidia';
+type OpenAiCompatibleProviderId = 'nvidia' | 'volcengine';
 
 function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
@@ -269,6 +269,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
+	volcengine: openAiCompatibleEntry('volcengine', 'https://ark.cn-beijing.volces.com/api/v3', {}),
 	moonshotai: {
 		build: (creds, model, fetch) => {
 			const { createMoonshotAI } =
