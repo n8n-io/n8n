@@ -97,6 +97,7 @@ import {
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
+import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -139,6 +140,10 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
+	/** Build the interior of an empty group from its description. */
+	'generate:group': [groupId: string];
+	/** Add the first node to an empty group. */
+	'add-node:group': [groupId: string];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -299,6 +304,7 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
+const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
 const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
@@ -1899,11 +1905,14 @@ defineExpose({
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
 				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				:is-group-node="isGroupNodeEnabled"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@generate="emit('generate:group', $event)"
+				@add-node="emit('add-node:group', $event)"
 				@extract="onCanvasGroupExtract"
 				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"

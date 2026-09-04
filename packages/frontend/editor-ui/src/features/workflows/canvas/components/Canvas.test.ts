@@ -122,6 +122,7 @@ function createCanvasGroupNode({
 	nodeIds = ['node-1'],
 	position = { x: 0, y: 0 },
 	isCollapsed = false,
+	isEmptyGroup = false,
 }: {
 	id?: string;
 	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
@@ -129,6 +130,7 @@ function createCanvasGroupNode({
 	nodeIds?: string[];
 	position?: { x: number; y: number };
 	isCollapsed?: boolean;
+	isEmptyGroup?: boolean;
 } = {}): CanvasGroupNode {
 	return {
 		id: `group:${id}`,
@@ -141,6 +143,7 @@ function createCanvasGroupNode({
 			group: { id, name: `Group ${id}`, nodeIds },
 			nodesRect,
 			isCollapsed,
+			isEmptyGroup,
 		},
 	};
 }

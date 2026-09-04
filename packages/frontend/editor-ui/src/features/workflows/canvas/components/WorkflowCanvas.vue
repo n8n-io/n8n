@@ -31,6 +31,8 @@ import {
 	useCanvasNodeGroupDescriptionVisibility,
 } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
+import { useGroupNodeCards } from '../composables/useGroupNodeCards';
+import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -102,9 +104,27 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
+// Group cards come from the group nodes when the flag is on, and from the
+// render-only `nodeGroups` entries when it is off. Only the source differs:
+// both produce the `IWorkflowGroup` shape the renderer takes.
+const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
+const groupNodeCards = useGroupNodeCards(
+	computed(() => workflowDocumentStore.value.allNodes),
+	connections,
+);
+
+const allGroups = computed(() =>
+	isGroupNodeEnabled.value ? groupNodeCards.allGroups.value : workflowDocumentStore.value.allGroups,
+);
+
+// Emptiness only exists on the group-node path; a `nodeGroups` entry always
+// has members, so the old path keeps its behaviour unchanged.
+const isEmptyGroup = (id: string) =>
+	isGroupNodeEnabled.value ? groupNodeCards.isEmptyGroup(id) : false;
+
 const nodeGroupView = useCanvasNodeGroupView({
 	workflowId: () => workflowDocumentStore.value.workflowId,
-	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
+	getCurrentGroupIds: () => allGroups.value.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
@@ -125,7 +145,6 @@ watch(
 	},
 );
 
-const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
 
@@ -144,6 +163,7 @@ const {
 	renderData,
 	allGroups,
 	nodeGroupView,
+	isEmptyGroup,
 	isExperimentalNdvActive,
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
@@ -173,14 +193,15 @@ watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
 
 const layoutComponents = computed(() =>
 	// Without groups there can be no pushes — skip building per-node components.
-	workflowDocumentStore.value.allGroups.length === 0
+	allGroups.value.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
-				allGroups: workflowDocumentStore.value.allGroups,
+				allGroups: allGroups.value,
 				nodes: nodes.value,
 				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+				isEmptyGroup,
 			}),
 );
 
@@ -195,6 +216,10 @@ const mappedGroupVueFlowNodes = computed(() =>
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+		isEmptyGroup,
+		// Only a group node carries its own position, so an empty group can be
+		// placed on the group-node path alone.
+		getGroupOwnPosition: isGroupNodeEnabled.value ? groupNodeCards.getGroupOwnPosition : undefined,
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 		getNodeExecutionSnapshot,
 	}),

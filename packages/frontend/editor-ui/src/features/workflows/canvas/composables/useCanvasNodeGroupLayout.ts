@@ -46,6 +46,8 @@ export interface BuildNodeGroupLayoutComponentsInput {
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	isGroupCollapsed: (id: string) => boolean;
+	/** True when the group holds no nodes. */
+	isEmptyGroup?: (id: string) => boolean;
 }
 
 export interface ComputeNodeGroupLayoutPushesInput {
@@ -71,17 +73,23 @@ export function buildNodeGroupLayoutComponents({
 	getNodeById,
 	getNodeDisplaySize,
 	isGroupCollapsed,
+	isEmptyGroup = () => false,
 }: BuildNodeGroupLayoutComponentsInput): NodeGroupLayoutComponent[] {
 	const components: NodeGroupLayoutComponent[] = [];
 	const groupedNodeIds = new Set<string>();
 
 	for (const group of allGroups) {
 		for (const nodeId of group.nodeIds) groupedNodeIds.add(nodeId);
+		const isEmpty = isEmptyGroup(group.id);
 		const hasMember = group.nodeIds.some((id) => getNodeById(id) !== undefined);
-		if (!hasMember) continue;
+		// An empty group has no member to derive a rect from, so it takes part in
+		// layout through its card only (placed by the mapping), not here.
+		if (isEmpty || !hasMember) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-		const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
+		const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect, {
+			isEmpty,
+		});
 		components.push({
 			id: createCanvasGroupNodeId(group.id),
 			kind: 'group',

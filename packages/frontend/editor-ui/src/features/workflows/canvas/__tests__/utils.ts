@@ -82,6 +82,7 @@ export function createCanvasGroupElement({
 	nodeIds = [],
 	position = { x: 0, y: 0 },
 	isCollapsed = true,
+	isEmptyGroup = false,
 	nodesRect = { x: 0, y: 0, width: 200, height: 100 },
 }: Partial<{
 	id: string;
@@ -89,6 +90,7 @@ export function createCanvasGroupElement({
 	nodeIds: string[];
 	position: { x: number; y: number };
 	isCollapsed: boolean;
+	isEmptyGroup: boolean;
 	nodesRect: CanvasGroupNodeData['nodesRect'];
 }> = {}): CanvasGroupNode {
 	return {
@@ -99,6 +101,7 @@ export function createCanvasGroupElement({
 			group: { id, name, nodeIds },
 			nodesRect,
 			isCollapsed,
+			isEmptyGroup,
 		},
 	};
 }
