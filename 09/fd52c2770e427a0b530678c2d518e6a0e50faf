@@ -1,0 +1,33 @@
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_789df6092fdb18::t_534b1e97faa494 545-550,553-559,563-568,573-574,577
+  s_789df6092fdb18::t_ee9e438fac5e48 109
+  s_789df6092fdb18::t_b4c76b53039b9d 541-542
+  s_789df6092fdb18::t_3636982bf94818 486,488,491,499
+  s_789df6092fdb18::t_7eaf05fa5cb6d9 621
+  s_789df6092fdb18::t_eea0b8671fc767 637-647
+  s_789df6092fdb18::t_4b9e8478f89ccb 509-510,512
+  s_789df6092fdb18::t_109cbab26eac76 599
+  s_789df6092fdb18::t_68dcbb3c7c40ca 607,612,615-616,618,620,622-623,625,632
+  s_789df6092fdb18::t_718795a980ff84 661-662,666,669-670
+  s_789df6092fdb18::t_59aeef29c22626 562
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_789df6092fdb18::t_3d45c608e9bed3 769-771
+  s_789df6092fdb18::t_8cb617043a9398 500,514
+  s_789df6092fdb18::t_3e31482d5461de 745-761,767-768,774,777,779-780,784,803-826
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09fd52c2770e427a0b530678c2d518e6a0e50faf",
+  "prompts": {},
+  "sessions": {
+    "s_789df6092fdb18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e0c672d-eb42-42b3-b9c8-9120776c0c10",
+        "model": "unknown"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
