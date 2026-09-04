@@ -276,7 +276,10 @@ describe('McpRegistryService', () => {
 			await service.refreshFromApi();
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
-			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith([notionMockServer.slug]);
+			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith(
+				[notionMockServer.slug],
+				undefined,
+			);
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 			const upsertEntities = repository.upsert.mock.calls[0][0];
 			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
@@ -304,6 +307,7 @@ describe('McpRegistryService', () => {
 
 			await expect(service.refreshFromApi(controller.signal)).rejects.toThrow();
 
+			expect(apiClient.fetchAllServers).toHaveBeenCalledWith(controller.signal);
 			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 		});

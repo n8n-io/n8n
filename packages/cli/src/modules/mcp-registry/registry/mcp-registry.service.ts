@@ -99,15 +99,15 @@ export class McpRegistryService {
 	 * types. Skips the write and the reload when nothing changed.
 	 * Callers must serialize runs.
 	 * @throws when the remote API or the database write fails, or when the
-	 * signal aborts before the write starts.
+	 * signal aborts before the write starts. The signal cancels the API requests.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
 		const existingServers = await this.getAll({ includeDeprecated: true });
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
-			updatedServers = await this.apiClient.fetchAllServers();
+			updatedServers = await this.apiClient.fetchAllServers(signal);
 		} else {
-			const result = await this.refreshUpdatedServers(existingServers);
+			const result = await this.refreshUpdatedServers(existingServers, signal);
 			if (result === null) {
 				this.logger.debug('MCP registry is up to date');
 				return;
@@ -127,9 +127,10 @@ export class McpRegistryService {
 
 	private async refreshUpdatedServers(
 		existingServers: McpRegistryServer[],
+		signal?: AbortSignal,
 	): Promise<McpRegistryServer[] | null> {
 		const now = new Date().toISOString();
-		const metadata = await this.apiClient.fetchServersMetadata();
+		const metadata = await this.apiClient.fetchServersMetadata(signal);
 		const existingBySlug = new Map(existingServers.map((server) => [server.slug, server]));
 		const metadataSlugs = new Set(metadata.map(({ slug }) => slug));
 		const slugsToFetch = metadata
@@ -147,7 +148,7 @@ export class McpRegistryService {
 			return serversToDeprecate;
 		}
 
-		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch);
+		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch, signal);
 		return [...updatedServers, ...serversToDeprecate];
 	}
 

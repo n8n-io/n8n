@@ -35,6 +35,7 @@ interface Pagination {
 
 export interface PaginationRequestOptions {
 	throwOnError?: boolean;
+	abortSignal?: AbortSignal;
 }
 
 export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
@@ -96,14 +97,17 @@ export async function paginatedRequest<T>(
 					headers: { 'Content-Type': 'application/json' },
 					qs: params,
 					json: true,
+					abortSignal: options?.abortSignal,
 				});
 		} catch (error) {
-			Container.get(ErrorReporter).error(error, {
-				tags: { source: 'strapiPaginatedRequest' },
-			});
-			Container.get(Logger).error(
-				`Error fetching from Strapi API (${url}): ${(error as Error).message}`,
-			);
+			if (!options?.abortSignal?.aborted) {
+				Container.get(ErrorReporter).error(error, {
+					tags: { source: 'strapiPaginatedRequest' },
+				});
+				Container.get(Logger).error(
+					`Error fetching from Strapi API (${url}): ${(error as Error).message}`,
+				);
+			}
 			if (options?.throwOnError) throw error;
 
 			break;

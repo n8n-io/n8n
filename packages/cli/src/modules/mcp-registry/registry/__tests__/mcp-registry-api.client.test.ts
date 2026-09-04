@@ -217,6 +217,18 @@ describe('McpRegistryApiClient', () => {
 
 			expect(result).toEqual([]);
 		});
+
+		it('should forward the abort signal to paginatedRequest', async () => {
+			const { signal } = new AbortController();
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchAllServers(signal);
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, expect.anything(), {
+				throwOnError: true,
+				abortSignal: signal,
+			});
+		});
 	});
 
 	describe('fetchServersMetadata', () => {
@@ -246,6 +258,18 @@ describe('McpRegistryApiClient', () => {
 			const result = await client.fetchServersMetadata();
 
 			expect(result).toEqual(mockMetadata);
+		});
+
+		it('should forward the abort signal to paginatedRequest', async () => {
+			const { signal } = new AbortController();
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchServersMetadata(signal);
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, expect.anything(), {
+				throwOnError: true,
+				abortSignal: signal,
+			});
 		});
 	});
 
@@ -284,6 +308,18 @@ describe('McpRegistryApiClient', () => {
 
 			expect(result).toEqual([]);
 			expect(mockPaginatedRequest).not.toHaveBeenCalled();
+		});
+
+		it('should forward the abort signal to paginatedRequest', async () => {
+			const { signal } = new AbortController();
+			mockPaginatedRequest.mockResolvedValue([]);
+
+			await client.fetchServersBySlugs(['server-a'], signal);
+
+			expect(mockPaginatedRequest).toHaveBeenCalledWith(PRODUCTION_URL, expect.anything(), {
+				throwOnError: true,
+				abortSignal: signal,
+			});
 		});
 
 		it('should batch slugs in chunks of 100', async () => {
