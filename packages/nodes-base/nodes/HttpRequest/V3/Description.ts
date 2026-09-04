@@ -1,6 +1,34 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
+const webdavMethodOptions: INodePropertyOptions[] = [
+	'PROPFIND',
+	'MKCOL',
+	'MOVE',
+	'COPY',
+	'REPORT',
+].flatMap((method) => [
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			show: {
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			hide: {
+				method: [{ _cnd: { not: method } }],
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+]);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -26,6 +54,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'HEAD',
 				value: 'HEAD',
 			},
+			...webdavMethodOptions,
 			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
@@ -1221,6 +1250,14 @@ For what a template cannot express, use the matching type for new and existing c
 				default: false,
 				description:
 					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
+			},
+			{
+				displayName: 'Enable WebDAV Methods',
+				name: 'webdavMethods',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY and REPORT to the Method list',
 			},
 		],
 	},
