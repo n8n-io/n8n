@@ -1,7 +1,8 @@
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
+export { GENERIC_AUTH_CREDENTIAL_TYPES };
 
 export interface AiGatewayCredential {
 	id: null;
@@ -14,7 +15,7 @@ export interface AiGatewayCredential {
  * the frontend i18n key `aiGateway.credentialMode.n8nConnect.title` so the
  * setup wizard, credential picker, and chat surface the same label.
  */
-export const N8N_CONNECT_DISPLAY_NAME = 'n8n credits';
+export const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
 
 /** Canonical AI Gateway-managed credential written to workflow nodes at apply time. */
 export const AI_GATEWAY_CREDENTIAL: AiGatewayCredential = {
@@ -69,7 +70,7 @@ export async function resolveCredentialForApply(
 			if (!supported) {
 				return {
 					resolved: false,
-					error: `Credential type "${credType}" is not supported by n8n credits`,
+					error: `Credential type "${credType}" is not supported by Gateway credits`,
 				};
 			}
 		}
@@ -106,12 +107,21 @@ export function assignCredentialToNode(
  * anything that doesn't parse as an http(s) URL with a host.
  */
 export function extractServiceHost(raw: unknown): string | undefined {
+	return extractServiceUrl(raw)?.hostname.toLowerCase();
+}
+
+/** Exact origin of a node's statically derivable HTTP URL. */
+export function extractServiceOrigin(raw: unknown): string | undefined {
+	return extractServiceUrl(raw)?.origin;
+}
+
+function extractServiceUrl(raw: unknown): URL | undefined {
 	if (typeof raw !== 'string') return undefined;
 	const plain = (raw.startsWith('=') ? raw.slice(1) : raw).split('{{')[0].trim();
 	if (!/^https?:\/\//i.test(plain)) return undefined;
 	try {
-		const host = new URL(plain).hostname.toLowerCase();
-		return host || undefined;
+		const url = new URL(plain);
+		return url.hostname ? url : undefined;
 	} catch {
 		return undefined;
 	}

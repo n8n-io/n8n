@@ -685,6 +685,11 @@ function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	return client;
 }
 
+export interface BrowserExtensionTraceContext {
+	connectionState: 'connected' | 'disconnected';
+	version?: string;
+}
+
 interface CreateInstanceAiTraceContextOptions {
 	projectName?: string;
 	threadId: string;
@@ -698,6 +703,7 @@ interface CreateInstanceAiTraceContextOptions {
 	metadata?: Record<string, unknown>;
 	n8nVersion?: string;
 	workflowSdkVersion?: string;
+	browserExtension?: BrowserExtensionTraceContext;
 	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
 	proxyConfig?: ServiceProxyConfig;
 }
@@ -1636,6 +1642,14 @@ async function buildBaseMetadata(
 		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
+			: {}),
+		...(options.browserExtension
+			? {
+					browser_connection_state: options.browserExtension.connectionState,
+					...(options.browserExtension.version !== undefined
+						? { browser_extension_version: options.browserExtension.version }
+						: {}),
+				}
 			: {}),
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 import {
 	EXPERIMENTS_TO_TRACK,
@@ -8,6 +9,7 @@ import {
 import { useInstanceAiBrowserCredentialSetupExperiment } from './useInstanceAiBrowserCredentialSetupExperiment';
 
 const getVariant = vi.fn();
+const isBrowserUseEnabled = ref(true);
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
@@ -15,9 +17,16 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	})),
 }));
 
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: vi.fn(() => ({
+		isFeatureEnabled: isBrowserUseEnabled,
+	})),
+}));
+
 describe('useInstanceAiBrowserCredentialSetupExperiment', () => {
 	beforeEach(() => {
 		getVariant.mockReset();
+		isBrowserUseEnabled.value = true;
 	});
 
 	it.each([
@@ -35,5 +44,14 @@ describe('useInstanceAiBrowserCredentialSetupExperiment', () => {
 
 	it('registers the experiment for centralized enrollment tracking', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name);
+	});
+
+	it('returns false when Browser Use is disabled', () => {
+		getVariant.mockReturnValue(INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.variant);
+		isBrowserUseEnabled.value = false;
+
+		const { isFeatureEnabled } = useInstanceAiBrowserCredentialSetupExperiment();
+
+		expect(isFeatureEnabled.value).toBe(false);
 	});
 });

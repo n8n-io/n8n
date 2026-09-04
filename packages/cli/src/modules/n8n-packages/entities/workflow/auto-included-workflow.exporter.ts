@@ -1,12 +1,12 @@
-import type { Folder, Project, WorkflowEntity } from '@n8n/db';
+import type { Folder, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
@@ -38,10 +38,19 @@ export interface AutoIncludedWorkflowExportResult {
 	projectTargetsById: Map<string, string>;
 }
 
-interface ExportAllocators {
-	workflows: Map<string, UniqueFilenameAllocator>;
-	folders: Map<string, UniqueFilenameAllocator>;
-	project: UniqueFilenameAllocator;
+/**
+ * The folder and project shells known to one export run: those the main
+ * exporters already wrote, plus the ones this exporter adds. Keyed by id so a
+ * shell is written once however many workflows land in it.
+ */
+interface ShellRegistry {
+	writer: PackageWriter;
+	folderEntriesById: Map<string, ManifestEntry>;
+	projectEntriesById: Map<string, ManifestEntry>;
+	projectTargetsById: Map<string, string>;
+	/** Only the shells this exporter wrote, reported back for the manifest. */
+	folderEntries: ManifestEntry[];
+	projectEntries: ManifestEntry[];
 }
 
 /**
@@ -60,40 +69,25 @@ export class AutoIncludedWorkflowExporter {
 		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
-	export(request: AutoIncludedWorkflowExportRequest): AutoIncludedWorkflowExportResult {
-		const allocators: ExportAllocators = {
-			workflows: new Map(),
-			folders: new Map(),
-			project: new UniqueFilenameAllocator('projects', 'project'),
-		};
-
+	async export(
+		request: AutoIncludedWorkflowExportRequest,
+	): Promise<AutoIncludedWorkflowExportResult> {
 		const workflowEntriesById = new Map(
 			request.existingWorkflowEntries.map((entry) => [entry.id, entry]),
 		);
-		const folderEntriesById = new Map(
-			request.existingFolderEntries.map((entry) => [entry.id, entry]),
-		);
-		const projectEntriesById = new Map(
-			request.existingProjectEntries.map((entry) => [entry.id, entry]),
-		);
-		const projectTargetsById = new Map(request.projectTargetsById);
-
-		for (const entry of request.existingWorkflowEntries) {
-			allocatorFor(allocators.workflows, parentDir(entry.target), 'workflow').reservePath(
-				entry.target,
-			);
-		}
-		for (const entry of request.existingFolderEntries) {
-			allocatorFor(allocators.folders, parentDir(entry.target), 'folder').reservePath(entry.target);
-		}
-		for (const entry of request.existingProjectEntries) {
-			allocators.project.reservePath(entry.target);
-			projectTargetsById.set(entry.id, entry.target);
-		}
+		const shells: ShellRegistry = {
+			writer: request.writer,
+			folderEntriesById: new Map(request.existingFolderEntries.map((entry) => [entry.id, entry])),
+			projectEntriesById: new Map(request.existingProjectEntries.map((entry) => [entry.id, entry])),
+			projectTargetsById: new Map([
+				...(request.projectTargetsById ?? []),
+				...request.existingProjectEntries.map((entry) => [entry.id, entry.target] as const),
+			]),
+			folderEntries: [],
+			projectEntries: [],
+		};
 
 		const workflowEntries: ManifestEntry[] = [];
-		const folderEntries: ManifestEntry[] = [];
-		const projectEntries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
@@ -103,22 +97,12 @@ export class AutoIncludedWorkflowExporter {
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
 
-			const baseDir = this.resolveWorkflowBaseDir({
-				included,
-				writer: request.writer,
-				folderEntriesById,
-				projectEntriesById,
-				projectTargetsById,
-				folderEntries,
-				projectEntries,
-				allocators,
-			});
-			const entry = this.writeWorkflow(
-				included.workflow,
-				baseDir,
+			const entry = await writeManifestEntry(
 				request.writer,
-				allocators.workflows,
-				request.includeTags,
+				'workflows',
+				await this.resolveWorkflowBaseDir(included, shells),
+				included.workflow,
+				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
@@ -134,163 +118,91 @@ export class AutoIncludedWorkflowExporter {
 
 		return {
 			workflowEntries,
-			folderEntries,
-			projectEntries,
+			folderEntries: shells.folderEntries,
+			projectEntries: shells.projectEntries,
 			requirements: { credentials, dataTables, variables, tags, nodeTypes },
-			projectTargetsById,
+			projectTargetsById: shells.projectTargetsById,
 		};
 	}
 
-	private resolveWorkflowBaseDir(options: {
-		included: AutoIncludedWorkflow;
-		writer: PackageWriter;
-		folderEntriesById: Map<string, ManifestEntry>;
-		projectEntriesById: Map<string, ManifestEntry>;
-		projectTargetsById: Map<string, string>;
-		folderEntries: ManifestEntry[];
-		projectEntries: ManifestEntry[];
-		allocators: ExportAllocators;
-	}): string {
-		const { included } = options;
-		if (included.placement === 'project') {
-			const projectTarget = this.ensureProjectShell({
-				project: included.ownerProject,
-				writer: options.writer,
-				projectEntriesById: options.projectEntriesById,
-				projectTargetsById: options.projectTargetsById,
-				projectEntries: options.projectEntries,
-				allocator: options.allocators.project,
-			});
+	/**
+	 * The `workflows/` directory the workflow lands in: under its owner project
+	 * when placed there, under its folder chain when it has one, else top level.
+	 */
+	private async resolveWorkflowBaseDir(
+		included: AutoIncludedWorkflow,
+		shells: ShellRegistry,
+	): Promise<string> {
+		const scope =
+			included.placement === 'project'
+				? await this.ensureProjectShell(included.ownerProject, shells)
+				: undefined;
 
-			if (included.folderChain.length === 0) {
-				return `${projectTarget}/workflows`;
-			}
+		// The resolver fills the chain for every placement; a top-level workflow ignores it.
+		const chain = included.placement === 'top-level' ? [] : included.folderChain;
+		const container =
+			chain.length > 0
+				? await this.ensureFolderChain(chain, packageDirectory('folders', scope), shells)
+				: scope;
 
-			const folderTarget = this.ensureFolderChain({
-				chain: included.folderChain,
-				baseDir: `${projectTarget}/folders`,
-				writer: options.writer,
-				folderEntriesById: options.folderEntriesById,
-				folderEntries: options.folderEntries,
-				allocators: options.allocators.folders,
-			});
-			return `${folderTarget}/workflows`;
-		}
-
-		if (included.placement === 'folder' && included.folderChain.length > 0) {
-			const folderTarget = this.ensureFolderChain({
-				chain: included.folderChain,
-				baseDir: 'folders',
-				writer: options.writer,
-				folderEntriesById: options.folderEntriesById,
-				folderEntries: options.folderEntries,
-				allocators: options.allocators.folders,
-			});
-			return `${folderTarget}/workflows`;
-		}
-
-		return 'workflows';
+		return packageDirectory('workflows', container);
 	}
 
-	private ensureProjectShell(options: {
-		project: Project;
-		writer: PackageWriter;
-		projectEntriesById: Map<string, ManifestEntry>;
-		projectTargetsById: Map<string, string>;
-		projectEntries: ManifestEntry[];
-		allocator: UniqueFilenameAllocator;
-	}): string {
-		const existing = options.projectEntriesById.get(options.project.id);
+	private async ensureProjectShell(project: Project, shells: ShellRegistry): Promise<string> {
+		const existing = shells.projectEntriesById.get(project.id);
 		if (existing) return existing.target;
 
-		const target = options.allocator.allocate(options.project.name);
-		const serialized = this.projectSerializer.serialize(options.project);
-		options.writer.writeDirectory(target);
-		options.writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
+		const entry = await writeManifestEntry(
+			shells.writer,
+			'projects',
+			packageDirectory('projects'),
+			project,
+			this.projectSerializer.serialize(project),
+		);
 
-		const entry = { id: options.project.id, name: options.project.name, target };
-		options.projectEntries.push(entry);
-		options.projectEntriesById.set(entry.id, entry);
-		options.projectTargetsById.set(entry.id, entry.target);
-		return target;
+		shells.projectEntries.push(entry);
+		shells.projectEntriesById.set(entry.id, entry);
+		shells.projectTargetsById.set(entry.id, entry.target);
+		return entry.target;
 	}
 
-	private ensureFolderChain(options: {
-		chain: Folder[];
-		baseDir: string;
-		writer: PackageWriter;
-		folderEntriesById: Map<string, ManifestEntry>;
-		folderEntries: ManifestEntry[];
-		allocators: Map<string, UniqueFilenameAllocator>;
-	}): string {
+	/** Writes the chain folders missing from the package and returns the innermost target. */
+	private async ensureFolderChain(
+		chain: Folder[],
+		baseDir: string,
+		shells: ShellRegistry,
+	): Promise<string> {
 		let parentTarget: string | undefined;
 		let effectiveParentId: string | null = null;
 
-		for (const folder of options.chain) {
-			const existing = options.folderEntriesById.get(folder.id);
+		for (const folder of chain) {
+			const existing = shells.folderEntriesById.get(folder.id);
 			if (existing) {
 				parentTarget = existing.target;
 				effectiveParentId = folder.id;
 				continue;
 			}
 
-			const allocator = allocatorFor(options.allocators, parentTarget ?? options.baseDir, 'folder');
-			// A folder's directly-contained workflows are written under `<folder>/workflows`,
-			// so reserve that segment before placing child folders — otherwise a child folder
-			// named "workflows" would collide with its parent's workflow directory.
-			if (parentTarget) allocator.reserve('workflows');
-			const target = allocator.allocate(folder.name);
-			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-			options.writer.writeDirectory(target);
-			options.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+			const entry = await writeManifestEntry(
+				shells.writer,
+				'folders',
+				parentTarget ?? baseDir,
+				folder,
+				this.folderSerializer.serialize(folder, effectiveParentId),
+			);
 
-			const entry = { id: folder.id, name: folder.name, target };
-			options.folderEntries.push(entry);
-			options.folderEntriesById.set(entry.id, entry);
-			parentTarget = target;
+			shells.folderEntries.push(entry);
+			shells.folderEntriesById.set(entry.id, entry);
+			parentTarget = entry.target;
 			effectiveParentId = folder.id;
 		}
 
 		if (!parentTarget) {
 			throw new UnexpectedError('Cannot place workflow in an empty folder chain', {
-				extra: {
-					baseDir: options.baseDir,
-					folderIds: options.chain.map((folder) => folder.id),
-				},
+				extra: { baseDir, folderIds: chain.map((folder) => folder.id) },
 			});
 		}
 
 		return parentTarget;
 	}
-
-	private writeWorkflow(
-		workflow: WorkflowEntity,
-		baseDir: string,
-		writer: PackageWriter,
-		allocators: Map<string, UniqueFilenameAllocator>,
-		includeTags: boolean,
-	): ManifestEntry {
-		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
-		const serialized = this.workflowSerializer.serialize(workflow, { includeTags });
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
-		return { id: workflow.id, name: workflow.name, target };
-	}
-}
-
-function parentDir(path: string): string {
-	return path.split('/').slice(0, -1).join('/');
-}
-
-function allocatorFor(
-	allocators: Map<string, UniqueFilenameAllocator>,
-	baseDir: string,
-	fallback: string,
-): UniqueFilenameAllocator {
-	const existing = allocators.get(baseDir);
-	if (existing) return existing;
-
-	const allocator = new UniqueFilenameAllocator(baseDir, fallback);
-	allocators.set(baseDir, allocator);
-	return allocator;
 }

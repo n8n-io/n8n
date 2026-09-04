@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -101,6 +101,9 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -148,15 +151,22 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
-			activeState: flags.activeState,
-		});
+		const { violations } = await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			userId,
+			{ activeState: flags.activeState },
+		);
 
-		this.reportSuccess(workflows.length);
+		this.logSkippedWorkflows(violations);
+
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
 
 		Container.get(EventService).emit('server-cli-import', {
 			activeState: flags.activeState,
-			workflowCount: workflows.length,
+			workflowCount: importedCount,
 			separate: flags.separate,
 		});
 	}
@@ -212,6 +222,15 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	private reportSuccess(total: number) {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
+		}
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {

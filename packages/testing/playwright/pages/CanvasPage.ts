@@ -896,10 +896,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('zoom-in-button');
 	}
 
-	getResetZoomButton(): Locator {
-		return this.page.getByTestId('reset-zoom-button');
-	}
-
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -931,6 +927,38 @@ export class CanvasPage extends BasePage {
 			// Fallback: return default zoom level
 			return 1.0;
 		});
+	}
+
+	/**
+	 * Wait for the canvas viewport transform (zoom/pan) to stop changing.
+	 * After a route change the editor runs an animated fit-to-view. Sparse
+	 * expect.poll sampling can catch two equal values in the pre-animation window
+	 * and report "settled" before the animation starts; this checks every frame
+	 * inside the page so it can't miss the in-flight transition.
+	 */
+	async waitForCanvasZoomSettled(stableFrames = 5): Promise<void> {
+		await this.page.waitForFunction(
+			(needed) => {
+				const el = document.querySelector('.vue-flow__transformationpane.vue-flow__container');
+				if (!el) return false;
+				const transform = getComputedStyle(el).transform;
+				const w = window as unknown as { n8nZoomSettle?: { last: string; count: number } };
+				const state = (w.n8nZoomSettle ??= { last: '', count: 0 });
+				if (transform === state.last) {
+					state.count += 1;
+				} else {
+					state.last = transform;
+					state.count = 0;
+				}
+				if (state.count >= needed) {
+					delete w.n8nZoomSettle;
+					return true;
+				}
+				return false;
+			},
+			stableFrames,
+			{ polling: 'raf', timeout: 10_000 },
+		);
 	}
 
 	waitingForTriggerEvent() {

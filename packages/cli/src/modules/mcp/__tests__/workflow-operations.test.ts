@@ -303,15 +303,84 @@ describe('applyOperations', () => {
 			}
 		});
 
-		test('fails clearly when descending through an array (indices not supported)', () => {
+		test('descends into an array by numeric index and sets a nested field', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { values: [{ name: 'Content-Type', value: 'application/json' }] };
 			const result = applyOperations(wf, [
 				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/0/value', value: 'text/plain' },
 			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[1].parameters).toEqual({
+				values: [{ name: 'Content-Type', value: 'text/plain' }],
+			});
+		});
+
+		test('replaces an array element outright when the path ends at the index', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }, { name: 'b' }] };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/1', value: { name: 'c' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[1].parameters).toEqual({
+				values: [{ name: 'a' }, { name: 'c' }],
+			});
+		});
+
+		test('rejects an out-of-bounds array index', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/1/name', value: 'b' },
+			]);
+
 			expect(result.success).toBe(false);
 			if (result.success) return;
-			expect(result.error).toContain('cannot descend');
+
+			expect(result.error).toContain('array index 1 out of bounds');
+			expect(result.error).toContain("at '/values'");
+		});
+
+		test('rejects a non-numeric segment used against an array', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/foo/name', value: 'b' },
+			]);
+
+			expect(result.success).toBe(false);
+			if (result.success) return;
+
+			expect(result.error).toContain("cannot use 'foo' as an array index");
+			expect(result.error).toContain("at '/values'");
+		});
+
+		test('rejects creating an array via a numeric segment when the container does not exist', () => {
+			const wf = baseWorkflow();
+
+			// Empty node with no parameters, so updating an array value will error
+			wf.nodes[1].parameters = {};
+
+			const result = applyOperations(wf, [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: '/assignments/assignments/0/value',
+					value: 99,
+				},
+			]);
+
+			expect(result.success).toBe(false);
+			if (result.success) return;
+
+			expect(result.error).toContain("cannot create array at '/assignments/assignments'");
+			expect(result.error).toContain("for numeric segment '0'");
+			expect(result.error).toContain('updateNodeParameters');
+			expect(wf.nodes[1].parameters).toEqual({});
 		});
 	});
 

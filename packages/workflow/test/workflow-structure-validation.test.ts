@@ -179,6 +179,90 @@ describe('workflow-structure-validation', () => {
 		);
 	});
 
+	test('rejects duplicate node ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: [
+				validWorkflow.nodes[0],
+				{
+					...validWorkflow.nodes[1],
+					id: 'node-1',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'duplicate_node_id',
+				path: ['nodes', 1, 'id'],
+				message: 'Nodes "Start" and "Set" share the node ID "node-1"',
+			}),
+		);
+	});
+
+	test('reports every node after the first sharing an id', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: [
+				validWorkflow.nodes[0],
+				{ ...validWorkflow.nodes[1], id: 'node-1' },
+				{ ...validWorkflow.nodes[1], id: 'node-1', name: 'Set1' },
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		expect(result.issues.filter(({ code }) => code === 'duplicate_node_id')).toHaveLength(2);
+	});
+
+	test('reports both issues for a node duplicating another node id and name', () => {
+		const result = safeParseWorkflowStructure({
+			nodes: [validWorkflow.nodes[0], { ...validWorkflow.nodes[0] }],
+			connections: {},
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({ code: 'duplicate_node_id', path: ['nodes', 1, 'id'] }),
+			expect.objectContaining({ code: 'duplicate_node_name', path: ['nodes', 1, 'name'] }),
+		]);
+	});
+
+	test('accepts duplicate-free ids mixed with nodes that have no id', () => {
+		const { id: _id, ...idlessNode } = validWorkflow.nodes[1];
+
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: [validWorkflow.nodes[0], idlessNode, { ...idlessNode, name: 'Set1' }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts several nodes without ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: validWorkflow.nodes.map(({ id: _id, ...node }) => node),
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts several nodes with empty-string ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: validWorkflow.nodes.map((node) => ({ ...node, id: '' })),
+		});
+
+		expect(result.success).toBe(true);
+	});
+
 	test('rejects unknown connection sources', () => {
 		const result = safeParseWorkflowStructure({
 			...validWorkflow,

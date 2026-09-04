@@ -1,5 +1,6 @@
 import type {
 	AgentBuilder,
+	AgentMessage,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -62,13 +63,14 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessageSync?(toolName: string, output: unknown): unknown;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -439,7 +441,6 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
@@ -451,6 +452,12 @@ async function resolveToolRef(
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
+				...(descriptor.hasToMessage
+					? {
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
+						}
+					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
@@ -471,7 +478,9 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -485,7 +494,9 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -616,6 +627,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 

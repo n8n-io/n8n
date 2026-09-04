@@ -16,7 +16,7 @@ import {
 	type AgentMutationTelemetryContext,
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
@@ -115,7 +115,7 @@ export class AgentSkillsService {
 		}
 
 		markAgentDraftDirty(entity);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -155,6 +155,8 @@ export class AgentSkillsService {
 		if (!existing) throw new NotFoundError('Skill not found');
 
 		const updated = { ...existing, ...updates };
+		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
+		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);
 		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
@@ -172,7 +174,7 @@ export class AgentSkillsService {
 		};
 
 		markAgentDraftDirty(entity);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,
@@ -218,7 +220,7 @@ export class AgentSkillsService {
 		}
 
 		markAgentDraftDirty(entity);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		await this.clearRuntimes(agentId);
 		this.modificationTelemetry.record({
 			agent: saved,

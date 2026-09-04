@@ -8,10 +8,12 @@ describe('shapeToStandardSchema', () => {
 		limit: z.number().int().min(1),
 	});
 
-	it('advertises the shape as JSON Schema without a $schema marker', () => {
+	// Claude Desktop and other strict clients reject a tool whose schema declares
+	// draft-07, and MCP requires every client to support 2020-12.
+	it('advertises the shape as JSON Schema 2020-12', () => {
 		const json = schema['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
 
-		expect(json.$schema).toBeUndefined();
+		expect(json.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
 		expect(json).toMatchObject({
 			type: 'object',
 			properties: {
@@ -20,6 +22,31 @@ describe('shapeToStandardSchema', () => {
 			},
 			required: ['limit'],
 		});
+	});
+
+	it('advertises tuples with the 2020-12 keywords', () => {
+		const withTuple = shapeToStandardSchema({
+			range: z.tuple([z.number(), z.number()]).rest(z.number()),
+		});
+
+		const json = withTuple['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
+
+		expect(json.properties).toMatchObject({
+			range: {
+				type: 'array',
+				prefixItems: [{ type: 'number' }, { type: 'number' }],
+				items: { type: 'number' },
+			},
+		});
+		expect(JSON.stringify(json)).not.toContain('additionalItems');
+	});
+
+	it('declares the same dialect on input and output', () => {
+		const standard = schema['~standard'];
+
+		expect(standard.jsonSchema.output({ target: 'draft-2020-12' }).$schema).toBe(
+			standard.jsonSchema.input({ target: 'draft-2020-12' }).$schema,
+		);
 	});
 
 	it('validates through the original zod object', async () => {
@@ -59,6 +86,39 @@ describe('shapeToStandardSchema', () => {
 
 		expect(handledError).toEqual({
 			value: { executionId: null, status: 'error', error: 'workflow failed' },
+		});
+	});
+
+	// A Zod instance reused across two properties must be inlined at both use
+	// sites. The generator's default strategy dedupes the second occurrence into
+	// a `$ref` to a `#/properties/...` path, which strict clients (e.g. Zod v4's
+	// `fromJSONSchema`) refuse to resolve — they only follow refs into `$defs` —
+	// leaving the tool's arguments unvalidated client-side.
+	it('inlines a schema instance that is reused across the shape instead of emitting a $ref', () => {
+		const sharedPosition = z.array(z.number()).length(2).describe('Canvas [x, y].');
+		const reusing = shapeToStandardSchema({
+			node: z.object({ position: sharedPosition.optional() }).optional(),
+			position: sharedPosition.optional().describe('For setNodePosition.'),
+		});
+
+		const json = reusing['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
+
+		expect(JSON.stringify(json)).not.toContain('$ref');
+		expect(json.properties).toMatchObject({
+			node: {
+				type: 'object',
+				properties: {
+					position: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 },
+				},
+			},
+			// The second occurrence keeps its own description override.
+			position: {
+				type: 'array',
+				items: { type: 'number' },
+				minItems: 2,
+				maxItems: 2,
+				description: 'For setNodePosition.',
+			},
 		});
 	});
 });

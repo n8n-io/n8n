@@ -15,5 +15,9 @@ export function fromStepInputs(value: StepSlots): INodeExecutionData[][] {
 }
 
 export function toStepOutputs(outputs: INodeExecutionData[][]): StepSlots {
-	return outputs as unknown as StepSlots;
+	// v1 marks a branch "not taken" by producing zero items; the engine marks it
+	// with a null slot (dead edge), which is what makes skip propagation see the
+	// branch as dead. The collapse is v1 policy applied at the boundary — []
+	// stays representable inside the engine.
+	return outputs.map((slot) => (slot.length === 0 ? null : slot)) as unknown as StepSlots;
 }

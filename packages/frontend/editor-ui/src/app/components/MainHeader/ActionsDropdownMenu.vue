@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
-import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nIconButton, type DropdownMenuItemProps } from '@n8n/design-system';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@n8n/composables/useToast';
@@ -88,6 +88,17 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
+function addWorkflowMenuTestIds(
+	item: DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>,
+): DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS> {
+	return {
+		...item,
+		testId: `workflow-menu-item-${item.id}`,
+		class: [item.class, item.disabled ? 'disabled' : undefined],
+		children: item.children?.map(addWorkflowMenuTestIds),
+	};
+}
+
 function handleFileImport() {
 	const inputRef = importFileRef.value;
 	if (inputRef?.files && inputRef.files.length !== 0) {
@@ -114,7 +125,7 @@ function handleFileImport() {
 	}
 }
 
-const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
+const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>>>(() => {
 	const canEdit =
 		(props.workflowPermissions.update === true &&
 			!collaborationReadOnly.value &&
@@ -122,7 +133,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			!sourceControlStore.preferences.branchReadOnly) ||
 		props.isNewWorkflow;
 
-	const nameAndMetadata: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
+	const nameAndMetadata: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		!collaborationReadOnly.value &&
@@ -132,6 +143,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
+			icon: { type: 'icon', value: 'pencil' },
 			disabled: props.workflowPermissions.update !== true,
 		});
 	}
@@ -140,6 +152,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
 			label: locale.baseText('menuActions.editDescriptionAndTags'),
+			icon: { type: 'icon', value: 'tags' },
 			disabled: !props.id,
 		});
 	}
@@ -149,15 +162,17 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
+		icon: { type: 'icon', value: 'star' },
 		disabled: props.isNewWorkflow,
 	});
 
-	const organization: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
+	const organization: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
 		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
 			label: locale.baseText('workflows.item.changeOwner'),
+			icon: { type: 'icon', value: 'corner-up-right' },
 			disabled: props.isNewWorkflow,
 		});
 	}
@@ -166,6 +181,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
+			icon: { type: 'icon', value: 'copy' },
 			disabled: !props.id,
 		});
 	}
@@ -174,13 +190,15 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
+			icon: { type: 'icon', value: 'share' },
 		});
 	}
 
-	const importExport: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+	const importExport: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.exportJson'),
+			icon: { type: 'icon', value: 'download' },
 		},
 	];
 
@@ -188,16 +206,19 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.IMPORT,
 			label: locale.baseText('menuActions.import'),
+			icon: { type: 'icon', value: 'upload' },
 			disabled: onExecutionsTab.value,
 			children: [
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
 					label: locale.baseText('menuActions.importFromUrl'),
+					icon: { type: 'icon', value: 'link' },
 					disabled: onExecutionsTab.value,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: locale.baseText('menuActions.importFromFile'),
+					icon: { type: 'icon', value: 'file-input' },
 					disabled: onExecutionsTab.value,
 				},
 			],
@@ -208,6 +229,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.PUSH,
 			label: locale.baseText('menuActions.push'),
+			icon: { type: 'icon', value: 'git-branch' },
 			disabled:
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
 				onExecutionsTab.value ||
@@ -215,15 +237,17 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	const workflowTools: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+	const workflowTools: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.VERSION_HISTORY,
 			label: locale.baseText('menuActions.versionHistory'),
+			icon: { type: 'icon', value: 'history' },
 			disabled: props.isNewWorkflow,
 		},
 		{
 			id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 			label: locale.baseText('generic.settings'),
+			icon: { type: 'icon', value: 'settings' },
 			disabled: props.isNewWorkflow,
 		},
 	];
@@ -232,10 +256,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		workflowTools.push({
 			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
 			label: locale.baseText('menuActions.productionChecklist'),
+			icon: { type: 'icon', value: 'list-checks' },
 		});
 	}
 
-	const lifecycle: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
+	const lifecycle: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		(props.workflowPermissions.delete === true &&
@@ -247,20 +272,23 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
 				label: locale.baseText('menuActions.unarchive'),
+				icon: { type: 'icon', value: 'archive-restore' },
 				disabled: props.isNewWorkflow,
 			});
 			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
+				icon: { type: 'icon', value: 'trash-2' },
 				disabled: props.isNewWorkflow,
-				customClass: $style.deleteItem,
+				class: $style.destructiveItem,
 			});
 		} else {
 			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
+				icon: { type: 'icon', value: 'archive' },
 				disabled: props.isNewWorkflow,
-				customClass: $style.deleteItem,
+				class: $style.destructiveItem,
 			});
 		}
 	}
@@ -270,9 +298,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	);
 
 	// A separator above the first item of every group but the first.
-	return groups.flatMap((group, index) =>
-		index === 0 ? group : group.map((item, i) => (i === 0 ? { ...item, divided: true } : item)),
-	);
+	return groups
+		.flatMap((group, index) =>
+			index === 0 ? group : group.map((item, i) => (i === 0 ? { ...item, divided: true } : item)),
+		)
+		.map(addWorkflowMenuTestIds);
 });
 
 function openDescriptionAndTagsModal(): void {
@@ -488,22 +518,43 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
-		<N8nActionDropdown
+		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
+		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
+		<span :class="$style.checklistAnchor">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+		</span>
+		<N8nDropdownMenu
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
+			content-test-id="workflow-menu"
+			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			@select="onWorkflowMenuSelect"
-		/>
+		>
+			<template #trigger>
+				<N8nIconButton
+					variant="ghost"
+					size="medium"
+					icon="ellipsis"
+					icon-size="large"
+					:aria-label="locale.baseText('node.moreActions')"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 <style lang="scss" module>
-.deleteItem {
-	color: var(--color--danger);
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
 }
 .group {
 	display: flex;
-	gap: var(--spacing--xs);
+}
+.checklistAnchor {
+	position: absolute;
+	top: calc(100% + var(--spacing--sm));
+	left: var(--spacing--sm);
 }
 .hiddenInput {
 	display: none;

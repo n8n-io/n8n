@@ -16,11 +16,7 @@ import {
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
 } from './agent-knowledge-retrieval';
-import {
-	assertKnowledgePathSegment,
-	KNOWLEDGE_MIRROR_FILES_DIR,
-	KNOWLEDGE_MIRROR_MANIFEST,
-} from './agent-knowledge-storage';
+import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
@@ -478,13 +474,7 @@ function decodeRipgrepJsonData(value: RipgrepEncodedText): string | undefined {
 }
 
 function normalizeRipgrepPath(filePath: string): string {
-	if (filePath.startsWith(`${KNOWLEDGE_MIRROR_FILES_DIR}/`)) {
-		return filePath.slice(KNOWLEDGE_MIRROR_FILES_DIR.length + 1);
-	}
-	if (filePath.startsWith('./')) {
-		return filePath.slice(2);
-	}
-	return filePath;
+	return filePath.startsWith('./') ? filePath.slice(2) : filePath;
 }
 
 function stripTrailingNewline(text: string): string {
@@ -553,51 +543,57 @@ function buildAwkPipeline(command: string, script: string): string {
 	].join('; ');
 }
 
-export function buildScopedKnowledgeShellCommand(command: string): string {
+export function buildScopedKnowledgeShellCommand(
+	command: string,
+	paths: AgentKnowledgePaths,
+): string {
 	const scopedCommand = [
-		`[ -d ${quoteShellArg(KNOWLEDGE_MIRROR_FILES_DIR)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
-		`cd ${quoteShellArg(KNOWLEDGE_MIRROR_FILES_DIR)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`[ -d ${quoteShellArg(paths.filesDir)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`cd ${quoteShellArg(paths.filesDir)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`{ ${command}; }`,
 	].join('; ');
 	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
 }
 
-export function buildReadMirrorManifestCommand(): string {
-	return `cat ${KNOWLEDGE_MIRROR_MANIFEST} 2>/dev/null || true`;
-}
-
 /**
  * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
- * `.tmp-` staging path into place, removes `toDelete` names, and rewrites the
- * manifest to `manifestNames`. The `.tmp-` + `mv` staging means a search
+ * per-sync staging path into place, removes `toDelete` names, and rewrites the
+ * manifest to `manifestFiles`. The staging + `mv` sequence means a search
  * running concurrently never sees a partially-written file.
  */
 export function buildMirrorFinalizeCommand(
 	toCopy: string[],
 	toDelete: string[],
-	manifestNames: string[],
+	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
+	paths: AgentKnowledgePaths,
+	stagingId: string,
 ): string {
-	for (const name of [...toCopy, ...toDelete, ...manifestNames]) {
+	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {
 		assertKnowledgePathSegment(name, 'knowledge mirror file name');
 	}
+	assertKnowledgePathSegment(stagingId, 'knowledge mirror staging ID');
 
-	const commands = [`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`];
+	const commands = [`mkdir -p ${paths.filesDir}`];
 
 	for (const name of toCopy) {
-		const tmpPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}`);
-		const finalPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/${name}`);
+		const tmpPath = quoteShellArg(`${paths.stagingDir}/${stagingId}/${name}`);
+		const finalPath = quoteShellArg(`${paths.filesDir}/${name}`);
 		commands.push(`mv ${tmpPath} ${finalPath}`);
 	}
 
 	if (toDelete.length > 0) {
-		const targets = toDelete.map((name) => quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/${name}`));
+		const targets = toDelete.map((name) => quoteShellArg(`${paths.filesDir}/${name}`));
 		commands.push(`rm -f ${targets.join(' ')}`);
 	}
 
-	const manifestBody = manifestNames.length > 0 ? `${manifestNames.join('\n')}\n` : '';
+	const manifestBody =
+		manifestFiles.length > 0
+			? `${manifestFiles.map(({ file, fileId }) => `${fileId}\t${file}`).join('\n')}\n`
+			: '';
+	const stagedManifest = `${paths.manifest}.${stagingId}.tmp`;
 	commands.push(
-		`printf '%s' ${quoteShellArg(manifestBody)} > ${KNOWLEDGE_MIRROR_MANIFEST}.tmp`,
-		`mv ${KNOWLEDGE_MIRROR_MANIFEST}.tmp ${KNOWLEDGE_MIRROR_MANIFEST}`,
+		`printf '%s' ${quoteShellArg(manifestBody)} > ${stagedManifest}`,
+		`mv ${stagedManifest} ${paths.manifest}`,
 	);
 
 	return `timeout ${MIRROR_SYNC_TIMEOUT_SECONDS} bash -o pipefail -c ${quoteShellArg(commands.join(' && '))}`;

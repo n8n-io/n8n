@@ -95,7 +95,7 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"

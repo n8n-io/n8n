@@ -13,9 +13,7 @@ import {
 	versionDirToNumber,
 } from '@n8n/ai-utilities/node-catalog';
 import { safeJoinPath } from '@n8n/backend-common';
-import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { dirname } from 'node:path';
 
 function getNodesPaths(nodeDefinitionDirs: string[]): string[] {
 	return nodeDefinitionDirs.map((dir) => safeJoinPath(dir, 'nodes'));
@@ -390,24 +388,4 @@ ${readFileSync(variant.filePath, 'utf-8')}`,
 			error: `Error reading node definition for '${nodeId}': ${error instanceof Error ? error.message : 'Unknown error'}`,
 		};
 	}
-}
-
-/**
- * Resolve the built-in node definition directories from installed node packages.
- */
-export function resolveBuiltinNodeDefinitionDirs(): string[] {
-	const dirs: string[] = [];
-	for (const packageId of BUILTIN_NODES_PACKAGES) {
-		try {
-			const packageJsonPath = require.resolve(`${packageId}/package.json`);
-			const distDir = dirname(packageJsonPath);
-			const nodeDefsDir = safeJoinPath(distDir, 'dist', 'node-definitions');
-			if (existsSync(nodeDefsDir)) {
-				dirs.push(nodeDefsDir);
-			}
-		} catch {
-			// Package not installed, skip
-		}
-	}
-	return dirs;
 }

@@ -12,6 +12,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 const validSettings = {
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -24,6 +25,7 @@ const validSettings = {
 };
 
 const testConnection = {
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -64,6 +66,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toMatchObject({
 				enabled: false,
+				exporterProtocol: 'http/protobuf',
 				exporterServiceName: 'n8n',
 				exporterTracingPath: '/v1/traces',
 			});
@@ -77,6 +80,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(Object.keys(response.body).sort()).toEqual(
 				[
 					'enabled',
+					'exporterProtocol',
 					'exporterEndpoint',
 					'exporterTracingPath',
 					'exporterServiceName',
@@ -167,6 +171,57 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(putResponse.status).toBe(200);
 			expect(putResponse.body.exporterServiceName).toBe('n8n-updated');
 			expect(putResponse.body.exporterHeaders).toBe(validSettings.exporterHeaders);
+		});
+
+		it('switches the exporter protocol to gRPC and back', async () => {
+			const grpc = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({
+					...validSettings,
+					exporterProtocol: 'grpc',
+					exporterEndpoint: 'http://collector.example.com:4317',
+				});
+			expect(grpc.status).toBe(200);
+			expect(grpc.body.exporterProtocol).toBe('grpc');
+			expect(grpc.body.exporterTracingPath).toBe(validSettings.exporterTracingPath);
+
+			const http = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(validSettings);
+			expect(http.status).toBe(200);
+			expect(http.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('resets an omitted exporterProtocol to the default (PUT is a full replacement)', async () => {
+			const grpc = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({
+					...validSettings,
+					exporterProtocol: 'grpc',
+					exporterEndpoint: 'http://collector.example.com:4317',
+				});
+			expect(grpc.body.exporterProtocol).toBe('grpc');
+
+			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
+			const replaced = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(bodyWithoutProtocol);
+
+			expect(replaced.status).toBe(200);
+			expect(replaced.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('rejects an unsupported exporter protocol with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, exporterProtocol: 'http/json' });
+
+			expect(response.status).toBe(400);
 		});
 
 		it('rejects a partial body with 400', async () => {
@@ -284,6 +339,35 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 	});
 
+	describe('PUT /settings/otel with an env-managed exporter protocol', () => {
+		let originalProtocol: OtelConfig['exporterProtocol'];
+
+		beforeEach(async () => {
+			process.env[OTEL_ENV_VARS.exporterProtocol] = 'grpc';
+			originalProtocol = Container.get(OtelConfig).exporterProtocol;
+			Container.get(OtelConfig).exporterProtocol = 'grpc';
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[OTEL_ENV_VARS.exporterProtocol];
+			Container.get(OtelConfig).exporterProtocol = originalProtocol;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('rejects a body that omits the env-managed protocol with 409', async () => {
+			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(bodyWithoutProtocol);
+
+			expect(response.status).toBe(409);
+			expect(response.body.message).toContain('exporterProtocol');
+		});
+	});
+
 	describe('POST /settings/otel/test-trace', () => {
 		it('reports a successful connection', async () => {
 			vi.spyOn(Container.get(OtelService), 'sendTestTrace').mockResolvedValue({ success: true });
@@ -319,6 +403,23 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send({ exporterEndpoint: 'http://collector.example.com:4318' });
 
 			expect(response.status).toBe(400);
+		});
+
+		it('accepts a connection body written before exporterProtocol existed', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+			const { exporterProtocol: _omitted, ...connectionWithoutProtocol } = testConnection;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send(connectionWithoutProtocol);
+
+			expect(response.status).toBe(200);
+			expect(sendTestTrace).toHaveBeenCalledWith(
+				expect.objectContaining({ exporterProtocol: 'http/protobuf' }),
+			);
 		});
 
 		it('rejects with 401 without a valid API key', async () => {

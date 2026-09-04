@@ -111,6 +111,10 @@ When suggesting new keys, follow the existing hierarchy. Browse nearby keys in
 
 ### Language and grammar
 
+**ASD-STE100 Simplified Technical English.** Use short sentences, the active
+voice, and one instruction for each sentence. Use one approved word for each
+meaning.
+
 **US English.** Always. No exceptions.
 - Do: "categorizing", "color", "analyze"
 - Don't: "categorising", "colour", "analyse"

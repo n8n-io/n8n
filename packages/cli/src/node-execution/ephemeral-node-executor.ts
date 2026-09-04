@@ -482,27 +482,30 @@ export class EphemeralNodeExecutor {
 		);
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		if (typeof nodeType.supplyData !== 'function') {
+		const supplyData = nodeType.supplyData;
+		if (typeof supplyData !== 'function') {
 			return { ok: false, error: 'Node does not implement supplyData' };
 		}
 
 		try {
-			const supplyDataResult = await nodeType.supplyData.call(context, 0);
-			const response = supplyDataResult.response as
-				| LangChainToolType
-				| StructuredToolkit
-				| undefined;
+			return await withExpressionIsolate(parts.workflow, async () => {
+				const supplyDataResult = await supplyData.call(context, 0);
+				const response = supplyDataResult.response as
+					| LangChainToolType
+					| StructuredToolkit
+					| undefined;
 
-			if (response instanceof StructuredToolkit) {
-				return { ok: true, value: await onTool(response) };
-			}
-			if (response && typeof response.invoke === 'function') {
-				return { ok: true, value: await onTool(response) };
-			}
-			return {
-				ok: false,
-				error: `Node "${tool.nodeType}" did not return a valid LangChain tool or toolkit`,
-			};
+				if (response instanceof StructuredToolkit) {
+					return { ok: true, value: await onTool(response) };
+				}
+				if (response && typeof response.invoke === 'function') {
+					return { ok: true, value: await onTool(response) };
+				}
+				return {
+					ok: false,
+					error: `Node "${tool.nodeType}" did not return a valid LangChain tool or toolkit`,
+				};
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return { ok: false, error: message };

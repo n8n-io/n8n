@@ -24,6 +24,7 @@ const makeJob = (id: number): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
+	ownerKey: 'owner-1',
 });
 
 const makeSkipJob = (id: number): ScheduledJob => ({
@@ -110,6 +111,7 @@ describe('materialize', () => {
 			occurrences: [NOW],
 			skippedOccurrences: 0,
 			catchUpAt: null,
+			retireBefore: null,
 			nextRunAt: new Date('2026-01-01T00:00:10.000Z'),
 			lastFiredAt: NOW,
 		};
@@ -410,6 +412,163 @@ describe('materialize', () => {
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
 		// No reporting about rows the rollback is about to undo.
 		expect(onSkippedDuplicates).not.toHaveBeenCalled();
+	});
+
+	describe('siblings sharing an owner under the owner-wide coalesce policy', () => {
+		const BEHIND = new Date('2025-12-31T23:58:00.000Z');
+
+		const makeSibling = (id: number): ScheduledJob => ({
+			...makeJob(id),
+			misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
+			ownerKey: 'owner-a',
+			nextRunAt: BEHIND,
+		});
+
+		const claimSiblings = (tx: MockProxy<MaterializerTransaction>) => {
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [makeSibling(1), makeSibling(2), makeSibling(3)],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+		};
+
+		it('records one late run for the whole owner, retires every sibling, and advances every clock', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			await materialize(runnerWith(tx), options);
+
+			expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ runAt: NOW, scheduledFor: NOW });
+
+			expect(tx.retireSuperseded).toHaveBeenCalledWith([
+				{ jobId: 1, before: NOW },
+				{ jobId: 2, before: NOW },
+				{ jobId: 3, before: NOW },
+			]);
+
+			const planned = tx.advanceJobs.mock.calls[0][0];
+			expect(planned).toHaveLength(3);
+			for (const { plan } of planned) {
+				expect(plan.nextRunAt).toEqual(new Date('2026-01-01T00:00:10.000Z'));
+				expect(plan.lastFiredAt).toEqual(NOW);
+			}
+		});
+
+		it('records the surviving occurrences of a superseded sibling at their own instants', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					{ ...makeSibling(1), nextRunAt: new Date('2025-12-31T23:58:00.000Z') },
+					{ ...makeSibling(2), nextRunAt: new Date('2025-12-31T23:58:05.000Z') },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 7, created: [] });
+
+			await materialize(runnerWith(tx), { ...options, windowSeconds: 30 });
+
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+
+			const superseded = rows.filter((row) => row.jobId === 2);
+			expect(superseded.map((row) => row.scheduledFor)).toEqual([
+				new Date('2026-01-01T00:00:05.000Z'),
+				new Date('2026-01-01T00:00:15.000Z'),
+				new Date('2026-01-01T00:00:25.000Z'),
+			]);
+			for (const row of superseded) {
+				expect(row.runAt).toEqual(row.scheduledFor);
+			}
+
+			const winner = rows.filter((row) => row.jobId === 1);
+			expect(winner.map((row) => row.scheduledFor)).toEqual([
+				NOW,
+				new Date('2026-01-01T00:00:10.000Z'),
+				new Date('2026-01-01T00:00:20.000Z'),
+				new Date('2026-01-01T00:00:30.000Z'),
+			]);
+			expect(winner[0].runAt).toEqual(NOW);
+			for (const row of winner.slice(1)) {
+				expect(row.runAt).toEqual(row.scheduledFor);
+			}
+		});
+
+		it("a group's dropped late run does not itself count as a misfire when the member discarded no backlog", async () => {
+			const tx = makeTx();
+			const hourly = (id: number, nextRunAt: string): ScheduledJob => ({
+				...makeSibling(id),
+				intervalSeconds: 3600,
+				nextRunAt: new Date(nextRunAt),
+			});
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [hourly(1, '2025-12-31T23:58:00.000Z'), hourly(2, '2025-12-31T23:57:00.000Z')],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			const planned = tx.advanceJobs.mock.calls[0][0];
+			const dropped = planned.find(({ job }) => job.id === 2)!;
+			expect(dropped.plan.skippedOccurrences).toBe(0);
+
+			expect(summary.misfires).toEqual([]);
+		});
+
+		it('counts a per-job policy discard in the same batch as a group, apart from the group', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					makeSibling(1),
+					makeSibling(2),
+					{ ...makeJob(3), nextRunAt: BEHIND },
+					{ ...makeSkipJob(4), nextRunAt: BEHIND },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.misfires).toEqual([
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 24 },
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 12 },
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Skip, discarded: 13 },
+			]);
+		});
+
+		it('records a single late run for the owner when none of their schedules has a further run', async () => {
+			const tx = makeTx();
+			const oneOff = (id: number, fireAt: string): ScheduledJob => ({
+				...makeSibling(id),
+				kind: 'one_off',
+				intervalSeconds: null,
+				fireAt: new Date(fireAt),
+				nextRunAt: new Date(fireAt),
+			});
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					oneOff(1, '2025-12-31T23:58:00.000Z'),
+					oneOff(2, '2025-12-31T23:58:10.000Z'),
+					oneOff(3, '2025-12-31T23:58:20.000Z'),
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+
+			await materialize(runnerWith(tx), options);
+
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows.map((row) => row.jobId)).toEqual([3]);
+			expect(rows[0].runAt).toEqual(NOW);
+			expect(tx.retireSuperseded).toHaveBeenCalledWith([
+				{ jobId: 1, before: new Date('2025-12-31T23:58:00.000Z') },
+				{ jobId: 2, before: new Date('2025-12-31T23:58:10.000Z') },
+				{ jobId: 3, before: new Date('2025-12-31T23:58:20.000Z') },
+			]);
+		});
 	});
 
 	it('still defers and completes the pass when the plan-error reporter itself throws', async () => {

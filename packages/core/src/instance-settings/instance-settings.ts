@@ -69,6 +69,16 @@ export class InstanceSettings {
 
 	hmacSignatureSecret: string;
 
+	/**
+	 * Whether this process may create deployment-wide state, e.g. seed
+	 * deployment keys. Server processes (`start`, `worker`, `webhook`) may;
+	 * a one-off CLI command must not pin state for the whole deployment and
+	 * may run with restricted DB credentials. Set by `initialize()` from the
+	 * command's `seedsInstanceIdentity`; defaults to true for processes that
+	 * never call `initialize()` (e.g. tests).
+	 */
+	canSeedDeploymentState = true;
+
 	readonly instanceType: InstanceType;
 
 	constructor(
@@ -110,6 +120,7 @@ export class InstanceSettings {
 		},
 		{ canSeed = true }: { canSeed?: boolean } = {},
 	): Promise<void> {
+		this.canSeedDeploymentState = canSeed;
 		await this.initSecret(
 			repo,
 			'instance.id',

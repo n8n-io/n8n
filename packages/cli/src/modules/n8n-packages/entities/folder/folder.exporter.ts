@@ -5,9 +5,10 @@ import { FolderFinderService } from '@/services/folder-finder.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
@@ -19,10 +20,12 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
+	includeArchivedWorkflows: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
-	 * export (`folders/...`); a project exporter passes `projects/<slug>` so the
-	 * same walk nests under `projects/<slug>/folders/...`.
+	 * export (`folders/...`); a project exporter passes `projects/<slug>-<id>` so
+	 * the same walk nests under `projects/<slug>-<id>/folders/...`.
 	 */
 	basePrefix?: string;
 }
@@ -69,9 +72,10 @@ export class FolderExporter {
 
 		const workflowIdsByFolder = await this.workflowFinder.findWorkflowIdsByFolder(
 			folders.map((folder) => folder.id),
+			{ includeArchived: request.includeArchivedWorkflows },
 		);
 
-		const foldersDir = request.basePrefix ? `${request.basePrefix}/folders` : 'folders';
+		const foldersDir = packageDirectory('folders', request.basePrefix);
 		return await this.exportLevel(roots, foldersDir, null, {
 			childrenByParent,
 			workflowIdsByFolder,
@@ -112,16 +116,10 @@ export class FolderExporter {
 		parentDir: string,
 		effectiveParentId: string | null,
 		context: FolderWriteContext,
-		reservedName?: string,
 	): Promise<FolderExportResult> {
-		// File names need to be unique within a folder only.
-		const allocator = new UniqueFilenameAllocator(parentDir, 'folder');
-		if (reservedName) allocator.reserve(reservedName);
-
 		const results: FolderExportResult[] = [];
 		for (const folder of this.orderedByCreation(siblings)) {
-			const target = allocator.allocate(folder.name);
-			results.push(await this.exportFolder(folder, target, effectiveParentId, context));
+			results.push(await this.exportFolder(folder, parentDir, effectiveParentId, context));
 		}
 
 		return this.mergeFolderExportResults(results);
@@ -129,44 +127,37 @@ export class FolderExporter {
 
 	private async exportFolder(
 		folder: Folder,
-		target: string,
+		parentDir: string,
 		effectiveParentId: string | null,
 		context: FolderWriteContext,
 	): Promise<FolderExportResult> {
 		const { childrenByParent, workflowIdsByFolder, request } = context;
 
-		this.exportFolderShell(folder, target, effectiveParentId, request.writer);
+		const entry = await writeManifestEntry(
+			request.writer,
+			'folders',
+			parentDir,
+			folder,
+			this.folderSerializer.serialize(folder, effectiveParentId),
+		);
 
 		const workflowIds = workflowIdsByFolder.get(folder.id) ?? [];
-		const contained = await this.exportContainedWorkflows(workflowIds, target, request);
+		const contained = await this.exportContainedWorkflows(workflowIds, entry.target, request);
 
 		const descendants = await this.exportLevel(
 			childrenByParent.get(folder.id) ?? [],
-			target,
+			entry.target,
 			folder.id,
 			context,
-			// Reserve the workflows folder so a child folder can't collide with it.
-			workflowIds.length > 0 ? 'workflows' : undefined,
 		);
 
 		const own: FolderExportResult = {
-			entries: [{ id: folder.id, name: folder.name, target }],
+			entries: [entry],
 			workflowEntries: contained.entries,
 			requirements: contained.requirements,
 		};
 
 		return this.mergeFolderExportResults([own, descendants]);
-	}
-
-	private exportFolderShell(
-		folder: Folder,
-		target: string,
-		effectiveParentId: string | null,
-		writer: PackageWriter,
-	): void {
-		const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportContainedWorkflows(
@@ -183,6 +174,7 @@ export class FolderExporter {
 			writer: request.writer,
 			workflowIds,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix,
 		});
 	}
@@ -196,9 +188,8 @@ export class FolderExporter {
 	}
 
 	/**
-	 * Sorts siblings oldest-first (tie-broken by id) so that when two folders in
-	 * the same parent share a name, the oldest keeps the bare slug and the
-	 * allocator suffixes the rest deterministically.
+	 * Sorts siblings oldest-first so the manifest lists a parent's folders in the
+	 * same order on every export.
 	 */
 	private orderedByCreation(folders: Folder[]): Folder[] {
 		return [...folders].sort((a, b) => {

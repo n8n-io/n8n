@@ -2,8 +2,9 @@ type: object
 additionalProperties: false
 description: >
   The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a
-  full replacement: every field must be provided. Fields managed declaratively via environment
-  variables are returned with their effective value and ignored on write.
+  full replacement: every field must be provided, except `exporterProtocol`, which defaults to
+  `http/protobuf` when omitted. Fields managed declaratively via environment variables are
+  returned with their effective value and ignored on write.
 required:
   - enabled
   - exporterEndpoint
@@ -20,14 +21,32 @@ properties:
     type: boolean
     description: Whether OpenTelemetry tracing is enabled.
     example: true
+  exporterProtocol:
+    type: string
+    enum:
+      - http/protobuf
+      - grpc
+    default: http/protobuf
+    description: >
+      The wire protocol used to export spans. Collectors conventionally serve OTLP/HTTP on port
+      4318 and OTLP/gRPC on port 4317. The endpoint scheme (`http://` or `https://`) controls
+      TLS for both protocols. Optional: a write that omits it selects `http/protobuf`, but an
+      instance that sets this field to another value with an environment variable rejects that
+      write with 409.
+    example: http/protobuf
   exporterEndpoint:
     type: string
     format: uri
-    description: The base URL of the OTLP collector to export traces to.
+    description: >
+      The base URL of the OTLP collector to export traces to. The value must be an `http://` or
+      `https://` URL, because the scheme selects TLS — for gRPC, `https://` uses SSL and
+      `http://` is plaintext.
     example: http://localhost:4318
   exporterTracingPath:
     type: string
-    description: The path appended to the endpoint for the OTLP traces signal.
+    description: >
+      The path appended to the endpoint for the OTLP traces signal. Ignored when
+      `exporterProtocol` is `grpc`, which takes no URL path.
     example: /v1/traces
   exporterServiceName:
     type: string

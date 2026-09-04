@@ -53,6 +53,8 @@ export class OAuthConsentController {
 					scopes: consentDetails.scopes,
 					previousScopes: consentDetails.previousScopes,
 					scopeTools: consentDetails.scopeTools,
+					uiHints: consentDetails.uiHints,
+					isFirstParty: consentDetails.isFirstParty,
 				},
 			});
 		} catch (error) {

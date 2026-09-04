@@ -5,6 +5,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as ChatLogger, Message, Thread } from 'chat';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -13,6 +14,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
@@ -26,6 +28,7 @@ import {
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadDiscordAdapter } from '../esm-loader';
 import type { ReplyExpectation } from '../integration-tools';
 import {
@@ -93,10 +96,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 			'The agent needs to reply to Discord users in the same conversation context.',
 			'The agent needs to update or react to a Discord message in the current conversation.',
 			'The agent should send Discord messages as the connected Discord bot.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Discord bot.',
 		],
 		useNodeToolWhen: [
 			'Discord is only a backend API step and the agent does not need to be connected as a Discord chat surface.',
-			'The request is a one-off Discord operation from another trigger without ongoing Discord conversation context.',
+			'The Discord operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -128,6 +132,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	];
 
 	readonly actionToolGuidance = [
+		'For scheduled tasks without an inbound conversation, use send_dm or send_channel_message with the known destination ID. These actions do not require current message context.',
 		'For edit_message, pass the messageId returned by a previous Discord action or get_current_message_context. The current Discord conversation is selected automatically.',
 		'For send_channel_message, channelId must be shaped "discord:<guildId>:<channelId>" — pass the value returned by search_channels or get_current_message_context. A bare Discord channel ID copied from the Discord app is rejected.',
 		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',
@@ -190,27 +195,25 @@ export class DiscordIntegration extends AgentChatIntegration {
 		super();
 		this.gateway = new DiscordGateway(logger, instanceSettings);
 		this.httpClient = outboundHttp.requests({
-			ssrf: 'disabled', // the Discord API host is fixed and public
+			useDefaultSsrfPolicy: 'unsafe', // the Discord API host is fixed and public
 		});
+	}
+
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
 	}
 
 	/**
 	 * Reject connect when another agent already owns this credential, then
 	 * verify the bot token against Discord application metadata so a typo'd
 	 * Application ID / Public Key fails before publish rather than at runtime.
+	 *
+	 * The token check stays out of `assertStartupPreconditions` on purpose: it
+	 * calls Discord, so an outage there would otherwise block publishing an
+	 * agent whose credential is perfectly fine.
 	 */
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Discord credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 
 		await this.validateDiscordCredential(ctx);
 	}
@@ -576,9 +579,4 @@ function stripDiscordSelfMention(text: string, userId: string): string {
 		.replace(new RegExp(`(^|\\s)<@!?${escapeRegExp(userId)}>`, 'g'), '$1')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-/** Application IDs come from a user-editable credential field, so never trust them as a pattern. */
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

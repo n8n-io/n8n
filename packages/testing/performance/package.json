@@ -14,6 +14,7 @@
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.2.0",
     "@n8n/expression-runtime": "workspace:*",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "n8n-workflow": "workspace:*",
     "typescript": "catalog:typescript"

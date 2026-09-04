@@ -81,6 +81,16 @@ const HIDDEN_CHAT_TOOL = makeNodeType({
 	displayName: 'Chat Tool',
 });
 
+const executeWorkflowTrigger = {
+	id: 't',
+	name: 'When Executed by Another Workflow',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	typeVersion: 1.1,
+	position: [0, 0] as [number, number],
+	parameters: {},
+};
+const TRIGGER_NAME = executeWorkflowTrigger.name;
+
 function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
 	return {
 		id: 'wf-1',
@@ -92,16 +102,7 @@ function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
 		updatedAt: '2026-01-02T00:00:00Z',
 		versionId: 'v-1',
 		activeVersionId: null,
-		nodes: [
-			{
-				id: 't',
-				name: 'Manual Trigger',
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-		],
+		nodes: [executeWorkflowTrigger],
 		connections: {},
 		...overrides,
 	} as IWorkflowDb;
@@ -196,17 +197,28 @@ describe('useAgentToolCatalog', () => {
 	it('loads and filters project workflows for agent-tool compatibility', async () => {
 		const compatible = makeWorkflow({ id: 'ok' });
 		const archived = makeWorkflow({ id: 'archived', isArchived: true });
-		const waitBody = makeWorkflow({
-			id: 'wait',
+		const formBody = makeWorkflow({
+			id: 'form',
 			nodes: [
+				executeWorkflowTrigger,
 				{
-					id: 't',
-					name: 'Manual Trigger',
-					type: 'n8n-nodes-base.manualTrigger',
+					id: 'f',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
 				},
+			],
+			// Form is reachable from the trigger, so it actually runs and must be flagged.
+			connections: { [TRIGGER_NAME]: { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+		});
+		// A reachable Wait node no longer blocks a workflow: the tool hands its
+		// suspension off to HITL, so this one is selectable.
+		const waitBody = makeWorkflow({
+			id: 'wait',
+			nodes: [
+				executeWorkflowTrigger,
 				{
 					id: 'w',
 					name: 'Wait',
@@ -216,15 +228,62 @@ describe('useAgentToolCatalog', () => {
 					parameters: {},
 				},
 			],
+			connections: { [TRIGGER_NAME]: { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+		});
+		const noTrigger = makeWorkflow({
+			id: 'no-trigger',
+			nodes: [
+				{
+					id: 's',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+		// Only the execute-workflow trigger is supported; a manual trigger is not.
+		const manualOnly = makeWorkflow({
+			id: 'manual',
+			nodes: [
+				{
+					id: 'm',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
 		});
 		workflowsListStore.searchWorkflows = vi
 			.fn()
-			.mockResolvedValue([compatible, archived, waitBody]);
+			.mockResolvedValue([compatible, archived, formBody, waitBody, noTrigger, manualOnly]);
 
-		const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+		const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
 		await loadWorkflows('p-1');
 
-		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok']);
+		// Compatible workflows surface as selectable; archived ones are excluded
+		// entirely. A wait-bearing workflow is now among the selectable ones.
+		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok', 'wait']);
+
+		// Incompatible workflows surface with their reason, greyed out at the
+		// bottom of the picker. Archived ones are not surfaced as incompatible.
+		expect(incompatibleWorkflows.value).toEqual([
+			{
+				workflow: expect.objectContaining({ id: 'form' }),
+				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.form'] },
+			},
+			{
+				workflow: expect.objectContaining({ id: 'no-trigger' }),
+				reason: { reason: 'no_supported_trigger' },
+			},
+			{
+				workflow: expect.objectContaining({ id: 'manual' }),
+				reason: { reason: 'no_supported_trigger' },
+			},
+		]);
 	});
 });
 
@@ -247,29 +306,38 @@ describe('isWorkflowCompatibleWithAgentTools', () => {
 				}),
 			),
 		).toBe(false);
+		const formNode = {
+			id: 'f',
+			name: 'Form',
+			type: 'n8n-nodes-base.form',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const triggerToForm: IWorkflowDb['connections'] = {
+			[TRIGGER_NAME]: { main: [[{ node: 'Form', type: 'main', index: 0 }]] },
+		};
+		// An incompatible node reachable from the trigger blocks the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({ nodes: [executeWorkflowTrigger, formNode], connections: triggerToForm }),
+			),
+		).toBe(false);
+		// An incompatible node that is NOT reachable from the trigger never runs,
+		// so it must not block the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({ nodes: [executeWorkflowTrigger, formNode] }),
+			),
+		).toBe(true);
+		// A disabled incompatible node never runs, so it must not block the workflow.
 		expect(
 			isWorkflowCompatibleWithAgentTools(
 				makeWorkflow({
-					nodes: [
-						{
-							id: 't',
-							name: 'Manual Trigger',
-							type: 'n8n-nodes-base.manualTrigger',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
-						{
-							id: 'f',
-							name: 'Form',
-							type: 'n8n-nodes-base.form',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
+					nodes: [executeWorkflowTrigger, { ...formNode, disabled: true }],
+					connections: triggerToForm,
 				}),
 			),
-		).toBe(false);
+		).toBe(true);
 	});
 });

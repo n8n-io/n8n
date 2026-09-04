@@ -105,6 +105,7 @@ describe('AgentTestRunService', () => {
 			expect.objectContaining({
 				agentId,
 				projectId,
+				user,
 				source: 'instance-ai',
 				memory: {
 					threadId: result.sessionId,

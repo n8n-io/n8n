@@ -1,29 +1,111 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
-import { z } from 'zod';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 
-export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-] as const;
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
-export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
-	'n8n-nodes-base.wait',
-	'n8n-nodes-base.form',
-] as const;
+/** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */
+const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES: Record<
+	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
+	string
+> = {
+	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'When Executed by Another Workflow',
+};
+
+/** Display name of the trigger a workflow tool has to start with, for backend copy. */
+export const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME =
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE];
+
+/**
+ * Body nodes a workflow tool cannot run. The Wait node is absent by design — the
+ * tool hands its suspension off to HITL. The Form node has no such path, needing
+ * an interactive browser session mid-execution.
+ */
+export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = ['n8n-nodes-base.form'] as const;
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
+
+/**
+ * Why a workflow can't be attached as an agent tool. `null` means compatible.
+ *
+ * @remarks Computed from `nodes` (type/name/disabled) and `connections`, so it
+ * stays pure and shareable between the backend validation service and the
+ * frontend picker. Only nodes that can actually execute when the agent
+ * invokes the workflow are considered: disabled body nodes are skipped, and
+ * when `connections` is available only nodes reachable from the entry-point
+ * trigger are checked. The entry point is the first supported trigger in node
+ * order, matching the runtime `detectTriggerNode` selection — so with
+ * multiple supported triggers the other trigger subgraphs never run and an
+ * incompatible node there must not block the workflow. When `connections` is
+ * absent the check degrades to scanning every enabled node, which is the
+ * strict superset and stays safe. The runtime `validateCompatibility`/
+ * `detectTriggerNode` throws still cover edge cases that a pure scan can't
+ * (e.g. a trigger that resolves to a supported type only after parameter
+ * materialisation), so this is a strict subset of the runtime check — never
+ * relax the runtime check based on this.
+ */
+export type WorkflowToolIncompatibilityReason =
+	| { reason: 'incompatible_nodes'; nodeTypes: string[] }
+	| { reason: 'no_supported_trigger' };
+
+export function getWorkflowToolIncompatibilityReason(workflow: {
+	nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
+	connections?: IConnections;
+}): WorkflowToolIncompatibilityReason | null {
+	const nodes = workflow.nodes ?? [];
+
+	// Entry point the agent invokes — the first supported trigger in node
+	// order, matching the runtime `detectTriggerNode` selection. Runtime does
+	// not skip disabled triggers, so neither do we; this keeps the picker and
+	// the runtime from disagreeing on which subgraph executes.
+	const triggerNode = nodes.find((n) =>
+		(SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type),
+	);
+
+	// Only nodes reachable from the entry-point trigger run when the workflow
+	// is invoked as an agent tool. With no trigger (or no connections to
+	// traverse) we fall back to every node — the safe superset that keeps
+	// `incompatible_nodes` prioritised over `no_supported_trigger`.
+	const reachableNames =
+		triggerNode && workflow.connections
+			? reachableNodesFromTriggers([triggerNode.name], workflow.connections)
+			: new Set(nodes.map((n) => n.name));
+
+	// Disabled body nodes never execute, so they can't make the workflow
+	// incompatible even when they sit on a reachable branch.
+	const incompatibleNodeTypes = nodes
+		.filter((n) => !n.disabled && reachableNames.has(n.name))
+		.filter((n) =>
+			(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
+		)
+		.map((n) => n.type);
+	if (incompatibleNodeTypes.length > 0) {
+		return { reason: 'incompatible_nodes', nodeTypes: incompatibleNodeTypes };
+	}
+
+	if (!triggerNode) return { reason: 'no_supported_trigger' };
+
+	return null;
+}
+
+/**
+ * All node names reachable from any of `triggerNames` (the triggers included),
+ * following every connection type. `getChildNodes` is cycle-safe and returns
+ * each descendant once, so one call per trigger and a union is enough.
+ */
+function reachableNodesFromTriggers(
+	triggerNames: string[],
+	connections: IConnections,
+): Set<string> {
+	const reachable = new Set<string>(triggerNames);
+	for (const name of triggerNames) {
+		for (const child of getChildNodes(connections, name, 'ALL')) {
+			reachable.add(child);
+		}
+	}
+	return reachable;
+}
 
 export interface ChatIntegrationDescriptor {
 	type: string;
@@ -35,60 +117,58 @@ export interface ChatIntegrationDescriptor {
 	useNodeToolWhen?: string[];
 }
 
+/**
+ * What one configured channel is doing.
+ *
+ * - `configured` — set up, but its agent is not published, so it must not run.
+ * - `starting`  — should be running; no startup attempt has reported back yet.
+ * - `connected` — running.
+ * - `error`     — the last startup attempt failed; `errorMessage` says why, and
+ *                 it is being retried.
+ */
+export type AgentChannelRuntimeStatus = 'configured' | 'starting' | 'connected' | 'error';
+
 export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
 	settings?: AgentIntegrationSettings;
+	/** Authoritative per-channel state; prefer this over the response rollup. */
+	status: AgentChannelRuntimeStatus;
+	/** Present only when `status` is `error`. */
+	errorMessage?: string;
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'configured' | 'connected' | 'disconnected';
+	/**
+	 * Rollup across `integrations`, for callers that only need one word:
+	 * `disconnected` with none configured, `partial` when the channels disagree.
+	 */
+	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
 }
 
-export interface CreateSlackAgentAppResponse {
-	appId: string;
-	installUrl: string;
+export interface AgentDisconnectIntegrationResponse {
+	status: 'disconnected';
+	warning?: AgentIntegrationDisconnectWarning;
 }
 
-export interface SlackAgentAppManifest {
-	display_information: {
-		name: string;
+export interface AgentIntegrationDisconnectWarning {
+	integrationType: string;
+	code: string;
+	action?: {
+		type: 'open_url';
+		url: string;
 	};
-	features: {
-		app_home: {
-			home_tab_enabled: boolean;
-			messages_tab_enabled: boolean;
-			messages_tab_read_only_enabled: boolean;
-		};
-		bot_user: {
-			display_name: string;
-			always_online: boolean;
-		};
-	};
-	oauth_config: {
-		redirect_urls?: string[];
-		scopes: {
-			bot: string[];
-		};
-	};
-	settings: {
-		event_subscriptions: {
-			request_url: string;
-			bot_events: string[];
-		};
-		interactivity: {
-			is_enabled: boolean;
-			request_url: string;
-		};
-		org_deploy_enabled: boolean;
-		socket_mode_enabled: boolean;
-		token_rotation_enabled: boolean;
-	};
+	details?: Record<string, string>;
 }
 
-export interface SlackAgentAppManifestResponse {
-	manifest: SlackAgentAppManifest;
+/**
+ * The state a connect left the one channel it touched in. Narrower than the
+ * status rollup: a successful connect either started the channel or persisted it
+ * for a still-unpublished agent, and any other outcome is an error response.
+ */
+export interface AgentIntegrationConnectResponse {
+	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
 export interface AgentSkillReference {
@@ -217,6 +297,8 @@ export interface AgentPersistedMessageContentPart {
 	toolName?: string;
 	toolCallId?: string;
 	input?: unknown;
+	/** HITL payload associated with this tool call, when it suspended. */
+	suspendPayload?: unknown;
 	state?: string;
 	output?: unknown;
 	canceled?: boolean;
@@ -244,32 +326,6 @@ export interface AgentPersistedMessageDto {
 	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
-
-export const agentBuilderModeSchema = z.enum(['default', 'custom']);
-export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;
-
-export const agentBuilderAdminSettingsSchema = z.discriminatedUnion('mode', [
-	z.object({ mode: z.literal('default') }),
-	z.object({
-		mode: z.literal('custom'),
-		provider: z.string().min(1),
-		credentialId: z.string().min(1),
-		modelName: z.string().min(1),
-	}),
-]);
-export type AgentBuilderAdminSettings = z.infer<typeof agentBuilderAdminSettingsSchema>;
-
-export const agentBuilderAdminSettingsResponseSchema = z.object({
-	settings: agentBuilderAdminSettingsSchema,
-});
-export type AgentBuilderAdminSettingsResponse = z.infer<
-	typeof agentBuilderAdminSettingsResponseSchema
->;
-
-export const AgentBuilderAdminSettingsUpdateDto = agentBuilderAdminSettingsSchema;
-export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
-
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
@@ -281,6 +337,10 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+}
+
+export interface AgentSessionLangSmithExportResponse {
+	traceId: string;
 }
 
 /**

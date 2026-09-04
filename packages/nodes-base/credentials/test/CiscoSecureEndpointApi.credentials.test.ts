@@ -1,5 +1,4 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
@@ -10,8 +9,6 @@ describe('CiscoSecureEndpointApi Credential', () => {
 
 	const requestMock = vi.fn();
 	const requestsMock = vi.fn(() => ({ request: requestMock }));
-	const ssrfService = {} as SsrfProtectionService;
-	let ssrfEnabled = false;
 
 	const baseCredentials = {
 		region: 'eu.amp',
@@ -26,7 +23,6 @@ describe('CiscoSecureEndpointApi Credential', () => {
 	};
 
 	beforeEach(() => {
-		ssrfEnabled = false;
 		requestMock.mockReset();
 		requestMock
 			.mockResolvedValueOnce({ access_token: 'secure-x-token' })
@@ -35,8 +31,6 @@ describe('CiscoSecureEndpointApi Credential', () => {
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === OutboundHttp) return { requests: requestsMock };
-			if (token === SsrfProtectionConfig) return { enabled: ssrfEnabled };
-			if (token === SsrfProtectionService) return ssrfService;
 			throw new Error('unexpected DI token');
 		});
 	});
@@ -85,20 +79,10 @@ describe('CiscoSecureEndpointApi Credential', () => {
 			);
 		});
 
-		it('disables SSRF protection when it is turned off in config', async () => {
-			ssrfEnabled = false;
-
+		it('requests the default safe client for the user-controlled token host', async () => {
 			await credential.authenticate(baseCredentials, requestOptions);
 
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
-		});
-
-		it('enables SSRF protection when it is turned on in config', async () => {
-			ssrfEnabled = true;
-
-			await credential.authenticate(baseCredentials, requestOptions);
-
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: ssrfService });
+			expect(requestsMock).toHaveBeenCalledWith();
 		});
 
 		it('attaches the Secure Endpoint access token to the outgoing request', async () => {
