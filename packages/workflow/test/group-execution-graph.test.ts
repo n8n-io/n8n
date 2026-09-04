@@ -324,3 +324,31 @@ describe('group boundary semantics', () => {
 		});
 	});
 });
+
+describe('the old nodeGroups path is untouched', () => {
+	// With the feature off a workflow carries `nodeGroups` and no group node.
+	// The rewrite must not react to `nodeGroups` at all, so such a workflow
+	// keeps the exact object it was given.
+	it('returns the same connections object for a nodeGroups workflow', () => {
+		const nodes = [node('A'), node('B')];
+		const connections = connect(['A', 'B']);
+
+		expect(hasGroupNodes(nodes)).toBe(false);
+		expect(resolveGroupConnections(nodes, connections)).toBe(connections);
+	});
+
+	it('ignores a parentId that names no group node', () => {
+		// A stray `parentId` must not invent a boundary. Validation reports it;
+		// the graph stays as authored.
+		const nodes = [node('A', 'ghost'), node('B')];
+		const connections = connect(['A', 'B']);
+
+		expect(resolveGroupConnections(nodes, connections)).toBe(connections);
+	});
+
+	it('keeps every runnable node when no group node exists', () => {
+		const nodes = [node('A', 'ghost'), node('B')];
+
+		expect(getRunnableNodes(nodes)).toHaveLength(2);
+	});
+});
