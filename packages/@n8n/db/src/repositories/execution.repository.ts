@@ -389,18 +389,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		executionIds: string | string[],
 		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
 	): Promise<CrashedExecution[]> {
-		// Dedupe so an id that lands in two batches is reported only once.
+		// Dedupe so a repeated id is reported, and counted, once.
 		const ids = [...new Set(Array.isArray(executionIds) ? executionIds : [executionIds])];
 
 		const crashed: CrashedExecution[] = [];
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
-			// `stoppedAt` doubles as a claim token: when the UPDATE affects rows, the read
-			// below matches only the rows this UPDATE wrote, so concurrent sweeps each report
-			// their own rows without `SELECT ... FOR UPDATE`, which SQLite does not support.
-			// This does not hold for ids a concurrent sweep already claimed: the UPDATE
-			// matches none of those, but if the same batch also claims other ids, the read
-			// still picks up the untouched ones by their shared `stoppedAt`.
+			// `stoppedAt` doubles as a claim token, so the read below can match the rows this
+			// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
+			// batch that partly overlaps a concurrent sweep still reads the shared rows back.
 			const stoppedAt = new Date();
 
 			const transitioned = await this.runInTransaction({}, async (tx) => {
@@ -413,10 +410,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					{ status: 'crashed', stoppedAt, waitTill: null },
 				);
 
-				// Skip the read-back when the UPDATE is known to have affected nothing, so a
-				// concurrent sweeper that already claimed this whole batch reports no rows for
-				// it. Treat an unreported `affected` (null/undefined) as unknown, not zero, and
-				// fall back to the read.
+				// An UPDATE that matched nothing has nothing to report. An unreported `affected`
+				// is unknown rather than zero, so it falls through to the read.
 				if (updateResult?.affected === 0) return [];
 
 				const rows = await tx.find(ExecutionEntity, {
@@ -436,8 +431,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			});
 
 			crashed.push(...transitioned);
-			// Report each batch as it commits. A later batch that throws must not
-			// discard the batches already written.
+			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
 			onBatchTransitioned?.(transitioned);
 			this.logger.info('Marked executions as `crashed`', { executionIds: batch });
 		}
@@ -1197,6 +1191,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
+
+		return executions.map(({ id }) => id);
+	}
+
+	/** Retrieve the IDs of the workflow's executions with `new` or `running` status. */
+	async findInProgressExecutionIdsForWorkflow(workflowId: string) {
+		const executions = await this.find({
+			select: ['id'],
+			where: { workflowId, status: In(['new', 'running']) },
+		});
 
 		return executions.map(({ id }) => id);
 	}

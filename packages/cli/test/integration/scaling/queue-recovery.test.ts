@@ -1,7 +1,7 @@
 import { createWorkflow, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import { ExecutionRepository, StatisticsNames } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
@@ -12,12 +12,11 @@ import { ScalingService } from '@/scaling/scaling.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
 import { createExecution } from '../shared/db/executions';
+import { findWorkflowStatistic, findWorkflowStatistics } from '../shared/workflow-statistics';
 
 describe('ScalingService queue recovery', () => {
 	let scalingService: ScalingService;
-	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflow: WorkflowEntity;
-	let isPostgres: boolean;
 	const originalSkipStatisticsEvents = process.env.SKIP_STATISTICS_EVENTS;
 
 	beforeAll(async () => {
@@ -27,9 +26,6 @@ describe('ScalingService queue recovery', () => {
 
 		Container.get(InstanceSettings).markAsLeader();
 		Container.get(WorkflowStatisticsService);
-
-		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
-		isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 
 		scalingService = new ScalingService(
 			mockLogger(),
@@ -72,29 +68,8 @@ describe('ScalingService queue recovery', () => {
 		target: WorkflowEntity = workflow,
 	) => await createExecution({ status: 'running', finished: false, stoppedAt: null, mode }, target);
 
-	/**
-	 * On Postgres, recording a statistic appends to the delta table and a separate rollup folds
-	 * the increments into the counter out of band. Fold whatever is pending before every read, so
-	 * a read sees the same materialized counter that the SQLite upsert path writes directly.
-	 * No-op on SQLite.
-	 */
-	const foldPendingIncrements = async () => {
-		if (!isPostgres) return;
-		await workflowStatisticsRepository.rollupIncrements(
-			workflowStatisticsRepository.manager,
-			10_000,
-		);
-	};
-
-	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) => {
-		await foldPendingIncrements();
-		return await workflowStatisticsRepository.findOneBy({ workflowId, name });
-	};
-
-	const findAllStatistics = async (workflowId: string) => {
-		await foldPendingIncrements();
-		return await workflowStatisticsRepository.findBy({ workflowId });
-	};
+	const findStatistics = async (name: StatisticsNames, workflowId: string = workflow.id) =>
+		await findWorkflowStatistic(workflowId, name);
 
 	it('records a production error against the workflow for an execution recovered as crashed', async () => {
 		const execution = await createDanglingExecution('trigger');
@@ -135,13 +110,12 @@ describe('ScalingService queue recovery', () => {
 
 		await scalingService.recoverFromQueue();
 
-		// the chat execution is recovered in its own earlier sweep, so the later sweep's
-		// counter appearing means the chat execution has already been through the statistics path
+		// The later sweep's counter appearing proves the chat sweep has finished counting.
 		await vi.waitFor(async () => {
 			expect(await findStatistics(StatisticsNames.productionError)).toMatchObject({ count: 1 });
 		});
 
-		expect(await findAllStatistics(chatWorkflow.id)).toEqual([]);
+		expect(await findWorkflowStatistics(chatWorkflow.id)).toEqual([]);
 	});
 
 	it('excludes an execution already `crashed` from a later, sequential sweep', async () => {
@@ -161,8 +135,7 @@ describe('ScalingService queue recovery', () => {
 
 		await scalingService.recoverFromQueue();
 
-		// the later execution is recorded after any repeat of the first one, so its counter
-		// appearing means a repeated increment would already be visible
+		// The later counter appearing proves any repeat of the first would already be visible.
 		await vi.waitFor(async () => {
 			expect(await findStatistics(StatisticsNames.productionError, laterWorkflow.id)).toMatchObject(
 				{ count: 1 },

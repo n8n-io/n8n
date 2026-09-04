@@ -1,12 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import {
-	In,
-	type IExecutionResponse,
-	ProjectRelationRepository,
-	WorkflowEntity,
-	User,
-} from '@n8n/db';
+import { type IExecutionResponse, ProjectRelationRepository, WorkflowEntity, User } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -15,12 +9,13 @@ import { sleep } from '@n8n/utils/sleep';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
-import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
@@ -46,6 +41,7 @@ export class ExecutionRecoveryService {
 		private readonly ownershipService: OwnershipService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly workflowPushNotifier: WorkflowPushNotifier,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -106,10 +102,10 @@ export class ExecutionRecoveryService {
 					}
 				}
 
-				await this.executionRepository.update(
-					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
-					{ status: 'crashed', stoppedAt: new Date() },
-				);
+				const inProgressIds =
+					await this.executionRepository.findInProgressExecutionIdsForWorkflow(workflowId);
+
+				await this.executionCrashService.markAsCrashed(inProgressIds);
 			}
 		}
 	}
@@ -237,9 +233,8 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
-		// Crash through the repository, not `ExecutionCrashService`: `recoverFromLogs`
-		// then fires `workflowExecuteAfter`, which counts this execution in the
-		// workflow statistics. A crash-service call would count it twice.
+		// Crash through the repository: `recoverFromLogs` then fires `workflowExecuteAfter`,
+		// which counts this execution in the workflow statistics. Counting here too would double it.
 		await this.executionRepository.markAsCrashed(executionId);
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
