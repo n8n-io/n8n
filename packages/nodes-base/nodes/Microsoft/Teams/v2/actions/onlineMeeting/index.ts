@@ -1,11 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as deleteMeeting from './deleteMeeting.operation';
 import * as get from './get.operation';
 import { SERVICE_PRINCIPAL_UNSUPPORTED } from './shared';
 import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
 
-export { create, get };
+export { create, deleteMeeting, get };
 
 export const description: INodeProperties[] = [
 	{
@@ -41,6 +42,12 @@ export const description: INodeProperties[] = [
 				action: 'Create online meeting',
 			},
 			{
+				name: 'Delete',
+				value: 'deleteMeeting',
+				description: 'Delete an online meeting',
+				action: 'Delete online meeting',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an online meeting by ID or join URL',
@@ -51,5 +58,6 @@ export const description: INodeProperties[] = [
 	},
 
 	...create.description,
+	...deleteMeeting.description,
 	...get.description,
 ];
