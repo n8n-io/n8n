@@ -18,6 +18,7 @@ import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 import { SSO_ERROR_ACCESS_DENIED, SSO_ERROR_QUERY_PARAM } from '@n8n/api-types';
+import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -59,12 +60,13 @@ const isInternalAuthRequested = computed(() => route.query.internalAuth === 'tru
 // An SSO error (e.g. "Block access") lands the user back here; without this guard
 // the auto-redirect would bounce them to the IdP again and hide the error / loop.
 const hasSsoError = computed(() => Boolean(route.query[SSO_ERROR_QUERY_PARAM]));
-// Set by the sign-out flow so the user is not immediately re-authenticated by an
-// IdP session that is still active (which would make logout appear to do nothing).
-const wasLoggedOut = computed(() => route.query.loggedOut === 'true');
 const redirectingToSso = ref(false);
 
 onMounted(async () => {
+	// Set by the sign-out flow so the user is not immediately re-authenticated by a
+	// still-active IdP session (which would make logout appear to do nothing).
+	const wasLoggedOut = consumeSsoLoginRedirectSuppression();
+
 	// When SSO is the active method, funnel users straight to the provider unless
 	// they explicitly requested the internal-auth fallback, an admin disabled it,
 	// an SSO error must be shown, or the user just logged out.
@@ -73,7 +75,7 @@ onMounted(async () => {
 		ssoStore.redirectLoginToSso &&
 		!isInternalAuthRequested.value &&
 		!hasSsoError.value &&
-		!wasLoggedOut.value
+		!wasLoggedOut
 	) {
 		redirectingToSso.value = true;
 		try {

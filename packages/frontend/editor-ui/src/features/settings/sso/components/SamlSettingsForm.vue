@@ -116,10 +116,10 @@ const getSamlConfig = async () => {
 	redirectLoginToSso.value = ssoStore.redirectLoginToSso;
 };
 
-const isSaveEnabled = computed(() => {
-	if (savingForm.value) {
-		return false;
-	}
+// Dirtiness of the SAML configuration itself, excluding the global redirect
+// setting. The redirect toggle can be saved on its own (see onSave), so it must
+// not require valid SAML metadata to be persisted.
+const isSamlConfigDirty = computed(() => {
 	const isIdentityProviderChanged = () => {
 		if (ipsType.value === IdentityProviderSettingsType.URL) {
 			return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
@@ -129,15 +129,24 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
-	const isRedirectLoginToSsoChanged = redirectLoginToSso.value !== ssoStore.redirectLoginToSso;
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
 		isUserRoleProvisioningChanged.value ||
 		isIdentityProviderChanged() ||
 		isSamlLoginEnabledChanged ||
-		isRedirectLoginToSsoChanged ||
 		isRuleMappingDirty
 	);
+});
+
+const isRedirectLoginToSsoChanged = computed(
+	() => redirectLoginToSso.value !== ssoStore.redirectLoginToSso,
+);
+
+const isSaveEnabled = computed(() => {
+	if (savingForm.value) {
+		return false;
+	}
+	return isSamlConfigDirty.value || isRedirectLoginToSsoChanged.value;
 });
 
 const isTestEnabled = computed(() => {
@@ -232,6 +241,20 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 
 	try {
 		savingForm.value = true;
+
+		// The global redirect setting is saved independently of the SAML config, so a
+		// toggle-only change does not require valid SAML metadata.
+		if (isRedirectLoginToSsoChanged.value) {
+			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+		}
+		if (!isSamlConfigDirty.value) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sso.settings.save.success'),
+				type: 'success',
+			});
+			return true;
+		}
+
 		validateSamlInput();
 
 		const loginEnabledChanged = samlLoginEnabled.value !== ssoStore.isSamlLoginEnabled;
@@ -293,10 +316,6 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
-
-		if (redirectLoginToSso.value !== ssoStore.redirectLoginToSso) {
-			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
-		}
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);

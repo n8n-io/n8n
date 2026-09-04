@@ -106,7 +106,10 @@ const loadOidcConfig = async () => {
 	}
 };
 
-const cannotSaveOidcSettings = computed(() => {
+// Whether the OIDC configuration itself is unchanged, excluding the global redirect
+// setting. The redirect toggle is saved independently (see onOidcSettingsSave), so it
+// must not require a valid OIDC configuration to be persisted.
+const isOidcConfigUnchanged = computed(() => {
 	const currentAcrString = authenticationContextClassReference.value
 		.split(',')
 		.map((s) => s.trim())
@@ -118,19 +121,28 @@ const cannotSaveOidcSettings = computed(() => {
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 
 	return (
+		ssoStore.oidcConfig?.clientId === clientId.value &&
+		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
+		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
+		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+		ssoStore.oidcConfig?.prompt === prompt.value &&
+		ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+		ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
+		!isUserRoleProvisioningChanged.value &&
+		!isRuleMappingDirty &&
+		storedAcrString === authenticationContextClassReference.value &&
+		currentAcrString === storedAcrString
+	);
+});
+
+const isRedirectLoginToSsoChanged = computed(
+	() => redirectLoginToSso.value !== ssoStore.redirectLoginToSso,
+);
+
+const cannotSaveOidcSettings = computed(() => {
+	return (
 		isAdditionalScopesInvalid.value ||
-		(ssoStore.oidcConfig?.clientId === clientId.value &&
-			ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
-			ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
-			ssoStore.oidcConfig?.prompt === prompt.value &&
-			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
-			ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
-			redirectLoginToSso.value === ssoStore.redirectLoginToSso &&
-			!isUserRoleProvisioningChanged.value &&
-			!isRuleMappingDirty &&
-			storedAcrString === authenticationContextClassReference.value &&
-			currentAcrString === storedAcrString)
+		(isOidcConfigUnchanged.value && !isRedirectLoginToSsoChanged.value)
 	);
 });
 
@@ -151,6 +163,27 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		} finally {
 			savingForm.value = false;
 		}
+	}
+
+	// The global redirect setting is saved independently of the OIDC config, so a
+	// toggle-only change does not require a valid OIDC configuration.
+	if (isRedirectLoginToSsoChanged.value) {
+		try {
+			savingForm.value = true;
+			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
+			return false;
+		} finally {
+			savingForm.value = false;
+		}
+	}
+	if (isOidcConfigUnchanged.value) {
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
+		return true;
 	}
 
 	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
@@ -220,10 +253,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
-
-		if (redirectLoginToSso.value !== ssoStore.redirectLoginToSso) {
-			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
-		}
 
 		clientSecret.value = newConfig.clientSecret;
 

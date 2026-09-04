@@ -46,7 +46,7 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
-import { reloadRedirectLoginToSso } from '@/sso.ee/sso-helpers';
+import { SsoSettingsService } from '@/sso.ee/sso-settings.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -414,7 +414,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// The redirect-to-SSO setting lives in GlobalConfig (@n8n/config), which the
 		// generic loader above does not hydrate, so apply any persisted value explicitly.
-		await reloadRedirectLoginToSso();
+		await Container.get(SsoSettingsService).reloadRedirectLoginToSso();
 
 		const { type: dbType } = this.globalConfig.database;
 		if (dbType === 'sqlite') {

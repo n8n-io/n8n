@@ -111,35 +111,3 @@ export function isSsoJustInTimeProvisioningEnabled(): boolean {
 export function doRedirectUsersFromLoginToSsoFlow(): boolean {
 	return Container.get(GlobalConfig).sso.redirectLoginToSso;
 }
-
-export const REDIRECT_LOGIN_TO_SSO_SETTING_KEY = 'sso.redirectLoginToSso';
-
-/**
- * Persist the admin-configurable "redirect login page to SSO" setting and mirror
- * it into the runtime config. The env var `N8N_SSO_REDIRECT_LOGIN_TO_SSO` remains
- * the default when no value has been persisted.
- */
-export async function setRedirectUsersFromLoginToSsoFlow(enabled: boolean): Promise<void> {
-	Container.get(GlobalConfig).sso.redirectLoginToSso = enabled;
-	await Container.get(SettingsRepository).save(
-		{
-			key: REDIRECT_LOGIN_TO_SSO_SETTING_KEY,
-			value: enabled.toString(),
-			loadOnStartup: true,
-		},
-		{ transaction: false },
-	);
-}
-
-/**
- * Hydrate the runtime config with the persisted "redirect login page to SSO"
- * setting. Called on startup so an admin override survives restarts.
- */
-export async function reloadRedirectLoginToSso(): Promise<void> {
-	const settings = await Container.get(SettingsRepository).findByKey(
-		REDIRECT_LOGIN_TO_SSO_SETTING_KEY,
-	);
-	if (settings) {
-		Container.get(GlobalConfig).sso.redirectLoginToSso = settings.value === 'true';
-	}
-}

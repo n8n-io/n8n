@@ -11,6 +11,11 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@/app/constants';
+import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
+
+vi.mock('@/features/core/auth/ssoLoginRedirectSuppression', () => ({
+	consumeSsoLoginRedirectSuppression: vi.fn(() => false),
+}));
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -242,8 +247,9 @@ describe('SigninView', () => {
 			);
 		});
 
-		it('does not redirect right after logout (?loggedOut=true)', async () => {
-			vi.spyOn(route, 'query', 'get').mockReturnValue({ loggedOut: 'true' });
+		it('does not redirect right after a logout', async () => {
+			vi.mocked(consumeSsoLoginRedirectSuppression).mockReturnValueOnce(true);
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
 			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
 
 			const { getByTestId } = renderComponent();
