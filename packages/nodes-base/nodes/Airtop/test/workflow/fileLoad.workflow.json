@@ -1,0 +1,86 @@
+{
+	"name": "Airtop file load",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c1d2e3f4-0516-4728-a93a-5b6c7d8e9f01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "load",
+				"sessionId": "test-session-123",
+				"windowId": "test-window-123",
+				"fileId": "file-123",
+				"elementDescription": "the file upload box",
+				"includeHiddenElements": true
+			},
+			"id": "d2e3f405-1627-4839-ba4b-6c7d8e9f0112",
+			"name": "Airtop",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "e3f40516-2738-494a-cb5c-7d8e9f011223",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"sessionId": "test-session-123",
+					"windowId": "test-window-123",
+					"data": {
+						"message": "File loaded successfully"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Airtop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Airtop": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "f4051627-3849-4a5b-dc6d-8e9f01122334",
+	"id": "05162738-494a-4b5c-ed7e-9f0112233445",
+	"meta": {},
+	"tags": []
+}

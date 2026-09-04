@@ -12,6 +12,7 @@ import { SESSION_MODE } from './actions/common/fields';
 import { BASE_URL, type TScrollingMode } from './constants';
 import {
 	ERROR_MESSAGES,
+	PROFILE_IDENTIFIER_REGEX,
 	DEFAULT_TIMEOUT_MINUTES,
 	DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
 	MIN_TIMEOUT_MINUTES,
@@ -115,7 +116,7 @@ export function validateProfileName(this: IExecuteFunctions, index: number) {
 		return profileName;
 	}
 
-	if (!/^[a-zA-Z0-9-]+$/.test(profileName)) {
+	if (!PROFILE_IDENTIFIER_REGEX.test(profileName)) {
 		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROFILE_NAME_INVALID, {
 			itemIndex: index,
 		});

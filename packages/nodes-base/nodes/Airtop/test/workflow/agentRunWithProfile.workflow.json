@@ -1,0 +1,89 @@
+{
+	"name": "Airtop agent run with browser profile",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "10e2abf1-eb55-4ecf-90e3-f8eebf6dc476",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "run",
+				"agentId": {
+					"__rl": true,
+					"value": "test-agent-123",
+					"mode": "id"
+				},
+				"agentParameters": {
+					"mappingMode": "defineBelow",
+					"value": {},
+					"schema": []
+				},
+				"profileName": "my-profile",
+				"awaitExecution": false
+			},
+			"id": "85be9b53-8684-4001-8be9-709861ea2ca8",
+			"name": "Airtop",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "91b71f68-e3d1-47df-832c-2558ac2c4c8e",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"invocationId": "invocation-123"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Airtop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Airtop": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "93a8c973-d4a4-4f95-a980-2f3365d1a20d",
+	"id": "dd043c4e-1a07-4f3b-950b-2aeb419baeed",
+	"meta": {},
+	"tags": []
+}
