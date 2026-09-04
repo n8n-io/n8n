@@ -347,11 +347,7 @@ export class ExternalSecretsProviderConnectionManager {
 		}
 
 		const existingProvider = this.providerRegistry.get(candidate.providerKey);
-		const keepPredecessor =
-			outcome.kind === 'failed' && this.isServingPredecessor(existingProvider, outcome.provider);
 
-		// A 'disconnected' outcome deliberately evicts and disconnects a connected predecessor: the
-		// operator turned the connection off, and the invariant only protects against failures.
 		if (outcome.kind === 'ready') {
 			// A failed earlier attempt marked this provider errored. It hydrated, so it serves
 			// again — otherwise the periodic refresh would skip this slot forever.
@@ -367,39 +363,21 @@ export class ExternalSecretsProviderConnectionManager {
 			});
 		} else {
 			outcome.provider?.setState('error', outcome.error);
-
-			if (keepPredecessor) {
-				this.logger.error(
-					'External secrets provider replacement failed; previous provider stays active',
-					{
-						providerKey: candidate.providerKey,
-						providerType: candidate.providerType,
-						phase: outcome.phase,
-						error: outcome.error,
-					},
-				);
+			if (outcome.provider) {
+				this.providerRegistry.set(candidate.providerKey, outcome.provider);
 			} else {
-				if (outcome.provider) {
-					this.providerRegistry.set(candidate.providerKey, outcome.provider);
-				} else {
-					this.providerRegistry.remove(candidate.providerKey);
-				}
-
-				this.logger.error('External secrets provider replacement reached terminal failure', {
-					providerKey: candidate.providerKey,
-					providerType: candidate.providerType,
-					phase: outcome.phase,
-					error: outcome.error,
-				});
+				this.providerRegistry.remove(candidate.providerKey);
 			}
+
+			this.logger.error('External secrets provider replacement reached terminal failure', {
+				providerKey: candidate.providerKey,
+				providerType: candidate.providerType,
+				phase: outcome.phase,
+				error: outcome.error,
+			});
 		}
 
 		this.replacementCandidates.delete(candidate.providerKey);
-
-		if (keepPredecessor) {
-			await this.disposeSupersededCandidate(candidate, outcome.phase);
-			return;
-		}
 
 		if (existingProvider && existingProvider !== outcome.provider) {
 			await this.providerLifecycle.disconnect(existingProvider);
@@ -439,8 +417,12 @@ export class ExternalSecretsProviderConnectionManager {
 		);
 
 		const existingProvider = this.providerRegistry.get(candidate.providerKey);
+		const hasConnectedPredecessor =
+			existingProvider !== undefined &&
+			existingProvider !== candidate.provider &&
+			existingProvider.state === 'connected';
 
-		if (this.isServingPredecessor(existingProvider, candidate.provider)) {
+		if (hasConnectedPredecessor) {
 			return true;
 		}
 
@@ -475,16 +457,6 @@ export class ExternalSecretsProviderConnectionManager {
 
 	private isCurrentReplacement(candidate: ReplacementCandidate): boolean {
 		return this.replacementCandidates.get(candidate.providerKey) === candidate;
-	}
-
-	/** A predecessor still in the slot and connected is serving secrets to executions. */
-	private isServingPredecessor(
-		existing: SecretsProvider | undefined,
-		candidateProvider: SecretsProvider | undefined,
-	): boolean {
-		return (
-			existing !== undefined && existing !== candidateProvider && existing.state === 'connected'
-		);
 	}
 
 	private async invalidateReplacement(providerKey: string): Promise<void> {
