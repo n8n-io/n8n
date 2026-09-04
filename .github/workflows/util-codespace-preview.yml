@@ -10,16 +10,6 @@ run-name: Codespace preview for PR ${{ github.event.pull_request.number }}
 #  - unlabeled   -> `preview down`
 #  - closed      -> `preview down`, so a merged PR does not hold a box for 24 h
 #
-# Only pull requests from a branch in this repository are eligible. A codespace
-# token is scoped to n8n-io/n8n, so it cannot check out a fork head, and
-# `scripts/preview.mjs` refuses a fork for that reason.
-#
-# Security: the job checks out the base branch, never the PR head. It runs
-# `scripts/preview.mjs` with a Codespaces token in the environment, so the PR
-# must not supply that script. The PR head code runs inside the codespace, which
-# holds only a repository-scoped token. One consequence: a PR that edits
-# `scripts/preview.mjs` previews with the version on the base branch.
-#
 # Output: a `<!-- codespace-preview -->` comment on the PR with the instance URL,
 # a one-click sign-in link, and the commit it serves.
 
@@ -57,12 +47,7 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'codespace-preview'))
       )
     runs-on: ubuntu-latest
-    # Holds CODESPACE_PREVIEW_TOKEN, so only a job that names this environment can
-    # read it. The environment must allow every branch: a pull_request run has the
-    # ref `refs/pull/<n>/merge`, which no branch policy matches.
     environment: codespaces
-    # `preview.mjs` alone allows 10 min for the box to accept ssh, and the in-box
-    # step then runs `pnpm install` and a build before the backend answers.
     timeout-minutes: 45
     permissions:
       contents: read
@@ -72,8 +57,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.base.ref }}
-          # The job runs node scripts, never git. Keep the Actions token out of
-          # .git/config, where the Codespaces token also passes through.
           persist-credentials: false
 
       - name: Setup Node.js
@@ -87,10 +70,7 @@ jobs:
         env:
           # `gh` prefers GH_TOKEN over GITHUB_TOKEN. So the `gh` calls in
           # preview.mjs use the Codespaces token, and Octokit comments as the
-          # Actions token. A GitHub App token cannot create a codespace: the
-          # Codespaces API belongs to a user, not to an installation. Nor can a
-          # fine-grained token — those endpoints take a classic token with the
-          # `codespace` scope, which cannot be narrowed to one repository.
+          # Actions token.
           # TODO: move CODESPACE_PREVIEW_TOKEN to a service account.
           GH_TOKEN: ${{ secrets.CODESPACE_PREVIEW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
