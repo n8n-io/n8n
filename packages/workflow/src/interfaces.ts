@@ -3412,8 +3412,8 @@ export interface ITaskMetadata {
 	 * completing later may find the parent parked at a DIFFERENT wait (a sibling
 	 * already resumed the one it belongs to); this set lets the resume path tell
 	 * "my wait" from "a later wait" so it stops instead of claiming the wrong one.
-	 * Absent on parks not caused by a child (a plain Wait node) and on legacy
-	 * in-flight executions, in which case the resume falls back to claiming.
+	 * A child only resumes a wait whose set names it. Absent on parks not caused by
+	 * a child (a plain Wait node), which a child resume must therefore never claim.
 	 */
 	waitingChildExecutionIds?: string[];
 	/**

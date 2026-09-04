@@ -977,7 +977,8 @@ describe('getLastExecutedNodeRuns', () => {
 describe('updateParentExecutionWithChildResults', () => {
 	const PARENT_ID = 'parent-execution-id';
 
-	const waitingParent = (): IExecutionResponse =>
+	// A child-caused park tags the ids of the children that caused it (see BaseExecuteContext).
+	const waitingParent = (waitingChildExecutionIds?: string[]): IExecutionResponse =>
 		({
 			status: 'waiting',
 			data: {
@@ -987,6 +988,7 @@ describe('updateParentExecutionWithChildResults', () => {
 							node: { name: 'Execute Sub-workflow' },
 							data: { main: [[{ json: { in: 1 } }]] },
 							source: null,
+							...(waitingChildExecutionIds ? { metadata: { waitingChildExecutionIds } } : {}),
 						},
 					],
 				},
@@ -1021,15 +1023,40 @@ describe('updateParentExecutionWithChildResults', () => {
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
 	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
 		const executionPersistence = mockInstance(ExecutionPersistence);
-		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			waitingParent(childExecution ? [childExecution.executionId] : undefined),
+		);
 
-		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+		const ownsWait = await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
 
+		expect(ownsWait).toBe(true);
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
 		return (payload as IExecutionResponse).data.executionData!
 			.nodeExecutionStack[0] as unknown as StackEntry;
 	}
+
+	it.each([
+		['tagged with a different child', ['sibling-execution-id']],
+		['not tagged at all (plain Wait node)', undefined],
+	])(
+		'returns false and does not patch when the parent wait is %s',
+		async (_, waitingChildExecutionIds) => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				waitingParent(waitingChildExecutionIds),
+			);
+
+			const ownsWait = await updateParentExecutionWithChildResults(
+				PARENT_ID,
+				childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+				{ executionId: 'child-execution-id', workflowId: 'child-workflow-id' },
+			);
+
+			expect(ownsWait).toBe(false);
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		},
+	);
 
 	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
 		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;

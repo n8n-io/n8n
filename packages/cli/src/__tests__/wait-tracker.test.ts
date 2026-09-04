@@ -350,6 +350,8 @@ describe('WaitTracker', () => {
 						main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]],
 					},
 					source: { main: [{ previousNode: 'Manual Trigger' }] },
+					// The park is tagged with the child that caused it (see BaseExecuteContext).
+					metadata: { waitingChildExecutionIds: [execution.id] },
 				};
 				const parentExecution: IExecutionResponse = {
 					id: 'parent_execution_id',
@@ -575,6 +577,7 @@ describe('WaitTracker', () => {
 						node: mock<INode>({ name: 'Execute Sub Workflow' }),
 						data: { main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]] },
 						source: { main: [{ previousNode: 'Manual Trigger' }] },
+						metadata: { waitingChildExecutionIds: [execution.id] },
 					};
 					const parentExecution: IExecutionResponse = {
 						id: 'parent_execution_id',
@@ -875,87 +878,106 @@ describe('WaitTracker', () => {
 					expect(logger.error).not.toHaveBeenCalled();
 				});
 
-				it('bails without patching or claiming when the parent parked at a later wait', async () => {
-					// A late-finishing sibling whose wait was already resumed by another child finds
-					// the parent parked at a LATER wait. The park tags the child execution ids that
-					// caused it (here a different sibling), so this child must stop instead of
-					// patching the wrong stack entry and claiming a wait it never satisfied.
-					workflowRunner.run.mockReset();
-					workflowRunner.run.mockResolvedValue(execution.id); // child run only — no claim
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+				it.each<{ laterWait: string; executeData: IExecuteData }>([
+					{
+						laterWait: 'another sub-workflow node tagged with a sibling',
+						executeData: {
+							node: mock<INode>({ name: 'Execute Sub Workflow' }),
+							data: { main: [[{ json: { data: 'Parent input data' } }]] },
+							source: { main: [{ previousNode: 'Manual Trigger' }] },
+							// Tagged with a sibling's id — this child (`execution.id` '123') is NOT in it.
+							metadata: { waitingChildExecutionIds: ['sibling_child_id'] },
+						},
+					},
+					{
+						laterWait: 'an untagged plain Wait node',
+						executeData: {
+							node: mock<INode>({ name: 'Wait' }),
+							data: { main: [[{ json: { data: 'Parent input data' } }]] },
+							source: { main: [{ previousNode: 'Execute Sub Workflow' }] },
+							// A plain Wait node's park carries no child tag at all.
+						},
+					},
+				])(
+					'bails without patching or claiming when the parent parked at $laterWait',
+					async ({ executeData }) => {
+						// A late-finishing sibling whose wait was already resumed by another child finds
+						// the parent parked at a LATER wait. A child owns a wait only if that wait's tag
+						// names it: a wait tagged with a different sibling, or a plain Wait node with no
+						// tag, is never this child's wait, so it must stop instead of patching the wrong
+						// stack entry and claiming a wait it never satisfied.
+						workflowRunner.run.mockReset();
+						workflowRunner.run.mockResolvedValue(execution.id); // child run only — no claim
+						executionPersistence.updateExistingExecution.mockResolvedValue(true);
 
-					const executeData: IExecuteData = {
-						node: mock<INode>({ name: 'Execute Sub Workflow' }),
-						data: { main: [[{ json: { data: 'Parent input data' } }]] },
-						source: { main: [{ previousNode: 'Manual Trigger' }] },
-						// Tagged with a sibling's id — this child (`execution.id` '123') is NOT in it.
-						metadata: { waitingChildExecutionIds: ['sibling_child_id'] },
-					};
-					const parentExecution: IExecutionResponse = {
-						id: 'parent_execution_id',
-						finished: false,
-						status: 'waiting',
-						waitTill: WAIT_INDEFINITELY,
-						workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
-						customData: {},
-						annotation: { tags: [] },
-						createdAt: new Date(),
-						startedAt: new Date(),
-						mode: 'manual',
-						workflowId: 'parent_workflow_id',
-						storedAt: 'db',
-						data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
-					};
+						const parentExecution: IExecutionResponse = {
+							id: 'parent_execution_id',
+							finished: false,
+							status: 'waiting',
+							waitTill: WAIT_INDEFINITELY,
+							workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
+							customData: {},
+							annotation: { tags: [] },
+							createdAt: new Date(),
+							startedAt: new Date(),
+							mode: 'manual',
+							workflowId: 'parent_workflow_id',
+							storedAt: 'db',
+							data: createRunExecutionData({
+								executionData: { nodeExecutionStack: [executeData] },
+							}),
+						};
 
-					execution.data.parentExecution = {
-						executionId: parentExecution.id,
-						workflowId: parentExecution.workflowData.id,
-						shouldResume: true,
-					};
+						execution.data.parentExecution = {
+							executionId: parentExecution.id,
+							workflowId: parentExecution.workflowData.id,
+							shouldResume: true,
+						};
 
-					const finalNodeName = 'Final Node';
-					const subworkflowResults: IRun = {
-						mode: 'manual',
-						startedAt: new Date(),
-						status: 'success',
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									[finalNodeName]: [
-										{
-											startTime: new Date().getTime(),
-											executionTime: 5,
-											executionIndex: 0,
-											source: [{ previousNode: 'Wait Node' }],
-											data: { main: [[{ json: { data: 'Late sibling output' } }]] },
-										},
-									],
+						const finalNodeName = 'Final Node';
+						const subworkflowResults: IRun = {
+							mode: 'manual',
+							startedAt: new Date(),
+							status: 'success',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										[finalNodeName]: [
+											{
+												startTime: new Date().getTime(),
+												executionTime: 5,
+												executionIndex: 0,
+												source: [{ previousNode: 'Wait Node' }],
+												data: { main: [[{ json: { data: 'Late sibling output' } }]] },
+											},
+										],
+									},
+									lastNodeExecuted: finalNodeName,
 								},
-								lastNodeExecuted: finalNodeName,
-							},
-						}),
-						storedAt: 'db',
-					};
+							}),
+							storedAt: 'db',
+						};
 
-					executionPersistence.findSingleExecution.mockImplementation(async (id) =>
-						id === parentExecution.id ? parentExecution : execution,
-					);
-					const postExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromise
-						.calledWith(execution.id)
-						.mockReturnValue(postExecutePromise.promise);
+						executionPersistence.findSingleExecution.mockImplementation(async (id) =>
+							id === parentExecution.id ? parentExecution : execution,
+						);
+						const postExecutePromise = createDeferredPromise<IRun | undefined>();
+						activeExecutions.getPostExecutePromise
+							.calledWith(execution.id)
+							.mockReturnValue(postExecutePromise.promise);
 
-					await waitTracker.startExecution(execution.id);
-					postExecutePromise.resolve(subworkflowResults);
-					await vi.advanceTimersByTimeAsync(1000);
-					await vi.advanceTimersByTimeAsync(1000);
+						await waitTracker.startExecution(execution.id);
+						postExecutePromise.resolve(subworkflowResults);
+						await vi.advanceTimersByTimeAsync(1000);
+						await vi.advanceTimersByTimeAsync(1000);
 
-					// The patch was NOT applied (the child doesn't own this wait) and no claim was
-					// attempted — only the child run occurred.
-					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
-					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only, no claim
-					expect(logger.error).not.toHaveBeenCalled();
-				});
+						// The patch was NOT applied (the child doesn't own this wait) and no claim was
+						// attempted — only the child run occurred.
+						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+						expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only, no claim
+						expect(logger.error).not.toHaveBeenCalled();
+					},
+				);
 			});
 		});
 	});

@@ -249,6 +249,11 @@ describe('run', () => {
 		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
 		vi.spyOn(activeExecutions, 'resolveExecutionResponsePromise').mockReturnValue();
 		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+		// Key the identity on the execution id so the assertion proves the runner read THIS
+		// entry's runId, not just that the global stub's constant was forwarded.
+		const getRunIdSpy = vi
+			.spyOn(activeExecutions, 'getRunId')
+			.mockImplementation((executionId) => `run-for-${executionId}`);
 
 		const fullRunData = mock<IRun>();
 		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
@@ -269,7 +274,8 @@ describe('run', () => {
 		await runner.run(data);
 		await new Promise(setImmediate);
 
-		expect(finalizeSpy).toHaveBeenCalledWith('1', fullRunData, 'test-run-id');
+		expect(getRunIdSpy).toHaveBeenCalledWith('1');
+		expect(finalizeSpy).toHaveBeenCalledWith('1', fullRunData, 'run-for-1');
 	});
 
 	it.each([
@@ -571,6 +577,7 @@ describe('enqueueExecution', () => {
 			data.executionMode,
 			'1',
 			expect.anything(),
+			'test-run-id',
 		);
 		expect(addJob).not.toHaveBeenCalled();
 	});

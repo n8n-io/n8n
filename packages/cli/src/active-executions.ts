@@ -43,11 +43,11 @@ export class ActiveExecutions {
 	} = {};
 
 	/**
-	 * postExecutePromises of runs whose entry was overwritten by a resume before they
-	 * finalized, keyed by their `runId`. A run must only ever resolve its OWN promise:
-	 * when `add` replaces a still-running entry, the previous run's promise is parked
-	 * here so its later `finalizeExecution` resolves the right promise instead of the
-	 * resumed run's. Cleared as each orphaned promise settles.
+	 * postExecutePromises of runs whose entry was overwritten by a resume, keyed by
+	 * their `runId`. A run must only ever resolve its OWN promise: when `add` replaces
+	 * an entry, the previous run's promise is parked here so its later
+	 * `finalizeExecution` resolves the right promise instead of the resumed run's.
+	 * Cleared as each orphaned promise is resolved.
 	 */
 	private readonly orphanedPromises = new Map<string, IDeferredPromise<IRun | undefined>>();
 
@@ -162,12 +162,12 @@ export class ActiveExecutions {
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 		const runId = randomUUID();
 
-		// If a previous run for this id is still in flight (its `.finally` has not yet deleted
-		// `workflowExecution`), its entry is about to be replaced. Park its postExecutePromise
-		// so its OWN later finalize resolves the right promise instead of this resumed run's
-		// — a run must never finalize an entry that isn't its own. If the previous run
-		// already finalized, `workflowExecution` is gone and there is nothing to park.
-		if (resumingExecution?.workflowExecution) {
+		// A previous entry for this id is about to be replaced. Park its postExecutePromise
+		// so the previous run's OWN later finalize resolves the right promise instead of
+		// this resumed run's — a run must never finalize an entry that isn't its own. Park
+		// unconditionally: `workflowExecution` is also absent between `add` and
+		// `attachWorkflowExecution`, and resolving an already-settled promise is a no-op.
+		if (resumingExecution) {
 			this.orphanedPromises.set(resumingExecution.runId, resumingExecution.postExecutePromise);
 		}
 
@@ -190,6 +190,11 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
+				// A resume may have replaced this entry before this run settled (its promise was
+				// parked in `orphanedPromises`). Only touch the map if it still points at THIS
+				// entry — otherwise a stale `running` status (queue mode never flips the main's
+				// placeholder to `waiting`) would delete the resumed run's entry.
+				if (this.activeExecutions[executionId] !== execution) return;
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;

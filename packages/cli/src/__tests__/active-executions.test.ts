@@ -534,6 +534,48 @@ describe('ActiveExecutions', () => {
 
 			await expect(oldPromise).resolves.toEqual(waitingRun);
 		});
+
+		test('cleanup of a replaced run must not remove the resumed run entry (queue mode)', async () => {
+			// In queue mode the main's placeholder never flips to `waiting` (the worker's
+			// setExecutionStatus is a no-op), so the old entry still reads `running` when
+			// its parked promise settles. Its `.finally` must not delete the map slot that
+			// now belongs to the resumed run.
+			const executionId = await activeExecutions.add(executionData);
+			const oldRunId = activeExecutions.getRunId(executionId);
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			expect(activeExecutions.getStatus(executionId)).toBe('running');
+
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			const newRunId = activeExecutions.getRunId(executionId);
+			const newPromise = activeExecutions.getPostExecutePromise(executionId);
+
+			const waitingRun: IRun = { ...fullRunData, status: 'waiting' };
+			activeExecutions.finalizeExecution(executionId, waitingRun, oldRunId);
+			await new Promise(setImmediate);
+
+			// Resumed run is still tracked and its own finalize still lands.
+			expect(activeExecutions.has(executionId)).toBe(true);
+			expect(activeExecutions.getRunId(executionId)).toBe(newRunId);
+			activeExecutions.finalizeExecution(executionId, fullRunData, newRunId);
+			await expect(newPromise).resolves.toEqual(fullRunData);
+			await new Promise(setImmediate);
+			expect(activeExecutions.has(executionId)).toBe(false);
+		});
+
+		test('parks the previous promise even when the run was replaced before attach', async () => {
+			// Between `add` and `attachWorkflowExecution` there is no `workflowExecution` yet.
+			// A replace in that window must still park the promise so the original run's
+			// finalize can settle it and release its capacity.
+			const executionId = await activeExecutions.add(executionData);
+			const oldRunId = activeExecutions.getRunId(executionId);
+			const oldPromise = activeExecutions.getPostExecutePromise(executionId);
+
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+
+			activeExecutions.finalizeExecution(executionId, fullRunData, oldRunId);
+			await expect(oldPromise).resolves.toEqual(fullRunData);
+			expect(activeExecutions.has(executionId)).toBe(true);
+		});
 	});
 
 	describe('getPostExecutePromise', () => {
