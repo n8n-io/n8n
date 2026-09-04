@@ -94,6 +94,9 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+	// `restoreDraft` puts the cleared draft back when the send fails. It returns
+	// false when the user has already typed something newer, so the caller can
+	// tell whether the draft was recovered.
 	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
 	stop: [];
 	'cancel-plan-edit': [];
@@ -286,15 +289,11 @@ watch(
 
 function emitSubmittedMessage(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
 ) {
 	previewPrompt.value = null;
-	if (restoreDraft) {
-		emit('submit', message, attachments, restoreDraft);
-		return;
-	}
-	emit('submit', message, attachments);
+	emit('submit', message, attachments, restoreDraft);
 }
 
 function resetDraftComposer() {
@@ -328,12 +327,8 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	emitSubmittedMessage(
-		message,
-		attachments,
-		submittedFiles.length > 0 || submittedResources.length > 0
-			? () => restoreSubmittedDraft(message, submittedFiles, submittedResources)
-			: undefined,
+	emitSubmittedMessage(message, attachments, () =>
+		restoreSubmittedDraft(message, submittedFiles, submittedResources),
 	);
 	resetDraftComposer();
 }

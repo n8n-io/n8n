@@ -374,7 +374,16 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', currentText.value || 'hello'),
+						// Mirror the real composer: clear the draft on submit and hand the
+						// caller a recovery callback it can use when the send fails.
+						onClick: () => {
+							const submitted = currentText.value || 'hello';
+							currentText.value = '';
+							emit('submit', submitted, undefined, () => {
+								currentText.value = submitted;
+								return true;
+							});
+						},
 					},
 					'submit',
 				),
@@ -978,6 +987,38 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('restores the typed prompt when syncThread rejects', async () => {
+		store.syncThread.mockRejectedValue(new Error('persist failed'));
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+	});
+
+	it('restores the typed prompt when no project is selected', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = null;
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+	});
+
+	it('leaves the composer empty when the thread starts', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-text')).toBeEmptyDOMElement();
 	});
 
 	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {

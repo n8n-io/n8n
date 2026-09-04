@@ -461,12 +461,17 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
 
 	if (!selectedProject.value) {
+		restoreDraft?.();
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -491,6 +496,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		});
 	} catch {
 		isStartingThread.value = false;
+		restoreDraft?.();
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
