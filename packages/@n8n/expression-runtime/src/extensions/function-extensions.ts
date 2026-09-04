@@ -15,6 +15,17 @@ const min = Math.min;
 const max = Math.max;
 
 const numberList = (start: number, end: number): number[] => {
+	// Validate bounds before sizing the array so invalid input raises an extension error.
+	if (
+		typeof start !== 'number' ||
+		typeof end !== 'number' ||
+		!Number.isInteger(start) ||
+		!Number.isInteger(end)
+	) {
+		throw new ExpressionExtensionError(
+			'numberList(): expected integer args, e.g. numberList(1, 10)',
+		);
+	}
 	const size = Math.abs(start - end) + 1;
 	const arr = new Array<number>(size);
 
