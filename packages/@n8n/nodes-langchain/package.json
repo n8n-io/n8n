@@ -243,7 +243,7 @@
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",
-    "@google-cloud/resource-manager": "5.3.0",
+    "@google-cloud/resource-manager": "6.3.0",
     "@google/genai": "1.19.0",
     "@google/generative-ai": "0.24.0",
     "@huggingface/inference": "4.0.5",
