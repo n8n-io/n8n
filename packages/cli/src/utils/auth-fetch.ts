@@ -60,7 +60,9 @@ function assertDomainPolicyAllowsUrl(url: string, policy: AuthFetchDomainPolicy)
  *      HTTP_PROXY settings apply uniformly),
  *   2. injects the latest auth headers on every request,
  *   3. on a single 401, calls `onUnauthorized` to refresh the token and
- *      retries the request once with the new headers.
+ *      retries the request once with the new headers,
+ *   4. when a domain policy is set, follows redirects manually, validating
+ *      every hop and withholding the auth headers once a hop crosses origins.
  *
  * This mirrors the langchain MCP node's `createAuthFetch` so an agent's MCP
  * connection behaves identically to one configured via the workflow editor.

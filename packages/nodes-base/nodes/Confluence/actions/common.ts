@@ -8,9 +8,9 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import {
-	CONFLUENCE_CREDENTIAL_NAME,
 	confluenceApiRequest,
 	getConfluenceCloudId,
+	getConfluenceCredentialName,
 } from '../transport';
 
 /** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
@@ -318,7 +318,7 @@ export async function resolveSpaceKey(
 	spaceId: string,
 ): Promise<string | undefined> {
 	// Space IDs are only unique per site, and one credential can reach several
-	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
+	const rawCredentialId = this.getNode().credentials?.[getConfluenceCredentialName(this)]?.id;
 	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
 	const cloudId = await getConfluenceCloudId.call(this);
 	const cacheKey = `${credentialId}:${cloudId}:${spaceId}`;

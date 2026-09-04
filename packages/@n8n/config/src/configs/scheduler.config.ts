@@ -361,4 +361,61 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MISFIRE_GRACE', positiveIntSchema.max(30 * Time.days.toSeconds))
 	misfireGraceSeconds: number = DEFAULT_MISFIRE_GRACE_SECONDS;
+
+	/**
+	 * Whether the scheduler periodically checks that every schedule still has
+	 * something that owns it, and cleans up the ones left behind by a deletion
+	 * that didn't finish. On by default.
+	 *
+	 * Turning it off leaves those leftovers in place, disabled but never removed.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_ENABLED')
+	ownerReconciliationEnabled: boolean = true;
+
+	/**
+	 * How often, in seconds, that check runs. Defaults to 15 minutes. It is a
+	 * safety net rather than the normal cleanup path, so a long interval is fine.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_INTERVAL', positiveIntSchema)
+	ownerReconciliationIntervalSeconds: number = 15 * Time.minutes.toSeconds;
+
+	/**
+	 * How long, in seconds, one of those checks may run before it is abandoned
+	 * and retried on its next interval. Defaults to 5 minutes. Must be greater
+	 * than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_TIMEOUT', positiveIntSchema)
+	ownerReconciliationTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
+
+	/**
+	 * How many owners the check looks at per database round-trip. Defaults to 500.
+	 * Must be between 1 and 1000.
+	 *
+	 * The owner ids of a batch travel as one `IN` list, so the cap keeps the
+	 * statement under the driver's bind-parameter ceiling.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_BATCH_SIZE', positiveIntSchema.max(1000))
+	ownerReconciliationBatchSize: number = 500;
+
+	/**
+	 * How long, in seconds, a schedule found to have no owner is kept disabled
+	 * before it is deleted. Defaults to 1 day. Must be greater than 0.
+	 *
+	 * The schedule stops running immediately, so this window only delays the
+	 * delete. Raise it for a longer window to correct a wrong "no owner" answer,
+	 * lower it to reclaim rows sooner.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_QUARANTINE_GRACE', positiveIntSchema)
+	ownerQuarantineGraceSeconds: number = Time.days.toSeconds;
+
+	/**
+	 * How long, in seconds, a newly created schedule is left out of that check.
+	 * Defaults to 300 seconds. Must be greater than 0.
+	 *
+	 * A schedule can be written a moment before the thing that owns it, so this
+	 * grace stops a brand-new schedule being mistaken for an abandoned one.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_SETTLE_PERIOD', positiveIntSchema)
+	ownerSettleSeconds: number = 5 * Time.minutes.toSeconds;
 }
