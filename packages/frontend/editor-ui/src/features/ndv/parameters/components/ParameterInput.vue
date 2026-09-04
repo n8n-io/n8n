@@ -206,6 +206,8 @@ const expressionEditDialogVisible = ref(false);
 const remoteParameterOptions = ref<INodePropertyOptions[]>([]);
 const remoteParameterOptionsLoading = ref(false);
 const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
+// Set when a reload is requested while one is in flight; not reactive, it only gates the retry
+let remoteParameterOptionsReloadPending = false;
 const textEditDialogVisible = ref(false);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
@@ -318,6 +320,18 @@ const credentialJsonEditorValue = computed<string>(() => {
 
 const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
+});
+
+// Identifies *which* list this field loads. A node can declare several properties under the
+// same name, showing one at a time via displayOptions (e.g. a Model picker per model source),
+// and each can load from a different source.
+const remoteMethodSignature = computed<string | null>(() => {
+	if (!hasRemoteMethod.value) return null;
+
+	return JSON.stringify({
+		method: getTypeOption('loadOptionsMethod') ?? null,
+		loadOptions: getTypeOption('loadOptions') ?? null,
+	});
 });
 
 const parameterOptions = computed(() => {
@@ -854,12 +868,13 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
-	if (
-		!node.value ||
-		!hasRemoteMethod.value ||
-		remoteParameterOptionsLoading.value ||
-		!props.parameter
-	) {
+	if (!node.value || !hasRemoteMethod.value || !props.parameter) {
+		return;
+	}
+	if (remoteParameterOptionsLoading.value) {
+		// Requests are not run in parallel, but the newest one must not be lost either:
+		// it may be the one asking for a different list than the in-flight request.
+		remoteParameterOptionsReloadPending = true;
 		return;
 	}
 	remoteParameterOptionsLoadingIssues.value = null;
@@ -903,6 +918,11 @@ async function loadRemoteParameterOptions() {
 	}
 
 	remoteParameterOptionsLoading.value = false;
+
+	if (remoteParameterOptionsReloadPending) {
+		remoteParameterOptionsReloadPending = false;
+		await loadRemoteParameterOptions();
+	}
 }
 
 function closeCodeEditDialog() {
@@ -1418,6 +1438,14 @@ watch(
 watch(dependentParametersValues, async () => {
 	// Reload the remote parameters whenever a parameter
 	// on which the current field depends on changes
+	await loadRemoteParameterOptions();
+});
+
+// The property definition behind a field can be swapped for another one of the same name, and
+// the parameter list computes that swap asynchronously. So the reload above can still run
+// against the outgoing definition — reload again once the incoming one has arrived.
+watch(remoteMethodSignature, async (signature) => {
+	if (signature === null) return;
 	await loadRemoteParameterOptions();
 });
 
