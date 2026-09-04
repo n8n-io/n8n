@@ -102,7 +102,7 @@ export async function getChats(
 	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
 			description:
-				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
+				'Only group chats can have members added or removed, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
