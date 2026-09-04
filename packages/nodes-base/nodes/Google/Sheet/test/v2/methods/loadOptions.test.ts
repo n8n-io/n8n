@@ -170,7 +170,7 @@ describe('Google Sheets Functions', () => {
 	});
 
 	describe('getSheetHeaderRowWithGeneratedColumnNamesForAllSheets', () => {
-		it('should union columns across grid and data-source sheets, naming blanks 0-based to match runtime', async () => {
+		it('should union columns across grid and data-source sheets, naming blanks 1-based to match runtime', async () => {
 			// Chart-only (OBJECT) sheet is skipped; GRID and DATA_SOURCE are both read
 			mockGoogleSheetInstance.spreadsheetGetSheets.mockResolvedValue({
 				sheets: [
