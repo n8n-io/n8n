@@ -1005,7 +1005,8 @@ describe('AgentPublishService', () => {
 		});
 
 		it('publishes every unpublished dependency, then rejects the agent publish naming the failures', async () => {
-			const { service, agentRepository, workflowRepository, workflowService } = makeService();
+			const { service, agentRepository, workflowRepository, workflowService, runtimeCacheService } =
+				makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({
 					schema: {
@@ -1062,6 +1063,8 @@ describe('AgentPublishService', () => {
 			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-2', {
 				source: 'agent-publish',
 			});
+			// "Notify" went live, so runtimes built while it was unpublished are stale.
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		});
 
