@@ -1,4 +1,4 @@
-# ADR-2026-08-28: Obtain trigger output before creating the execution
+# Obtain trigger output before creating the execution
 
 Date: 2026-08-28
 Status: Active

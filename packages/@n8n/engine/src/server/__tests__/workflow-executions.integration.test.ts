@@ -252,6 +252,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			graph: sampleGraph,
 			finishedAt: null,
 		});
+		expect(response.body).not.toHaveProperty('steps');
 		const body = response.body as { createdAt: string; updatedAt: string };
 		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
@@ -304,7 +305,8 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		await finished;
 
 		const response = await request(runtime.app)
-			.get(`/api/workflow-executions/${executionId}/steps`)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 		await runtime.stop();
 
@@ -320,18 +322,48 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		});
 	});
 
-	it('returns 200 with an empty list from /steps for an unknown execution id', async () => {
+	it('returns an empty step list for an execution that has run nothing yet', async () => {
+		const executionId = await createExecution();
+
 		const response = await request(url)
-			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps')
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 
 		expect(response.status).toBe(200);
-		expect(response.body).toEqual({ steps: [] });
+		expect((response.body as { steps: unknown[] }).steps).toEqual([]);
 	});
 
-	it('returns 400 invalid_request from /steps for a non-uuid id', async () => {
+	it('returns 404 not_found for an unknown execution id even when steps are asked for', async () => {
 		const response = await request(url)
-			.get('/api/workflow-executions/not-a-uuid/steps')
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000')
+			.query({ includeSteps: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+
+	it('returns 400 invalid_request for a misspelled query key', async () => {
+		const executionId = await createExecution();
+
+		// Stripping it would answer 200 with no steps, which reads the same as an
+		// execution that ran none.
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeStep: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('returns 400 invalid_request for an includeSteps value that is not a boolean', async () => {
+		const executionId = await createExecution();
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'yes' })
 			.set(authHeader());
 
 		expect(response.status).toBe(400);
