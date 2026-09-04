@@ -271,22 +271,29 @@ const isPermanentlyVisible = computed(
 );
 
 const showExpandedDescription = computed(() => !isCollapsed.value && isDescriptionEnabled.value);
-// An empty group is a planning block: its objective is the whole point, so the
-// description is always shown and the reveal affordance (info icon) is dropped.
+// A collapsed group reads as a titled block, so its description is shown right
+// under the title whenever there is one. An empty group always shows it (its
+// objective is the whole point, and it can be added inline). The info-icon
+// reveal only remains for the one case the description is not already shown:
+// a collapsed group with no description that the user could still add one to.
+const alwaysShowDescription = computed(() => isEmptyGroup.value || !isDescriptionEmpty.value);
 const showInfoIcon = computed(
 	() =>
-		!isEmptyGroup.value &&
 		isCollapsed.value &&
 		isDescriptionEnabled.value &&
 		!isPermanentlyVisible.value &&
-		(!isDescriptionEmpty.value || !props.readOnly),
+		!alwaysShowDescription.value &&
+		!props.readOnly,
 );
 const showCollapsedDescription = computed(
 	() =>
 		isCollapsed.value &&
 		(isEmptyGroup.value ||
 			(isDescriptionEnabled.value &&
-				(isPermanentlyVisible.value || isEditingDescription.value || isDescriptionHovered.value))),
+				(alwaysShowDescription.value ||
+					isPermanentlyVisible.value ||
+					isEditingDescription.value ||
+					isDescriptionHovered.value))),
 );
 
 function clearHoverTimers() {
