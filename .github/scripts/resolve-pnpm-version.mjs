@@ -1,26 +1,19 @@
 #!/usr/bin/env node
-/**
- * Publish the pnpm version pinned in the root `package.json` and the cache key
- * for the pnpm executable to `$GITHUB_OUTPUT`.
- *
- * `setup-nodejs` feeds the setup step, the executable cache key and the version
- * check from these two outputs. A second copy of the version can therefore not
- * drift from the pin, and a cache hit can not hide a stale pin.
- *
- * The step runs before `pnpm install`, so this script uses node builtins only.
- */
+// Publishes the pinned pnpm version and its executable cache key to
+// `$GITHUB_OUTPUT` for setup-nodejs. Node builtins only: it runs before install.
+
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const PNPM_PREFIX = 'pnpm@';
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
-/** The root `package.json`, resolved from this file so the cwd does not matter. */
+/** Resolved from this file so the cwd does not matter. */
 export const ROOT_PACKAGE_JSON = new URL('../../package.json', import.meta.url);
 
 /**
- * @param {unknown} packageManager Value of the `packageManager` field.
- * @returns {string} The pinned pnpm version.
+ * @param {unknown} packageManager
+ * @returns {string}
  */
 export function parsePnpmVersion(packageManager) {
 	if (typeof packageManager !== 'string' || !packageManager.startsWith(PNPM_PREFIX)) {

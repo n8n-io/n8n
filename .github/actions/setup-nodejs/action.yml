@@ -43,20 +43,17 @@ runs:
         echo "::error::enable-docker-cache is true but docker-cache-key is empty"
         exit 1
 
-    # The version comes from the `packageManager` pin, so the cache key, the
-    # setup step and the verify step below cannot drift from each other.
+    # The `packageManager` pin feeds the cache key, the setup step and the
+    # verify step below, so none of them can drift from the others.
     - name: Resolve pnpm version
       id: pnpm-version
       shell: bash
       run: node .github/scripts/resolve-pnpm-version.mjs
 
-    # pnpm/setup downloads the executable from registry.npmjs.org on every fresh
-    # runner, before any cache is restored. A registry blip there therefore
-    # fails unrelated jobs in their first step. Cache the executable instead,
-    # and download only when the key misses.
-    #
-    # Windows keeps the plain pnpm/setup path: the activation step below writes
-    # a Git Bash home path that the runner cannot use in $GITHUB_PATH.
+    # pnpm/setup downloads the executable from registry.npmjs.org before any
+    # cache is restored, so a registry blip fails unrelated jobs in their first
+    # step. Windows stays on that path: the activation step below writes a Git
+    # Bash home path that the runner cannot use in $GITHUB_PATH.
     - name: Restore pnpm executable
       if: runner.os != 'Windows'
       id: cache-pnpm-exe
@@ -73,10 +70,9 @@ runs:
         version: ${{ steps.pnpm-version.outputs.version }}
 
     # The cache holds files, not the per-job PATH and PNPM_HOME wiring that
-    # pnpm/setup does. `<dest>/bin` holds the shims of a self-updated pnpm and
-    # must win over `<dest>`, and $GITHUB_PATH prepends each line, so the bin
-    # directory goes last. The written paths are fixed, so the environment-file
-    # writes take no external input.
+    # pnpm/setup does. $GITHUB_PATH prepends each line, so `<dest>/bin` goes last
+    # to keep the self-update shims ahead of `<dest>`. Both paths are fixed, so
+    # the environment-file writes take no external input.
     - name: Activate cached pnpm executable
       if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
@@ -87,8 +83,7 @@ runs:
         echo "$PNPM_DEST" >> "$GITHUB_PATH"
         echo "$PNPM_DEST/bin" >> "$GITHUB_PATH"
 
-    # A truncated or stale cache entry must fail here, not later as a confusing
-    # install error.
+    # A stale or truncated cache entry must fail here, not later in the install.
     - name: Verify pnpm Version
       shell: bash
       env:
@@ -102,8 +97,7 @@ runs:
 
     # Saved here rather than in a post-run: actions/cache only saves when the
     # whole job succeeds, so a job that later fails its install or build would
-    # leave the key cold for every following job. The executable is downloaded
-    # and verified at this point, so the entry is already worth keeping.
+    # leave the key cold for every following job.
     - name: Save pnpm executable
       if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

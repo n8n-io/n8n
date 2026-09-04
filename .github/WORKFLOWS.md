@@ -488,36 +488,32 @@ inputs:
   build-command:       # default: 'pnpm build'
 ```
 
-`resolve-pnpm-version.mjs` reads the pnpm version from the `packageManager`
-field in the root `package.json`. There is no version input to keep in sync: a
-version bump in `package.json` moves the setup step, the cache key and the
-version check together. The step fails early when that field is absent or pins
-no exact pnpm version.
+The pnpm version comes from the `packageManager` field in the root
+`package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
+keep in sync: a bump in `package.json` moves the setup step, the cache key and
+the version check together.
 
 The action caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and
 that version, and runs `pnpm/setup` only when the key misses. Without the cache
 every fresh job downloads pnpm from `registry.npmjs.org` before any cache is
 restored, so a registry outage fails unrelated jobs in their first step. Windows
-keeps the plain `pnpm/setup` path. The pnpm store stays on the
-`actions/setup-node` `cache: pnpm` configuration.
+keeps the plain `pnpm/setup` path, and the pnpm store stays on the
+`actions/setup-node` `cache: pnpm` configuration. A hit also skips the
+lockfile-verification log that `pnpm/setup` restores, which the `pnpm-metadata`
+cache step covers on the same lockfile hash.
 
-A cache hit also skips the lockfile-verification log that `pnpm/setup` restores.
-The `pnpm-metadata` cache step covers that same directory on the same lockfile
-hash, so the reuse is kept.
+An explicit `actions/cache/save` step writes the entry directly after the
+version check. The `actions/cache` post-run saves only when the whole job
+succeeds, so a job that later failed its install or build left the key cold for
+every following job.
 
-The action saves the entry with an explicit `actions/cache/save` step directly
-after the version check, not through the `actions/cache` post-run. The post-run
-only saves when the whole job succeeds, so a job that later failed its install
-or build left the key cold for every following job.
-
-Cache warming has a known limit. GitHub cache keys are write-once, and jobs that
-start together all miss a cold key before any of them saves it. A version bump
-therefore costs one download for each job already running in that first fan-out,
-not one download in total. Jobs that start after the first save hit the cache —
-including later fan-out waves, later runs, and a re-run of a job that failed on
-the download. A prerequisite job that warms the key would remove the initial
-fan-out cost, but it would serialize a job in front of every workflow to save a
-download that happens only when the pinned pnpm version changes.
+Cache keys are write-once, and jobs that start together all miss a cold key
+before any of them saves it. A pnpm version bump therefore costs one download
+for each job in that first fan-out, not one download in total. Every job that
+starts after the first save hits the cache, including later runs and a re-run of
+a job that failed on the download. A prerequisite job that warms the key would
+remove that initial cost, but it would serialize a job in front of every
+workflow to save a download that happens only on a version bump.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
