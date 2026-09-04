@@ -1,23 +1,29 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import type { WorkflowEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { simpleGit } from 'simple-git';
 
 import { createOwner } from '@test-integration/db/users';
 
+import { WorkflowExporter } from '../entities/workflow/workflow.exporter';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { generateSlug } from '../io/slug.utils';
+import { WorkflowVersionPolicy } from '../n8n-packages.types';
 
 /**
  * POC for the promotion diff engine (Option 1: serialize + hash).
  * Throwaway — not the real feature. Validates the core algorithm end to end:
- * a real WorkflowSerializer output, canonicalized and hashed with git's own
- * blob format, joined by id against a real `git ls-tree` of a throwaway repo.
+ * the Base side is what the real WorkflowExporter writes to disk, the Desired
+ * side is the real WorkflowSerializer output formatted the way the exporter
+ * formats it and hashed with git's own blob format. The two sides are joined
+ * by id against a real `git ls-tree` of a throwaway repo.
  *
  * Path generation here is a stub (`<slug>-<id>.json`) — real path
  * determinism/collision handling is tracked in a separate ticket.
@@ -32,18 +38,6 @@ function parseIdFromPath(path: string): string {
 
 function expectedPath(id: string, name: string): string {
 	return `${generateSlug(name, 'workflow')}-${id}.json`;
-}
-
-function canonicalize(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(canonicalize);
-	if (value !== null && typeof value === 'object') {
-		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-			sorted[key] = canonicalize((value as Record<string, unknown>)[key]);
-		}
-		return sorted;
-	}
-	return value;
 }
 
 function gitBlobHash(content: string): string {
@@ -119,14 +113,28 @@ function diff(base: SideMap, desired: SideMap): DiffEntry[] {
 	return results;
 }
 
+const START_NODE: INode = {
+	id: 'n1',
+	name: 'Start',
+	type: 'n8n-nodes-base.manualTrigger',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
 describe('diff engine POC (Option 1: serialize + hash)', () => {
 	let repoDir: string;
+	let owner: User;
+	let exporter: WorkflowExporter;
 	let serializer: WorkflowSerializer;
+	let workflowRepository: WorkflowRepository;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['n8n-packages']);
 		await testDb.init();
+		exporter = Container.get(WorkflowExporter);
 		serializer = Container.get(WorkflowSerializer);
+		workflowRepository = Container.get(WorkflowRepository);
 	});
 
 	afterAll(async () => {
@@ -135,6 +143,7 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
+		owner = await createOwner();
 		repoDir = await mkdtemp(join(tmpdir(), 'diff-engine-poc-'));
 		const git = simpleGit(repoDir);
 		await git.init();
@@ -146,28 +155,52 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 		await rm(repoDir, { recursive: true, force: true });
 	});
 
+	/** The Base side: the bytes the real exporter puts on the branch. */
+	async function exportedContentOf(workflowId: string): Promise<string> {
+		const exportDir = await mkdtemp(join(tmpdir(), 'diff-engine-poc-export-'));
+		const { entries } = await exporter.export({
+			user: owner,
+			workflowIds: [workflowId],
+			writer: new DirectoryPackageWriter(exportDir),
+			includeTags: false,
+			workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+		});
+		const content = await readFile(join(exportDir, entries[0].target, 'workflow.json'), 'utf-8');
+		await rm(exportDir, { recursive: true, force: true });
+		return content;
+	}
+
+	/** The Desired side: what the engine hashes from the live instance, without writing a file. */
+	async function engineContentOf(workflowId: string): Promise<string> {
+		const workflow = await workflowRepository.findOneOrFail({
+			where: { id: workflowId },
+			relations: { parentFolder: true },
+		});
+		return JSON.stringify(serializer.serialize(workflow, { includeTags: false }), null, '\t');
+	}
+
+	async function replaceNodes(workflowId: string, nodes: INode[]) {
+		const workflow = await workflowRepository.findOneByOrFail({ id: workflowId });
+		workflow.nodes = nodes;
+		await workflowRepository.save(workflow);
+	}
+
 	it('classifies created, deleted, modified, moved, moved+modified, and unchanged correctly', async () => {
-		const owner = await createOwner();
 		const project = await createTeamProject('Diff Engine POC', owner);
 		const git = simpleGit(repoDir);
 
-		function serializedContentOf(workflow: WorkflowEntity) {
-			const serialized = serializer.serialize(workflow, { includeTags: false });
-			return JSON.stringify(canonicalize(serialized));
-		}
-
-		// 1. UNCHANGED — identical content and path on both sides.
-		const unchangedWf = await createWorkflow(
+		// 1. UNCHANGED — the branch holds exactly what the exporter writes today.
+		const unchanged = await createWorkflow(
 			{ name: 'Unchanged Flow', nodes: [], connections: {} },
 			project,
 		);
 		await writeFile(
-			join(repoDir, expectedPath(unchangedWf.id, unchangedWf.name)),
-			serializedContentOf(unchangedWf),
+			join(repoDir, expectedPath(unchanged.id, unchanged.name)),
+			await exportedContentOf(unchanged.id),
 		);
 
 		// 2. CREATED — DB only, nothing written to git.
-		const createdWf = await createWorkflow(
+		const created = await createWorkflow(
 			{ name: 'Created Flow', nodes: [], connections: {} },
 			project,
 		);
@@ -176,100 +209,88 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 		const deletedId = '0000000000000001';
 		await writeFile(join(repoDir, `old-flow-${deletedId}.json`), JSON.stringify({ id: deletedId }));
 
-		// 4. MODIFIED — same path, different content (base has an older version with no nodes).
-		const modifiedWf = await createWorkflow(
-			{
-				name: 'Modified Flow',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			},
+		// 4. MODIFIED — the branch holds the export from before a node was added.
+		const modified = await createWorkflow(
+			{ name: 'Modified Flow', nodes: [], connections: {} },
 			project,
 		);
-		const modifiedOldContent = JSON.stringify(
-			canonicalize({
-				...jsonParse<object>(serializedContentOf(modifiedWf)),
-				nodes: [],
-			}),
-		);
 		await writeFile(
-			join(repoDir, expectedPath(modifiedWf.id, modifiedWf.name)),
-			modifiedOldContent,
+			join(repoDir, expectedPath(modified.id, modified.name)),
+			await exportedContentOf(modified.id),
 		);
+		await replaceNodes(modified.id, [START_NODE]);
 
 		// 5. MOVED — identical content, different path.
-		const movedWf = await createWorkflow(
-			{ name: 'Moved Flow', nodes: [], connections: {} },
-			project,
+		const moved = await createWorkflow({ name: 'Moved Flow', nodes: [], connections: {} }, project);
+		await writeFile(
+			join(repoDir, `stale-folder-${moved.id}.json`),
+			await exportedContentOf(moved.id),
 		);
-		await writeFile(join(repoDir, `stale-folder-${movedWf.id}.json`), serializedContentOf(movedWf));
 
-		// 6. MOVED + MODIFIED — different path AND different content.
-		const movedModifiedWf = await createWorkflow(
-			{
-				name: 'Moved Modified Flow',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			},
+		// 6. MOVED + MODIFIED — different path AND a node added since the export.
+		const movedModified = await createWorkflow(
+			{ name: 'Moved Modified Flow', nodes: [], connections: {} },
 			project,
-		);
-		const movedModifiedOldContent = JSON.stringify(
-			canonicalize({
-				...jsonParse<object>(serializedContentOf(movedModifiedWf)),
-				nodes: [],
-			}),
 		);
 		await writeFile(
-			join(repoDir, `stale-folder-${movedModifiedWf.id}.json`),
-			movedModifiedOldContent,
+			join(repoDir, `stale-folder-${movedModified.id}.json`),
+			await exportedContentOf(movedModified.id),
 		);
+		await replaceNodes(movedModified.id, [START_NODE]);
 
 		await git.add('.');
 		await git.commit('seed base state');
 
 		const baseMap = await buildBaseMap(repoDir);
 
-		const desiredWorkflows = [unchangedWf, createdWf, modifiedWf, movedWf, movedModifiedWf];
 		const desiredMap: SideMap = new Map();
-		for (const wf of desiredWorkflows) {
-			const canonical = serializedContentOf(wf);
-			desiredMap.set(wf.id, {
-				path: expectedPath(wf.id, wf.name),
-				hash: gitBlobHash(canonical),
+		for (const workflow of [unchanged, created, modified, moved, movedModified]) {
+			desiredMap.set(workflow.id, {
+				path: expectedPath(workflow.id, workflow.name),
+				hash: gitBlobHash(await engineContentOf(workflow.id)),
 			});
 		}
 
 		const results = diff(baseMap, desiredMap);
 		const byId = new Map(results.map((r) => [r.id, r]));
 
-		expect(byId.has(unchangedWf.id)).toBe(false);
-		expect(byId.get(createdWf.id)).toMatchObject({ status: 'created', internalStatus: 'created' });
+		expect(byId.has(unchanged.id)).toBe(false);
+		expect(byId.get(created.id)).toMatchObject({ status: 'created', internalStatus: 'created' });
 		expect(byId.get(deletedId)).toMatchObject({ status: 'deleted', internalStatus: 'deleted' });
-		expect(byId.get(modifiedWf.id)).toMatchObject({
+		expect(byId.get(modified.id)).toMatchObject({
 			status: 'modified',
 			internalStatus: 'modified',
 		});
-		expect(byId.get(movedWf.id)).toMatchObject({ status: 'modified', internalStatus: 'moved' });
-		expect(byId.get(movedModifiedWf.id)).toMatchObject({
+		expect(byId.get(moved.id)).toMatchObject({ status: 'modified', internalStatus: 'moved' });
+		expect(byId.get(movedModified.id)).toMatchObject({
 			status: 'modified',
 			internalStatus: 'moved+modified',
 		});
+	});
+
+	it('hashes the live workflow to the blob sha git recorded for its export, also after a save that changes no content', async () => {
+		const project = await createTeamProject('Diff Engine POC', owner);
+		const git = simpleGit(repoDir);
+		const workflow = await createWorkflow(
+			{ name: 'Stable Flow', nodes: [START_NODE], connections: {} },
+			project,
+		);
+
+		const firstExport = await exportedContentOf(workflow.id);
+		expect(await exportedContentOf(workflow.id)).toBe(firstExport);
+
+		await writeFile(join(repoDir, expectedPath(workflow.id, workflow.name)), firstExport);
+		await git.add('.');
+		await git.commit('seed base state');
+		const [base] = [...(await buildBaseMap(repoDir)).values()];
+
+		expect(gitBlobHash(await engineContentOf(workflow.id))).toBe(base.hash);
+
+		const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		saved.versionCounter += 1;
+		saved.triggerCount += 1;
+		await workflowRepository.save(saved);
+
+		expect(gitBlobHash(await engineContentOf(workflow.id))).toBe(base.hash);
 	});
 });

@@ -92,9 +92,9 @@ Steps:
    16-character, alphanumeric-only alphabet — the parse is exact, not a
    heuristic).
 2. Build the Desired map. Query the DB for everything in scope. Serialize
-   each row with the real serializer. Canonicalize the result (sort object
-   keys recursively, so key order never causes a false diff). Hash the
-   canonical content with git's own blob format:
+   each row with the real serializer. Format the result exactly as the
+   exporter writes it: `JSON.stringify(serialized, null, '\t')`. Hash those
+   bytes with git's own blob format:
    `sha1("blob " + byteLength + "\0" + content)`. This hash is directly
    comparable to Base's blob-shas — the engine never reads Base's file
    content.
@@ -106,6 +106,18 @@ Steps:
    they do not need a manifest.
 5. Return a flat list: `{id, type, name, status, oldPath?, newPath?,
    dependencies?}`.
+
+### Byte-identical output is the contract
+
+The engine hashes the bytes the exporter would write. Any difference —
+indentation, key order, a trailing newline — makes every entity read as
+`modified`. Today each exporter formats its JSON inline with
+`JSON.stringify(x, null, '\t')`; the engine must not re-implement that by
+hand. When the real module lands, extract one shared function in `io/` and
+call it from the exporters and the engine. Key order needs no separate
+canonicalisation step: the serializer builds each object in code, so its key
+order is fixed for a given release. A serializer change that reorders keys
+shows every entity as `modified` once, which is visible and acceptable.
 
 ### Why not `git diff`
 
@@ -131,6 +143,26 @@ git blobs carry no identity. Our entities already carry a stable id, so the
 match is exact, not probabilistic — and it has no equivalent to git's default
 rename-detection cutoff (`diff.renameLimit`, ~1000), which a large reorg
 could hit at a 3000-workflow scale.
+
+## Determinism
+
+This answers question 1 of the spike: do repeated exports of an unchanged
+workflow produce identical files, and which fields wobble?
+
+- Repeated exports of an unchanged workflow produce identical bytes. The POC
+  tests this.
+- A save that changes no content does not change the hash. The POC tests
+  this by bumping `versionCounter` and `triggerCount` (which also bumps
+  `updatedAt`) and re-hashing.
+- `WorkflowSerializer` excludes `createdAt`, `updatedAt`, `versionCounter`,
+  `triggerCount`, `staticData`, `meta`, `pinData` and `activeVersion`.
+- `versionId` is included, but `WorkflowService.update` only regenerates it
+  when `nodes`, `connections` or `nodeGroups` differ by deep-equal. A save
+  with unchanged content keeps the old value.
+- `isPublished` (`activeVersionId === versionId`) is included. Publish or
+  unpublish flips it, so the workflow reads as `modified`. That is a real
+  state change for promotion; decide in LIGO-1050 whether the UI needs to
+  label it differently.
 
 ## Alternatives considered
 
@@ -190,11 +222,17 @@ endpoint.
 
 File: `packages/cli/src/modules/n8n-packages/__tests__/diff-engine-poc.integration.test.ts`.
 
-All 6 cases pass: created, deleted, modified, moved, moved+modified, and
-unchanged (dropped from output). The test uses the real `WorkflowSerializer`
-and a real temp git repository (via `simple-git`) — nothing here is mocked.
-Path generation is stubbed (see Assumptions above) — it is not the real
-`<slug>-<id>.json` implementation.
+Two tests pass. The first covers all 6 classifications: created, deleted,
+modified, moved, moved+modified, and unchanged (dropped from output). The
+second covers determinism (see above) and proves the engine's hash of the
+live workflow equals the blob sha git recorded for the exporter's file.
+
+The Base side is written by the real `WorkflowExporter` through the real
+`DirectoryPackageWriter`. The Desired side is the real `WorkflowSerializer`
+output, formatted as the exporter formats it. The git repository is a real
+temp repository (via `simple-git`) — nothing here is mocked. Path generation
+is stubbed (see Assumptions above) — it is not the real `<slug>-<id>.json`
+implementation.
 
 Run it from `packages/cli`:
 
@@ -216,3 +254,6 @@ pnpm test:integration src/modules/n8n-packages/__tests__/diff-engine-poc.integra
 5. Extend the POC to the other entity types (credentials, tags, folders,
    projects, data tables — all id-keyed; variables name-keyed) once the
    workflow case is validated in the real module.
+6. Extract one shared JSON file-content function in `io/` and use it from
+   every exporter and from the engine (see "Byte-identical output is the
+   contract").
