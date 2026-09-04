@@ -14,6 +14,8 @@ import { randomUUID } from 'node:crypto';
 import type { PolicyContext, PolicyEnforcementBackend } from '@/policy/policy-enforcement-backend';
 
 import { PolicyCheckFailedError } from './policy-check-failed.error';
+import type { PolicyDecisionAudit } from './policy-decision-audit';
+import { checkFailureAudit, violationAudit } from './policy-decision-audit';
 
 /**
  * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
@@ -102,6 +104,9 @@ function decisionFrom(results: PolicyCheckResult[]): PolicyDecision {
  *
  * Checks are combined by conjunction: all of them have to pass and every violation is reported,
  * so a user fixing a workflow sees the whole list rather than one at a time.
+ *
+ * Either way of blocking writes one audit line from here, the single emit site for enforcement
+ * observability. `evaluate` stays silent, so previews never pollute the trail.
  */
 @Service()
 export class PolicyDecisionService implements PolicyEnforcementBackend {
@@ -116,16 +121,27 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		point: Point,
 		context: PolicyContext<Point>,
 	): Promise<PolicyDecision> {
-		const { results, failures } = await this.runChecks(point, context);
+		const startedAt = Date.now();
+		const { checkIds, results, failures } = await this.runChecks(point, context);
+		const durationMs = Date.now() - startedAt;
 
 		if (failures.length > 0) {
+			this.audit(checkFailureAudit(point, context, failures, durationMs, checkIds));
+
 			throw new PolicyCheckFailedError(
 				point,
 				failures.map((failure) => failure.correlationId),
 			);
 		}
 
-		return decisionFrom(results);
+		const decision = decisionFrom(results);
+
+		// The proxy throws on any violation, so this is the veto — and the only place it is logged.
+		if (decision.violations.length > 0) {
+			this.audit(violationAudit(point, context, decision, durationMs, checkIds));
+		}
+
+		return decision;
 	}
 
 	async evaluate<Point extends EnforcementPoint>(
@@ -143,12 +159,30 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		return this.runnersFor(point).length > 0;
 	}
 
+	/**
+	 * The one emit site for enforcement observability, so every policy feature gets the same
+	 * line without building one.
+	 *
+	 * `warn`, not `info`: a blocked action must survive an operator quietening logs. The
+	 * structured half only reaches the console under `N8N_LOG_FORMAT=json` — the text format
+	 * prints the message alone — so the message names the point on its own.
+	 */
+	private audit(line: PolicyDecisionAudit) {
+		const message =
+			line.outcome === 'violation'
+				? `Policy blocked ${line.point}`
+				: `Policy could not be verified for ${line.point}, so it was blocked`;
+
+		this.logger.warn(message, line);
+	}
+
 	private async runChecks<Point extends EnforcementPoint>(
 		point: Point,
 		context: PolicyContext<Point>,
 	) {
+		const runners = this.runnersFor(point);
 		const outcomes = await Promise.all(
-			this.runnersFor(point).map(async ({ checkId, run }): Promise<CheckOutcome> => {
+			runners.map(async ({ checkId, run }): Promise<CheckOutcome> => {
 				try {
 					const result = await withDeadline(
 						async (signal) => await run(context, signal),
@@ -177,7 +211,7 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 			else failures.push(outcome.failure);
 		}
 
-		return { results, failures };
+		return { checkIds: runners.map((runner) => runner.checkId), results, failures };
 	}
 
 	/**

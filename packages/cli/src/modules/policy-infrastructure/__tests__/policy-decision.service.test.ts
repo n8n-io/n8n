@@ -1,11 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
+	type CredentialDecryptContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
 	type RegisteredPolicyCheck,
 	type WorkflowSaveContext,
 	type WorkflowStartContext,
+	type WorkflowTransferContext,
 	workflowContentSubject,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -24,6 +26,20 @@ const slackBlocked = {
 	kind: 'node-type-unavailable',
 	checkId: 'node-types',
 	message: 'n8n-nodes-base.slack is not available',
+	subject: 'n8n-nodes-base.slack',
+	subjectType: 'nodeType',
+	scope: 'instance',
+	matchedRuleId: 'rule-7',
+};
+
+/** `slackBlocked` as the audit line records it — no `message`. */
+const slackAudited = {
+	kind: 'node-type-unavailable',
+	checkId: 'node-types',
+	subject: 'n8n-nodes-base.slack',
+	subjectType: 'nodeType',
+	scope: 'instance',
+	matchedRuleId: 'rule-7',
 };
 
 const codeBlocked = {
@@ -40,6 +56,24 @@ const saveContext: WorkflowSaveContext = {
 
 const startContext: WorkflowStartContext = {
 	workflow: { id: 'wf-1', name: 'My workflow', nodes: [] },
+	projectId: 'proj-1',
+};
+
+const createContext: WorkflowSaveContext = {
+	workflow: { id: null, name: 'Untitled workflow', nodes: [] },
+	storedWorkflow: null,
+	projectId: 'proj-1',
+};
+
+const transferContext: WorkflowTransferContext = {
+	workflow: { id: 'wf-1', name: 'My workflow', nodes: [] },
+	targetProjectId: 'proj-2',
+};
+
+const decryptContext: CredentialDecryptContext = {
+	credentialType: 'slackApi',
+	credentialId: 'cred-1',
+	consumer: { nodeType: 'n8n-nodes-base.slack' },
 	projectId: 'proj-1',
 };
 
@@ -108,6 +142,20 @@ class AbortAwareCheck implements RegisteredPolicyCheck {
 	}
 }
 
+/** Objects at the two points whose context is not a plain `{ workflow, projectId }`. */
+@Service()
+class OtherPointsCheck implements RegisteredPolicyCheck {
+	readonly id = 'other-points';
+
+	async onWorkflowTransfer(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+
+	async onCredentialDecrypt(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+}
+
 /** Only implements `onWorkflowStart`, so it must not be called at other points. */
 @Service()
 class StartOnlyCheck implements RegisteredPolicyCheck {
@@ -120,6 +168,20 @@ const serviceWith = (...classes: PolicyCheckClass[]) => {
 	const metadata = mock<PolicyCheckMetadata>({ getClasses: () => classes });
 
 	return new PolicyDecisionService(mockLogger(), metadata);
+};
+
+/**
+ * The service logs through the return value of `scoped()`, not the injected mock. `mockLogger`
+ * hands back the same inner mock every call, so `audit` is the object the service writes to.
+ */
+const auditedServiceWith = (...classes: PolicyCheckClass[]) => {
+	const logger = mockLogger();
+	const metadata = mock<PolicyCheckMetadata>({ getClasses: () => classes });
+
+	return {
+		service: new PolicyDecisionService(logger, metadata),
+		audit: vi.mocked(logger.scoped('policy').warn),
+	};
 };
 
 describe('PolicyDecisionService', () => {
@@ -255,6 +317,147 @@ describe('PolicyDecisionService', () => {
 			expect(decision.checkErrors).toHaveLength(1);
 			expect(decision.checkErrors?.[0].checkId).toBe('broken');
 			expect(decision.checkErrors?.[0].correlationId).toMatch(/^[0-9a-f-]{36}$/);
+		});
+	});
+
+	describe('decision audit line', () => {
+		it('writes one line naming the point, the objecting check and the violation', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+
+			await service.enforce('workflowSave', saveContext);
+
+			expect(audit).toHaveBeenCalledTimes(1);
+			expect(audit).toHaveBeenCalledWith('Policy blocked workflowSave', {
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: expect.any(Number),
+				checkIds: ['node-types'],
+				violations: [slackAudited],
+				policyVersions: [{ scope: 'instance', version: 4 }],
+				workflowId: 'wf-1',
+				workflowName: 'My workflow',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('keeps the violation message out of the line', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+
+			await service.enforce('workflowSave', saveContext);
+
+			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('is not available');
+		});
+
+		it('writes one line for the decision, not one per objecting check', async () => {
+			const { service, audit } = auditedServiceWith(SilentCheck, SlackCheck, CodeCheck);
+
+			await service.enforce('workflowSave', saveContext);
+
+			expect(audit).toHaveBeenCalledTimes(1);
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				checkIds: ['silent', 'node-types', 'other'],
+				violations: [slackAudited, { checkId: 'other' }],
+			});
+		});
+
+		it('names the workflow when a create has no id to name', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+
+			await service.enforce('workflowSave', createContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				workflowId: null,
+				workflowName: 'Untitled workflow',
+			});
+		});
+
+		it('records the project a transfer moves into', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('workflowTransfer', transferContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({ projectId: 'proj-2' });
+		});
+
+		it('records the credential and the node asking for it', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialDecrypt', decryptContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: 'cred-1',
+				credentialType: 'slackApi',
+				consumerNodeType: 'n8n-nodes-base.slack',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
+		it('writes a line when a check failure blocks, tied to the check error logs', async () => {
+			const { service, audit } = auditedServiceWith(SilentCheck, BrokenCheck);
+
+			const error = (await service
+				.enforce('workflowSave', saveContext)
+				.catch((e: unknown) => e)) as PolicyCheckFailedError;
+
+			expect(audit).toHaveBeenCalledTimes(1);
+			expect(audit).toHaveBeenCalledWith(
+				'Policy could not be verified for workflowSave, so it was blocked',
+				expect.objectContaining({
+					outcome: 'checkFailure',
+					checkIds: ['silent', 'broken'],
+					violations: [],
+					correlationIds: error.meta.correlationIds,
+				}),
+			);
+		});
+
+		it('stays silent when every check is silent', async () => {
+			const { service, audit } = auditedServiceWith(SilentCheck);
+
+			await service.enforce('workflowSave', saveContext);
+
+			expect(audit).not.toHaveBeenCalled();
+		});
+
+		it('stays silent when no check is registered', async () => {
+			const { service, audit } = auditedServiceWith();
+
+			await service.enforce('workflowSave', saveContext);
+
+			expect(audit).not.toHaveBeenCalled();
+		});
+
+		it('stays silent for an evaluate that finds violations', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+
+			const decision = await service.evaluate('workflowSave', saveContext);
+
+			expect(decision.violations).toEqual([slackBlocked]);
+			expect(audit).not.toHaveBeenCalled();
+		});
+
+		it('stays silent for an evaluate that hits a broken check', async () => {
+			const { service, audit } = auditedServiceWith(BrokenCheck);
+
+			await service.evaluate('workflowSave', saveContext);
+
+			expect(audit).not.toHaveBeenCalled();
+		});
+
+		it('writes the line when the proxy vetoes a save', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const proxy = new PolicyEnforcementService();
+			proxy.setImplementation(service);
+
+			await expect(proxy.enforceWorkflowSave(saveContext)).rejects.toBeInstanceOf(
+				PolicyViolationError,
+			);
+			expect(audit).toHaveBeenCalledTimes(1);
+			expect(audit).toHaveBeenCalledWith(
+				'Policy blocked workflowSave',
+				expect.objectContaining({ violations: [slackAudited] }),
+			);
 		});
 	});
 

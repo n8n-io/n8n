@@ -32,7 +32,7 @@ flowchart LR
     end
 
     subgraph module["policy-infrastructure module (opt-in)"]
-        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed"]
+        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line per veto"]
         registry["PolicyCheckMetadata<br/>registry in @n8n/decorators"]
         checks["@PolicyCheck() classes<br/>onWorkflowSave · onWorkflowPublish · …"]
     end
@@ -138,6 +138,49 @@ package, a source-control pull skips and reports the workflow.
   in `checkErrors` next to the other results, so a crash never reads as "no
   violations".
 
+## The decision audit line
+
+Every veto writes one line, from one place: `PolicyDecisionService.audit`. A policy
+feature gets uniform enforcement logging without building any. If SIEM-forwardable
+enforcement events are wanted later, they land here too.
+
+```
+warn  Policy blocked workflowSave  {
+  "point": "workflowSave", "outcome": "violation", "durationMs": 12,
+  "checkIds": ["node-types"],
+  "violations": [{ "checkId": "node-types", "kind": "node-type-unavailable",
+                   "subject": "n8n-nodes-base.slack", "subjectType": "nodeType",
+                   "scope": "instance", "matchedRuleId": "rule-7" }],
+  "policyVersions": [{ "scope": "instance", "version": 4 }],
+  "workflowId": "wf-1", "workflowName": "My workflow", "projectId": "proj-1",
+  "scopes": ["policy"]
+}
+```
+
+- **Both ways of blocking write a line.** A violation gives `outcome: "violation"`.
+  A check that threw or overran gives `outcome: "checkFailure"` with `correlationIds`,
+  which tie it to the per-check error lines holding the real errors.
+- **`evaluate*` writes nothing.** Previews must not pollute the trail.
+- **The violation `message` is not on the line.** It is free text saying what the
+  structured fields already say.
+- **A create has no `workflowId`.** It logs `null` and the name instead. The line does
+  not reproduce the `PolicyCleared` subject, which hashes a create's content — that is
+  the enforcement point's to compute, and mirroring it here would let the two drift.
+- **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
+  the `warning` level `PolicyViolationError` already gives itself.
+
+Two logging facts to know before relying on this:
+
+- **The default text format prints the message only.** The structured half needs
+  `N8N_LOG_FORMAT=json`, file output, or `debug` level. The message names the point on
+  its own for that reason.
+- **`N8N_LOG_SCOPES` can drop the line.** A configured scope set drops every line
+  outside it, unscoped lines included, so no log line is immune. `N8N_LOG_SCOPES=policy`
+  is the switch that keeps only these.
+
+Policy *mutation* audit — who changed a policy — is a different surface, owned by the
+feature that has a policy to mutate, on the existing audit-event infrastructure.
+
 ## The seal
 
 A cleared write needs a `PolicyCleared` token minted by the enforcement point.
@@ -182,7 +225,8 @@ registry is read on every decision, so load order cannot hide a check.
 | File | Role |
 |---|---|
 | `policy-infrastructure.module.ts` | Registers `PolicyDecisionService` into the enforcement point and loads the lifecycle handler |
-| `policy-decision.service.ts` | Runs the checks with deadlines and combines their results |
+| `policy-decision.service.ts` | Runs the checks with deadlines, combines their results, and emits the audit line |
+| `policy-decision-audit.ts` | The audit line's shape and how it reads a target off each context |
 | `policy-lifecycle-handler.ts` | The `workflowStart` host, one hook for every way an execution starts |
 | `policy-check-failed.error.ts` | The 503 for a check that did not answer |
 | `../../policy/policy-enforcement.service.ts` | The enforcement point the hosts call, always loaded |
