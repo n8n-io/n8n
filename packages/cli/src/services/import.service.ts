@@ -176,6 +176,7 @@ export class ImportService {
 				cleared = await this.policyEnforcementService.enforceContentImport({
 					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
 					projectId: policyProjectId,
+					transport: 'cli',
 				});
 			} catch (error) {
 				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.

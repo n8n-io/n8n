@@ -98,6 +98,8 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export { SourceControlStatusQueryPublicDto } from './source-control/source-control-status-query-public.dto';
+export { SourceControlStatusPublicDto } from './source-control/source-control-status-public.dto';
 export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
@@ -337,6 +339,8 @@ export {
 	type SecurityPolicyResponse,
 } from './security-settings/security-policy.dto';
 
+export { UpdateProjectPoolSettingsDto } from './worker-pools/update-project-pool-settings.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 export {
@@ -376,6 +380,14 @@ export {
 	deletedExecutionPublicSchema,
 	executionListItemPublicSchema,
 } from './executions/execution-public.dto';
+export {
+	RetriedExecutionPublicDto,
+	retriedExecutionPublicSchema,
+} from './executions/retried-execution-public.dto';
+export {
+	RetryExecutionPublicDto,
+	retryExecutionPublicSchema,
+} from './executions/retry-execution-public.dto';
 export {
 	StoppedExecutionPublicDto,
 	StoppedExecutionsPublicDto,

@@ -14,6 +14,7 @@ export type ToolIconSource =
 
 export interface ToolCredentialRef {
 	authType: string;
+	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
 }
@@ -174,7 +175,11 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
+	openNewCredential: (
+		authType: string,
+		item: ToolConnectionItem,
+		credentialTypes?: readonly string[],
+	) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 

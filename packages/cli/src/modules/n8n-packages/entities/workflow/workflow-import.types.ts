@@ -1,6 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import type { WorkflowIdConflict } from './workflow-import-match.service';
+import type { WorkflowArchiveTransition } from './workflow-archive-transition';
+import type { WorkflowIdConflict, WorkflowLineageConflict } from './workflow-import-match.service';
 import type {
 	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
@@ -48,10 +49,16 @@ export interface WorkflowDecision {
  * `create` has none — no null checks needed downstream. `create` carries the
  * id the workflow will be written under (`decidedId`, per the id policy) so
  * the plan is the complete source-id → local-id map before anything is written.
+ * `update` carries the archive step needed when the package and the target
+ * disagree on the archived state.
  */
 export type WorkflowPlanItem =
 	| ({ action: 'create'; decidedId: string } & PreparedWorkflow)
-	| ({ action: 'update'; existing: WorkflowEntity } & PreparedWorkflow)
+	| ({
+			action: 'update';
+			existing: WorkflowEntity;
+			archiveTransition: WorkflowArchiveTransition | null;
+	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
 
 /** A plan item whose content is written to the database (i.e. not skipped). */
@@ -71,6 +78,15 @@ export interface WorkflowFolderConflict {
 	name: string;
 }
 
+/** A matched workflow the import must archive or unarchive, but the user lacks `workflow:delete` on. */
+export interface WorkflowArchiveForbidden {
+	sourceWorkflowId: string;
+	existingWorkflowId: string;
+	name: string;
+	projectId: string;
+	transition: WorkflowArchiveTransition;
+}
+
 /**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
@@ -78,8 +94,10 @@ export interface WorkflowFolderConflict {
 export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
+	lineageConflicts: WorkflowLineageConflict[];
 	idConflicts: WorkflowIdConflict[];
 	folderConflicts: WorkflowFolderConflict[];
+	archiveForbidden: WorkflowArchiveForbidden[];
 }
 
 export interface WorkflowImportOutcome {

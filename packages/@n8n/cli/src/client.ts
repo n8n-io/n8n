@@ -41,6 +41,7 @@ export interface ExportPackageFields {
 	missingWorkflowDependencyPolicy?: string;
 	workflowVersionPolicy?: string;
 	credentialExportPolicy?: string;
+	includeArchivedWorkflows?: boolean;
 }
 
 /** True per-entity counts of what ended up in an exported package. */
@@ -571,6 +572,7 @@ export class N8nClient {
 			missingWorkflowDependencyPolicy?: string;
 			workflowVersionPolicy?: string;
 			credentialExportPolicy?: string;
+			includeArchivedWorkflows?: boolean;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
@@ -583,6 +585,7 @@ export class N8nClient {
 		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
+		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

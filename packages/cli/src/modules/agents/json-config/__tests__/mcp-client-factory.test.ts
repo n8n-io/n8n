@@ -469,6 +469,14 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 			),
 		).rejects.toThrow('requires an MCP registry node');
 	});
+
+	it('uses the OAuth2 path for native OAuth2 credential types', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'githubOAuth2Api', credential: 'cred-1' }),
+			{ oauthTokenData: { access_token: 'github-oauth-token' } },
+		);
+		expect(headers.Authorization).toBe('Bearer github-oauth-token');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -509,10 +517,10 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 				proxyFetch,
 				resolveRegistryConnection: async () => ({
 					nodeTypeName: '@n8n/mcp-registry.notion',
-					credentialType: 'notionMcpOAuth2Api',
 					endpointUrl: 'https://example.test/mcp',
 					endpointHostname: 'example.test',
 					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' }],
 					isTemplated: false,
 				}),
 			},
@@ -578,6 +586,28 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			oauthTokenData: { access_token: 'github-token' },
+			allowedHttpRequestDomains: 'none',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({
+				authentication: 'githubOAuth2Api',
+				credential: 'cred-1',
+				url: 'https://api.githubcopilot.com/mcp/',
+			}),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('blocks requests when the server URL is not in the credential allowlist', async () => {
@@ -730,7 +760,12 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 				proxyFetch,
 				resolveRegistryConnection: async () => ({
 					nodeTypeName: '@n8n/mcp-registry.databricksGenie',
-					credentialType: 'databricksGenieMcpOAuth2Api',
+					credentialBindings: [
+						{
+							credentialType: 'databricksGenieMcpOAuth2Api',
+							selector: 'oAuth2',
+						},
+					],
 					urlTemplate: templatedUrl,
 					transport: 'httpStreamable',
 					isTemplated: true,

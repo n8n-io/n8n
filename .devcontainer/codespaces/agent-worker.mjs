@@ -15,12 +15,28 @@ const GITHUB_USER = codespaceEnv('GITHUB_USER');
 const BOX_ID = codespaceEnv('CODESPACE_NAME');
 const ROOT = '/workspaces';
 
-const POLL_INTERVAL_MS = 3000;
+const INITIAL_POLL_INTERVAL_MS = 3000;
+const MAX_POLL_INTERVAL_MS = 30_000;
 const SLACK_UPDATE_INTERVAL_MS = 1500;
 const SLACK_TEXT_LIMIT = 3900;
-const OPENCODE_CONFIG_CONTENT = JSON.stringify({
-	provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
-});
+
+export function openCodeConfig(environment) {
+	const config = {
+		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+	};
+	if (environment.FLAKY_MCP_URL && environment.FLAKY_MCP_TOKEN) {
+		config.mcp = {
+			flaky: {
+				type: 'remote',
+				url: environment.FLAKY_MCP_URL,
+				enabled: true,
+				oauth: false,
+				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			},
+		};
+	}
+	return config;
+}
 
 function posNum(name, fallback) {
 	const raw = process.env[name];
@@ -29,6 +45,36 @@ function posNum(name, fallback) {
 	if (Number.isFinite(n) && n > 0) return n;
 	console.error(`${name} is not a positive number ("${raw}"); using ${fallback}.`);
 	return fallback;
+}
+
+function nextIdlePollInterval(interval) {
+	return Math.min(interval * 2, MAX_POLL_INTERVAL_MS);
+}
+
+export async function pollOnce(
+	interval,
+	{ dequeueTurn = dequeue, handleTurn = handle, wait = sleep, logError = console.error } = {},
+) {
+	let turn;
+	try {
+		turn = await dequeueTurn();
+	} catch (error) {
+		logError(`poll error: ${error.message}`);
+		await wait(interval);
+		return nextIdlePollInterval(interval);
+	}
+	if (!turn) {
+		await wait(interval);
+		return nextIdlePollInterval(interval);
+	}
+	try {
+		await handleTurn(turn);
+		return INITIAL_POLL_INTERVAL_MS;
+	} catch (error) {
+		logError(`poll error: ${error.message}`);
+		await wait(INITIAL_POLL_INTERVAL_MS);
+		return nextIdlePollInterval(INITIAL_POLL_INTERVAL_MS);
+	}
 }
 
 // This limit expires before n8n's Wait node so that the user receives a specific error.
@@ -43,7 +89,7 @@ export function openCodeEnvironment(environment) {
 	delete childEnvironment.AGENT_WORKER_TOKEN;
 	delete childEnvironment.N8N_DEQUEUE_URL;
 	delete childEnvironment.SLACK_BOT_TOKEN;
-	childEnvironment.OPENCODE_CONFIG_CONTENT = OPENCODE_CONFIG_CONTENT;
+	childEnvironment.OPENCODE_CONFIG_CONTENT = JSON.stringify(openCodeConfig(childEnvironment));
 	return childEnvironment;
 }
 
@@ -328,6 +374,9 @@ export async function startSlackProgress(
 }
 
 async function handle(turn) {
+	console.log(
+		`${new Date().toISOString()} turn ${turn.turnId} by ${turn.author ?? 'unknown'}: ${turn.sessionId ? 'resume' : 'new'}`,
+	);
 	let result;
 	let activeSessionId = turn.sessionId ?? '';
 	const progress = await startSlackProgress(turn);
@@ -388,22 +437,11 @@ async function main() {
 			'SLACK_BOT_TOKEN is not set. Turns will complete without Slack progress updates.',
 		);
 
-	console.log(`agent-worker polling as ${GITHUB_USER} every ${POLL_INTERVAL_MS}ms`);
-	for (;;) {
-		try {
-			const turn = await dequeue();
-			if (turn) {
-				console.log(
-					`${new Date().toISOString()} turn ${turn.turnId} by ${turn.author ?? 'unknown'}: ${turn.sessionId ? 'resume' : 'new'}`,
-				);
-				await handle(turn);
-				continue;
-			}
-		} catch (error) {
-			console.error(`poll error: ${error.message}`);
-		}
-		await sleep(POLL_INTERVAL_MS);
-	}
+	console.log(
+		`agent-worker polling as ${GITHUB_USER} every ${INITIAL_POLL_INTERVAL_MS}-${MAX_POLL_INTERVAL_MS}ms`,
+	);
+	let pollInterval = INITIAL_POLL_INTERVAL_MS;
+	for (;;) pollInterval = await pollOnce(pollInterval);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

@@ -348,6 +348,19 @@ describe('utils', () => {
 			expect(result).toEqual({});
 		});
 
+		it('should apply a native OAuth2 credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = { oauthTokenData: { access_token: 'github-token' } };
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'githubOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer github-token' },
+				credentials,
+			});
+		});
+
 		it.each([
 			'headerAuth',
 			'bearerAuth',
@@ -863,29 +876,33 @@ describe('utils', () => {
 				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
 					access_token: 'refreshed-token',
 				});
+				const credentialType = 'testMcpOAuth2Api' as const;
 				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
 				const connection: LiteralMcpRegistryConnection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
-					credentialType: 'testMcpOAuth2Api',
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
 					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType, selector: 'oAuth2' }],
 					isTemplated: false,
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,
 					value: {
-						...connection,
+						nodeTypeName: connection.nodeTypeName,
+						credentialType,
+						transport: connection.transport,
+						endpointUrl: connection.endpointUrl,
 						headers: input.headers ?? {},
 						allowedDomains: connection.endpointHostname,
 					},
 				}));
 
 				await connectMcpClientForCredential(ctx, {
-					authentication: connection.credentialType,
+					authentication: credentialType,
 					serverTransport: transport,
 					endpointUrl: connection.endpointUrl,
-					registryCredential: { connection, prepareConnection },
+					registryCredential: { connection, credentialType, prepareConnection },
 					surface: 'MCP Client Tool',
 				});
 

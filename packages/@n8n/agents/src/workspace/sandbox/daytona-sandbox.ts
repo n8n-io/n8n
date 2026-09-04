@@ -23,6 +23,7 @@ import { DaytonaAuthManager } from './daytona-auth-manager';
 import { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from './logger';
+import { toShellCommand } from './shell-command';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
@@ -159,15 +160,6 @@ export interface DaytonaSandboxOptions {
 	networkAllowList?: string;
 	errorReporter?: ErrorReporter;
 	createStrategyMode?: 'direct' | 'proxy';
-}
-
-function shellEscape(value: string): string {
-	return /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function toShellCommand(command: string, args: string[]): string {
-	if (args.length === 0) return command;
-	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
 function isSandboxGone(error: unknown): boolean {

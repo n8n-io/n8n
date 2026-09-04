@@ -748,6 +748,8 @@ export class AgentValidationService {
 				return credentialType === 'httpHeaderAuth';
 			case 'multipleHeadersAuth':
 				return credentialType === 'httpMultipleHeadersAuth';
+			case 'mcpOAuth2Api':
+				return credentialType === 'mcpOAuth2Api';
 			default:
 				return isMcpOAuth2Authentication(authentication) ? credentialType === authentication : true;
 		}

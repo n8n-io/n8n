@@ -116,6 +116,28 @@ describe('workflow package export', () => {
 			expect(serialized.nodes).toHaveLength(1);
 		});
 
+		it('exports an explicitly listed archived workflow under the default', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflow(
+				{ name: 'Archived Workflow', nodes: [], connections: {} },
+				project,
+			);
+			await Container.get(WorkflowRepository).update(workflow.id, { isArchived: true });
+
+			const exported = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const exportedPackage = await readExport(exported.stream);
+
+			expect(exportedPackage.manifest.workflows).toEqual([
+				{ id: workflow.id, name: workflow.name, target: expect.any(String) },
+			]);
+			const serialized = workflowJson(
+				exportedPackage.entries,
+				exportedPackage.manifest.workflows![0].target,
+			);
+			expect(serialized.isArchived).toBe(true);
+		});
+
 		it('writes each workflow under a distinct slugged target', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);

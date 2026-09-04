@@ -663,7 +663,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -1475,6 +1483,21 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
+
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
 
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)

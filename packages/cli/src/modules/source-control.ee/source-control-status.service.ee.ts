@@ -197,16 +197,26 @@ export class SourceControlStatusService {
 			...projectsResult.files,
 		];
 
+		const publicApi = options.origin === 'publicApi';
+
 		if (options.direction === 'push') {
-			this.eventService.emit(
-				'source-control-user-started-push-ui',
-				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
+			const trackingInformation = getTrackingInformationFromPrePushResult(
+				user.id,
+				sourceControlledFiles,
 			);
+			this.eventService.emit('source-control-user-started-push-ui', {
+				...trackingInformation,
+				publicApi,
+			});
 		} else if (options.direction === 'pull') {
-			this.eventService.emit(
-				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
+			const trackingInformation = getTrackingInformationFromPullResult(
+				user.id,
+				sourceControlledFiles,
 			);
+			this.eventService.emit('source-control-user-started-pull-ui', {
+				...trackingInformation,
+				publicApi,
+			});
 		}
 
 		if (collectVerbose) {
