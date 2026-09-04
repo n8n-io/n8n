@@ -1,8 +1,14 @@
+import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createNodesTool } from '../nodes.tool';
+
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
+	validateNodeConfig: vi.fn(() => ({ valid: true, errors: [] })),
+}));
 
 function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
@@ -531,6 +537,270 @@ describe('nodes tool', () => {
 				found: false,
 				error: expect.stringContaining('unknown.node'),
 			});
+		});
+	});
+
+	describe('execute action', () => {
+		const executeInput = {
+			action: 'execute',
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { parameters: { mode: 'manual' } },
+		};
+
+		it('should return a structured error when required execute fields are missing', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			const result = await executeTool(
+				tool,
+				{ action: 'execute', type: 'n8n-nodes-base.set' } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				status: 'error',
+				error: { message: expect.stringContaining('version') },
+			});
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
+		it('should reject a config that fails schema validation before suspending', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const suspendFn = vi.fn();
+			vi.mocked(validateNodeConfig).mockReturnValueOnce({
+				valid: false,
+				errors: [
+					{ path: 'parameters.text', message: 'Required' },
+					{ path: 'parameters.select', message: 'Invalid value', missingDiscriminator: true },
+				],
+			});
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(result).toEqual({
+				status: 'error',
+				error: {
+					message: 'Node parameters do not match the schema for n8n-nodes-base.set v3.4',
+					issues: [{ path: 'parameters.text', message: 'Required' }],
+				},
+			});
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
+		it('should treat missing-discriminator-only validation errors as non-blocking', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const suspendFn = vi.fn();
+			vi.mocked(validateNodeConfig).mockReturnValueOnce({
+				valid: false,
+				errors: [{ path: 'parameters.resource', message: 'Required', missingDiscriminator: true }],
+			});
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			await executeTool(tool, executeInput as never, { suspend: suspendFn } as never);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+		});
+
+		it('should suspend for confirmation on the first call', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			await executeTool(tool, executeInput as never, { suspend: suspendFn } as never);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					requestId: expect.any(String),
+					message: 'Execute node n8n-nodes-base.set',
+					severity: 'warning',
+				}),
+			);
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
+		it('should deny without suspending when the admin policy blocks workflow runs', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({ executeNodeService, permissions: { runWorkflow: 'blocked' } as never }),
+				'full',
+			);
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(result).toEqual({ status: 'error', denied: true, reason: 'Action blocked by admin' });
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
+		it('should skip approval when the admin policy is always_allow', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({
+					executeNodeService,
+					permissions: { runWorkflow: 'always_allow' } as never,
+				}),
+				'full',
+			);
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
+		it('should skip approval when a session grant exists for the node type', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({
+					executeNodeService,
+					sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set::']),
+				}),
+				'full',
+			);
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
+		it('should persist a session grant split by type, resource, and operation on "always allow"', async () => {
+			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
+			const grantSessionToolApproval = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({ executeNodeService, grantSessionToolApproval }),
+				'full',
+			);
+
+			await executeTool(
+				tool,
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.slack',
+					version: 2.7,
+					config: { parameters: { resource: 'message', operation: 'post', text: 'hi' } },
+				} as never,
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(
+				'nodes:execute:n8n-nodes-base.slack:message:post',
+			);
+			expect(executeNodeService.execute).toHaveBeenCalled();
+		});
+
+		it('should persist a plain per-type grant for nodes without resource/operation', async () => {
+			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
+			const grantSessionToolApproval = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({ executeNodeService, grantSessionToolApproval }),
+				'full',
+			);
+
+			await executeTool(
+				tool,
+				executeInput as never,
+				{
+					resumeData: { approved: true, scope: 'session' },
+				} as never,
+			);
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('nodes:execute:n8n-nodes-base.set::');
+		});
+
+		it('should return a denied result without executing when the user denies', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					resumeData: { approved: false },
+				} as never,
+			);
+
+			expect(result).toEqual({ status: 'error', denied: true, reason: 'User denied the action' });
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
+		it('should execute the node with the workflow-sdk-shaped request when approved', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: { done: true } }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			const result = await executeTool(
+				tool,
+				{
+					...executeInput,
+					config: {
+						parameters: { mode: 'manual' },
+						credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
+					},
+					input: [{ json: { text: 'hi' } }],
+					timeoutMs: 10_000,
+				} as never,
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(executeNodeService.execute).toHaveBeenCalledWith({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: {
+					parameters: { mode: 'manual' },
+					credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
+				},
+				input: [{ json: { text: 'hi' } }],
+				timeoutMs: 10_000,
+			});
+			expect(result).toEqual(serviceResult);
+		});
+
+		it('should return an error when executeNodeService is not wired', async () => {
+			const tool = createNodesTool(createMockContext(), 'full');
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					resumeData: { approved: true },
+				} as never,
+			);
+
+			expect(result).toMatchObject({ status: 'error' });
 		});
 	});
 });

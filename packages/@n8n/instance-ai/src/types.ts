@@ -499,6 +499,38 @@ export interface InstanceAiExecutionService {
 	): Promise<ResolvedNodeParametersResult>;
 }
 
+export interface ExecuteNodeOutputItem {
+	json: Record<string, unknown>;
+	binary?: Record<string, { fileName?: string; mimeType?: string; fileSize?: string }>;
+}
+
+export type ExecuteNodeResult =
+	| {
+			status: 'success';
+			output: ExecuteNodeOutputItem[][];
+			truncated?: { totalItems: number; shownItems: number; message: string };
+			outputSuppressed?: string;
+	  }
+	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+
+/** Executes a single node standalone through the regular execution engine.
+ *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
+export interface InstanceAiExecuteNodeService {
+	execute(request: {
+		type: string;
+		version: number;
+		config: {
+			parameters: Record<string, unknown>;
+			credentials?: Record<
+				string,
+				{ id: string | null; name: string; __aiGatewayManaged?: boolean }
+			>;
+		};
+		input?: Array<{ json: Record<string, unknown> }>;
+		timeoutMs?: number;
+	}): Promise<ExecuteNodeResult>;
+}
+
 export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
@@ -1176,6 +1208,8 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — presence gates the `execute` action on the `nodes` tool. */
+	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

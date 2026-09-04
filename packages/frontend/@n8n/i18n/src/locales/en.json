@@ -7335,6 +7335,8 @@
 	"instanceAi.tools.nodes.type-definition": "Loading node schema",
 	"instanceAi.tools.nodes.suggested": "Getting suggested nodes",
 	"instanceAi.tools.nodes.explore-resources": "Exploring node resources",
+	"instanceAi.tools.nodes.execute": "Executing node",
+	"instanceAi.tools.nodes.execute.imperative": "execute a node",
 	"instanceAi.tools.task-control": "Task control",
 	"instanceAi.tools.task-control.update-checklist": "Updating tasks",
 	"instanceAi.tools.task-control.cancel-task": "Cancelling task",

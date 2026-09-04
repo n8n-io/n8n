@@ -53,6 +53,21 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
+ * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
+ * node type + resource + operation (the split the generated node TS types use).
+ * Extracts the discriminators from the parameters itself so backend and
+ * frontend cannot build diverging keys.
+ */
+export function buildExecuteNodeSessionGrantKey(
+	nodeType: string,
+	parameters?: Record<string, unknown>,
+): string {
+	const resource = typeof parameters?.resource === 'string' ? parameters.resource : '';
+	const operation = typeof parameters?.operation === 'string' ? parameters.operation : '';
+	return `nodes:execute:${nodeType}:${resource}:${operation}`;
+}
+
+/**
  * Builds the thread-level grant key for updating a specific workflow without HITL.
  *
  * Written automatically when the agent creates a workflow in this thread, so follow-up
