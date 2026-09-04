@@ -239,4 +239,84 @@ describe('TelegramInteractionWebhooks', () => {
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(getWebhookExecutionData).not.toHaveBeenCalled();
 	});
+
+	it('routes a Telegram HITL tool node into the shared resume', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const req = makeReq(reference);
+		const res = makeRes();
+
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { resultData: { lastNodeExecuted: 'Telegram', error: undefined } },
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					active: true,
+					settings: {},
+					staticData: {},
+					connections: {},
+					nodes: [
+						{
+							name: 'Telegram',
+							id: 'node-1',
+							type: 'n8n-nodes-base.telegramHitlTool',
+							typeVersion: 1.2,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						},
+					],
+				},
+			}),
+		);
+
+		await svc.executeWebhook(req, res);
+
+		expect(getWebhookExecutionData).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionId: 'e1',
+				suffix: 'node-1',
+				lastNodeExecuted: 'Telegram',
+			}),
+		);
+	});
+
+	it('responds 404 and does not resume when the resumed node is another platform HITL tool', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const req = makeReq(reference);
+		const res = makeRes();
+
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { resultData: { lastNodeExecuted: 'Slack HITL', error: undefined } },
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					active: true,
+					settings: {},
+					staticData: {},
+					connections: {},
+					nodes: [
+						{
+							name: 'Slack HITL',
+							id: 'node-1',
+							type: 'n8n-nodes-base.slackHitlTool',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						},
+					],
+				},
+			}),
+		);
+
+		const result = await svc.executeWebhook(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(getWebhookExecutionData).not.toHaveBeenCalled();
+	});
 });

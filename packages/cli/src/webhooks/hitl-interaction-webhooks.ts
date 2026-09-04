@@ -34,7 +34,10 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 	): Promise<ParsedHitlCallbackReference | null>;
 
-	/** The node type this route is allowed to resume (e.g. 'n8n-nodes-base.slack'). */
+	/**
+	 * The platform node this route may resume, e.g. `n8n-nodes-base.slack`.
+	 * The matching HITL tool variant (`${platformNodeType}HitlTool`) is also allowed.
+	 */
 	protected abstract readonly platformNodeType: string;
 
 	/**
@@ -68,7 +71,9 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const node = workflow.getNode(lastNodeExecuted);
 		if (!node) return { ok: false, status: 404 };
 
-		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
+		if (node.type !== this.platformNodeType && node.type !== `${this.platformNodeType}HitlTool`) {
+			return { ok: false, status: 404 };
+		}
 
 		return {
 			ok: true,
