@@ -28,7 +28,7 @@ jobs:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 

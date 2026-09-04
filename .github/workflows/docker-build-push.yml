@@ -135,7 +135,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: useblacksmith/checkout@046e27863876319367379f972a0c394bee91aee1 # v1.4.0
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
@@ -678,7 +678,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@046e27863876319367379f972a0c394bee91aee1 # v1.4.0
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           fetch-depth: 1
           persist-credentials: false
