@@ -357,6 +357,96 @@ describe('WorkflowExecutionService', () => {
 		});
 	});
 
+	describe('runPolledWorkflowV2()', () => {
+		const node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+		const workflow = mock<IWorkflowBase>({
+			id: 'wf-1',
+			active: true,
+			activeVersionId: 'some-version-id',
+			nodes: [node],
+		});
+		const cursor = { lastItemId: 'a' };
+		const pollItems = [[{ json: { id: 1 } }]];
+		let responsePromise: MockProxy<IDeferredPromise<IExecuteResponsePromiseData>>;
+
+		const runPolledWorkflowV2 = async () =>
+			await workflowExecutionService.runPolledWorkflowV2(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+			);
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
+			workflowRunner.run.mockResolvedValue('exec-v2');
+			pollCursorService.commitCursorOnly.mockResolvedValue(true);
+		});
+
+		test('starts the run before committing the cursor, and returns its id', async () => {
+			const returned = await runPolledWorkflowV2();
+
+			expect(returned).toBe('exec-v2');
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowData: workflow }),
+				true,
+				undefined,
+				undefined,
+				responsePromise,
+			);
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor,
+				fence: undefined,
+			});
+		});
+
+		test('never commits the cursor when the run fails to start', async () => {
+			const runError = new Error('engine 2.0 rejected the run');
+			workflowRunner.run.mockRejectedValue(runError);
+
+			await expect(runPolledWorkflowV2()).rejects.toBe(runError);
+
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+		});
+
+		test('logs, but does not fail the run, when the lease is gone by the time it commits', async () => {
+			pollCursorService.commitCursorOnly.mockResolvedValue(false);
+
+			const returned = await runPolledWorkflowV2();
+
+			expect(returned).toBe('exec-v2');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Poll cursor commit skipped after its execution already started: the poll no longer holds its lease',
+				{ workflowId: 'wf-1', nodeId: 'node-1', nodeName: 'Poll Node', executionId: 'exec-v2' },
+			);
+		});
+
+		test('passes the fence through to the cursor commit', async () => {
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await workflowExecutionService.runPolledWorkflowV2(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				fence,
+			);
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith(
+				expect.objectContaining({ fence }),
+			);
+		});
+	});
+
 	describe('executeManually()', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
