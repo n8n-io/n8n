@@ -27,6 +27,24 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
 
+// V8 compile cache for the runtime bundle: produced by the first bundle
+// compile (pool warmup) and consumed by every later isolate build, skipping
+// the parse phase of the ~470KB bundle (~23% off a cold start, measured).
+// V8 validates the data and silently recompiles when it is stale, so this is
+// safe across bundle changes within one process lifetime. Full heap
+// snapshots (Isolate.createSnapshot) were measured NET SLOWER than a plain
+// eval — deserializing the heap costs more than lazily parsing the bundle.
+// TODO(POC): promote the enable flag to ExpressionEngineConfig.
+const isCompileCacheEnabled = () => process.env.N8N_EXPRESSION_ENGINE_COMPILE_CACHE === 'true';
+let _bundleCachedData: ivm.ExternalCopy<ArrayBuffer> | null = null;
+
+// The runtime sets Script.cachedData when produceCachedData is passed, but
+// ivm's typings omit the property (CachedDataResult exists unattached).
+function producedCachedData(script: ivm.Script): ivm.ExternalCopy<ArrayBuffer> | null {
+	const data: unknown = Reflect.get(script, 'cachedData');
+	return data instanceof getIvm().ExternalCopy ? data : null;
+}
+
 /**
  * The E() error handler injected into every isolate; see injectErrorHandler()
  * for the two exception-handling layers it participates in.
@@ -215,7 +233,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
-			await this.context.eval(runtimeBundle);
+			if (isCompileCacheEnabled()) {
+				const script = await this.isolate.compileScript(
+					runtimeBundle,
+					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
+				);
+				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
+				await script.run(this.context);
+			} else {
+				await this.context.eval(runtimeBundle);
+			}
 
 			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded');
 
@@ -321,7 +348,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const jail = this.context.global;
 			jail.setSync('global', jail.derefInto());
 
-			this.context.evalSync(readRuntimeBundleSync());
+			if (isCompileCacheEnabled()) {
+				const script = this.isolate.compileScriptSync(
+					readRuntimeBundleSync(),
+					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
+				);
+				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
+				script.runSync(this.context);
+			} else {
+				this.context.evalSync(readRuntimeBundleSync());
+			}
 
 			// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
 			const verified = this.context.evalSync(
