@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { getVisibleTooltip } from './components/tooltipLocators';
 import { WorkflowMenu } from './components/WorkflowMenu';
 
 export class WorkflowSettingsModal extends BasePage {
@@ -81,7 +82,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getTooltip(): Locator {
-		return this.page.getByTestId('tooltip-content').filter({ visible: true });
+		return getVisibleTooltip(this.page);
 	}
 
 	getSaveButton(): Locator {
