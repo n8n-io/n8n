@@ -8,6 +8,7 @@ import { DurableLogMetrics } from './durable-log-metrics';
 import { InProcessEventBus } from './in-process-event-bus';
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
+import { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
 export const TOOL_INTERRUPTED_MESSAGE =
 	'Interrupted by a process restart — effect unverified; verify before retrying.';
@@ -56,7 +57,9 @@ export interface InterruptedRunResumeHost {
  *
  * Runs whose own checkpoint (matched by `hostRunId`) is HITL-`suspended` are
  * skipped: the pending confirmation orphan path (SuspendedRunRestorer) owns
- * their recovery.
+ * their recovery. Exception: a user-initiated cancel settles a suspended run
+ * whose confirmation row is gone — the orphan path can never claim it, so it
+ * would otherwise stay a zombie forever.
  *
  * Multi-main safety, without a dedicated lease table: durable activity is the
  * heartbeat. Step checkpoints upsert per step and log facts append per step,
@@ -79,6 +82,7 @@ export class InterruptedRunSweeper {
 		private readonly logger: Logger,
 		private readonly eventLogRepo: InstanceAiEventLogRepository,
 		private readonly checkpointRepo: InstanceAiCheckpointRepository,
+		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly eventBus: InProcessEventBus,
 		private readonly metrics: DurableLogMetrics,
 		private readonly instanceSettings: InstanceSettings,
@@ -184,7 +188,8 @@ export class InterruptedRunSweeper {
 	 * Shared zombie resolution: appends `tool-interrupted` for in-flight calls,
 	 * `agent-completed { error }` for spawned sub-agents with no terminal fact,
 	 * and one terminal `run-finish`, unless the run is live in this process,
-	 * HITL-suspended, or (multi-main) shows recent durable activity. Returns
+	 * HITL-suspended with its confirmation row intact (any suspended run for
+	 * the sweep), or (multi-main) shows recent durable activity. Returns
 	 * the number of in-flight calls terminalized, or null when the run was
 	 * left alone.
 	 */
@@ -211,7 +216,15 @@ export class InterruptedRunSweeper {
 		// orphan path; terminalizing it would destroy that recovery. Only this
 		// run's own checkpoint counts — another run suspended on the same thread
 		// must not shield a crashed run.
-		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return null;
+		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) {
+			// The boot sweep always defers to the orphan path. An explicit user
+			// stop defers only while the confirmation row still exists: with the
+			// row gone (dropped ahead of a resume that then failed, or expired)
+			// the orphan path can never claim the run, so this stop is the run's
+			// only remaining route to a terminal state.
+			if (finish.status !== 'cancelled') return null;
+			if (await this.pendingConfirmationRepo.hasLiveRowForRun(runId, new Date())) return null;
+		}
 
 		// Multi-main: durable activity is the liveness heartbeat — a sibling
 		// main driving this run appends facts and upserts its checkpoint every
