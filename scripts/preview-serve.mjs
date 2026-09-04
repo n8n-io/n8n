@@ -13,7 +13,7 @@ import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { serveHealthPath, servePort, waitForHealth } from './serve-ready.mjs';
+import { serveHealthPath, servePort, waitForHealth, waitForReady } from './serve-ready.mjs';
 
 const SESSION = 'n8n-preview';
 const BUILD_LOG = '/tmp/preview-build.log';
@@ -139,9 +139,8 @@ async function postOwnerSetup() {
 	}
 }
 
-// `/healthz` goes green before the REST routes answer, so the first attempt can 404.
-// Retry until the wall drops, and report every attempt: a silent seed failure hands
-// the reviewer a URL that lands on /setup.
+// Retry anyway, as a backstop for anything readiness does not cover, and report
+// every attempt: a silent seed failure hands the reviewer a URL that lands on /setup.
 async function seedOwner(attempts = 5, delayMs = 3000) {
 	for (let attempt = 1; attempt <= attempts; attempt++) {
 		const result = await postOwnerSetup();
@@ -157,6 +156,14 @@ async function seedOwner(attempts = 5, delayMs = 3000) {
 	}
 	console.error(
 		`Owner seeding FAILED: /rest/settings still reports showSetupOnFirstLoad. A reviewer will land on /setup, and /${SIGNIN_ROUTE} will not work. See ${BE_LOG}.`,
+	);
+}
+
+// /healthz says nothing about the REST API, so seeding straight after it raced the
+// controllers and got `Cannot POST /rest/owner/setup`. Wait for readiness first.
+if (!(await waitForReady(port, healthPath))) {
+	console.error(
+		`Backend did not answer ${healthPath}/readiness within 3 min. It is not fully initialized, so the owner seeding below is likely to fail — check ${BE_LOG}.`,
 	);
 }
 
