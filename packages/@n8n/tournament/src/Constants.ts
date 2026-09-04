@@ -14,7 +14,8 @@ export const EXEMPT_IDENTIFIER_LIST = [
 	'isFinite',
 	'isNaN',
 	'NaN',
-	'Date',
+	// Date is NOT exempt: expressions resolve `Date` from the evaluation
+	// context so local getters use the workflow timezone (#35465).
 	'RegExp',
 	'Math',
 	'undefined',

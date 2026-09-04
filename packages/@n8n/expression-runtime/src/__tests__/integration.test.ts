@@ -194,6 +194,49 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(result).toBe('09:00 +09:00');
 	});
 
+	it('should use workflow timezone for native Date local getters', async () => {
+		const data = {
+			// 2024-01-01T12:00:00.000Z
+			$json: { ts: 1704110400000 },
+		};
+
+		const nyHours = evaluator.evaluate('{{ new Date($json.ts).getHours() }}', data, caller, {
+			timezone: 'America/New_York',
+		});
+		const tokyoHours = evaluator.evaluate('{{ new Date($json.ts).getHours() }}', data, caller, {
+			timezone: 'Asia/Tokyo',
+		});
+
+		// 12:00 UTC → 07:00 EST, 21:00 JST
+		expect(nyHours).toBe(7);
+		expect(tokyoHours).toBe(21);
+	});
+
+	it('should format end time with native Date using workflow timezone (#35465)', async () => {
+		const data = {
+			$json: {
+				prefered_datetime: '2026-08-03T10:00:00-04:00',
+				slot_size: '60',
+			},
+		};
+
+		const result = evaluator.evaluate(
+			`{{ (() => {
+				const start = new Date($json.prefered_datetime);
+				const duration = (parseInt($json.slot_size) || 60) * 60000;
+				const end = new Date(start.getTime() + duration);
+				const offset = $json.prefered_datetime.slice(-6);
+				const pad = (n) => String(n).padStart(2, '0');
+				return end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate()) + 'T' + pad(end.getHours()) + ':' + pad(end.getMinutes()) + ':' + pad(end.getSeconds()) + offset;
+			})() }}`,
+			data,
+			caller,
+			{ timezone: 'America/New_York' },
+		);
+
+		expect(result).toBe('2026-08-03T11:00:00-04:00');
+	});
+
 	describe('Luxon type serialization at boundary', () => {
 		it('should return DateTime as ISO string', () => {
 			const data = { $json: {} };
