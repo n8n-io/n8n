@@ -141,8 +141,10 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
 
 # Bring pnpm over, to make the image easier to extend. Node no longer bundles
 # corepack, and this runtime has no npm, so pnpm is copied in as a package.
+# Link the .mjs entry point: the package ships bin/pnpm.cjs without the execute
+# bit, so a link to it fails with "Permission denied".
 COPY --from=node-alpine /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
+RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

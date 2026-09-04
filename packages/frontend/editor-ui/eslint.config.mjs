@@ -367,12 +367,11 @@ export default defineConfig(
 		},
 	},
 	{
-		// The CodeMirror TypeScript language service runs in a browser web worker, so
-		// Vite bundles `typescript` and `@typescript/vfs` into it and nothing resolves
-		// them from node_modules at runtime. They stay devDependencies to keep the
-		// ~24MB compiler out of the server image, which installs editor-ui's
-		// production closure via packages/cli.
-		files: ['src/features/shared/editors/plugins/codemirror/typescript/**'],
+		// Vite bundles everything this package imports and nothing resolves it from
+		// node_modules at runtime, so every dependency is a devDependency. That keeps
+		// the frontend libraries out of the server image, which installs editor-ui's
+		// production closure via packages/cli. The rule still catches imports of
+		// packages the manifest does not declare at all.
 		rules: {
 			'import-x/no-extraneous-dependencies': [
 				'error',
