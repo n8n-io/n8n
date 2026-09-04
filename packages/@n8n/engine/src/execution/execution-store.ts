@@ -1,5 +1,10 @@
 import type { WorkflowGraph } from '../graph';
-import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
+import type {
+	ExecutionMode,
+	ExecutionStatus,
+	TriggerOutputs,
+	WorkflowDocument,
+} from './execution.types';
 
 /** A new execution to persist. Timestamps are assigned by the store. */
 export interface NewExecutionRecord {
@@ -9,6 +14,8 @@ export interface NewExecutionRecord {
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
+	/** Stored for the read path only. Nothing on the execution path reads it. */
+	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 }
 

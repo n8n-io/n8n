@@ -13,6 +13,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	TriggerOutputs,
+	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';

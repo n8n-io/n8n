@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
 
+import { toWorkflowDocument } from '@/executions/execution-data/types';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
@@ -107,6 +108,9 @@ export class EngineV2Dispatcher {
 				executionId,
 				workflowId: workflowData.id,
 				graph,
+				// Sent alongside the graph, so the execution read can report the
+				// workflow that ran even after the live one is edited.
+				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
 				// Only manual and webhook route here, so anything else is a production run.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',

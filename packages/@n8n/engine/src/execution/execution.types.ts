@@ -1,4 +1,4 @@
-import type { JsonValue } from '../common';
+import type { JsonObject, JsonValue } from '../common';
 
 /** Lifecycle status of an execution. */
 export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -48,6 +48,14 @@ export type StepSlots = JsonValue[];
  * `INodeExecutionData[]` in each slot.
  */
 export type TriggerOutputs = StepSlots;
+
+/**
+ * The workflow the run came from, supplied by whoever starts the execution and
+ * stored beside it, immutable for the execution's lifetime. Opaque: the engine
+ * never reads a field out of it. Anything the engine must act on — a timeout, a
+ * timezone, a failure handler — arrives as its own field instead.
+ */
+export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
