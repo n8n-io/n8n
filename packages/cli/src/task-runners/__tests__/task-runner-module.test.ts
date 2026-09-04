@@ -30,22 +30,24 @@ describe('TaskRunnerModule', () => {
 				pyRunnerProcess,
 			});
 
-			let brokerServerStopped = false;
+			const order: string[] = [];
+			// The broker stop completes asynchronously, so a stop() that merely starts
+			// it without awaiting would record the runner stops first.
 			brokerServer.stop.mockImplementation(async () => {
-				brokerServerStopped = true;
+				await new Promise((resolve) => setImmediate(resolve));
+				order.push('brokerServer');
 			});
 			jsRunnerProcess.stop.mockImplementation(async () => {
-				expect(brokerServerStopped).toBe(true);
+				order.push('jsRunnerProcess');
 			});
 			pyRunnerProcess.stop.mockImplementation(async () => {
-				expect(brokerServerStopped).toBe(true);
+				order.push('pyRunnerProcess');
 			});
 
 			await module.stop();
 
-			expect(brokerServer.stop).toHaveBeenCalledTimes(1);
-			expect(jsRunnerProcess.stop).toHaveBeenCalledTimes(1);
-			expect(pyRunnerProcess.stop).toHaveBeenCalledTimes(1);
+			expect(order).toHaveLength(3);
+			expect(order[0]).toBe('brokerServer');
 		});
 	});
 });
