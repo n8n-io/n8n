@@ -1643,7 +1643,7 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					instructions: 'Create clear, actionable tickets.',
 					allowedTools: ['create_ticket'],
-					references: [{ path: 'references/ticket-template.md', sizeBytes: 18 }],
+					references: [{ path: 'references/ticket-template.md', characterCount: 17 }],
 				},
 			});
 		});
@@ -1682,10 +1682,10 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					instructions: 'Create clear, actionable tickets.',
 					references: [
-						{ path: 'references/ticket-template.md', sizeBytes: 17 },
+						{ path: 'references/ticket-template.md', characterCount: 17 },
 						{
 							path: 'references/escalation.md',
-							sizeBytes: 12,
+							characterCount: 12,
 							content: '# Escalation',
 						},
 					],
