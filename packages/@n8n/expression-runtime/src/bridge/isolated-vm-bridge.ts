@@ -81,6 +81,31 @@ async function readRuntimeBundle(): Promise<string> {
 }
 
 /**
+ * Primitive string form for a value whose identity lives on its prototype.
+ *
+ * Only `Object.keys` crosses the boundary, so a class instance such as a BSON
+ * `ObjectId` arrives in the isolate as a plain shape and loses the `toString`
+ * that gave it meaning — `{{ $json._id.toString() }}` returned the hex before
+ * the isolate runtime and `[object Object]` after. `Date` is already passed
+ * through whole for the same reason; this covers the classes the runtime cannot
+ * know about by name.
+ *
+ * Captured only when `toString` is genuinely overridden, so plain objects keep
+ * native `Object.prototype.toString` behaviour and pay nothing. A `toString`
+ * that throws is treated as absent rather than failing the expression.
+ */
+function overriddenStringForm(value: object): string | undefined {
+	const fn = (value as { toString?: unknown }).toString;
+	if (typeof fn !== 'function' || fn === Object.prototype.toString) return undefined;
+	try {
+		const str = (fn as () => unknown).call(value);
+		return typeof str === 'string' ? str : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
  *
  * This bridge creates a V8 isolate with:
@@ -353,6 +378,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					return {
 						__isObject: true,
 						__keys: Object.keys(value),
+						__stringForm: overriddenStringForm(value),
 					};
 				}
 
@@ -437,6 +463,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					return {
 						__isObject: true,
 						__keys: Object.keys(element),
+						__stringForm: overriddenStringForm(element),
 					};
 				}
 
