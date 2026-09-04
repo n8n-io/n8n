@@ -33,7 +33,7 @@ import {
 } from '../canvas.utils';
 import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isGroupNode, NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
@@ -162,7 +162,15 @@ export function useCanvasMapping({
 		const rd = renderData.value;
 		const additionalProperties = rd.additionalPropertiesByNodeId.value;
 
-		return nodes.value.map<CanvasNode>((node) => {
+		// A group node is drawn as its card by `mapGroupsToVueFlowNodes`, so the
+		// ordinary node mapper must skip it. Without this the group renders
+		// twice: once as the card, once as a node with no render type.
+		const mappableNodes =
+			getGroupEntryNodeNames === undefined
+				? nodes.value
+				: nodes.value.filter((node) => !isGroupNode(node));
+
+		return mappableNodes.map<CanvasNode>((node) => {
 			const outputConnections = connectionsBySourceNode[node.name] ?? {};
 			const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 

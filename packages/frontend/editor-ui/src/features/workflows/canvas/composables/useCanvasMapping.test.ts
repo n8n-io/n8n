@@ -10,7 +10,7 @@
  * output and that renderData values flow into the right fields.
  */
 import type { ITaskData, IConnections, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { GROUP_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import {
@@ -81,6 +81,46 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(mapped.type).toBe('canvas-node');
 		expect(mapped.position).toEqual({ x: 10, y: 20 });
 		expect(mapped.draggable).toBe(true);
+	});
+
+	it('skips a group node on the group-node path, so it is not drawn twice', () => {
+		// The group is drawn as its card by `mapGroupsToVueFlowNodes`. Mapping it
+		// here as well renders it a second time, with no render type, and the two
+		// copies then drag together.
+		const groupNode = createTestNode({
+			id: 'g1',
+			name: 'Group',
+			type: GROUP_NODE_TYPE,
+		}) as INodeUi;
+		const member = createTestNode({ id: 'a', name: 'Alpha', type: 'set' }) as INodeUi;
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([groupNode, member]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+			// Supplied only on the group-node path.
+			getGroupEntryNodeNames: () => [],
+		});
+
+		expect(nodes.value.map((mapped) => mapped.id)).toEqual(['a']);
+	});
+
+	it('keeps mapping every node on the older path', () => {
+		// With the feature off nothing supplies `getGroupEntryNodeNames`, and the
+		// mapper must behave exactly as before.
+		const groupNode = createTestNode({
+			id: 'g1',
+			name: 'Group',
+			type: GROUP_NODE_TYPE,
+		}) as INodeUi;
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([groupNode]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+		});
+
+		expect(nodes.value).toHaveLength(1);
 	});
 
 	it('pulls subtitle from renderData.subtitleByNodeId', () => {
