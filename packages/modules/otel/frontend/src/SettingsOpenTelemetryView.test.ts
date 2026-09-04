@@ -475,6 +475,49 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
+	it('renders header keys with masked values when stored headers are redacted', async () => {
+		getOtelSettingsMock.mockResolvedValue(
+			makeSettings({
+				exporterHeaders: 'authorization=__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
+				envManagedFields: [],
+			}),
+		);
+
+		const { getAllByTestId, getByTestId } = render();
+
+		await waitFor(() => {
+			expect(getAllByTestId('otel-header-key')).toHaveLength(1);
+		});
+		expect(getByTestId('otel-header-key')).toHaveValue('authorization');
+		// The blanked value renders empty with a hint instead of the placeholder text
+		expect(getByTestId('otel-header-value')).toHaveValue('');
+		expect(getByTestId('otel-header-value')).toHaveAttribute(
+			'placeholder',
+			'Configured value not shown',
+		);
+		// Field stays editable when not env-managed, so adding a header can replace the set
+		expect(getByTestId('otel-header-add')).toBeEnabled();
+	});
+
+	it('renders header keys with masked, disabled values when headers are env-managed', async () => {
+		getOtelSettingsMock.mockResolvedValue(
+			makeSettings({
+				exporterHeaders: 'authorization=__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
+				envManagedFields: ['exporterHeaders'],
+			}),
+		);
+
+		const { getAllByTestId, getByTestId } = render();
+
+		await waitFor(() => {
+			expect(getAllByTestId('otel-header-key')).toHaveLength(1);
+		});
+		expect(getByTestId('otel-header-key')).toHaveValue('authorization');
+		expect(getByTestId('otel-header-key')).toBeDisabled();
+		expect(getByTestId('otel-header-value')).toHaveValue('');
+		expect(getByTestId('otel-header-value')).toBeDisabled();
+	});
+
 	// ── exporter protocol ─────────────────────────────────────────────────────
 
 	it('shows the saved protocol in the select', async () => {

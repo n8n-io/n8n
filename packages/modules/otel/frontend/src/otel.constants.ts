@@ -5,6 +5,13 @@ export { OTLP_PROTOCOLS, type OtlpProtocol };
 export const OTEL_STORE = 'otel';
 
 /**
+ * Mirrors CREDENTIAL_BLANKING_VALUE from n8n-workflow (not a dependency of this
+ * module) — the placeholder the API returns in place of each header value.
+ * Keys come back as-is; only values are blanked.
+ */
+export const CREDENTIALS_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
+/**
  * Route name for the OpenTelemetry settings page. Owned by this module rather
  * than by the shared `VIEWS` enum, so the module can be packaged without the
  * shell holding one of its identifiers. The value is unchanged, so existing
