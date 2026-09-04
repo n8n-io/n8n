@@ -121,7 +121,7 @@ describe('createFrontend', () => {
 
 			expect(edits.map((edit) => edit.note)).toEqual([
 				'@n8n/frontend-vite-config/index.ts (Vite alias)',
-				'editor-ui/package.json (dependency)',
+				'editor-ui/package.json (devDependency)',
 				'editor-ui/tsconfig.json (paths)',
 				'editor-ui/src/app/modules.manifest.ts (registration)',
 			]);
@@ -169,7 +169,7 @@ describe('createFrontend', () => {
 			scaffold(root, 'aaa-feature');
 
 			const lines = read(root, 'editorUiPackage').split('\n');
-			const opens = lines.findIndex((line) => /^\s*"dependencies": \{/.test(line));
+			const opens = lines.findIndex((line) => /^\s*"devDependencies": \{/.test(line));
 			const names = [];
 			for (let at = opens + 1; !/^\s*\},?\s*$/.test(lines[at]); at++) {
 				const [, dependency] = /^\s*"([^"]+)":/.exec(lines[at]) ?? [];
@@ -239,7 +239,7 @@ describe('createFrontend', () => {
 
 		it.each([
 			['viteConfig', /^export const modulePackages/, 'frontend-vite-config/index.ts'],
-			['editorUiPackage', /^\s*"dependencies": \{/, 'editor-ui/package.json'],
+			['editorUiPackage', /^\s*"devDependencies": \{/, 'editor-ui/package.json'],
 			['editorUiTsconfig', SDK_PATHS, 'editor-ui/tsconfig.json'],
 			['manifest', /^\];/, 'modules.manifest.ts'],
 		])('names %s when its anchor is gone', (key, pattern, file) => {
