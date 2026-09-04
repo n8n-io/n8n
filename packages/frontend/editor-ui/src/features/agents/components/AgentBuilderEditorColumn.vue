@@ -102,7 +102,11 @@ const i18n = useI18n();
 					:disabled="childrenDisabled"
 					:class="$style.identityHeader"
 					@update:config="emit('update:config', $event)"
-				/>
+				>
+					<template #actions>
+						<slot name="identity-actions" />
+					</template>
+				</AgentIdentityHeader>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
@@ -174,6 +178,15 @@ const i18n = useI18n();
 							@tasks-changed="emit('tasks-changed')"
 						/>
 					</AgentPanel>
+
+					<AgentPanel>
+						<AgentMemoryPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
+						/>
+					</AgentPanel>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
@@ -226,15 +239,6 @@ const i18n = useI18n();
 								:disabled="childrenDisabled"
 								:project-id="projectId"
 								:agent-id="agentId"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentMemoryPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								embedded
-								data-testid="agent-memory-panel"
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>

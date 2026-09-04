@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { computed } from 'vue';
-import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nButton, N8nIconButton } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -166,6 +166,7 @@ async function onDropdownSelect(action: string) {
 				:loading="publishing"
 				:disabled="!buttonConfig.enabled || isSaving || !canPublish || isConfigInvalid"
 				variant="ghost"
+				size="large"
 				data-testid="publish-agent-button"
 				@click="onPublishClick"
 			>
@@ -186,30 +187,35 @@ async function onDropdownSelect(action: string) {
 				</div>
 			</N8nButton>
 		</AgentValidationTooltip>
-		<N8nActionDropdown
+		<N8nDropdownMenu
 			:items="dropdownActions"
 			placement="bottom-end"
 			data-testid="agent-publish-dropdown"
 			@select="onDropdownSelect"
 		>
-			<template #activator>
+			<template #trigger>
 				<N8nIconButton
 					:class="$style.groupButtonRight"
 					variant="ghost"
+					size="large"
 					icon="chevron-down"
 					:aria-label="locale.baseText('agents.publish.dropdown.ariaLabel')"
 					data-testid="agent-publish-dropdown-trigger"
 				/>
 			</template>
-		</N8nActionDropdown>
+		</N8nDropdownMenu>
 	</div>
 </template>
 
 <style module lang="scss">
 .buttonGroup {
 	display: inline-flex;
-	border: var(--border);
-	border-radius: var(--radius--3xs);
+	background-color: var(--background--surface);
+	box-shadow:
+		inset var(--shadow--outline),
+		var(--shadow--xs);
+	border-radius: var(--radius--2xs);
+	overflow: hidden;
 }
 
 .groupButtonLeft,
