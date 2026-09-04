@@ -16,7 +16,7 @@ import {
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import { createAuthFetch, getBearerTokenRevision, resolveAllowedDomains } from '@/utils/auth-fetch';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
@@ -152,12 +152,17 @@ export async function buildMcpClientForServer(
 	const oauthTokenData = isRecord(credentialData?.oauthTokenData)
 		? { ...credentialData.oauthTokenData }
 		: undefined;
+	const grantType = credentialData?.grantType;
 	const refreshAuthHeaders =
 		isMcpOAuth2Authentication(server.authentication) && server.credential
-			? async () => {
+			? async (currentHeaders: Record<string, string>) => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;
-					const result = await oauthService.refreshOAuth2CredentialById(credentialId, projectId);
+					const result = await oauthService.refreshOAuth2CredentialById(
+						credentialId,
+						projectId,
+						getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
+					);
 					if (!result) return null;
 
 					if (oauthTokenData) {
@@ -165,6 +170,11 @@ export async function buildMcpClientForServer(
 							delete oauthTokenData.n8n_expires_at;
 						} else {
 							oauthTokenData.n8n_expires_at = String(result.expiresAt);
+						}
+						if (result.expiresInSeconds === undefined) {
+							delete oauthTokenData.expires_in;
+						} else {
+							oauthTokenData.expires_in = result.expiresInSeconds;
 						}
 					}
 
@@ -201,7 +211,7 @@ export async function buildMcpClientForServer(
 					initialHeaders,
 					onUnauthorized: refreshAuthHeaders,
 					...(refreshAuthHeaders
-						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData) }
+						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData, grantType) }
 						: {}),
 					allowedDomains,
 				}),

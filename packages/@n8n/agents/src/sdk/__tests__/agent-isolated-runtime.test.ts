@@ -103,6 +103,30 @@ describe('Agent isolated runtimes', () => {
 		expect(listTools).toHaveBeenCalledTimes(2);
 	});
 
+	it('keeps in-memory checkpoints when an MCP connection failure triggers a rebuild', async () => {
+		const client = new McpClient([]);
+		const listTools = vi.spyOn(client, 'listTools').mockResolvedValue([]);
+		vi.spyOn(client, 'getConnectionFailures')
+			.mockReturnValueOnce([{ server: 'linear', error: 'temporary failure' }])
+			.mockReturnValue([]);
+		const agent = new Agent('agent')
+			.model('openai/gpt-4o-mini')
+			.instructions('test')
+			.mcp(client)
+			.checkpoint('memory');
+		const internals = agent as unknown as AgentInternals;
+
+		const firstConfig = await internals.ensureBuilt();
+		await firstConfig.runState?.suspend('run-1', { status: 'suspended' } as never);
+		const secondConfig = await internals.ensureBuilt();
+
+		expect(await secondConfig.runState?.resume('run-1')).toEqual(
+			expect.objectContaining({ status: 'suspended' }),
+		);
+		expect(secondConfig.runState).toBe(firstConfig.runState);
+		expect(listTools).toHaveBeenCalledTimes(2);
+	});
+
 	it('applies event handler changes to active runtimes', async () => {
 		const agent = new Agent('agent').model('openai/gpt-4o-mini').instructions('test');
 		const internals = agent as unknown as AgentInternals;

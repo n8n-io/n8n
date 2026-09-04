@@ -11,6 +11,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -29,7 +30,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAuthFetch, getBearerTokenRevision } from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -464,15 +465,30 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
+		const storedTokenData = credentialWithData.data.oauthTokenData;
+		const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
 		return createAuthFetch({
 			baseFetch,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async () => {
+			onUnauthorized: async (currentHeaders) => {
 				if (!projectId) return null;
 				const result = await this.oauthService.refreshOAuth2CredentialById(
 					config.credentialId,
 					projectId,
+					getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
 				);
+				if (result && oauthTokenData) {
+					if (result.expiresAt === undefined) {
+						delete oauthTokenData.n8n_expires_at;
+					} else {
+						oauthTokenData.n8n_expires_at = String(result.expiresAt);
+					}
+					if (result.expiresInSeconds === undefined) {
+						delete oauthTokenData.expires_in;
+					} else {
+						oauthTokenData.expires_in = result.expiresInSeconds;
+					}
+				}
 				return result?.headers ?? null;
 			},
 			allowedDomains: {

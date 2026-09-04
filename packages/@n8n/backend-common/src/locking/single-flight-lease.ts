@@ -27,10 +27,10 @@ export class SingleFlightLease<T> {
 		const { lockService, namespace, waitTimeoutMs, leaseTtlMs, onLeaseTimeout } = options;
 		const promise = lockService
 			.withLease(namespace, key, fn, { waitTimeoutMs, leaseTtlMs })
-			.catch(async (error: unknown) => {
+			.catch((error: unknown) => {
 				if (!(error instanceof LockAcquisitionTimeoutError)) throw error;
 				onLeaseTimeout?.(error);
-				return await fn(new AbortController().signal);
+				throw error;
 			})
 			.finally(() => this.inFlight.delete(key));
 

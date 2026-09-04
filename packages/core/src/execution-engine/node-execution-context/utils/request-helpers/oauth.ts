@@ -299,11 +299,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		waitTimeoutMs: 10_000,
 		leaseTtlMs: 30_000,
 		onLeaseTimeout: (error) => {
-			// The read-back check still avoids a redundant refresh if another holder rotated the token.
-			ctx.logger.warn(
-				`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
-				{ error },
-			);
+			ctx.logger.warn(`Could not acquire refresh lock for credential "${credentialId}"`, { error });
 		},
 	});
 }

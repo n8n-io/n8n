@@ -88,8 +88,11 @@ export function isMcpOAuth2Authentication(
 }
 
 /** Return true when an MCP OAuth2 token is close enough to expiry to refresh it. */
-export function shouldRefreshMcpOAuth2Token(tokenData: unknown): boolean {
-	if (!isRecord(tokenData) || !tokenData.refresh_token) return false;
+export function shouldRefreshMcpOAuth2Token(tokenData: unknown, grantType?: unknown): boolean {
+	if (!isRecord(tokenData)) return false;
+	if (grantType !== 'clientCredentials' && !(tokenData.refresh_token ?? tokenData.refreshToken)) {
+		return false;
+	}
 
 	const expiresAt = Number(tokenData.n8n_expires_at);
 	if (!Number.isFinite(expiresAt)) return false;

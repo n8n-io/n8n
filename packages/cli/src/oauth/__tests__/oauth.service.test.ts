@@ -1,4 +1,4 @@
-import { LockService, Logger } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
@@ -5421,6 +5421,7 @@ describe('OauthService', () => {
 			expect(result).toEqual({
 				headers: { Authorization: 'Bearer new-token' },
 				expiresAt,
+				expiresInSeconds: 3600,
 			});
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
 				oauthTokenData: expect.objectContaining({
@@ -5486,6 +5487,60 @@ describe('OauthService', () => {
 
 			expect(result).toEqual({ headers: { Authorization: 'Bearer fresh' } });
 			expect(ClientOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('uses the stored token when the caller has an older token revision', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const expiresAt = timestamp + 3_600_000;
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				accessTokenUrl: 'https://example.com/token',
+				oauthTokenData: {
+					access_token: 'fresh',
+					refresh_token: 'new-refresh',
+					expires_in: 3600,
+					n8n_expires_at: String(expiresAt),
+				},
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId, {
+				accessToken: 'stale',
+				expiresAt: timestamp - 1,
+			});
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer fresh' },
+				expiresAt,
+				expiresInSeconds: 3600,
+			});
+			expect(ClientOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('does not refresh without a credential lease', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			lockService.withLease.mockRejectedValue(
+				new LockAcquisitionTimeoutError('Timed out waiting for the credential lock'),
+			);
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-token' },
+			} as unknown as OAuth2CredentialData);
+
+			await expect(
+				service.refreshOAuth2CredentialById(credentialId, projectId, {
+					accessToken: 'stale',
+				}),
+			).rejects.toThrow(LockAcquisitionTimeoutError);
+
+			expect(ClientOAuth2).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not acquire the OAuth2 credential refresh lock',
+				expect.objectContaining({ credentialId }),
+			);
 		});
 
 		describe('outbound network policy', () => {

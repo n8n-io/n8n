@@ -73,6 +73,7 @@ describe('createAuthFetch', () => {
 		const res = await fetchFn('https://example.test/mcp');
 
 		expect(res.status).toBe(200);
+		expect(onUnauthorized).toHaveBeenCalledWith({ authorization: 'Bearer A' });
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
 		const [, init2] = baseFetchMock.mock.calls[1] as [unknown, RequestInit];
 		expect(new Headers(init2.headers).get('authorization')).toBe('Bearer B');

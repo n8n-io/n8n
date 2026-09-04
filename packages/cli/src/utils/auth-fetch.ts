@@ -5,6 +5,21 @@ import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-
 
 export type AuthFetchDomainPolicy = { mode: 'domains'; domains: string } | { mode: 'none' };
 
+export function getBearerTokenRevision(
+	headers: Record<string, string>,
+	expiresAtValue?: unknown,
+): { accessToken?: string; expiresAt?: number } {
+	const authorization = Object.entries(headers).find(
+		([name]) => name.toLowerCase() === 'authorization',
+	)?.[1];
+	const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+	const expiresAt = Number(expiresAtValue);
+	return {
+		...(accessToken ? { accessToken } : {}),
+		...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+	};
+}
+
 interface CreateAuthFetchOptions {
 	/** Proxy-aware base `fetch` every request routes through (see `createAiProxyFetch`). */
 	baseFetch: CustomFetch;
@@ -14,7 +29,9 @@ interface CreateAuthFetchOptions {
 	 * `null` if the refresh failed. The returned headers replace the cached
 	 * set used by subsequent requests.
 	 */
-	onUnauthorized?: () => Promise<Record<string, string> | null>;
+	onUnauthorized?: (
+		currentHeaders: Record<string, string>,
+	) => Promise<Record<string, string> | null>;
 	/** Return true when auth must refresh before the next request. */
 	shouldRefresh?: () => boolean;
 	/**
@@ -80,7 +97,12 @@ export function createAuthFetch({
 	return createRefreshingAuthFetch({
 		baseFetch,
 		initialHeaders,
-		...(onUnauthorized ? { refreshHeaders: async () => await onUnauthorized() } : {}),
+		...(onUnauthorized
+			? {
+					refreshHeaders: async (current: Headers) =>
+						await onUnauthorized(Object.fromEntries(current.entries())),
+				}
+			: {}),
 		...(shouldRefresh ? { shouldRefresh } : {}),
 		...(allowedDomains
 			? {

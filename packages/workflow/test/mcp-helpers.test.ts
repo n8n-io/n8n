@@ -1,4 +1,4 @@
-import { isMcpOAuth2Authentication } from '../src/mcp-helpers';
+import { isMcpOAuth2Authentication, shouldRefreshMcpOAuth2Token } from '../src/mcp-helpers';
 
 describe('isMcpOAuth2Authentication', () => {
 	it('returns true for the canonical "mcpOAuth2Api" type', () => {
@@ -20,5 +20,35 @@ describe('isMcpOAuth2Authentication', () => {
 
 	it('returns false for an empty string', () => {
 		expect(isMcpOAuth2Authentication('')).toBe(false);
+	});
+});
+
+describe('shouldRefreshMcpOAuth2Token', () => {
+	const now = 1_700_000_000_000;
+
+	beforeEach(() => {
+		vi.spyOn(Date, 'now').mockReturnValue(now);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('refreshes an expiring client credentials token without a refresh token', () => {
+		expect(
+			shouldRefreshMcpOAuth2Token(
+				{ expires_in: 3600, n8n_expires_at: String(now + 60_000) },
+				'clientCredentials',
+			),
+		).toBe(true);
+	});
+
+	it('does not refresh an authorization code token without a refresh token', () => {
+		expect(
+			shouldRefreshMcpOAuth2Token(
+				{ expires_in: 3600, n8n_expires_at: String(now + 60_000) },
+				'authorizationCode',
+			),
+		).toBe(false);
 	});
 });

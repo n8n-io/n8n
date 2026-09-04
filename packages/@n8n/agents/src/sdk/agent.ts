@@ -199,6 +199,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
+	private runStateManager?: RunStateManager;
+
 	private thinkingConfig?: ThinkingConfig;
 
 	private reasoningLevel?: ReasoningLevel;
@@ -430,6 +432,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * ```
 	 */
 	checkpoint(storage: 'memory' | CheckpointStore): this {
+		if (this.checkpointStore !== storage) {
+			this.runStateManager = undefined;
+		}
 		this.checkpointStore = storage;
 		return this;
 	}
@@ -1078,7 +1083,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
-		const runState = new RunStateManager(this.checkpointStore);
+		const runState = (this.runStateManager ??= new RunStateManager(this.checkpointStore));
 
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,

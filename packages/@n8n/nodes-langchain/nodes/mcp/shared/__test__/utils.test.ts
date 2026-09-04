@@ -225,6 +225,26 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
 		});
 
+		it('should refresh an expiring client credentials token without a refresh token', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({
+				grantType: 'clientCredentials',
+				oauthTokenData: {
+					access_token: 'access-token',
+					expires_in: 3600,
+					n8n_expires_at: String(now + 60_000),
+				},
+			});
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({ access_token: 'new-access-token' });
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
+		});
+
 		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
 			const now = 1_700_000_000_000;
 			vi.spyOn(Date, 'now').mockReturnValue(now);

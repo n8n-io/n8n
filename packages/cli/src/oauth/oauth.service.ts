@@ -9,6 +9,7 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
@@ -96,6 +97,12 @@ const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might
 
 export interface OAuth2CredentialRefreshResult {
 	headers: Record<string, string>;
+	expiresAt?: number;
+	expiresInSeconds?: number;
+}
+
+export interface OAuth2CredentialTokenRevision {
+	accessToken?: string;
 	expiresAt?: number;
 }
 
@@ -739,19 +746,29 @@ export class OauthService {
 			: merged;
 	}
 
-	private getOAuth2AccessToken(tokenData: ClientOAuth2TokenData): string | undefined {
+	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
+		if (!isRecord(tokenData)) return undefined;
 		const accessToken = tokenData.access_token ?? tokenData.accessToken;
 		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
 	}
 
-	private oauth2TokenDataChanged(
-		initial: ClientOAuth2TokenData,
+	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
+		const accessToken = this.getOAuth2AccessToken(tokenData);
+		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
+		return {
+			...(accessToken ? { accessToken } : {}),
+			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+		};
+	}
+
+	private oauth2TokenRevisionChanged(
+		initial: OAuth2CredentialTokenRevision,
 		current: ClientOAuth2TokenData,
 	): boolean {
+		const currentRevision = this.getOAuth2TokenRevision(current);
 		return (
-			this.getOAuth2AccessToken(initial) !== this.getOAuth2AccessToken(current) ||
-			initial.refresh_token !== current.refresh_token ||
-			initial.n8n_expires_at !== current.n8n_expires_at
+			initial.accessToken !== currentRevision.accessToken ||
+			initial.expiresAt !== currentRevision.expiresAt
 		);
 	}
 
@@ -762,9 +779,11 @@ export class OauthService {
 		if (!accessToken) return null;
 
 		const expiresAt = Number(tokenData.n8n_expires_at);
+		const expiresInSeconds = Number(tokenData.expires_in);
 		return {
 			headers: { Authorization: `Bearer ${accessToken}` },
 			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+			...(Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? { expiresInSeconds } : {}),
 		};
 	}
 
@@ -780,6 +799,7 @@ export class OauthService {
 	async refreshOAuth2CredentialById(
 		credentialId: string,
 		projectId: string,
+		knownTokenRevision?: OAuth2CredentialTokenRevision,
 	): Promise<OAuth2CredentialRefreshResult | null> {
 		const credential = await this.credentialsRepository.findOne({
 			where: { id: credentialId, usageScope: 'project' },
@@ -792,6 +812,7 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
+		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
 
 		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
 			const currentCredential = await this.credentialsRepository.findOne({
@@ -808,7 +829,7 @@ export class OauthService {
 				| undefined;
 			if (!currentTokenData) return null;
 
-			if (this.oauth2TokenDataChanged(oauthTokenData, currentTokenData)) {
+			if (this.oauth2TokenRevisionChanged(tokenRevision, currentTokenData)) {
 				return this.buildOAuth2RefreshResult(currentTokenData);
 			}
 

@@ -348,7 +348,7 @@ export async function getAuthHeaders(
 
 	if (
 		isMcpOAuth2Authentication(authentication) &&
-		shouldRefreshMcpOAuth2Token(credentials.oauthTokenData)
+		shouldRefreshMcpOAuth2Token(credentials.oauthTokenData, credentials.grantType)
 	) {
 		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };

@@ -373,6 +373,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
 			credential.id,
 			'project-1',
+			{ accessToken: 'stale-token' },
 		);
 	});
 
@@ -403,6 +404,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
 			credential.id,
 			'project-1',
+			{ accessToken: 'stale-token' },
 		);
 	});
 
