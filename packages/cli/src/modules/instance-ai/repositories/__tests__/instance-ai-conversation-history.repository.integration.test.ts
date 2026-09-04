@@ -54,7 +54,6 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 	/** A thread with one opening message, as a thread the user actually sent to. */
 	async function createThread(options: {
-		id?: string;
 		resourceId?: string;
 		projectId?: string;
 		title?: string;
@@ -62,7 +61,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		/** `false` mimics a thread created by the client whose first send never happened. */
 		withOpeningMessage?: boolean;
 	}): Promise<string> {
-		const id = options.id ?? randomUUID();
+		const id = randomUUID();
 		await threadRepository.save(
 			threadRepository.create({
 				id,
@@ -365,10 +364,9 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		});
 
 		it('caps candidates per thread without starving other threads', async () => {
-			// Ids are fixed so the match-heavy thread deterministically sorts first:
-			// a single shared budget would spend it all here and leave the quiet
-			// thread with no candidate row at all.
-			const busy = await createThread({ id: 'thread-a-busy', title: 'Busy' });
+			// A single shared budget would go to the match-heavy thread and leave
+			// the quiet thread with no candidate row at all.
+			const busy = await createThread({ title: 'Busy' });
 			const busyIds: string[] = [];
 			for (let n = 0; n < 9; n++) {
 				busyIds.push(
@@ -381,7 +379,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				);
 			}
 
-			const quiet = await createThread({ id: 'thread-b-quiet', title: 'Quiet' });
+			const quiet = await createThread({ title: 'Quiet' });
 			const onlyMatch = await createMessage({
 				threadId: quiet,
 				role: 'user',
