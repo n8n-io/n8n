@@ -1,21 +1,21 @@
 import type { ExecutionsConfig } from '@n8n/config';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowPreExecuteGate } from '../workflow-pre-execute-gate';
+import { WorkflowPreExecute } from '../workflow-pre-execute';
 
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { ExternalHooks } from '@/external-hooks';
 import type { NodeTypes } from '@/node-types';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
-describe('WorkflowPreExecuteGate', () => {
+describe('WorkflowPreExecute', () => {
 	const externalHooks = mock<ExternalHooks>();
 	const workflowContext = mock<WorkflowHookContextService>();
 	const nodeTypes = mock<NodeTypes>();
 	const executionsConfig = mock<ExecutionsConfig>({ preExecuteErrorCreatesExecution: false });
-	const gate = new WorkflowPreExecuteGate(
+	const preExecute = new WorkflowPreExecute(
 		externalHooks,
 		workflowContext,
 		nodeTypes,
@@ -41,7 +41,7 @@ describe('WorkflowPreExecuteGate', () => {
 	});
 
 	it('runs workflow.preExecute before a row would be created', async () => {
-		await gate.assertCanStart(workflowData, 'webhook', 'user');
+		await preExecute.run(workflowData, 'webhook', 'user');
 
 		expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
 			expect.objectContaining({ id: 'wf-1' }),
@@ -54,7 +54,7 @@ describe('WorkflowPreExecuteGate', () => {
 	it('does not run the hook when none is registered', async () => {
 		externalHooks.hasHook.mockReturnValue(false);
 
-		await gate.assertCanStart(workflowData, 'webhook');
+		await preExecute.run(workflowData, 'webhook');
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
@@ -63,7 +63,7 @@ describe('WorkflowPreExecuteGate', () => {
 		const blocked = new UserError('execution limit reached');
 		externalHooks.run.mockRejectedValue(blocked);
 
-		await expect(gate.assertCanStart(workflowData, 'webhook')).rejects.toSatisfy(
+		await expect(preExecute.run(workflowData, 'webhook')).rejects.toSatisfy(
 			(error: unknown) => error instanceof PreExecuteBlockedError && error.cause === blocked,
 		);
 	});
@@ -73,7 +73,7 @@ describe('WorkflowPreExecuteGate', () => {
 			throw new Error('hook registry failed');
 		});
 
-		await expect(gate.assertCanStart(workflowData, 'webhook')).rejects.toSatisfy(
+		await expect(preExecute.run(workflowData, 'webhook')).rejects.toSatisfy(
 			(error: unknown) =>
 				error instanceof Error &&
 				!(error instanceof PreExecuteBlockedError) &&
@@ -81,10 +81,29 @@ describe('WorkflowPreExecuteGate', () => {
 		);
 	});
 
-	it('skips the gate when N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION is true', async () => {
+	it('writes hook mutations on the Workflow back onto workflowData', async () => {
+		externalHooks.run.mockImplementation(async (_name, args) => {
+			const workflow = args![0] as Workflow;
+			workflow.overrideStaticData({ limit: 1 });
+			workflow.settings = { ...workflow.settings, timezone: 'UTC' };
+		});
+
+		const data: IWorkflowBase = {
+			...workflowData,
+			staticData: undefined,
+			settings: {},
+		};
+
+		await preExecute.run(data, 'webhook');
+
+		expect(data.staticData).toMatchObject({ limit: 1 });
+		expect(data.settings).toMatchObject({ timezone: 'UTC' });
+	});
+
+	it('skips the hook when N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION is true', async () => {
 		executionsConfig.preExecuteErrorCreatesExecution = true;
 
-		await gate.assertCanStart(workflowData, 'webhook');
+		await preExecute.run(workflowData, 'webhook');
 
 		expect(externalHooks.hasHook).not.toHaveBeenCalled();
 		expect(externalHooks.run).not.toHaveBeenCalled();

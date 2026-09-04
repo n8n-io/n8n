@@ -41,7 +41,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	CredentialsPermissionChecker,
-	WorkflowPreExecuteGate,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -965,8 +965,8 @@ describe('pre-persist context establishment', () => {
 	});
 
 	it('does not persist when preExecute blocks the run', async () => {
-		const gate = Container.get(WorkflowPreExecuteGate);
-		gateSpy = vi.spyOn(gate, 'assertCanStart').mockRejectedValue(new Error('blocked'));
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run').mockRejectedValue(new Error('blocked'));
 
 		const data = buildRunData(buildExecutionDataWithHeader());
 
@@ -976,8 +976,8 @@ describe('pre-persist context establishment', () => {
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
-		const gate = Container.get(WorkflowPreExecuteGate);
-		gateSpy = vi.spyOn(gate, 'assertCanStart');
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run');
 
 		const data = buildRunData(buildExecutionDataWithHeader());
 

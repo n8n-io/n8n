@@ -50,7 +50,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
-	WorkflowPreExecuteGate,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
@@ -103,7 +103,7 @@ export class WorkflowRunner {
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
 		private readonly engineV2Dispatcher: EngineV2Dispatcher,
-		private readonly preExecuteGate: WorkflowPreExecuteGate,
+		private readonly workflowPreExecute: WorkflowPreExecute,
 	) {}
 
 	/** The process did error */
@@ -265,17 +265,8 @@ export class WorkflowRunner {
 
 		const establishContextError = await this.establishContextForPersistence(data);
 
-		// Resume / poll claim / crash recovery already passed this gate when the row was created.
 		if (!existingExecution) {
-			try {
-				await this.preExecuteGate.assertCanStart(
-					data.workflowData,
-					data.executionMode,
-					data.source,
-				);
-			} catch (error) {
-				throw PreExecuteBlockedError.unwrap(error);
-			}
+			await this.prepareNewExecution(data, loadStaticData);
 		}
 
 		// Register a new execution
@@ -319,13 +310,15 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
+		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
+
 		try {
 			if (shouldEnqueue) {
 				await this.enqueueExecution(
 					executionId,
 					workflowId,
 					data,
-					loadStaticData,
+					shouldReloadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);
@@ -333,7 +326,7 @@ export class WorkflowRunner {
 				await this.runMainProcess(
 					executionId,
 					data,
-					loadStaticData,
+					shouldReloadStaticData,
 					existingExecution?.executionId,
 				);
 			}
@@ -378,6 +371,27 @@ export class WorkflowRunner {
 		}
 
 		return executionId;
+	}
+
+	private async prepareNewExecution(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+	): Promise<void> {
+		if (loadStaticData === true && data.workflowData.id) {
+			data.workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
+				data.workflowData.id,
+			);
+		}
+
+		try {
+			await this.workflowPreExecute.run(
+				data.workflowData,
+				data.executionMode,
+				data.source,
+			);
+		} catch (error) {
+			throw PreExecuteBlockedError.unwrap(error);
+		}
 	}
 
 	/** Run the workflow in current process */

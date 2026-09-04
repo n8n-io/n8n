@@ -12,14 +12,15 @@ import { NodeTypes } from '@/node-types';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /**
- * Runs `workflow.preExecute` before an execution row is created.
- * A throw here means the run never started — no row, no Insights/license count.
+ * Runs `workflow.preExecute` before an execution row is created and writes
+ * hook mutations back onto `workflowData`. A throw means the run never
+ * started — no row, no Insights/license count.
  *
  * No-ops when `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` is true; the lifecycle
  * hook then runs after persist (legacy).
  */
 @Service()
-export class WorkflowPreExecuteGate {
+export class WorkflowPreExecute {
 	constructor(
 		private readonly externalHooks: ExternalHooks,
 		private readonly workflowContext: WorkflowHookContextService,
@@ -27,7 +28,7 @@ export class WorkflowPreExecuteGate {
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
-	async assertCanStart(
+	async run(
 		workflowData: IWorkflowBase,
 		mode: WorkflowExecuteMode,
 		source?: WorkflowExecutionSource,
@@ -61,5 +62,8 @@ export class WorkflowPreExecuteGate {
 		} catch (error) {
 			throw new PreExecuteBlockedError(ensureError(error));
 		}
+
+		workflowData.staticData = workflow.staticData;
+		workflowData.settings = workflow.settings;
 	}
 }

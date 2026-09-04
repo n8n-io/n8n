@@ -46,7 +46,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	SubworkflowPolicyChecker,
-	WorkflowPreExecuteGate,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
@@ -79,7 +79,7 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly preExecuteGate: WorkflowPreExecuteGate,
+		private readonly workflowPreExecute: WorkflowPreExecute,
 	) {}
 
 	async runWorkflow(
@@ -189,7 +189,7 @@ export class WorkflowExecutionService {
 		}
 
 		try {
-			await this.preExecuteGate.assertCanStart(workflowData, mode, runData.source);
+			await this.workflowPreExecute.run(workflowData, mode, runData.source);
 		} catch (error) {
 			if (error instanceof PreExecuteBlockedError) {
 				this.logger.error('Blocked a polled execution before its row was committed', {
@@ -244,7 +244,7 @@ export class WorkflowExecutionService {
 		try {
 			await this.workflowRunner.run(
 				runData,
-				true,
+				false,
 				undefined,
 				{ executionId, expectedStatus: 'new' },
 				responsePromise,

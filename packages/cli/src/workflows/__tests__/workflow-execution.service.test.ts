@@ -33,7 +33,7 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { EventService } from '@/events/event.service';
-import type { WorkflowPreExecuteGate } from '@/executions/pre-execution-checks';
+import type { WorkflowPreExecute } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -109,7 +109,7 @@ describe('WorkflowExecutionService', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const pollCursorService = mock<PollCursorService>();
 	const executionRepository = mock<ExecutionRepository>();
-	const preExecuteGate = mock<WorkflowPreExecuteGate>();
+	const workflowPreExecute = mock<WorkflowPreExecute>();
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const workflowExecutionService = new WorkflowExecutionService(
@@ -130,7 +130,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		pollCursorService,
 		executionRepository,
-		preExecuteGate,
+		workflowPreExecute,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -237,7 +237,7 @@ describe('WorkflowExecutionService', () => {
 			});
 			workflowRunner.run.mockResolvedValue('exec-9');
 			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
-			preExecuteGate.assertCanStart.mockResolvedValue(undefined);
+			workflowPreExecute.run.mockResolvedValue(undefined);
 		});
 
 		test('commits the poll items as the trigger data of a new execution for the polled node', async () => {
@@ -276,7 +276,7 @@ describe('WorkflowExecutionService', () => {
 			expect(returned).toBe('exec-9');
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ workflowData: workflow }),
-				true,
+				false,
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
@@ -307,7 +307,7 @@ describe('WorkflowExecutionService', () => {
 
 		test('commits neither the cursor nor an execution when preExecute blocks the run', async () => {
 			const blocked = new Error('execution limit reached');
-			preExecuteGate.assertCanStart.mockRejectedValue(new PreExecuteBlockedError(blocked));
+			workflowPreExecute.run.mockRejectedValue(new PreExecuteBlockedError(blocked));
 
 			const returned = await runPolledWorkflow();
 
@@ -319,7 +319,7 @@ describe('WorkflowExecutionService', () => {
 
 		test('rethrows unexpected preExecute-gate errors so they are not treated as a hook block', async () => {
 			const unexpected = new Error('failed to build workflow');
-			preExecuteGate.assertCanStart.mockRejectedValue(unexpected);
+			workflowPreExecute.run.mockRejectedValue(unexpected);
 
 			await expect(runPolledWorkflow()).rejects.toBe(unexpected);
 

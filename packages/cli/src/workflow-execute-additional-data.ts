@@ -66,7 +66,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-	WorkflowPreExecuteGate,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
@@ -325,7 +325,7 @@ export async function executeWorkflow(
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
 
 	try {
-		await Container.get(WorkflowPreExecuteGate).assertCanStart(
+		await Container.get(WorkflowPreExecute).run(
 			workflowData,
 			runData.executionMode,
 			runData.source,
