@@ -227,9 +227,9 @@ the job row — three fields, none of which this package interprets:
 
 | Field | Meaning |
 |---|---|
-| `ownerType` | what kind of thing owns the job (`workflow`, `system-task`, …) |
+| `ownerType` | what kind of thing owns the job (`workflow`, `system-task`, `agent`, …) |
 | `ownerId` | which one (a workflow id, a task name, an agent id) |
-| `ownerMemberId` | optionally, which part of it (the trigger node, for a workflow) |
+| `ownerMemberId` | optionally, which part of it (the trigger node for a workflow, the scheduled task for an agent) |
 
 Because ownership is data rather than a schema relationship, any part of the product
 can own scheduled jobs without the scheduler learning what its owners are, and
