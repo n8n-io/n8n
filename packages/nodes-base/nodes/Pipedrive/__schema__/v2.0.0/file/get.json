@@ -1,0 +1,127 @@
+{
+	"properties": {
+		"active_flag": {
+			"type": "boolean"
+		},
+		"activity_id": {
+			"type": "null"
+		},
+		"add_time": {
+			"type": "string"
+		},
+		"cid": {
+			"type": "null"
+		},
+		"deal_id": {
+			"type": "number"
+		},
+		"deal_name": {
+			"type": "string"
+		},
+		"description": {
+			"type": "null"
+		},
+		"file_name": {
+			"type": "string"
+		},
+		"file_size": {
+			"type": "number"
+		},
+		"file_type": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"inline_flag": {
+			"type": "boolean"
+		},
+		"lead_id": {
+			"type": "null"
+		},
+		"lead_name": {
+			"type": "null"
+		},
+		"log_id": {
+			"type": "null"
+		},
+		"mail_message_id": {
+			"type": "null"
+		},
+		"mail_template_id": {
+			"type": "null"
+		},
+		"name": {
+			"type": "string"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"org_name": {
+			"type": "string"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"person_name": {
+			"type": "string"
+		},
+		"product_id": {
+			"type": "null"
+		},
+		"product_name": {
+			"type": "null"
+		},
+		"remote_id": {
+			"type": "string"
+		},
+		"remote_location": {
+			"type": "string"
+		},
+		"s3_bucket": {
+			"type": "null"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"user_id": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"id",
+		"user_id",
+		"log_id",
+		"add_time",
+		"update_time",
+		"file_name",
+		"file_size",
+		"active_flag",
+		"inline_flag",
+		"remote_location",
+		"remote_id",
+		"s3_bucket",
+		"url",
+		"name",
+		"description",
+		"deal_id",
+		"lead_id",
+		"person_id",
+		"org_id",
+		"product_id",
+		"activity_id",
+		"deal_name",
+		"lead_name",
+		"person_name",
+		"org_name",
+		"product_name",
+		"mail_message_id",
+		"mail_template_id",
+		"cid",
+		"file_type"
+	],
+	"type": "object"
+}

@@ -1,0 +1,105 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"billing_frequency": {
+			"type": "string"
+		},
+		"billing_frequency_cycles": {
+			"type": "null"
+		},
+		"category": {
+			"type": "null"
+		},
+		"code": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"properties": {
+				"test_string": {
+					"type": "null"
+				}
+			},
+			"required": ["test_string"],
+			"type": "object"
+		},
+		"description": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"is_linkable": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"prices": {
+			"items": {
+				"properties": {
+					"cost": {
+						"type": "number"
+					},
+					"currency": {
+						"type": "string"
+					},
+					"direct_cost": {
+						"type": "number"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number"
+					},
+					"product_id": {
+						"type": "number"
+					}
+				},
+				"required": ["product_id", "price", "currency", "cost", "direct_cost", "notes"],
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"tax": {
+			"type": "number"
+		},
+		"unit": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"id",
+		"name",
+		"tax",
+		"add_time",
+		"update_time",
+		"description",
+		"code",
+		"unit",
+		"owner_id",
+		"category",
+		"is_deleted",
+		"is_linkable",
+		"prices",
+		"custom_fields",
+		"visible_to",
+		"billing_frequency",
+		"billing_frequency_cycles"
+	],
+	"type": "object"
+}

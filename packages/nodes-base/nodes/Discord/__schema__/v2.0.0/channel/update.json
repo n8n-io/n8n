@@ -1,0 +1,56 @@
+{
+	"properties": {
+		"flags": {
+			"type": "number"
+		},
+		"guild_id": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"last_message_id": {
+			"type": "null"
+		},
+		"name": {
+			"type": "string"
+		},
+		"nsfw": {
+			"type": "boolean"
+		},
+		"parent_id": {
+			"type": "string"
+		},
+		"permission_overwrites": {
+			"items": {},
+			"type": "array"
+		},
+		"position": {
+			"type": "number"
+		},
+		"rate_limit_per_user": {
+			"type": "number"
+		},
+		"topic": {
+			"type": "string"
+		},
+		"type": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"id",
+		"type",
+		"last_message_id",
+		"flags",
+		"guild_id",
+		"name",
+		"parent_id",
+		"rate_limit_per_user",
+		"topic",
+		"position",
+		"permission_overwrites",
+		"nsfw"
+	],
+	"type": "object"
+}

@@ -1,0 +1,74 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"address": {
+			"type": "null"
+		},
+		"annual_revenue": {
+			"type": "null"
+		},
+		"custom_fields": {
+			"properties": {
+				"test_string": {
+					"type": "null"
+				}
+			},
+			"required": ["test_string"],
+			"type": "object"
+		},
+		"employee_count": {
+			"type": "null"
+		},
+		"id": {
+			"type": "number"
+		},
+		"industry": {
+			"type": "null"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"linkedin": {
+			"type": "null"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		},
+		"website": {
+			"type": "null"
+		}
+	},
+	"required": [
+		"id",
+		"name",
+		"add_time",
+		"update_time",
+		"visible_to",
+		"custom_fields",
+		"owner_id",
+		"label_ids",
+		"website",
+		"linkedin",
+		"industry",
+		"annual_revenue",
+		"employee_count",
+		"is_deleted",
+		"address"
+	],
+	"type": "object"
+}

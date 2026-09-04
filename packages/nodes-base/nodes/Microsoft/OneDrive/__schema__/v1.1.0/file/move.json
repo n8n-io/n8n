@@ -1,0 +1,21 @@
+{
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"id": {
+					"type": "string"
+				}
+			},
+			"required": ["id"],
+			"type": "object"
+		}
+	},
+	"required": ["id", "name", "parentReference"],
+	"type": "object"
+}

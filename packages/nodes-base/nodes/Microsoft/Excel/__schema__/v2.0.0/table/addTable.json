@@ -1,0 +1,51 @@
+{
+	"properties": {
+		"highlightFirstColumn": {
+			"type": "boolean"
+		},
+		"highlightLastColumn": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"legacyId": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"showBandedColumns": {
+			"type": "boolean"
+		},
+		"showBandedRows": {
+			"type": "boolean"
+		},
+		"showFilterButton": {
+			"type": "boolean"
+		},
+		"showHeaders": {
+			"type": "boolean"
+		},
+		"showTotals": {
+			"type": "boolean"
+		},
+		"style": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"style",
+		"name",
+		"showFilterButton",
+		"id",
+		"highlightLastColumn",
+		"highlightFirstColumn",
+		"legacyId",
+		"showBandedColumns",
+		"showBandedRows",
+		"showHeaders",
+		"showTotals"
+	],
+	"type": "object"
+}

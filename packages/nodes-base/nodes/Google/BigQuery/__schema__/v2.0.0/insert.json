@@ -1,0 +1,9 @@
+{
+	"properties": {
+		"kind": {
+			"type": "string"
+		}
+	},
+	"required": ["kind"],
+	"type": "object"
+}

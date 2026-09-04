@@ -1,0 +1,142 @@
+{
+	"properties": {
+		"attachments": {
+			"items": {},
+			"type": "array"
+		},
+		"author": {
+			"properties": {
+				"avatar": {
+					"type": "null"
+				},
+				"bot": {
+					"type": "boolean"
+				},
+				"discriminator": {
+					"type": "string"
+				},
+				"flags": {
+					"type": "number"
+				},
+				"global_name": {
+					"type": "null"
+				},
+				"id": {
+					"type": "string"
+				},
+				"public_flags": {
+					"type": "number"
+				},
+				"username": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"username",
+				"avatar",
+				"discriminator",
+				"public_flags",
+				"flags",
+				"bot",
+				"global_name"
+			],
+			"type": "object"
+		},
+		"channel_id": {
+			"type": "string"
+		},
+		"components": {
+			"items": {},
+			"type": "array"
+		},
+		"content": {
+			"type": "string"
+		},
+		"edited_timestamp": {
+			"type": "null"
+		},
+		"embeds": {
+			"items": {
+				"properties": {
+					"author": {
+						"properties": {
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": ["name"],
+						"type": "object"
+					},
+					"color": {
+						"type": "number"
+					},
+					"description": {
+						"type": "string"
+					},
+					"timestamp": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"required": ["type", "description", "color", "timestamp", "author"],
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"flags": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"mention_everyone": {
+			"type": "boolean"
+		},
+		"mention_roles": {
+			"items": {},
+			"type": "array"
+		},
+		"mentions": {
+			"items": {},
+			"type": "array"
+		},
+		"pinned": {
+			"type": "boolean"
+		},
+		"timestamp": {
+			"type": "string"
+		},
+		"tts": {
+			"type": "boolean"
+		},
+		"type": {
+			"type": "number"
+		},
+		"webhook_id": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"type",
+		"content",
+		"channel_id",
+		"author",
+		"attachments",
+		"embeds",
+		"mentions",
+		"mention_roles",
+		"pinned",
+		"mention_everyone",
+		"tts",
+		"timestamp",
+		"edited_timestamp",
+		"flags",
+		"components",
+		"webhook_id"
+	],
+	"type": "object"
+}

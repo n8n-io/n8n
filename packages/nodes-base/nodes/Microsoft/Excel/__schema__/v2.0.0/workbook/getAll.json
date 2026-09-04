@@ -1,0 +1,12 @@
+{
+	"properties": {
+		"@odata.type": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		}
+	},
+	"required": ["@odata.type", "name"],
+	"type": "object"
+}

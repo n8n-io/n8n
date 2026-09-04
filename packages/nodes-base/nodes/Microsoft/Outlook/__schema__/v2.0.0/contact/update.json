@@ -1,0 +1,197 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"assistantName": {
+			"type": "string"
+		},
+		"birthday": {
+			"type": "string"
+		},
+		"businessAddress": {
+			"properties": {
+				"city": {
+					"type": "string"
+				},
+				"countryOrRegion": {
+					"type": "string"
+				},
+				"postalCode": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"street": {
+					"type": "string"
+				}
+			},
+			"required": ["street", "city", "state", "countryOrRegion", "postalCode"],
+			"type": "object"
+		},
+		"businessHomePage": {
+			"type": "null"
+		},
+		"businessPhones": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"categories": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"changeKey": {
+			"type": "string"
+		},
+		"children": {
+			"items": {},
+			"type": "array"
+		},
+		"companyName": {
+			"type": "string"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"department": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"emailAddresses": {
+			"items": {},
+			"type": "array"
+		},
+		"fileAs": {
+			"type": "string"
+		},
+		"generation": {
+			"type": "null"
+		},
+		"givenName": {
+			"type": "string"
+		},
+		"homeAddress": {
+			"properties": {},
+			"type": "object"
+		},
+		"homePhones": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "string"
+		},
+		"imAddresses": {
+			"items": {},
+			"type": "array"
+		},
+		"initials": {
+			"type": "null"
+		},
+		"jobTitle": {
+			"type": "null"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"manager": {
+			"type": "string"
+		},
+		"middleName": {
+			"type": "null"
+		},
+		"mobilePhone": {
+			"type": "string"
+		},
+		"nickName": {
+			"type": "null"
+		},
+		"officeLocation": {
+			"type": "null"
+		},
+		"otherAddress": {
+			"properties": {},
+			"type": "object"
+		},
+		"parentFolderId": {
+			"type": "string"
+		},
+		"personalNotes": {
+			"type": "string"
+		},
+		"profession": {
+			"type": "null"
+		},
+		"spouseName": {
+			"type": "string"
+		},
+		"surname": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"yomiCompanyName": {
+			"type": "null"
+		},
+		"yomiGivenName": {
+			"type": "null"
+		},
+		"yomiSurname": {
+			"type": "null"
+		}
+	},
+	"required": [
+		"@odata.context",
+		"@odata.etag",
+		"id",
+		"createdDateTime",
+		"lastModifiedDateTime",
+		"changeKey",
+		"categories",
+		"parentFolderId",
+		"birthday",
+		"fileAs",
+		"displayName",
+		"givenName",
+		"initials",
+		"middleName",
+		"nickName",
+		"surname",
+		"title",
+		"yomiGivenName",
+		"yomiSurname",
+		"yomiCompanyName",
+		"generation",
+		"imAddresses",
+		"jobTitle",
+		"companyName",
+		"department",
+		"officeLocation",
+		"profession",
+		"businessHomePage",
+		"assistantName",
+		"manager",
+		"homePhones",
+		"mobilePhone",
+		"businessPhones",
+		"spouseName",
+		"personalNotes",
+		"children",
+		"emailAddresses",
+		"homeAddress",
+		"businessAddress",
+		"otherAddress"
+	],
+	"type": "object"
+}

@@ -1,0 +1,81 @@
+{
+	"properties": {
+		"creationDateTime": {
+			"type": "string"
+		},
+		"endDateTime": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"joinMeetingIdSettings": {
+			"properties": {
+				"isPasscodeRequired": {
+					"type": "boolean"
+				},
+				"joinMeetingId": {
+					"type": "string"
+				},
+				"passcode": {
+					"type": "null"
+				}
+			},
+			"required": ["isPasscodeRequired", "joinMeetingId", "passcode"],
+			"type": "object"
+		},
+		"joinWebUrl": {
+			"type": "string"
+		},
+		"participants": {
+			"properties": {
+				"organizer": {
+					"properties": {
+						"identity": {
+							"properties": {
+								"user": {
+									"properties": {
+										"displayName": {
+											"type": "string"
+										},
+										"id": {
+											"type": "string"
+										}
+									},
+									"required": ["id", "displayName"],
+									"type": "object"
+								}
+							},
+							"required": ["user"],
+							"type": "object"
+						},
+						"upn": {
+							"type": "string"
+						}
+					},
+					"required": ["upn", "identity"],
+					"type": "object"
+				}
+			},
+			"required": ["organizer"],
+			"type": "object"
+		},
+		"startDateTime": {
+			"type": "string"
+		},
+		"subject": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"creationDateTime",
+		"startDateTime",
+		"endDateTime",
+		"joinWebUrl",
+		"subject",
+		"participants",
+		"joinMeetingIdSettings"
+	],
+	"type": "object"
+}

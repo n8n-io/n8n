@@ -1,0 +1,18 @@
+{
+	"properties": {
+		"browser": {
+			"type": "string"
+		},
+		"country": {
+			"type": "string"
+		},
+		"session_duration": {
+			"type": "number"
+		},
+		"visits": {
+			"type": "number"
+		}
+	},
+	"required": ["country", "browser", "session_duration", "visits"],
+	"type": "object"
+}

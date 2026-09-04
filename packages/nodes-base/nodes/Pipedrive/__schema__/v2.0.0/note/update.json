@@ -1,0 +1,136 @@
+{
+	"properties": {
+		"active_flag": {
+			"type": "boolean"
+		},
+		"add_time": {
+			"type": "string"
+		},
+		"content": {
+			"type": "string"
+		},
+		"deal": {
+			"properties": {
+				"title": {
+					"type": "string"
+				}
+			},
+			"required": ["title"],
+			"type": "object"
+		},
+		"deal_id": {
+			"type": "number"
+		},
+		"id": {
+			"type": "number"
+		},
+		"last_update_user_id": {
+			"type": "number"
+		},
+		"lead": {
+			"type": "null"
+		},
+		"lead_id": {
+			"type": "null"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"organization": {
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["name"],
+			"type": "object"
+		},
+		"person": {
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["name"],
+			"type": "object"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"pinned_to_deal_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_lead_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_organization_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_person_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_project_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_task_flag": {
+			"type": "boolean"
+		},
+		"project_id": {
+			"type": "null"
+		},
+		"task_id": {
+			"type": "null"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"user": {
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"icon_url": {
+					"type": "null"
+				},
+				"is_you": {
+					"type": "boolean"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["email", "name", "icon_url", "is_you"],
+			"type": "object"
+		},
+		"user_id": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"id",
+		"user_id",
+		"deal_id",
+		"person_id",
+		"org_id",
+		"lead_id",
+		"project_id",
+		"task_id",
+		"content",
+		"add_time",
+		"update_time",
+		"active_flag",
+		"pinned_to_deal_flag",
+		"pinned_to_person_flag",
+		"pinned_to_organization_flag",
+		"pinned_to_lead_flag",
+		"pinned_to_project_flag",
+		"pinned_to_task_flag",
+		"last_update_user_id",
+		"organization",
+		"person",
+		"deal",
+		"lead",
+		"user"
+	],
+	"type": "object"
+}

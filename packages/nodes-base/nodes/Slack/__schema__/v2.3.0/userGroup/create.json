@@ -1,0 +1,82 @@
+{
+	"properties": {
+		"auto_type": {
+			"type": "null"
+		},
+		"created_by": {
+			"type": "string"
+		},
+		"date_create": {
+			"type": "number"
+		},
+		"date_delete": {
+			"type": "number"
+		},
+		"date_update": {
+			"type": "number"
+		},
+		"deleted_by": {
+			"type": "null"
+		},
+		"description": {
+			"type": "string"
+		},
+		"handle": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_external": {
+			"type": "boolean"
+		},
+		"is_usergroup": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"prefs": {
+			"properties": {
+				"channels": {
+					"items": {},
+					"type": "array"
+				},
+				"groups": {
+					"items": {},
+					"type": "array"
+				}
+			},
+			"required": ["channels", "groups"],
+			"type": "object"
+		},
+		"team_id": {
+			"type": "string"
+		},
+		"updated_by": {
+			"type": "string"
+		},
+		"user_count": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"auto_type",
+		"created_by",
+		"date_create",
+		"date_delete",
+		"date_update",
+		"deleted_by",
+		"description",
+		"handle",
+		"id",
+		"is_external",
+		"is_usergroup",
+		"name",
+		"prefs",
+		"team_id",
+		"updated_by",
+		"user_count"
+	],
+	"type": "object"
+}

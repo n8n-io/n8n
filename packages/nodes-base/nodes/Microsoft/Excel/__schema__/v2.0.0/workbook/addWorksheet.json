@@ -1,0 +1,18 @@
+{
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"position": {
+			"type": "number"
+		},
+		"visibility": {
+			"type": "string"
+		}
+	},
+	"required": ["id", "name", "position", "visibility"],
+	"type": "object"
+}

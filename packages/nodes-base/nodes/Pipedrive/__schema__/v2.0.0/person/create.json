@@ -1,0 +1,110 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"properties": {
+				"test_enum": {
+					"type": "null"
+				},
+				"test_multi": {
+					"type": "null"
+				},
+				"test_number": {
+					"type": "null"
+				}
+			},
+			"required": ["test_number", "test_enum", "test_multi"],
+			"type": "object"
+		},
+		"emails": {
+			"items": {
+				"properties": {
+					"label": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"required": ["label", "value", "primary"],
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"first_name": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"last_name": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"phones": {
+			"items": {
+				"properties": {
+					"label": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"required": ["label", "value", "primary"],
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"picture_id": {
+			"type": "null"
+		},
+		"update_time": {
+			"type": "null"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"id",
+		"name",
+		"first_name",
+		"last_name",
+		"add_time",
+		"update_time",
+		"visible_to",
+		"custom_fields",
+		"owner_id",
+		"label_ids",
+		"org_id",
+		"is_deleted",
+		"picture_id",
+		"phones",
+		"emails"
+	],
+	"type": "object"
+}

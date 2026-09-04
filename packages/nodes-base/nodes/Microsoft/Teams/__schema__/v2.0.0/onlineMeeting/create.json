@@ -1,0 +1,21 @@
+{
+	"properties": {
+		"endDateTime": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"joinWebUrl": {
+			"type": "string"
+		},
+		"startDateTime": {
+			"type": "string"
+		},
+		"subject": {
+			"type": "string"
+		}
+	},
+	"required": ["id", "startDateTime", "endDateTime", "joinWebUrl", "subject"],
+	"type": "object"
+}

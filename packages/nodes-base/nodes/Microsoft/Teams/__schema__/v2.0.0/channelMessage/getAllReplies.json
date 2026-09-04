@@ -1,0 +1,27 @@
+{
+	"properties": {
+		"body": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"contentType": {
+					"type": "string"
+				}
+			},
+			"required": ["contentType", "content"],
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"messageType": {
+			"type": "string"
+		},
+		"replyToId": {
+			"type": "string"
+		}
+	},
+	"required": ["id", "replyToId", "messageType", "body"],
+	"type": "object"
+}

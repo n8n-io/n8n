@@ -1,0 +1,179 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"activeChecklistItemCount": {
+			"type": "number"
+		},
+		"appliedCategories": {
+			"properties": {},
+			"type": "object"
+		},
+		"assigneePriority": {
+			"type": "string"
+		},
+		"assignments": {
+			"properties": {
+				"ba4a422e-bdce-4795-b4b6-579287363f0e": {
+					"properties": {
+						"@odata.type": {
+							"type": "string"
+						},
+						"assignedBy": {
+							"properties": {
+								"application": {
+									"properties": {
+										"displayName": {
+											"type": "null"
+										},
+										"id": {
+											"type": "string"
+										}
+									},
+									"required": ["displayName", "id"],
+									"type": "object"
+								},
+								"user": {
+									"properties": {
+										"displayName": {
+											"type": "null"
+										},
+										"id": {
+											"type": "string"
+										}
+									},
+									"required": ["displayName", "id"],
+									"type": "object"
+								}
+							},
+							"required": ["user", "application"],
+							"type": "object"
+						},
+						"assignedDateTime": {
+							"type": "string"
+						},
+						"orderHint": {
+							"type": "string"
+						}
+					},
+					"required": ["@odata.type", "assignedDateTime", "orderHint", "assignedBy"],
+					"type": "object"
+				}
+			},
+			"required": ["ba4a422e-bdce-4795-b4b6-579287363f0e"],
+			"type": "object"
+		},
+		"bucketId": {
+			"type": "string"
+		},
+		"checklistItemCount": {
+			"type": "number"
+		},
+		"completedBy": {
+			"type": "null"
+		},
+		"completedDateTime": {
+			"type": "null"
+		},
+		"conversationThreadId": {
+			"type": "null"
+		},
+		"createdBy": {
+			"properties": {
+				"application": {
+					"properties": {
+						"displayName": {
+							"type": "null"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"required": ["displayName", "id"],
+					"type": "object"
+				},
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "null"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"required": ["displayName", "id"],
+					"type": "object"
+				}
+			},
+			"required": ["user", "application"],
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"dueDateTime": {
+			"type": "string"
+		},
+		"hasDescription": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"orderHint": {
+			"type": "string"
+		},
+		"percentComplete": {
+			"type": "number"
+		},
+		"planId": {
+			"type": "string"
+		},
+		"previewType": {
+			"type": "string"
+		},
+		"priority": {
+			"type": "number"
+		},
+		"referenceCount": {
+			"type": "number"
+		},
+		"startDateTime": {
+			"type": "null"
+		},
+		"title": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"@odata.context",
+		"@odata.etag",
+		"planId",
+		"bucketId",
+		"title",
+		"orderHint",
+		"assigneePriority",
+		"percentComplete",
+		"startDateTime",
+		"createdDateTime",
+		"dueDateTime",
+		"hasDescription",
+		"previewType",
+		"completedDateTime",
+		"completedBy",
+		"referenceCount",
+		"checklistItemCount",
+		"activeChecklistItemCount",
+		"conversationThreadId",
+		"priority",
+		"id",
+		"createdBy",
+		"appliedCategories",
+		"assignments"
+	],
+	"type": "object"
+}

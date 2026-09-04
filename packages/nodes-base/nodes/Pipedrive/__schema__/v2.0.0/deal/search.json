@@ -1,0 +1,117 @@
+{
+	"properties": {
+		"currency": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"notes": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"organization": {
+			"properties": {
+				"address": {
+					"type": "null"
+				},
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["id", "name", "address"],
+			"type": "object"
+		},
+		"owner": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"required": ["id"],
+			"type": "object"
+		},
+		"person": {
+			"properties": {
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["id", "name"],
+			"type": "object"
+		},
+		"pipeline": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"required": ["id"],
+			"type": "object"
+		},
+		"result_score": {
+			"type": "number"
+		},
+		"stage": {
+			"properties": {
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": ["id", "name"],
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"value": {
+			"type": "number"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"result_score",
+		"id",
+		"type",
+		"title",
+		"value",
+		"currency",
+		"status",
+		"visible_to",
+		"owner",
+		"stage",
+		"pipeline",
+		"person",
+		"organization",
+		"custom_fields",
+		"notes",
+		"is_archived"
+	],
+	"type": "object"
+}

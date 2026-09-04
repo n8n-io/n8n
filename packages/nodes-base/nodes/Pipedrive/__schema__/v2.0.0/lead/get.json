@@ -1,0 +1,100 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"archive_time": {
+			"type": "null"
+		},
+		"cc_email": {
+			"type": "string"
+		},
+		"channel": {
+			"type": "null"
+		},
+		"channel_id": {
+			"type": "null"
+		},
+		"creator_id": {
+			"type": "number"
+		},
+		"expected_close_date": {
+			"type": "null"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"next_activity_id": {
+			"type": "null"
+		},
+		"organization_id": {
+			"type": "number"
+		},
+		"origin": {
+			"type": "string"
+		},
+		"origin_id": {
+			"type": "null"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"source_deal_id": {
+			"type": "null"
+		},
+		"source_name": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"value": {
+			"type": "null"
+		},
+		"visible_to": {
+			"type": "string"
+		},
+		"was_seen": {
+			"type": "boolean"
+		}
+	},
+	"required": [
+		"id",
+		"title",
+		"owner_id",
+		"creator_id",
+		"label_ids",
+		"value",
+		"expected_close_date",
+		"person_id",
+		"organization_id",
+		"is_archived",
+		"archive_time",
+		"source_name",
+		"source_deal_id",
+		"origin",
+		"origin_id",
+		"channel",
+		"channel_id",
+		"was_seen",
+		"next_activity_id",
+		"add_time",
+		"update_time",
+		"visible_to",
+		"cc_email"
+	],
+	"type": "object"
+}

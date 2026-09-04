@@ -1,0 +1,50 @@
+{
+	"properties": {
+		"code": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"required": ["id"],
+			"type": "object"
+		},
+		"result_score": {
+			"type": "number"
+		},
+		"tax": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"required": [
+		"result_score",
+		"id",
+		"type",
+		"name",
+		"code",
+		"tax",
+		"visible_to",
+		"owner",
+		"custom_fields"
+	],
+	"type": "object"
+}
