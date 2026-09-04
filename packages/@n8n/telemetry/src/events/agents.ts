@@ -185,17 +185,6 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: agentStatus,
 		}),
 	},
-	AGENT_TOOL_UNAVAILABLE: {
-		name: 'Agent tool unavailable',
-		description:
-			'A configured workflow or node tool could not be used when an agent runtime was built. `no_access` tools (the calling user lacks access to the workflow or to a credential the tool needs) are dropped; `not_found` and `incompatible` workflow tools stay in the tool list as stubs that report the reason when called. Fires once per tool per runtime build; the agent keeps running.',
-		properties: z.object({
-			agent_id: z.string(),
-			run_type: agentRunType,
-			tool_type: z.enum(['workflow', 'node']),
-			reason: z.enum(['not_found', 'incompatible', 'no_access']),
-		}),
-	},
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:

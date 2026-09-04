@@ -10,7 +10,6 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowRepository } from '@n8n/db';
 
@@ -81,7 +80,6 @@ function makeService() {
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
-		mock<Telemetry>(),
 	);
 
 	return { service, workspaceService };

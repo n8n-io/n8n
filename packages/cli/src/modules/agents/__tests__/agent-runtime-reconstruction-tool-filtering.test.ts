@@ -5,7 +5,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -15,7 +14,6 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
-import type { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -132,7 +130,6 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
-	const telemetry = mock<Telemetry>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -154,7 +151,6 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
-		telemetry,
 	);
 
 	return {
@@ -162,7 +158,6 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		workflowRepository,
-		telemetry,
 	};
 }
 
@@ -356,7 +351,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
-		const { service, telemetry } = makeService({});
+		const { service } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(
 			new WorkflowToolUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
 		);
@@ -375,16 +370,10 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		await expect(resolved[0]?.handler?.({}, mock())).rejects.toThrow(
 			'Workflow "Lookup customer" is no longer accessible',
 		);
-		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_TOOL_UNAVAILABLE, {
-			agent_id: 'agent-1',
-			run_type: 'production',
-			tool_type: 'workflow',
-			reason: 'not_found',
-		});
 	});
 
 	it('still fails the build for any other workflow tool error', async () => {
-		const { service, telemetry } = makeService({});
+		const { service } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(new Error('runner unavailable'));
 		buildFromJsonResolvingTools([]);
 
@@ -395,7 +384,6 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				'production',
 			),
 		).rejects.toThrow('runner unavailable');
-		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 });
 

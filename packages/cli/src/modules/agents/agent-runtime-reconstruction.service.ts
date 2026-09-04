@@ -29,7 +29,6 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -44,7 +43,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -225,7 +223,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
-		private readonly telemetry: Telemetry,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -597,14 +594,6 @@ export class AgentRuntimeReconstructionService {
 				runType,
 				tools: unavailable,
 			});
-			for (const tool of unavailable) {
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TOOL_UNAVAILABLE, {
-					agent_id: memoryOwnerAgentId,
-					run_type: runType,
-					tool_type: tool.toolType,
-					reason: tool.reason,
-				});
-			}
 		}
 
 		await this.injectRuntimeDependencies({
