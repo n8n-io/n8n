@@ -6,6 +6,7 @@ import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
 import {
 	getBuckets,
 	getChannels,
+	getChatMembers,
 	getChats,
 	getGroups,
 	getMembers,
@@ -249,6 +250,13 @@ describe('Microsoft Teams Transport', () => {
 				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
 				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('getChatMembers rejects a malformed chatId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getChatMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 		});

@@ -50,8 +50,8 @@ export async function getChats(
 	// makes `getNodeParameter` throw there instead of listing chats.
 	const operation = this.getNodeParameter('operation', 0) as string;
 	const resource = this.getNodeParameter('resource', 0) as string;
-	// Adding a member is impossible on a 1:1 chat; listing its members is legal.
-	const excludeOneOnOne = resource === 'chatMember' && ['add'].includes(operation);
+	// Only Add and Remove are impossible on a 1:1 chat; listing its members is legal.
+	const excludeOneOnOne = resource === 'chatMember' && ['add', 'remove'].includes(operation);
 
 	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
 	// sleeping 1s between attempts (not after the last one), and surface the final
@@ -102,7 +102,7 @@ export async function getChats(
 	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
 			description:
-				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
+				'Only group chats can have members added or removed, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
@@ -123,6 +123,34 @@ export async function getChats(
 			return 0;
 		});
 
+	return { results };
+}
+
+export async function getChatMembers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const chatId = this.getCurrentNodeParameter('chatId', { extractValue: true }) as string;
+	// The picker can be opened before a chat is selected; show an empty list instead
+	// of failing on an empty id.
+	if (!chatId) return { results: [] };
+
+	// `GET /chats/{id}/members` supports no OData query parameters, so there is no
+	// server-side search to pass the filter to - it pages via @odata.nextLink only.
+	const value = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/members']),
+	)) as IDataObject[];
+
+	const returnData: INodeListSearchItems[] = value.map((member) => ({
+		name: member.email ? `${member.displayName} (${member.email})` : (member.displayName as string),
+		// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
+		value: member.id as string,
+	}));
+
+	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }
 
