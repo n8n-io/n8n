@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentCredentialDependencyRepository } from './repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from './repositories/agent-workflow-dependency.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -16,6 +17,7 @@ export class AgentDependencyIndexService {
 		private readonly credentialDependencyRepository: AgentCredentialDependencyRepository,
 		private readonly workflowDependencyRepository: AgentWorkflowDependencyRepository,
 		private readonly agentRepository: AgentRepository,
+		private readonly runtimeCache: AgentRuntimeCacheService,
 		logger: Logger,
 		workflowsConfig: WorkflowsConfig,
 	) {
@@ -31,6 +33,15 @@ export class AgentDependencyIndexService {
 	async refresh(agentId: string): Promise<void> {
 		await this.credentialDependencyRepository.refreshForAgent(agentId);
 		await this.workflowDependencyRepository.refreshForAgent(agentId);
+	}
+
+	/**
+	 * Evict the cached runtimes of every agent that uses the workflow as a tool,
+	 * so the next call rebuilds the tool from the workflow's current state.
+	 */
+	async invalidateRuntimesForWorkflow(workflowId: string): Promise<void> {
+		const dependencies = await this.workflowDependencyRepository.findByWorkflowIds([workflowId]);
+		for (const { agentId } of dependencies) this.runtimeCache.clearRuntimes(agentId);
 	}
 
 	async buildIndex(): Promise<void> {

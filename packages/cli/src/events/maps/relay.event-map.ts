@@ -192,6 +192,16 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
+	/**
+	 * The `workflow_published_version` mapping moved: a publish advanced it or an
+	 * unpublish removed it. Emitted by the publication applier after the write, so
+	 * consumers that read the published version see the new state.
+	 */
+	'workflow-published-version-changed': {
+		workflowId: string;
+		publishedVersionId: string | null;
+	};
+
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;

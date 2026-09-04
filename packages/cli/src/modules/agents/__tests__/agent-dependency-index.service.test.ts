@@ -4,6 +4,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentDependencyIndexService } from '../agent-dependency-index.service';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import type { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -19,6 +20,7 @@ function makeService(batchSize = 2) {
 		dependencyRepository,
 		workflowDependencyRepository,
 		agentRepository,
+		mock<AgentRuntimeCacheService>(),
 		logger,
 		workflowsConfig,
 	);

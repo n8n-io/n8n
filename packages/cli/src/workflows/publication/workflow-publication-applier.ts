@@ -14,6 +14,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -79,6 +80,7 @@ export class WorkflowPublicationApplier {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -178,7 +180,7 @@ export class WorkflowPublicationApplier {
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
-			await this.advancePublishedVersion(record);
+			await this.advancePublishedVersion(record, oldVersion);
 			return {
 				type: 'completed',
 				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
@@ -218,7 +220,7 @@ export class WorkflowPublicationApplier {
 		// version included — must return a `failed` result (not throw) so the
 		// teardown failures collected above still reach the reporter.
 		try {
-			await this.advancePublishedVersion(record);
+			await this.advancePublishedVersion(record, oldVersion);
 
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
@@ -378,6 +380,14 @@ export class WorkflowPublicationApplier {
 		);
 
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
+
+		// Only a real removal changes what consumers read; a mapping-less retry does not.
+		if (oldVersion) {
+			this.eventService.emit('workflow-published-version-changed', {
+				workflowId: record.workflowId,
+				publishedVersionId: null,
+			});
+		}
 
 		return teardownFailures.length > 0
 			? { type: 'unpublished', teardownFailures }
@@ -545,7 +555,10 @@ export class WorkflowPublicationApplier {
 	 * the new triggers so they execute the newly published version rather than
 	 * the previous one.
 	 */
-	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
+	private async advancePublishedVersion(
+		record: WorkflowPublicationOutbox,
+		oldVersion: WorkflowHistory | null,
+	) {
 		// Invalidate → write → refresh: with the cache empty across the write, reads
 		// fall through to the database (the source of truth) rather than ever serving
 		// a stale version, before the new version is cached again.
@@ -555,5 +568,14 @@ export class WorkflowPublicationApplier {
 			record.publishedVersionId,
 		);
 		await this.workflowPublishedDataService.refreshCache(record.workflowId);
+
+		// Reconcile, startup and leadership-takeover records re-apply the current
+		// version; only a moved mapping is worth telling consumers about.
+		if (oldVersion?.versionId !== record.publishedVersionId) {
+			this.eventService.emit('workflow-published-version-changed', {
+				workflowId: record.workflowId,
+				publishedVersionId: record.publishedVersionId,
+			});
+		}
 	}
 }
