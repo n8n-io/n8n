@@ -196,6 +196,13 @@ export async function buildMcpToolkit(
 		throw error;
 	}
 
+	// getOrConnect registers abort cleanup only after the factory resolves.
+	// An abort during connect/listTools does not fire that handler, so evict now.
+	if (manager && cacheKey && signal?.aborted) {
+		manager.remove(cacheKey, ctx.logger);
+		return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
+	}
+
 	ctx.logger.debug('MCP client: Successfully connected to MCP Server');
 
 	try {

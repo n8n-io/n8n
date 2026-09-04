@@ -371,6 +371,45 @@ describe('runtime', () => {
 			expect(manager.size).toBe(1);
 		});
 
+		it('evicts the client when cancellation fires while tools/list is still in flight', async () => {
+			const abort = new AbortController();
+			let releaseList: (value: { tools: Array<typeof sampleTool> }) => void = () => {};
+			let markListStarted: () => void = () => {};
+			const listStarted = new Promise<void>((resolve) => {
+				markListStarted = resolve;
+			});
+
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						releaseList = resolve;
+						markListStarted();
+					}),
+			);
+			const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createCachedSupplyCtx('exec-1', {
+				getExecutionCancelSignal: vi.fn(() => abort.signal),
+				onExecutionCancellation: vi.fn((handler: () => void) => {
+					const fn = () => {
+						abort.signal.removeEventListener('abort', fn);
+						handler();
+					};
+					abort.signal.addEventListener('abort', fn);
+				}),
+			});
+
+			const pending = buildMcpToolkit(ctx, 0, baseConfig);
+			await listStarted;
+			abort.abort();
+			releaseList({ tools: [sampleTool] });
+
+			await expect(pending).rejects.toThrow('Execution was cancelled');
+			expect(manager.size).toBe(0);
+			expect(close).toHaveBeenCalled();
+		});
+
 		it.each(['onExecutionCancellation', 'onExecutionFinish'] as const)(
 			'closes and evicts the cached client on %s',
 			async (hookName) => {
