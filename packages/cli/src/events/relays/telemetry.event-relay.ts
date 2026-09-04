@@ -335,12 +335,14 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowUpdates,
 		workflowConflicts,
 		credConflicts,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-pull-ui']) {
 		this.telemetry.track('User started pull via UI', {
 			user_id: userId,
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
+			public_api: publicApi,
 		});
 	}
 
@@ -371,6 +373,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credsEligible,
 		credsEligibleWithConflicts,
 		variablesEligible,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
 			user_id: userId,
@@ -379,6 +382,7 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_eligible: credsEligible,
 			creds_eligible_with_conflicts: credsEligibleWithConflicts,
 			variables_eligible: variablesEligible,
+			public_api: publicApi,
 		});
 	}
 
@@ -1118,6 +1122,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
+		includeArchivedWorkflows,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1128,6 +1133,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
+			include_archived_workflows: includeArchivedWorkflows,
 		});
 	}
 
