@@ -186,7 +186,7 @@ describe('buildDiscoverResponse', () => {
 			includeSchemas: true,
 		});
 
-		const createEndpoint = result.resources.credential?.endpoints.find(
+		const createEndpoint = result.resources.credentials?.endpoints.find(
 			(e) => e.operationId === 'createCredential',
 		);
 		expect(createEndpoint).toBeDefined();
