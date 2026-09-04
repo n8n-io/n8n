@@ -60,8 +60,7 @@ const publishState = computed((): AgentPublishState => {
 // Warning-only issues (unpublished workflow tools) don't block: the publish
 // flow publishes them after the user confirms.
 const isConfigInvalid = computed(
-	() =>
-		props.configValidationStatus === null || hasBlockingIssues(props.configValidationIssues),
+	() => props.configValidationStatus === null || hasBlockingIssues(props.configValidationIssues),
 );
 const invalidConfigTooltip = computed(() =>
 	locale.baseText('agents.publish.button.invalidConfigTooltip'),
