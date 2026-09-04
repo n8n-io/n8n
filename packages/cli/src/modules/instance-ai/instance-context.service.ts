@@ -7,11 +7,13 @@ import {
 	ExecutionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { ActivityEvent, ActivityEventCategory, ActivityResourceType } from '@n8n/db';
+import type { ActivityEvent, ActivityEventCategory, ActivityResourceType, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
 import type { IDataObject } from 'n8n-workflow';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { INSTANCE_CONTEXT_CLOSE_TAG, INSTANCE_CONTEXT_OPEN_TAG } from './internal-messages';
 
@@ -172,7 +174,7 @@ export class InstanceContextService {
 	 * second block, and nothing can retract the older one.
 	 */
 	async buildBlock(input: {
-		userId: string;
+		user: User;
 		projectId?: string;
 		cursor: InstanceContextCursor | null;
 		/**
@@ -188,7 +190,7 @@ export class InstanceContextService {
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			const projectIds = this.visibleProjectIds(input.projectId);
+			const projectIds = await this.readableProjectIds(input.user, input.projectId);
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
@@ -211,7 +213,7 @@ export class InstanceContextService {
 
 			return {
 				block: renderBlock({
-					entries: entries.rows.map((row) => toFeedEntry(row, input.userId, now)),
+					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
 					entriesTruncated: entries.truncated,
 					runs,
 					isUpdate,
@@ -233,7 +235,7 @@ export class InstanceContextService {
 
 	/** Backs `activity(action="list")` — the same log, without the window's caps. */
 	async list(input: {
-		userId: string;
+		user: User;
 		projectId?: string;
 		limit: number;
 		category?: string;
@@ -244,7 +246,9 @@ export class InstanceContextService {
 		// answer a narrowing request by widening it to the whole feed.
 		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
 
-		const projectIds = this.visibleProjectIds(input.projectId);
+		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		if (projectIds.length === 0) return [];
+
 		const rows = await this.activityEventRepository.findFeed({
 			limit: input.limit,
 			projectIds,
@@ -252,7 +256,7 @@ export class InstanceContextService {
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 		});
-		return rows.map((row) => toActivityEntry(row, input.userId));
+		return rows.map((row) => toActivityEntry(row, input.user.id));
 	}
 
 	/**
@@ -262,10 +266,12 @@ export class InstanceContextService {
 	 */
 	async expand(input: {
 		id: number;
-		userId: string;
+		user: User;
 		projectId?: string;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = this.visibleProjectIds(input.projectId);
+		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		if (projectIds.length === 0) return null;
+
 		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
 		if (!row) return null;
 
@@ -282,10 +288,10 @@ export class InstanceContextService {
 		const hint = liveRecordHint(row);
 
 		return {
-			entry: toActivityEntry(row, input.userId),
+			entry: toActivityEntry(row, input.user.id),
 			resourceHistory: history
 				.filter((other) => other.id !== row.id)
-				.map((other) => toActivityEntry(other, input.userId)),
+				.map((other) => toActivityEntry(other, input.user.id)),
 			...(hint ? { liveRecordHint: hint } : {}),
 		};
 	}
@@ -366,8 +372,18 @@ export class InstanceContextService {
 	 * Bare project membership is also not read access — `project:chatUser` holds neither
 	 * `workflow:read` nor `credential:read`.
 	 */
-	private visibleProjectIds(projectId?: string): string[] {
-		return projectId === undefined ? [] : [projectId];
+	private async readableProjectIds(user: User, projectId?: string): Promise<string[]> {
+		if (projectId === undefined) return [];
+
+		// Re-checked every turn, not trusted from the binding. A thread outlives the membership that
+		// authorised it — `assertThreadAccess` proves the thread is the caller's own and nothing more
+		// — so a user removed from a project would otherwise keep reading it here for the life of the
+		// thread, while every other read in this module refused them.
+		//
+		// `workflow:read` stands for the whole block: it is what the inventory and run legs expose,
+		// and credential entries carry a name and a type rather than a secret.
+		const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
+		return allowed ? [projectId] : [];
 	}
 }
 

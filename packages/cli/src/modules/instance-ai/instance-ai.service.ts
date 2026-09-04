@@ -3965,7 +3965,7 @@ export class InstanceAiService {
 			// agent continuing its own task, where nobody is reading the user's intent, so the whole
 			// block would be paid for unread.
 			const instanceContext = await this.instanceContext.buildBlock({
-				userId: user.id,
+				user,
 				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
 				cursor: readInstanceContextCursor(thread?.metadata),
 				isMachineFollowUp:

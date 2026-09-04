@@ -541,7 +541,7 @@ export class InstanceAiAdapterService {
 		return {
 			list: async (input) =>
 				await instanceContext.list({
-					userId: user.id,
+					user,
 					...(projectId !== undefined ? { projectId } : {}),
 					limit: input.limit,
 					...(input.category !== undefined ? { category: input.category } : {}),
@@ -551,7 +551,7 @@ export class InstanceAiAdapterService {
 			expand: async (id) =>
 				await instanceContext.expand({
 					id,
-					userId: user.id,
+					user,
 					...(projectId !== undefined ? { projectId } : {}),
 				}),
 		};

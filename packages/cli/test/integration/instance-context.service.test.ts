@@ -57,7 +57,7 @@ describe('InstanceContextService', () => {
 		await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
-			userId: user.id,
+			user,
 			projectId: project.id,
 			cursor: null,
 		});
@@ -74,9 +74,7 @@ describe('InstanceContextService', () => {
 		config.instanceAi.instanceContextEnabled = false;
 
 		try {
-			expect(
-				await service.buildBlock({ userId: user.id, projectId: project.id, cursor: null }),
-			).toBeNull();
+			expect(await service.buildBlock({ user, projectId: project.id, cursor: null })).toBeNull();
 		} finally {
 			config.instanceAi.instanceContextEnabled = true;
 		}
@@ -99,7 +97,7 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Ours' }, project);
 
 			const built = await service.buildBlock({
-				userId: user.id,
+				user,
 				projectId: project.id,
 				cursor: null,
 			});
@@ -120,9 +118,12 @@ describe('InstanceContextService', () => {
 			});
 			const [entry] = await activity.findFeed({ projectIds: [otherProject.id], limit: 1 });
 
-			expect(await service.expand({ id: entry.id, userId: user.id })).toBeNull();
+			// Scoped to the user's own project, so the other project's entry is out of reach.
+			expect(await service.expand({ id: entry.id, user, projectId: project.id })).toBeNull();
 			// A pruned id answers identically, so the tool cannot probe for existence.
-			expect(await service.expand({ id: entry.id + 5_000, userId: user.id })).toBeNull();
+			expect(
+				await service.expand({ id: entry.id + 5_000, user, projectId: project.id }),
+			).toBeNull();
 		});
 	});
 
@@ -151,7 +152,7 @@ describe('InstanceContextService', () => {
 			const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
 
 			const delta = await service.buildBlock({
-				userId: user.id,
+				user,
 				projectId: project.id,
 				cursor: {
 					activityMark: newest.id,
@@ -178,7 +179,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const first = await service.buildBlock({
-				userId: user.id,
+				user,
 				projectId: project.id,
 				cursor: null,
 			});
@@ -193,7 +194,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const delta = await service.buildBlock({
-				userId: user.id,
+				user,
 				projectId: project.id,
 				cursor: first!.cursor,
 			});
@@ -207,14 +208,14 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Lead enrichment' }, project);
 
 			const first = await service.buildBlock({
-				userId: user.id,
+				user,
 				projectId: project.id,
 				cursor: null,
 			});
 
 			expect(
 				await service.buildBlock({
-					userId: user.id,
+					user,
 					projectId: project.id,
 					cursor: first!.cursor,
 				}),
@@ -223,12 +224,28 @@ describe('InstanceContextService', () => {
 	});
 
 	/** An evaluation suite is machine-paced and would bury everything a person did. */
+	/**
+	 * Thread access proves the thread is the caller's own, not that they may still read the project
+	 * it is bound to, so the scope is re-checked against the real permission tables every turn.
+	 */
+	it('builds nothing when the bound project is one the user cannot read', async () => {
+		await createWorkflow({ name: 'Theirs' }, otherProject);
+
+		const built = await service.buildBlock({
+			user,
+			projectId: otherProject.id,
+			cursor: null,
+		});
+
+		expect(built).toBeNull();
+	});
+
 	it('leaves evaluation runs out of the block', async () => {
 		const workflow = await createWorkflow({ name: 'Lead enrichment' }, project);
 		await createExecution({ status: 'error', mode: 'evaluation', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
-			userId: user.id,
+			user,
 			projectId: project.id,
 			cursor: null,
 		});
@@ -251,7 +268,7 @@ describe('InstanceContextService', () => {
 
 		const expansion = await service.expand({
 			id: newest.id,
-			userId: user.id,
+			user,
 			projectId: project.id,
 		});
 
@@ -270,6 +287,6 @@ describe('InstanceContextService', () => {
 			resourceId: 'wf-1',
 		});
 
-		expect(await service.buildBlock({ userId: user.id, cursor: null })).toBeNull();
+		expect(await service.buildBlock({ user, cursor: null })).toBeNull();
 	});
 });
