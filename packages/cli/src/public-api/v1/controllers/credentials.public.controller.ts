@@ -72,7 +72,7 @@ export class CredentialsPublicController {
 		'Retrieve all credentials from your instance. Only available for the instance owner ' +
 			'and admin. Credential data (secrets) is not included.',
 	)
-	@ApiTags(['Credential'])
+	@ApiTags(['Credentials'])
 	@ApiResponse(200, CredentialListPublicDto)
 	async getCredentials(
 		req: AuthenticatedRequest,
@@ -106,7 +106,7 @@ export class CredentialsPublicController {
 	@ProjectScope('credential:read')
 	@ApiSummary('Get credential by ID')
 	@ApiDescription('Retrieves a credential by ID. Credential data (secrets) is not included.')
-	@ApiTags(['Credential'])
+	@ApiTags(['Credentials'])
 	@ApiResponse(200, CredentialPublicDto)
 	@ApiErrorResponse(404)
 	async getCredential(
