@@ -1,6 +1,6 @@
 import { expressionPrefixValidator } from './expression-prefix-validator';
 import type { GraphNode, NodeInstance } from '../../../types/base';
-import type { PluginContext } from '../types';
+import type { NodeTypesProvider, PluginContext } from '../types';
 
 // Helper to create a mock node instance
 function createMockNode(
@@ -26,12 +26,40 @@ function createGraphNode(node: NodeInstance<string, string, unknown>): GraphNode
 }
 
 // Helper to create a mock plugin context
-function createMockPluginContext(): PluginContext {
+function createMockPluginContext(nodeTypesProvider?: NodeTypesProvider): PluginContext {
 	return {
 		nodes: new Map(),
 		workflowId: 'test-workflow',
 		workflowName: 'Test Workflow',
 		settings: {},
+		...(nodeTypesProvider ? { validationOptions: { nodeTypesProvider } } : {}),
+	};
+}
+
+// Provider returning a BigQuery-shaped description: an sqlEditor query field
+// plus a plain string field, so one node covers both branches.
+function createBigQueryProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					},
+					{
+						displayName: 'Project',
+						name: 'projectId',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		}),
 	};
 }
 
@@ -177,6 +205,43 @@ describe('expressionPrefixValidator', () => {
 			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues[0]?.nodeName).toBe('My Set Node');
+		});
+
+		it('skips sqlEditor parameters (the node resolves inline {{ }} itself)', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createBigQueryProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('still warns for a non-sqlEditor parameter on a node that has an sqlEditor field', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: {
+					sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}',
+					projectId: '{{ $json.project }}',
+				},
+			});
+			const ctx = createMockPluginContext(createBigQueryProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.parameterPath).toBe('projectId');
+		});
+
+		it('warns on an sqlEditor parameter when no node-type provider is available', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
 		});
 
 		it('includes parameterPath in issues', () => {
