@@ -210,9 +210,10 @@ export async function getExistingSheetNames(sheet: GoogleSheet) {
 }
 
 /**
- * Titles of every sheet holding cells, in spreadsheet order. Chart-only sheets
- * are skipped because the values API rejects a range pointing at them, which
- * would otherwise fail the whole read.
+ * Titles of every sheet holding cells (GRID and DATA_SOURCE), in spreadsheet
+ * order. Non-cell sheets such as chart-only (OBJECT) tabs are skipped because
+ * the values API rejects a range pointing at them, which would otherwise fail
+ * the whole read.
  */
 export async function getGridSheetNames(sheet: GoogleSheet): Promise<string[]> {
 	const response = (await sheet.spreadsheetGetSheets()) as SpreadSheetResponse | undefined;
@@ -221,8 +222,9 @@ export async function getGridSheetNames(sheet: GoogleSheet): Promise<string[]> {
 	for (const entry of response?.sheets ?? []) {
 		const properties = entry?.properties;
 		if (!properties?.title) continue;
-		// The API always sets a type; defaulting keeps an unexpected response readable
-		if ((properties.sheetType ?? 'GRID') !== 'GRID') continue;
+		// A missing type defaults to GRID; keep only cell-bearing sheets (GRID, DATA_SOURCE)
+		const sheetType = properties.sheetType ?? 'GRID';
+		if (sheetType !== 'GRID' && sheetType !== 'DATA_SOURCE') continue;
 
 		names.push(properties.title);
 	}

@@ -314,12 +314,11 @@ describe('Google Sheet - Read - All Sheets', () => {
 
 		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
 
-		// The failing sheet becomes an error item: the sheet name stays in json, and
-		// the error sits on the top-level `error` property so the engine can route it
-		// to the error output instead of the success output
-		expect(result[0].json).toEqual({ sheet_name: 'Q1' });
-		expect(result[0].error).toBeInstanceOf(NodeOperationError);
-		expect(result[0].error?.message).toBe('Failed to read rows from sheet "Q1": Quota exceeded');
+		// The failing sheet becomes an error item, keeping its name under `details`
+		expect(result[0].json).toEqual({
+			error: 'Failed to read rows from sheet "Q1": Quota exceeded',
+			details: { sheet_name: 'Q1' },
+		});
 		expect(result[0].pairedItem).toEqual({ item: 0 });
 
 		// The readable sheet's rows still come through

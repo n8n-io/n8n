@@ -276,13 +276,15 @@ async function readAllSheets(
 					error instanceof Error ? error.message : String(error)
 				}`;
 
-				// Without this a single unreadable sheet would discard the rows already read.
-				// The error goes on the top-level `error` property so the engine routes it
-				// to the error output; the sheet name stays readable in `json`.
+				// Without this a single unreadable sheet would discard the rows already read
 				if (this.continueOnFail()) {
+					// The engine routes an item to the error output when its json holds only
+					// `error`/`message`/`details`, so the sheet name goes under `details`
 					returnData.push({
-						json: { [SHEET_NAME_FIELD]: currentSheetName },
-						error: new NodeOperationError(this.getNode(), message),
+						json: {
+							error: message,
+							details: { [SHEET_NAME_FIELD]: currentSheetName },
+						},
 						pairedItem: { item: itemIndex },
 					});
 					continue;

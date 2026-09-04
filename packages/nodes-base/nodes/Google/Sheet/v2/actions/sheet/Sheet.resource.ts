@@ -230,10 +230,10 @@ export const descriptions: INodeProperties[] = [
 				resource: ['sheet'],
 				operation: ['append', 'appendOrUpdate', 'clear', 'delete', 'read', 'remove', 'update'],
 			},
-			// Only the read operation's "All Sheets" mode has no single sheet to pick;
-			// every other operation still needs this field
+			// Hide keys are OR'd, so listing `operation` here would hide the field for
+			// every read. Only "All Sheets" read has no single sheet to pick, and
+			// `sheetSelectionMode` exists only for read, so this alone is enough.
 			hide: {
-				operation: ['read'],
 				sheetSelectionMode: ['all'],
 			},
 		},

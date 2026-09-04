@@ -73,7 +73,8 @@ export const dataLocationOnSheet: INodeProperties = {
 						minValue: 1,
 					},
 					default: 1,
-					description: "Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
+					description:
+						"Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
 					hint: 'Index of the row which contains the column names',
 					displayOptions: {
 						show: {
@@ -89,7 +90,8 @@ export const dataLocationOnSheet: INodeProperties = {
 						minValue: 1,
 					},
 					default: 2,
-					description: "Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
+					description:
+						"Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
 					hint: 'Index of first row which contains the actual data',
 					displayOptions: {
 						show: {

@@ -144,11 +144,14 @@ export async function getSheetHeaderRowWithGeneratedColumnNamesForAllSheets(
 	const returnData: INodePropertyOptions[] = [];
 
 	for (const entry of responseData.sheets ?? []) {
-		if (entry.properties?.sheetType !== 'GRID' || !entry.properties?.title) {
-			continue;
-		}
+		const properties = entry.properties;
+		if (!properties?.title) continue;
 
-		const title = entry.properties.title;
+		// A missing type defaults to GRID; read only cell-bearing sheets (GRID, DATA_SOURCE)
+		const sheetType = properties.sheetType ?? 'GRID';
+		if (sheetType !== 'GRID' && sheetType !== 'DATA_SOURCE') continue;
+
+		const title = properties.title;
 		const sheetData = await sheet.getData(`${title}!1:1`, 'FORMATTED_VALUE');
 
 		if (sheetData === undefined) {
@@ -158,8 +161,9 @@ export async function getSheetHeaderRowWithGeneratedColumnNamesForAllSheets(
 		const columns = sheet.testFilter(sheetData, 0, 0);
 
 		columns.forEach((column, i) => {
-			// Match the single-sheet generated-name convention for empty headers
-			const name = column === '' ? `col_${i + 1}` : column;
+			// Match the runtime generated-name convention for empty headers (0-based),
+			// so a selected blank-header column resolves during filtering
+			const name = column === '' ? `col_${i}` : column;
 			if (seen.has(name)) return;
 			seen.add(name);
 			returnData.push({ name, value: name });

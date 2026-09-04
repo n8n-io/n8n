@@ -730,6 +730,20 @@ describe('Test Google Sheets, getGridSheetNames', () => {
 		expect(result).toEqual(['Data', 'More Data']);
 	});
 
+	it('should include DATA_SOURCE (connected) sheets, which also hold cells', async () => {
+		mockGoogleSheetInstance.spreadsheetGetSheets = vi.fn().mockResolvedValue({
+			sheets: [
+				{ properties: { title: 'Data', sheetId: 0, sheetType: 'GRID' } },
+				{ properties: { title: 'Connected', sheetId: 1, sheetType: 'DATA_SOURCE' } },
+				{ properties: { title: 'Revenue Chart', sheetId: 2, sheetType: 'OBJECT' } },
+			],
+		});
+
+		const result = await getGridSheetNames(mockGoogleSheetInstance as GoogleSheet);
+
+		expect(result).toEqual(['Data', 'Connected']);
+	});
+
 	it('should treat a missing sheetType as a grid sheet', async () => {
 		mockGoogleSheetInstance.spreadsheetGetSheets = vi.fn().mockResolvedValue({
 			sheets: [{ properties: { title: 'Sheet1', sheetId: 0 } }],
