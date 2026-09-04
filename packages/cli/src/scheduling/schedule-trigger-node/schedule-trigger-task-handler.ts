@@ -8,13 +8,13 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
-import { resolveTaskTriggerNode } from '@/scheduling/resolve-task-trigger-node';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
 	buildScheduleTriggerItem,
 	isScheduleTriggerTaskPayload,

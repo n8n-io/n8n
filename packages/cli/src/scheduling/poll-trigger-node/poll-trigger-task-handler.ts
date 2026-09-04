@@ -15,10 +15,10 @@ import type { Failure, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
-import { resolveTaskTriggerNode } from '@/scheduling/resolve-task-trigger-node';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
 	isPollTriggerTaskPayload,
 	POLL_TRIGGER_TASK_TYPE,
