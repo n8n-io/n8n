@@ -24,8 +24,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-user-info v-bind="args" />',
 });
 
-export const Member = Template.bind({});
-Member.args = {
+export const Default = Template.bind({});
+Default.args = {
 	firstName: 'Oscar',
 	lastName: 'Wilde',
 	email: 'test@n8n.io',

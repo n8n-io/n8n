@@ -1,9 +1,20 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { getHtmlSandboxCSP } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import { applyFormSandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 
 describe('WebhookResponseHeaders', () => {
+	const logger = mockInstance(Logger);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	describe('set()', () => {
 		it('should store and apply valid headers', () => {
 			const headers = new WebhookResponseHeaders();
@@ -63,6 +74,36 @@ describe('WebhookResponseHeaders', () => {
 			headers.applyToResponse(res);
 
 			expect(res.setHeaders).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			'set-cookie',
+			'strict-transport-security',
+			'clear-site-data',
+			'Set-Cookie',
+			'Strict-Transport-Security',
+			'Clear-Site-Data',
+			'SET-COOKIE',
+			'STRICT-TRANSPORT-SECURITY',
+			'CLEAR-SITE-DATA',
+		])('should not allow overriding the protected header %s', (headerName) => {
+			const headers = new WebhookResponseHeaders();
+			headers.set(headerName, 'some-value');
+
+			const res = mock<Response>();
+			headers.applyToResponse(res);
+
+			expect(res.setHeaders).not.toHaveBeenCalled();
+		});
+
+		it('should log a warning when dropping a protected header', () => {
+			const headers = new WebhookResponseHeaders();
+			headers.set('Set-Cookie', 'a=b');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ headerName: 'Set-Cookie' }),
+			);
 		});
 
 		it('should lower-case header names', () => {
@@ -160,6 +201,22 @@ describe('WebhookResponseHeaders', () => {
 			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-valid', 'value']]));
 		});
 
+		it('should drop headers that control client state', () => {
+			const headers = new WebhookResponseHeaders();
+			headers.addFromObject({
+				'x-valid': 'value',
+				'Set-Cookie': 'a=b',
+				'Strict-Transport-Security': 'max-age=0',
+				'Clear-Site-Data': '"cache"',
+			});
+
+			const res = mock<Response>();
+			headers.applyToResponse(res);
+
+			expect(res.setHeaders).toHaveBeenCalledTimes(1);
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-valid', 'value']]));
+		});
+
 		it('should convert non-string values to strings', () => {
 			const headers = new WebhookResponseHeaders();
 			headers.addFromObject({
@@ -237,6 +294,24 @@ describe('WebhookResponseHeaders', () => {
 
 			expect(res.setHeaders).not.toHaveBeenCalled();
 		});
+
+		it('should drop headers that control client state', () => {
+			const headers = new WebhookResponseHeaders();
+			headers.addFromNodeHeaders({
+				entries: [
+					{ name: 'Set-Cookie', value: 'a=b' },
+					{ name: 'strict-transport-security', value: 'max-age=0' },
+					{ name: 'CLEAR-SITE-DATA', value: '"cache"' },
+					{ name: 'x-valid', value: 'ok' },
+				],
+			});
+
+			const res = mock<Response>();
+			headers.applyToResponse(res);
+
+			expect(res.setHeaders).toHaveBeenCalledTimes(1);
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-valid', 'ok']]));
+		});
 	});
 
 	describe('applyToResponse()', () => {
@@ -265,6 +340,31 @@ describe('WebhookResponseHeaders', () => {
 					['x-three', '3'],
 				]),
 			);
+		});
+	});
+
+	describe('applyFormSandboxCSP', () => {
+		const securityConfig = Container.get(SecurityConfig);
+
+		afterEach(() => {
+			securityConfig.disableFormHtmlSandboxing = false;
+		});
+
+		it('should set the sandbox policy', () => {
+			const res = mock<Response>();
+
+			applyFormSandboxCSP(res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+		});
+
+		it('should set no policy when form sandboxing is disabled', () => {
+			securityConfig.disableFormHtmlSandboxing = true;
+			const res = mock<Response>();
+
+			applyFormSandboxCSP(res);
+
+			expect(res.setHeader).not.toHaveBeenCalled();
 		});
 	});
 });

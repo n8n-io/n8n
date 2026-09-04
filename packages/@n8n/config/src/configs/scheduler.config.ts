@@ -269,6 +269,25 @@ export class SchedulerConfig {
 	enabledForPollTriggers: boolean = false;
 
 	/**
+	 * How long, in seconds, a single poll of an external source (an inbox, an API)
+	 * may take before it is abandoned. Defaults to 45 seconds.
+	 *
+	 * An abandoned poll skips no data: its position in the source is left where it
+	 * was and the next scheduled poll covers the same ground. It counts as a poll
+	 * failure, so a source that keeps timing out is polled at a widening interval.
+	 * Guards against a poll stuck on an unresponsive source running indefinitely.
+	 *
+	 * Keep it below {@link leaseDurationSeconds}: the deadline only starts after
+	 * the occurrence's setup reads, so a poll allowed to run as long as the claim
+	 * on its run can still be in flight when that claim expires and another
+	 * instance takes the run over. The default leaves that headroom, and the
+	 * scheduler warns at startup when the timeout reaches the lease duration.
+	 * Must be greater than 0 and at most one day.
+	 */
+	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
+	pollTimeoutSeconds: number = 45;
+
+	/**
 	 * Whether a poll trigger's cursor advance and the execution it produced are saved
 	 * together, atomically. When disabled, a crash between the two can leave a poll
 	 * pointing past items whose execution was never saved (or vice versa).
@@ -282,6 +301,21 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_POLLER_DURABLE_CURSORS_ENABLED')
 	durableCursorsEnabled: boolean = false;
+
+	/**
+	 * Whether n8n's internal maintenance jobs (for example pruning old executions,
+	 * compacting insights data, or renewing the license) are scheduled by the
+	 * durable scheduler instead of n8n's in-process timers. Off by default;
+	 * requires {@link enabled} to also be on.
+	 *
+	 * In a multi-instance setup, only turn this on once every instance runs a
+	 * version of n8n that supports it. While older and newer versions run side by
+	 * side (for example during a rolling deploy), the older instances still run
+	 * these jobs on their own timers, so the same job could run twice at the
+	 * same time.
+	 */
+	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
+	enabledForSystemTasks: boolean = false;
 
 	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
@@ -327,4 +361,61 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MISFIRE_GRACE', positiveIntSchema.max(30 * Time.days.toSeconds))
 	misfireGraceSeconds: number = DEFAULT_MISFIRE_GRACE_SECONDS;
+
+	/**
+	 * Whether the scheduler periodically checks that every schedule still has
+	 * something that owns it, and cleans up the ones left behind by a deletion
+	 * that didn't finish. On by default.
+	 *
+	 * Turning it off leaves those leftovers in place, disabled but never removed.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_ENABLED')
+	ownerReconciliationEnabled: boolean = true;
+
+	/**
+	 * How often, in seconds, that check runs. Defaults to 15 minutes. It is a
+	 * safety net rather than the normal cleanup path, so a long interval is fine.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_INTERVAL', positiveIntSchema)
+	ownerReconciliationIntervalSeconds: number = 15 * Time.minutes.toSeconds;
+
+	/**
+	 * How long, in seconds, one of those checks may run before it is abandoned
+	 * and retried on its next interval. Defaults to 5 minutes. Must be greater
+	 * than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_TIMEOUT', positiveIntSchema)
+	ownerReconciliationTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
+
+	/**
+	 * How many owners the check looks at per database round-trip. Defaults to 500.
+	 * Must be between 1 and 1000.
+	 *
+	 * The owner ids of a batch travel as one `IN` list, so the cap keeps the
+	 * statement under the driver's bind-parameter ceiling.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_BATCH_SIZE', positiveIntSchema.max(1000))
+	ownerReconciliationBatchSize: number = 500;
+
+	/**
+	 * How long, in seconds, a schedule found to have no owner is kept disabled
+	 * before it is deleted. Defaults to 1 day. Must be greater than 0.
+	 *
+	 * The schedule stops running immediately, so this window only delays the
+	 * delete. Raise it for a longer window to correct a wrong "no owner" answer,
+	 * lower it to reclaim rows sooner.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_QUARANTINE_GRACE', positiveIntSchema)
+	ownerQuarantineGraceSeconds: number = Time.days.toSeconds;
+
+	/**
+	 * How long, in seconds, a newly created schedule is left out of that check.
+	 * Defaults to 300 seconds. Must be greater than 0.
+	 *
+	 * A schedule can be written a moment before the thing that owns it, so this
+	 * grace stops a brand-new schedule being mistaken for an abandoned one.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_SETTLE_PERIOD', positiveIntSchema)
+	ownerSettleSeconds: number = 5 * Time.minutes.toSeconds;
 }

@@ -40,6 +40,12 @@ export interface AzureOpenAIBaseModelConfig {
 	azureOpenAIApiInstanceName: string;
 	azureOpenAIApiVersion: string;
 	azureOpenAIEndpoint?: string;
+	/**
+	 * Full OpenAI-compatible base URL for Azure AI Foundry
+	 * (`*.services.ai.azure.com/openai/v1`). When set, the node uses ChatOpenAI
+	 * against this URL instead of AzureChatOpenAI's deployment-based path.
+	 */
+	azureFoundryBaseURL?: string;
 }
 
 /**
@@ -86,9 +92,11 @@ type TokenData = OAuth2CredentialData['oauthTokenData'] & {
 export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialData & {
 	customScopes: boolean;
 	authentication: string;
-	apiVersion: string;
-	endpoint: string;
-	resourceName: string;
+	apiVersion?: string;
+	endpoint?: string;
+	resourceName?: string;
+	endpointType?: 'classic' | 'foundry';
+	foundryEndpoint?: string;
 	tenantId: string;
 	oauthTokenData: TokenData;
 };

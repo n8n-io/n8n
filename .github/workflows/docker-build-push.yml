@@ -8,7 +8,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '26.5.1'
+  NODE_VERSION: '26.7.0'
 
 on:
   schedule:
@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: ''
+      create_attestations:
+        description: 'Create release provenance, VEX, and SBOM attestations'
+        required: false
+        type: boolean
+        default: false
     outputs:
       # Repo name + multi-arch manifest digest per image, so callers can promote what
       # was actually pushed (retag by digest) instead of re-deriving tag strings.
@@ -121,11 +126,50 @@ jobs:
             --push-enabled "$PUSH_ENABLED" \
             --include-arm64 "$INCLUDE_ARM64"
 
-  build-and-push-docker:
-    name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
+  build-app:
+    name: Build application for Docker images
     needs: determine-build-context
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: useblacksmith/checkout@046e27863876319367379f972a0c394bee91aee1 # v1.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          # The image compiles native bindings against this Node version later.
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: pnpm build:n8n
+        env:
+          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # Blacksmith routes actions/cache through its cache backend. The cache archive
+      # preserves pnpm symlinks and executable modes across the job boundary.
+      - name: Save Docker build context
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: docker-build-context-v1-${{ github.run_id }}
+          path: |
+            compiled
+            dist/task-runner-javascript
+
+  build-and-push-docker:
+    name: Build and Push Docker Image (${{ matrix.platform }})
+    needs: [determine-build-context, build-app]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+      packages: write
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
@@ -147,18 +191,23 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
+      - name: Set up Docker Buildx
+        uses: useblacksmith/setup-docker-builder@a5256a73e30f09e37e3eceb8ca36043d17621d24 # v2.1.0
         with:
-          # The image copies native bindings from the host build, so both need the same Node.
-          node-version: ${{ env.NODE_VERSION }}
-          build-command: pnpm build:n8n
-          enable-docker-cache: 'true'
-        env:
-          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Blacksmith stores a separate Sticky Disk variant per architecture.
+          cache-key: n8n-io/n8n
+
+      - name: Restore Docker build context
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: docker-build-context-v1-${{ github.run_id }}
+          path: |
+            compiled
+            dist/task-runner-javascript
+          fail-on-cache-miss: true
 
       - name: Determine Docker tags for all images
         id: determine-tags
@@ -193,94 +242,44 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push n8n Docker image
-        id: build-n8n
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-
-      - name: Build and push n8n -pc Docker image
-        id: build-n8n-pc
-        if: needs.determine-build-context.outputs.push_enabled == 'true' && steps.determine-tags.outputs.n8n_pc_tags != ''
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-            BUILDER_IMAGE=n8nio/node-pc:26.5.1-dev@sha256:9ecfe9d5c7ea835bccc604d06c3cb76a837b64496d4a999338cb8b53a50bb0bd
-            RUNTIME_IMAGE=n8nio/node-pc:26.5.1@sha256:e535408e7815904c98f81fb0203f7f657047d7db3d4edc77de44d2ea72c6bf18
-            IMAGE_DESCRIPTION=Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_pc_tags }}
-
-      - name: Kafka native binding smoke check
-        # `load: true` isn't an option here: with sbom:true, buildx produces a manifest
-        # list even for a single platform, and the docker exporter (what --load uses)
-        # can't materialize manifest lists locally. Pull the pushed image back instead.
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
+      - name: Build and push Docker images
         env:
+          N8N_VERSION: ${{ needs.determine-build-context.outputs.n8n_version }}
+          N8N_RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+          PLATFORMS: ${{ matrix.docker_platform }}
           N8N_TAGS: ${{ steps.determine-tags.outputs.n8n_tags }}
+          N8N_PC_TAGS: ${{ steps.determine-tags.outputs.n8n_pc_tags }}
+          RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
+          RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
         run: |
-          IMAGE_TAG=$(echo "$N8N_TAGS" | cut -d',' -f1)
-          docker pull "$IMAGE_TAG"
-          docker run --rm \
-            --entrypoint node \
-            -v "${{ github.workspace }}/.github/scripts/docker/kafka-native-smoke-check.mjs:/tmp/kafka-native-smoke-check.mjs:ro" \
-            "$IMAGE_TAG" \
-            /tmp/kafka-native-smoke-check.mjs
+          TARGETS=(n8n runners runners-distroless)
+          if [ -n "$N8N_PC_TAGS" ] && [ "$PUSH_ENABLED" = 'true' ]; then
+            TARGETS+=(n8n-pc)
+          fi
 
-      - name: Build and push task runners Docker image (Alpine)
-        id: build-runners
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+          # oci-mediatypes keeps the merged manifest an OCI image index. Older
+          # containerd cannot pull a Docker manifest list that has attestation
+          # manifests (#31997). create_multi_arch_manifest asserts the merged
+          # format before the release proceeds.
+          OUTPUT=()
+          if [ "$PUSH_ENABLED" = 'true' ]; then
+            OUTPUT=(--set '*.output=type=image,oci-mediatypes=true,push=true')
+          fi
 
-      - name: Build and push task runners Docker image (distroless)
-        id: build-runners-distroless
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile.distroless
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          docker buildx bake -f docker/docker-bake.hcl "${TARGETS[@]}" \
+            --provenance=false \
+            --sbom=false \
+            --metadata-file /tmp/bake-metadata.json \
+            "${OUTPUT[@]}"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
     needs: [determine-build-context, build-and-push-docker]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
@@ -310,12 +309,13 @@ jobs:
 
       - name: Create GHCR multi-arch manifests
         env:
+          BUILD_MATRIX: ${{ needs.determine-build-context.outputs.build_matrix }}
           N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
           N8N_PC_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_date_manifest_tag }}
           RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
           RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+          HAS_ARM64="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.includes('arm64')))")"
 
           # Function to create manifest for an image
           create_manifest() {
@@ -329,16 +329,15 @@ jobs:
 
             echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
 
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
-            else
+            if [[ "$HAS_ARM64" == "true" ]]; then
               docker buildx imagetools create \
                 --tag "$MANIFEST_TAG" \
                 "${MANIFEST_TAG}-amd64" \
                 "${MANIFEST_TAG}-arm64"
+            else
+              docker buildx imagetools create \
+                --tag "$MANIFEST_TAG" \
+                "${MANIFEST_TAG}-amd64"
             fi
           }
 
@@ -361,6 +360,27 @@ jobs:
           create_manifest "n8n-pc (date)" "$N8N_PC_DATE_MANIFEST_TAG"
           create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
           create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
+
+      # Gates the release on the format itself. 2.26.0 shipped as a Docker
+      # manifest list and every pull failed on older containerd (#31997). The
+      # exporter flags that keep this an OCI index live in the build job, but
+      # the merge happens here, so this is the only place the published shape
+      # can be asserted. Docker Hub merges separately below and is asserted there.
+      - name: Assert merged GHCR manifests are OCI image indexes
+        env:
+          BUILD_MATRIX: ${{ needs.determine-build-context.outputs.build_matrix }}
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          N8N_PC_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          RUNNERS_DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+        run: |
+          set -euo pipefail
+          EXPECT="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.length))")"
+
+          for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG"; do
+            [[ -n "$TAG" ]] || continue
+            node .github/scripts/docker/assert-manifest-format.mjs "$TAG" --expect-platforms "$EXPECT"
+          done
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
@@ -393,6 +413,12 @@ jobs:
               --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+
+            # Self-hosted pulls come from here, and this merge is independent of
+            # the GHCR one above, so it needs its own assertion. Always both
+            # arches: push_to_docker is never set for amd64-only branch builds.
+            node .github/scripts/docker/assert-manifest-format.mjs \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" --expect-platforms 2
 
             # Create SHA-tagged manifest (immutable reference)
             # For distroless, insert SHA between version and -distroless suffix
@@ -439,14 +465,20 @@ jobs:
 
   call-success-url:
     name: Call Success URL
-    needs: [create_multi_arch_manifest]
+    needs: [determine-build-context, build-app, build-and-push-docker, create_multi_arch_manifest]
     runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.success_url != '' &&
+      needs.determine-build-context.result == 'success' &&
+      needs.build-app.result == 'success' &&
+      needs.build-and-push-docker.result == 'success' &&
+      (needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped')
     steps:
       - name: Call Success URL
         env:
           SUCCESS_URL: ${{ github.event.inputs.success_url }}
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
         run: |
           echo "Calling success URL: ${{ env.SUCCESS_URL }}"
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
@@ -456,6 +488,7 @@ jobs:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_digest != ''
     permissions:
@@ -475,6 +508,7 @@ jobs:
     name: SLSA Provenance (n8n-pc)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_pc_digest != ''
     permissions:
@@ -494,6 +528,7 @@ jobs:
     name: SLSA Provenance (runners)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_digest != ''
     permissions:
@@ -513,6 +548,7 @@ jobs:
     name: SLSA Provenance (runners-distroless)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
     permissions:
@@ -543,6 +579,7 @@ jobs:
       ]
     if: |
       always() &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
@@ -557,6 +594,18 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
+      # An empty document still gets signed and attached, and trivy still loads
+      # it — so a statement lost to a typo'd purl or a stale pin degrades to a
+      # silent no-op. Warn rather than fail: empty is a legitimate state when
+      # nothing is currently suppressed.
+      - name: Report VEX statement count
+        run: |
+          COUNT=$(node -e "process.stdout.write(String((require('./security/vex.openvex.json').statements ?? []).length))")
+          echo "VEX statements: $COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::warning::VEX document has no statements - every published image will carry an attestation that suppresses nothing."
+          fi
 
       - name: Login to GHCR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
@@ -598,11 +647,11 @@ jobs:
             ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   # SBOM Attestation - one enriched, license-gated CycloneDX SBOM per image.
-  # cdxgen scans the image (OS + npm), enrich-sbom resolves first-party + override
-  # licenses, check-sbom-licenses gates the npm components, and the result is
-  # attested to the image digest via cosign (same mechanism as VEX/provenance).
-  # This replaces BuildKit's `sbom: true` so the image carries the same resolved
-  # license picture as the release SBOM rather than the un-enriched syft output.
+  # syft scans the image for OS and npm packages. enrich-sbom resolves first-party
+  # and override licenses. check-sbom-licenses gates the npm components. cosign then
+  # attests the result to the image digest, as it does for VEX and provenance.
+  # The build sets oci-mediatypes on the exporter to get the OCI index format,
+  # so BuildKit emits no SBOM. This job supplies the license data.
   sbom-attestation:
     name: SBOM Attestation
     needs:
@@ -617,25 +666,45 @@ jobs:
       ]
     if: |
       always() &&
+      inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
       id-token: write
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@046e27863876319367379f972a0c394bee91aee1 # v1.4.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Setup Node.js and install SBOM tooling
+      # Nothing to install: syft replaced cdxgen, and the two license scripts have
+      # no dependencies. This step only pins the Node version.
+      - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: ''
+          # Scope the cache key: the default is the root lockfile, which would
+          # restore the whole workspace pnpm store into a job that never runs pnpm.
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      # Pin the scanner, not just the action. cdxgen was pinned in a lockfile;
+      # syft's default version rides the action release, so a SHA bump would
+      # silently change what produces the signed SBOM. enrich-sbom.mjs depends
+      # on two syft specifics — the `syft:location:0:path` property name and the
+      # `UNKNOWN` version sentinel — so re-A/B against a real image when bumping.
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
+        with:
+          # Matches what this action SHA already defaults to, so pinning it
+          # records the current behaviour rather than changing it.
+          syft-version: v1.38.2
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
@@ -702,8 +771,19 @@ jobs:
   notify-on-failure:
     name: Notify Cats on nightly build failure
     runs-on: ubuntu-latest
-    needs: [build-and-push-docker]
-    if: always() && needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    needs:
+      [
+        determine-build-context,
+        build-app,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        security-scan,
+        security-scan-pc,
+        security-scan-runners,
+      ]
+    if: |
+      always() && github.event_name == 'schedule' &&
+      (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -715,4 +795,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#team-catalysts' \
-            --text 'Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            --text 'Nightly Docker pipeline failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

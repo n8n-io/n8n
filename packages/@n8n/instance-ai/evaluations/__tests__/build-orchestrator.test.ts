@@ -182,6 +182,25 @@ describe('createBuildOrchestrator', () => {
 		);
 	});
 
+	it('forwards the case identity so the build can stamp its trace', async () => {
+		// Same class of bug as credentialFixture above, different symptom: the
+		// harness passes these to ensureThread as sourceContext, which is what
+		// puts `source_context.evalCase` on the LangSmith trace. Dropped, every
+		// build in the project looks identical and no export can group them.
+		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, tracedBuild)], {
+				testCaseByFileSlug: new Map([['case-a', baseCase()]]),
+			}),
+		);
+
+		await orchestrator.getOrBuild(3, 'case-a');
+
+		expect(tracedBuild).toHaveBeenCalledWith(
+			expect.objectContaining({ fileSlug: 'case-a', iteration: 3 }),
+		);
+	});
+
 	it('builds once per (iteration, fileSlug) and caches the promise', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, tracedBuild)]));
@@ -366,6 +385,33 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].pass).toBe(false);
 		expect(verdicts?.[0].incomplete).toBe(true);
 		expect(verdicts?.[0].reason).toContain('no agent output');
+	});
+
+	// The row is short-circuited in `case-pipeline`, but expectations are counted
+	// separately and only a verdict's OWN `incomplete` excludes it — the row's flag never
+	// reaches them. A priorRuns case is usually expectation-only, so without this bail-out
+	// the single graded unit still lands in the builder's baseline as a red.
+	it('does not judge expectations when prior-run staging never landed', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi
+			.fn()
+			.mockResolvedValue(okBuild({ priorRunFailed: 'sEeDeDwF1234567a: fetch failed' }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['reads the failed execution'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toHaveLength(1);
+		expect(verdicts?.[0].expectation).toBe('reads the failed execution');
+		// `incomplete` is the ONLY thing that keeps a verdict out of the pass rate.
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('premise is missing');
 	});
 
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {

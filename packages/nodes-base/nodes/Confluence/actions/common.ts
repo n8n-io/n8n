@@ -5,11 +5,49 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
+import {
+	confluenceApiRequest,
+	getConfluenceCloudId,
+	getConfluenceCredentialName,
+} from '../transport';
 
+/** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
+
+/**
+ * Top-level site selector carried by every operation (each resource spreads it
+ * right after its Operation field). The stored From List value is the cloudId
+ * itself — accessible-resources returns it, so list mode needs no resolution;
+ * By URL is hostname-matched against the connection's sites at execute time.
+ * Left empty, single-site connections auto-resolve at runtime.
+ */
+export const siteRLC: INodeProperties = {
+	displayName: 'Site',
+	name: 'site',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The Confluence site to use. Can be left empty when the connection has access to exactly one site.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSites',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://your-site.atlassian.net',
+		},
+	],
+};
 
 /**
  * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
@@ -24,7 +62,7 @@ export const pageRLC: INodeProperties = {
 	required: true,
 	description: 'The page to operate on',
 	typeOptions: {
-		loadOptionsDependsOn: ['space.value'],
+		loadOptionsDependsOn: ['site.value', 'space.value'],
 	},
 	modes: [
 		{
@@ -79,6 +117,44 @@ export const pageRLC: INodeProperties = {
 	],
 };
 
+export const labelRLC: INodeProperties = {
+	displayName: 'Label',
+	name: 'label',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'The label to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getLabels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 123456',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '^[0-9]+$',
+						errorMessage: 'The label ID must be numeric',
+					},
+				},
+			],
+		},
+	],
+};
+
 export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
 
 export const bodyFormatOption: INodeProperties = {
@@ -111,6 +187,9 @@ export const spaceRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description: 'The Confluence space',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -139,10 +218,70 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+export const spaceOptionsCollection: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Description Format',
+			name: 'descriptionFormat',
+			type: 'options',
+			options: [
+				{
+					name: 'Plain',
+					value: 'plain',
+					description: 'The space description as plain text',
+				},
+				{
+					name: 'View',
+					value: 'view',
+					description: 'The space description in view (HTML) format',
+				},
+			],
+			default: 'plain',
+			// The API only populates `description` when `description-format` is sent
+			description:
+				'The format in which to return the space description. Without this option the description is not returned.',
+		},
+	],
+};
+
+/** Companion to an endpoint-specific Sort By option; composed into `sort` by `sortQs`. */
+export const sortDirectionOption: INodeProperties = {
+	displayName: 'Sort Direction',
+	name: 'sortDirection',
+	type: 'options',
+	default: 'asc',
+	description: 'The direction to order in. Only applies when Sort By is set.',
+	options: [
+		{ name: 'ASC', value: 'asc' },
+		{ name: 'DESC', value: 'desc' },
+	],
+};
+
+/** Builds the v2 `sort` query fragment from an operation's Sort By / Sort Direction
+ * options. The API takes one enum encoding both field and direction, e.g. `name` / `-name`. */
+export function sortQs(options: IDataObject): IDataObject {
+	if (typeof options.sortBy !== 'string' || options.sortBy === '') return {};
+	return { sort: options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy };
+}
+
+/** Builds the `description-format` query fragment from an operation's Options collection. */
+export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
+	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''
+		? { 'description-format': options.descriptionFormat }
+		: {};
+}
+
 /** `spaceRLC` for operations where the space is optional: the list gets an
  * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
 	...spaceRLC,
+	description:
+		'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 	modes: (spaceRLC.modes ?? []).map((mode) => {
 		if (mode.name === 'list') {
 			return {
@@ -178,10 +317,11 @@ export async function resolveSpaceKey(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	spaceId: string,
 ): Promise<string | undefined> {
-	// Space IDs are only unique per site, so the cache is keyed per credential
-	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
+	// Space IDs are only unique per site, and one credential can reach several
+	const rawCredentialId = this.getNode().credentials?.[getConfluenceCredentialName(this)]?.id;
 	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
-	const cacheKey = `${credentialId}:${spaceId}`;
+	const cloudId = await getConfluenceCloudId.call(this);
+	const cacheKey = `${credentialId}:${cloudId}:${spaceId}`;
 
 	const cached = spaceKeyCache.get(cacheKey);
 	if (cached !== undefined) return cached;
@@ -194,6 +334,64 @@ export async function resolveSpaceKey(
 	if (typeof space.key !== 'string' || space.key === '') return undefined;
 	spaceKeyCache.set(cacheKey, space.key);
 	return space.key;
+}
+
+// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
+const ADF_BLOCK_TYPES = new Set([
+	'blockquote',
+	'bulletList',
+	'codeBlock',
+	'heading',
+	'listItem',
+	'orderedList',
+	'panel',
+	'paragraph',
+	'rule',
+	'table',
+	'tableRow',
+	'taskItem',
+	'taskList',
+]);
+
+// Inline leaves whose rendered text lives in `attrs.text` instead of a text node
+const ADF_ATTRS_TEXT_TYPES = new Set(['mention', 'emoji', 'status']);
+
+function adfToPlainText(node: IDataObject): string {
+	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
+	if (node.type === 'hardBreak') return '\n';
+	if (ADF_ATTRS_TEXT_TYPES.has(node.type as string)) {
+		const text = (node.attrs as IDataObject | undefined)?.text;
+		return typeof text === 'string' ? text : '';
+	}
+	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
+	let inner = '';
+	for (const child of content) {
+		inner += adfToPlainText(child);
+		if (node.type === 'tableRow') inner += ' ';
+	}
+	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
+}
+
+/** Replaces a page's ADF body with plain text extracted from it. No server-side
+ * plain-text format exists, so callers request `atlas_doc_format` and shape here. */
+export function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
+	if (bodyFormat !== 'plainText') return page;
+	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
+	let value = '';
+	if (typeof adf?.value === 'string' && adf.value !== '') {
+		const doc = jsonParse<IDataObject | null>(adf.value, { fallbackValue: null }) ?? {};
+		// The walk can still throw on valid-JSON shapes it can't take (e.g. null nodes);
+		// a page with an unreadable body should yield an empty value, not fail the item
+		try {
+			value = adfToPlainText(doc)
+				.replace(/[ \t]+\n/g, '\n')
+				.replace(/\n{3,}/g, '\n\n')
+				.trim();
+		} catch {
+			value = '';
+		}
+	}
+	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
 }
 
 export type NextPageParam = { key: 'cursor' | 'start'; value: string };
@@ -220,6 +418,15 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	return next?.key === 'cursor' ? next.value : undefined;
 }
 
+/** `extractNextCursor` with a repeat guard: a cursor seen before ends the
+ * pagination instead of looping forever on a server that echoes it back. */
+export function nextUnseenCursor(response: IDataObject, seen: Set<string>): string | undefined {
+	const cursor = extractNextCursor(response);
+	if (cursor === undefined || seen.has(cursor)) return undefined;
+	seen.add(cursor);
+	return cursor;
+}
+
 /** Validates a count parameter that an expression may hand back as a numeric string. */
 export function parsePositiveInt(
 	this: IExecuteFunctions,
@@ -229,11 +436,39 @@ export function parsePositiveInt(
 ): number {
 	const value = Number(raw);
 	if (!Number.isFinite(value) || value < 1) {
-		throw new NodeOperationError(this.getNode(), `${label} must be a number of at least 1`, {
+		throw new NodeOperationError(this.getNode(), `${label} must be a finite number of at least 1`, {
 			itemIndex,
 		});
 	}
 	return Math.floor(value);
+}
+
+/** Accumulates `results` across v2 cursor pages until `max` records are collected
+ * (pass Infinity for Return All) or the server stops yielding new cursors. It
+ * deliberately keeps going past an empty page that still carries `_links.next`
+ * (observed from Atlassian; see methods/listSearch.ts) and breaks on any repeated
+ * cursor, which would otherwise loop forever when `max` is Infinity. */
+export async function fetchPaginatedResults(
+	this: IExecuteFunctions,
+	endpoint: string,
+	max: number,
+	qs: IDataObject = {},
+): Promise<IDataObject[]> {
+	const records: IDataObject[] = [];
+	const seenCursors = new Set<string>();
+	let cursor: string | undefined;
+	do {
+		const pageQs: IDataObject = { ...qs, limit: Math.min(max - records.length, PAGE_LIMIT) };
+		if (cursor !== undefined) pageQs.cursor = cursor;
+
+		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, pageQs);
+		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+		records.push.apply(records, results);
+
+		cursor = nextUnseenCursor(response, seenCursors);
+	} while (cursor !== undefined && records.length < max);
+
+	return records.length > max ? records.slice(0, max) : records;
 }
 
 function asString(value: unknown): string {

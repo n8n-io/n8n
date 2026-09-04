@@ -22,8 +22,14 @@ function notifyListeners(): void {
 }
 
 export function register(modal: ModalDefinition): void {
-	if (modals.has(modal.key)) {
-		console.warn(`Modal with key "${modal.key}" is already registered. Skipping.`);
+	const existing = modals.get(modal.key);
+	if (existing) {
+		// Replaying the same definition is how a re-login re-runs registration —
+		// a no-op, not a collision. Only a different definition claiming a taken
+		// key is worth warning about.
+		if (existing !== modal) {
+			console.warn(`Modal with key "${modal.key}" is already registered. Skipping.`);
+		}
 		return;
 	}
 

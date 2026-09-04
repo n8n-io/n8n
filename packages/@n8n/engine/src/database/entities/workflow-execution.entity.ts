@@ -1,5 +1,4 @@
 import {
-	BeforeInsert,
 	Column,
 	CreateDateColumn,
 	Entity,
@@ -14,7 +13,6 @@ import type {
 	TriggerOutputs,
 } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
-import { generateId } from '../generate-id';
 
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])
@@ -46,9 +44,4 @@ export class WorkflowExecution {
 
 	@Column({ name: 'finished_at', type: 'timestamptz', nullable: true, precision: 3 })
 	finishedAt!: Date | null;
-
-	@BeforeInsert()
-	setId(): void {
-		if (!this.id) this.id = generateId();
-	}
 }

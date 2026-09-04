@@ -6,7 +6,7 @@
  */
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
-import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions, toEngineConnections } from '@n8n/workflow-sdk';
 import type {
 	IConnections,
 	INodeInputConfiguration,
@@ -335,7 +335,7 @@ async function computeAiGatewayIssues(
 				.catch(() => true);
 			if (!supported) {
 				(issues.unsupportedCredentialType ??= []).push(
-					`Credential type "${credType}" is not supported by n8n credits. Use a stored credential of that type or pick a different node.`,
+					`Credential type "${credType}" is not supported by Gateway credits. Use a stored credential of that type or pick a different node.`,
 				);
 			}
 		}
@@ -358,7 +358,7 @@ async function computeAiGatewayIssues(
 		const typeVersion = node.typeVersion ?? 1;
 		if (typeVersion < gatewayMeta.minVersion) {
 			(issues.belowMinVersion ??= []).push(
-				`n8n credits requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
+				`Gateway credits require typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
 			);
 		}
 	}
@@ -378,7 +378,7 @@ async function computeAiGatewayIssues(
 				const scope =
 					resource === AI_GATEWAY_OPERATION_ONLY_MARKER ? '' : ` on resource "${resource}"`;
 				(issues.unsupportedOperation ??= []).push(
-					`Operation "${operation}"${scope} is not supported via n8n credits. Switch to a supported operation or use a stored credential.`,
+					`Operation "${operation}"${scope} is not supported via Gateway credits. Switch to a supported operation or use a stored credential.`,
 				);
 			}
 		}
@@ -391,7 +391,7 @@ async function computeAiGatewayIssues(
 			const value = parameters[propName];
 			if (value === undefined || value === null || value === '') continue;
 			(issues.hiddenPropertySet ??= []).push(
-				`Property "${propName}" is not supported via n8n credits for this node. Remove it or use a stored credential.`,
+				`Property "${propName}" is not supported via Gateway credits for this node. Remove it or use a stored credential.`,
 			);
 		}
 	}
@@ -669,7 +669,7 @@ export async function validateWorkflowConfig(
 	// Invert connections once — every per-node input-issue check needs the
 	// destination-keyed view, and mapConnectionsByDestination is O(n).
 	const connectionsByDestination = mapConnectionsByDestination(
-		(workflowJson.connections ?? {}) as IConnections,
+		toEngineConnections(workflowJson.connections),
 	);
 
 	// Fetch the latest run data once for the workflow. Skip when we have no

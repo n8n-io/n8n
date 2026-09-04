@@ -331,6 +331,51 @@
 
 			var pendingId = null;
 
+			// The frame is sandboxed to an opaque origin, so its own navigations are
+			// treated as cross-site and lose the form's auth cookie. It asks the shell to
+			// move it instead, and the shell — on the real origin — sets `src`, which is a
+			// same-origin navigation that keeps the cookie. Narrowed to this form's own
+			// follow-up pages: the frame is author-scriptable, so this must not become a
+			// way to point it at arbitrary n8n pages. Returns null when the target isn't
+			// one of them.
+			//
+			// The flag tells the page it is rendering inside this shell, which is what
+			// makes it hand its own next navigation back here instead of doing it itself.
+			var FORM_WAITING_PATH = '{{formWaitingPath}}';
+			function resolveFrameNavigation(target) {
+				if (typeof target !== 'string' || !target || !FORM_WAITING_PATH) return null;
+				try {
+					var here = new URL(window.location.href);
+					var resolved = new URL(target, here);
+					if (resolved.origin !== here.origin) return null;
+					if (
+						resolved.pathname !== FORM_WAITING_PATH &&
+						resolved.pathname.indexOf(FORM_WAITING_PATH + '/') !== 0
+					) {
+						return null;
+					}
+					resolved.searchParams.set('n8nShellHosted', '1');
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
+			// The author's own redirect target, once the form is done. Any http(s) URL is
+			// allowed — this is where the author said to send the submitter, and a form
+			// outside the shell goes there too — but the scheme has to be one of those two.
+			// Returns null otherwise.
+			function resolveExternalRedirect(target) {
+				if (typeof target !== 'string' || !target) return null;
+				try {
+					var resolved = new URL(target, window.location.href);
+					if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') return null;
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
 			// Connected only on the oauth-callback success signal — never on popup close,
 			// which also happens on provider-side failures.
 			function onSuccessSignal() { if (pendingId) markConnected(pendingId); }
@@ -341,10 +386,25 @@
 				});
 			} catch (e) {}
 			window.addEventListener('message', function (event) {
-				// The sandboxed form iframe can't spoof a connect: its only accepted message is
-				// the POST gate's rejection, which carries ids and moves rows one way only, so
-				// the worst author script can do is degrade its own form's UX.
+				// The sandboxed form iframe can't spoof a connect: it is only ever answered
+				// with a page move inside this form, the author's own end-of-form redirect,
+				// or the POST gate's rejection, which carries ids and moves rows one way only
+				// — so the worst author script can do is degrade its own form's UX.
+				// `event.origin` is the string 'null' for an opaque-origin frame and cannot be
+				// checked; `event.source` identifies it.
 				if (frame && event.source === frame.contentWindow) {
+					if (event.data && event.data.type === 'n8n-form-navigate') {
+						var next = resolveFrameNavigation(event.data.url);
+						if (next) frame.src = next;
+						return;
+					}
+					if (event.data && event.data.type === 'n8n-form-redirect') {
+						// The form is finished, so the author's redirect takes the whole tab —
+						// the same place a form rendered without this shell would end up.
+						var away = resolveExternalRedirect(event.data.url);
+						if (away) window.location.replace(away);
+						return;
+					}
 					handleGateRejection(event.data);
 					return;
 				}

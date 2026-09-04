@@ -125,6 +125,15 @@ describe('confirmation payload → tool resume schema contract', () => {
 			targets: [['credentials', credentialsResumeSchema]],
 		},
 		{
+			label: 'credential destination approval',
+			request: {
+				kind: 'credentialDestination',
+				approved: true,
+				origin: 'https://api.example.com',
+			},
+			targets: [['workflows (setup wizard)', workflowsResumeSchema]],
+		},
+		{
 			label: 'domain access approval',
 			request: { kind: 'domainAccessApprove', domainAccessAction: 'allow_domain' },
 			targets: [['domain gating', domainGatingResumeSchema]],
@@ -191,6 +200,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		questions: true,
 		credentialSelection: true,
 		credentialAutoSetup: true,
+		credentialDestination: true,
 		domainAccessApprove: true,
 		domainAccessDeny: true,
 		planDeny: true,

@@ -184,13 +184,11 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	type FinalizeInternals = {
 		publishRunFinish: ReturnType<typeof vi.fn>;
 		emitRunMetrics: ReturnType<typeof vi.fn>;
-		saveAgentTreeSnapshot: ReturnType<typeof vi.fn>;
 		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
 		finalizeRun: (
 			threadId: string,
 			runId: string,
 			status: 'completed' | 'cancelled' | 'errored',
-			snapshotStorage: unknown,
 			options?: { userId?: string; modelId?: ModelConfig },
 		) => Promise<void>;
 	};
@@ -201,7 +199,6 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as FinalizeInternals;
 		service.publishRunFinish = vi.fn();
 		service.emitRunMetrics = vi.fn();
-		service.saveAgentTreeSnapshot = vi.fn(async () => {});
 		service.refineTitleIfNeeded = vi.fn(async () => {});
 		return service;
 	}
@@ -209,7 +206,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	it('refines the title when a completed run supplies userId and modelId', async () => {
 		const service = createService();
 
-		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1', modelId });
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', modelId });
 
 		expect(service.refineTitleIfNeeded).toHaveBeenCalledWith('thread-1', 'user-1', modelId);
 	});
@@ -217,7 +214,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 	it('skips refinement when modelId is missing', async () => {
 		const service = createService();
 
-		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1' });
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1' });
 
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
 	});

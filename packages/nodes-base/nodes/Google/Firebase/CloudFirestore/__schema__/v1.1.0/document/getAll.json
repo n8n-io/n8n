@@ -19,9 +19,15 @@
         "id": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
         "updateTime": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

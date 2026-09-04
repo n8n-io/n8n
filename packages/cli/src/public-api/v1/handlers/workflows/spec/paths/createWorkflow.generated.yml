@@ -8,6 +8,7 @@ x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 requestBody:
+  required: true
   content:
     application/json:
       schema:
@@ -860,14 +861,19 @@ responses:
                 properties:
                   id:
                     type: string
+                    readOnly: true
+                    example: 2tUt1wbLX592XDdX
                   name:
                     type: string
+                    example: Production
                   createdAt:
                     type: string
                     format: date-time
+                    readOnly: true
                   updatedAt:
                     type: string
                     format: date-time
+                    readOnly: true
                 required:
                   - id
                   - name
@@ -1198,5 +1204,7 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

@@ -376,6 +376,7 @@ post:
               - projects
               - bindings
               - credentials
+              - dataTables
               - variables
               - tags
             properties:
@@ -631,6 +632,18 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+              dataTables:
+                type: object
+                required:
+                  - matched
+                  - created
+                properties:
+                  matched:
+                    type: integer
+                    minimum: 0
+                  created:
+                    type: integer
+                    minimum: 0
               variables:
                 type: object
                 description: >

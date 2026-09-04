@@ -36,6 +36,7 @@ import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
+import { OutboundProxyConfig } from './configs/outbound-proxy.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -61,15 +62,26 @@ export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
+export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
+export {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	isLegacyBooleanSetting,
+	parseContentSecurityPolicy,
+} from './configs/content-security-policy';
+export type {
+	ContentSecurityPolicyReportOnlySetting,
+	ContentSecurityPolicySetting,
+} from './configs/content-security-policy';
 export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
@@ -231,6 +243,9 @@ export class GlobalConfig {
 
 	@Nested
 	httpRequest: HttpRequestConfig;
+
+	@Nested
+	outboundProxy: OutboundProxyConfig;
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')

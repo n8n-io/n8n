@@ -216,6 +216,20 @@ export interface TestCaseCredential {
 	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
 	 *  passes. */
 	valid?: boolean;
+	/** Defaults to false. true models a credential the user saved without filling
+	 *  anything in — seeded with no field values, and kept off the connection-test
+	 *  bypass so nothing resolves it as working. The shape behind a re-offered
+	 *  empty generic-auth credential.
+	 *
+	 *  DOES NOT SURVIVE A LANG-TRACER PUSH yet. Its case-write schema validates
+	 *  each credential against a non-strict `z.object({ type, name, valid })`
+	 *  (lang-tracer `packages/server/src/lib/case-writes.ts`), so this key is
+	 *  silently stripped and the suite copy seeds a FILLED credential instead —
+	 *  a case relying on it then fails in CI for a reason unrelated to the
+	 *  product. `eval:langtracer-push` catches it (`did not store credentials`,
+	 *  non-zero exit); until lang-tracer declares the field, a case using it
+	 *  lives on disk. */
+	blank?: boolean;
 }
 
 export interface WorkflowTestCase {
@@ -295,6 +309,26 @@ export interface ExecutionScenarioResult {
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+}
+
+/**
+ * A seeded workflow to run BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance, so a case can ask about "the last
+ * run" and the honest answer requires the agent to go and read it. Without this,
+ * execution history is unreachable as a premise: the harness only ever executes a
+ * workflow *after* a build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
+	workflow: string;
+	/**
+	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is
+	 * how a prior run is made to fail in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to find out how.
+	 */
+	hints?: string;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the

@@ -142,7 +142,7 @@ export class N8nPackageParser {
 
 	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
 	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
-		const dropped = WorkflowHelpers.dropInvalidNodeGroups(
+		const dropped = WorkflowHelpers.dropInvalidWorkflowGroups(
 			entity,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 		);

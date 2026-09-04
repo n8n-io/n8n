@@ -10,11 +10,12 @@ import Layout from '@n8n/chat/components/Layout.vue';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import { listenForCredentialStatus } from '@n8n/chat/utils/credentialStatus';
 
 const { t } = useI18n();
 const chatStore = useChat();
 
-const { messages, currentSessionId } = chatStore;
+const { messages, currentSessionId, credentialStatus } = chatStore;
 const { options } = useOptions();
 
 const showCloseButton = computed(() => options.mode === 'window' && options.showWindowCloseButton);
@@ -102,8 +103,13 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 }
 
 let clearOnMessageSent: () => void;
+let stopListeningForCredentialStatus: () => void;
 
 onMounted(async () => {
+	stopListeningForCredentialStatus = listenForCredentialStatus((status) => {
+		credentialStatus.value = status;
+	});
+
 	if (!messages.value.length && options.messageHistory) {
 		messages.value = options.messageHistory.map((m) => ({ ...m }));
 	}
@@ -122,6 +128,9 @@ onMounted(async () => {
 onUnmounted(() => {
 	if (clearOnMessageSent) {
 		clearOnMessageSent();
+	}
+	if (stopListeningForCredentialStatus) {
+		stopListeningForCredentialStatus();
 	}
 });
 </script>

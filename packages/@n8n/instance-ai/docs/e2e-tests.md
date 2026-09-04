@@ -20,7 +20,7 @@ End-to-end tests for the Instance AI feature, using recorded LLM responses repla
 
 ## Architecture Overview
 
-Instance AI tests exercise a multi-agent LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (workspace file tools, build-workflow, run-workflow, etc.), and the test asserts on the resulting UI state.
+Instance AI tests exercise an agentic LLM system that builds and executes n8n workflows. Each test sends a chat message, the LLM orchestrates tool calls (workspace file tools, build-workflow, executions, etc.), and the test asserts on the resulting UI state.
 
 The challenge: LLM API calls are expensive, non-deterministic, and unavailable in CI. The solution is a record/replay architecture with two layers:
 
@@ -79,11 +79,11 @@ Consider a test that builds and runs a workflow:
 ```
 Recording session:
   build-workflow({ filePath: "src/workflows/main.workflow.ts" }) → { workflowId: "5" }
-  run-workflow({ workflowId: "5" }) → { executionId: "exec-100" }
+  executions({ action: "run", workflowId: "5" }) → { executionId: "exec-100" }
 
 Replay session:
   build-workflow({ filePath: "src/workflows/main.workflow.ts" }) → { workflowId: "12" }  ← different auto-increment ID
-  run-workflow({ workflowId: "5" }) → ERROR  ← LLM still says "5" (from recorded response)
+  executions({ action: "run", workflowId: "5" }) → ERROR  ← LLM still says "5" (from recorded response)
 ```
 
 The LLM response is pre-recorded and contains the old `workflowId: "5"`. But in the replay session, `build-workflow` created workflow `"12"`. When the LLM tells the agent to run workflow `"5"`, it doesn't exist.
@@ -96,16 +96,21 @@ The `IdRemapper` maintains a bidirectional mapping of old IDs to new IDs, learne
 1. build-workflow executes with the recorded filePath → output: { workflowId: "12" }
 2. IdRemapper compares recorded output { workflowId: "5" } with real output { workflowId: "12" }
 3. Learns mapping: "5" → "12"
-4. Next tool call: run-workflow({ workflowId: "5" })
-5. IdRemapper translates input: run-workflow({ workflowId: "12" })
+4. Next tool call: executions({ action: "run", workflowId: "5" })
+5. IdRemapper translates input: executions({ action: "run", workflowId: "12" })
 6. Tool executes successfully with the real ID
 ```
 
 ID extraction is **field-name aware** — only fields named `id` or ending with `Id` (e.g., `workflowId`, `executionId`, `credentialId`) are compared. This prevents false mappings from unrelated data like execution output, web content, or file blobs.
 
-### Why the Proxy Can Ignore Request Bodies
+### Why the Proxy Does Not Match Full Request Bodies
 
-During recording, the fixture's `transform` callback strips LLM request bodies down to an 80-character system prompt substring. This means MockServer matches requests by path and prompt prefix only, not by the full body. Since tool results flow into LLM request bodies (as tool_result content blocks), and those results now contain different IDs, the proxy would fail to match if it compared full bodies. By ignoring bodies, the proxy stays deterministic regardless of tool output content.
+During recording, the fixture's `transform` callback replaces the full LLM
+request body with a regex containing an 80-character system prompt anchor and,
+when available, a stable anchor derived from the latest message or tool context.
+Volatile IDs and dynamic prompt content are normalized. Since tool results flow
+into LLM request bodies as `tool_result` content blocks, matching the full body
+would fail when replay produces different IDs or other runtime data.
 
 ### Shared State Across Runs
 
@@ -120,18 +125,19 @@ Tools are categorized by whether they can execute in CI:
 
 ### Tier 1: Real Execution + ID Remapping (default)
 
-Tools that only need the n8n database and engine. They execute for real, and the `IdRemapper` translates IDs in both directions.
+Every traceable tool that is not in the exact pure-replay allowlist executes for
+real. The `IdRemapper` translates IDs in both directions.
 
 | Tool | Why Real Execution |
 |------|-------------------|
 | Workspace file tools | Write the source file consumed by the build |
 | `build-workflow` | Creates real workflow in DB for preview |
-| `run-workflow` | Creates real execution for status display |
-| `setup-workflow` | Configures workflow nodes |
-| `search-nodes` | Queries node catalog (local) |
-| `get-execution` | Reads execution results |
-| Credential tools | Creates real credentials |
-| Data table tools | Creates real data tables |
+| `executions(action="run")` | Creates real execution for status display |
+| `workflows(action="setup")` | Configures workflow nodes |
+| `nodes(action="type-definition")` | Reads the local node catalog |
+| `executions(action="get")` | Reads execution results |
+| `credentials` | Reads or changes credential metadata through the local n8n services |
+| `data-tables` | Creates real data tables |
 | `ask-user` | May contain IDs in response |
 
 The wrapping flow:
@@ -149,13 +155,21 @@ async execute(input, context) {
 
 ### Tier 2: Pure Replay (external dependency tools)
 
-Tools that need internet access or external services. They skip real execution entirely and return the recorded output (with ID remapping applied).
+The pure-replay allowlist currently contains three legacy standalone tool names.
+These names skip real execution and return the recorded output with ID remapping.
 
 | Tool | Why Pure Replay |
 |------|----------------|
-| `web-search` | No internet in CI |
-| `fetch-url` | No internet in CI |
-| `test-credential` | Needs external service |
+| `web-search` | Legacy standalone web-search tool name |
+| `fetch-url` | Legacy standalone URL-fetch tool name |
+| `test-credential` | Legacy standalone credential-test tool name |
+
+The current registry exposes these operations through the consolidated
+`research` and `credentials` tools. Replay compares the complete registered
+tool name, not the action. Therefore, current calls to
+`research(action="web-search")`, `research(action="fetch-url")`, and
+`credentials(action="test")` use Tier 1 real execution. This is the current
+implementation, even though these operations can require external services.
 
 The wrapping flow:
 
@@ -166,14 +180,11 @@ async execute(input, context) {
 }
 ```
 
-### Not Wrapped
+### Tools that are not traceable
 
-Some tools pass through without wrapping:
-
-| Tool | Why |
-|------|-----|
-| `create-tasks` | Pure text orchestration, no IDs |
-| `update-tasks` | Orchestration bookkeeping |
+The replay layer wraps every traceable native tool. A tool passes through only
+when it does not implement the native traceable-tool interface. There is no
+special pass-through list for orchestration tools.
 
 ## Trace Format
 
@@ -181,10 +192,10 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 
 ```jsonl
 {"kind":"header","version":1,"testName":"should-approve-workflow-execution","recordedAt":"2026-04-09T12:00:00Z"}
-{"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"search-nodes","input":{...},"output":{...}}
-{"stepId":2,"kind":"tool-call","agentRole":"workflow-builder","toolName":"build-workflow","input":{"filePath":"src/workflows/main.workflow.ts"},"output":{"workflowId":"5","filePath":"src/workflows/main.workflow.ts"}}
-{"stepId":4,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"denied":true},"suspendPayload":{...}}
-{"stepId":5,"kind":"tool-resume","agentRole":"orchestrator","toolName":"run-workflow","input":{"workflowId":"5"},"output":{"executionId":"exec-100"}}
+{"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"nodes","input":{...},"output":{...}}
+{"stepId":2,"kind":"tool-call","agentRole":"orchestrator","toolName":"build-workflow","input":{"filePath":"src/workflows/main.workflow.ts"},"output":{"workflowId":"5","filePath":"src/workflows/main.workflow.ts"}}
+{"stepId":4,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{},"suspendPayload":{...}}
+{"stepId":5,"kind":"tool-resume","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{"executionId":"exec-100"}}
 ```
 
 ### Event Types
@@ -199,10 +210,10 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 The `TraceIndex` groups events by `agentRole` with independent cursors per role. This handles interleaved orchestrator and sub-agent calls:
 
 ```
-orchestrator: [search-nodes, run-workflow-suspend, run-workflow-resume]
+orchestrator: [nodes, build-workflow, executions-suspend, executions-resume]
                 ^cursor=0
-workflow-builder: [build-workflow]
-                   ^cursor=0
+agent-builder: [read_config, write_config]
+               ^cursor=0
 ```
 
 When a tool is called, `traceIndex.next(role, toolName)` advances that role's cursor and validates the tool name matches. A mismatch means the agent diverged from the recorded path — the test fails with a clear error.
@@ -213,8 +224,7 @@ Each test's HTTP exchanges are stored as individual JSON files:
 
 ```
 expectations/instance-ai/should-send-message-and-receive-assistant-response/
-  0000-1775805992870-unknown-host-POST-_v1_messages-8a23f6c2.json    ← Anthropic API call
-  0001-1775805993100-api-staging.n8n.io-GET-_api_community_nodes-272f77d5.json  ← Node catalog
+  0000-1783350959265-unknown-host-POST-_v1_messages-9ed7b981.json  ← Anthropic API call
   trace.jsonl                                                     ← Tool trace
 ```
 
@@ -232,7 +242,12 @@ Expectations are loaded with `sequential: true`, which sets `remainingTimes: 1` 
 
 ### Request Body Matching
 
-LLM request bodies are replaced during recording with an 80-character substring of the system prompt. This is enough to distinguish between different types of calls (title generation vs. orchestrator vs. sub-agent) without being so specific that minor prompt changes break replay.
+LLM request bodies are replaced during recording with a regex containing an
+80-character system prompt anchor and, when available, a stable anchor from the
+latest message or tool context. The system anchor distinguishes call types
+(title generation, orchestrator, or sub-agent), while the latest-context anchor
+distinguishes successive calls of the same type without matching the full,
+volatile request body.
 
 ## Test Infrastructure
 
@@ -243,7 +258,7 @@ LLM request bodies are replaced during recording with an 80-character substring 
 | `packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts` | Test fixtures — proxy setup, recording/replay orchestration |
 | `packages/@n8n/instance-ai/src/tracing/trace-replay.ts` | `TraceIndex`, `IdRemapper`, `TraceWriter`, JSONL parsing |
 | `packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts` | Tool wrapping — `replayWrapTools`, `recordWrapTools` |
-| `packages/@n8n/instance-ai/src/tracing/types.ts` | `InstanceAiTraceContext`, `TraceReplayMode` |
+| `packages/@n8n/instance-ai/src/types.ts` | `InstanceAiTraceContext`, `TraceReplayMode` |
 | `packages/cli/src/modules/instance-ai/instance-ai.service.ts` | Trace mode initialization, shared state management |
 | `packages/cli/src/modules/instance-ai/instance-ai.controller.ts` | Test-only REST endpoints for trace delivery |
 | `packages/testing/containers/services/proxy.ts` | `ProxyServer` class (MockServer client) |
@@ -266,13 +281,23 @@ Enabled by `E2E_TESTS=true` (set automatically by the Playwright fixture base):
 ### Test Suites
 
 | Spec File | Tests | What's Covered |
-|-----------|-------|----------------|
-| `instance-ai-chat-basics.spec.ts` | 4 | Empty state, send/receive, message timeline, persistence across reload |
-| `instance-ai-sidebar.spec.ts` | 4 | Create thread, switch threads, rename, delete |
-| `instance-ai-artifacts.spec.ts` | 2 | Artifact card display, click-to-open preview |
-| `instance-ai-timeline.spec.ts` | 1 | Artifact cards after workflow build |
-| `instance-ai-workflow-preview.spec.ts` | 3 | Auto-open preview, canvas nodes, close button |
-| `instance-ai-confirmations.spec.ts` | 2 | Approve/deny workflow execution |
+|-----------|------:|----------------|
+| `instance-ai-artifacts.spec.ts` | 2 | Artifact cards and click-to-open preview |
+| `instance-ai-attachments.spec.ts` | 1 | HTML attachment extraction |
+| `instance-ai-background-lifecycle.spec.ts` | 1 | Background builder cancellation recovery |
+| `instance-ai-chat-basics.spec.ts` | 4 | Empty state, send/receive, timeline, and reload persistence |
+| `instance-ai-confirmations.spec.ts` | 5 | Restore, execution approval, and workflow-edit approval or denial *(two execution cases are skipped)* |
+| `instance-ai-multimain.spec.ts` | 1 | Cross-main SSE delivery |
+| `instance-ai-onboarding.spec.ts` | 2 | Search setup success and failure |
+| `instance-ai-out-of-credits.spec.ts` | 1 | Model-quota exhaustion state |
+| `instance-ai-oversized-attachments.spec.ts` | 5 | Client, API, batch, and provider attachment limits |
+| `instance-ai-remediation-guard.spec.ts` | 1 | Submitted-workflow preservation during setup remediation |
+| `instance-ai-sidebar.spec.ts` | 4 | Create, switch, rename, and delete threads |
+| `instance-ai-timeouts.spec.ts` | 1 | Stuck background-task timeout *(currently marked `fixme`)* |
+| `instance-ai-workflow-execution.spec.ts` | 5 | Workflow and node runs, results, and reruns |
+| `instance-ai-workflow-preview.spec.ts` | 4 | Auto-open, nodes, execution state, and close behavior |
+| `instance-ai-workflow-setup.spec.ts` | 10 | Credential, parameter, skip, group, and subnode setup flows *(currently `fixme` on SQLite/coverage and skipped on multi-main)* |
+| `thread-launcher.spec.ts` | 2 | Valid and invalid template deep links |
 
 ## Running Tests
 
@@ -360,7 +385,7 @@ The architecture is deliberately tolerant of many common changes:
 | Change | Why It's Safe |
 |--------|---------------|
 | **Prompt wording changes** (within the same 80-char prefix) | Proxy matches on an 80-character substring of the system prompt, not the full text. Minor rewording that doesn't alter this prefix passes through unchanged. |
-| **Tool output differences** (new fields, different execution data) | Proxy ignores request bodies entirely — tool results flow into LLM request bodies as `tool_result` blocks, but the proxy matches by path and prompt prefix only. The `IdRemapper` compares by field path, so extra fields are ignored. |
+| **Tool output differences** (new fields, different execution data) | The proxy does not match the full request body. Its reduced regex uses stable message or tool-context anchors and normalizes volatile IDs. The `IdRemapper` compares by field path, so extra fields are ignored as long as they do not change the selected stable anchor. |
 | **Database auto-increment IDs** | This is the core problem the `IdRemapper` solves. IDs like `workflowId`, `executionId`, `credentialId` are automatically remapped between the recorded session and the current run. |
 | **Frontend component changes** | Tests assert on data-testid attributes and semantic content, not CSS or layout. Frontend refactors that preserve test IDs don't affect recordings. |
 | **Node catalog changes** (new community nodes, updated descriptions) | Community node API expectations have been removed — the proxy doesn't replay these. Only Anthropic API calls are replayed. |
@@ -381,7 +406,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 ### Design Decisions That Maximize Robustness
 
-1. **80-character prompt prefix matching** — Long enough to distinguish between call types (title generation vs. orchestrator vs. sub-agent) but short enough that minor prompt edits don't break replay. The prefix is extracted during recording by the fixture's `transform` callback.
+1. **Prompt and latest-context anchors** — An 80-character system prompt anchor distinguishes call types (title generation vs. orchestrator vs. sub-agent). When available, a stable anchor from the latest message or tool context distinguishes successive calls of the same type. Both are extracted during recording by the fixture's `transform` callback.
 
 2. **Field-name-aware ID extraction** — The `IdRemapper` only compares fields named `id` or ending with `Id` (e.g., `workflowId`, `executionId`). This prevents false mappings from execution output data, web content, or other string fields that happen to differ between runs.
 
@@ -389,7 +414,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run and planned follow-ups). This means a workflowId learned in run 1 is available for remapping in run 2.
 
-5. **Request body stripping** — During recording, LLM request bodies are replaced with just the prompt prefix. This means the recorded expectations don't encode tool results, conversation history, or any other dynamic content. Replay stays deterministic regardless of what tools return.
+5. **Reduced request-body matching** — During recording, full LLM request bodies are replaced with regex anchors for the agent type and stable turn context. Volatile IDs and dynamic prompt context are normalized so replay does not depend on the complete conversation or raw tool output.
 
 ### Keeping Tests Stable
 

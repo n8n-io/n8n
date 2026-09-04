@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
@@ -68,9 +68,6 @@
       },
       "source-control": {
         "description": "Pull changes from the configured source control provider"
-      },
-      "git-connections": {
-        "description": "Create and manage Git repository connections"
       },
       "package": {
         "description": "Export and import workflows as n8n packages (beta)"
