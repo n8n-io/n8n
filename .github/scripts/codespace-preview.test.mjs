@@ -22,11 +22,31 @@ const PREVIEW = {
 };
 
 describe('operationFor', () => {
-	it('maps each handled pull_request action', () => {
-		assert.equal(operationFor('labeled'), 'up');
+	const LABEL = 'codespace-preview';
+
+	it('creates and deletes on the trigger label', () => {
+		assert.equal(operationFor('labeled', LABEL), 'up');
+		assert.equal(operationFor('unlabeled', LABEL), 'down');
+	});
+
+	it('re-serves on a push or a preview: toggle, without creating a box', () => {
 		assert.equal(operationFor('synchronize'), 'refresh');
-		assert.equal(operationFor('unlabeled'), 'down');
+		// A toggle configures an instance that exists; it must never create or delete one.
+		assert.equal(operationFor('labeled', 'preview:enterprise'), 'refresh');
+		assert.equal(operationFor('unlabeled', 'preview:enterprise'), 'refresh');
+		assert.equal(operationFor('labeled', 'preview:debug'), 'refresh');
+	});
+
+	it('deletes when the PR closes', () => {
 		assert.equal(operationFor('closed'), 'down');
+	});
+
+	it('ignores a label that is not ours', () => {
+		assert.equal(operationFor('labeled', 'bug'), undefined);
+		assert.equal(operationFor('unlabeled', 'Do Not Merge'), undefined);
+		// A near-miss must not be read as the trigger label.
+		assert.equal(operationFor('labeled', 'codespace-preview-2'), undefined);
+		assert.equal(operationFor('labeled', undefined), undefined);
 	});
 
 	it('returns undefined for an action the workflow does not handle', () => {

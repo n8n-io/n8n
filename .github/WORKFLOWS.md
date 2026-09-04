@@ -247,9 +247,11 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Label Triggers
 
-| Label                | Workflow                       | Effect                                          |
-|----------------------|--------------------------------|-------------------------------------------------|
-| `codespace-preview`  | `util-codespace-preview.yml`   | Runs the PR in a Codespace, comments the URL    |
+| Label                 | Workflow                     | Effect                                             |
+|-----------------------|------------------------------|----------------------------------------------------|
+| `codespace-preview`   | `util-codespace-preview.yml` | Runs the PR in a Codespace, comments the URL        |
+| `preview:enterprise`  | `util-codespace-preview.yml` | Re-serves the instance with an enterprise licence   |
+| `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
 
 **Why:** A reviewer gets a running instance of the PR without a Docker build or a
 cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
@@ -259,6 +261,33 @@ label, or closing the PR, deletes the box.
 
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
+
+#### Preview toggles
+
+A `preview:*` label configures an instance that already exists, so adding or
+removing one re-serves the box instead of creating or deleting it. It does
+nothing on a PR without `codespace-preview`.
+
+The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
+`preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
+those slugs into environment inside the box. Add a toggle there, in one place.
+
+Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
+appears in the box's process list, so a value is never passed through it —
+`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+
+`preview:enterprise` needs a **Codespaces** secret named
+`N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
+secret, not an Actions secret, and it is unrelated to `CODESPACE_PREVIEW_TOKEN`.
+Use the sandbox key: the preview sets tenant `1001` to match, and the default
+tenant (`1`) rejects it. Without the secret the preview still serves, unlicensed,
+and says so in the log.
+
+Note what the label does and does not control. Codespaces injects the secret into
+**every** preview box, so the label decides whether the licence reaches n8n, not
+whether the key reaches the box. Anyone who can run PR-head code can read
+`/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
+in this repository, so that is the set of people who already have write access.
 
 #### The `CODESPACE_PREVIEW_TOKEN` secret
 

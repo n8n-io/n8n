@@ -13,6 +13,8 @@ import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
+import { codespaceSecret } from './codespace-env.mjs';
+import { envForSlugs } from './preview-labels.mjs';
 import { serveHealthPath, servePort, waitForHealth, waitForReady } from './serve-ready.mjs';
 
 const SESSION = 'n8n-preview';
@@ -79,12 +81,25 @@ const signinEnv = [
 	`PREVIEW_OWNER_PASSWORD=${OWNER_PASSWORD}`,
 ].flatMap((pair) => ['-e', pair]);
 
+// `preview.mjs` passes the PR's preview:* label slugs. Resolve them here, where a
+// codespace secret is readable, and apply them before the sign-in variables so a
+// toggle can never displace the preview's own wiring.
+const slugs = (process.env.PREVIEW_LABELS ?? '').split(',').filter(Boolean);
+const { env: labelEnv, warnings } = envForSlugs(slugs, codespaceSecret);
+for (const warning of warnings) console.warn(warning);
+if (labelEnv.length)
+	// Names only: one of these values is a licence key.
+	console.log(
+		`Applying preview labels: ${slugs.join(', ')} → ${labelEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
+	);
+
 console.log(`Starting backend in tmux session '${SESSION}' (log: ${BE_LOG})…`);
 const started = tmux(
 	'new',
 	'-d',
 	'-s',
 	SESSION,
+	...labelEnv.flatMap((pair) => ['-e', pair]),
 	...signinEnv,
 	`cd ${repoRoot} && exec pnpm dev:be > ${BE_LOG} 2>&1`,
 );

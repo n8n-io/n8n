@@ -36,13 +36,18 @@ jobs:
   preview:
     name: Preview instance
     # `github.event.label.name` is the label that just changed. `labels.*.name` is
-    # the set of labels the PR carries now, which is what a push or a close needs.
+    # the set of labels the PR carries now, which is what a push, a close, or a
+    # `preview:*` toggle needs. A toggle only matters on a PR that already has a
+    # preview, so it is gated on `codespace-preview` being present.
     if: |
       github.repository == 'n8n-io/n8n' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       (
         ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
           github.event.label.name == 'codespace-preview') ||
+        ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+          startsWith(github.event.label.name, 'preview:') &&
+          contains(github.event.pull_request.labels.*.name, 'codespace-preview')) ||
         ((github.event.action == 'synchronize' || github.event.action == 'closed') &&
           contains(github.event.pull_request.labels.*.name, 'codespace-preview'))
       )
@@ -54,12 +59,9 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout base branch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
-          # TODO: restore before merge. The job holds the preview token, so a PR
-          # must not supply the script that reads it. Commented out only to let
-          # this PR test its own changes to scripts/preview.mjs.
-          #ref: ${{ github.event.pull_request.base.ref }}
+          ref: ${{ github.event.pull_request.base.ref }}
           persist-credentials: false
 
       - name: Setup Node.js
@@ -79,5 +81,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
           EVENT_ACTION: ${{ github.event.action }}
+          LABEL_NAME: ${{ github.event.label.name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node .github/scripts/codespace-preview.mjs

@@ -13,6 +13,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { PREVIEW_LABEL_PREFIX } from '../../scripts/preview-labels.mjs';
 import { ensureEnvVar, postOrUpdateComment } from './github-helpers.mjs';
 
 export const BOT_MARKER = '<!-- codespace-preview -->';
@@ -26,16 +27,22 @@ const RETENTION_PERIOD = '24 hours';
 const PREVIEW_SCRIPT = fileURLToPath(new URL('../../scripts/preview.mjs', import.meta.url));
 
 /**
+ * A `preview:*` label configures an instance that already exists, so toggling one
+ * re-serves the box rather than creating or deleting it.
+ *
  * @param {string} action The pull_request event action.
+ * @param {string} [label] `github.event.label.name`, for a labeled/unlabeled event.
  * @returns {'up' | 'refresh' | 'down' | undefined}
  */
-export function operationFor(action) {
+export function operationFor(action, label) {
 	switch (action) {
 		case 'labeled':
-			return 'up';
+		case 'unlabeled':
+			if (label?.startsWith(PREVIEW_LABEL_PREFIX)) return 'refresh';
+			if (label !== PREVIEW_LABEL) return undefined;
+			return action === 'labeled' ? 'up' : 'down';
 		case 'synchronize':
 			return 'refresh';
-		case 'unlabeled':
 		case 'closed':
 			return 'down';
 		default:
@@ -171,10 +178,13 @@ async function main() {
 	const pr = ensureEnvVar('PULL_REQUEST_NUMBER');
 	const action = ensureEnvVar('EVENT_ACTION');
 	const runUrl = ensureEnvVar('RUN_URL');
+	const label = process.env.LABEL_NAME;
 
-	const operation = operationFor(action);
+	const operation = operationFor(action, label);
 	if (!operation) {
-		console.log(`No preview operation for a "${action}" event — nothing to do.`);
+		console.log(
+			`No preview operation for a "${action}" event on "${label ?? ''}" — nothing to do.`,
+		);
 		return;
 	}
 

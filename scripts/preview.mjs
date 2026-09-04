@@ -13,6 +13,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
+import { previewSlugs } from './preview-labels.mjs';
 import { shareWithOrg } from './serve-ready.mjs';
 
 const REPO = 'n8n-io/n8n';
@@ -115,7 +116,7 @@ function prHead(pr) {
 		'-R',
 		REPO,
 		'--json',
-		'headRefName,headRefOid,isCrossRepository,state',
+		'headRefName,headRefOid,isCrossRepository,state,labels',
 	]);
 	if (head.isCrossRepository)
 		fail(
@@ -127,8 +128,13 @@ function prHead(pr) {
 
 // Check out the exact head SHA, not the branch tip: the branch can move while this
 // runs, and the preview has to match the SHA the PR comment points at.
-const serveCommand = (head) =>
-	[
+const serveCommand = (head) => {
+	// Pass the slugs, never the environment they stand for: this string reaches the
+	// box's process list, and preview:enterprise resolves to a licence key there.
+	const slugs = previewSlugs(head.labels);
+	const labelEnv = slugs.length ? `PREVIEW_LABELS=${slugs.join(',')} ` : '';
+
+	return [
 		'cd /workspaces/n8n',
 		`git fetch origin ${head.headRefName}`,
 		`git checkout --detach ${head.headRefOid}`,
@@ -141,8 +147,9 @@ const serveCommand = (head) =>
 		// Cheap when nothing changed. Skipping it is how a preview ends up running
 		// against stale dependencies after a lockfile change.
 		'pnpm install --frozen-lockfile',
-		'pnpm preview:serve',
+		`${labelEnv}pnpm preview:serve`,
 	].join(' && ');
+};
 
 const createArgs = (pr, head) => [
 	'codespace',

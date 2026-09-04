@@ -70,6 +70,12 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
   the org-visible forwarded port, which needs a GitHub sign-in and n8n org
   membership.
+- **Configure the instance with `preview:*` labels.** `preview:enterprise` serves
+  it with a licence, so enterprise features such as SSO and source control are
+  present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
+  re-serves the box; it never creates or deletes one. From a laptop the labels
+  apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
+  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
 - **A preview sleeps after 30 minutes** of no use and GitHub deletes it after 24
   hours. Add the label again to get a new one.
 - **A PR from a fork gets no preview.** A codespace's token is scoped to
