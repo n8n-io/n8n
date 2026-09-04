@@ -3922,9 +3922,6 @@ importers:
       mkdirp:
         specifier: ^2.1.3
         version: 2.1.3
-      pg-native:
-        specifier: ^3.5.2
-        version: 3.8.0
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -3998,6 +3995,9 @@ importers:
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
+      pg-native:
+        specifier: ^3.5.2
+        version: 3.8.0
       pg-query-stream:
         specifier: ^4.10.3
         version: 4.16.0(pg@8.21.0(pg-native@3.8.0))
@@ -6022,7 +6022,10 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/frontend/editor-ui:
-    dependencies:
+    devDependencies:
+      '@codecov/vite-plugin':
+        specifier: ^1.9.1
+        version: 1.9.1(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@codemirror/autocomplete':
         specifier: 'catalog:'
         version: 6.20.0
@@ -6059,6 +6062,12 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
+      '@faker-js/faker':
+        specifier: ^8.0.2
+        version: 8.4.1
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
       '@internationalized/date':
         specifier: catalog:frontend
         version: 3.9.0
@@ -6095,6 +6104,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../@n8n/frontend-constants
@@ -6107,271 +6119,60 @@ importers:
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../@n8n/frontend-module-sdk
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-test-utils
       '@n8n/frontend-utils':
         specifier: workspace:*
         version: link:../@n8n/frontend-utils
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-vite-config
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../@n8n/i18n
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../testing/janitor
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../@n8n/rest-api-client
       '@n8n/stores':
         specifier: workspace:*
         version: link:../@n8n/stores
-      '@n8n/telemetry':
-        specifier: workspace:*
-        version: link:../../@n8n/telemetry
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../../@n8n/utils
-      '@pinecone-database/connect':
-        specifier: 0.0.4
-        version: 0.0.4
-      '@replit/codemirror-indentation-markers':
-        specifier: ^6.5.3
-        version: 6.5.3(@codemirror/language@6.12.1)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)
-      '@sentry/vue':
-        specifier: catalog:frontend
-        version: 10.70.0(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@types/semver':
-        specifier: 'catalog:'
-        version: 7.7.0
-      '@vscode/markdown-it-katex':
-        specifier: ^1.1.2
-        version: 1.1.2
-      '@vue-flow/background':
-        specifier: 1.3.2
-        version: 1.3.2(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@vue-flow/controls':
-        specifier: 1.1.3
-        version: 1.1.3(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@vue-flow/core':
-        specifier: 1.48.0
-        version: 1.48.0(vue@3.5.26(typescript@6.0.2))
-      '@vue-flow/minimap':
-        specifier: 1.5.4
-        version: 1.5.4(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@vue-flow/node-resizer':
-        specifier: 1.5.0
-        version: 1.5.0(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@vueuse/components':
-        specifier: ^10.11.0
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
-      '@vueuse/core':
-        specifier: catalog:frontend
-        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
-      ag-grid-community:
-        specifier: ^34.1.1
-        version: 34.1.1
-      ag-grid-vue3:
-        specifier: ^34.1.1
-        version: 34.1.1(vue@3.5.26(typescript@6.0.2))
-      array.prototype.tosorted:
-        specifier: 1.1.4
-        version: 1.1.4
-      axios:
-        specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
-      bowser:
-        specifier: 2.11.0
-        version: 2.11.0
-      change-case:
-        specifier: 'catalog:'
-        version: 5.4.4
-      chart.js:
-        specifier: ^4.4.0
-        version: 4.4.0
-      comlink:
-        specifier: ^4.4.1
-        version: 4.4.1
-      core-js:
-        specifier: ^3.40.0
-        version: 3.49.0
-      cron:
-        specifier: 'catalog:'
-        version: 4.4.0
-      curlconverter:
-        specifier: ^4.12.0
-        version: 4.12.0
-      dateformat:
-        specifier: ^3.0.3
-        version: 3.0.3
-      element-plus:
-        specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
-      email-providers:
-        specifier: ^2.0.1
-        version: 2.0.1
-      esprima-next:
-        specifier: 5.8.4
-        version: 5.8.4
-      fast-json-stable-stringify:
-        specifier: ^2.1.0
-        version: 2.1.0
-      file-saver:
-        specifier: ^2.0.2
-        version: 2.0.5
-      flatted:
-        specifier: 3.4.2
-        version: 3.4.2
-      highlight.js:
-        specifier: catalog:frontend
-        version: 11.12.0
-      humanize-duration:
-        specifier: ^3.27.2
-        version: 3.27.3
-      jsonpath-plus:
-        specifier: ^10.3.0
-        version: 10.4.0
-      katex:
-        specifier: 0.18.2
-        version: 0.18.2
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      luxon:
-        specifier: 'catalog:'
-        version: 3.7.2
-      markdown-it:
-        specifier: 'catalog:'
-        version: 13.0.2
-      markdown-it-footnote:
-        specifier: ^4.0.0
-        version: 4.0.0
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
-      nanoid:
-        specifier: 'catalog:'
-        version: 3.3.18
-      pinia:
-        specifier: catalog:frontend
-        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      prettier:
-        specifier: 'catalog:'
-        version: 3.6.2
-      qrcode.vue:
-        specifier: ^3.3.4
-        version: 3.3.4(vue@3.5.26(typescript@6.0.2))
-      regenerator-runtime:
-        specifier: 0.14.1
-        version: 0.14.1
-      reka-ui:
-        specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      sanitize-html:
-        specifier: 'catalog:'
-        version: 2.17.7
-      semver:
-        specifier: 7.7.3
-        version: 7.7.3
-      stream-browserify:
-        specifier: ^3.0.0
-        version: 3.0.0
-      timeago.js:
-        specifier: ^4.0.2
-        version: 4.0.2
-      uuid:
-        specifier: 'catalog:'
-        version: 11.1.1
-      v-code-diff:
-        specifier: ^1.13.1
-        version: 1.13.1(patch_hash=21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9)(vue@3.5.26(typescript@6.0.2))
-      v3-infinite-loading:
-        specifier: ^1.2.2
-        version: 1.2.2
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
-      vue-agile:
-        specifier: ^2.0.0
-        version: 2.0.0
-      vue-chartjs:
-        specifier: ^5.2.0
-        version: 5.2.0(chart.js@4.4.0)(vue@3.5.26(typescript@6.0.2))
-      vue-component-type-helpers:
-        specifier: ^2.2.10
-        version: 2.2.12
-      vue-i18n:
-        specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
-      vue-json-pretty:
-        specifier: 2.6.0
-        version: 2.6.0(vue@3.5.26(typescript@6.0.2))
-      vue-markdown-render:
-        specifier: catalog:frontend
-        version: 2.2.1(vue@3.5.26(typescript@6.0.2))
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
-      vue-virtual-scroller:
-        specifier: 2.0.0-beta.8
-        version: 2.0.0-beta.8(vue@3.5.26(typescript@6.0.2))
-      vue3-touch-events:
-        specifier: ^4.1.3
-        version: 4.1.3
-      vuedraggable:
-        specifier: 4.1.0
-        version: 4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2))
-      wa-sqlite:
-        specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
-        version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
-      web-tree-sitter:
-        specifier: 0.24.3
-        version: 0.24.3
-      xss:
-        specifier: 'catalog:'
-        version: 1.0.15
-      yaml:
-        specifier: 'catalog:'
-        version: 2.8.3
-      z-vue-scan:
-        specifier: ^0.0.35
-        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@codecov/vite-plugin':
-        specifier: ^1.9.1
-        version: 1.9.1(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      '@faker-js/faker':
-        specifier: ^8.0.2
-        version: 8.4.1
-      '@iconify/json':
-        specifier: 'catalog:'
-        version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-config
-      '@n8n/frontend-test-utils':
-        specifier: workspace:*
-        version: link:../@n8n/frontend-test-utils
-      '@n8n/frontend-vite-config':
-        specifier: workspace:*
-        version: link:../@n8n/frontend-vite-config
-      '@n8n/playwright-janitor':
-        specifier: workspace:*
-        version: link:../../testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../@n8n/stylelint-config
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../../@n8n/telemetry
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../@n8n/utils
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
+      '@pinecone-database/connect':
+        specifier: 0.0.4
+        version: 0.0.4
       '@pinia/testing':
         specifier: ^0.1.6
         version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@replit/codemirror-indentation-markers':
+        specifier: ^6.5.3
+        version: 6.5.3(@codemirror/language@6.12.1)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)
       '@sentry/vite-plugin':
         specifier: ^4.3.0
         version: 4.3.0(encoding@0.1.13)(supports-color@8.1.1)
+      '@sentry/vue':
+        specifier: catalog:frontend
+        version: 10.70.0(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@storybook/types':
         specifier: ^8.6.14
         version: 8.6.14(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
@@ -6420,6 +6221,9 @@ importers:
       '@types/sanitize-html':
         specifier: 'catalog:'
         version: 2.11.0
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -6435,51 +6239,195 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      '@vscode/markdown-it-katex':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@vue-flow/background':
+        specifier: 1.3.2
+        version: 1.3.2(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@vue-flow/controls':
+        specifier: 1.1.3
+        version: 1.1.3(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@vue-flow/core':
+        specifier: 1.48.0
+        version: 1.48.0(vue@3.5.26(typescript@6.0.2))
+      '@vue-flow/minimap':
+        specifier: 1.5.4
+        version: 1.5.4(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@vue-flow/node-resizer':
+        specifier: 1.5.0
+        version: 1.5.0(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      '@vueuse/components':
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      ag-grid-community:
+        specifier: ^34.1.1
+        version: 34.1.1
+      ag-grid-vue3:
+        specifier: ^34.1.1
+        version: 34.1.1(vue@3.5.26(typescript@6.0.2))
+      array.prototype.tosorted:
+        specifier: 1.1.4
+        version: 1.1.4
       autoprefixer:
         specifier: catalog:frontend
         version: 10.4.19(postcss@8.5.23)
+      axios:
+        specifier: 1.18.0
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      bowser:
+        specifier: 2.11.0
+        version: 2.11.0
       browserslist:
         specifier: 4.28.1
         version: 4.28.1
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
+      change-case:
+        specifier: 'catalog:'
+        version: 5.4.4
+      chart.js:
+        specifier: ^4.4.0
+        version: 4.4.0
+      comlink:
+        specifier: ^4.4.1
+        version: 4.4.1
+      core-js:
+        specifier: ^3.40.0
+        version: 3.49.0
+      cron:
+        specifier: 'catalog:'
+        version: 4.4.0
+      curlconverter:
+        specifier: ^4.12.0
+        version: 4.12.0
+      dateformat:
+        specifier: ^3.0.3
+        version: 3.0.3
+      element-plus:
+        specifier: catalog:frontend
+        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+      email-providers:
+        specifier: ^2.0.1
+        version: 2.0.1
       eslint-plugin-oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1))
+      esprima-next:
+        specifier: 5.8.4
+        version: 5.8.4
       fake-indexeddb:
         specifier: ^6.0.0
         version: 6.0.0
+      fast-json-stable-stringify:
+        specifier: ^2.1.0
+        version: 2.1.0
+      file-saver:
+        specifier: ^2.0.2
+        version: 2.0.5
+      flatted:
+        specifier: 3.4.2
+        version: 3.4.2
+      highlight.js:
+        specifier: catalog:frontend
+        version: 11.12.0
+      humanize-duration:
+        specifier: ^3.27.2
+        version: 3.27.3
+      jsonpath-plus:
+        specifier: ^10.3.0
+        version: 10.4.0
+      katex:
+        specifier: 0.18.2
+        version: 0.18.2
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
       lodash-es:
         specifier: 'catalog:'
         version: 4.18.1
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
+      markdown-it:
+        specifier: 'catalog:'
+        version: 13.0.2
+      markdown-it-footnote:
+        specifier: ^4.0.0
+        version: 4.0.0
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.18
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 0.21.1
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
+      qrcode.vue:
+        specifier: ^3.3.4
+        version: 3.3.4(vue@3.5.26(typescript@6.0.2))
+      regenerator-runtime:
+        specifier: 0.14.1
+        version: 0.14.1
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      sanitize-html:
+        specifier: 'catalog:'
+        version: 2.17.7
       sass-embedded:
         specifier: 'catalog:'
         version: 1.98.0
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
       storybook:
         specifier: catalog:storybook
         version: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
+      stream-browserify:
+        specifier: ^3.0.0
+        version: 3.0.0
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
+      timeago.js:
+        specifier: ^4.0.2
+        version: 4.0.2
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
       unplugin-icons:
         specifier: catalog:frontend
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
+      v-code-diff:
+        specifier: ^1.13.1
+        version: 1.13.1(patch_hash=21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9)(vue@3.5.26(typescript@6.0.2))
+      v3-infinite-loading:
+        specifier: ^1.2.2
+        version: 1.2.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -6498,9 +6446,60 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-agile:
+        specifier: ^2.0.0
+        version: 2.0.0
+      vue-chartjs:
+        specifier: ^5.2.0
+        version: 5.2.0(chart.js@4.4.0)(vue@3.5.26(typescript@6.0.2))
+      vue-component-type-helpers:
+        specifier: ^2.2.10
+        version: 2.2.12
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+      vue-json-pretty:
+        specifier: 2.6.0
+        version: 2.6.0(vue@3.5.26(typescript@6.0.2))
+      vue-markdown-render:
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.5.26(typescript@6.0.2))
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+      vue-virtual-scroller:
+        specifier: 2.0.0-beta.8
+        version: 2.0.0-beta.8(vue@3.5.26(typescript@6.0.2))
+      vue3-touch-events:
+        specifier: ^4.1.3
+        version: 4.1.3
+      vuedraggable:
+        specifier: 4.1.0
+        version: 4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2))
+      wa-sqlite:
+        specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
+        version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
+      web-tree-sitter:
+        specifier: 0.24.3
+        version: 0.24.3
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/modules/instance-registry/frontend:
     dependencies:

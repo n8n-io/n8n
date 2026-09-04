@@ -76,6 +76,7 @@
     "eslint": "^8.44.0",
     "mocha": "^10.2.0",
     "pg": "catalog:",
+    "pg-native": "^3.5.2",
     "pg-query-stream": "^4.10.3",
     "prettier": "^2.8.3",
     "rimraf": "^4.1.2",
