@@ -922,7 +922,7 @@ describe('EditImage Node', () => {
 			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 			expect(mockGmInstance.font).toHaveBeenCalledWith(arialFont);
-			expect(mockGmInstance.drawText).toHaveBeenCalledWith(10, 10, expectedText);
+			expect(mockGmInstance.drawText).toHaveBeenCalledWith(10, 10, expectedText, 'northwest');
 		});
 
 		describe('font parameter', () => {
@@ -1047,7 +1047,7 @@ describe('EditImage Node', () => {
 				if (paramName === 'lineLength') return 80;
 				if (paramName === 'horizontalAlignment') return 'center';
 				if (paramName === 'verticalAlignment') return 'north';
-				if (paramName === 'options') return { font: 'Arial' };
+				if (paramName === 'options') return { font: arialFont };
 				return {};
 			});
 
