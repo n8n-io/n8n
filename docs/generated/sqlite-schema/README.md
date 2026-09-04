@@ -8,6 +8,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [activity_event](activity_event.md) | 11 |  | table |
 | [agent_background_job](agent_background_job.md) | 16 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
@@ -83,7 +84,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
-| [instance_ai_run_snapshots](instance_ai_run_snapshots.md) | 11 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
@@ -105,7 +105,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 21 |  | table |
+| [scheduled_job](scheduled_job.md) | 23 |  | table |
 | [scheduled_task](scheduled_task.md) | 18 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
@@ -148,6 +148,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"activity_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -262,7 +264,6 @@ erDiagram
 "instance_ai_pending_confirmations" }o--o| "instance_ai_checkpoints" : "FOREIGN KEY (checkpointKey) REFERENCES instance_ai_checkpoints (key) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_run_snapshots" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -288,7 +289,6 @@ erDiagram
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
-"scheduled_job" }o--o| "workflow_published_version" : "FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -344,6 +344,19 @@ erDiagram
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
+"activity_event" {
+  varchar_64_ action
+  varchar_32_ category
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  TEXT resourceName
+  varchar_32_ resourceType
+  INTEGER typeVersion
+  varchar userId FK
+}
 "agent_background_job" {
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
@@ -1126,19 +1139,6 @@ erDiagram
   datetime_3_ updatedAt
   TEXT workingMemory
 }
-"instance_ai_run_snapshots" {
-  datetime_3_ createdAt
-  varchar_36_ langsmithRunId
-  varchar_36_ langsmithTraceId
-  varchar_36_ messageGroupId
-  varchar_36_ runId PK
-  TEXT runIds
-  varchar_64_ spanId
-  varchar threadId PK
-  varchar_64_ traceId
-  TEXT tree
-  datetime_3_ updatedAt
-}
 "instance_ai_thread_grants" {
   datetime_3_ createdAt
   varchar_512_ grantKey PK
@@ -1320,14 +1320,16 @@ erDiagram
   varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
-  varchar_36_ nodeId
+  datetime_3_ orphanedAt
+  varchar_255_ ownerId
+  varchar_36_ ownerMemberId
+  varchar_32_ ownerType
   TEXT payload
   INT recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   datetime_3_ updatedAt
-  varchar_36_ workflowId FK
 }
 "scheduled_task" {
   INTEGER attempts
