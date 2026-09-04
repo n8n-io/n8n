@@ -123,6 +123,8 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 	gap: var(--spacing--2xs);
 	margin-left: auto;
 	white-space: nowrap;
+	/** Push down 1px to align horizontally with IdentityIcon **/
+	transform: translateY(1px);
 }
 
 .personalisationPicker {
