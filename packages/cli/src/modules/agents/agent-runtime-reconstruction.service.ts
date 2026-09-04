@@ -192,7 +192,7 @@ export interface UserToolAccessSnapshot {
 export interface UnavailableTool {
 	toolName: string;
 	toolType: 'workflow' | 'node';
-	reason: 'not_found' | 'incompatible' | 'no_access';
+	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access';
 	message: string;
 }
 

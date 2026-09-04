@@ -809,11 +809,11 @@ export async function resolveWorkflowTool(
 }
 
 /**
- * Stands in for a workflow tool that cannot be built right now (workflow gone or
- * incompatible). It keeps the configured name in the tool list and shares the real
- * tool's handler, which reloads and re-validates the workflow on every call: the
- * model gets the current reason instead of a bare "tool not found", and a workflow
- * the user has fixed since works on the next call.
+ * Stands in for a workflow tool that cannot be built right now (workflow gone,
+ * unpublished, or incompatible). It keeps the configured name in the tool list and
+ * shares the real tool's handler, which reloads and re-validates the workflow on
+ * every call: the model gets the current reason instead of a bare "tool not found",
+ * and a workflow the user has fixed since works on the next call.
  *
  * Interim until AGENT-790: the runtime cache keeps this stub alive for up to 30 idle
  * minutes because nothing invalidates an agent runtime when one of its workflows
@@ -845,13 +845,12 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	// An unpublished workflow still yields a real tool, built from its draft: the
-	// strict call-time load below reports the missing publish to the model, and
-	// the tool starts working as soon as the workflow is published.
 	const workflow = await context.workflowLoader.loadWorkflow(
 		context.projectId,
 		toReference(descriptor),
-		{ usePublishedVersion: context.usePublishedWorkflowVersion === true, fallbackToDraft: true },
+		{
+			usePublishedVersion: context.usePublishedWorkflowVersion === true,
+		},
 	);
 	if (!workflow) {
 		throw new WorkflowToolUnavailableError(

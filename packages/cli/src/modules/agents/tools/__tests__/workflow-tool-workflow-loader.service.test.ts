@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
+import { WorkflowToolUnavailableError } from '../workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
 
 const reference = { workflowId: 'workflow-1', workflowName: 'Workflow' };
@@ -96,29 +97,16 @@ describe('WorkflowToolWorkflowLoader', () => {
 			makeWorkflow({ activeVersion: null } as unknown as Partial<WorkflowEntity>),
 		);
 
-		await expect(
-			service.loadWorkflow('project-1', reference, { usePublishedVersion: true }),
-		).rejects.toThrow(
-			'Workflow "Workflow" is not published. Publish it so the published agent can use it.',
-		);
-	});
+		const error = await service
+			.loadWorkflow('project-1', reference, { usePublishedVersion: true })
+			.catch((e: unknown) => e);
 
-	it('falls back to the draft for a never-published workflow when asked to', async () => {
-		const { service, workflowRepository } = makeService();
-		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
-			makeWorkflow({
-				versionId: 'draft-version',
-				activeVersion: null,
-			} as unknown as Partial<WorkflowEntity>),
-		);
-
-		const workflow = await service.loadWorkflow('project-1', reference, {
-			usePublishedVersion: true,
-			fallbackToDraft: true,
+		expect(error).toBeInstanceOf(WorkflowToolUnavailableError);
+		expect(error).toMatchObject({
+			reason: 'not_published',
+			message:
+				'Workflow "Workflow" is not published. Publish it so the published agent can use it.',
 		});
-
-		expect(workflow).toMatchObject({ versionId: 'draft-version', nodes: [{ id: 'draft-node' }] });
-		expect(workflow?.pinData).toBeUndefined();
 	});
 
 	it('reads the published version from the publication service when enabled', async () => {

@@ -1,6 +1,6 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError, type INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -93,8 +93,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 	};
 }
 
-// The build-time load may fall back to the draft; the call-time load never does.
-const BUILD_LOAD_OPTIONS = { usePublishedVersion: false, fallbackToDraft: true };
+const DRAFT_LOAD_OPTIONS = { usePublishedVersion: false };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -151,7 +150,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowName: 'Scoped Workflow' },
-			BUILD_LOAD_OPTIONS,
+			DRAFT_LOAD_OPTIONS,
 		);
 	});
 
@@ -164,32 +163,6 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowName: 'Published Workflow' },
-			{ usePublishedVersion: true, fallbackToDraft: true },
-		);
-	});
-
-	it('builds the tool from the draft when the published version is missing', async () => {
-		const draft = makeWorkflow({ id: 'wf-draft', name: 'Draft Only' });
-		const context = { ...makeContext(draft), usePublishedWorkflowVersion: true };
-		const notPublished = new UserError(
-			'Workflow "Draft Only" is not published. Publish it so the published agent can use it.',
-		);
-		context.workflowLoader.loadWorkflow = vi
-			.fn()
-			.mockResolvedValueOnce(draft)
-			.mockRejectedValueOnce(notPublished);
-
-		const tool = await resolveWorkflowTool(
-			{ type: 'workflow', workflowId: 'wf-draft', workflow: 'Draft Only' },
-			context,
-		);
-
-		expect(tool.metadata).toMatchObject({ workflowId: 'wf-draft' });
-		await expect(tool.handler?.({}, {})).rejects.toThrow('is not published');
-		expect(context.workflowLoader.loadWorkflow).toHaveBeenNthCalledWith(
-			2,
-			'project-1',
-			{ workflowId: 'wf-draft', workflowName: 'Draft Only' },
 			{ usePublishedVersion: true },
 		);
 	});
@@ -207,7 +180,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 			'project-1',
 			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
-			BUILD_LOAD_OPTIONS,
+			DRAFT_LOAD_OPTIONS,
 		);
 	});
 
@@ -314,7 +287,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			1,
 			'project-1',
 			expectedReference,
-			BUILD_LOAD_OPTIONS,
+			DRAFT_LOAD_OPTIONS,
 		);
 		expect(loadWorkflow).toHaveBeenNthCalledWith(2, 'project-1', expectedReference, {
 			usePublishedVersion: false,
