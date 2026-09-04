@@ -480,6 +480,7 @@ patchedDependencies:
   '@langchain/openai@1.4.4': patches/@langchain__openai@1.4.4.patch
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
+  imapflow@1.7.1: patches/imapflow@1.7.1.patch
 
 allowBuilds:
   '@biomejs/biome': false

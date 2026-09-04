@@ -1,9 +1,12 @@
-import type { FetchOptions, Message, SearchCriteria } from '@n8n/imap';
-import { ImapSimple } from '@n8n/imap';
-import find from 'lodash/find';
+import {
+	imapErrorCode,
+	ImapSimple,
+	parseHeaders,
+	type FetchMessageObject,
+	type FetchQueryObject,
+} from '@n8n/imap';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IBinaryKeyData,
@@ -17,13 +20,15 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { isCredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { closeHandler } from '../connection-events';
 import { toImapCredentials } from '../credentials';
+import { toSearchObject, type SearchCriteria } from '../search-criteria';
 
-export async function parseRawEmail(
+async function parseRawEmail(
 	this: ITriggerFunctions,
 	messageEncoded: ParserSource,
 	dataPropertyNameDownload: string,
@@ -34,42 +39,26 @@ export async function parseRawEmail(
 		headers[header.key] = header.line;
 	}
 
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
-
 	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-		// @ts-ignore
-		responseData.attachments = undefined;
+	for (const [i, attachment] of (responseData.attachments ?? []).entries()) {
+		binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+			attachment.content,
+			attachment.filename,
+			attachment.contentType,
+		);
 	}
 
 	return {
-		json: responseData as unknown as IDataObject,
+		json: { ...responseData, headers, headerLines: undefined, attachments: undefined },
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
 
-const FETCH_OPTIONS: Record<string, FetchOptions> = {
-	resolved: { bodies: [''], markSeen: false, struct: true },
-	simple: { bodies: ['TEXT', 'HEADER'], markSeen: false, struct: true },
-	raw: { bodies: ['TEXT', 'HEADER'], markSeen: false, struct: true },
-};
-
-/** Headers a `simple` item carries at the top level; every other header goes under `metadata`. */
+/** Headers an item carries at the top level; every other header goes under `metadata`. */
 const TOP_LEVEL_HEADERS = ['cc', 'date', 'from', 'subject', 'to'];
 
-/** Turns one message into an item, or into nothing when it holds no usable mail. */
-type ItemBuilder = (message: Message) => Promise<INodeExecutionData | undefined>;
+/** Turns one message into an item, in the shape the chosen format calls for. */
+type ItemBuilder = (message: FetchMessageObject) => Promise<INodeExecutionData | undefined>;
 
 function itemBuilderFor(
 	this: ITriggerFunctions,
@@ -83,11 +72,10 @@ function itemBuilderFor(
 		const prefix = attachmentPrefix();
 
 		return async (message) => {
-			const part = find(message.parts, { which: '' });
-			if (part === undefined) {
+			if (message.source === undefined) {
 				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 			}
-			return await parseRawEmail.call(this, part.body as Buffer, prefix);
+			return await parseRawEmail.call(this, message.source, prefix);
 		};
 	}
 
@@ -102,8 +90,8 @@ function itemBuilderFor(
 				metadata: {} as IDataObject,
 			};
 
-			const header = message.parts.filter((part) => part.which === 'HEADER')[0];
-			for (const [name, values] of Object.entries(header.body as Record<string, string[]>)) {
+			const headers = message.headers ? parseHeaders(message.headers) : {};
+			for (const [name, values] of Object.entries(headers)) {
 				if (!values.length) continue;
 				if (TOP_LEVEL_HEADERS.includes(name)) json[name] = values[0];
 				else (json.metadata as IDataObject)[name] = values[0];
@@ -115,8 +103,8 @@ function itemBuilderFor(
 				const attachments = await imapConnection.downloadAttachments(message);
 				const binaries = await Promise.all(
 					attachments.map(
-						async ({ content, filename }) =>
-							await this.helpers.prepareBinaryData(content, filename),
+						async ({ content, filename, contentType }) =>
+							await this.helpers.prepareBinaryData(content, filename, contentType),
 					),
 				);
 
@@ -131,11 +119,11 @@ function itemBuilderFor(
 
 	if (format === 'raw') {
 		return async (message) => {
-			const part = find(message.parts, { which: 'TEXT' });
-			if (part === undefined) {
+			const raw = message.bodyParts?.get('text')?.toString('utf8');
+			if (raw === undefined) {
 				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 			}
-			return { json: { raw: part.body as string } };
+			return { json: { raw } };
 		};
 	}
 
@@ -301,6 +289,13 @@ const versionDescription: INodeTypeDescription = {
 	],
 };
 
+/** imapflow answers with the UID whether or not it is asked for, so no entry requests it. */
+const FETCH_QUERY: Record<string, FetchQueryObject> = {
+	resolved: { source: true },
+	simple: { headers: true, bodyStructure: true },
+	raw: { bodyParts: ['text'] },
+};
+
 export class EmailReadImapV1 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -318,20 +313,17 @@ export class EmailReadImapV1 implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				if (!isCredentialsDataImap(credential.data)) {
-					return {
-						status: 'Error',
-						message: 'Credentials are no IMAP credentials.',
-					};
+					return { status: 'Error', message: 'Credentials are no IMAP credentials.' };
 				}
 
 				let connection: ImapSimple | undefined;
 				try {
 					connection = await ImapSimple.connect(toImapCredentials(credential.data));
-					await connection.getBoxes();
+					await connection.list();
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: (error as Error).message,
+						message: error.message,
 					};
 				} finally {
 					connection?.end();
@@ -357,6 +349,46 @@ export class EmailReadImapV1 implements INodeType {
 		const staticData = this.getWorkflowStaticData('node');
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
+		// Returns all the new unseen messages
+		const getNewEmails = async (
+			imapConnection: ImapSimple,
+			searchCriteria: SearchCriteria[],
+		): Promise<INodeExecutionData[]> => {
+			const format = this.getNodeParameter('format', 0) as string;
+			const buildItem = itemBuilderFor.call(this, format, imapConnection);
+
+			const results = await imapConnection.search(
+				toSearchObject(searchCriteria),
+				FETCH_QUERY[format] ?? {},
+			);
+
+			const newEmails: INodeExecutionData[] = [];
+
+			for (const message of results) {
+				const lastMessageUid = staticData.lastMessageUid as number | undefined;
+				if (lastMessageUid !== undefined && message.uid <= lastMessageUid) continue;
+				// Advanced before the item builds and never backwards, as this node always has: a
+				// message that cannot be built is skipped for good, not refetched on every arrival.
+				if (lastMessageUid === undefined || lastMessageUid < message.uid) {
+					staticData.lastMessageUid = message.uid;
+				}
+
+				const item = await buildItem(message);
+				if (!item) continue;
+
+				newEmails.push(item);
+			}
+
+			// only mark messages as seen once processing has finished
+			if (postProcessAction === 'read' && results.length > 0) {
+				await imapConnection.addFlags(
+					results.map((message) => message.uid),
+					['\\SEEN'],
+				);
+			}
+			return newEmails;
+		};
+
 		const returnedPromise = this.helpers.createDeferredPromise();
 
 		let searchCriteria: SearchCriteria[] = ['UNSEEN'];
@@ -366,41 +398,20 @@ export class EmailReadImapV1 implements INodeType {
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 			}
+			try {
+				// Compiled once here purely for the immediate feedback: a criterion that cannot
+				// compile fails the activation instead of the first arrival, hours later.
+				toSearchObject(searchCriteria);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error);
+			}
 		}
 
-		// Returns all the new unseen messages
-		const getNewEmails = async (imapConnection: ImapSimple): Promise<INodeExecutionData[]> => {
-			const format = this.getNodeParameter('format', 0) as string;
-			const buildItem = itemBuilderFor.call(this, format, imapConnection);
-
-			const results = await imapConnection.search(searchCriteria, FETCH_OPTIONS[format] ?? {});
-			const newEmails: INodeExecutionData[] = [];
-
-			for (const message of results) {
-				const lastMessageUid = staticData.lastMessageUid as number | undefined;
-				if (lastMessageUid !== undefined && message.attributes.uid <= lastMessageUid) continue;
-				if (lastMessageUid === undefined || lastMessageUid < message.attributes.uid) {
-					staticData.lastMessageUid = message.attributes.uid;
-				}
-
-				const item = await buildItem(message);
-				if (item) newEmails.push(item);
-			}
-
-			// only mark messages as seen once processing has finished
-			if (postProcessAction === 'read') {
-				const uidList = results.map((e) => e.attributes.uid);
-				if (uidList.length > 0) {
-					await imapConnection.addFlags(uidList, '\\SEEN');
-				}
-			}
-
-			return newEmails;
-		};
-
 		const fetchNewEmails = async (conn: ImapSimple) => {
+			const currentSearchCriteria = [...searchCriteria];
+
 			if (staticData.lastMessageUid !== undefined) {
-				searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+				currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
 				/**
 				 * A short explanation about UIDs and how they work
 				 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
@@ -414,12 +425,12 @@ export class EmailReadImapV1 implements INodeType {
 				 * by checking UIDValidity.
 				 */
 				this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-					searchCriteria,
+					searchCriteria: currentSearchCriteria,
 				});
 			}
 
 			try {
-				const returnData = await getNewEmails(conn);
+				const returnData = await getNewEmails(conn, currentSearchCriteria);
 				if (returnData.length) {
 					this.emit([returnData]);
 				}
@@ -446,14 +457,16 @@ export class EmailReadImapV1 implements INodeType {
 
 		connection.onArrival(async () => await fetchNewEmails(connection));
 
+		if (staticData.lastMessageUid !== undefined) connection.catchUp();
+
 		connection.onReconnect(() => {
-			this.logger.debug('IMAP connection was restored');
+			this.logger.debug('Email Read Imap: Connection restored');
 		});
 
 		connection.onClose(closeHandler(this));
 
 		connection.onError((error) => {
-			this.logger.error('Email Read Imap node encountered a connection error', { error });
+			this.logger.debug(`IMAP connection error (${imapErrorCode(error)})`, { error });
 			// Held back until the workflow is active, else n8n is unhappy about an early error
 			void returnedPromise.promise.then(() => this.emitError(error));
 		});
