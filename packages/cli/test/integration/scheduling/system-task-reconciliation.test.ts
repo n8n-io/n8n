@@ -1,6 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { SchedulerConfig } from '@n8n/config';
-import { ScheduledJobOwnerType } from '@n8n/constants';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ReconciliationHooks, ScheduledJobOwnerRegistry } from '@n8n/scheduler';
@@ -15,8 +14,8 @@ import { createDueJobFactory, seedDueTask } from './shared/job-factory';
 /**
  * What the sweep does to system task jobs, through the production registry.
  *
- * `SystemTaskScheduledJobOwner.findExisting` throws, so the sweep abandons the
- * owner type and retires nothing. CAT-4158 replaces that resolver, and this
+ * `SystemTaskScheduledJobOwner.findExisting` reports every task as existing,
+ * so the sweep retires nothing. CAT-4158 will replace that resolver, and this
  * suite is what has to change with it.
  */
 describe('system task reconciliation', () => {
@@ -78,27 +77,22 @@ describe('system task reconciliation', () => {
 
 		const summary = await runReconciliation();
 
-		expect(summary).toMatchObject({ quarantined: 0, deleted: 0, ownersChecked: 0 });
+		expect(summary).toMatchObject({ quarantined: 0, deleted: 0, ownersChecked: 1 });
 		const still = await jobRepo.findOneBy({ id: job.id });
 		expect(still).toMatchObject({ enabled: true, orphanedAt: null });
 		expect(still?.nextRunAt).not.toBeNull();
 		expect(await taskRepo.findOneBy({ id: queued.id })).not.toBeNull();
 	});
 
-	it('abandons the owner type for the pass and reports the resolver that refused', async () => {
+	it('drains the owner type without reporting a resolver failure', async () => {
 		const job = await createJob();
 		await settle(job.id);
 		const onResolverFailed = vi.fn();
 
 		const summary = await runReconciliation({ onResolverFailed });
 
-		expect(summary.skippedOwnerTypes).toEqual([ScheduledJobOwnerType.SystemTask]);
-		expect(summary.drained).toBe(false);
-		expect(onResolverFailed).toHaveBeenCalledWith(
-			ScheduledJobOwnerType.SystemTask,
-			expect.objectContaining({
-				message: 'System task liveness needs a cross-version task inventory',
-			}),
-		);
+		expect(summary.skippedOwnerTypes).toEqual([]);
+		expect(summary.drained).toBe(true);
+		expect(onResolverFailed).not.toHaveBeenCalled();
 	});
 });

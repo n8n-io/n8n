@@ -17,9 +17,7 @@ describe('SystemTaskScheduledJobOwner', () => {
 		});
 	});
 
-	it('refuses to answer liveness, so the sweep leaves its jobs alone', async () => {
-		await expect(owner.findExisting(['a', 'b'])).rejects.toThrow(
-			'System task liveness needs a cross-version task inventory',
-		);
+	it('reports every task as existing, so the sweep leaves its jobs alone', async () => {
+		await expect(owner.findExisting(['a', 'b'])).resolves.toEqual(new Set(['a', 'b']));
 	});
 });
