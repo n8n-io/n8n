@@ -1358,6 +1358,29 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(externalHooks.run).not.toHaveBeenCalled();
 			});
+
+			it('should run workflow.preExecute when legacy flag is on', async () => {
+				executionsConfig.preExecuteErrorCreatesExecution = true;
+				lifecycleHooks = getLifecycleHooksForScalingMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					'manual',
+					workflowHookContext,
+					undefined,
+				]);
+			});
 		});
 
 		describe('workflowExecuteAfter', () => {
@@ -1558,6 +1581,15 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		it('should not run workflow.preExecute when legacy flag is on', async () => {
+			executionsConfig.preExecuteErrorCreatesExecution = true;
+			lifecycleHooks = createHooks();
+
+			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+			expect(externalHooks.run).not.toHaveBeenCalled();
 		});
 
 		describe('saving static data', () => {
