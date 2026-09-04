@@ -59,7 +59,8 @@ import {
 } from '../webhook-helpers';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
@@ -1118,6 +1119,7 @@ const workflowRunner = mockInstance(WorkflowRunner);
 const activeExecutions = mockInstance(ActiveExecutions);
 const resourceRegistry = mockInstance(ProtectedResourceRegistry);
 const executionContextService = mockInstance(ExecutionContextService);
+const userRepository = mockInstance(UserRepository);
 mockInstance(AuthService);
 mockInstance(EventService);
 mockInstance(WorkflowStatisticsService);
@@ -1492,6 +1494,114 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		expect(executionContextService.buildTriggerIdentityCredentials).not.toHaveBeenCalled();
 		expect(additionalData.encryptedRunnerIdentity).toBe('registration-context');
 		expect(runData.encryptedRunnerIdentity).toBe('registration-context');
+	});
+});
+
+describe('executeWebhook getUserById', () => {
+	/**
+	 * Drives `executeWebhook` far enough for the node's `webhook()` to be called, and
+	 * hands back the lookup the webhook layer wired onto `additionalData`.
+	 */
+	const resolveGetUserById = async () => {
+		resourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
+		executionContextService.maybeBindExecutionId.mockImplementation(async (context) => context);
+		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
+			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
+		);
+
+		const additionalData = {
+			webhookWaitingBaseUrl: 'https://n8n.test/webhook-waiting',
+			formWaitingBaseUrl: 'https://n8n.test/form-waiting',
+		} as unknown as IWorkflowExecuteAdditionalData;
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+
+		const workflowStartNode = mock<INode>({
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+			typeVersion: 1.5,
+			parameters: { authentication: 'n8nUserAuth' },
+		});
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'chatTrigger' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			workflowStartNode,
+			'manual',
+			undefined,
+			undefined,
+			undefined,
+			mock<WebhookRequest>({ method: 'POST', contentType: undefined }),
+			mock<express.Response>({ headersSent: false }),
+			vi.fn(),
+			undefined,
+			{},
+		);
+
+		expect(additionalData.getUserById).toBeDefined();
+		return additionalData.getUserById!;
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('projects the looked-up user down to the four public fields', async () => {
+		userRepository.findByIdWithRole.mockResolvedValue(
+			mock<User>({
+				id: 'user-1',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+				// Extra entity fields, so the assertion below fails if the projection is dropped.
+				password: 'hashed',
+				mfaSecret: 'totp-secret',
+				disabled: false,
+			}),
+		);
+
+		const getUserById = await resolveGetUserById();
+
+		await expect(getUserById('user-1')).resolves.toEqual({
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		});
+		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
+	});
+
+	it('resolves undefined for an id that no longer maps to a user', async () => {
+		userRepository.findByIdWithRole.mockResolvedValue(null);
+
+		const getUserById = await resolveGetUserById();
+
+		await expect(getUserById('gone')).resolves.toBeUndefined();
 	});
 });
 
