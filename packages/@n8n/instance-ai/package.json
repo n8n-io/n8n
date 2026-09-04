@@ -17,6 +17,7 @@
     "eval:agents": "tsx evaluations/cli/index.ts --source langtracer --suite agents --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:langtracer-push": "tsx evaluations/cli/langtracer-push.ts",
+    "eval:compare-local": "tsx evaluations/cli/compare-local.ts",
     "eval:serve-fixture": "tsx evaluations/cli/serve-fixture.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",

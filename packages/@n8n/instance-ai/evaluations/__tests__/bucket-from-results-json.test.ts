@@ -1,0 +1,189 @@
+import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
+import {
+	EvalResultsParseError,
+	bucketFromResultsJson,
+	parseEvalResults,
+} from '../comparison/bucket-from-results-json';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import type {
+	BuildExpectationAggregation,
+	ExecutionScenarioAggregation,
+	MultiRunEvaluation,
+	WorkflowTestCase,
+} from '../types';
+
+// One logical run, expressed twice: as the in-memory aggregate the LangSmith
+// driver projects, and as the persisted artifact every run writes. The last
+// test asserts the two projections agree — that is the whole point of this
+// module, and the drift it guards against is silent.
+const RUNS = [
+	{ passed: true },
+	{ passed: false, failureCategory: 'builder_issue' },
+	{ passed: false, incomplete: true },
+];
+
+function resultsJson(overrides: Record<string, unknown> = {}): unknown {
+	return {
+		timestamp: '2026-09-04T00:00:00.000Z',
+		totalRuns: 3,
+		testCases: [
+			{
+				name: 'build it',
+				testCaseFile: 'my-case',
+				scenarios: [
+					{
+						name: 'happy',
+						passCount: 1,
+						evaluatedCount: 2,
+						runs: RUNS,
+					},
+				],
+				buildExpectations: [
+					{ expectation: 'asks before building', passCount: 2, evaluatedCount: 3 },
+					{ expectation: 'never judged', passCount: 0, evaluatedCount: 0 },
+				],
+				...overrides,
+			},
+		],
+	};
+}
+
+function bucket(raw: unknown = resultsJson()) {
+	return bucketFromResultsJson(parseEvalResults(raw, 'fixture'), 'after');
+}
+
+describe('bucketFromResultsJson', () => {
+	it('emits scenario and evaluated-expectation units under their kind-specific keys', () => {
+		const result = bucket();
+
+		expect(result.evaluationUnits.get('my-case/happy')).toMatchObject({
+			kind: 'scenario',
+			name: 'happy',
+			passed: 1,
+			total: 2,
+		});
+		expect(result.evaluationUnits.get('my-case#expectation:asks before building')).toMatchObject({
+			kind: 'expectation',
+			name: 'asks before building',
+			passed: 2,
+			total: 3,
+		});
+	});
+
+	it('excludes expectations with no evaluated verdicts', () => {
+		const result = bucket();
+
+		expect(result.evaluationUnits.get('my-case#expectation:never judged')).toBeUndefined();
+		expect(result.evaluationUnits.size).toBe(2);
+	});
+
+	it('keeps trialTotal and failure categories scenario-only, skipping incomplete runs', () => {
+		const result = bucket();
+
+		expect(result.trialTotal).toBe(2);
+		expect(result.failureCategoryTotals).toEqual({ builder_issue: 1 });
+	});
+
+	it('throws when a test case carries no testCaseFile', () => {
+		expect(() => bucket(resultsJson({ testCaseFile: undefined }))).toThrow(EvalResultsParseError);
+		expect(() => bucket(resultsJson({ testCaseFile: undefined }))).toThrow(/no testCaseFile/);
+	});
+
+	it('tolerates a run artifact that carries no per-run scenario detail', () => {
+		// A crash-recovered artifact can land without `runs`; the unit counts are
+		// still comparable, only the failure-category drift table goes empty.
+		const result = bucket(
+			resultsJson({
+				scenarios: [{ name: 'happy', passCount: 1, evaluatedCount: 2 }],
+			}),
+		);
+
+		expect(result.evaluationUnits.get('my-case/happy')).toMatchObject({ passed: 1, total: 2 });
+		expect(result.trialTotal).toBe(0);
+	});
+
+	it('rejects a file that is not an eval-results.json', () => {
+		expect(() => parseEvalResults({ hello: 'world' }, 'notes.json')).toThrow(EvalResultsParseError);
+		expect(() => parseEvalResults({ hello: 'world' }, 'notes.json')).toThrow(/notes\.json/);
+	});
+});
+
+describe('agreement with bucketFromEvaluation', () => {
+	function testCase(): WorkflowTestCase {
+		return {
+			conversation: [{ role: 'user', text: 'build it' }],
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+		} as WorkflowTestCase;
+	}
+
+	function scenarioAggregation(): ExecutionScenarioAggregation {
+		const scenario = { name: 'happy', description: '', dataSetup: '', successCriteria: '' };
+		return {
+			scenario,
+			runs: RUNS.map((run) => ({
+				scenario,
+				success: run.passed,
+				score: run.passed ? 1 : 0,
+				reasoning: '',
+				failureCategory: run.failureCategory,
+				...(run.incomplete ? { incomplete: true } : {}),
+			})),
+			evaluatedCount: 2,
+			passCount: 1,
+			passRate: 0.5,
+			passAtK: [],
+			passHatK: [],
+		};
+	}
+
+	function expectationAggregation(
+		expectation: string,
+		passCount: number,
+		evaluatedCount: number,
+	): BuildExpectationAggregation {
+		return {
+			expectation,
+			runs: [],
+			evaluatedCount,
+			passCount,
+			passRate: evaluatedCount > 0 ? passCount / evaluatedCount : 0,
+			passAtK: [],
+			passHatK: [],
+		};
+	}
+
+	it('produces the same unit keys, counts and trial totals from either source', () => {
+		const tc = testCase();
+		const evaluation: MultiRunEvaluation = {
+			totalRuns: 3,
+			testCases: [
+				{
+					testCase: tc,
+					runs: [],
+					buildSuccessCount: 3,
+					executionScenarios: [scenarioAggregation()],
+					buildExpectations: [
+						expectationAggregation('asks before building', 2, 3),
+						expectationAggregation('never judged', 0, 0),
+					],
+					status: 'verified',
+				},
+			],
+		};
+		const withFiles: WorkflowTestCaseWithFile[] = [{ testCase: tc, fileSlug: 'my-case' }];
+
+		const fromEvaluation = bucketFromEvaluation(evaluation, withFiles, 'x');
+		const fromJson = bucket();
+
+		expect([...fromJson.evaluationUnits.keys()].sort()).toEqual(
+			[...fromEvaluation.evaluationUnits.keys()].sort(),
+		);
+		for (const [key, counts] of fromEvaluation.evaluationUnits) {
+			expect(fromJson.evaluationUnits.get(key)).toEqual(counts);
+		}
+		expect(fromJson.trialTotal).toBe(fromEvaluation.trialTotal);
+		expect(fromJson.failureCategoryTotals).toEqual(fromEvaluation.failureCategoryTotals);
+	});
+});
