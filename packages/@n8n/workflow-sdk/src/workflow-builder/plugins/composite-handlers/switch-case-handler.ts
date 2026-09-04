@@ -7,6 +7,8 @@
 import {
 	collectFromTarget,
 	addBranchTargetNodes,
+	getBuilderChains,
+	getPrefixChainHead,
 	processBranchForComposite,
 	processBranchForBuilder,
 	fixupBranchConnectionTargets,
@@ -16,7 +18,6 @@ import type {
 	ConnectionTarget,
 	NodeInstance,
 	SwitchCaseBuilder,
-	NodeChain,
 } from '../../../types/base';
 import { isSwitchCaseBuilder } from '../../node-builders/node-builder';
 import { isSwitchCaseComposite } from '../../type-guards';
@@ -43,11 +44,11 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	getHeadNodeName(input: SwitchCaseInput): { name: string; id: string } {
-		// Connections into the composite land on the source-chain head when present.
-		// For a.to(b).to(switchNode).onCase(...) the entry is `a`, not the Switch node.
-		const sourceChain = (input as { sourceChain?: NodeChain }).sourceChain;
-		if (sourceChain) {
-			return { name: sourceChain.head.name, id: sourceChain.head.id };
+		// A builder created inline from a chain (a.to(b).to(switchNode).onCase(...)) enters
+		// at the chain head `a`. Everything else enters at the Switch node.
+		const prefixHead = getPrefixChainHead(input);
+		if (prefixHead) {
+			return { name: prefixHead.name, id: prefixHead.id };
 		}
 		if (isSwitchCaseBuilder(input)) {
 			return { name: input.switchNode.name, id: input.switchNode.id };
@@ -60,11 +61,10 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 		input: SwitchCaseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
-		// Collect from source-chain nodes (a.to(b).to(switchNode).onCase(...)).
-		// Skip the input itself: the chain contains the builder when its tail is the builder.
-		const sourceChain = (input as { sourceChain?: NodeChain }).sourceChain;
-		if (sourceChain) {
-			for (const chainNode of sourceChain.allNodes) {
+		// Collect from the chains attached to the builder (prefix and feeders).
+		// Skip the input itself: a feeder chain contains the builder as its tail.
+		for (const chain of getBuilderChains(input)) {
+			for (const chainNode of chain.allNodes) {
 				if (chainNode && chainNode !== (input as unknown)) {
 					collector(chainNode);
 				}
@@ -88,10 +88,9 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	addNodes(input: SwitchCaseInput, ctx: MutablePluginContext): string {
-		// Handle sourceChain if present (for trigger.to(switch).onCase() pattern)
-		const builderWithChain = input as { sourceChain?: unknown };
-		if (builderWithChain.sourceChain) {
-			ctx.addBranchToGraph(builderWithChain.sourceChain);
+		// Materialize every chain attached to the builder (prefix and feeders).
+		for (const chain of getBuilderChains(input)) {
+			ctx.addBranchToGraph(chain);
 		}
 
 		// Build the switch node connections to its cases

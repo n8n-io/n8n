@@ -450,4 +450,117 @@ describe('inline chains that end in a Switch node', () => {
 		expect(json.connections['Prep 1'].main[0]![0].node).toBe('Router');
 		expect(json.connections['Router'].main[0]![0].node).toBe('Handler');
 	});
+
+	it('keeps a second chain connected to the Switch node when the first chain adds a case', () => {
+		// Two chains share one builder object. When one chain calls .onCase, it records
+		// itself as the builder's source chain. The other chain's edge must still land
+		// on the Switch node, not on the claiming chain's head.
+		const sw = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router' },
+		}) as SwitchNode;
+		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
+		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+		const webhook = trigger({
+			type: 'n8n-nodes-base.webhook',
+			version: 2,
+			config: { name: 'Webhook' },
+		});
+		const schedule = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Schedule' },
+		});
+
+		const branch = sw.onCase!(0, caseA);
+		const fromWebhook = webhook.to(branch);
+		const fromSchedule = schedule.to(branch);
+
+		const json = workflow('id', 'w').add(fromWebhook.onCase!(1, caseB)).add(fromSchedule).toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['Router'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('routes a case edge into a shared builder to the Switch node, not the claiming chain head', () => {
+		// A builder claimed by a feeder chain (webhook.to(branch).onCase(...)) can also
+		// be referenced as a case target of another Switch. That case edge must land on
+		// the builder's Switch node, not on the feeder chain's head.
+		const t = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const outer = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Outer Router' },
+		}) as SwitchNode;
+		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
+		const sw = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router' },
+		}) as SwitchNode;
+		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
+		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+		const webhook = trigger({
+			type: 'n8n-nodes-base.webhook',
+			version: 2,
+			config: { name: 'Webhook' },
+		});
+
+		const branch = sw.onCase!(0, caseA);
+		const claimed = webhook.to(branch).onCase!(1, caseB);
+
+		const json = workflow('id', 'w')
+			.add(t)
+			.to(outer.onCase!(0, ok).onCase(1, branch))
+			.add(claimed)
+			.toJSON();
+
+		expect(json.connections['Outer Router'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer Router'].main[1]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['Router'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('routes a workflow cursor edge into a shared builder to the Switch node', () => {
+		// wf.add(schedule).to(sharedBuilder): the cursor edge resolves through the
+		// composite head. A builder claimed by another chain must expose the Switch
+		// node as its entry, not the claiming chain's head.
+		const sw = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router' },
+		}) as SwitchNode;
+		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
+		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+		const webhook = trigger({
+			type: 'n8n-nodes-base.webhook',
+			version: 2,
+			config: { name: 'Webhook' },
+		});
+		const schedule = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Schedule' },
+		});
+
+		const branch = sw.onCase!(0, caseA);
+		const fromWebhook = webhook.to(branch);
+
+		const json = workflow('id', 'w')
+			.add(fromWebhook.onCase!(1, caseB))
+			.add(schedule)
+			.to(branch)
+			.toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+	});
 });
