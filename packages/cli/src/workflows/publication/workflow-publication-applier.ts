@@ -567,8 +567,9 @@ export class WorkflowPublicationApplier {
 			record.workflowId,
 			record.publishedVersionId,
 		);
-		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 
+		// Emitted right after the write: a failing refresh below would fail the
+		// record, and a retry sees the mapping already in place and stays silent.
 		// Reconcile, startup and leadership-takeover records re-apply the current
 		// version; only a moved mapping is worth telling consumers about.
 		if (oldVersion?.versionId !== record.publishedVersionId) {
@@ -577,5 +578,7 @@ export class WorkflowPublicationApplier {
 				publishedVersionId: record.publishedVersionId,
 			});
 		}
+
+		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 	}
 }

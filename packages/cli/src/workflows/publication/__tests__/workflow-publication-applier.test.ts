@@ -445,9 +445,13 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
 
-	test('emits workflow-published-version-changed once the published version advances', async () => {
-		await applier.apply(makeRecord(), abort);
+	test('emits workflow-published-version-changed once the mapping is written, even if the cache refresh then fails', async () => {
+		workflowPublishedDataService.refreshCache.mockRejectedValueOnce(new Error('cache down'));
 
+		await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('cache down');
+
+		// The retry finds the mapping already advanced and stays silent, so this
+		// emission is the only one consumers get for the moved version.
 		expect(eventService.emit).toHaveBeenCalledWith('workflow-published-version-changed', {
 			workflowId: 'wf-1',
 			publishedVersionId: 'v-2',
