@@ -1,3 +1,10 @@
+export {
+	ActivityEventRepository,
+	activityDataMaxLength,
+	activityResourceNameMaxLength,
+	type ActivityEventInput,
+	type ActivityFeedQuery,
+} from './activity-event.repository';
 export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
 export { AgentEvalResultRepository } from './agent-eval-result.repository.ee';
@@ -108,6 +115,7 @@ export { WorkflowReviewActivityCommentRepository } from './workflow-review-activ
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
+	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';

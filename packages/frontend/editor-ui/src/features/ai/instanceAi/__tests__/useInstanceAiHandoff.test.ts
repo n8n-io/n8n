@@ -42,17 +42,21 @@ import {
 	buildInstanceAiCredentialHandoffContext,
 	clearPendingAgentAttachment,
 	clearPendingComposerDraft,
+	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
+	consumePendingFirstMessage,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	provisionContextOnlyThread,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
+import type { PendingFirstMessage } from '../composables/useInstanceAiHandoff';
 
 describe('useInstanceAiHandoff', () => {
 	beforeEach(() => {
@@ -213,11 +217,45 @@ describe('useInstanceAiHandoff', () => {
 			projectId: 'project-1',
 		});
 
+		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+
 		clearPendingThreadHandoff('thread-1');
 
 		expect(getPendingHandoffContext('thread-1')).toBeNull();
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		// A thread that disappears before its opening message is replayed must not leave the
+		// payload behind: nothing would ever consume it again.
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('drops a stashed opening message without consuming it', () => {
+		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+
+		clearPendingFirstMessage('thread-1');
+
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('round-trips an opening message with its attachments so a refused send can requeue it', () => {
+		const payload: PendingFirstMessage = {
+			message: 'Fix this workflow',
+			attachments: [{ type: 'agent', id: 'agent-1', projectId: 'project-1' }],
+			context: buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		};
+		stashPendingFirstMessage('thread-1', payload);
+
+		// Mirrors the thread view: consume, send, and on refusal put the payload back intact.
+		const consumed = consumePendingFirstMessage('thread-1');
+		expect(consumed).toEqual(payload);
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+
+		stashPendingFirstMessage('thread-1', consumed!);
+
+		expect(consumePendingFirstMessage('thread-1')).toEqual(payload);
 	});
 
 	it('opens an agent artifact thread without sending a message', async () => {

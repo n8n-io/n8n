@@ -35,6 +35,8 @@ import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composable
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
@@ -59,6 +61,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -753,12 +756,18 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(
-				pending.message,
-				pending.attachments,
-				rootStore.pushRef,
-				pending.context,
-			);
+			void thread
+				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
+				.then((sent) => {
+					if (sent) return;
+					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
+					// would otherwise discard a message the user typed in another tab. Put it
+					// back so the next mount replays it -- but only while there is still a
+					// thread to replay it into, otherwise the payload would be stranded in
+					// localStorage for a thread that no longer exists.
+					if (!store.threads.some((t) => t.id === props.threadId)) return;
+					stashPendingFirstMessage(props.threadId, pending);
+				});
 			// Experiment cleanup: remove with openWorkflowInAssistant.
 			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
@@ -877,6 +886,8 @@ function handleSubmit(
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
 
+	const nodeCount = countAttachedNodes(attachments);
+
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
@@ -885,6 +896,13 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Track message-with-nodes only after a successful send, so failed
+			// sends and retries don't inflate the node-count metric.
+			if (nodeCount > 0) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+					node_count: nodeCount,
+				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
 			// up front loses the selection on a failed send that the user retries.
