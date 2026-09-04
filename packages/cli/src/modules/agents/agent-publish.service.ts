@@ -335,10 +335,11 @@ export class AgentPublishService {
 					// Publishing a workflow the agent cannot run as a tool would not
 					// make the agent publishable, so name the fix instead.
 					validateCompatibility(workflow);
+					// Before the call: an activation can commit and still throw after.
+					published = true;
 					await this.workflowService.activateWorkflow(user, workflow.id, {
 						source: 'agent-publish',
 					});
-					published = true;
 				} catch (error) {
 					// Only failures the user can act on belong in the 400; an outage or
 					// a bug keeps its own status.
