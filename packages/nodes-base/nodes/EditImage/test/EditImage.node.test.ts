@@ -1019,6 +1019,8 @@ describe('EditImage Node', () => {
 		});
 
 		it('should pass resolved gravity to drawText for text operation', async () => {
+			mockNode.typeVersion = 1.1;
+
 			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
@@ -1062,6 +1064,54 @@ describe('EditImage Node', () => {
 			await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGmInstance.drawText).toHaveBeenCalledWith(10, 10, 'Hello', 'north');
+		});
+
+		it('should use northwest gravity for v1 nodes regardless of alignment parameters', async () => {
+			mockNode.typeVersion = 1;
+
+			const testBuffer = createTestBuffer();
+			const binaryData = {
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+				fileName: 'test.png',
+			};
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: binaryData,
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'text';
+				if (paramName === 'dataPropertyName') return binaryData;
+				if (paramName === 'text') return 'Hello';
+				if (paramName === 'fontSize') return 18;
+				if (paramName === 'fontColor') return '#000000';
+				if (paramName === 'positionX') return 10;
+				if (paramName === 'positionY') return 10;
+				if (paramName === 'lineLength') return 80;
+				if (paramName === 'horizontalAlignment') return 'center';
+				if (paramName === 'verticalAlignment') return 'north';
+				if (paramName === 'options') return { font: arialFont };
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+				fileName: 'test.png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGmInstance.drawText).toHaveBeenCalledWith(10, 10, 'Hello', 'northwest');
 		});
 
 		it('should use destinationKey with IBinaryData', async () => {

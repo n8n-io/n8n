@@ -394,6 +394,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 		description: 'Horizontal alignment of the text',
@@ -420,6 +421,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 		description: 'Vertical alignment of the text',
@@ -872,7 +874,8 @@ export class EditImage implements INodeType {
 		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
@@ -1403,12 +1406,15 @@ export class EditImage implements INodeType {
 								'The selected font is not available. Select a font from the options.',
 							);
 						}
-            
-            const gravity = resolveGravity(
-							operationData.horizontalAlignment as string,
-							operationData.verticalAlignment as string,
-						);
 
+						const nodeVersion = this.getNode().typeVersion;
+						const gravity =
+							nodeVersion >= 1.1
+								? resolveGravity(
+										operationData.horizontalAlignment as string,
+										operationData.verticalAlignment as string,
+									)
+								: 'northwest';
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
