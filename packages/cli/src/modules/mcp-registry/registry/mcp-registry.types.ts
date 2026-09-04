@@ -53,8 +53,13 @@ export type McpRegistryServer = {
 	isOfficial: boolean;
 	origin: 'registry';
 	status: McpRegistryServerStatus;
-	// FIXME: api returns {data?: string[]} not string[]
-	tags?: string[];
+	/**
+	 * Tags as returned by the Strapi API. Strapi wraps relation fields in a
+	 * `{ data?: string[] }` envelope, so the raw API response may be either
+	 * shape. Always use `normalizeTags` when reading this field rather than
+	 * accessing it directly.
+	 */
+	tags?: string[] | { data?: string[] };
 	extendsCredential?: McpRegistryExtendsCredential;
 };
 
@@ -81,6 +86,20 @@ export type McpRegistryTool = {
 	annotations?: McpRegistryToolAnnotations;
 };
 
+/**
+ * Normalizes the `tags` field from a `McpRegistryServer`.
+ *
+ * The Strapi API wraps relation fields in a `{ data?: string[] }` envelope,
+ * so the raw value off the wire (and therefore stored in the DB JSON column)
+ * may be either `string[]` or `{ data?: string[] }`. This function always
+ * returns a plain `string[]` (or `undefined` when absent).
+ */
+export function normalizeTags(tags: McpRegistryServer['tags']): string[] | undefined {
+	if (!tags) return undefined;
+	if (Array.isArray(tags)) return tags;
+	return tags.data ?? undefined;
+}
+
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
 	const { slug, status, version, updatedAt, ...rest } = server;
 	let mappedStatus = status;
@@ -100,11 +119,17 @@ export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow 
 
 export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
 	const { slug, status, version, registryUpdatedAt, data } = entity;
-	return {
+	const server = {
 		slug,
 		status,
 		version,
 		updatedAt: registryUpdatedAt.toISOString(),
 		...data,
 	} as McpRegistryServer;
+
+	// Normalize tags: the Strapi API wraps relation fields as { data?: string[] },
+	// so the stored JSON may hold that envelope instead of a plain array.
+	server.tags = normalizeTags(server.tags);
+
+	return server;
 }

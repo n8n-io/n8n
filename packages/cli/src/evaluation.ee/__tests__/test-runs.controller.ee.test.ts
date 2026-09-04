@@ -56,6 +56,7 @@ describe('TestRunsController', () => {
 			findOne: vi.fn(),
 			getMany: vi.fn(),
 			getTestRunSummaryById: vi.fn(),
+			getTestRunSummaryByWorkflowId: vi.fn(),
 			delete: vi.fn(),
 			createTestRun: vi.fn(),
 		} as unknown as Mocked<TestRunRepository>;
@@ -79,7 +80,7 @@ describe('TestRunsController', () => {
 				testRun: { id: 'testrun123' },
 				finished: Promise.resolve(),
 			}),
-			canBeCancelled: vi.fn(),
+			isInNonCancellableState: vi.fn(),
 			cancelTestRun: vi.fn(),
 		} as unknown as Mocked<TestRunnerService>;
 
@@ -205,12 +206,14 @@ describe('TestRunsController', () => {
 
 	describe('getOne', () => {
 		it('attaches metricScales resolved from the run config snapshot', async () => {
-			mockTestRunRepository.findOne.mockResolvedValue({ id: mockTestRunId } as TestRun);
-			mockTestRunRepository.getTestRunSummaryById.mockResolvedValue({
+			const summaryWithSnapshot = {
 				id: mockTestRunId,
 				evaluationConfigId: null,
 				evaluationConfigSnapshot: JUDGE_SNAPSHOT,
-			} as any);
+			};
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue(
+				summaryWithSnapshot as any,
+			);
 
 			const req = {
 				params: { workflowId: mockWorkflowId, id: mockTestRunId },
@@ -219,12 +222,35 @@ describe('TestRunsController', () => {
 
 			const result = await testRunsController.getOne(req);
 
+			expect(mockTestRunRepository.getTestRunSummaryByWorkflowId).toHaveBeenCalledWith(
+				mockTestRunId,
+				mockWorkflowId,
+			);
+			// The old getTestRun + getTestRunSummaryById double-query must NOT be called.
+			expect(mockTestRunRepository.findOne).not.toHaveBeenCalled();
+			expect(mockTestRunRepository.getTestRunSummaryById).not.toHaveBeenCalled();
+
 			expect(result).toEqual({
 				id: mockTestRunId,
 				evaluationConfigId: null,
 				evaluationConfigSnapshot: JUDGE_SNAPSHOT,
 				metricScales: { 'Tone Match': 'oneToFive' },
 			});
+		});
+
+		it('throws NotFoundError when the run does not belong to this workflow', async () => {
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue(null);
+
+			const req = {
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			} as unknown as TestRunsRequest.GetOne;
+
+			await expect(testRunsController.getOne(req)).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.getTestRunSummaryByWorkflowId).toHaveBeenCalledWith(
+				mockTestRunId,
+				mockWorkflowId,
+			);
 		});
 	});
 
@@ -330,7 +356,7 @@ describe('TestRunsController', () => {
 		};
 
 		it('cancels a running test run and returns 202', async () => {
-			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+			mockTestRunnerService.isInNonCancellableState.mockReturnValue(false);
 
 			const res = mockResponse();
 			await testRunsController.cancel(buildReq(), res as any);
@@ -341,7 +367,7 @@ describe('TestRunsController', () => {
 		});
 
 		it('requires workflow:execute (not just workflow:read) so a read-only user cannot cancel', async () => {
-			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+			mockTestRunnerService.isInNonCancellableState.mockReturnValue(false);
 
 			await testRunsController.cancel(buildReq(), mockResponse() as any);
 
@@ -362,7 +388,7 @@ describe('TestRunsController', () => {
 		});
 
 		it('throws ConflictError when the test run is not cancellable', async () => {
-			mockTestRunnerService.canBeCancelled.mockReturnValue(true);
+			mockTestRunnerService.isInNonCancellableState.mockReturnValue(true);
 
 			await expect(testRunsController.cancel(buildReq(), mockResponse() as any)).rejects.toThrow(
 				ConflictError,

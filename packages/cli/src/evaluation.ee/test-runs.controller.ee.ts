@@ -8,7 +8,6 @@ import type { TestRun, User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 
@@ -124,15 +123,16 @@ export class TestRunsController {
 	async getOne(req: TestRunsRequest.GetOne) {
 		const { id, workflowId } = req.params;
 
-		try {
-			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
-			const summary = await this.testRunRepository.getTestRunSummaryById(id);
-			const [withScales] = await this.attachMetricScales([summary], workflowId);
-			return withScales;
-		} catch (error) {
-			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
-			throw error;
-		}
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+
+		// Single scoped query: verifies the run belongs to this workflow and
+		// fetches the summary in one round-trip, replacing the previous two-step
+		// getTestRun() + getTestRunSummaryById() pattern.
+		const summary = await this.testRunRepository.getTestRunSummaryByWorkflowId(id, workflowId);
+		if (!summary) throw new NotFoundError('Test run not found');
+
+		const [withScales] = await this.attachMetricScales([summary], workflowId);
+		return withScales;
 	}
 
 	@Get('/:workflowId/test-runs/:id/test-cases')
@@ -167,7 +167,7 @@ export class TestRunsController {
 			'workflow:execute',
 		]);
 
-		if (this.testRunnerService.canBeCancelled(testRun)) {
+		if (this.testRunnerService.isInNonCancellableState(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
 			throw new ConflictError(message);
 		}
