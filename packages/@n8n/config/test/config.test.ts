@@ -412,6 +412,10 @@ describe('GlobalConfig', () => {
 					stalledInterval: 30_000,
 				},
 			},
+			workerPool: {
+				enabled: false,
+				name: '',
+			},
 		},
 		taskRunners: {
 			mode: 'internal',
