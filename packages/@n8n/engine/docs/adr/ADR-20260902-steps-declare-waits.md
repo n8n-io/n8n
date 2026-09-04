@@ -1,4 +1,4 @@
-# ADR-2026-09-02: Steps declare waits; the engine owns suspension and resume
+# Steps declare waits; the engine owns suspension and resume
 
 Date: 2026-09-02
 Status: Active
@@ -18,7 +18,7 @@ node. Their wait parameters are frequently expressions, resolved by the node
 at run time.
 
 In engine v2, an execution is step rows advanced by events. A step is one call
-that returns output (ADR-2026-08-28); a step executor cannot block for the
+that returns output (ADR-20260828); a step executor cannot block for the
 wait duration. A pause must therefore be a state of the step row, not a state
 of any process.
 
@@ -125,6 +125,6 @@ whichever comes first.
 
 RFC: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc (§3.3)
 Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
-Related ADRs: ADR-2026-08-28-trigger-settlement-before-execution,
-ADR-2026-09-04-resume-urls-carry-a-derived-token,
-ADR-2026-09-04-timeout-excludes-waiting-time
+Related ADRs: ADR-20260828-trigger-settlement-before-execution,
+ADR-20260904-resume-urls-carry-a-derived-token,
+ADR-20260904-timeout-excludes-waiting-time

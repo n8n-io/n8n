@@ -1,4 +1,4 @@
-# ADR-2026-09-04: Resume URLs carry a derived capability token
+# Resume URLs carry a derived capability token
 
 Date: 2026-09-04
 Status: Active
@@ -12,7 +12,7 @@ URL they use travels through channels the engine does not control and sits
 there for as long as the wait lasts, which can be months. Whatever authorizes
 that request has to survive the same journey.
 
-The data plane verifies the request (ADR-2026-09-02, decision 5): the control
+The data plane verifies the request (ADR-20260902, decision 5): the control
 plane forwards it without consulting its own tables, so the token is the only
 thing standing between a stranger and someone else's paused workflow.
 
@@ -90,11 +90,11 @@ derived rather than stored.
   `verifySharedSecretToken` passes `maxAge`. Both take the lifetime from the
   spec, so the change is confined to making it optional.
 - A resume request can still arrive before the suspension is recorded
-  (ADR-2026-09-02). A valid token for a step that is not yet `waiting` is the
+  (ADR-20260902). A valid token for a step that is not yet `waiting` is the
   shape that window takes at this endpoint.
 
 ## Links
 
 RFC: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc (§3.3)
 Tickets: CAT-2928
-Related ADRs: ADR-2026-09-02-steps-declare-waits
+Related ADRs: ADR-20260902-steps-declare-waits
