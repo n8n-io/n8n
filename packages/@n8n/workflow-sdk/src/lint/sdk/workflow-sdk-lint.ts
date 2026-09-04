@@ -6,6 +6,7 @@
  */
 
 import type { CallExpression, MemberExpression, Node, Program } from 'estree';
+import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 
 import {
 	FORBIDDEN_NODE_TYPES,
@@ -164,6 +165,76 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 }
 
 /** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
+/** Builders that put a box on the canvas. Sub-node builders (`languageModel`,
+ *  `tool`, `memory`, …) and `sticky` ride with their parent, so they are absent. */
+const CANVAS_BOX_BUILDERS = new Set(['node', 'trigger']);
+
+/**
+ * Counts the boxes the source will draw — each `.group()` plus every node not
+ * listed in one — and warns when they run past the ceiling. Agents skip the
+ * count they are asked to run after saving, so it is raised here instead, while
+ * the source is still theirs to edit.
+ */
+function ungroupedCanvasIssue(ast: Program): SourceLintIssue | undefined {
+	let boxBuilders = 0;
+	let groupCount = 0;
+	const groupedHandles = new Set<string>();
+
+	walkAst(ast, (node) => {
+		if (node.type !== 'CallExpression') {
+			return;
+		}
+
+		const { callee } = node;
+		if (callee.type === 'Identifier' && CANVAS_BOX_BUILDERS.has(callee.name)) {
+			boxBuilders++;
+			return;
+		}
+
+		if (
+			callee.type !== 'MemberExpression' ||
+			callee.computed ||
+			callee.property.type !== 'Identifier' ||
+			callee.property.name !== 'group'
+		) {
+			return;
+		}
+
+		groupCount++;
+		const members = node.arguments[1];
+		if (members?.type !== 'ArrayExpression') {
+			return;
+		}
+
+		for (const member of members.elements) {
+			if (member?.type === 'Identifier') {
+				groupedHandles.add(member.name);
+			}
+		}
+	});
+
+	const ungrouped = Math.max(boxBuilders - groupedHandles.size, 0);
+	const boxes = groupCount + ungrouped;
+	if (boxes <= TOP_LEVEL_ITEM_CEILING) {
+		return undefined;
+	}
+
+	const exportDefault = ast.body.find((stmt) => stmt.type === 'ExportDefaultDeclaration');
+	return lintIssue({
+		code: 'SDK_UNGROUPED_CANVAS',
+		message:
+			`This source draws ${boxes} boxes on the canvas (${groupCount} group(s) and ${ungrouped} ` +
+			`ungrouped node(s)), past the ${TOP_LEVEL_ITEM_CEILING} a reader can take in. If you are ` +
+			'building this workflow, wrap each stage in `.group(name, members, { description })` now, while ' +
+			'the source is open — grouping cannot be added after the build, and a node stays out only when ' +
+			'no valid group can hold it. If you are editing a workflow that was already laid out this way, ' +
+			'leave it alone unless the user asked about grouping.',
+		line: exportDefault?.loc?.start.line ?? 1,
+		column: (exportDefault?.loc?.start.column ?? 0) + 1,
+		lintTarget: 'sdk',
+	});
+}
+
 export function lintWorkflowSdkAst(
 	ast: Program,
 	asConstMatches: AsConstMatch[] = [],
@@ -362,6 +433,11 @@ export function lintWorkflowSdkAst(
 				lintTarget: 'sdk',
 			}),
 		);
+	}
+
+	const ungroupedCanvas = ungroupedCanvasIssue(ast);
+	if (ungroupedCanvas) {
+		issues.push(ungroupedCanvas);
 	}
 
 	return dedupeSourceLintIssues(issues);

@@ -230,3 +230,57 @@ export default workflow('id', 'name');
 		expect(prepared.code).toContain("flag ? 'a' : 'b'");
 	});
 });
+
+describe('SDK_UNGROUPED_CANVAS', () => {
+	const nodes = (count: number) =>
+		Array.from(
+			{ length: count },
+			(_, i) =>
+				`const n${i} = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'N${i}' } });`,
+		).join('\n');
+
+	const workflow = (count: number, groups = '') => `
+${nodes(count)}
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+export default workflow('id', 'name').add(start)${groups};
+`;
+
+	const codes = (source: string) => lintWorkflowSdkSource(source).map((i) => i.code);
+
+	it('stays quiet while the canvas fits the ceiling', () => {
+		// 6 nodes + trigger = 7 boxes.
+		expect(codes(workflow(6))).not.toContain('SDK_UNGROUPED_CANVAS');
+	});
+
+	it('flags a source that draws more boxes than a reader can take in', () => {
+		const issue = lintWorkflowSdkSource(workflow(7)).find((i) => i.code === 'SDK_UNGROUPED_CANVAS');
+
+		expect(issue?.message).toContain('8 boxes');
+		expect(issue?.message).toContain('0 group(s)');
+		expect(issue?.severity).toBe('informational');
+	});
+
+	it('counts a group as one box and its members as none', () => {
+		// 7 nodes + trigger, with 5 nodes wrapped: 1 group + 3 ungrouped = 4 boxes.
+		const groups = ".group('Stage', [n0, n1, n2, n3, n4])";
+
+		expect(codes(workflow(7, groups))).not.toContain('SDK_UNGROUPED_CANVAS');
+	});
+
+	it('does not count sub-nodes, which ride with their parent', () => {
+		const source = `
+const agent = node({ type: '@n8n/n8n-nodes-langchain.agent', version: 1, config: { name: 'Agent' } });
+const model = languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1, config: { name: 'Model' } });
+const mem = memory({ type: '@n8n/n8n-nodes-langchain.memoryPostgresChat', version: 1, config: { name: 'Memory' } });
+const search = tool({ type: '@n8n/n8n-nodes-langchain.toolVectorStore', version: 1, config: { name: 'Search' } });
+const embed = embedding({ type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi', version: 1, config: { name: 'Embed' } });
+const split = textSplitter({ type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter', version: 1, config: { name: 'Split' } });
+${nodes(5)}
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+export default workflow('id', 'name').add(start);
+`;
+
+		// Agent + 5 nodes + trigger = 7 boxes; the five sub-nodes are not boxes.
+		expect(codes(source)).not.toContain('SDK_UNGROUPED_CANVAS');
+	});
+});
