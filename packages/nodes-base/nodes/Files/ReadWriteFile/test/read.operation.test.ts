@@ -31,6 +31,8 @@ describe('Read/Write Files from Disk, read operation', () => {
 			'{drafts}/note.txt',
 			'[ab]/x.txt',
 			'a/x.txt',
+			'alt/cat.txt',
+			'alt/dog.txt',
 		]) {
 			await write(file);
 		}
@@ -142,6 +144,21 @@ describe('Read/Write Files from Disk, read operation', () => {
 
 		it('leaves braces alone, exactly as when disabled', async () => {
 			expect(await readWith(`${directory}/{alpha,beta}/f.txt`, false)).toEqual(['f.txt', 'f.txt']);
+		});
+
+		it('supports alternation groups', async () => {
+			expect(await readWith(`${directory}/alt/(cat|dog).txt`, false)).toEqual([
+				'cat.txt',
+				'dog.txt',
+			]);
+		});
+
+		it('does not enable extended glob syntax', async () => {
+			// `@(` and friends compile to nested quantifiers whose matching cost grows
+			// exponentially with the length of a file name
+			await expect(readWith(`${directory}/alt/@(cat|dog).txt`, false)).rejects.toThrow(
+				'No file(s) found',
+			);
 		});
 
 		it('no longer matches an unescaped literal bracket path, and says the option would', async () => {

@@ -79,7 +79,7 @@ export const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to match [ ] and ( ) as literal characters instead of glob syntax',
-				hint: 'Turn off for character classes like [0-9] or groups like @(a|b). Does not affect * ? { }.',
+				hint: 'Turn off for character classes like [0-9] or groups like (a|b). Does not affect * ? { }.',
 			},
 		],
 	},
@@ -114,7 +114,11 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			const literalBrackets = (options.literalBrackets ?? true) as boolean;
 			const escaped = escapeBracketsAndParens(fileSelector);
-			const files = await glob(literalBrackets ? escaped : fileSelector);
+			// Unescaped `(` would otherwise open extglob, whose nested quantifiers make
+			// matching cost grow exponentially with the length of a file name
+			const files = literalBrackets
+				? await glob(escaped)
+				: await glob(fileSelector, { extglob: false });
 
 			if (files.length === 0 && nodeVersion > 1) {
 				const hasUnescapedBrackets = escaped !== fileSelector;
