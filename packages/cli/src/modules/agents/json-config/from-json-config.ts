@@ -446,6 +446,7 @@ async function resolveToolRef(
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,

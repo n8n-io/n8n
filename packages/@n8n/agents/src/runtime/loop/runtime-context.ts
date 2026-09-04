@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
+import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
@@ -244,6 +245,17 @@ export class RuntimeContextBuilder {
 			(loadedToolNames.has(tool.name) ? volatileFragments : stableFragments).push(
 				tool.systemInstruction,
 			);
+		}
+
+		// Define the untrusted-data boundary ahead of the first wrapped result.
+		// Goes in the cached block unless the only untrusted tools were loaded
+		// mid-conversation, mirroring the fragment split above.
+		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
+		if (untrustedTools.length > 0) {
+			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+				? stableFragments
+				: volatileFragments;
+			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
 		}
 
 		const userInstructions = this.config.instructions;

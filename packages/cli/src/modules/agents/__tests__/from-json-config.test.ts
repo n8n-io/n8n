@@ -235,7 +235,11 @@ describe('buildFromJson()', () => {
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search', hasToMessage: true });
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
 		const rawOutput = { matches: ['first', 'second'] };
 		const toolExecutor: ToolExecutor = {
@@ -261,6 +265,7 @@ describe('buildFromJson()', () => {
 			}
 		).tools.find(({ name }) => name === 'my_search');
 		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
 		const output = await tool.handler({ query: 'n8n' }, {} as never);
 

@@ -222,6 +222,8 @@ export class Tool<
 
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
+	private outputTrustValue?: BuiltTool['outputTrust'];
+
 	private providerOptionsValue?: Record<string, JSONObject>;
 
 	private handleCancellationValue?: boolean;
@@ -315,6 +317,12 @@ export class Tool<
 		return this;
 	}
 
+	/** Treat every model-facing result and error from this tool as external reference data. */
+	untrustedOutput(): this {
+		this.outputTrustValue = 'untrusted';
+		return this;
+	}
+
 	/**
 	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
 	 * By default, the runtime bypasses the handler and injects the steering message directly.
@@ -394,6 +402,7 @@ export class Tool<
 			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
+			outputTrust: this.outputTrustValue,
 			handler: this.handlerFn as (
 				input: unknown,
 				ctx: ToolContext | InterruptibleToolContext,
@@ -441,6 +450,7 @@ export class Tool<
 			hasResume: this.resumeSchemaValue !== undefined,
 			hasToMessage: this.toMessageFn !== undefined,
 			requireApproval: this.requireApprovalValue ?? false,
+			outputTrust: this.outputTrustValue ?? null,
 			providerOptions: this.providerOptionsValue ?? null,
 		};
 	}

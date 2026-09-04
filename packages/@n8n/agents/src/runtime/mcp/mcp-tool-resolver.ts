@@ -60,6 +60,7 @@ export class McpToolResolver {
 			handler,
 			toMessage,
 			toModelOutput,
+			outputTrust: 'untrusted',
 			mcpTool: true,
 			mcpServerName: connection.name,
 			mcpToolName: originalName,

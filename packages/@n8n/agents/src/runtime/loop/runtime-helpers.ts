@@ -3,6 +3,7 @@
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
 import type { ModelTurnError } from './run-output-sink';
+import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { RawProviderError } from '../model/raw-error';
@@ -34,10 +35,13 @@ export function formatMcpConnectionNote(
 	failures: readonly McpConnectionFailedEvent[],
 ): string | undefined {
 	if (failures.length === 0) return undefined;
-	const lines = failures.map((f) => `- ${f.server}: ${f.error}`).join('\n');
+	const details = wrapUntrustedData(
+		stripInvisibleUnicode(JSON.stringify(failures)),
+		'mcp-connection-status',
+	);
 	return `<mcp-connection-status>
 The following MCP server(s) could not be reached, so their tools are unavailable for this run:
-${lines}
+${details}
 If this affects the user's request, briefly let them know which server is unavailable.
 </mcp-connection-status>`;
 }
