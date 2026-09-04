@@ -24,6 +24,8 @@ export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 export const INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY = 'instanceAiAgentPreviewView';
+export const INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY = 'instanceAiArtifactsPanelOpen';
+export const INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY = 'instanceAiArtifactPreviewOpen';
 /** Mirrors `AGENT_PREVIEW_SESSION_METADATA_KEY` in `@n8n/instance-ai`. */
 export const INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY = 'instanceAiAgentPreviewSession';
 /**

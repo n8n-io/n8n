@@ -265,6 +265,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	async function persistChatPanelWidthRatio(chatPanelWidthRatio: number): Promise<void> {
+		if (preferences.value) {
+			preferences.value = { ...preferences.value, chatPanelWidthRatio };
+		}
+		try {
+			const result = await updatePreferences(rootStore.restApiContext, {
+				chatPanelWidthRatio,
+			});
+			preferences.value = result;
+		} catch {}
+	}
+
 	async function ensurePreferencesLoaded(): Promise<void> {
 		if (preferences.value) return;
 		try {
@@ -626,6 +638,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		save,
 		persistEnabled,
 		persistLocalGatewayPreference,
+		persistChatPanelWidthRatio,
 		ensurePreferencesLoaded,
 		setField,
 		setPermission,

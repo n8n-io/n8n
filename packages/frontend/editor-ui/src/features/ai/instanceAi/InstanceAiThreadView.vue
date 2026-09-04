@@ -21,7 +21,13 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
+import {
+	onClickOutside,
+	useDebounceFn,
+	useElementSize,
+	useScroll,
+	useWindowSize,
+} from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -29,11 +35,13 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { countAttachedNodes } from './utils/buildNodesAttachment';
@@ -68,6 +76,8 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY,
+	INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -289,6 +299,19 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	previewOpenState: () => {
+		const value = store.getThreadMetadata(props.threadId)?.[
+			INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY
+		];
+		return typeof value === 'boolean' ? value : undefined;
+	},
+	onPreviewOpenChange: (open) => {
+		void Promise.resolve(
+			store.updateThreadMetadata(props.threadId, {
+				[INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY]: open,
+			}),
+		).catch(() => {});
+	},
 });
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
@@ -324,8 +347,13 @@ watch(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const isArtifactsPanelRevealed = ref(false);
-const isArtifactsPanelDismissedInLayout = ref(false);
+const persistedArtifactsPanelOpen = computed<boolean | undefined>(() => {
+	const value = store.getThreadMetadata(props.threadId)?.[
+		INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY
+	];
+	return typeof value === 'boolean' ? value : undefined;
+});
+const artifactsPanelOpenOverride = ref<boolean | undefined>();
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
@@ -375,21 +403,16 @@ function toggleArtifactsPanel() {
 		return;
 	}
 
-	if (showArtifactsPanel.value) {
-		if (isArtifactsPanelInLayout.value) {
-			isArtifactsPanelDismissedInLayout.value = true;
-			return;
-		}
-		isArtifactsPanelRevealed.value = false;
-		return;
-	}
+	setArtifactsPanelOpen(!showArtifactsPanel.value);
+}
 
-	if (isArtifactsPanelInLayout.value) {
-		isArtifactsPanelDismissedInLayout.value = false;
-		return;
-	}
-
-	isArtifactsPanelRevealed.value = true;
+function setArtifactsPanelOpen(open: boolean) {
+	artifactsPanelOpenOverride.value = open;
+	void Promise.resolve(
+		store.updateThreadMetadata(props.threadId, {
+			[INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY]: open,
+		}),
+	).catch(() => {});
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -428,9 +451,7 @@ const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelInLayout.value
-			? !isArtifactsPanelDismissedInLayout.value
-			: isArtifactsPanelRevealed.value),
+		(artifactsPanelOpenOverride.value ?? isArtifactsPanelInLayout.value),
 );
 const showArtifactsPanelToggle = computed(
 	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
@@ -445,10 +466,15 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
+const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
+const MIN_SPLIT_PANEL_WIDTH = 400;
+const MIN_SPLIT_CONTAINER_WIDTH = MIN_SPLIT_PANEL_WIDTH * 2;
+const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
+const initialChatPanelWidthRatio = ref<number | null>(null);
+const preferredChatPanelWidthRatio = ref<number | null>(null);
 
 watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	if (activeTabId !== previousActiveTabId) {
@@ -456,11 +482,49 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
-// Preserve the default or manually selected width while temporarily
-// constraining it to the available space.
-const previewPanelWidth = computed(() =>
-	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
+function isValidPanelWidthRatio(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+const persistedChatPanelWidthRatio = computed(() => {
+	const ratio = settingsStore.preferences?.chatPanelWidthRatio;
+	return isValidPanelWidthRatio(ratio) ? ratio : null;
+});
+const chatPanelWidthRatio = computed(
+	() =>
+		preferredChatPanelWidthRatio.value ??
+		persistedChatPanelWidthRatio.value ??
+		initialChatPanelWidthRatio.value ??
+		0.5,
+);
+const previewMinWidth = computed(() =>
+	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
+		? Math.round(threadAreaWidth.value / 2)
+		: MIN_SPLIT_PANEL_WIDTH,
+);
+const previewMaxWidth = computed(() =>
+	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
+		? Math.round(threadAreaWidth.value / 2)
+		: threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH,
+);
+const previewPanelWidth = computed(() => {
+	if (threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH) {
+		return Math.round(threadAreaWidth.value / 2);
+	}
+
+	const preferredWidth = threadAreaWidth.value * (1 - chatPanelWidthRatio.value);
+	return Math.round(
+		Math.max(previewMinWidth.value, Math.min(preferredWidth, previewMaxWidth.value)),
+	);
+});
+const isPreviewResizeEnabled = computed(
+	() => !isPreviewExpanded.value && threadAreaWidth.value > MIN_SPLIT_CONTAINER_WIDTH,
+);
+const shouldAnimatePreviewLayout = computed(
+	() =>
+		isPreviewPanelTransitionEnabled.value &&
+		!isResizingPreview.value &&
+		!isThreadAreaResizing.value,
 );
 const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
 const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
@@ -497,7 +561,16 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 }
 
 function handlePreviewResize({ width }: { width: number }) {
-	preferredPreviewPanelWidth.value = width;
+	if (threadAreaWidth.value <= 0) return;
+	preferredChatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
+}
+
+function handlePreviewResizeEnd() {
+	isResizingPreview.value = false;
+	const ratio = preferredChatPanelWidthRatio.value;
+	if (ratio !== null) {
+		void settingsStore.persistChatPanelWidthRatio(ratio);
+	}
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -520,44 +593,51 @@ watch(
 			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
 		}
 
-		if (visible) {
-			isArtifactsPanelRevealed.value = false;
-			preferredPreviewPanelWidth.value = previewMaxWidth.value;
-		} else {
+		if (!visible) {
 			isAgentPreviewDockOpen.value = false;
 		}
 	},
 	{ flush: 'sync' },
 );
 
-// Late-initialize if the panel became visible before the ResizeObserver
-// reported the container size (otherwise the panel would render at 0px).
-watch(threadAreaWidth, (width) => {
-	if (width > 0 && preferredPreviewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		preferredPreviewPanelWidth.value = previewMaxWidth.value;
-	}
-});
+const finishThreadAreaResize = useDebounceFn(() => {
+	isThreadAreaResizing.value = false;
+}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
 
-watch(isArtifactsPanelInLayout, (isInLayout) => {
-	isArtifactsPanelRevealed.value = false;
+watch(
+	threadAreaWidth,
+	(width, previousWidth) => {
+		if (width > 0 && initialChatPanelWidthRatio.value === null) {
+			initialChatPanelWidthRatio.value =
+				Math.min(DEFAULT_CHAT_PANEL_CONTENT_WIDTH, width / 2) / width;
+		}
 
-	if (isInLayout) {
-		isArtifactsPanelDismissedInLayout.value = false;
-	}
-});
+		if (
+			typeof previousWidth === 'number' &&
+			previousWidth > 0 &&
+			width !== previousWidth &&
+			preview.isPreviewVisible.value
+		) {
+			isThreadAreaResizing.value = true;
+			void finishThreadAreaResize();
+		}
+	},
+	{ immediate: true },
+);
 
-watch(canShowArtifactsPanel, (canShow) => {
-	if (!canShow) {
-		isArtifactsPanelRevealed.value = false;
-		isArtifactsPanelDismissedInLayout.value = false;
-	}
-});
+watch(
+	persistedArtifactsPanelOpen,
+	(open) => {
+		artifactsPanelOpenOverride.value = open;
+	},
+	{ immediate: true, flush: 'sync' },
+);
 
 onClickOutside(
 	artifactsPanelSlotRef,
 	() => {
 		if (isArtifactsPanelInLayout.value) return;
-		isArtifactsPanelRevealed.value = false;
+		setArtifactsPanelOpen(false);
 	},
 	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
 );
@@ -1086,10 +1166,10 @@ async function dismissComposerContextChip() {
 			:class="[
 				$style.chatArea,
 				{
-					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
+					[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 				},
 			]"
-			:data-layout-animated="isPreviewPanelTransitionEnabled"
+			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
@@ -1349,8 +1429,7 @@ async function dismissComposerContextChip() {
 					$style.canvasArea,
 					{
 						[$style.canvasAreaExpanded]: isPreviewExpanded,
-						[$style.agentPreviewLayoutTransition]:
-							isPreviewPanelTransitionEnabled && !isResizingPreview,
+						[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 					},
 				]"
 				:style="agentPreviewPanelStyle"
@@ -1359,14 +1438,14 @@ async function dismissComposerContextChip() {
 			>
 				<N8nResizeWrapper
 					:width="previewPanelWidth"
-					:min-width="400"
+					:min-width="previewMinWidth"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded"
+					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
-					@resizeend="isResizingPreview = false"
+					@resizeend="handlePreviewResizeEnd"
 				>
 					<TabsRoot
 						v-model="preview.activeTabId.value"
