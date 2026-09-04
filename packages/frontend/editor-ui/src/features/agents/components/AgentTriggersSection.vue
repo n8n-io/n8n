@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -9,6 +8,9 @@ import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
+import AgentChipButton from './AgentChipButton.vue';
+import AgentChipRow from './AgentChipRow.vue';
+import AgentSchedulesRow from './AgentSchedulesRow.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -19,6 +21,8 @@ const props = withDefaults(
 		isPublished?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
+		taskRefs?: AgentJsonTaskConfig[];
+		reloadKey?: number;
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
@@ -29,6 +33,7 @@ const props = withDefaults(
 		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		taskRefs: () => [],
 		ensureAgentPersisted: undefined,
 	},
 );
@@ -36,6 +41,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 	'agent-changed': [];
 }>();
 
@@ -181,24 +188,6 @@ function handleChannelDisconnected(channelType: string) {
 		props.connectedTriggers.filter((channel) => channel !== channelType),
 	);
 }
-
-const remainingChannelOptionLabels = computed(() => {
-	const remainingChannels = (catalog.value ?? []).filter(
-		(channel) => !props.connectedTriggers.includes(channel.type),
-	);
-	const remainingCount = remainingChannels.length - 3;
-
-	const labels = remainingChannels
-		.map((channel) => channel.label)
-		.slice(0, 3)
-		.join(', ');
-
-	return remainingCount > 0
-		? i18n.baseText('agents.builder.triggers.remaining', {
-				interpolate: { labels, count: remainingCount },
-			})
-		: labels;
-});
 </script>
 
 <template>
@@ -206,42 +195,40 @@ const remainingChannelOptionLabels = computed(() => {
 		:class="[$style.row, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<div :class="$style.innerRow" :inert="props.disabled || undefined">
-			<button
+		<AgentChipRow
+			:label="i18n.baseText('agents.builder.channel.title')"
+			:item-count="channelRows.length"
+			:add-label="i18n.baseText('agents.builder.channel.add')"
+			add-button-test-id="agent-channels-add-channel"
+			:disabled="props.disabled"
+			@add="openChannelModal"
+		>
+			<AgentChipButton
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:class="[
-					$style.channelCard,
-					channel.invalidReasons.length > 0 && $style.channelCardInvalid,
-				]"
+				:icon="channel.icon"
+				:invalid="channel.invalidReasons.length > 0"
+				:invalid-reasons="channel.invalidReasons"
 				:disabled="props.disabled"
-				:aria-invalid="channel.invalidReasons.length > 0"
-				:title="channel.invalidReasons.join('\n')"
+				:class="$style.channelChip"
 				@click="openChannelEdit(channel.type)"
 			>
-				<N8nIcon v-if="channel.icon" :icon="channel.icon" size="large" />
-				<div :class="$style.channelCardText">
-					<N8nText step="sm" bold>{{ channel.label }}</N8nText>
-					<N8nText v-if="channel.credentialName" step="xs" color="text-light">
-						{{ channel.credentialName }}
-					</N8nText>
-					<div v-else :class="$style.credentialnameSkeleton" />
-				</div>
-			</button>
+				{{ channel.label }}
+			</AgentChipButton>
+		</AgentChipRow>
 
-			<button
-				:class="$style.channelCard"
-				:disabled="props.disabled"
-				data-testid="agent-channels-add-channel"
-				@click="openChannelModal"
-			>
-				<N8nIcon icon="plus" size="xlarge" color="text-light" />
-				<div :class="$style.channelCardText">
-					<N8nText step="sm" bold>{{ i18n.baseText('agents.builder.triggers.add') }}</N8nText>
-					<N8nText step="xs" color="text-light">{{ remainingChannelOptionLabels }}</N8nText>
-				</div>
-			</button>
-		</div>
+		<AgentSchedulesRow
+			:task-refs="props.taskRefs"
+			:disabled="props.disabled"
+			:project-id="props.projectId"
+			:agent-id="props.agentId"
+			:is-published="props.isPublished"
+			:reload-key="props.reloadKey"
+			:agent-unsaved="props.agentUnsaved"
+			:validation-issues="props.validationIssues"
+			@toggle-task="emit('toggle-task', $event)"
+			@tasks-changed="emit('tasks-changed')"
+		/>
 
 		<AgentChannelModal
 			v-if="channelModalOpen"
@@ -260,65 +247,17 @@ const remainingChannelOptionLabels = computed(() => {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
-@use '@/app/css/variables' as vars;
-@use '@n8n/design-system/css/mixins/motion.scss' as motion;
-
 .row {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .disabled {
 	opacity: 0.5;
 }
 
-.innerRow {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: var(--spacing--xs);
-}
-
-.channelCard {
-	outline: none;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	padding: var(--spacing--xs);
-	border-radius: var(--radius--xs);
-	gap: var(--spacing--xs);
-	background-color: var(--background--surface);
-	border: var(--border);
-	box-shadow: var(--shadow--xs);
-	cursor: pointer;
-
-	&:focus-visible {
-		@include focus.focus-ring-with-border;
-	}
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-}
-
-.channelCardInvalid {
-	border-color: var(--border-color--danger);
-}
-
-.channelCardText {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	min-width: 0;
-	white-space: nowrap;
-}
-
-.credentialnameSkeleton {
-	width: calc(var(--height--sm) * 4);
-	border-radius: var(--radius);
-	height: var(--height--3xs);
-	background-color: var(--background--active);
-
-	@include motion.skeleton-pulse;
+.channelChip {
+	max-width: min(var(--spacing--5xl), 100%);
 }
 </style>

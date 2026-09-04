@@ -72,8 +72,8 @@ vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
 }));
 
-vi.mock('../components/AgentChannelsSection.vue', () => ({
-	default: { name: 'AgentChannelsSection', template: '<div />' },
+vi.mock('../components/AgentTriggersSection.vue', () => ({
+	default: { name: 'AgentTriggersSection', template: '<div />' },
 }));
 
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
@@ -85,7 +85,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
+		props: ['showModel', 'showInstructions', 'instructionsMaxHeight'],
 	},
 }));
 
@@ -185,17 +185,12 @@ async function mountColumn(
 			plugins: [pinia],
 			stubs: {
 				AgentCapabilitiesSection: false,
-				AgentChannelsSection: false,
+				AgentTriggersSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: [
-						'showModel',
-						'showInstructions',
-						'showInstructionsToolbar',
-						'instructionsMaxHeight',
-					],
+					props: ['showModel', 'showInstructions', 'instructionsMaxHeight'],
 				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
@@ -374,42 +369,39 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
+	it('orders the Agent tab as model, instructions, triggers, then capabilities', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 
-		expect(channels.exists()).toBe(true);
-		expect(capabilities.exists()).toBe(true);
 		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
-		expect(
-			channels.element.compareDocumentPosition(capabilities.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			capabilities.element.compareDocumentPosition(model.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(triggers.exists()).toBe(true);
+		expect(capabilities.exists()).toBe(true);
 		expect(
 			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+		expect(
+			instructions.element.compareDocumentPosition(triggers.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			triggers.element.compareDocumentPosition(capabilities.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
-	it('shows the instructions toolbar in the main Agent tab', async () => {
+	it('removes the instructions editor height limit in the main Agent tab', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
-		const instructionsPanel = wrapper
-			.findAllComponents({ name: 'AgentInfoPanel' })
-			.find((panel) => panel.props('showModel') === false);
+		const infoPanel = wrapper.findComponent({ name: 'AgentInfoPanel' });
 
-		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
-		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
+		expect(infoPanel.props('instructionsMaxHeight')).toBe('none');
 	});
 });
