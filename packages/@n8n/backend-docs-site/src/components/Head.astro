@@ -1,0 +1,63 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+---
+
+<Default />
+
+<script>
+	import mermaid from 'mermaid';
+
+	// The remark plugin leaves each diagram as <pre class="mermaid"> with its source as text.
+	// Render once on load, and again when the reader switches the color theme.
+	const blocks = Array.from(document.querySelectorAll<HTMLElement>('pre.mermaid'));
+	if (blocks.length > 0) {
+		for (const block of blocks) block.dataset.source = block.textContent ?? '';
+		const render = async () => {
+			const dark = document.documentElement.dataset.theme === 'dark';
+			for (const block of blocks) {
+				block.removeAttribute('data-processed');
+				block.textContent = block.dataset.source ?? '';
+			}
+			mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral' });
+			await mermaid.run({ nodes: blocks });
+		};
+		await render();
+		new MutationObserver(render).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-theme'],
+		});
+
+		// A wide diagram is scaled down to fit the column. A click moves it into an overlay on
+		// <body>, where it can use the whole window. The content column uses CSS containment, so a
+		// fixed element inside it would stay confined to the column.
+		const placeholders = new Map<HTMLElement, HTMLElement>();
+		const setZoom = (block: HTMLElement, zoomed: boolean) => {
+			const overlay = block.parentElement;
+			if (zoomed && !placeholders.has(block)) {
+				const placeholder = document.createElement('div');
+				block.replaceWith(placeholder);
+				placeholders.set(block, placeholder);
+				const shell = document.createElement('div');
+				shell.className = 'mermaid-zoom';
+				shell.addEventListener('click', (event) => {
+					if (event.target === shell) setZoom(block, false);
+				});
+				shell.append(block);
+				document.body.append(shell);
+			} else if (!zoomed && placeholders.has(block)) {
+				placeholders.get(block)?.replaceWith(block);
+				placeholders.delete(block);
+				overlay?.remove();
+			}
+			block.classList.toggle('zoomed', zoomed);
+			document.body.style.overflow = placeholders.size > 0 ? 'hidden' : '';
+		};
+		for (const block of blocks) {
+			block.title = 'Click to zoom';
+			block.addEventListener('click', () => setZoom(block, !block.classList.contains('zoomed')));
+		}
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') for (const block of blocks) setZoom(block, false);
+		});
+	}
+</script>

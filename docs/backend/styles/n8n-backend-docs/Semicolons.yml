@@ -1,0 +1,8 @@
+extends: existence
+message: "Avoid the semicolon in prose. Split the sentence or use a comma and a connector."
+link: https://github.com/n8n-io/n8n/blob/master/AGENTS.md
+level: warning
+nonword: true
+scope: sentence
+tokens:
+  - ';'

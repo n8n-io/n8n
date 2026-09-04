@@ -26,6 +26,7 @@ packages/workflow/                                      @n8n-io/catalysts
 packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
+packages/@n8n/backend-docs-site/                        @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
@@ -48,6 +49,8 @@ packages/@n8n/db/src/migrations/                        @n8n-io/migrations-revie
 
 # Top-level paths
 scripts/                                                @n8n-io/qa-dx
+scripts/backend-inventory.mjs                           @n8n-io/catalysts
+docs/backend/                                           @n8n-io/catalysts
 patches/                                                @n8n-io/qa-dx
 assets/                                                 @n8n-io/adore
 security/                                               @n8n-io/qa-dx

@@ -1,0 +1,1562 @@
+{
+  "about": "Curated facts for docs/backend/inventory.md. The generator scripts/backend-inventory.mjs combines this file with the workspace, the module registry, and OWNERS. Edit this file, then run: node scripts/backend-inventory.mjs",
+  "statusLabels": {
+    "legacy-active": "Older structure that still receives features. Extend it with care and move code out when you touch it.",
+    "legacy-frozen": "Code with an announced successor. Do not add features here.",
+    "extracted": "A focused package or module. This is the target shape for new code.",
+    "experimental": "Behind a flag or opt-in. Not on by default.",
+    "deprecated": "Marked deprecated in the code. Scheduled for removal.",
+    "tooling": "Build, lint, or test infrastructure."
+  },
+  "entries": [
+    {
+      "path": "packages/cli/src/modules/agent-evals",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Runs eval datasets against a real agent and serves results to the editor.",
+      "status": "experimental",
+      "teamHint": "Agents (low confidence)",
+      "note": "per-user flag 101_agent_evals"
+    },
+    {
+      "path": "packages/cli/src/modules/agents",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Runs the code-first AI agents runtime.",
+      "status": "experimental",
+      "teamHint": "Agents (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/breaking-changes",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Rule-based detection of breaking changes before migrating to a target n8n version.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "needs MIGRATION_REPORT_TARGET_VERSION"
+    },
+    {
+      "path": "packages/cli/src/modules/chat-hub",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Backend for Chat Hub: agents, sessions, messages, tools, credentials.",
+      "status": "extracted",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/community-packages",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Installs, updates and lists community node packages.",
+      "status": "extracted",
+      "teamHint": "Nodes (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/data-table",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Project-scoped data tables with columns, rows, CSV import and aggregation.",
+      "status": "extracted",
+      "teamHint": "adore (Linear team name unverified) (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/dynamic-credentials.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Private credentials plus external credential resolvers with management endpoints.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)",
+      "note": "external resolvers behind isExternalResolversEnabled()"
+    },
+    {
+      "path": "packages/cli/src/modules/encryption-key-manager",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Loads and seeds deployment encryption keys and exposes key management endpoints.",
+      "status": "extracted",
+      "teamHint": "IAM (medium confidence)",
+      "note": "rotation behind N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION"
+    },
+    {
+      "path": "packages/cli/src/modules/engine-v2",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Runs the Engine 2.0 data plane in-process.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "regular mode only"
+    },
+    {
+      "path": "packages/cli/src/modules/external-secrets.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Connects to external secret providers and exposes their secrets to workflows.",
+      "status": "extracted",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/favorites",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "User favorites for resources with a resolver registry.",
+      "status": "extracted",
+      "teamHint": "adore (Linear team name unverified) (low confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/git-connections.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Manages git connections and the working copy used for exports.",
+      "status": "experimental",
+      "teamHint": "LiGo (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/insights",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Collects, compacts, prunes and serves workflow execution insights.",
+      "status": "extracted",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/instance-ai",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Backend for the AI assistant: gateway, credits, memory, model catalog, event relay.",
+      "status": "extracted",
+      "teamHint": "AI Assistant (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/instance-registry",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Tracks all n8n processes in distributed deployments with health checks.",
+      "status": "extracted",
+      "teamHint": "IAM (OWNERS), authored by API and OEM (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/instance-version-history",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Records instance version history and answers version-since queries.",
+      "status": "extracted",
+      "teamHint": "adore (Linear team name unverified) (low confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/ldap.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "LDAP login and user synchronization.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/log-streaming.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Forwards internal events to webhook, syslog and Sentry destinations.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/mcp",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Instance-level MCP server endpoint with API key or OAuth access.",
+      "status": "extracted",
+      "teamHint": "MCP (OWNERS says adore) (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/mcp-registry",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Catalog of MCP servers with search and synthesized credential and node definitions.",
+      "status": "extracted",
+      "teamHint": "MCP (low confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/n8n-packages",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Import and export of .n8np packages, public-API-first.",
+      "status": "extracted",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/oauth-jwe",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Decrypts JWE-wrapped OAuth2 token responses and serves JWKS.",
+      "status": "experimental",
+      "teamHint": "IAM (medium confidence)",
+      "note": "does nothing unless N8N_ENV_FEAT_OAUTH2_JWE=true"
+    },
+    {
+      "path": "packages/cli/src/modules/oauth-server",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Shared OAuth 2.1 authorization server for registered protected resources.",
+      "status": "extracted",
+      "teamHint": "IAM (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/otel",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Workflow-level OpenTelemetry tracing with settings endpoints.",
+      "status": "extracted",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/policy-infrastructure",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Shared enforcement layer that runs registered @PolicyCheck rules.",
+      "status": "experimental",
+      "teamHint": "IAM (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/provisioning.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "SSO provisioning config and role mapping rules.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/quick-connect",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Creates credentials for supported providers in one step.",
+      "status": "extracted",
+      "teamHint": "AI (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/redaction",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Instance redaction floor for workflow redaction policies plus execution redaction.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/runtime-credentials",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Runtime credential access with sensitive field rules.",
+      "status": "experimental",
+      "teamHint": "IAM / API and OEM (low confidence)",
+      "note": "does nothing unless N8N_ENV_FEAT_RUNTIME_CREDENTIALS=true"
+    },
+    {
+      "path": "packages/cli/src/modules/source-control.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Git-based environments: push and pull of workflows, credentials, variables, folders.",
+      "status": "extracted",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/sso-oidc",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "OIDC login.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/sso-saml",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "SAML login.",
+      "status": "extracted",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/token-exchange",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "RFC 8693 token exchange issuing short-lived scoped JWTs.",
+      "status": "extracted",
+      "teamHint": "IAM (OWNERS), authored by API and OEM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/modules/type-availability-policies",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Rules documents and scopes deciding which node types are available.",
+      "status": "experimental",
+      "teamHint": "IAM (low confidence)",
+      "note": "entities only"
+    },
+    {
+      "path": "packages/cli/src/modules/workflow-builder",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Persists AI workflow builder sessions.",
+      "status": "extracted",
+      "teamHint": "AI (high confidence)",
+      "note": "entities only"
+    },
+    {
+      "path": "packages/cli/src/modules/workflow-index",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Index of workflow dependencies built at start and updated from events.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "not a @BackendModule, always on, wired from server.ts"
+    },
+    {
+      "path": "packages/cli/src/modules/workflow-reviews.ee",
+      "kind": "module",
+      "group": "Backend modules",
+      "purpose": "Review requests, decisions, inbox and a publish guard for workflows.",
+      "status": "extracted",
+      "teamHint": "LiGo or Developer Platform (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/agents",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "SDK for code-first AI agents consumed by cli, the agents module and instance-ai.",
+      "status": "extracted",
+      "teamHint": "Agents (medium confidence)",
+      "note": "consumers: instance-ai, agents"
+    },
+    {
+      "path": "packages/@n8n/ai-node-sdk",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Public SDK for building chat model and memory nodes without LangChain.",
+      "status": "experimental",
+      "teamHint": "AI (high confidence)",
+      "note": "README: preview"
+    },
+    {
+      "path": "packages/@n8n/ai-utilities",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Internal AI building blocks used by `nodes-langchain`, instance-ai, agents and cli.",
+      "status": "extracted",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/ai-workflow-builder.ee",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "LangGraph-based multi-agent workflow builder used by the cli AI workflow builder service.",
+      "status": "extracted",
+      "teamHint": "AI (medium confidence)"
+    },
+    {
+      "path": "packages/@n8n/chat-hub",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Types and utilities shared by the Chat Hub frontend and backend.",
+      "status": "extracted",
+      "teamHint": "AI (medium confidence)"
+    },
+    {
+      "path": "packages/@n8n/computer-use",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Local tool bridge for the AI assistant, bundled into the local-gateway desktop app.",
+      "status": "extracted",
+      "teamHint": "AI Assistant (medium confidence)",
+      "note": "no server package depends on it (uncertain)"
+    },
+    {
+      "path": "packages/@n8n/instance-ai",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Agent runtime behind the AI assistant.",
+      "status": "extracted",
+      "teamHint": "AI Assistant (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/local-gateway",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Native tray application that bridges an n8n instance to capabilities on the user machine. Not part of the server.",
+      "status": "extracted"
+    },
+    {
+      "path": "packages/@n8n/mcp-apps",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "UI resources and server helpers for MCP Apps returned by the instance MCP server.",
+      "status": "extracted",
+      "teamHint": "MCP (medium confidence)"
+    },
+    {
+      "path": "packages/@n8n/mcp-browser",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "MCP server tools for browser automation used by the AI assistant.",
+      "status": "extracted",
+      "teamHint": "AI Assistant (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/mcp-browser-extension",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "Chrome extension that lets the AI assistant control browser tabs. Not part of the server.",
+      "status": "extracted"
+    },
+    {
+      "path": "packages/@n8n/nodes-langchain",
+      "kind": "package",
+      "group": "AI",
+      "purpose": "LangChain-based AI nodes.",
+      "status": "legacy-active",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/api-types",
+      "kind": "package",
+      "group": "API contracts",
+      "purpose": "Shared request/response types and zod DTOs between backend and frontend.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/json-schema-to-zod",
+      "kind": "package",
+      "group": "API contracts",
+      "purpose": "Converts JSON schema to zod schemas at runtime.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/permissions",
+      "kind": "package",
+      "group": "API contracts",
+      "purpose": "Roles, scopes and permission checks shared by backend and frontend.",
+      "status": "extracted",
+      "teamHint": "IAM (low confidence)"
+    },
+    {
+      "path": "packages/cli",
+      "kind": "package",
+      "group": "Application server",
+      "purpose": "Hosts the n8n server: Express app, REST and public API, CLI commands and the module loader.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/backend-common",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Shared backend runtime: logger, LicenseState, ModuleRegistry and ModulesConfig, locking, CLI parser.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/backend-network",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Single home for outbound network concerns: SSRF and DNS guarding, proxies, HTTP client factory.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/config",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Centralized environment configuration classes with @Env.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/constants",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Constants shared across packages including LICENSE_FEATURES.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/decorators",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Decorators for controllers, modules, commands, lifecycle events, pubsub, policy checks.",
+      "status": "extracted",
+      "teamHint": "Catalysts (medium confidence)"
+    },
+    {
+      "path": "packages/@n8n/di",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Dependency injection container replacing typedi.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/errors",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Base error classes plus deprecated ApplicationError.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/telemetry",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Registry of telemetry event names and property schemas, definitions only.",
+      "status": "extracted",
+      "teamHint": "unknown (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/utils",
+      "kind": "package",
+      "group": "Cross-cutting concerns",
+      "purpose": "Utilities shared by frontend and backend.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/backend-test-utils",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Test helpers for backend packages.",
+      "status": "tooling",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/benchmark",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "CLI that runs load benchmark scenarios against an n8n instance.",
+      "status": "tooling",
+      "teamHint": "QA-DX / Catalysts (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/cli",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Client CLI that talks to an n8n instance through the public API.",
+      "status": "extracted",
+      "teamHint": "adore (Linear name unverified) (medium confidence)",
+      "note": "not a server component"
+    },
+    {
+      "path": "packages/@n8n/create-node",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "npm create scaffolder for community nodes.",
+      "status": "tooling",
+      "teamHint": "Community Engineering (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/eslint-plugin-community-nodes",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "ESLint rules for community node packages.",
+      "status": "tooling",
+      "teamHint": "Community Engineering (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/module-cli",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Interactive scaffolder for new modules.",
+      "status": "tooling",
+      "teamHint": "Frontend (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/node-cli",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "CLI for developing community nodes.",
+      "status": "tooling",
+      "teamHint": "Community Engineering (medium confidence)"
+    },
+    {
+      "path": "packages/@n8n/scan-community-package",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Static analyser and provenance checker for community packages.",
+      "status": "tooling",
+      "teamHint": "Community Engineering (medium confidence)"
+    },
+    {
+      "path": "packages/node-dev",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Old CLI that scaffolds nodes and credentials in TypeScript.",
+      "status": "deprecated",
+      "teamHint": "Nodes / Community Engineering (low confidence)",
+      "note": "README: deprecated, successor @n8n/node-cli"
+    },
+    {
+      "path": "packages/@n8n/extension-sdk",
+      "kind": "package",
+      "group": "Extension system",
+      "purpose": "SDK for manifest-based extensions.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "no consumer"
+    },
+    {
+      "path": "packages/extensions/insights",
+      "kind": "package",
+      "group": "Extension system",
+      "purpose": "Manifest-based extension adding an insights dashboard header to the workflows view.",
+      "status": "experimental",
+      "teamHint": "Catalysts (low confidence)",
+      "note": "manifest category Internal, not referenced by cli or editor-ui"
+    },
+    {
+      "path": "packages/modules/instance-registry",
+      "kind": "package",
+      "group": "Extension system",
+      "purpose": "Frontend half of the instance-registry module.",
+      "status": "extracted",
+      "teamHint": "Frontend, with the backend half owned by IAM (low confidence)",
+      "note": "backend half in packages/cli/src/modules/instance-registry"
+    },
+    {
+      "path": "packages/modules/otel",
+      "kind": "package",
+      "group": "Extension system",
+      "purpose": "Frontend half of the otel module.",
+      "status": "extracted",
+      "teamHint": "Frontend, with the backend half owned by LiGo (low confidence)",
+      "note": "backend half in packages/cli/src/modules/otel"
+    },
+    {
+      "path": "packages/@n8n/codemirror-lang",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "CodeMirror 6 language support for n8n expressions in the editor. Frontend only.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/codemirror-lang-html",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "CodeMirror 6 HTML plus expression language support for the editor. Frontend only.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/codemirror-lang-sql",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "CodeMirror 6 SQL plus expression language support for the editor. Frontend only.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/eslint-config",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "Shared ESLint configuration and the repo-specific lint rules, including the backend boundary rules.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/frontend-vite-config",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "Shared Vite configuration for frontend packages.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/stylelint-config",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "Shared Stylelint configuration for frontend packages.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/typescript-config",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "Shared TypeScript configuration presets.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/vitest-config",
+      "kind": "package",
+      "group": "Frontend and build configuration",
+      "purpose": "Shared Vitest configuration, including the decorator-aware preset that backend packages must use.",
+      "status": "tooling"
+    },
+    {
+      "path": "packages/@n8n/blob-storage",
+      "kind": "package",
+      "group": "Persistence",
+      "purpose": "External storage clients (filesystem, S3, Azure Blob) for execution and binary data.",
+      "status": "extracted",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "license feat:binaryDataS3 / feat:binaryDataAz / feat:executionDataS3 / feat:executionDataAz at call sites (not verified here)"
+    },
+    {
+      "path": "packages/@n8n/db",
+      "kind": "package",
+      "group": "Persistence",
+      "purpose": "Persistence layer: TypeORM entities, repositories, migrations, connection, TransactionRunner.",
+      "status": "extracted",
+      "teamHint": "Catalysts (migrations: migrations-review required) (high confidence)",
+      "note": "contains deprecated withTransaction"
+    },
+    {
+      "path": "packages/@n8n/typeorm",
+      "kind": "package",
+      "group": "Persistence",
+      "purpose": "Vendored TypeORM fork limited to PostgreSQL and SQLite.",
+      "status": "extracted",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "vendored fork"
+    },
+    {
+      "path": "packages/@n8n/client-oauth2",
+      "kind": "package",
+      "group": "Protocol clients",
+      "purpose": "OAuth2 client flows used by cli, core and node packages.",
+      "status": "extracted",
+      "teamHint": "IAM (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/imap",
+      "kind": "package",
+      "group": "Protocol clients",
+      "purpose": "IMAP client helpers used by nodes-base email triggers.",
+      "status": "extracted",
+      "teamHint": "Nodes (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/syslog-client",
+      "kind": "package",
+      "group": "Protocol clients",
+      "purpose": "Syslog client used by log streaming destinations.",
+      "status": "extracted",
+      "teamHint": "IAM (low confidence)"
+    },
+    {
+      "path": "packages/@n8n/crdt",
+      "kind": "package",
+      "group": "Realtime",
+      "purpose": "Yjs-based CRDT abstraction for collaborative editing.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "no consumer in the workspace (uncertain)"
+    },
+    {
+      "path": "packages/testing/code-health",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Static analysis for monorepo dependency hygiene.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/testing/containers",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Composable Docker stack for tests and local dev.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/testing/janitor",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Static analysis and architecture enforcement for the Playwright suite, hosts the impact CLI.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/testing/performance",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Microbenchmarks for critical code paths.",
+      "status": "tooling",
+      "teamHint": "QA-DX / Catalysts (medium confidence)"
+    },
+    {
+      "path": "packages/testing/playwright",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "E2E harness: page objects, fixtures, shard distributor.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/testing/rules-engine",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Generic typed rules engine used by janitor and code-health.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/testing/test-impact",
+      "kind": "package",
+      "group": "Testing platform",
+      "purpose": "Test impact analysis: coverage map selection and shard orchestration.",
+      "status": "tooling",
+      "teamHint": "QA-DX (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/engine",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Engine 2.0 execution engine: admittance, queue, runtime, graph, server, lifecycle events.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "used only via engine-v2 module"
+    },
+    {
+      "path": "packages/@n8n/expression-runtime",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Isolated expression evaluation runtime, the default vm expression engine.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "N8N_EXPRESSION_ENGINE=legacy opts out"
+    },
+    {
+      "path": "packages/@n8n/node-engine-compatibility",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Adapts v1 nodes and workflows to the Engine 2.0 step model.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "only engine-v2 code imports it"
+    },
+    {
+      "path": "packages/@n8n/scheduler",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Durable database-backed scheduler with claim-based execution across mains.",
+      "status": "experimental",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "N8N_SCHEDULER_ENABLED false"
+    },
+    {
+      "path": "packages/@n8n/task-runner",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "JavaScript task runner executing Code node tasks out of process.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/task-runner-python",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Python task runner.",
+      "status": "extracted",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/tournament",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Template expression parser and evaluator used by n8n-workflow and expression-runtime.",
+      "status": "extracted",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "uncertain label"
+    },
+    {
+      "path": "packages/@n8n/workflow-sdk",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "TypeScript SDK and codegen for programmatic workflow creation.",
+      "status": "extracted",
+      "teamHint": "AI Assistant (high confidence)"
+    },
+    {
+      "path": "packages/core",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Provides the v1 execution engine, node execute functions, credentials, binary data, encryption, instance settings and node loading.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/nodes-base",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Ships the built-in integration nodes and credential types.",
+      "status": "legacy-active",
+      "teamHint": "Nodes (medium confidence)"
+    },
+    {
+      "path": "packages/workflow",
+      "kind": "package",
+      "group": "Workflow model and execution",
+      "purpose": "Defines the workflow model, node and credential interfaces, expression evaluation and validation shared by backend and frontend.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/auth",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "AuthService, auth handler registry, JWT cookies.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)",
+      "note": "`jwt.ts` keeps a deprecated `issueCookie` for the Cloud hooks file"
+    },
+    {
+      "path": "packages/cli/src/mfa",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "TOTP and MFA enforcement.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/permissions.ee",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "Access checks and project scope resolution.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/policy",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "PolicyEnforcementService facade, implementation from the opt-in policy-infrastructure module.",
+      "status": "experimental",
+      "teamHint": "IAM (medium confidence)",
+      "note": "missed by tree, uncertain label"
+    },
+    {
+      "path": "packages/cli/src/sso.ee",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "Helpers that switch and read the current authentication method.",
+      "status": "legacy-frozen",
+      "teamHint": "IAM (high confidence)",
+      "note": "uncertain label, SAML and OIDC are modules"
+    },
+    {
+      "path": "packages/cli/src/user-management",
+      "kind": "subsystem",
+      "group": "Auth and access",
+      "purpose": "Mailer and templates for invites and password resets.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/command-registry.ts",
+      "kind": "subsystem",
+      "group": "Commands",
+      "purpose": "Discovers commands, parses flags, runs the command lifecycle.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/commands",
+      "kind": "subsystem",
+      "group": "Commands",
+      "purpose": "CLI commands: start, worker, webhook, execute, audit, db, export, import, license, user management and more.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "execute --file is @deprecated"
+    },
+    {
+      "path": "packages/cli/src/security-audit",
+      "kind": "subsystem",
+      "group": "Commands",
+      "purpose": "Risk reporters producing the security audit report.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/types",
+      "kind": "subsystem",
+      "group": "Commands",
+      "purpose": "commands.types.ts.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/config",
+      "kind": "subsystem",
+      "group": "Configuration",
+      "purpose": "Remaining convict schema with one deprecated setting.",
+      "status": "legacy-frozen",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "successor @n8n/config"
+    },
+    {
+      "path": "packages/cli/src/deprecation",
+      "kind": "subsystem",
+      "group": "Configuration",
+      "purpose": "Warns about deprecated environment variables.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/instance-settings-loader",
+      "kind": "subsystem",
+      "group": "Configuration",
+      "purpose": "Loads instance settings from the DB at boot.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (authored by LiGo) (low confidence)"
+    },
+    {
+      "path": "packages/cli/src/credential-types.ts",
+      "kind": "subsystem",
+      "group": "Credentials",
+      "purpose": "ICredentialTypes implementation.",
+      "status": "legacy-active",
+      "teamHint": "IAM (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/credentials",
+      "kind": "subsystem",
+      "group": "Credentials",
+      "purpose": "Credentials controller and services, finder, dependency service, proxies, instance credential broker.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/credentials-helper.ts",
+      "kind": "subsystem",
+      "group": "Credentials",
+      "purpose": "Resolves, decrypts and refreshes credentials for node execution.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/credentials-overwrites.ts",
+      "kind": "subsystem",
+      "group": "Credentials",
+      "purpose": "Applies instance-level credential overwrites.",
+      "status": "legacy-active",
+      "teamHint": "IAM (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/oauth",
+      "kind": "subsystem",
+      "group": "Credentials",
+      "purpose": "OAuth flow service, browser binding, DCR fields, JWE proxy, redirect validation.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/crash-journal.ts",
+      "kind": "subsystem",
+      "group": "Cross-cutting lifecycle",
+      "purpose": "Journal file to detect crashes across restarts.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/external-hooks.ts",
+      "kind": "subsystem",
+      "group": "Cross-cutting lifecycle",
+      "purpose": "Loads and runs external hook files.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/shutdown",
+      "kind": "subsystem",
+      "group": "Cross-cutting lifecycle",
+      "purpose": "Orders and runs @OnShutdown listeners.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/workflow-hook-context.service.ts",
+      "kind": "subsystem",
+      "group": "Cross-cutting lifecycle",
+      "purpose": "Helpers exposed to workflow lifecycle hooks.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/eventbus",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "Message event bus with log writer worker.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/events",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "Typed EventService with event maps and relays.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/expression-observability",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "Metrics, traces and log formatting for the expression runtime.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/metrics",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "Prometheus collectors and license metrics.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/posthog",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "PostHog client for feature flags and instance telemetry.",
+      "status": "legacy-active",
+      "teamHint": "adore (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/telemetry",
+      "kind": "subsystem",
+      "group": "Cross-cutting observability",
+      "purpose": "RudderStack telemetry transport.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (OWNERS default) (low confidence)"
+    },
+    {
+      "path": "packages/cli/src/environments.ee",
+      "kind": "subsystem",
+      "group": "Enterprise not yet modules",
+      "purpose": "Environment variables controller and service, only remnant after source control moved to a module.",
+      "status": "legacy-active",
+      "teamHint": "LiGo (high confidence)",
+      "note": "uncertain label, license feat:variables (constant exists, gating not verified)"
+    },
+    {
+      "path": "packages/cli/src/evaluation.ee",
+      "kind": "subsystem",
+      "group": "Enterprise not yet modules",
+      "purpose": "Workflow evaluations: datasets, collections, test runs, LLM judges, metrics.",
+      "status": "legacy-active",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/activation-errors.service.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Stores workflow activation errors in cache.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/active-executions.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "In-memory registry of running executions.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/active-workflow-manager.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Activates published workflows and registers triggers, pollers and webhooks.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/concurrency",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Concurrency control queue and capacity reservations.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/execution-lifecycle",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Lifecycle hooks around a run.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/executions",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Execution service and controller, persistence, recovery, redaction proxy, engine-v2 reader.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/manual-execution.service.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Runs manual editor-triggered executions and partial runs.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/node-execution",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Ephemeral single-node execution and tool operation support for AI agents.",
+      "status": "legacy-active",
+      "teamHint": "Agents (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/scheduling",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Schedule and poll trigger registrars, system tasks, durable scheduler integration.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "durable path behind N8N_SCHEDULER_ENABLED"
+    },
+    {
+      "path": "packages/cli/src/wait-tracker.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Resumes waiting executions when their wait time elapses.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/workflow-execute-additional-data.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Builds IWorkflowExecuteAdditionalData including hooks and sub-workflow execution.",
+      "status": "legacy-active",
+      "teamHint": "mixed (Agents, Catalysts, API and OEM) (low confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/workflow-helpers.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Pin data size validation and workflow helpers.",
+      "status": "legacy-active",
+      "teamHint": "mixed (low confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/workflow-runner.ts",
+      "kind": "subsystem",
+      "group": "Execution",
+      "purpose": "Starts a run in-process or enqueues it in queue mode.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/license",
+      "kind": "subsystem",
+      "group": "Licensing",
+      "purpose": "License controller and service.",
+      "status": "legacy-active",
+      "teamHint": "IAM (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/license.ts",
+      "kind": "subsystem",
+      "group": "Licensing",
+      "purpose": "License manager implementing LicenseProvider over the license SDK.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "several @deprecated methods point to LicenseState"
+    },
+    {
+      "path": "packages/cli/src/load-nodes-and-credentials.ts",
+      "kind": "subsystem",
+      "group": "Nodes",
+      "purpose": "Discovers and loads node and credential packages.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts / Nodes (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/node-catalog",
+      "kind": "subsystem",
+      "group": "Nodes",
+      "purpose": "Shared node catalog for search, describe and suggest.",
+      "status": "legacy-active",
+      "teamHint": "Agents (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/node-types.ts",
+      "kind": "subsystem",
+      "group": "Nodes",
+      "purpose": "INodeTypes implementation with versioned lookup.",
+      "status": "legacy-active",
+      "teamHint": "Nodes (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/tool-generation",
+      "kind": "subsystem",
+      "group": "Nodes",
+      "purpose": "Generates AI tool variants of nodes and HITL tools.",
+      "status": "legacy-active",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/binary-data",
+      "kind": "subsystem",
+      "group": "Persistence",
+      "purpose": "Binary data access authorization and database manager.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/databases",
+      "kind": "subsystem",
+      "group": "Persistence",
+      "purpose": "Leftover integration tests, repositories moved to @n8n/db.",
+      "status": "legacy-frozen",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/deduplication",
+      "kind": "subsystem",
+      "group": "Persistence",
+      "purpose": "Wraps core data deduplication with a DB-backed helper.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/collaboration",
+      "kind": "subsystem",
+      "group": "Realtime",
+      "purpose": "Tracks active users per workflow and broadcasts collaboration state.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/scaling",
+      "kind": "subsystem",
+      "group": "Scaling",
+      "purpose": "Queue mode: scaling service, job processor, worker server, pubsub, Redis lock, multi-main leader election.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "license feat:multipleMainInstances (multi-main-setup.ee.ts)"
+    },
+    {
+      "path": "packages/cli/src/index.ts",
+      "kind": "subsystem",
+      "group": "Shared helpers",
+      "purpose": "Empty export.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/constants",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "`oauth2-triggers.ts` and workflow-reviews.ts constants.",
+      "status": "legacy-active",
+      "teamHint": "mixed (low confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/constants.ts",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "Package-wide constants.",
+      "status": "legacy-active",
+      "teamHint": "mixed (low confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/errors",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "cli-specific error classes and HTTP error classifier and serializers.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/generic-helpers.ts",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "validateEntity and default list limit.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/interfaces.ts",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "cli-wide TypeScript interfaces.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/services",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "Mixed bag of 60+ services across users, roles, projects, cache, Redis, pruning, AI gateway, engine-v2 dispatch, auth strategies.",
+      "status": "legacy-active",
+      "teamHint": "mixed per file (IAM, AI, adore, LiGo, Nodes, Catalysts) (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/utils",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "Misc helpers: AI proxy fetch, circuit breaker, compression, TTL map, redirect URL validation.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/utils.ts",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "Workflow id validation and small helpers.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/utlity.types.ts",
+      "kind": "subsystem",
+      "group": "Shared services",
+      "purpose": "One type utility.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/task-runners",
+      "kind": "subsystem",
+      "group": "Task runners",
+      "purpose": "Task broker, task requesters, runner process management for JS and Python.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/abstract-server.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Base Express server shared by main and webhook processes.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/chat",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "WebSocket chat server and execution manager for the Chat Trigger node.",
+      "status": "legacy-active",
+      "teamHint": "AI (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/controller.registry.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Registers decorated controllers as Express routes.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)"
+    },
+    {
+      "path": "packages/cli/src/controllers",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "REST controllers not yet moved into modules.",
+      "status": "legacy-active",
+      "teamHint": "mixed per file (IAM, adore, LiGo, Nodes, AI, QA-DX) (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/middlewares",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Body parser, CORS, CSP, jitter and the deprecated list-query middleware.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "list-query is @deprecated"
+    },
+    {
+      "path": "packages/cli/src/public-api",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Public REST API v1 with OpenAPI spec and handlers.",
+      "status": "legacy-active",
+      "teamHint": "LiGo (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/push",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "SSE or WebSocket push channel to frontend clients.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/requests.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Request type helpers and list query options.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/response-helper.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Uniform success and error response senders.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/security",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Decides CSP headers from parsed settings.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (medium confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/server.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Main-process Server that registers controllers, modules, push, public API and workflow indexing.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/webhooks",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Live, test and waiting webhook handlers, forms, HITL and chat platform interaction webhooks.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/cli/src/zod-alias-support.ts",
+      "kind": "subsystem",
+      "group": "Transport",
+      "purpose": "Monkey-patches zod with .alias().",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)",
+      "note": "missed by tree"
+    },
+    {
+      "path": "packages/cli/src/workflows",
+      "kind": "subsystem",
+      "group": "Workflow domain",
+      "purpose": "Workflow services and controller: creation, publication, triggers, history, sharing, validation.",
+      "status": "legacy-active",
+      "teamHint": "Catalysts (high confidence)"
+    },
+    {
+      "path": "packages/@n8n/backend-docs-site",
+      "kind": "package",
+      "group": "Developer CLIs and tooling",
+      "purpose": "Local Starlight site that renders docs/backend in place, with Mermaid diagrams and links rewritten to routes or GitHub.",
+      "status": "tooling"
+    }
+  ]
+}

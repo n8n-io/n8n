@@ -1,0 +1,20 @@
+{
+  "name": "@n8n/backend-docs-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Starlight site that renders docs/backend in place. Run it with `pnpm docs:backend` from the repository root.",
+  "scripts": {
+    "dev": "astro dev",
+    "build:site": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "catalog:",
+    "astro": "catalog:",
+    "cookie": "catalog:",
+    "mermaid": "catalog:",
+    "starlight-fullview-mode": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
