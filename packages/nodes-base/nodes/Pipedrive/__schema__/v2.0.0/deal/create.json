@@ -16,6 +16,7 @@
 			"type": "string"
 		},
 		"custom_fields": {
+			"properties": {},
 			"type": "object"
 		},
 		"expected_close_date": {

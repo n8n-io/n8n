@@ -222,6 +222,9 @@ const USER_SHAPED_OPERATIONS = new Set([
 /**
  * Output properties that hold per-account custom fields. Their keys belong to
  * whichever account recorded the fixture, so only the container is knowable.
+ * The name alone proves nothing about the container, though — Pipedrive's
+ * `search` operations return `custom_fields` as an array — so the collapse
+ * applies only where the sample really holds an object.
  */
 const OPAQUE_OUTPUT_PROPERTIES = new Set(['custom_fields']);
 
@@ -251,9 +254,10 @@ function relaxInferredSchema(schema: JsonSchema): JsonSchema {
 		const keyedByRecordId: JsonSchema[] = [];
 
 		for (const [key, value] of Object.entries(schema.properties)) {
-			const relaxed: JsonSchema = OPAQUE_OUTPUT_PROPERTIES.has(key)
-				? { type: 'object' }
-				: relaxInferredSchema(value);
+			const relaxed: JsonSchema =
+				OPAQUE_OUTPUT_PROPERTIES.has(key) && value.type === 'object'
+					? { type: 'object' }
+					: relaxInferredSchema(value);
 			if (OPAQUE_KEY.test(key)) keyedByRecordId.push(relaxed);
 			else named[key] = relaxed;
 		}
@@ -290,20 +294,8 @@ function mergeSchemas(a: JsonSchema, b: JsonSchema): JsonSchema {
 	if (a.type === undefined) return b;
 	if (b.type === undefined) return a;
 
-	if (isSchemaValue(a.additionalProperties) && isSchemaValue(b.additionalProperties)) {
-		return {
-			type: 'object',
-			additionalProperties: mergeSchemas(a.additionalProperties, b.additionalProperties),
-		};
-	}
-
-	if (a.type === 'object' && b.type === 'object' && a.properties && b.properties) {
-		const properties: Record<string, JsonSchema> = { ...a.properties };
-		for (const [key, value] of Object.entries(b.properties)) {
-			const existing = properties[key];
-			properties[key] = existing ? mergeSchemas(existing, value) : value;
-		}
-		return { type: 'object', properties };
+	if (a.type === 'object' && b.type === 'object') {
+		return mergeObjectSchemas(a, b);
 	}
 
 	if (a.type === 'array' && b.type === 'array') {
@@ -311,6 +303,28 @@ function mergeSchemas(a: JsonSchema, b: JsonSchema): JsonSchema {
 	}
 
 	return a.type === b.type ? a : { type: unionTypes(a.type, b.type) };
+}
+
+/**
+ * One object can reach this as named fields in one fixture and as a record-id
+ * map in another — an empty map recorded next to a populated one is enough.
+ * Both halves are merged independently so the sorted fixture order can never
+ * erase a shape.
+ */
+function mergeObjectSchemas(a: JsonSchema, b: JsonSchema): JsonSchema {
+	const properties: Record<string, JsonSchema> = { ...a.properties };
+	for (const [key, value] of Object.entries(b.properties ?? {})) {
+		const existing = properties[key];
+		properties[key] = existing ? mergeSchemas(existing, value) : value;
+	}
+
+	const maps = [a.additionalProperties, b.additionalProperties].filter(isSchemaValue);
+	if (maps.length === 0) return { type: 'object', properties };
+
+	const additionalProperties = maps.reduce(mergeSchemas);
+	return Object.keys(properties).length === 0
+		? { type: 'object', additionalProperties }
+		: { type: 'object', properties, additionalProperties };
 }
 
 /**

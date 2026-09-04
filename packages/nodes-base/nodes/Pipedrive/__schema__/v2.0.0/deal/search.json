@@ -4,7 +4,8 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"type": "object"
+			"items": {},
+			"type": "array"
 		},
 		"id": {
 			"type": "number"

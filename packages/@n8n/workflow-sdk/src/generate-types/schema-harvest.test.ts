@@ -383,6 +383,103 @@ describe('harvestOutputSchemas', () => {
 		});
 	});
 
+	it('keeps an opaque property that is not an object at its real type', () => {
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: { custom_fields: [] },
+			}),
+		);
+
+		harvestOutputSchemas({ nodesRootDir });
+
+		const filePath = path.join(nodesRootDir, 'Widget/__schema__/v1.0.0/item/get.json');
+		expect(jsonParse(fs.readFileSync(filePath, 'utf-8'))).toEqual({
+			type: 'object',
+			properties: { custom_fields: { type: 'array', items: {} } },
+		});
+	});
+
+	it('keeps a map value shape when another fixture recorded the map empty', () => {
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.a.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: { assignments: {} },
+			}),
+		);
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.b.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: {
+					assignments: { 'ba4a422e-bdce-4795-b4b6-579287363f0e': { orderHint: '85' } },
+				},
+			}),
+		);
+
+		harvestOutputSchemas({ nodesRootDir });
+
+		const filePath = path.join(nodesRootDir, 'Widget/__schema__/v1.0.0/item/get.json');
+		expect(jsonParse(fs.readFileSync(filePath, 'utf-8'))).toEqual({
+			type: 'object',
+			properties: {
+				assignments: {
+					type: 'object',
+					additionalProperties: {
+						type: 'object',
+						properties: { orderHint: { type: 'string' } },
+					},
+				},
+			},
+		});
+	});
+
+	it('keeps both shapes when one fixture has named fields and another a record-id map', () => {
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.a.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: { bag: { label: 'named' } },
+			}),
+		);
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.b.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: { bag: { 'ba4a422e-bdce-4795-b4b6-579287363f0e': { count: 1 } } },
+			}),
+		);
+
+		harvestOutputSchemas({ nodesRootDir });
+
+		const filePath = path.join(nodesRootDir, 'Widget/__schema__/v1.0.0/item/get.json');
+		expect(jsonParse(fs.readFileSync(filePath, 'utf-8'))).toEqual({
+			type: 'object',
+			properties: {
+				bag: {
+					type: 'object',
+					properties: { label: { type: 'string' } },
+					additionalProperties: {
+						type: 'object',
+						properties: { count: { type: 'number' } },
+					},
+				},
+			},
+		});
+	});
+
 	it('drops record ids that are mixed in with real fields', () => {
 		writeFixture(
 			nodesRootDir,
