@@ -22,6 +22,7 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
@@ -118,6 +119,7 @@ const headerIcon = computed((): IconOrEmoji => {
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
+const instanceAiReady = useInstanceAiReady();
 
 const isPersonalProject = computed(() => {
 	return homeProject.value?.type === ProjectTypes.Personal;
@@ -196,6 +198,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
+	AGENT_MANUAL: 'agentManual',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -332,15 +335,23 @@ const menu = computed(() => {
 		});
 	}
 
-	if (
-		settingsStore.isModuleActive('agents') &&
-		selectedMainButtonType.value !== ACTION_TYPES.AGENT
-	) {
-		items.push({
-			value: ACTION_TYPES.AGENT,
-			label: i18n.baseText('projects.header.create.agent'),
-			disabled: !canCreateAgent.value,
-		});
+	if (settingsStore.isModuleActive('agents')) {
+		if (selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
+			items.push({
+				value: ACTION_TYPES.AGENT,
+				label: i18n.baseText('projects.header.create.agent'),
+				disabled: !canCreateAgent.value,
+			});
+		} else if (instanceAiReady.value) {
+			// Escape hatch on the agents pages for users who want to skip the
+			// Instance AI creation flow. Only offered while Instance AI is ready —
+			// otherwise the main create-agent button already opens the manual builder.
+			items.push({
+				value: ACTION_TYPES.AGENT_MANUAL,
+				label: i18n.baseText('projects.header.create.agentManually'),
+				disabled: !canCreateAgent.value,
+			});
+		}
 	}
 
 	return items;
@@ -425,6 +436,11 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		const agentId = generateNanoId();
 		agentTelemetry.trackClickedNewAgent(source, agentId);
 		void router.push(instanceAiCreateAgentRoute(projectId, agentId));
+	},
+	[ACTION_TYPES.AGENT_MANUAL]: (projectId, source) => {
+		const agentId = generateNanoId();
+		agentTelemetry.trackClickedNewAgent(source, agentId, { manual: true });
+		void router.push(instanceAiCreateAgentRoute(projectId, agentId, { manual: true }));
 	},
 } as const;
 

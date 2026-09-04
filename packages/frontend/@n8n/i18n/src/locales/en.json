@@ -5870,6 +5870,7 @@
 	"projects.header.create.workflow": "Create workflow",
 	"projects.header.create.credential": "Create credential",
 	"projects.header.create.agent": "Create agent",
+	"projects.header.create.agentManually": "Create agent manually",
 	"projects.header.create.folder": "Create folder",
 	"projects.create": "Create",
 	"projects.create.personal": "Create in personal",
