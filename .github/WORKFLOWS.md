@@ -488,17 +488,22 @@ inputs:
   build-command:       # default: 'pnpm build'
 ```
 
-The action reads the pnpm version from the `packageManager` field in the root
-`package.json`. There is no version input to keep in sync: a version bump in
-`package.json` moves the setup step, the cache key and the version check
-together. The action fails early when that field is absent or does not pin pnpm.
+`resolve-pnpm-version.mjs` reads the pnpm version from the `packageManager`
+field in the root `package.json`. There is no version input to keep in sync: a
+version bump in `package.json` moves the setup step, the cache key and the
+version check together. The step fails early when that field is absent or pins
+no exact pnpm version.
 
-It caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and that
-version, and runs `pnpm/setup` only when the key misses. Without the cache every
-fresh job downloads pnpm from `registry.npmjs.org` before any cache is restored,
-so a registry outage fails unrelated jobs in their first step. Windows keeps the
-plain `pnpm/setup` path. The pnpm store stays on the `actions/setup-node`
-`cache: pnpm` configuration.
+The action caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and
+that version, and runs `pnpm/setup` only when the key misses. Without the cache
+every fresh job downloads pnpm from `registry.npmjs.org` before any cache is
+restored, so a registry outage fails unrelated jobs in their first step. Windows
+keeps the plain `pnpm/setup` path. The pnpm store stays on the
+`actions/setup-node` `cache: pnpm` configuration.
+
+A cache hit also skips the lockfile-verification log that `pnpm/setup` restores.
+The `pnpm-metadata` cache step covers that same directory on the same lockfile
+hash, so the reuse is kept.
 
 The action saves the entry with an explicit `actions/cache/save` step directly
 after the version check, not through the `actions/cache` post-run. The post-run
@@ -594,6 +599,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |

@@ -43,43 +43,20 @@ runs:
         echo "::error::enable-docker-cache is true but docker-cache-key is empty"
         exit 1
 
-    # Single source of truth for the pnpm version: the `packageManager` field
-    # in the root package.json. The cache key, pnpm/setup and the verify step
-    # below all read this output, so none of them can drift from the version
-    # the repository pins — and a cache hit cannot hide a stale pin.
+    # The version comes from the `packageManager` pin, so the cache key, the
+    # setup step and the verify step below cannot drift from each other.
     - name: Resolve pnpm version
       id: pnpm-version
       shell: bash
-      run: |
-        PACKAGE_MANAGER="$(sed -n 's/^[[:space:]]*"packageManager"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n 1)"
-        case "$PACKAGE_MANAGER" in
-          pnpm@?*) ;;
-          *)
-            echo "::error::packageManager in package.json does not pin pnpm (got '${PACKAGE_MANAGER}')"
-            exit 1
-            ;;
-        esac
-        # Corepack allows an integrity suffix (pnpm@1.2.3+sha512.abc). Drop it.
-        PNPM_VERSION="${PACKAGE_MANAGER#pnpm@}"
-        PNPM_VERSION="${PNPM_VERSION%%+*}"
-        echo "version=$PNPM_VERSION" >> "$GITHUB_OUTPUT"
-        echo "cache-key=pnpm-exe-v1-${RUNNER_OS}-${RUNNER_ARCH}-${PNPM_VERSION}" >> "$GITHUB_OUTPUT"
+      run: node .github/scripts/resolve-pnpm-version.mjs
 
-    # pnpm/setup deletes its destination directory and downloads the pnpm
-    # executable from registry.npmjs.org on every fresh runner, before any
-    # cache is restored. A registry timeout or gateway error there fails the
-    # job in its first step, so a short registry outage blocks the whole CI
-    # fanout. Cache the executable itself, keyed on OS + arch + exact version,
-    # and skip the download when the key hits.
+    # pnpm/setup downloads the executable from registry.npmjs.org on every fresh
+    # runner, before any cache is restored. A registry blip there therefore
+    # fails unrelated jobs in their first step. Cache the executable instead,
+    # and download only when the key misses.
     #
-    # Skipped on Windows: the cached-hit path below writes $GITHUB_PATH from
-    # Git Bash, whose POSIX home path the runner cannot use. The one Windows
-    # job keeps the plain pnpm/setup path.
-    #
-    # pnpm/setup also restores pnpm's lockfile-verification log, which a cache
-    # hit skips along with the rest of the action. The pnpm metadata cache
-    # below covers that same directory on the same lockfile hash, so nothing
-    # is lost.
+    # Windows keeps the plain pnpm/setup path: the activation step below writes
+    # a Git Bash home path that the runner cannot use in $GITHUB_PATH.
     - name: Restore pnpm executable
       if: runner.os != 'Windows'
       id: cache-pnpm-exe
@@ -95,21 +72,23 @@ runs:
         install: false
         version: ${{ steps.pnpm-version.outputs.version }}
 
-    # The cache holds files, not the per-job PATH and env wiring that
-    # pnpm/setup does through $GITHUB_PATH and $GITHUB_ENV. Redo it here.
-    # `<dest>/bin` holds the shims of a self-updated pnpm and must win over
-    # `<dest>`; $GITHUB_PATH prepends each line, so the bin dir goes last.
+    # The cache holds files, not the per-job PATH and PNPM_HOME wiring that
+    # pnpm/setup does. `<dest>/bin` holds the shims of a self-updated pnpm and
+    # must win over `<dest>`, and $GITHUB_PATH prepends each line, so the bin
+    # directory goes last. The written paths are fixed, so the environment-file
+    # writes take no external input.
     - name: Activate cached pnpm executable
       if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
       run: |
+        # zizmor: ignore[github-env]
         PNPM_DEST="$HOME/setup-pnpm"
         echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
         echo "$PNPM_DEST" >> "$GITHUB_PATH"
         echo "$PNPM_DEST/bin" >> "$GITHUB_PATH"
 
-    # Guards both paths. A truncated or stale cache entry must fail here
-    # instead of surfacing later as a confusing install error.
+    # A truncated or stale cache entry must fail here, not later as a confusing
+    # install error.
     - name: Verify pnpm Version
       shell: bash
       env:
@@ -121,12 +100,10 @@ runs:
           exit 1
         fi
 
-    # Save here, not in a post-run: actions/cache only saves when the whole job
-    # succeeds, so a job that later fails its install or build would leave the
-    # key cold and make every following job download pnpm again. The download
-    # is done and verified at this point, so the entry is worth keeping
-    # whatever the rest of the job does. A concurrent job that already reserved
-    # the key makes this step log a warning and continue.
+    # Saved here rather than in a post-run: actions/cache only saves when the
+    # whole job succeeds, so a job that later fails its install or build would
+    # leave the key cold for every following job. The executable is downloaded
+    # and verified at this point, so the entry is already worth keeping.
     - name: Save pnpm executable
       if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
