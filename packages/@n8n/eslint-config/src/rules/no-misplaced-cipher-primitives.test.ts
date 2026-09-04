@@ -138,6 +138,15 @@ extended.decryptWithKey('d', 'k', 'aes-256-cbc');`,
 			filename: 'service.ts',
 			errors: [{ messageId: 'noExplicitKeyCall', data: { method: 'decryptWithKey' } }],
 		},
+		// A generic receiver constrained to Cipher can be one at runtime
+		{
+			code: `${cipherClass}
+export function encode<T extends Cipher>(cipher: T) {
+	return cipher.encryptWithKey('d', 'k', 'aes-256-cbc');
+}`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noExplicitKeyCall', data: { method: 'encryptWithKey' } }],
+		},
 		{
 			code: `${cipherClass}
 declare const cipher: Cipher;

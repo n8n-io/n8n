@@ -48,10 +48,15 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 			if (node.type === TSESTree.AST_NODE_TYPES.Identifier) {
 				return node.name === 'DeploymentKey';
 			}
+			if (node.type === TSESTree.AST_NODE_TYPES.Literal) {
+				return typeof node.value === 'string' && ENTITY_NAMES.has(node.value);
+			}
+			// A no-substitution template literal is just another string spelling.
 			return (
-				node.type === TSESTree.AST_NODE_TYPES.Literal &&
-				typeof node.value === 'string' &&
-				ENTITY_NAMES.has(node.value)
+				node.type === TSESTree.AST_NODE_TYPES.TemplateLiteral &&
+				node.expressions.length === 0 &&
+				node.quasis.length === 1 &&
+				ENTITY_NAMES.has(node.quasis[0].value.cooked)
 			);
 		};
 

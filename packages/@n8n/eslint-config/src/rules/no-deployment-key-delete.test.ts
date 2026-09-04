@@ -200,5 +200,11 @@ void qb.delete().from('deployment_key').execute();`,
 			filename: 'service.ts',
 			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'from' } }],
 		},
+		// A no-substitution template literal is just another string spelling
+		{
+			code: 'declare const tx: { getRepository(entity: unknown): unknown };\ntx.getRepository(`deployment_key`);',
+			filename: 'service.ts',
+			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'getRepository' } }],
+		},
 	],
 });

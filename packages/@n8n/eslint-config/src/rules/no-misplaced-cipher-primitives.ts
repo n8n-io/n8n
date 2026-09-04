@@ -51,13 +51,27 @@ export const NoMisplacedCipherPrimitivesRule = ESLintUtils.RuleCreator.withoutDo
 		// local identifier); report each range once.
 		const reportedAt = new Set<number>();
 
-		/** True for `Cipher` itself and for anything extending it. */
+		/**
+		 * True for `Cipher` itself and for anything that can be one: subclasses,
+		 * union/intersection members, and type parameters constrained to it.
+		 */
 		const typeIsCipher = (type: ts.Type, seen = new Set<ts.Type>()): boolean => {
 			if (seen.has(type)) return false;
 			seen.add(type);
 			if ((type.getSymbol() ?? type.aliasSymbol)?.getName() === 'Cipher') return true;
-			if (type.isClassOrInterface()) {
-				return (type.getBaseTypes() ?? []).some((base) => typeIsCipher(base, seen));
+			if (type.isUnionOrIntersection()) {
+				return type.types.some((member) => typeIsCipher(member, seen));
+			}
+			// Re-widen after each guard: the narrowing chain would otherwise
+			// leave `never` for the later checks.
+			const nonUnion: ts.Type = type;
+			if (nonUnion.isTypeParameter()) {
+				const constraint = nonUnion.getConstraint();
+				return constraint !== undefined && typeIsCipher(constraint, seen);
+			}
+			const concrete: ts.Type = nonUnion;
+			if (concrete.isClassOrInterface()) {
+				return (concrete.getBaseTypes() ?? []).some((base) => typeIsCipher(base, seen));
 			}
 			return false;
 		};
