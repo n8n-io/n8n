@@ -40,6 +40,7 @@ const FILE_NAMES = {
 /** Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so no `/` and no dots. */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
+// Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
 
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
