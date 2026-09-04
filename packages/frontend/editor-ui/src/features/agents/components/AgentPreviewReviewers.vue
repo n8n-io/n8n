@@ -190,6 +190,7 @@ async function submitAdd() {
 				</span>
 				<!-- Keyed so each label re-mounts and fades in; no Transition wrapper (it tripped the async layout on route change). -->
 				<span
+					v-if="!(shouldOfferAuto && !popoverOpen)"
 					:key="barLabel"
 					:class="[$style.badgeLabel, $style.fadeIn]"
 					data-testid="agent-preview-bar-label"
@@ -491,9 +492,18 @@ async function submitAdd() {
 }
 
 .offerText {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	color: var(--text-color);
 	font-weight: var(--wireframe--body-weight);
 	white-space: nowrap;
+}
+
+.badge .ghostButton,
+.badge .primaryButton {
+	flex-shrink: 0;
 }
 
 .badge_needsEye {
