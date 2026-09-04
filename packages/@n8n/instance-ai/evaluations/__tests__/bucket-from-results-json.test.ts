@@ -48,8 +48,12 @@ function resultsJson(overrides: Record<string, unknown> = {}): unknown {
 	};
 }
 
-function bucket(raw: unknown = resultsJson()) {
+function project(raw: unknown = resultsJson()) {
 	return bucketFromResultsJson(parseEvalResults(raw, 'fixture'), 'after');
+}
+
+function bucket(raw: unknown = resultsJson()) {
+	return project(raw).bucket;
 }
 
 describe('bucketFromResultsJson', () => {
@@ -84,9 +88,27 @@ describe('bucketFromResultsJson', () => {
 		expect(result.failureCategoryTotals).toEqual({ builder_issue: 1 });
 	});
 
-	it('throws when a test case carries no testCaseFile', () => {
-		expect(() => bucket(resultsJson({ testCaseFile: undefined }))).toThrow(EvalResultsParseError);
-		expect(() => bucket(resultsJson({ testCaseFile: undefined }))).toThrow(/no testCaseFile/);
+	it('skips and reports a case with no testCaseFile rather than failing the comparison', () => {
+		// Real artifacts land like this: `persist.ts` cannot build slugByTestCase on
+		// the crash-recovery path, and lang-tracer's dispatcher fixtures show whole
+		// files with `testCaseFile: null`. Three of its four are shaped this way.
+		const scenarios = [{ name: 'happy', passCount: 1, evaluatedCount: 2, runs: RUNS }];
+		const result = project({
+			testCases: [
+				{ name: 'keyed case', testCaseFile: 'my-case', scenarios, buildExpectations: [] },
+				{ name: 'unkeyable case', scenarios, buildExpectations: [] },
+			],
+		});
+
+		expect(result.skipped).toEqual(['unkeyable case']);
+		// The keyed case still contributes its unit — a partial comparison beats none.
+		expect([...result.bucket.evaluationUnits.keys()]).toEqual(['my-case/happy']);
+	});
+
+	it('throws only when every case is unkeyable, because then nothing can be compared', () => {
+		const raw = resultsJson({ testCaseFile: undefined });
+		expect(() => project(raw)).toThrow(EvalResultsParseError);
+		expect(() => project(raw)).toThrow(/Every test case/);
 	});
 
 	it('tolerates a run artifact that carries no per-run scenario detail', () => {

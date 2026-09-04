@@ -105,6 +105,16 @@ export function readEvalResults(path: string): ParsedEvalResults {
 	return parseEvalResults(json, path);
 }
 
+export interface ResultsBucket {
+	bucket: ExperimentBucket;
+	/**
+	 * Display names of cases dropped for carrying no `testCaseFile`. Never
+	 * discard this silently — it is the difference between "that unit didn't
+	 * move" and "that unit was never compared".
+	 */
+	skipped: string[];
+}
+
 /**
  * Project parsed results onto an ExperimentBucket.
  *
@@ -119,24 +129,30 @@ export function readEvalResults(path: string): ParsedEvalResults {
  * - `trialTotal` and `failureCategoryTotals` stay scenario-only, and skip
  *   verifier-incomplete runs — those carry no verdict, so they are not trials.
  *
- * A case with no `testCaseFile` throws rather than being skipped: the whole
- * comparison is keyed on that slug, so dropping the case would quietly shrink
- * the intersection and read as "this unit is new" on the other side.
+ * **A case with no `testCaseFile` is skipped and reported, not thrown on.**
+ * `testCaseFile` comes from `slugByTestCase`, which `persist.ts` cannot build
+ * on the crash-recovery path when `testCasesWithFiles` is absent — so a whole
+ * artifact can land without slugs, and real dispatcher output does exactly
+ * that. Failing the comparison outright would take away the tool at the moment
+ * a run died and you most need to see what survived. Skipping quietly would be
+ * worse still, so the count rides back out with the bucket and the caller is
+ * expected to show it. If *every* case is unkeyable there is nothing to
+ * compare and that is an error.
  */
 export function bucketFromResultsJson(
 	results: ParsedEvalResults,
 	experimentName: string,
-): ExperimentBucket {
+): ResultsBucket {
 	const evaluationUnits = new Map<string, EvaluationUnitCounts>();
 	const failureCategoryTotals: Record<string, number> = {};
+	const skipped: string[] = [];
 	let trialTotal = 0;
 
 	for (const tc of results.testCases) {
 		const fileSlug = tc.testCaseFile;
 		if (!fileSlug) {
-			throw new EvalResultsParseError(
-				`bucketFromResultsJson: no testCaseFile for test case "${(tc.name ?? '(unnamed)').slice(0, 60)}" in ${experimentName} — cannot key its units for comparison`,
-			);
+			skipped.push((tc.name ?? '(unnamed)').slice(0, 70));
+			continue;
 		}
 
 		for (const scenario of tc.scenarios) {
@@ -173,5 +189,14 @@ export function bucketFromResultsJson(
 		}
 	}
 
-	return { experimentName, evaluationUnits, failureCategoryTotals, trialTotal };
+	if (results.testCases.length > 0 && skipped.length === results.testCases.length) {
+		throw new EvalResultsParseError(
+			`Every test case in ${experimentName} is missing \`testCaseFile\`, so none of them can be keyed for comparison. This artifact cannot be compared.`,
+		);
+	}
+
+	return {
+		bucket: { experimentName, evaluationUnits, failureCategoryTotals, trialTotal },
+		skipped,
+	};
 }

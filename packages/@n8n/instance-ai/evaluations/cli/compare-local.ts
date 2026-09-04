@@ -158,7 +158,12 @@ function maxTrialsPerUnit(result: ComparisonResult): number {
 	return max;
 }
 
-function render(result: ComparisonResult, beforePath: string, afterPath: string): string[] {
+function render(
+	result: ComparisonResult,
+	beforePath: string,
+	afterPath: string,
+	skipped: { before: string[]; after: string[] },
+): string[] {
 	const lines: string[] = [];
 	const title = 'Instance AI — local before/after';
 	lines.push(title);
@@ -167,6 +172,22 @@ function render(result: ComparisonResult, beforePath: string, afterPath: string)
 	lines.push(`${INDENT}before  ${beforePath}`);
 	lines.push(`${INDENT}after   ${afterPath}`);
 	lines.push('');
+
+	// Announced before the numbers, not after: these cases contributed no units,
+	// so every total below is computed over less than the run actually covered.
+	const totalSkipped = skipped.before.length + skipped.after.length;
+	if (totalSkipped > 0) {
+		lines.push(
+			`${INDENT}NOT COMPARED  ${String(totalSkipped)} case(s) carry no \`testCaseFile\` and cannot be keyed`,
+		);
+		for (const [side, names] of [
+			['before', skipped.before],
+			['after', skipped.after],
+		] as const) {
+			for (const name of names) lines.push(`${INDENT.repeat(2)}${side.padEnd(8)}${name}`);
+		}
+		lines.push('');
+	}
 
 	const { aggregate } = result;
 	lines.push(
@@ -263,12 +284,13 @@ function main(): void {
 	const afterPath = resolveResultsPath(args.after);
 
 	let result: ComparisonResult;
+	let skipped: { before: string[]; after: string[] };
 	try {
+		const after = bucketFromResultsJson(readEvalResults(afterPath), 'after');
+		const before = bucketFromResultsJson(readEvalResults(beforePath), 'before');
 		// pr = after, baseline = before: a negative delta means the change made it worse.
-		result = compareBuckets(
-			bucketFromResultsJson(readEvalResults(afterPath), 'after'),
-			bucketFromResultsJson(readEvalResults(beforePath), 'before'),
-		);
+		result = compareBuckets(after.bucket, before.bucket);
+		skipped = { before: before.skipped, after: after.skipped };
 	} catch (error: unknown) {
 		if (error instanceof EvalResultsParseError) {
 			console.error(error.message);
@@ -278,9 +300,9 @@ function main(): void {
 	}
 
 	if (args.json) {
-		console.log(JSON.stringify({ before: beforePath, after: afterPath, result }, null, 2));
+		console.log(JSON.stringify({ before: beforePath, after: afterPath, skipped, result }, null, 2));
 	} else {
-		console.log(`\n${render(result, beforePath, afterPath).join('\n')}`);
+		console.log(`\n${render(result, beforePath, afterPath, skipped).join('\n')}`);
 	}
 
 	if (args.failOnRegression && result.evaluationUnits.some((unit) => unit.delta < 0)) {

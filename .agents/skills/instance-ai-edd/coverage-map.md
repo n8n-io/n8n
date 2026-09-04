@@ -29,10 +29,17 @@ answers in a fraction of the time.
 
 | Your claim is about | Lane | Command | What it costs |
 |---|---|---|---|
-| Which tool/subagent the agent reaches for first; whether a skill loads | **discovery** | `pnpm eval:discovery --filter <slug> --trials 5 --verbose --fail-on-zero-pass` | In-process orchestrator. No build, no sandbox. Cheapest by far. |
-| One subagent's behaviour given correct input | **subagent** | `pnpm eval:subagent --filter <slug> --verbose` | One build per case. |
-| The built workflow's structure, or how it executes on mocked data | **workflow** | `pnpm eval:instance-ai --filter <slug> --iterations 3` | ~3 min build + execution per iteration, per case. The expensive one. |
+| Which tool/subagent the agent reaches for first; whether a skill loads | **discovery** | `pnpm eval:discovery --filter <slug> --trials 5 --output-dir .output/edd/before` | In-process orchestrator. **No n8n instance, no build, no sandbox — only `ANTHROPIC_API_KEY`.** Cheapest by far. |
+| One subagent's behaviour given correct input | **subagent** | `pnpm eval:subagent --filter <slug> --verbose` | Needs a running instance. One build per case. **Writes no artifact — not comparable.** |
+| The built workflow's structure, or how it executes on mocked data | **workflow** | `pnpm eval:instance-ai --filter <slug> --iterations 3 --output-dir .output/edd/before` | ~3 min build + execution per iteration, per case, plus a sandbox. The expensive one. |
 | Agent-tier behaviour | **agents** | `pnpm eval:agents --filter <slug>` | Pinned to `--source langtracer --suite agents --tier agents`. |
+
+**`--output-dir` is what makes a lane measurable.** Discovery and the workflow
+lane both write an `eval-results.json` there, and `eval:compare-local` reads
+either — a discovery scenario reports as one unit keyed
+`<slug>/tool-discovery`. The subagent lane writes nothing, so a claim routed
+there has no before/after tooling; prefer discovery or the workflow lane when
+you need a measured delta.
 
 Not in this table: `eval:pairwise`. It imports the LangSmith client at module
 load and its default dataset is a LangSmith dataset, so it is out of scope for

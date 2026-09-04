@@ -113,14 +113,21 @@ captured last week under a different model is not a baseline.
 ```bash
 cd packages/@n8n/instance-ai
 # with your usual env loaded and LANGSMITH_API_KEY unset
+
+# routing / skill-loading claim — in-process, no instance, no sandbox
+pnpm eval:discovery --filter <slug> --trials 5 --output-dir .output/edd/before
+
+# built-workflow claim — needs a running instance with a working sandbox
 pnpm eval:instance-ai --filter <slug> --iterations 3 --output-dir .output/edd/before
 ```
 
-`.output/` is gitignored, so these artifacts never reach a commit.
+`--output-dir` is the part that matters: it writes the `eval-results.json`
+gate 4 compares. `.output/` is gitignored, so these artifacts never reach a
+commit.
 
 Pick the lane by claim type before you pick N — a routing claim graded by
-`eval:discovery` costs a fraction of a build. See
-[`coverage-map.md`](coverage-map.md).
+`eval:discovery` costs a fraction of a build, and needs only
+`ANTHROPIC_API_KEY`. See [`coverage-map.md`](coverage-map.md).
 
 **Choosing N.** See [Reading a comparison](#reading-a-comparison) for why this
 matters more than it looks:
