@@ -150,6 +150,24 @@ describe('type availability policy repositories', () => {
 			expect(await policyRepo.updateRules('missing', [ALLOW_BASE], 'user-1', ROOT)).toBeNull();
 		});
 
+		it('returns null and writes nothing when expectedKind does not match, without checking it first', async () => {
+			const policy = await createPolicy([DENY_SLACK]);
+
+			const result = await policyRepo.updateRules(
+				policy.id,
+				[ALLOW_BASE],
+				'user-2',
+				ROOT,
+				'credential-types',
+			);
+
+			expect(result).toBeNull();
+			const stored = await policyRepo.findById(policy.id, ROOT);
+			expect(stored?.rules).toEqual([DENY_SLACK]);
+			expect(stored?.version).toBe(1);
+			expect(stored?.updatedBy).toBe('user-1');
+		});
+
 		it('finds many by id and ignores unknown ids', async () => {
 			const a = await createPolicy();
 			const b = await createPolicy([ALLOW_BASE]);

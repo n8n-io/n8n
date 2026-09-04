@@ -49,6 +49,9 @@ describe('policy version bumps are delegated to the database', () => {
 				version: 1,
 				updatedBy: 'user-1',
 			});
+			// The "before" read takes a (Postgres-only) pessimistic write lock, so it goes
+			// through `findOne` rather than `findOneBy` — see `updateRules`.
+			entityManager.findOne.mockResolvedValue(stored);
 			entityManager.findOneBy.mockResolvedValue(stored);
 
 			await repository.updateRules('p1', [RULE], 'user-2', ROOT);
@@ -75,7 +78,7 @@ describe('policy version bumps are delegated to the database', () => {
 				version: 1,
 				updatedBy: 'user-1',
 			});
-			entityManager.findOneBy.mockResolvedValue(stored);
+			entityManager.findOne.mockResolvedValue(stored);
 
 			await repository.updateRules('p1', [RULE], 'user-2', ROOT);
 

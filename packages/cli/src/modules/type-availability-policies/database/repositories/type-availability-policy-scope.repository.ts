@@ -41,6 +41,30 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
+	 * Same lookup as {@link findScopeById}, but takes a row-level write lock on a match
+	 * (Postgres only — SQLite has no equivalent, and its single-writer model makes the race
+	 * this guards against impossible there anyway).
+	 *
+	 * Must run inside an active transaction: call it only from within `TransactionRunner.run`,
+	 * threading the `ctx` it hands back. Without this lock, a plain read taken before a later
+	 * write in the same transaction would not stop a concurrent transaction from committing a
+	 * change to this row in between, letting an audit event's "before" snapshot go stale.
+	 */
+	async findScopeByIdForUpdate(
+		id: string,
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicyScope | null> {
+		const manager = this.managerFor(ctx);
+
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
+	/**
 	 * Same lookup as {@link findScopeByKindAndProject}, but takes a row-level write lock on a
 	 * match (Postgres only — SQLite has no equivalent, and its single-writer model makes the
 	 * race this guards against impossible there anyway).
@@ -50,6 +74,11 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 * transaction reading the same scope then blocks until the first commits or rolls back,
 	 * so it observes the bumped version and correctly hits the `expectedVersion` conflict
 	 * check instead of racing past it.
+	 *
+	 * Lock-ordering convention: a transaction that locks both a scope row and a policy row
+	 * (via `TypeAvailabilityPolicyRepository.updateRules`) must always lock the scope(s)
+	 * first, then the policy — see `TypeAvailabilityPolicyService` for why (two write paths
+	 * taking the opposite order on overlapping rows can deadlock on Postgres).
 	 */
 	async findScopeByKindAndProjectForUpdate(
 		kind: string,
@@ -137,6 +166,28 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 			for (const batch of batches) {
 				await tx.increment(TypeAvailabilityPolicyScope, { id: In(batch) }, 'version', 1);
 			}
+		});
+	}
+
+	/**
+	 * Takes a Postgres-only bulk pessimistic-write lock on the named scopes, without reading
+	 * or changing any field — just to hold the row locks for the rest of the transaction.
+	 *
+	 * Must run inside an active transaction, before the same transaction locks a policy row
+	 * (via `TypeAvailabilityPolicyRepository.updateRules`): see the lock-ordering convention
+	 * documented on `findScopeByKindAndProjectForUpdate` and on `TypeAvailabilityPolicyService`.
+	 * A no-op on SQLite, and a no-op for an empty `ids` list.
+	 */
+	async lockScopesByIds(ids: string[], ctx: OperationContext): Promise<void> {
+		if (ids.length === 0) return;
+
+		const manager = this.managerFor(ctx);
+
+		await manager.find(TypeAvailabilityPolicyScope, {
+			where: { id: In(ids) },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
 		});
 	}
 }
