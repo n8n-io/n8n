@@ -16,7 +16,10 @@ export type WorkflowDiffBase = Omit<
 	'id' | 'active' | 'activeVersionId' | 'isArchived' | 'name'
 > & { name: string | null };
 
-export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
+// `parentId` is here because the diff compares it: moving a node into or out of
+// a group is a content change, not a canvas move.
+export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'> &
+	Partial<Pick<INode, 'parentId'>>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;

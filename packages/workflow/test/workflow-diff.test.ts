@@ -753,6 +753,37 @@ describe('groupWorkflows', () => {
 					),
 					expected: false,
 				},
+				{
+					// On the group-node model membership lives in `parentId`, so
+					// taking a node out of a group is an ordinary node change that
+					// `compareNodes` sees.
+					description: 'should return false when a node loses its parentId',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: {}, name: 'n1', parentId: 'g1' },
+					]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: {}, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should return false when a node moves to another group',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: {}, name: 'n1', parentId: 'g1' },
+					]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: {}, name: 'n1', parentId: 'g2' },
+					]),
+					expected: false,
+				},
+				{
+					description: 'should return true when a node keeps its group',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: {}, name: 'n1', parentId: 'g1' },
+					]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: {}, name: 'n1', parentId: 'g1' },
+					]),
+					expected: true,
+				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
 				const result = RULES.mergeAdditiveChanges(
 					baseWorkflow,

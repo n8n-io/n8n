@@ -70,4 +70,13 @@ export class WorkflowsConfig {
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
+
+	/**
+	 * Whether a canvas group is a real node (`n8n-nodes-base.group`) that holds
+	 * its members through their `parentId`. Off keeps the older `nodeGroups`
+	 * path, where a group is drawn but never executed. Still under development.
+	 * See `.agents/specs/group-as-first-class-node.md`.
+	 */
+	@Env('N8N_GROUP_NODE_ENABLED')
+	groupNodeEnabled: boolean = false;
 }

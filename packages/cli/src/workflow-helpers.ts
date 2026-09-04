@@ -13,6 +13,7 @@ import {
 	resolveVariables,
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
+	validateGroupNodes,
 	validateWorkflowGroups,
 	type IDataObject,
 	type INodeCredentialsDetails,
@@ -172,6 +173,34 @@ export function validateWorkflowNodeGroups(
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+	});
+	if (!result.valid) {
+		throw new BadRequestError(result.violations[0].message);
+	}
+}
+
+/**
+ * Validates the group nodes on the save path, rejecting with a `BadRequestError`.
+ *
+ * The rules live in `validateGroupNodes` (n8n-workflow), which is the single
+ * source of truth shared with the validate-time surfaces. This wrapper throws
+ * the first violation, matching `validateWorkflowNodeGroups` above.
+ *
+ * The two validators sit side by side while the feature flag is off: the old one
+ * checks `nodeGroups`, this one checks the group nodes. A workflow with no group
+ * node passes here without a check.
+ *
+ * Note for frontend: must be called after `addNodeIds`, since a node created
+ * through the API may have no id until that step assigns one.
+ */
+export function validateWorkflowGroupNodes(
+	workflow: Pick<IWorkflowBase, 'nodes'> & {
+		connections?: IWorkflowBase['connections'];
+	},
+) {
+	const result = validateGroupNodes({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
 	});
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);

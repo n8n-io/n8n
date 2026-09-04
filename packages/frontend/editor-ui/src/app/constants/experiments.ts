@@ -143,6 +143,13 @@ export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
 );
 
+/**
+ * Makes a canvas group a real node that holds its members through their
+ * `parentId`, instead of a render-only `nodeGroups` entry. Off keeps the older
+ * path. See `.agents/specs/group-as-first-class-node.md`.
+ */
+export const GROUP_NODE_EXPERIMENT = createExperiment('109_group_node');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,

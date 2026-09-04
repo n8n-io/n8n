@@ -233,6 +233,13 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	/**
+	 * Whether the instance treats a canvas group as a real node that holds its
+	 * members through their `parentId`. Off keeps the older `nodeGroups` path.
+	 */
+	groupNode: {
+		enabled: boolean;
+	};
 	collaboration: {
 		crdt: 'off' | 'local' | 'server';
 	};

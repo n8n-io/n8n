@@ -68,6 +68,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const mfa = ref({ enabled: false });
 	const folders = ref({ enabled: false });
+	/**
+	 * Whether the instance treats a canvas group as a real node. The editor also
+	 * needs the PostHog flag; see `useGroupNodeExperiment`.
+	 */
+	const groupNode = ref({ enabled: false });
 
 	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
@@ -198,6 +203,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
+	const isGroupNodeFeatureEnabled = computed(() => groupNode.value.enabled);
+
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const isChatFeatureEnabled = computed(
@@ -304,6 +311,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		mfa.value.enabled = settings.value.mfa?.enabled;
 		folders.value.enabled = settings.value.folders?.enabled;
+		groupNode.value.enabled = settings.value.groupNode?.enabled ?? false;
 
 		if (settings.value.versionCli) {
 			useRootStore().setVersionCli(settings.value.versionCli);
@@ -493,6 +501,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isTelemetryEnabled,
 		isMfaFeatureEnabled,
 		isFoldersFeatureEnabled,
+		isGroupNodeFeatureEnabled,
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
 		areTagsEnabled,

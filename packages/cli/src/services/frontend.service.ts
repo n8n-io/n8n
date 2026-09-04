@@ -423,6 +423,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			groupNode: {
+				enabled: this.globalConfig.workflows.groupNodeEnabled,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
