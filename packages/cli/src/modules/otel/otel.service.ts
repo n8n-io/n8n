@@ -26,8 +26,6 @@ import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
-// grpc-js ends its connection errors with "Resolution note: <note>" and leaves
-// the note empty unless its resolver has something to add.
 const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
 
@@ -35,10 +33,6 @@ const stripEmptyResolutionNote = (message: string) =>
 export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
 	private sdk?: NodeSDK;
-	private hasLoggedStartupConnectivityFailure = false;
-
-	/** Incremented by every start, so a probe from an earlier start can be discarded. */
-	private startGeneration = 0;
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
@@ -114,38 +108,35 @@ export class OtelService {
 	}
 
 	private async start(settings: OtelConfig): Promise<void> {
-		const generation = ++this.startGeneration;
-		this.hasLoggedStartupConnectivityFailure = false;
 		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
+		let sdk: NodeSDK;
 		try {
-			await this.startSdk(settings);
+			sdk = await this.startSdk(settings);
 		} catch (error) {
 			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
 				error: error instanceof Error ? error.message : String(error),
 			});
-			// `NodeSDK.start()` can throw after it installed some global providers.
 			await this.shutdown();
 			return;
 		}
 
-		void this.checkEndpointReachability(settings, generation);
+		void this.checkEndpointReachability(settings, sdk);
 	}
 
 	async shutdown(): Promise<void> {
-		// A probe that fails during teardown must not log for the endpoint n8n is leaving.
-		this.startGeneration++;
+		// Cleared before the flush, so a probe that fails meanwhile sees that its SDK is gone.
+		const sdk = this.sdk;
+		this.sdk = undefined;
 		try {
-			await this.sdk?.shutdown();
+			await sdk?.shutdown();
 		} catch (error) {
 			this.logger.warn(
 				'Failed to cleanly shut down OpenTelemetry SDK (exporter flush may have failed)',
 				{ error: error instanceof Error ? error.message : String(error) },
 			);
 		} finally {
-			this.sdk = undefined;
-
 			// Unregister the global providers so the next NodeSDK.start() can register
 			// new ones. Without this, OTel's allowOverride=false guard blocks
 			// re-registration and the restart silently fails.
@@ -156,7 +147,7 @@ export class OtelService {
 		}
 	}
 
-	private async startSdk(settings: OtelConfig): Promise<void> {
+	private async startSdk(settings: OtelConfig): Promise<NodeSDK> {
 		const traceExporter = await this.createTraceExporter(settings);
 
 		this.sdk = new NodeSDK({
@@ -171,6 +162,7 @@ export class OtelService {
 		});
 
 		this.sdk.start();
+		return this.sdk;
 	}
 
 	private async createTraceExporter(
@@ -194,7 +186,6 @@ export class OtelService {
 		return new OTLPTraceExporter({ url, headers, timeoutMillis });
 	}
 
-	/** Imports lazily, so the default protocol never loads grpc-js and its HTTP/2 stack. */
 	private async createGrpcTraceExporter(
 		connection: OtelConnectionParams,
 		timeoutMillis?: number,
@@ -231,10 +222,6 @@ export class OtelService {
 			: this.buildOtlpTracesUrl(endpoint, connection.exporterTracingPath);
 	}
 
-	/**
-	 * gRPC metadata keys must be lowercase ASCII, and grpc-js throws on an illegal
-	 * key. Headers can come from an env var, so skip and warn instead of failing startup.
-	 */
 	private toGrpcMetadata(headers: Record<string, string>, metadata: Metadata): Metadata {
 		for (const [key, value] of Object.entries(headers)) {
 			try {
@@ -295,7 +282,10 @@ export class OtelService {
 		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
-	private async checkEndpointReachability(settings: OtelConfig, generation: number): Promise<void> {
+	private async checkEndpointReachability(
+		settings: OtelConfig,
+		startedSdk: NodeSDK,
+	): Promise<void> {
 		const url = this.resolveExporterUrl(settings);
 		const timeoutMs = settings.startupConnectivityTimeoutMs;
 
@@ -306,11 +296,8 @@ export class OtelService {
 				await this.probeHttpEndpoint(url, timeoutMs);
 			}
 		} catch (error) {
-			// A probe of a previous start can settle after a restart. Its result
-			// describes an endpoint that the instance no longer exports to.
-			if (generation !== this.startGeneration) return;
-			if (this.hasLoggedStartupConnectivityFailure) return;
-			this.hasLoggedStartupConnectivityFailure = true;
+			// A restart or shutdown replaced the SDK this probe belongs to.
+			if (this.sdk !== startedSdk) return;
 
 			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
 				endpoint: url,
@@ -320,7 +307,6 @@ export class OtelService {
 	}
 
 	private async probeHttpEndpoint(url: string, timeoutMs: number): Promise<void> {
-		// OTLP endpoints are POST-only, so a 4xx still means the server is reachable.
 		// SSRF is disabled: the OTLP endpoint is admin-configured observability
 		// infrastructure and is commonly an internal/localhost collector.
 		await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
@@ -329,10 +315,6 @@ export class OtelService {
 		});
 	}
 
-	/**
-	 * Channel readiness proves TCP, the TLS handshake, and HTTP/2. The probe stays
-	 * advisory: only "Send test trace" proves that the endpoint serves OTLP.
-	 */
 	private async probeGrpcEndpoint(endpoint: string, timeoutMs: number): Promise<void> {
 		const { host, port, protocol } = new URL(endpoint);
 		const { Client, credentials } = await import('@grpc/grpc-js');
