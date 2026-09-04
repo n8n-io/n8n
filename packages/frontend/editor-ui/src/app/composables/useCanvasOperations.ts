@@ -3767,6 +3767,44 @@ export function useCanvasOperations() {
 		return { addedNodes };
 	}
 
+	/**
+	 * Adds an empty group: a group whose only member is a hidden placeholder
+	 * node. The node and the group land in one undo step, so undo removes both
+	 * together. Without a position the placeholder is placed like any other new
+	 * node (last click / last interacted node).
+	 */
+	async function addEmptyGroup({
+		position,
+		trackHistory = true,
+	}: { position?: XYPosition; trackHistory?: boolean } = {}): Promise<IWorkflowGroup | undefined> {
+		const name = workflowDocumentStore.value.getNextDefaultName(
+			i18n.baseText('canvas.nodeGroup.defaultTitle'),
+		);
+
+		if (trackHistory) {
+			historyStore.startRecordingUndo();
+		}
+
+		const [placeholder] = await addNodes(
+			[{ type: GROUP_PLACEHOLDER_NODE_TYPE, name, id: window.crypto.randomUUID(), position }],
+			{ trackHistory, trackBulk: false, telemetry: true },
+		);
+
+		let group: IWorkflowGroup | undefined;
+		if (placeholder) {
+			group = workflowDocumentStore.value.createGroup([placeholder.id], name);
+			if (trackHistory) {
+				historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+			}
+		}
+
+		if (trackHistory) {
+			historyStore.stopRecordingUndo();
+		}
+
+		return group;
+	}
+
 	function fitView() {
 		setTimeout(() => canvasEventBus.emit('fitView'));
 	}
@@ -3950,6 +3988,7 @@ export function useCanvasOperations() {
 		initializeUnknownNodes,
 		replaceNode,
 		addNodesAndConnections,
+		addEmptyGroup,
 		fitView,
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,

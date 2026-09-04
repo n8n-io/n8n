@@ -70,7 +70,7 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
-import { GROUP_PLACEHOLDER_NODE_TYPE, SET_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { SET_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -269,6 +269,7 @@ const {
 	lastClickPosition,
 	startChat,
 	addNodesAndConnections,
+	addEmptyGroup,
 	fitView,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
@@ -1080,21 +1081,15 @@ function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 }
 
-async function onCreateEmptyGroup() {
-	const name = workflowDocumentStore.value.getNextDefaultName(
-		i18n.baseText('canvas.nodeGroup.defaultTitle'),
-	);
-	const id = window.crypto.randomUUID();
-	await onAddNodesAndConnections({
-		nodes: [{ type: GROUP_PLACEHOLDER_NODE_TYPE, name, id }],
-		connections: [],
-	});
-	const placeholder = workflowDocumentStore.value.getNodeById(id);
-	if (!placeholder) return;
-	// ponytail: not one undo step with the node; wrap in a history bulk later.
-	const group = workflowDocumentStore.value.createGroup([placeholder.id], name);
+// From the toolbar (with the canvas-centre position) or the context menu
+// (at the last click position, which addEmptyGroup resolves when omitted).
+async function onCreateEmptyGroup(position?: XYPosition) {
+	if (!checkIfEditingIsAllowed()) return;
+
+	const group = await addEmptyGroup({ position });
+	if (!group) return;
 	// Same rename flow as grouping nodes, so the user can type the title straight
-	// away. An empty group renders as a chip, so this opens the rename modal.
+	// away. An empty group renders as a card, so this opens the rename modal.
 	await nextTick();
 	canvasEventBus.emit('rename:group', { groupId: group.id });
 }
@@ -2337,6 +2332,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onCreateEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>

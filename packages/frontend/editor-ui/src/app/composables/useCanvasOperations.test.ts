@@ -1424,6 +1424,44 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addEmptyGroup', () => {
+		it('creates the placeholder node and its group in one undo step', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[GROUP_PLACEHOLDER_NODE_TYPE]: {
+					1: mockNodeTypeDescription({ name: GROUP_PLACEHOLDER_NODE_TYPE }),
+				},
+			};
+			const historyStore = mockedStore(useHistoryStore);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNextDefaultName').mockReturnValue('Group');
+			const createGroupSpy = vi
+				.spyOn(workflowDocumentStoreInstance, 'createGroup')
+				.mockImplementation((nodeIds, name) => ({ id: 'g1', name, nodeIds: [...nodeIds] }));
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addEmptyGroup } = useCanvasOperations();
+			// Grid-aligned so the snapped position matches the input exactly.
+			const group = await addEmptyGroup({ position: [96, 192] });
+
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			const placeholder = addNodeSpy.mock.calls[0][0];
+			expect(placeholder).toMatchObject({
+				type: GROUP_PLACEHOLDER_NODE_TYPE,
+				name: 'Group',
+				position: [96, 192],
+			});
+			expect(createGroupSpy).toHaveBeenCalledWith([placeholder.id], 'Group');
+			expect(group?.nodeIds).toEqual([placeholder.id]);
+
+			// One bulk: the node and the group undo together.
+			expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+			const commands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+			expect(commands.some((command) => command instanceof AddNodeCommand)).toBe(true);
+			expect(commands.some((command) => command instanceof AddNodeGroupCommand)).toBe(true);
+		});
+	});
+
 	describe('addNodes', () => {
 		it('should add nodes at specified positions', async () => {
 			const nodeTypesStore = useNodeTypesStore();
