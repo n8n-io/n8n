@@ -128,9 +128,9 @@ Not in the frames and therefore **unchanged**: the description editor's Save + B
 
 ### Task 4: Resolve in-scope shortcut markers
 
-- [ ] `NodeView.vue` "not one undo step" — resolved by Task 3.
-- [ ] `useCanvasOperations.ts` "no drop guard" (second edge onto an empty card is accepted on drag and rejected on release): keep the release-time rejection as the source of truth, and make the card's handle report `isConnectable=false` while a connection is being dragged from a source that already feeds this group. Verify manually.
-- [ ] Mock generator marker stays; it is a stand-in by design.
+- [x] `NodeView.vue` "not one undo step" — resolved by Task 3.
+- [x] `useCanvasOperations.ts` "no drop guard". Investigated: group connection rules are decided on release for every endpoint (`isConnectionReplacementAllowedForNodeGroups`), and node handles carry no earlier per-group validation either (`useNodeConnections.isValidConnection` only checks handle mode/type). An empty card therefore already behaves exactly as a node does during a drag — there was no shortcut, only a misleading comment. Comment corrected; no drag-time validator added, as that would be new behaviour nodes do not have.
+- [x] Mock generator marker stays; it is a stand-in by design.
 
 ---
 

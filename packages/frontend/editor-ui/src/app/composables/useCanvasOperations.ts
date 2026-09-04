@@ -2273,9 +2273,10 @@ export function useCanvasOperations() {
 		trackHistory?: boolean;
 	}): boolean {
 		// Auto-extending an empty group would pull a real node in and stop it
-		// being empty, so a second edge onto the chip is rejected instead.
-		// ponytail: no drop guard yet — the chip still accepts the drag gesture
-		// and only rejects on release; add one when the POC lands.
+		// being empty, so such a change is rejected instead. Like every other
+		// group rule this is decided on release, with the blocked toast; node
+		// handles have no earlier per-group validation either, so an empty card
+		// behaves exactly as a node does during the drag.
 		const touchesEmptyGroup = params.nodeIds.some((nodeId) => {
 			const group = workflowDocumentStore.value.getGroupForNode(nodeId);
 			return group !== undefined && workflowDocumentStore.value.isEmptyGroup(group.id);
