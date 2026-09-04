@@ -25,7 +25,6 @@ export type WebhookNodeResponseHeaders = {
  */
 const PROTECTED_HEADERS = new Set([
 	'content-security-policy',
-	'set-cookie',
 	'strict-transport-security',
 	'clear-site-data',
 ]);
