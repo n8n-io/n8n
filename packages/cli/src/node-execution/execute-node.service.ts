@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import type {
@@ -307,7 +308,7 @@ export class ExecuteNodeService {
 			});
 			const inFlight = execution?.status === 'new' || execution?.status === 'running';
 			if (!inFlight) return;
-			await new Promise((resolve) => setTimeout(resolve, MULTI_MAIN_POLL_INTERVAL_MS));
+			await sleep(MULTI_MAIN_POLL_INTERVAL_MS, signal);
 		}
 	}
 
