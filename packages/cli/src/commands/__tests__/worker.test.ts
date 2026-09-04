@@ -18,6 +18,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -61,6 +62,7 @@ mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(DeprecationService);
 mockInstance(CredentialsOverwrites);
@@ -73,6 +75,43 @@ describe('Worker', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	/** Worker with the init steps that go beyond `super.init()` stubbed, as in start.test.ts. */
+	const createWorkerForInit = (globalConfigOverrides: Record<string, unknown> = {}) => {
+		const worker = new Worker();
+
+		// @ts-expect-error - Overriding readonly property for testing
+		worker.globalConfig = {
+			executions: { mode: 'regular' },
+			multiMainSetup: { enabled: false },
+			endpoints: { metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' },
+			sentry: { backendDsn: '' },
+			cache: { backend: 'memory' },
+			taskRunners: {},
+			outboundProxy: { mode: 'main-only' },
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			queue: { bull: { gracefulShutdownTimeout: 20 }, workerPool: { enabled: false, name: '' } },
+			generic: { gracefulShutdownTimeout: 30 },
+			...globalConfigOverrides,
+		};
+
+		worker.setConcurrency = vi.fn().mockResolvedValue(undefined);
+		worker.initLicense = vi.fn().mockResolvedValue(undefined);
+		worker.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
+		// @ts-expect-error - Accessing protected method for testing
+		worker.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+		worker.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+		worker.initEventBus = vi.fn().mockResolvedValue(undefined);
+		worker.initScalingService = vi.fn().mockResolvedValue(undefined);
+		worker.initOrchestration = vi.fn().mockResolvedValue(undefined);
+		// @ts-expect-error - Accessing protected property for testing
+		worker.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
+		// @ts-expect-error - Accessing protected property for testing
+		worker.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
+
+		return worker;
+	};
 
 	describe('initOrchestration', () => {
 		it('should instantiate WorkerStatusService during orchestration setup', async () => {
@@ -141,40 +180,39 @@ describe('Worker', () => {
 		it('should install env-proxy global agents on `init()`, via the base command', async () => {
 			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
 
-			const worker = new Worker();
-			// @ts-expect-error - Overriding readonly property for testing
-			worker.globalConfig = {
-				executions: { mode: 'regular' },
-				multiMainSetup: { enabled: false },
-				endpoints: { metrics: { enable: false }, health: '/health' },
-				database: { type: 'sqlite' },
-				sentry: { backendDsn: '' },
-				cache: { backend: 'memory' },
-				taskRunners: {},
-				outboundProxy: { mode: 'all' },
-				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
-				queue: { workerPool: { enabled: false, name: '' } },
-			};
-			// Stub the init steps that go beyond `super.init()`, as in start.test.ts
-			worker.setConcurrency = vi.fn().mockResolvedValue(undefined);
-			worker.initLicense = vi.fn().mockResolvedValue(undefined);
-			worker.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
-			// @ts-expect-error - Accessing protected method for testing
-			worker.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
-			worker.initExternalHooks = vi.fn().mockResolvedValue(undefined);
-			worker.initEventBus = vi.fn().mockResolvedValue(undefined);
-			worker.initScalingService = vi.fn().mockResolvedValue(undefined);
-			worker.initOrchestration = vi.fn().mockResolvedValue(undefined);
-			// @ts-expect-error - Accessing protected property for testing
-			worker.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
-			// @ts-expect-error - Accessing protected property for testing
-			worker.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
-
-			await worker.init();
+			await createWorkerForInit({ outboundProxy: { mode: 'all' } }).init();
 
 			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
 			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
 		});
+	});
+
+	describe('init', () => {
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it.each([
+			{ envValue: '45', expected: 45, case: 'the parsed value' },
+			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
+			{ envValue: '45seconds', expected: 20, case: 'the queue default when partly numeric' },
+			{ envValue: '0', expected: 20, case: 'the queue default when zero' },
+			{ envValue: '-45', expected: 20, case: 'the queue default when negative' },
+		])(
+			'should apply QUEUE_WORKER_TIMEOUT as $case to both the shutdown and the drain timeout',
+			async ({ envValue, expected }) => {
+				vi.stubEnv('QUEUE_WORKER_TIMEOUT', envValue);
+
+				const worker = createWorkerForInit();
+
+				await worker.init();
+
+				// @ts-expect-error - Accessing protected property for testing
+				expect(worker.gracefulShutdownTimeoutInS).toBe(expected);
+				// @ts-expect-error - Accessing protected property for testing
+				expect(worker.globalConfig.generic.gracefulShutdownTimeout).toBe(expected);
+			},
+		);
 	});
 
 	describe('stopProcess', () => {

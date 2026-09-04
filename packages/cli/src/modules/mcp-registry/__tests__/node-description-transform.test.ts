@@ -9,6 +9,7 @@ import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
 	gmailDirectExtendMockServer,
+	githubUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -30,7 +31,12 @@ const baseDescription: INodeTypeDescription = {
 	outputs: [],
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
-		{ displayName: 'Endpoint URL', name: 'endpointUrl', type: 'hidden', default: '' },
+		{
+			displayName: 'Endpoint URL',
+			name: 'endpointUrl',
+			type: 'hidden',
+			default: '',
+		},
 		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
@@ -68,6 +74,9 @@ describe('serverToNodeDescription', () => {
 			version: 1,
 		});
 		expect(description?.hidden).toBeUndefined();
+		expect(description?.properties.find((p) => p.name === 'endpointUrl')?.default).toBe(
+			'https://mcp.notion.com/mcp',
+		);
 	});
 
 	it('prefers streamable-http when both remotes are available', () => {
@@ -77,14 +86,12 @@ describe('serverToNodeDescription', () => {
 			isKnownCredentialType,
 		);
 
-		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
 
 		expect(serverTransport?.default).toBe('httpStreamable');
-		expect(endpointUrl?.default).toBe('https://mcp.notion.com/mcp');
 	});
 
-	it('falls back to sse when only sse is available', () => {
+	it('fills the remote transport when only SSE is available', () => {
 		const sseOnlyServer: McpRegistryServer = {
 			...notionMockServer,
 			remotes: [{ type: 'sse', url: 'https://mcp.notion.com/sse' }],
@@ -96,11 +103,9 @@ describe('serverToNodeDescription', () => {
 			isKnownCredentialType,
 		);
 
-		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
 
 		expect(serverTransport?.default).toBe('sse');
-		expect(endpointUrl?.default).toBe('https://mcp.notion.com/sse');
 	});
 
 	it('returns null when no supported remote is available', () => {
@@ -255,7 +260,7 @@ describe('serverToNodeDescription', () => {
 		expect(baseDescription).toEqual(snapshot);
 	});
 
-	it('leaves properties other than endpointUrl and serverTransport untouched', () => {
+	it('leaves properties other than serverTransport untouched', () => {
 		const description = serverToNodeDescription(
 			notionMockServer,
 			baseDescription,
@@ -368,14 +373,74 @@ describe('serverToNodeDescription', () => {
 			expect(description?.credentials).toEqual([{ name: 'gmailMcpOAuth2Api', required: true }]);
 		});
 
-		it('omits credentials when the parent type is not registered', () => {
+		it('returns null when the parent type is not registered', () => {
 			const description = serverToNodeDescription(
 				gmailDirectExtendMockServer,
 				baseDescription,
 				() => false,
 			);
 
-			expect(description?.credentials).toEqual([]);
+			expect(description).toBeNull();
+		});
+	});
+
+	describe('with usesCredentials', () => {
+		it('adds an authentication selector and direct credential descriptions', () => {
+			const description = serverToNodeDescription(
+				githubUsesCredentialsMockServer,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api' || name === 'githubApi',
+			);
+
+			expect(description?.credentials).toEqual([
+				{
+					name: 'githubOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+				{
+					name: 'githubApi',
+					required: true,
+					displayOptions: { show: { authentication: ['accessToken'] } },
+				},
+			]);
+			expect(description?.properties[0]).toEqual({
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{ name: 'OAuth2', value: 'oAuth2' },
+					{ name: 'Access Token', value: 'accessToken' },
+				],
+				default: 'oAuth2',
+			});
+		});
+
+		it('uses a single credential without adding a selector', () => {
+			const server: McpRegistryServer = {
+				...githubUsesCredentialsMockServer,
+				usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+			};
+			const description = serverToNodeDescription(
+				server,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api',
+			);
+
+			expect(description?.credentials).toEqual([{ name: 'githubOAuth2Api', required: true }]);
+			expect(description?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		});
+
+		it('omits credential types that are not supported', () => {
+			const description = serverToNodeDescription(
+				githubUsesCredentialsMockServer,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api',
+			);
+
+			expect(description?.credentials).toEqual([{ name: 'githubOAuth2Api', required: true }]);
+			expect(description?.properties.some(({ name }) => name === 'authentication')).toBe(false);
 		});
 
 		it('builds a tile for a templated streamable-http-templated remote, unresolved endpointUrl and all', () => {
@@ -454,6 +519,12 @@ describe('serverToCredentialDescription', () => {
 		};
 
 		expect(serverToCredentialDescription(unsupportedServer, isKnownCredentialType)).toBeNull();
+	});
+
+	it('does not create a synthetic credential for usesCredentials', () => {
+		expect(
+			serverToCredentialDescription(githubUsesCredentialsMockServer, isKnownCredentialType),
+		).toBeNull();
 	});
 
 	it('returns null when no remote is available', () => {
@@ -586,10 +657,10 @@ describe('serverToCredentialDescription', () => {
 		});
 
 		it('returns null when authType is "extendsCredential" but the extendsCredential field is missing', () => {
-			const server: McpRegistryServer = {
+			const server = {
 				...slackExtendingMockServer,
 				extendsCredential: undefined,
-			};
+			} as unknown as McpRegistryServer;
 
 			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
 		});
