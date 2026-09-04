@@ -289,5 +289,15 @@ describe('SSO store', () => {
 			);
 			expect(ssoApi.initSSO).not.toHaveBeenCalled();
 		});
+
+		it('throws when OIDC is active but no login URL is configured', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: '' } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl()).rejects.toThrow();
+		});
 	});
 });

@@ -225,6 +225,17 @@ describe('SigninView', () => {
 			expect(queryByTestId('signin-form')).not.toBeInTheDocument();
 		});
 
+		it('falls back to the login form when the SSO redirect URL cannot be resolved', async () => {
+			ssoStore.resolveActiveSsoRedirectUrl = vi.fn().mockRejectedValue(new Error('no url'));
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+		});
+
 		it('shows the email/password form via the internal-auth fallback (?internalAuth=true)', async () => {
 			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
 			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
