@@ -179,7 +179,10 @@ async function seedOwner(attempts = 5, delayMs = 3000) {
 if (!(await waitForReady(port, healthPath))) {
 	console.error(
 		`Backend did not answer ${healthPath}/readiness within 3 min. It is not fully initialized, so the owner seeding below is likely to fail — check ${BE_LOG}.`,
+
 	);
+	execFileSync('tail', ['-n', '30', BE_LOG], { stdio: 'inherit'});
+	process.exit(1);
 }
 
 await seedOwner();

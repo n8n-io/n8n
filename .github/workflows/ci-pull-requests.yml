@@ -123,6 +123,7 @@ jobs:
               scripts/*.test.mjs
               scripts/codespace-env.mjs
               scripts/preview.mjs
+              scripts/preview*
               scripts/serve-ready.mjs
               scripts/licenses/**
               scripts/mutation-health/**

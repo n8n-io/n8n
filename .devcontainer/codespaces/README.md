@@ -55,7 +55,7 @@ PR instead of reading it. It is a different box from a `pnpm session`: it uses
 `.devcontainer/preview/devcontainer.json`, and its display name is
 `preview/pr-<number>`.
 
-**From GitHub:** add the `codespace-preview` label to the PR.
+**From GitHub:** for a PR targeting master, add the `codespace-preview` label to the PR.
 [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
 creates the box, serves the PR head, shares port 5678 with the org, and comments
 the URL on the PR. A later push serves the new head in the same box. Remove the
