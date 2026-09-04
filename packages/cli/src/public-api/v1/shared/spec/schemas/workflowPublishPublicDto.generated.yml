@@ -86,6 +86,10 @@ properties:
         parameters:
           type: object
           additionalProperties: true
+        parentId:
+          type: string
+          example: 9b1c8e2a-3f4d-4b7a-8c1e-2d5f6a7b8c9d
+          description: Id of the group node that holds this node in its interior
         credentials:
           type: object
           example:
@@ -379,6 +383,10 @@ properties:
             parameters:
               type: object
               additionalProperties: true
+            parentId:
+              type: string
+              example: 9b1c8e2a-3f4d-4b7a-8c1e-2d5f6a7b8c9d
+              description: Id of the group node that holds this node in its interior
             credentials:
               type: object
               example:
