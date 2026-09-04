@@ -68,6 +68,7 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
@@ -138,7 +139,11 @@ import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-crede
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import {
+	MCP_REGISTRY_PACKAGE_NAME,
+	getMcpRegistryCredentialOptions,
+} from '@/modules/mcp-registry/node-description-transform';
+import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
@@ -534,7 +539,6 @@ export class InstanceAiAdapterService {
 					slug: server.slug,
 					title: server.title,
 					description: server.description,
-					credentialType: server.credentialType,
 					tools: server.tools.map((tool) => tool.name),
 				}));
 
@@ -549,8 +553,22 @@ export class InstanceAiAdapterService {
 				const connected = new Set(connections.map((connection) => connection.slug));
 				return toSummaries(servers.filter((server) => !connected.has(server.slug)));
 			},
-			getServers: async (slugs: string[]): Promise<McpRegistryServerSummary[]> =>
-				toSummaries(await Container.get(McpRegistryService).resolveBySlugs(slugs)),
+			getServers: async (slugs: string[]): Promise<McpRegistryConnectServerSummary[]> => {
+				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
+				return servers
+					.filter((server) => {
+						if (server.status !== 'active') return false;
+						const connection = resolveMcpRegistryConnection(server);
+						return connection !== null && !connection.isTemplated;
+					})
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.tagline,
+						usesCredentials: getMcpRegistryCredentialOptions(server),
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
 			listConnections: async (): Promise<Array<{ slug: string }>> =>
 				await this.listMcpRegistryConnections(user),
 		};

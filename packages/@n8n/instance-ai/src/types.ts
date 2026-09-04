@@ -582,8 +582,15 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
-	credentialType: string;
 	tools: string[];
+}
+
+export interface McpRegistryConnectServerSummary extends McpRegistryServerSummary {
+	usesCredentials: Array<{
+		credentialType: string;
+		name: string;
+		value: string;
+	}>;
 }
 
 /** A service the user connected, with those of its tools that reached the agent.
@@ -595,7 +602,7 @@ export interface ConnectedMcpService {
 
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
-	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryConnectServerSummary[]>;
 	listConnections(): Promise<Array<{ slug: string }>>;
 }
 

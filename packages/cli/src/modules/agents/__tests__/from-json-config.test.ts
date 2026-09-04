@@ -1854,6 +1854,22 @@ describe('AgentJsonConfigSchema', () => {
 			});
 		});
 
+		it('accepts a native OAuth2 credential type', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://api.githubcopilot.com/mcp/',
+						authentication: 'githubOAuth2Api',
+						credential: 'github-credential',
+					},
+				],
+			});
+
+			expect(parsed.mcpServers?.[0].authentication).toBe('githubOAuth2Api');
+		});
+
 		it('rejects duplicate MCP server names', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
