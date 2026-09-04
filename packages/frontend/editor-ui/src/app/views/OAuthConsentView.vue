@@ -17,7 +17,6 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
-import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
@@ -48,8 +47,6 @@ const errorMessage = computed(() => {
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
-// Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
-const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
 const firstPartyResourceType = computed(() =>
 	i18n.baseText(
@@ -154,19 +151,15 @@ onMounted(async () => {
 	<div :class="$style.overlay">
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
+				<!-- Only the resource's server-side `uiHints` picks this icon; the client's
+				     self-reported name never does. `||` so a blank hint also falls back. -->
 				<div :class="$style.logo">
 					<N8nIcon
-						v-if="clientDetails?.uiHints?.icon"
-						:icon="clientDetails.uiHints.icon"
+						:icon="clientDetails?.uiHints?.icon || 'mcp'"
 						size="large"
 						color="text-dark"
+						data-test-id="consent-client-icon"
 					/>
-					<component
-						:is="clientBrandIcon"
-						v-else-if="clientBrandIcon"
-						:class="$style['brand-icon']"
-					/>
-					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
 				     with a slow muted spinner badge. Decorative. -->
@@ -405,13 +398,7 @@ onMounted(async () => {
 	border-radius: var(--radius--xs);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--xs);
-	font-size: var(--font-size--xl);
 	color: var(--text-color--subtle);
-}
-
-.brand-icon {
-	width: 1em;
-	height: 1em;
 }
 
 .connector {
