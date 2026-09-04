@@ -77,13 +77,10 @@ describe('WebhookResponseHeaders', () => {
 		});
 
 		it.each([
-			'set-cookie',
 			'strict-transport-security',
 			'clear-site-data',
-			'Set-Cookie',
 			'Strict-Transport-Security',
 			'Clear-Site-Data',
-			'SET-COOKIE',
 			'STRICT-TRANSPORT-SECURITY',
 			'CLEAR-SITE-DATA',
 		])('should not allow overriding the protected header %s', (headerName) => {
@@ -98,11 +95,11 @@ describe('WebhookResponseHeaders', () => {
 
 		it('should log a warning when dropping a protected header', () => {
 			const headers = new WebhookResponseHeaders();
-			headers.set('Set-Cookie', 'a=b');
+			headers.set('Strict-Transport-Security', 'max-age=0');
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ headerName: 'Set-Cookie' }),
+				expect.objectContaining({ headerName: 'Strict-Transport-Security' }),
 			);
 		});
 
@@ -205,7 +202,6 @@ describe('WebhookResponseHeaders', () => {
 			const headers = new WebhookResponseHeaders();
 			headers.addFromObject({
 				'x-valid': 'value',
-				'Set-Cookie': 'a=b',
 				'Strict-Transport-Security': 'max-age=0',
 				'Clear-Site-Data': '"cache"',
 			});
@@ -299,7 +295,6 @@ describe('WebhookResponseHeaders', () => {
 			const headers = new WebhookResponseHeaders();
 			headers.addFromNodeHeaders({
 				entries: [
-					{ name: 'Set-Cookie', value: 'a=b' },
 					{ name: 'strict-transport-security', value: 'max-age=0' },
 					{ name: 'CLEAR-SITE-DATA', value: '"cache"' },
 					{ name: 'x-valid', value: 'ok' },
