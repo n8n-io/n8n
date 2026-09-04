@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { getAtlassianApiBaseUrl, resolveAtlassianCloudId } from '@utils/atlassian';
+import {
+	getAtlassianApiBaseUrl,
+	resolveAtlassianCloudId,
+	retryOnceIfTokenExpired,
+} from '@utils/atlassian';
 
 export const CONFLUENCE_CREDENTIAL_NAME = 'confluenceCloudOAuth2Api';
 export const SERVICE_ACCOUNT_CREDENTIAL_NAME = 'atlassianServiceAccountApi';
@@ -140,6 +144,7 @@ export async function confluenceApiRequest(
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	const cloudId = await getConfluenceCloudId.call(this);
+	const credentialType = getConfluenceCredentialName(this);
 
 	// The URL is concatenated onto the api.atlassian.com base, so caller input can't
 	// change the host; a future verbatim-URL param needs an origin check first.
@@ -151,12 +156,11 @@ export async function confluenceApiRequest(
 		json: true,
 	};
 
+	const makeRequest = async () =>
+		await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
+
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			getConfluenceCredentialName(this),
-			options,
-		);
+		return await retryOnceIfTokenExpired(this, credentialType, makeRequest);
 	} catch (error) {
 		throw toConfluenceApiError.call(this, error);
 	}
@@ -172,6 +176,7 @@ export async function confluenceApiRequestBinary(
 	endpoint: string,
 ): Promise<Buffer> {
 	const cloudId = await getConfluenceCloudId.call(this);
+	const credentialType = getConfluenceCredentialName(this);
 
 	// Downloads 302 to the Atlassian media host, which authenticates the hop via its
 	// own signed token in the redirect URL; the OAuth header must not follow cross-origin.
@@ -182,13 +187,12 @@ export async function confluenceApiRequestBinary(
 		sendCredentialsOnCrossOriginRedirect: false,
 	};
 
+	const makeRequest = async () =>
+		await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
+
 	let data: unknown;
 	try {
-		data = await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			getConfluenceCredentialName(this),
-			options,
-		);
+		data = await retryOnceIfTokenExpired(this, credentialType, makeRequest);
 	} catch (error) {
 		throw toConfluenceApiError.call(this, error);
 	}
@@ -206,6 +210,10 @@ export async function confluenceApiRequestBinary(
  * filename matches) so the delete+upload replace-a-file story becomes a single
  * call. No `json: true` and no explicit Content-Type: `form-data` sets its own
  * multipart boundary, and an explicit header would clobber it.
+ *
+ * Deliberately not wrapped in `retryOnceIfTokenExpired`: `formData` is a
+ * stream consumed by the first attempt, so replaying it on a retry would send
+ * a truncated or empty body instead of the file (the ENT-320 failure class).
  */
 export async function confluenceApiRequestUpload(
 	this: IExecuteFunctions,

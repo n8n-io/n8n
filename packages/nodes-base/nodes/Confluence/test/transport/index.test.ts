@@ -19,6 +19,18 @@ const accessibleResources = [
 
 const siteByUrl = (url: string) => ({ __rl: true, mode: 'url', value: url });
 
+// Simulates a genuinely (not-expiry-related) failing gateway call: accessible-resources
+// keeps succeeding (so a forced refresh is a no-op) while every actual gateway
+// request rejects with `error`, on both the first attempt and the retry.
+function alwaysFailGatewayCalls(mock: Mock, error: unknown): void {
+	mock.mockImplementation(async (_credentialType: string, options: { url: string }) => {
+		if (options.url === 'https://api.atlassian.com/oauth/token/accessible-resources') {
+			return accessibleResources;
+		}
+		throw error;
+	});
+}
+
 const pageNotFoundResponse = {
 	message: 'Request failed with status code 404',
 	response: {
@@ -150,23 +162,76 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it('wraps request failures in NodeApiError, keeping status and message', async () => {
-		failNextRequest({ message: 'boom', response: { status: 403 } });
+		// 500 (not 404/403) so this test exercises plain wrapping, not the expired-token retry
+		failNextRequest({ message: 'boom', response: { status: 500 } });
 
 		const error = await captureRejection('/wiki/api/v2/pages');
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error?.httpCode).toBe('403');
+		expect(error?.httpCode).toBe('500');
 		expect(error?.messages).toContain('boom');
 	});
 
 	it("surfaces Atlassian's v2 error envelope instead of the generic status message", async () => {
-		failNextRequest(pageNotFoundResponse);
+		// A page that's genuinely gone still 404s after the forced-refresh retry
+		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, pageNotFoundResponse);
 
 		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.message).toBe('Page not found');
 		expect(error?.description).toBe('No page with this ID exists');
+	});
+
+	it('retries once after forcing a token refresh when the gateway 404s a v2 path', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources) // cloudId lookup
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } }) // expired token
+			.mockResolvedValueOnce(accessibleResources) // forced refresh
+			.mockResolvedValueOnce({ results: [] }); // retried request succeeds
+
+		const data = await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(data).toEqual({ results: [] });
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(4);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			3,
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			}),
+		);
+	});
+
+	it('retries once after forcing a token refresh when the gateway 403s a v1 path', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({
+				message: 'boom',
+				response: {
+					status: 403,
+					data: { message: 'Current user not permitted to use Confluence' },
+				},
+			})
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce({ results: [] });
+
+		const data = await confluenceApiRequest.call(ctx, 'GET', '/wiki/rest/api/search');
+
+		expect(data).toEqual({ results: [] });
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(4);
+	});
+
+	it('does not loop on a genuinely deleted page: exactly one retry, then the 404 surfaces', async () => {
+		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, {
+			message: 'boom',
+			response: { status: 404 },
+		});
+
+		await captureRejection('/wiki/api/v2/pages/999');
+
+		// cloudId lookup, first attempt, forced refresh, retry. No more than that.
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 	});
 
 	it('falls back to the generic wrap when the envelope carries no usable title', async () => {
@@ -210,12 +275,15 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it("surfaces Atlassian's v2 envelope from a wrapped NodeApiError", async () => {
-		const wrapped = failNextRequestWrapped(pageNotFoundResponse as JsonObject);
+		// Same not-actually-expired case as above, but pinning the pre-wrapped-NodeApiError path
+		alwaysFailGatewayCalls(
+			mockHttpRequestWithAuthentication,
+			new NodeApiError(mockNode, pageNotFoundResponse as JsonObject),
+		);
 
 		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error).not.toBe(wrapped);
 		expect(error?.message).toBe('Page not found');
 		expect(error?.description).toBe('No page with this ID exists');
 		expect(error?.httpCode).toBe('404');
@@ -376,9 +444,10 @@ describe('confluenceApiRequestBinary', () => {
 	});
 
 	it('wraps request failures in NodeApiError, keeping the status', async () => {
+		// 500 (not 404/403) so this test exercises plain wrapping, not the expired-token retry
 		mockHttpRequestWithAuthentication
 			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 500 } });
 
 		const error = await confluenceApiRequestBinary
 			.call(ctx, '/wiki/download/attachments/9/a.txt')
@@ -386,28 +455,27 @@ describe('confluenceApiRequestBinary', () => {
 			.catch((thrown: NodeApiError) => thrown);
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error?.httpCode).toBe('404');
+		expect(error?.httpCode).toBe('500');
 	});
 
 	it("surfaces Atlassian's v2 error envelope on download failures", async () => {
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({
-				message: 'Request failed with status code 404',
-				response: {
-					status: 404,
-					data: {
-						errors: [
-							{
-								status: 404,
-								code: 'NOT_FOUND',
-								title: 'Attachment not found',
-								detail: 'No attachment with this ID exists',
-							},
-						],
-					},
+		// A genuinely missing attachment still 404s after the forced-refresh retry
+		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, {
+			message: 'Request failed with status code 404',
+			response: {
+				status: 404,
+				data: {
+					errors: [
+						{
+							status: 404,
+							code: 'NOT_FOUND',
+							title: 'Attachment not found',
+							detail: 'No attachment with this ID exists',
+						},
+					],
 				},
-			});
+			},
+		});
 
 		const error = await confluenceApiRequestBinary
 			.call(ctx, '/wiki/download/attachments/9/a.txt')
@@ -418,6 +486,20 @@ describe('confluenceApiRequestBinary', () => {
 		expect(error?.message).toBe('Attachment not found');
 		expect(error?.description).toBe('No attachment with this ID exists');
 		expect(error?.httpCode).toBe('404');
+	});
+
+	it('retries once after forcing a token refresh when a download 404s', async () => {
+		const bytes = Buffer.from('file-bytes');
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources) // cloudId lookup
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } }) // expired token
+			.mockResolvedValueOnce(accessibleResources) // forced refresh
+			.mockResolvedValueOnce(bytes); // retried request succeeds
+
+		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+
+		expect(data).toBe(bytes);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 	});
 });
 
@@ -484,6 +566,22 @@ describe('confluenceApiRequestUpload', () => {
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('403');
+	});
+
+	it('does not retry a 404/403 (the multipart body is a consumed stream, unsafe to replay)', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
+
+		const error = await confluenceApiRequestUpload
+			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe('404');
+		// cloudId lookup, then the single failed attempt. No forced refresh, no retry.
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 
 	it('surfaces the v1 scope-trap message instead of the generic status text', async () => {

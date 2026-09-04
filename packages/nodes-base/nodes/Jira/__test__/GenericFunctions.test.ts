@@ -233,6 +233,125 @@ describe('Jira -> GenericFunctions', () => {
 			});
 		});
 
+		describe('expired-token retry (ENT-408)', () => {
+			const cloudId = 'abc123-cloud-id';
+			const accessibleResources = [{ id: cloudId, url: 'https://example.atlassian.net' }];
+
+			it('retries once after forcing a token refresh when the gateway 404s (cloudOAuth2)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					domain: 'https://example.atlassian.net',
+				});
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication
+					.mockResolvedValueOnce(accessibleResources) // cloudId lookup
+					.mockResolvedValueOnce(accessibleResources); // forced refresh
+				mockExecuteFunctions.helpers.requestWithAuthentication
+					.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } })
+					.mockResolvedValueOnce({ ok: true });
+
+				const data = await jiraSoftwareCloudApiRequest.call(
+					mockExecuteFunctions,
+					'/api/2/myself',
+					'GET',
+				);
+
+				expect(data).toEqual({ ok: true });
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('retries once after forcing a token refresh when the gateway 403s (cloudServiceAccount)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) =>
+					parameterName === 'site'
+						? { __rl: true, mode: 'list', value: cloudId }
+						: 'cloudServiceAccount',
+				);
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(
+					accessibleResources,
+				); // forced refresh (the list-mode cloudId needs no lookup call up front)
+				mockExecuteFunctions.helpers.requestWithAuthentication
+					.mockRejectedValueOnce({ message: 'boom', response: { status: 403 } })
+					.mockResolvedValueOnce({ ok: true });
+
+				const data = await jiraSoftwareCloudApiRequest.call(
+					mockExecuteFunctions,
+					'/api/2/myself',
+					'GET',
+				);
+
+				expect(data).toEqual({ ok: true });
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('does not loop on a genuinely deleted issue: exactly one retry, then the 404 surfaces', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					domain: 'https://example.atlassian.net',
+				});
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(
+					accessibleResources,
+				);
+				mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue({
+					message: 'boom',
+					response: { status: 404 },
+				});
+
+				await expect(
+					jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/issue/999', 'GET'),
+				).rejects.toBeTruthy();
+
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('does not retry a 404 on the "server" (Basic Auth) credential', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('server');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					domain: 'https://jira.company.com',
+				});
+				mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValueOnce({
+					message: 'boom',
+					response: { status: 404 },
+				});
+
+				await expect(
+					jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET'),
+				).rejects.toBeTruthy();
+
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('does not retry a 404/403 on a formData request (the attachment upload body is a consumed stream)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					domain: 'https://example.atlassian.net',
+				});
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(
+					accessibleResources,
+				); // cloudId lookup only
+				mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValueOnce({
+					message: 'boom',
+					response: { status: 404 },
+				});
+
+				await expect(
+					jiraSoftwareCloudApiRequest.call(
+						mockExecuteFunctions,
+						'/api/3/issue/ABC-1/attachments',
+						'POST',
+						{},
+						{},
+						undefined,
+						{ formData: { file: { value: Buffer.from('x'), options: { filename: 'a.txt' } } } },
+					),
+				).rejects.toBeTruthy();
+
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+				// cloudId lookup only. No second, forced-refresh call.
+				expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			});
+		});
+
 		it('should throw a NodeOperationError naming the Site URL field when the cloudOAuth2 credential lacks it', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
 			mockExecuteFunctions.getCredentials.mockResolvedValue({});
