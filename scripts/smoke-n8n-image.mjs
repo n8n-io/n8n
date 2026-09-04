@@ -72,15 +72,11 @@ async function fetchCloudInvocations() {
 	}
 }
 
-// Do not add to this list
-const KNOWN_DUPLICATED = new Map([
-	// pnpm materializes a package once per distinct peer resolution, and
-	// @langchain/community has optional peers (qdrant, mongodb, redis, …) that only
-	// nodes-langchain installs, so it splits into two variants, and its dependent
-	// @n8n/ai-utilities gets materialized twice with it. Versions already align;
-	// the fix is dropping ai-utilities' @langchain/community dependency
-	['@n8n/ai-utilities', 2],
-]);
+// Do not add to this list. The dedicated-lockfile deploy materializes every
+// workspace package once; the legacy deploy split @n8n/ai-utilities in two
+// because @langchain/community resolved its optional peers differently per
+// importer.
+const KNOWN_DUPLICATED = new Map();
 
 function reportFailure(name, err) {
 	echo(chalk.red(`✗ ${name}`));
@@ -98,7 +94,10 @@ async function runWorkspaceDedupCheck() {
 		})`docker run --rm --entrypoint ls ${IMAGE} /usr/local/lib/node_modules/n8n/node_modules/.pnpm`;
 		const variants = new Map();
 		for (const entry of stdout.split('\n')) {
-			const match = entry.match(/^(.+?)@file\+packages\+/);
+			// pnpm names an injected workspace package after its `file:` path, which the
+			// dedicated-lockfile deploy writes as an absolute URL:
+			// `<name>@file++++home+runner+…+packages+<dir>_<hash>`.
+			const match = entry.match(/^(.+?)@file\+.*packages\+/);
 			if (!match) continue;
 			const pkg = match[1].replace('+', '/');
 			variants.set(pkg, [...(variants.get(pkg) ?? []), entry]);
