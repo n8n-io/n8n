@@ -188,7 +188,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_DROPPED_UNAVAILABLE_TOOL: {
 		name: 'Agent dropped unavailable tool',
 		description:
-			'A configured tool was left out while an agent runtime was built because its workflow was deleted, archived, incompatible, or not accessible to the calling user. Fires once per dropped tool per runtime build; the agent keeps running without the tool.',
+			'A configured workflow or node tool was left out while an agent runtime was built: the workflow was deleted, archived, or incompatible, or the calling user lacked access to the workflow or to a credential the tool needs. Fires once per dropped tool per runtime build; the agent keeps running without the tool.',
 		properties: z.object({
 			agent_id: z.string(),
 			run_type: agentRunType,

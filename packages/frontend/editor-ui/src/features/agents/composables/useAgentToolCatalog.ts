@@ -147,8 +147,8 @@ export function useAgentToolCatalog() {
 			// Fetch all project workflows (not just those with a supported trigger)
 			// so unsupported ones can be shown greyed-out with a reason in the picker.
 			// `connections` is needed to scope the incompatibility check to nodes
-			// actually reachable from a supported trigger. `active` marks unpublished
-			// workflows, which the published agent cannot call yet.
+			// actually reachable from a supported trigger. A null `activeVersionId`
+			// marks unpublished workflows, which the published agent cannot call yet.
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
 				select: [
@@ -156,7 +156,7 @@ export function useAgentToolCatalog() {
 					'name',
 					'description',
 					'isArchived',
-					'active',
+					'activeVersionId',
 					'nodes',
 					'connections',
 					'updatedAt',

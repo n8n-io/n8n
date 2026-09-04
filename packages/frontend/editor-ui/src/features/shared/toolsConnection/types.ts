@@ -66,6 +66,8 @@ export interface NodeConnectionItem extends BaseConnectionItem {
 export interface WorkflowConnectionItem extends BaseConnectionItem {
 	kind: 'workflow';
 	workflowId: string;
+	/** Short caveat shown next to the title, e.g. the workflow is not published. */
+	warning?: string;
 }
 
 export interface McpServerTool {

@@ -65,7 +65,7 @@ function workflow(
 	overrides: {
 		id?: string;
 		isArchived?: boolean;
-		active?: boolean;
+		activeVersionId?: string | null;
 		updatedAt?: string;
 		description?: string;
 	} = {},
@@ -75,7 +75,7 @@ function workflow(
 		name,
 		description: overrides.description ?? '',
 		isArchived: overrides.isArchived ?? false,
-		active: overrides.active ?? true,
+		activeVersionId: overrides.activeVersionId === undefined ? 'v-1' : overrides.activeVersionId,
 		updatedAt: overrides.updatedAt ?? '2026-07-01T12:00:00.000Z',
 		nodes: [{ type: TRIGGER_TYPE }] as Array<{
 			type: string;
@@ -344,7 +344,7 @@ describe('WorkflowToolConfigContent', () => {
 	});
 
 	it('flags a usable target whose workflow is not published', async () => {
-		setProjectWorkflows([workflow('Notify Sales', { active: false })]);
+		setProjectWorkflows([workflow('Notify Sales', { activeVersionId: null })]);
 
 		const { queryByTestId, findByTestId } = renderComponent({
 			props: { initialRef: createRef() },

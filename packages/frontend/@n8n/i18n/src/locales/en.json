@@ -7670,7 +7670,7 @@
 	"agents.toolConfig.workflow.inputs.value.placeholder.number": "Enter a number",
 	"agents.toolConfig.workflow.inputs.value.placeholder.boolean": "true or false",
 	"agents.toolConfig.workflow.inputs.value.placeholder.array": "Enter a JSON array, e.g. [\"a\", \"b\"]",
-	"agents.toolConfig.workflow.inputs.value.placeholder.object": "Enter a JSON object, e.g. {\"key\": \"value\"}",
+	"agents.toolConfig.workflow.inputs.value.placeholder.object": "Enter a JSON object, e.g. {'{'}\"key\": \"value\"{'}'}",
 	"agents.toolConfig.save": "Save",
 	"agents.toolConfig.cancel": "Cancel",
 	"agents.toolConfig.approval.label": "Require approval",

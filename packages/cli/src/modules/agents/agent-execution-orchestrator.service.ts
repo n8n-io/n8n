@@ -43,6 +43,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -892,6 +893,9 @@ export class AgentExecutionOrchestratorService {
 	): Promise<void> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) return;
+		// Production runs execute the published snapshot, so name the session and
+		// build telemetry from it rather than from a draft that may have moved on.
+		const published = agent.activeVersion?.schema ? getPublishedAgentSnapshot(agent) : agent;
 
 		const recorder = new ExecutionRecorder();
 		recorder.record({ type: 'error', error });
@@ -899,11 +903,11 @@ export class AgentExecutionOrchestratorService {
 		const startParams: StartExecutionParams = {
 			...session,
 			agentId,
-			agentName: agent.name,
+			agentName: published.schema?.name ?? agent.name,
 			projectId,
 			telemetry: {
 				runType: 'production',
-				configuration: buildAgentConfigurationTelemetry(agent),
+				configuration: buildAgentConfigurationTelemetry(published),
 			},
 		};
 		const executionId = await this.tryStartExecution(

@@ -575,7 +575,7 @@ export class AgentRuntimeReconstructionService {
 					resolved = await toolResolver(ref);
 				} catch (error) {
 					// A missing or incompatible workflow costs the agent one tool, not the
-					// whole run. `resolveToolRef` swaps in its inert marker tool for `null`.
+					// whole run. `resolveToolRef` drops the tool for `null`.
 					if (!(error instanceof WorkflowToolUnavailableError)) throw error;
 					unavailable.push({
 						toolName: toolRefName(ref),

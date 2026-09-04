@@ -149,7 +149,10 @@ const isAmbiguous = computed(
 
 /** Target works in preview, but the published agent cannot call it until it is published. */
 const isUnpublished = computed(
-	() => !isLoadingWorkflows.value && !isUnusable.value && targetWorkflow.value?.active === false,
+	() =>
+		!isLoadingWorkflows.value &&
+		!isUnusable.value &&
+		targetWorkflow.value?.activeVersionId === null,
 );
 
 /**

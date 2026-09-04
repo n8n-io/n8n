@@ -625,7 +625,10 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('names the misconfiguration when the run fails with a UserError', async () => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
-				executeForChatPublished: vi.fn(() => {
+				// The real method is an async generator: the build error surfaces on
+				// the first `next()`, inside the stream consumer.
+				// eslint-disable-next-line require-yield
+				executeForChatPublished: vi.fn(async function* () {
 					throw new UserError('Credential "OpenAI" not found.');
 				}),
 			};

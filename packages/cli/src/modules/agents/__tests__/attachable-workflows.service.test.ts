@@ -9,7 +9,7 @@ function wf(overrides: Partial<WorkflowEntity>): WorkflowEntity {
 	return {
 		id: 'wf-1',
 		name: 'Workflow',
-		active: false,
+		activeVersionId: null,
 		nodes: [],
 		updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 		...overrides,
@@ -50,7 +50,7 @@ describe('AttachableWorkflowsService', () => {
 				wf({
 					id: 'a',
 					name: 'Has trigger',
-					active: true,
+					activeVersionId: 'v-a',
 					nodes: [noTrigger, executeWorkflowTrigger],
 				}),
 				wf({ id: 'b', name: 'No trigger', nodes: [noTrigger] }),
@@ -62,7 +62,7 @@ describe('AttachableWorkflowsService', () => {
 		const result = await service.list(user, 'project-1');
 
 		expect(result).toEqual([
-			{ id: 'a', name: 'Has trigger', active: true, triggerType: 'executeWorkflow' },
+			{ id: 'a', name: 'Has trigger', published: true, triggerType: 'executeWorkflow' },
 		]);
 	});
 
@@ -94,7 +94,7 @@ describe('AttachableWorkflowsService', () => {
 		const result = await service.list(user, 'project-1', 'billing');
 
 		expect(result).toEqual([
-			{ id: 'a', name: 'Billing follow-up', active: false, triggerType: 'executeWorkflow' },
+			{ id: 'a', name: 'Billing follow-up', published: false, triggerType: 'executeWorkflow' },
 		]);
 	});
 
@@ -119,13 +119,13 @@ describe('AttachableWorkflowsService', () => {
 		expect(result[0]).toEqual({
 			id: 'wf-59',
 			name: 'Workflow 59',
-			active: false,
+			published: false,
 			triggerType: 'executeWorkflow',
 		});
 		expect(result.at(-1)).toEqual({
 			id: 'wf-50',
 			name: 'Workflow 50',
-			active: false,
+			published: false,
 			triggerType: 'executeWorkflow',
 		});
 	});

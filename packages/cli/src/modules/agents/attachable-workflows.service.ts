@@ -8,7 +8,8 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 export interface AttachableWorkflow {
 	id: string;
 	name: string;
-	active: boolean;
+	/** The published agent can only call published workflows. */
+	published: boolean;
 	triggerType: string;
 }
 
@@ -58,7 +59,7 @@ export class AttachableWorkflowsService {
 					{
 						id: workflow.id,
 						name: workflow.name,
-						active: workflow.active,
+						published: workflow.activeVersionId !== null,
 						triggerType: 'executeWorkflow',
 					},
 				];

@@ -541,8 +541,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		// telemetry builder's array handling of `schema`.
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
-			name: 'Support Agent',
-			schema,
+			name: 'Support Agent (draft)',
+			schema: { ...schema, name: 'Support Agent (draft)' },
+			activeVersion: { schema },
 			integrations: [],
 		} as unknown as Agent);
 
