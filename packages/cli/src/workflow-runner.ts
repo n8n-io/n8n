@@ -265,9 +265,14 @@ export class WorkflowRunner {
 
 		const establishContextError = await this.establishContextForPersistence(data);
 
-		const executionWorkflow = existingExecution
-			? undefined
-			: await this.prepareNewExecution(data, loadStaticData);
+		let executionWorkflow: Workflow | undefined;
+		if (!existingExecution) {
+			try {
+				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
+			} catch (error) {
+				throw PreExecuteBlockedError.unwrap(error);
+			}
+		}
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
@@ -381,7 +386,7 @@ export class WorkflowRunner {
 		return undefined;
 	}
 
-	private async prepareNewExecution(
+	async prepareNewExecution(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 	): Promise<Workflow | undefined> {
@@ -391,16 +396,12 @@ export class WorkflowRunner {
 			);
 		}
 
-		try {
-			return await this.workflowPreExecute.run(
-				data.workflowData,
-				data.executionMode,
-				data.source,
-				this.resolvePinData(data),
-			);
-		} catch (error) {
-			throw PreExecuteBlockedError.unwrap(error);
-		}
+		return await this.workflowPreExecute.run(
+			data.workflowData,
+			data.executionMode,
+			data.source,
+			this.resolvePinData(data),
+		);
 	}
 
 	/** Run the workflow in current process */

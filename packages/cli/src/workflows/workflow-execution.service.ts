@@ -44,10 +44,7 @@ import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
-import {
-	SubworkflowPolicyChecker,
-	WorkflowPreExecute,
-} from '@/executions/pre-execution-checks';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -58,7 +55,6 @@ import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -80,8 +76,6 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly workflowPreExecute: WorkflowPreExecute,
-		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
 	async runWorkflow(
@@ -190,14 +184,8 @@ export class WorkflowExecutionService {
 			return undefined;
 		}
 
-		if (workflowData.id) {
-			workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
-				workflowData.id,
-			);
-		}
-
 		try {
-			await this.workflowPreExecute.run(workflowData, mode, runData.source);
+			await this.workflowRunner.prepareNewExecution(runData, true);
 		} catch (error) {
 			if (error instanceof PreExecuteBlockedError) {
 				this.logger.error('Blocked a polled execution before its row was committed', {
