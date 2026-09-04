@@ -259,7 +259,7 @@ describe('NodesListPanel', () => {
 				target: { value: 'Non sense' },
 			});
 			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0));
-			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
+			expect(screen.getByText('No results for "Non sense"')).toBeInTheDocument();
 
 			await fireEvent.click(container.querySelector('svg[data-icon=circle-x]')!);
 			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9));

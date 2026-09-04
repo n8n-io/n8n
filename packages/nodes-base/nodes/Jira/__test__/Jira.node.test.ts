@@ -1,6 +1,12 @@
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mockDeep } from 'vitest-mock-extended';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	INodePropertyCollection,
+} from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Jira } from '../Jira.node';
@@ -26,6 +32,42 @@ describe('Jira Node', () => {
 		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctionsMock.helpers.returnJsonArray.mockReturnValue([]);
 		executeFunctionsMock.helpers.constructExecutionMetaData.mockReturnValue([]);
+	});
+
+	describe('description', () => {
+		it('should show the Site selector only for the service account version', () => {
+			const site = jiraNode.description.properties.find((property) => property.name === 'site');
+
+			expect(site?.type).toBe('resourceLocator');
+			expect(site?.displayOptions).toEqual({ show: { jiraVersion: ['cloudServiceAccount'] } });
+			expect(site?.modes?.map((mode) => mode.name)).toEqual(['list', 'url']);
+			expect(site?.modes?.[0].typeOptions?.searchListMethod).toBe('getSites');
+		});
+
+		it('should reload site-scoped pickers when the Site changes', () => {
+			const collectPickers = (properties: INodeProperties[]): INodeProperties[] =>
+				properties.flatMap((property) => {
+					const nested = [
+						...((property.options ?? []) as INodeProperties[]),
+						...((property.options ?? []) as INodePropertyCollection[]).flatMap(
+							(option) => option.values ?? [],
+						),
+					];
+					const isPicker =
+						property.type === 'resourceLocator' ||
+						property.typeOptions?.loadOptionsMethod !== undefined;
+					return [...(isPicker ? [property] : []), ...collectPickers(nested)];
+				});
+
+			const pickers = collectPickers(jiraNode.description.properties).filter(
+				(property) => property.name !== 'site',
+			);
+
+			expect(pickers.length).toBeGreaterThan(10);
+			for (const picker of pickers) {
+				expect(picker.typeOptions?.loadOptionsDependsOn).toContain('site.value');
+			}
+		});
 	});
 
 	describe('issue getAll', () => {
@@ -247,35 +289,133 @@ describe('Jira Node', () => {
 		);
 	});
 
-	describe('issue getAll with cloudOAuth2', () => {
-		it('should use cloud JQL endpoint when jiraVersion is "cloudOAuth2"', async () => {
+	describe('issue getAll on cloud-gateway auth versions', () => {
+		it.each(['cloudOAuth2', 'cloudServiceAccount'])(
+			'should use cloud JQL endpoint when jiraVersion is "%s"',
+			async (jiraVersion) => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+					switch (parameterName) {
+						case 'resource':
+							return 'issue';
+						case 'operation':
+							return 'getAll';
+						case 'jiraVersion':
+							return jiraVersion;
+						case 'returnAll':
+							return false;
+						case 'limit':
+							return 10;
+						case 'options':
+							return { fields: undefined };
+						default:
+							return null;
+					}
+				});
+
+				await jiraNode.execute.call(executeFunctionsMock);
+
+				expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+					'/api/2/search/jql',
+					'POST',
+					expect.objectContaining({
+						fields: ['*navigable'],
+					}),
+				);
+			},
+		);
+	});
+
+	describe('issueAttachment download', () => {
+		const attachmentMeta = {
+			id: '10001',
+			filename: 'file.txt',
+			mimeType: 'text/plain',
+			content: 'https://example.atlassian.net/rest/api/3/attachment/content/10001',
+		};
+		const downloadOptions = {
+			json: false,
+			encoding: null,
+			useStream: true,
+			sendCredentialsOnCrossOriginRedirect: false,
+		};
+
+		const mockParameters = (operation: 'get' | 'getAll') => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
 				switch (parameterName) {
 					case 'resource':
-						return 'issue';
+						return 'issueAttachment';
 					case 'operation':
-						return 'getAll';
+						return operation;
 					case 'jiraVersion':
-						return 'cloudOAuth2';
+						return 'cloudServiceAccount';
+					case 'attachmentId':
+						return attachmentMeta.id;
+					case 'issueKey':
+						return 'KEY-1';
 					case 'returnAll':
-						return false;
-					case 'limit':
-						return 10;
-					case 'options':
-						return { fields: undefined };
+						return true;
+					case 'download':
+						return true;
+					case 'binaryProperty':
+						return 'data';
 					default:
 						return null;
 				}
 			});
+		};
+
+		beforeEach(() => {
+			executeFunctionsMock.helpers.returnJsonArray.mockImplementation(
+				(data: IDataObject | IDataObject[]) =>
+					(Array.isArray(data) ? data : [data]).map((item) =>
+						'json' in item ? item : { json: item },
+					) as INodeExecutionData[],
+			);
+			executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+				(items) =>
+					items as ReturnType<typeof executeFunctionsMock.helpers.constructExecutionMetaData>,
+			);
+			executeFunctionsMock.helpers.prepareBinaryData.mockResolvedValue({
+				data: '',
+				mimeType: 'text/plain',
+			});
+		});
+
+		it('should download a single attachment without forwarding credentials across origins', async () => {
+			mockParameters('get');
+			jiraSoftwareCloudApiRequestMock
+				.mockResolvedValueOnce(attachmentMeta)
+				.mockResolvedValueOnce(Buffer.from('content'));
 
 			await jiraNode.execute.call(executeFunctionsMock);
 
-			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-				'/api/2/search/jql',
-				'POST',
-				expect.objectContaining({
-					fields: ['*navigable'],
-				}),
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenNthCalledWith(
+				2,
+				'',
+				'GET',
+				{},
+				{},
+				attachmentMeta.content,
+				downloadOptions,
+			);
+		});
+
+		it('should download all attachments without forwarding credentials across origins', async () => {
+			mockParameters('getAll');
+			jiraSoftwareCloudApiRequestMock
+				.mockResolvedValueOnce({ fields: { attachment: [attachmentMeta] } })
+				.mockResolvedValueOnce(Buffer.from('content'));
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenNthCalledWith(
+				2,
+				'',
+				'GET',
+				{},
+				{},
+				attachmentMeta.content,
+				downloadOptions,
 			);
 		});
 	});

@@ -10,6 +10,7 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -33,6 +34,7 @@ import type {
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+
 import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
@@ -79,7 +81,6 @@ const isComputerUseEnabled = computed(
 const isBrowserUseEnabled = computed(
 	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
 );
-
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
 	const value = (data as Record<string, unknown>).connectionId;
@@ -424,6 +425,12 @@ async function handleConnect(item: ToolConnectionItem) {
 		@save="handleSave"
 		@disconnect="handleDisconnect"
 	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
+				:action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
+			/>
+		</template>
 		<template #detail-body="{ item }">
 			<template v-if="item.kind === 'service' && activeServiceDefinition">
 				<component

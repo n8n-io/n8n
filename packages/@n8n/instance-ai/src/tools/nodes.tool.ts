@@ -354,6 +354,7 @@ async function resolveNodeTypeDefinitions(
 				version: result.version,
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
+				...(result.deprecated ? { deprecated: true } : {}),
 			};
 		}),
 	);
