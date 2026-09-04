@@ -22,6 +22,7 @@ import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { EventService } from '@/events/event.service';
 
@@ -52,6 +53,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
 	const agentTaskService = mock<AgentTaskService>();
+	const agentTaskJobRegistrar = mock<AgentTaskJobRegistrar>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
@@ -60,10 +62,12 @@ function makeService() {
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
+	agentTaskJobRegistrar.deprovisionAgent.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
 	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	Container.set(AgentTaskService, agentTaskService);
+	Container.set(AgentTaskJobRegistrar, agentTaskJobRegistrar);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
 	const service = new AgentsService(
@@ -88,6 +92,7 @@ function makeService() {
 		runtimeCacheService,
 		testChatService,
 		agentTaskService,
+		agentTaskJobRegistrar,
 		agentTaskRepository,
 		chatIntegrationService,
 		subAgentCleanupService,
@@ -306,6 +311,7 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			testChatService,
 			agentTaskService,
+			agentTaskJobRegistrar,
 			chatIntegrationService,
 			subAgentCleanupService,
 			eventService,
@@ -323,6 +329,11 @@ describe('AgentsService', () => {
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentRepository.remove.mock.invocationCallOrder[0],
+		);
+		// Scheduled jobs do not cascade from the agent row, so they go first.
+		expect(agentTaskJobRegistrar.deprovisionAgent).toHaveBeenCalledWith(agentId);
+		expect(agentTaskJobRegistrar.deprovisionAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);

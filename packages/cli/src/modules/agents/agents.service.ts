@@ -326,6 +326,12 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
+		// Nothing cascades scheduled jobs to their owner, so remove them before
+		// the agent row. If a crash occurs between the two steps, an agent without
+		// schedules remains. The next delete attempt corrects this.
+		const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+		await Container.get(AgentTaskJobRegistrar).deprovisionAgent(agentId);
+
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);

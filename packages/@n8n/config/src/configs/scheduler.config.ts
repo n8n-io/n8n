@@ -318,6 +318,19 @@ export class SchedulerConfig {
 	enabledForSystemTasks: boolean = false;
 
 	/**
+	 * Whether the durable scheduler runs agent scheduled tasks instead of the
+	 * in-process timer of n8n. Off by default. Requires {@link enabled} to also
+	 * be on.
+	 *
+	 * In a multi-instance setup, turn this on only when every instance runs a
+	 * version of n8n that supports it. While older and newer versions run side by
+	 * side (for example during a rolling deploy), the older leader still runs
+	 * these tasks on its own timer. Then the same task can run twice.
+	 */
+	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
+	enabledForAgentTasks: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

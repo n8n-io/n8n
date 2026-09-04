@@ -144,8 +144,7 @@ export class AgentsModule implements ModuleInterface {
 			channelReconciler.init();
 		}
 
-		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
-		// TODO: migrate to the durable scheduler
+		// In-memory task crons are leader-only. Only the leader reconnects them on startup.
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -154,6 +153,28 @@ export class AgentsModule implements ModuleInterface {
 			});
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
+		}
+
+		// Durable scheduling for agent tasks. The handler is registered before
+		// DurableScheduler starts, because module init precedes its start() in the
+		// start command. The handler registration and the reconcile both gate
+		// themselves on the scheduler flags.
+		const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+		const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+		const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+		const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+		Container.get(DurableScheduler).registerTaskHandler(
+			agentTaskHandler.taskType,
+			agentTaskHandler,
+		);
+		if (instanceSettings.instanceType === 'main') {
+			void Container.get(AgentTaskJobRegistrar)
+				.reconcileAll()
+				.catch((error) => {
+					logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 		}
 	}
 

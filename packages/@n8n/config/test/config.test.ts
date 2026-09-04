@@ -488,6 +488,7 @@ describe('GlobalConfig', () => {
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
+			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
