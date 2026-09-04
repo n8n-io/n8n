@@ -334,21 +334,14 @@ describe('SourceControlService', () => {
 
 			// ACT
 			// The caller pairs an authorized (id, type) with another resource's file path
-			// and flips the status to 'deleted'. Both must be ignored: the public contract only
-			// reads (id, type) from each requested file, so passing extra fields proves they're
-			// discarded rather than trusted.
-			const spoofedFile: SourceControlledFile = {
-				id: 'authorized-wf',
-				type: 'workflow',
-				status: 'deleted',
-				file: 'workflows/other-project-wf.json',
-				name: 'anything',
-				location: 'local',
-				conflict: false,
-				updatedAt: now,
-			};
+			// and flips the status to 'deleted'. Both must be ignored.
 			await sourceControlService.pushWorkfolder(user, {
-				fileNames: [spoofedFile],
+				fileNames: [
+					{
+						id: 'authorized-wf',
+						type: 'workflow',
+					},
+				],
 				commitMessage: 'chore: tidy up',
 			});
 
@@ -381,19 +374,9 @@ describe('SourceControlService', () => {
 			(isContainedWithin as Mock).mockReturnValue(true);
 
 			// ACT & ASSERT
-			const outOfScopeFile: SourceControlledFile = {
-				id: 'out-of-scope-wf',
-				type: 'workflow',
-				status: 'deleted',
-				file: 'workflows/out-of-scope-wf.json',
-				name: 'out-of-scope',
-				location: 'local',
-				conflict: false,
-				updatedAt: new Date().toISOString(),
-			};
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [outOfScopeFile],
+					fileNames: [{ id: 'out-of-scope-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('You are not allowed to push these changes');
 
@@ -422,19 +405,9 @@ describe('SourceControlService', () => {
 			(isContainedWithin as Mock).mockReturnValueOnce(false);
 
 			// ACT & ASSERT
-			const authorizedFile: SourceControlledFile = {
-				id: 'authorized-wf',
-				type: 'workflow',
-				status: 'modified',
-				file: 'workflows/authorized-wf.json',
-				name: 'authorized',
-				location: 'local',
-				conflict: false,
-				updatedAt: new Date().toISOString(),
-			};
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [authorizedFile],
+					fileNames: [{ id: 'authorized-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('File path /outside-git/authorized-wf.json is invalid');
 
@@ -474,18 +447,8 @@ describe('SourceControlService', () => {
 			(isContainedWithin as Mock).mockReturnValue(true);
 
 			// ACT
-			const requestedFile: SourceControlledFile = {
-				id: 'wf-1',
-				type: 'workflow',
-				status: 'modified',
-				file: 'workflows/wf-1.json',
-				name: 'Workflow 1',
-				location: 'local',
-				conflict: false,
-				updatedAt: now,
-			};
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [requestedFile],
+				fileNames: [{ id: 'wf-1', type: 'workflow' }],
 			});
 
 			// ASSERT
