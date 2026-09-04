@@ -1,4 +1,8 @@
-/** Single-quotes a value unless it only contains characters a shell leaves untouched. */
+/**
+ * Shell-quote an argument for safe interpolation into a shell command string.
+ * Safe characters (alphanumeric, `.`, `_`, `-`, `/`, `=`, `:`, `@`, `+`) pass through.
+ * Everything else is wrapped in single quotes with embedded quotes escaped.
+ */
 export function shellEscape(value: string): string {
 	return /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
 }

@@ -5,6 +5,10 @@ describe('shellEscape', () => {
 		expect(shellEscape('--user=a@b')).toBe('--user=a@b');
 	});
 
+	it('leaves every safe character unquoted', () => {
+		expect(shellEscape('aZ0_./:=@+-')).toBe('aZ0_./:=@+-');
+	});
+
 	it('quotes an argument with unsafe characters', () => {
 		expect(shellEscape('hello world')).toBe("'hello world'");
 	});
