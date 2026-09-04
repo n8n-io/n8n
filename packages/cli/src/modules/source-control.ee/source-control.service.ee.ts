@@ -1,8 +1,4 @@
-import type {
-	PullWorkFolderRequestDto,
-	PushWorkFolderRequestDto,
-	SourceControlledFile,
-} from '@n8n/api-types';
+import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -45,8 +41,20 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlActionOrigin } from './types/source-control-action-origin';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+/**
+ * Narrower than `PushWorkFolderRequestDto`: only `id`/`type` per file are ever read (see
+ * `resolveAuthorizedFilesToPush`), so the public API can select files without echoing back
+ * the full `SourceControlledFile` shape. The internal DTO is structurally assignable here.
+ */
+export interface PushWorkfolderOptions {
+	commitMessage?: string;
+	force?: boolean;
+	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
+}
 
 @Service()
 export class SourceControlService {
@@ -307,14 +315,15 @@ export class SourceControlService {
 
 	async pushWorkfolder(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options),
+			async () => await this.pushWorkfolderWithoutLock(user, options, { origin }),
 		);
 	}
 
@@ -327,12 +336,14 @@ export class SourceControlService {
 	 */
 	private async resolveAuthorizedFilesToPush(
 		user: User,
-		requestedFiles: SourceControlledFile[],
+		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
+		origin: SourceControlActionOrigin,
 	): Promise<SourceControlledFile[]> {
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
+			origin,
 		});
 
 		// No explicit selection: push everything the user is allowed to.
@@ -370,7 +381,8 @@ export class SourceControlService {
 
 	private async pushWorkfolderWithoutLock(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -384,7 +396,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames);
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, origin);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
@@ -510,10 +522,10 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		this.eventService.emit(
-			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(user.id, statusResult),
-		);
+		this.eventService.emit('source-control-user-finished-push-ui', {
+			...getTrackingInformationFromPostPushResult(user.id, statusResult),
+			publicApi: origin === 'publicApi',
+		});
 		// #endregion
 
 		return {

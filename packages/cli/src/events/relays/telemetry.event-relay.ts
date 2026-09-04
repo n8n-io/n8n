@@ -392,6 +392,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowsPushed,
 		credsPushed,
 		variablesPushed,
+		publicApi,
 	}: RelayEventMap['source-control-user-finished-push-ui']) {
 		this.telemetry.track('User finished push via UI', {
 			user_id: userId,
@@ -399,6 +400,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
+			public_api: publicApi,
 		});
 	}
 

@@ -247,6 +247,9 @@
 		"GET /source-control/status": {
 			"status": "gap"
 		},
+		"POST /source-control/push": {
+			"status": "gap"
+		},
 		"POST /git-connections/{id}/push": {
 			"status": "gap"
 		},

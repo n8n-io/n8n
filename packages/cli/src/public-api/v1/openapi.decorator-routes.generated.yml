@@ -85,6 +85,9 @@ paths:
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  /source-control/push:
+    post:
+      $ref: ./handlers/source-control/spec/paths/pushSourceControl.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

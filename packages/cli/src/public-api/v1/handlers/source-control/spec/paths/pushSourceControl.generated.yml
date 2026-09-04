@@ -1,0 +1,372 @@
+operationId: pushSourceControl
+tags:
+  - SourceControl
+summary: Push local source control changes
+description: Commits and pushes the selected files to the connected Git repository. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
+x-required-scope: sourceControl:push
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          commitMessage:
+            type: string
+            minLength: 1
+            maxLength: 1000
+          fileNames:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                type:
+                  type: string
+                  enum:
+                    - credential
+                    - workflow
+                    - tags
+                    - variables
+                    - file
+                    - folders
+                    - project
+                    - datatable
+              required:
+                - id
+                - type
+            minItems: 1
+          force:
+            type: boolean
+        required:
+          - commitMessage
+          - fileNames
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  file:
+                    type: string
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - credential
+                      - workflow
+                      - tags
+                      - variables
+                      - file
+                      - folders
+                      - project
+                      - datatable
+                  status:
+                    type: string
+                    enum:
+                      - new
+                      - modified
+                      - deleted
+                      - created
+                      - renamed
+                      - conflicted
+                      - ignored
+                      - staged
+                      - unknown
+                  location:
+                    type: string
+                    enum:
+                      - local
+                      - remote
+                  conflict:
+                    type: boolean
+                  updatedAt:
+                    type: string
+                  pushed:
+                    type: boolean
+                  isLocalPublished:
+                    type: boolean
+                  isRemoteArchived:
+                    type: boolean
+                  parentFolderId:
+                    type: string
+                    nullable: true
+                  folderPath:
+                    type: array
+                    items:
+                      type: string
+                  remoteFolderPath:
+                    type: array
+                    items:
+                      type: string
+                  owner:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - personal
+                          - team
+                      projectId:
+                        type: string
+                      projectName:
+                        type: string
+                    required:
+                      - type
+                      - projectId
+                      - projectName
+                  publishingError:
+                    type: string
+                  publishingErrorDetails:
+                    type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum:
+                          - review_pending
+                          - changes_requested
+                          - insufficient_api_key_scope
+                          - insufficient_permissions
+                      workflowReviewRequestId:
+                        type: string
+                        minLength: 1
+                      versionId:
+                        type: string
+                        minLength: 1
+                    required:
+                      - reason
+                    additionalProperties: false
+                  contentImportPolicy:
+                    type: object
+                    properties:
+                      violations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            kind:
+                              type: string
+                            checkId:
+                              type: string
+                            message:
+                              type: string
+                            subject:
+                              type: string
+                            subjectType:
+                              type: string
+                            scope:
+                              type: string
+                            matchedRuleId:
+                              type: string
+                          required:
+                            - kind
+                            - checkId
+                            - message
+                      checkErrors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            checkId:
+                              type: string
+                            correlationId:
+                              type: string
+                          required:
+                            - checkId
+                            - correlationId
+                    required:
+                      - violations
+                      - checkErrors
+                required:
+                  - file
+                  - id
+                  - name
+                  - type
+                  - status
+                  - location
+                  - conflict
+                  - updatedAt
+          required:
+            - data
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    description: 'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            conflicts:
+              type: array
+              items:
+                type: object
+                properties:
+                  file:
+                    type: string
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - credential
+                      - workflow
+                      - tags
+                      - variables
+                      - file
+                      - folders
+                      - project
+                      - datatable
+                  status:
+                    type: string
+                    enum:
+                      - new
+                      - modified
+                      - deleted
+                      - created
+                      - renamed
+                      - conflicted
+                      - ignored
+                      - staged
+                      - unknown
+                  location:
+                    type: string
+                    enum:
+                      - local
+                      - remote
+                  conflict:
+                    type: boolean
+                  updatedAt:
+                    type: string
+                  pushed:
+                    type: boolean
+                  isLocalPublished:
+                    type: boolean
+                  isRemoteArchived:
+                    type: boolean
+                  parentFolderId:
+                    type: string
+                    nullable: true
+                  folderPath:
+                    type: array
+                    items:
+                      type: string
+                  remoteFolderPath:
+                    type: array
+                    items:
+                      type: string
+                  owner:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - personal
+                          - team
+                      projectId:
+                        type: string
+                      projectName:
+                        type: string
+                    required:
+                      - type
+                      - projectId
+                      - projectName
+                  publishingError:
+                    type: string
+                  publishingErrorDetails:
+                    type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum:
+                          - review_pending
+                          - changes_requested
+                          - insufficient_api_key_scope
+                          - insufficient_permissions
+                      workflowReviewRequestId:
+                        type: string
+                        minLength: 1
+                      versionId:
+                        type: string
+                        minLength: 1
+                    required:
+                      - reason
+                    additionalProperties: false
+                  contentImportPolicy:
+                    type: object
+                    properties:
+                      violations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            kind:
+                              type: string
+                            checkId:
+                              type: string
+                            message:
+                              type: string
+                            subject:
+                              type: string
+                            subjectType:
+                              type: string
+                            scope:
+                              type: string
+                            matchedRuleId:
+                              type: string
+                          required:
+                            - kind
+                            - checkId
+                            - message
+                      checkErrors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            checkId:
+                              type: string
+                            correlationId:
+                              type: string
+                          required:
+                            - checkId
+                            - correlationId
+                    required:
+                      - violations
+                      - checkErrors
+                required:
+                  - file
+                  - id
+                  - name
+                  - type
+                  - status
+                  - location
+                  - conflict
+                  - updatedAt
+          required:
+            - message
+            - conflicts
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
