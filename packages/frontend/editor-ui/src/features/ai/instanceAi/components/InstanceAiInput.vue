@@ -576,31 +576,29 @@ const resizable = computed(() => {
 					:class="$style.contextChip"
 					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
 				>
-					<N8nTooltip :content="props.contextChip.label">
-						<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
-							<template #tag>
-								<span :class="$style.contextChipContent">
-									<N8nIcon
-										:icon="props.contextChip.icon ?? 'robot'"
-										size="medium"
-										:class="$style.contextChipIcon"
-										data-test-id="instance-ai-handoff-context-chip-icon"
-									/>
-									<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
-								</span>
-								<N8nIconButton
-									icon="x"
-									size="xsmall"
-									variant="ghost"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-handoff-context-chip-dismiss"
-									@click.stop="emit('dismiss-context-chip')"
+					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
+						<template #tag>
+							<span :class="$style.contextChipContent">
+								<N8nIcon
+									:icon="props.contextChip.icon ?? 'robot'"
+									size="medium"
+									:class="$style.contextChipIcon"
+									data-test-id="instance-ai-handoff-context-chip-icon"
 								/>
-							</template>
-						</N8nTag>
-					</N8nTooltip>
+								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
+							</span>
+							<N8nIconButton
+								icon="x"
+								size="xsmall"
+								variant="ghost"
+								:class="$style.contextChipClose"
+								:title="i18n.baseText('generic.close')"
+								:aria-label="i18n.baseText('generic.close')"
+								data-test-id="instance-ai-handoff-context-chip-dismiss"
+								@click.stop="emit('dismiss-context-chip')"
+							/>
+						</template>
+					</N8nTag>
 				</div>
 				<div
 					v-if="!props.isPlanEditMode && attachedResources.length > 0"
