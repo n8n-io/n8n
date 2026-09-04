@@ -206,8 +206,9 @@ checker reports into the same scan list.
 `utils/a11y-landmark-check.ts` checks the one structural rule axe cannot see on a
 composed layout: the page must have exactly one `<main>` element, that `<main>`
 must not sit inside another landmark, and `id="content"` must be unique. It walks
-the composed DOM (the document plus every open shadow tree), runs no axe rules,
-and leaves the default WCAG 2.1 A + AA tag selection alone.
+the composed DOM - the document plus every open shadow tree, and slotted content
+from where it renders, not from where it is written - runs no axe rules, and
+leaves the default WCAG 2.1 A + AA tag selection alone.
 
 ```typescript
 import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
