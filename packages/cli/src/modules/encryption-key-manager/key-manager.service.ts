@@ -20,16 +20,37 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
 
+/**
+ * How long a process trusts its database view of the active key. A rotation
+ * done on another instance becomes visible within this window — the accepted
+ * propagation delay in a distributed setup — at the cost of one active-key
+ * query per instance per interval. Local rotations switch immediately.
+ */
+const ACTIVE_KEY_MEMO_TTL_MS = 5 * 1000;
+
+/**
+ * Keys are immutable per id (only `status` changes, and `KeyInfo` omits it),
+ * so the by-id LRU needs no invalidation. Values are instance-key-wrapped.
+ */
+const KEY_BY_ID_CACHE_CAPACITY = 10;
+
 @Service()
 export class KeyManagerService implements IEncryptionKeyProvider {
 	/**
-	 * Memoized legacy instance-key descriptor: no `keyId:` prefix, AES-256-CBC,
-	 * and a key that unwraps to the instance key itself. Serves two roles: the
-	 * write descriptor while rotation is off, and the read fallback when the
-	 * key store cannot serve the seeded legacy key. It never changes for the
-	 * lifetime of the process, and building it costs a GCM wrap.
+	 * Memoized legacy instance-key descriptor: the write descriptor while
+	 * rotation is off, and the read fallback when the store cannot serve the
+	 * seeded legacy key.
 	 */
 	private cachedInstanceKeyInfo?: KeyInfo;
+
+	/** Memoized stored legacy CBC row — immutable once seeded, never deleted. */
+	private cachedStoredLegacyKey?: KeyInfo;
+
+	/** In-process LRU for by-id lookups. See {@link KEY_BY_ID_CACHE_CAPACITY}. */
+	private readonly keyInfoById = new Map<string, KeyInfo>();
+
+	/** Short-lived DB view of the active key. See {@link ACTIVE_KEY_MEMO_TTL_MS}. */
+	private activeKeyMemo?: { info: KeyInfo; expiresAt: number };
 
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
@@ -49,6 +70,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return this.instanceKeyLegacyInfo();
 		}
 
+		// Steady state: the memoized database view serves writes, one active-key
+		// query per memo period instead of one per operation.
+		if (this.activeKeyMemo && this.activeKeyMemo.expiresAt > Date.now()) {
+			return this.activeKeyMemo.info;
+		}
+
 		const activeKeys = await this.deploymentKeyRepository.find({
 			where: { type: 'data_encryption', status: 'active' },
 		});
@@ -59,14 +86,40 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			throw new Error('Encryption key invariant violated: multiple active keys found');
 		}
 		const key = activeKeys[0];
-		return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'prefixed' };
+		const keyInfo: KeyInfo = {
+			id: key.id,
+			value: key.value,
+			algorithm: key.algorithm!,
+			format: 'prefixed',
+		};
+		this.rememberKeyInfo(keyInfo);
+		this.activeKeyMemo = { info: keyInfo, expiresAt: Date.now() + ACTIVE_KEY_MEMO_TTL_MS };
+		return keyInfo;
 	}
 
-	/** Returns a key by id, or null if not found. */
+	/**
+	 * Returns a key by id, or null if not found. LRU-served after the first
+	 * lookup; misses are never cached so an unknown id cannot evict real keys.
+	 */
 	async getKeyById(id: string): Promise<KeyInfo | null> {
+		const cached = this.keyInfoById.get(id);
+		if (cached) {
+			// Re-insert to refresh recency in the Map-based LRU.
+			this.keyInfoById.delete(id);
+			this.keyInfoById.set(id, cached);
+			return cached;
+		}
+
 		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
 		if (!key) return null;
-		return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'prefixed' };
+		const keyInfo: KeyInfo = {
+			id: key.id,
+			value: key.value,
+			algorithm: key.algorithm!,
+			format: 'prefixed',
+		};
+		this.rememberKeyInfo(keyInfo);
+		return keyInfo;
 	}
 
 	/**
@@ -79,12 +132,20 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 * same result. This keeps reads of old data working while the store is degraded.
 	 */
 	async getLegacyKey(): Promise<KeyInfo> {
+		if (this.cachedStoredLegacyKey) return this.cachedStoredLegacyKey;
+
 		try {
 			const key = await this.deploymentKeyRepository.findOne({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
 			if (key) {
-				return { id: key.id, value: key.value, algorithm: key.algorithm!, format: 'no-prefix' };
+				this.cachedStoredLegacyKey = {
+					id: key.id,
+					value: key.value,
+					algorithm: key.algorithm!,
+					format: 'no-prefix',
+				};
+				return this.cachedStoredLegacyKey;
 			}
 			if (!this.cachedInstanceKeyInfo) {
 				this.logger.warn(
@@ -221,17 +282,42 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			}),
 			{ status: 'active' as const },
 		);
-		return await this.deploymentKeyRepository.insertAsActive(entity);
+		const saved = await this.deploymentKeyRepository.insertAsActive(entity);
+		// Update the memo only after the commit — otherwise this instance could
+		// encrypt with a key that never landed in the database. Local writes
+		// switch immediately; other instances follow within the memo window.
+		const savedInfo: KeyInfo = {
+			id: saved.id,
+			value: saved.value,
+			algorithm: saved.algorithm!,
+			format: 'prefixed',
+		};
+		this.rememberKeyInfo(savedInfo);
+		this.activeKeyMemo = { info: savedInfo, expiresAt: Date.now() + ACTIVE_KEY_MEMO_TTL_MS };
+		return saved;
 	}
 
 	/** Atomically deactivates the current active key and promotes the given key. */
 	async setActiveKey(id: string): Promise<void> {
 		await this.deploymentKeyRepository.promoteToActive(id, 'data_encryption');
+		this.activeKeyMemo = undefined;
 	}
 
 	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */
 	async markInactive(id: string): Promise<void> {
 		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
 		await this.deploymentKeyRepository.update(id, { status: 'inactive' });
+		// The active key may be gone now: force the next write to re-read the store.
+		this.activeKeyMemo = undefined;
+	}
+
+	/** Keeps the by-id LRU at capacity; evicts the least recently used entry. */
+	private rememberKeyInfo(keyInfo: KeyInfo): void {
+		this.keyInfoById.delete(keyInfo.id);
+		this.keyInfoById.set(keyInfo.id, keyInfo);
+		if (this.keyInfoById.size > KEY_BY_ID_CACHE_CAPACITY) {
+			const oldest = this.keyInfoById.keys().next().value;
+			if (oldest !== undefined) this.keyInfoById.delete(oldest);
+		}
 	}
 }
