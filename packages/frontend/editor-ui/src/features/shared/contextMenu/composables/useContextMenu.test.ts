@@ -39,12 +39,7 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 // unavailable in this non-component harness — stub it with a mutable holder.
 // undefined mirrors a host without a canvas (items stay enabled).
 const groupViewState = vi.hoisted(() => ({
-	current: undefined as
-		| {
-				isGroupCollapsed: (groupId: string) => boolean;
-				isDescriptionVisible: (groupId: string) => boolean;
-		  }
-		| undefined,
+	current: undefined as { isGroupCollapsed: (groupId: string) => boolean } | undefined,
 }));
 vi.mock('./contextMenuGroupView', async (importOriginal) => ({
 	...(await importOriginal<typeof import('./contextMenuGroupView')>()),
@@ -53,17 +48,12 @@ vi.mock('./contextMenuGroupView', async (importOriginal) => ({
 
 /**
  * Fakes the canvas group view: the given group ids are collapsed, the rest
- * expanded; `visibleDescriptionGroupIds` have their description pinned.
+ * expanded.
  */
-function fakeGroupView(
-	collapsedGroupIds: string[] = [],
-	visibleDescriptionGroupIds: string[] = [],
-) {
+function fakeGroupView(collapsedGroupIds: string[] = []) {
 	const collapsed = new Set(collapsedGroupIds);
-	const visibleDescriptions = new Set(visibleDescriptionGroupIds);
 	groupViewState.current = {
 		isGroupCollapsed: (groupId) => collapsed.has(groupId),
-		isDescriptionVisible: (groupId) => visibleDescriptions.has(groupId),
 	};
 }
 
@@ -368,85 +358,6 @@ describe('useContextMenu', () => {
 		});
 	});
 
-	describe('show/hide group description', () => {
-		// A group target gets a single-group action for its own description; the
-		// workflow-wide "all" action is reserved for the empty-canvas menu.
-		function openGroupMenuActionIds(groupId: string, nodeIds: string[]): string[] {
-			const { open, actions } = useContextMenu();
-			open(mockEvent, { source: 'group', groupId, nodeIds });
-			return actions.value.map((action) => action.id);
-		}
-
-		it('offers "show" when the collapsed group\'s description is hidden', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G', {
-				description: 'Docs',
-			});
-			fakeGroupView([group.id], []); // collapsed, not pinned
-
-			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
-
-			expect(ids).toContain('show_group_description');
-			expect(ids).not.toContain('hide_group_description');
-			// The workflow-wide action never appears on a group target.
-			expect(ids).not.toContain('show_all_group_descriptions');
-		});
-
-		it('offers "hide" when the collapsed group\'s description is displayed', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G', {
-				description: 'Docs',
-			});
-			fakeGroupView([group.id], [group.id]); // collapsed, pinned
-
-			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
-
-			expect(ids).toContain('hide_group_description');
-			expect(ids).not.toContain('show_group_description');
-			expect(ids).not.toContain('hide_all_group_descriptions');
-		});
-
-		it('targets only the group behind the menu, ignoring other groups', () => {
-			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Da' });
-			// Another described group exists but must not influence the single-group action.
-			workflowDocumentStore.createGroup([nodes[1].id], 'B', { description: 'Db' });
-			fakeGroupView([groupA.id], [groupA.id]); // A collapsed + pinned
-
-			const ids = openGroupMenuActionIds(groupA.id, groupA.nodeIds);
-
-			expect(ids).toContain('hide_group_description');
-			expect(ids).not.toContain('show_group_description');
-		});
-
-		it('offers nothing when the group has no description', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G');
-			fakeGroupView([group.id], []);
-
-			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
-
-			expect(ids).not.toContain('show_group_description');
-			expect(ids).not.toContain('hide_group_description');
-		});
-
-		it('offers nothing when the group is expanded', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id], 'G', { description: 'Docs' });
-			fakeGroupView([], []); // expanded
-
-			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
-
-			expect(ids).not.toContain('show_group_description');
-			expect(ids).not.toContain('hide_group_description');
-		});
-
-		it('offers nothing without a canvas group view', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id], 'G', { description: 'Docs' });
-			// groupViewState.current stays undefined (host without a canvas)
-
-			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
-
-			expect(ids).not.toContain('show_group_description');
-			expect(ids).not.toContain('hide_group_description');
-		});
-	});
-
 	describe('target-level read-only', () => {
 		// The instance-wide flags stay editable in these tests (see beforeEach):
 		// only the opening canvas marks its target read-only, like an embedded
@@ -564,76 +475,6 @@ describe('useContextMenu', () => {
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.expand_all_groups?.disabled).toBe(false);
 			expect(byId.collapse_all_groups?.disabled).toBe(false);
-		});
-	});
-
-	describe('show/hide all descriptions (empty selection menu)', () => {
-		function openPaneMenuActionIds(): string[] {
-			const { open, actions } = useContextMenu();
-			open(mockEvent, { source: 'canvas', nodeIds: [] });
-			return actions.value.map((action) => action.id);
-		}
-
-		it('offers "show all" from the empty-canvas menu when a description is hidden', () => {
-			workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
-			fakeGroupView([], []); // nothing pinned
-
-			const ids = openPaneMenuActionIds();
-
-			expect(ids).toContain('show_all_group_descriptions');
-			expect(ids).not.toContain('hide_all_group_descriptions');
-		});
-
-		it('offers "hide all" from the empty-canvas menu when a description is shown', () => {
-			const group = workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
-			fakeGroupView([], [group.id]); // pinned
-
-			const ids = openPaneMenuActionIds();
-
-			expect(ids).toContain('hide_all_group_descriptions');
-			expect(ids).not.toContain('show_all_group_descriptions');
-		});
-
-		it('places the descriptions action in the group-view section, not a new one', () => {
-			workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
-			fakeGroupView([], []);
-
-			const { open, actions } = useContextMenu();
-			open(mockEvent, { source: 'canvas', nodeIds: [] });
-
-			const ids = actions.value.map((action) => action.id);
-			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
-
-			// Follows the expand/collapse-all-groups items without opening a new
-			// section, and sits before the selection items.
-			expect(ids.slice(ids.indexOf('expand_all_groups'))).toEqual([
-				'expand_all_groups',
-				'collapse_all_groups',
-				'show_all_group_descriptions',
-				'select_all',
-				'deselect_all',
-			]);
-			expect(byId.show_all_group_descriptions?.divided).toBeFalsy();
-		});
-
-		it('offers neither when no group has a description', () => {
-			workflowDocumentStore.createGroup([nodes[0].id], 'A');
-			fakeGroupView([], []);
-
-			const ids = openPaneMenuActionIds();
-
-			expect(ids).not.toContain('show_all_group_descriptions');
-			expect(ids).not.toContain('hide_all_group_descriptions');
-		});
-
-		it('does not add the actions to node selection menus', () => {
-			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
-			const { open, actions } = useContextMenu();
-			open(mockEvent, { source: 'canvas', nodeIds: [nodes[1].id, nodes[2].id] });
-
-			const ids = actions.value.map((action) => action.id);
-			expect(ids).not.toContain('expand_all_groups');
-			expect(ids).not.toContain('collapse_all_groups');
 		});
 	});
 
