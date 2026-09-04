@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nTag } from '@n8n/design-system';
+import { N8nIcon, N8nTag, N8nTooltip } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -585,7 +585,9 @@ const resizable = computed(() => {
 									:class="$style.contextChipIcon"
 									data-test-id="instance-ai-handoff-context-chip-icon"
 								/>
-								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
+								<N8nTooltip :content="props.contextChip.label">
+									<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
+								</N8nTooltip>
 								<button
 									type="button"
 									:class="$style.contextChipClose"
@@ -673,6 +675,7 @@ const resizable = computed(() => {
 }
 
 .contextChip {
+	--tag--min-width: 0;
 	--tag--max-width: 80%;
 
 	align-self: flex-start;

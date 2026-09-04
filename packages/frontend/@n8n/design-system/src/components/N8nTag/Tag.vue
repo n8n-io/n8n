@@ -26,10 +26,10 @@ withDefaults(defineProps<TagProps>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 0;
+	min-width: var(--tag--min-width, max-content);
 	height: var(--tag--height);
 	padding: var(--tag--padding);
-	max-width: var(--tag--max-width, 100%);
+	max-width: var(--tag--max-width);
 	line-height: var(--tag--line-height);
 	color: var(--tag--color--text);
 	background-color: var(--tag--color--background);
