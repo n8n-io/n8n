@@ -1,5 +1,5 @@
 /**
- * Consolidated workflows tool — list, get, get-json, get-as-code, delete/archive,
+ * Consolidated workflows tool — list, get, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, restore-version,
  * update-version.
  */
@@ -9,14 +9,11 @@ import {
 	credentialDestinationSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
-import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { InstanceAiContext } from '../types';
 import {
@@ -27,11 +24,6 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
-import {
-	getObservedWorkflowChecksum,
-	rememberCurrentWorkflowChecksum,
-	rememberObservedWorkflowChecksum,
-} from './workflows/observed-workflow-checksums';
 import {
 	completedSetupSubjects,
 	describeSkippedSetup,
@@ -60,22 +52,16 @@ import {
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
-	grantSessionWorkflowUpdate,
-	canSkipWorkflowUpdateHitl,
-	formatWarning,
-} from './workflows/workflow-build-context';
-import {
 	refreshWorkflowSourceFileBindingFromSave,
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
-import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 import {
 	INLINE_SOURCE_LIMIT_CHARS,
 	indexSourceNodes,
 	materializeWorkflowSource,
 	type MaterializedSourceStatus,
 } from './workflows/workflow-source-materializer';
-import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -165,16 +151,6 @@ const getAction = z.object({
 		.boolean()
 		.optional()
 		.describe('Return complete node data including parameters (large). Default false.'),
-});
-
-const getJsonAction = z.object({
-	action: z
-		.literal('get-json')
-		.describe(
-			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow. Pass versionId for a past version instead of the current draft.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
-	versionId: z.string().optional().describe('Version ID'),
 });
 
 const getAsCodeAction = z.object({
@@ -278,20 +254,6 @@ const validateAction = z.object({
 		.describe('Issue categories to suppress from the result'),
 });
 
-const updateAction = z.object({
-	action: z
-		.literal('update')
-		.describe(
-			'Internal/raw update escape hatch. Save a complete modified WorkflowJSON back to the workflow. Replaces the full workflow definition.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
-	workflow: z
-		.record(z.unknown())
-		.describe(
-			'Full WorkflowJSON object (same shape as returned by `get-json`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
-		),
-});
-
 const publishBaseAction = z.object({
 	action: z
 		.literal('publish')
@@ -347,11 +309,7 @@ const confirmationSuspendSchema = setupSuspendSchema
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
-// Resume: setup-specific fields plus optional session scope for generic approvals
-// (e.g. update "always allow" → persist `workflows:update:<id>`).
-export const workflowsResumeSchema = setupResumeSchema.extend({
-	scope: z.enum(['once', 'session']).optional(),
-});
+export const workflowsResumeSchema = setupResumeSchema;
 
 interface WorkflowToolContext {
 	resumeData: z.infer<typeof workflowsResumeSchema> | undefined;
@@ -366,13 +324,11 @@ type Input =
 	| z.infer<typeof listAction>
 	| z.infer<typeof nodeUsageAction>
 	| z.infer<typeof getAction>
-	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
 	| z.infer<typeof validateAction>
-	| z.infer<typeof updateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -388,13 +344,11 @@ export type WorkflowAction =
 	| 'list'
 	| 'node-usage'
 	| 'get'
-	| 'get-json'
 	| 'get-as-code'
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
 	| 'validate'
-	| 'update'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -418,13 +372,11 @@ const WORKFLOW_ACTION_ORDER = [
 	// ordering is what the agent reads first in the tool schema.
 	'node-usage',
 	'get',
-	'get-json',
 	'get-as-code',
 	'delete',
 	'unarchive',
 	'setup',
 	'validate',
-	'update',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -436,13 +388,11 @@ const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
 	'node-usage': 'summarize which node types are in use',
 	get: 'inspect',
-	'get-json': 'inspect full WorkflowJSON',
 	'get-as-code': 'convert existing workflows to TypeScript SDK code',
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
 	validate: 'validate configuration',
-	update: 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -456,7 +406,6 @@ function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToo
 
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
@@ -469,13 +418,11 @@ function getSupportedWorkflowActionSchemas(
 		list: hasNodeUsage ? listAction : listActionWithoutNodeTypes,
 		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
-		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
 		validate: validateAction,
-		...(surface !== 'orchestrator' ? { update: updateAction } : {}),
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -499,7 +446,7 @@ function getWorkflowActions(
 }
 
 function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options.surface);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
 	const actionSchemas: WorkflowActionSchema[] = [];
 	for (const action of getWorkflowActions(supportedSchemas, options)) {
 		const schema = supportedSchemas[action];
@@ -658,7 +605,6 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
-		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
 		if (isSmallPayload(detail)) return detail;
 		if (input.full && !exceedsFullPayloadLimit(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
@@ -688,10 +634,9 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 
 /**
  * Pinned-data summary for agent visibility. Pins live on the saved workflow but
- * never inside the WorkflowJSON the agent round-trips (see
- * `InstanceAiWorkflowService.getPinnedDataSummary`), so without this report the
- * agent cannot tell that test runs feed nodes from saved pins instead of
- * executing them. Failures degrade to "no report" — it must never break a read.
+ * are not part of its workflow definition, so without this report the agent
+ * cannot tell that test runs feed nodes from saved pins instead of executing
+ * them. Failures degrade to "no report" — they must never break validation.
  */
 async function getPinnedNodesReport(
 	context: InstanceAiContext,
@@ -712,30 +657,6 @@ async function getPinnedNodesReport(
 		};
 	} catch {
 		return undefined;
-	}
-}
-
-async function handleGetJson(
-	context: InstanceAiContext,
-	input: Extract<Input, { action: 'get-json' }>,
-) {
-	try {
-		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
-		// This is the graph the agent edits before `update`, so pin the state it
-		// saw. Historical reads must not advance the optimistic-concurrency lock.
-		if (!input.versionId) {
-			await rememberCurrentWorkflowChecksum(context, input.workflowId);
-		}
-		const pinnedReport = input.versionId
-			? undefined
-			: await getPinnedNodesReport(context, input.workflowId);
-		return pinnedReport ? { ...json, ...pinnedReport } : json;
-	} catch (error) {
-		return {
-			workflowId: input.workflowId,
-			found: false as const,
-			error: error instanceof Error ? error.message : 'Failed to fetch workflow JSON',
-		};
 	}
 }
 
@@ -1664,109 +1585,6 @@ async function handleValidate(
 	}
 }
 
-function isWorkflowJson(value: unknown): value is WorkflowJSON {
-	return (
-		isRecord(value) &&
-		typeof value.name === 'string' &&
-		Array.isArray(value.nodes) &&
-		isRecord(value.connections)
-	);
-}
-
-async function handleUpdate(
-	context: InstanceAiContext,
-	input: Extract<Input, { action: 'update' }>,
-	ctx: WorkflowToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.updateWorkflow === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
-
-	// Skip HITL for session-created or always-allowed workflows; others still need approval.
-	const needsApproval =
-		context.permissions?.updateWorkflow !== 'always_allow' &&
-		!canSkipWorkflowUpdateHitl(context, input.workflowId);
-
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const workflowName = await resolveWorkflowName(context, input.workflowId);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
-			severity: 'warning' as const,
-			// Carried on the confirmation so the UI can scope "always allow" per workflow
-			// even if tool-call args are incomplete on resume.
-			workflowId: input.workflowId,
-		});
-	}
-
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { success: false, denied: true, reason: 'User denied the action' };
-	}
-
-	// "Always allow" — persist so later edits of this workflow skip HITL.
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await grantSessionWorkflowUpdate(context, input.workflowId);
-	}
-
-	if (!isWorkflowJson(input.workflow)) {
-		return {
-			success: false,
-			error: 'Workflow JSON must include name, nodes, and connections.',
-		};
-	}
-
-	// Guard against overwriting a save this conversation never saw (canvas
-	// autosave, another user, another thread). Absent when the agent never read
-	// the workflow here — then there is nothing to pin the save to.
-	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
-
-	try {
-		ensureUniqueNodeIds(input.workflow);
-		const droppedGroupWarnings = nodeGroupDroppedWarnings(
-			dropInvalidWorkflowJsonGroups(
-				input.workflow,
-				context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
-			),
-		);
-		const saved = expectedChecksum
-			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
-					expectedChecksum,
-				})
-			: await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
-		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
-		// Pin to what this save wrote, not to the re-read above: if another writer
-		// landed in between, the next update should conflict rather than clobber.
-		if (saved.checksum) {
-			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
-		}
-		return {
-			success: true,
-			workflowId: input.workflowId,
-			...(droppedGroupWarnings.length > 0
-				? {
-						warnings: droppedGroupWarnings.map((warning) =>
-							formatWarning(warning.code, warning.message),
-						),
-					}
-				: {}),
-		};
-	} catch (error) {
-		if (error instanceof WorkflowSaveConflictError) {
-			return {
-				success: false,
-				error: `${error.message} Call workflows(action="get", workflowId="${input.workflowId}") to read the current state, re-apply your change, then update again.`,
-			};
-		}
-
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : String(error),
-		};
-	}
-}
-
 async function handlePublish(
 	context: InstanceAiContext,
 	input: PublishInput,
@@ -2081,7 +1899,7 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 }
 
 function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options.surface);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
 	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
 	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
 	const suffix =
@@ -2122,8 +1940,6 @@ export function createWorkflowsTool(
 					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
-				case 'get-json':
-					return await handleGetJson(context, workflowInput);
 				case 'get-as-code':
 					return await handleGetAsCode(context, workflowInput);
 				case 'delete':
@@ -2134,8 +1950,6 @@ export function createWorkflowsTool(
 					return await handleSetup(context, workflowInput, ctx, setupState);
 				case 'validate':
 					return await handleValidate(context, workflowInput);
-				case 'update':
-					return await handleUpdate(context, workflowInput, ctx);
 				case 'publish':
 					return await handlePublish(context, workflowInput, ctx);
 				case 'unpublish':

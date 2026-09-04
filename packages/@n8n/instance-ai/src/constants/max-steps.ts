@@ -11,8 +11,6 @@ export const MAX_STEPS = {
 	BROWSER: 300,
 	/** Legacy limit retained for compatibility; workflow builds run in the orchestrator. */
 	BUILDER: 60,
-	/** Eval setup background agent — patches eval nodes into an existing workflow. */
-	EVAL_SETUP: 30,
 	/** Legacy limit retained for compatibility; research runs in the orchestrator. */
 	RESEARCH: 25,
 } as const;

@@ -15,7 +15,7 @@ live in `src/tools/tool-ids.ts`.
 
 | Tool | Actions |
 |------|---------|
-| `workflows` | 14 |
+| `workflows` | 12 |
 | `data-tables` | 11 |
 | `workspace` | 8 |
 | `executions` | 7 |
@@ -24,7 +24,6 @@ live in `src/tools/tool-ids.ts`.
 | `mcp-servers` | 4 |
 | `task-control` | 3 |
 | `research` | 2 |
-| `evals` | 4 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agents` | 1 |
@@ -151,44 +150,6 @@ task must exist, have kind `checkpoint`, and be in the `running` state.
 
 **Returns**: `{ result: string, ok: boolean }`
 
-### `eval-data`
-
-Populate the evaluation data table for a workflow that already has evaluation
-nodes. This tool is synchronous. It does not start a sub-agent and does not use
-HITL. It imports execution-history rows when at least 10 valid rows exist.
-Otherwise, it generates 10 synthetic input rows and leaves expected-output
-columns for the user to complete. It inserts at most 25 rows.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow whose evaluation table is populated |
-| `projectId` | string | no | Project scope for the data table |
-
-**Returns**: `{ status: "imported" | "generated" | "skipped", rowCount?,
-source?, reason?, expectedOutputsNeedUserReview?, expectedOutputColumns?, table? }`
-
-### `eval-setup-with-agent`
-
-Start the detached eval-setup agent after the evaluation proposal is approved.
-The agent normally receives `workflows` with only `get-json` and `update`, plus
-the full `nodes` domain tool. It does not receive credentials, data tables,
-workspace, the sandbox knowledge base, or MCP tools. Its persistence wrapper
-supports checkpoint and suspension state.
-
-The two-action workflow restriction is applied when workflow updates are
-available and not blocked. If the host omits workflow permissions or blocks
-workflow updates, the restricted replacement is skipped and the agent retains
-the full workflow tool. Individual workflow action handlers then apply the
-permissions available in that context.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow to add evaluations to |
-| `task` | string | yes | Exact task returned by `evals(action="propose")` |
-| `conversationContext` | string | no | Thread summary that anchors dataset design |
-
-**Returns**: `{ result: string, taskId: string }`
-
 ### `get-session` *(conditional)*
 
 Read a resolved Agent preview session — title, session number and transcript.
@@ -267,12 +228,14 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## `workflows` (14 actions)
+## `workflows` (12 actions)
 
-The full domain surface has up to fourteen actions. Version actions are
-registered only when their backend methods are available. The orchestrator
-surface excludes the raw `get-json` and `update` actions. The eval-setup agent
-gets only those two raw actions.
+The domain surface has up to twelve actions. Version actions are registered only
+when their backend methods are available. Use `get` to inspect a workflow. Use
+`get-as-code`, workspace edits, and `build-workflow` to change a workflow.
+The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
+remain available to compiler, setup, validation, credential, and verification
+flows. They are not model-facing actions.
 
 ### `workflows(action="list")`
 
@@ -441,19 +404,6 @@ List version history for a workflow (metadata only).
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `workflows(action="get-json")`
-
-Get the full `WorkflowJSON` for workspace-file edits. Write it to a
-`.workflow.json` file, edit the file, then save with `build-workflow`. Pass
-`versionId` to read a past version instead of the current draft.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow ID |
-| `versionId` | string | no | Read this version instead of the current draft |
-
-**Returns**: full `WorkflowJSON`.
-
 ### `workflows(action="validate")`
 
 Return the per-node configuration issues a human would see as red warning
@@ -465,17 +415,6 @@ workflow is configured correctly before suggesting the user run or publish it.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 | `ignoreIssues` | array | no | Issue categories to skip: `parameters`, `credentials`, `input`, `execution`, `typeUnknown`, `aiGateway`, `chatModel` |
-
-### `workflows(action="update")`
-
-Raw update escape hatch. Saves a complete modified `WorkflowJSON` back to the
-workflow, replacing the full definition. Prefer the workspace-file path
-(`get-json` -> edit -> `build-workflow`) for ordinary edits.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow ID |
-| `workflow` | object | yes | Full `WorkflowJSON` — name, nodes and connections must all be included |
 
 ### `workflows(action="restore-version")` *(conditional — requires license)*
 
@@ -866,26 +805,6 @@ plain text / markdown → passthrough.
 
 ## Evaluation Tools
 
-### `evals` (4 actions)
-
-Set up on-canvas evaluations for workflows that contain AI nodes. The tool is
-deferred and becomes available through tool search.
-
-All four actions require `workflowId`. When a workflow has more than one AI
-node, pass `targetAgentNodeName` to select the target.
-
-| Action | Additional fields | Result and behavior |
-|--------|-------------------|---------------------|
-| `offer` | `projectId?` | Checks eligibility. Returns `eligible`, a reason when ineligible, AI node names, and a user-facing message when eligible. |
-| `recommend-metric` | — | Suggests one metric and suspends for approval. Returns `{ approved: true, metricId }` or `{ approved: false }`. |
-| `select-metrics` | — | Shows the multi-select metric picker after a recommendation is denied. Returns `chosenMetricIds` and the answers. |
-| `propose` | `projectId?`, `metrics?`, `datasetChoice?`, `existingDataTableId?` | Builds the eval-setup task and creates, links, or defers the dataset. A successful result sets `shouldDelegateToEvalSetupAgent: true` and returns the task, workflow ID, dataset details, and a newly created table artifact when applicable. |
-
-`datasetChoice` is `create-empty`, `link-existing`, or `later`; it defaults to
-`create-empty`. `link-existing` requires `existingDataTableId`. A proposal can
-also add generated pin data for referenced tool nodes before it returns the
-eval-setup task.
-
 ### `eval-config` (6 actions, conditional)
 
 Manage config-based evaluations without adding evaluation nodes to the canvas.
@@ -1112,36 +1031,15 @@ are the ones the server confirms on resume, not the ones the client claimed.
 
 ## Tool Distribution
 
-The orchestrator receives the safe orchestrator domain surface and all
-registered orchestration tools. It does not receive raw workflow JSON read or
-update actions. It currently receives the full six-action `nodes` tool. The
-eval-setup background agent receives only its explicitly wired tool subset,
-except for the workflow-tool permission fallback described above.
+The orchestrator receives the safe native domain tools and orchestration tools
+from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
+full-definition replacements. It receives the full six-action `nodes` tool.
+External and local MCP tools are added after their names are checked against the
+native tools active for the current request.
 
-| Tool | Orchestrator | Eval-setup background agent |
-|---------------|:---:|:---:|
-| Orchestration tools (`create-tasks`, `task-control`, etc.) | ✅ | ❌ |
-| `n8n-docs` | ✅ | ❌ |
-| `evals` | ✅ (search/load) | ❌ |
-| `eval-config` | ✅ (conditional, search/load) | ❌ |
-| `workflows` | ✅ (without `get-json` or `update`) | ✅ (`get-json` and `update` normally; full tool when permissions are missing or updates are blocked) |
-| `executions` | ✅ | ❌ |
-| `credentials` | ✅ | ❌ |
-| `nodes` | ✅ (full domain tool) | ✅ (full domain tool) |
-| `data-tables` | ✅ (direct, via `data-table-manager` skill) | ❌ |
-| `workspace` | ✅ | ❌ |
-| `ask-user` | ✅ | ❌ |
-| `parse-file` | ✅ (when the turn has a parseable attachment) | ❌ |
-| `research` | ✅ | ❌ |
-| `agents` and `build-agent` | ✅ (when the Agents module supplies the builder delegate) | ❌ |
-| Knowledge base (via runtime workspace tools) | ✅ | ❌ |
-| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
-| External MCP tools | ✅ (when configured) | ❌ |
-| Local gateway MCP tools, including Computer Use browser tools | ✅ (when connected and allowed) | ❌ |
-
-The embedded Agent Builder is separate from the eval-setup column. It inherits
-the orchestrator's safe MCP connector tools. Eval setup does not receive MCP
-tools.
+The embedded Agent Builder uses the agents-module builder's own tool surface
+through `build-agent`. It does not receive the Instance AI domain registry. It
+inherits the orchestrator's safe MCP connector tools.
 
 ---
 
@@ -1168,8 +1066,8 @@ existing domain.
 2. Add its id to `DOMAIN_TOOL_IDS` or `ORCHESTRATION_TOOL_IDS` in
    `src/tools/tool-ids.ts`
 3. Export a factory that takes the service context and returns an `@n8n/agents` tool
-4. Register it in `src/tools/index.ts` — `createAllTools`,
-   `createOrchestratorDomainTools`, and/or `createOrchestrationTools`
+4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
+   `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
    that set is normally reached through `search_tools` + `load_tool`. Tools in
    `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint

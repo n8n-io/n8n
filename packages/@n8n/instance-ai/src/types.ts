@@ -1674,70 +1674,11 @@ export interface InstanceAiTraceContext {
 
 /** Structured result from a background task. The `text` field is the human-readable
  *  summary; `outcome` carries an optional typed payload consumed by the workflow
- *  loop controller (additive — existing callers that return a plain string still work). */
+ *  loop controller. */
 export interface BackgroundTaskResult {
 	text: string;
 	outcome?: Record<string, unknown>;
 }
-
-export interface SpawnBackgroundTaskOptions {
-	taskId: string;
-	threadId: string;
-	agentId: string;
-	role: string;
-	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
-	traceContext?: InstanceAiTraceContext;
-	/** Lazily creates the background trace only after the task is accepted and starts executing. */
-	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
-	/** When set, links the background task back to a planned task in the scheduler. */
-	plannedTaskId?: string;
-	/** Unique work item ID for workflow loop tracking. When set, the service
-	 *  uses the workflow loop controller to manage verify/repair transitions. */
-	workItemId?: string;
-	/**
-	 * Identity used for single-flight dedupe. When present, a spawn with the same
-	 * `plannedTaskId` (primary) or `role + workflowId` (fallback) as a currently-running
-	 * task returns `{ status: 'duplicate', existing }` instead of starting a new task.
-	 */
-	dedupeKey?: {
-		plannedTaskId?: string;
-		workflowId?: string;
-		role: string;
-	};
-	/**
-	 * Link this background task to a running checkpoint in the planned-task
-	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table) from inside a
-	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
-	 * net defers failing the checkpoint while a child with this id is still
-	 * running, and settlement re-emits the checkpoint follow-up when the last
-	 * child settles — so the orchestrator re-enters the checkpoint context
-	 * instead of a bare `<background-task-completed>` shell.
-	 */
-	parentCheckpointId?: string;
-	run: (
-		signal: AbortSignal,
-		drainCorrections: () => string[],
-		waitForCorrection: () => Promise<void>,
-		taskContext: { traceContext?: InstanceAiTraceContext },
-	) => Promise<string | BackgroundTaskResult>;
-}
-
-/** Result of a {@link SpawnBackgroundTaskOptions} spawn. */
-export type SpawnBackgroundTaskResult =
-	| { status: 'started'; taskId: string; agentId: string }
-	| { status: 'limit-reached' }
-	| {
-			status: 'duplicate';
-			/** The live background task that matched on `dedupeKey`. */
-			existing: {
-				taskId: string;
-				agentId: string;
-				role: string;
-				plannedTaskId?: string;
-				workItemId?: string;
-			};
-	  };
 
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
@@ -1758,7 +1699,6 @@ export interface OrchestrationContext {
 	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
@@ -1776,28 +1716,12 @@ export interface OrchestrationContext {
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
 	) => Promise<void>;
-	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
-	waitForConfirmation?: (requestId: string) => Promise<{
-		approved: boolean;
-		credentialId?: string;
-		credentials?: Record<string, string>;
-		autoSetup?: { credentialType: string };
-		userInput?: string;
-		domainAccessAction?: string;
-		resourceDecision?: string;
-		answers?: Array<{
-			questionId: string;
-			selectedOptions: string[];
-			customText?: string;
-			skipped?: boolean;
-		}>;
-	}>;
 	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
+	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
@@ -1815,8 +1739,6 @@ export interface OrchestrationContext {
 	webhookBaseUrl?: string;
 	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
 	formBaseUrl?: string;
-	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
@@ -1831,8 +1753,6 @@ export interface OrchestrationContext {
 	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Native memory store — used to retrieve thread message history for sub-agents. */
-	memory?: BuiltMemory;
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
@@ -1861,11 +1781,6 @@ export interface OrchestrationContext {
 	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
-	/** When set, LangSmith traces are routed through the AI service proxy. */
-	tracingProxyConfig?: ServiceProxyConfig;
-	/** Summaries of currently running background tasks in this thread.
-	 *  Used to give sub-agents thread-state awareness (what else is happening). */
-	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents
 	 *  so they can resolve "now" consistently with the orchestrator. */
 	timeZone?: string;

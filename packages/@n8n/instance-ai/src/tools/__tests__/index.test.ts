@@ -1,4 +1,8 @@
-import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
+import {
+	createOrchestrationTools,
+	createOrchestratorDomainTools,
+	getActiveOrchestratorDomainToolNames,
+} from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
@@ -53,18 +57,6 @@ vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
 
-vi.mock('../evals/evals.tool', () => ({
-	createEvalsTool: vi.fn(() => ({ id: 'evals' })),
-}));
-
-vi.mock('../orchestration/eval-setup-agent.tool', () => ({
-	createEvalSetupAgentTool: vi.fn(() => ({ id: 'eval-setup-with-agent' })),
-}));
-
-vi.mock('../orchestration/eval-data-agent.tool', () => ({
-	createEvalDataAgentTool: vi.fn(() => ({ id: 'eval-data' })),
-}));
-
 vi.mock('../orchestration/plan.tool', () => ({
 	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
 }));
@@ -99,9 +91,7 @@ vi.mock('../workflows/build-workflow.tool', () => ({
 }));
 
 vi.mock('../workflows.tool', () => ({
-	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
-		id: options ? 'workflows-orchestrator' : 'workflows',
-	})),
+	createWorkflowsTool: vi.fn(() => ({ id: 'workflows' })),
 }));
 
 vi.mock('../workspace.tool', () => ({
@@ -129,35 +119,13 @@ describe('domain tool construction', () => {
 		vi.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
-	it('creates the native full domain tool map', () => {
-		const context = makeContext();
-
-		const domainTools = createAllTools(context);
-
-		expect(Object.fromEntries(domainTools)).toMatchObject({
-			workflows: { id: 'workflows' },
-			evals: { id: 'evals' },
-			executions: { id: 'executions' },
-			credentials: { id: 'credentials' },
-			'data-tables': { id: 'data-tables' },
-			workspace: { id: 'workspace' },
-			research: { id: 'research' },
-			'n8n-docs': { id: 'n8n-docs' },
-			nodes: { id: 'nodes' },
-			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
-		});
-		expect(domainTools.has('templates')).toBe(false);
-	});
-
 	it('creates the native orchestrator domain tool map', async () => {
 		const context = makeContext();
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows-orchestrator' },
-			evals: { id: 'evals' },
+			workflows: { id: 'workflows' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
@@ -169,11 +137,12 @@ describe('domain tool construction', () => {
 			'build-workflow': { id: 'build-workflow' },
 		});
 		expect(orchestratorTools.has('templates')).toBe(false);
+		expect(orchestratorTools.has('evals')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
@@ -197,7 +166,6 @@ describe('domain tool construction', () => {
 			],
 		});
 
-		expect(createAllTools(context).get('parse-file')).toMatchObject({ id: 'parse-file' });
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			id: 'parse-file',
 		});
@@ -206,14 +174,12 @@ describe('domain tool construction', () => {
 	it('gates the eval-config tool on the config-evals flag (evaluationConfigService presence)', () => {
 		// Flag off: adapter leaves evaluationConfigService unset → tool absent.
 		const disabled = makeContext();
-		expect(createAllTools(disabled).get('eval-config')).toBeUndefined();
 		expect(createOrchestratorDomainTools(disabled).get('eval-config')).toBeUndefined();
 
 		// Flag on: adapter wires evaluationConfigService → tool exposed.
 		const enabled = makeContext({
 			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
 		});
-		expect(createAllTools(enabled).get('eval-config')).toBeDefined();
 		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
 	});
 
@@ -224,8 +190,21 @@ describe('domain tool construction', () => {
 
 		const enabled = makeContext({ mcpService: {} as InstanceAiContext['mcpService'] });
 		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
-		// Orchestrator only — a sub-agent can't offer the user a connection.
-		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
+	});
+
+	it('reports the same active names that the domain registry exposes', () => {
+		vi.mocked(isParseableAttachment).mockReturnValue(true);
+		const context = makeContext({
+			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
+			mcpService: {} as InstanceAiContext['mcpService'],
+			currentUserAttachments: [
+				{ type: 'file', data: '', mimeType: 'text/csv', fileName: 'input.csv' },
+			],
+		});
+
+		expect(getActiveOrchestratorDomainToolNames(context)).toEqual(
+			new Set(createOrchestratorDomainTools(context).keys()),
+		);
 	});
 
 	it('never defers mcp-servers behind search_tools', () => {
@@ -252,6 +231,8 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
+		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);
+		expect(orchestrationTools.has('eval-data')).toBe(false);
 	});
 
 	it('registers build-agent only when a builder delegate is present on the domain context', () => {

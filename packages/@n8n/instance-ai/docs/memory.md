@@ -10,9 +10,7 @@ The memory system serves two purposes:
 - **Conversation history** — the stored messages for the current thread
   (thread-scoped)
 
-The eval-setup background agent does not share the orchestrator's observational
-memory. It receives a briefing and uses a dedicated persistence wrapper for
-checkpoint and suspension state.
+Embedded specialist agents do not share the orchestrator's observational memory.
 
 ## Tiers
 
@@ -75,16 +73,10 @@ All memory is thread-scoped (isolated per conversation):
 - **Observational memory** — compressed operational history
 - **Plan** — the current execution plan
 
-### Sub-agent memory
+### Embedded agent memory
 
-The eval-setup background agent receives its task briefing and optional
-`conversationContext` from `eval-setup-with-agent`. It does not read or write
-the orchestrator's observational memory. Its agent persistence stores the
-checkpoint data needed for resume and HITL handling.
-
-An `IterationLog` database adapter is available through the dedicated
-`instance_ai_iteration_logs` table. The briefing builder can include these
-entries when supplied by a caller.
+The Agent Builder owns its session state separately from the orchestrator's
+observational memory. Generic background-task state stays thread-scoped.
 
 ### Cross-user isolation
 

@@ -20,9 +20,6 @@ const loadCredentialsTool = lazyMod(
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
-const loadEvalsTool = lazyMod(
-	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
-);
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
 );
@@ -52,14 +49,6 @@ const loadGetSessionTool = lazyMod(
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadEvalDataAgentTool = lazyMod(
-	() =>
-		require('./orchestration/eval-data-agent.tool') as typeof import('./orchestration/eval-data-agent.tool'),
-);
-const loadEvalSetupAgentTool = lazyMod(
-	() =>
-		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
 );
 const loadPlanTool = lazyMod(
 	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
@@ -96,74 +85,66 @@ const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
 
-/**
- * Creates all native n8n domain tools with the full action surface.
- * Used for sub-agent tool resolution — sub-agents get unrestricted access.
- */
-export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
-	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context)],
-		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
-		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
-		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
-		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
-		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
-		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+type DomainToolFactory = () => BuiltTool;
+
+function getOrchestratorDomainToolFactories(
+	context: InstanceAiContext,
+): Array<[string, DomainToolFactory]> {
+	const tools: Array<[string, DomainToolFactory]> = [
+		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
+		],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
-		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
-	}
-
-	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
-	}
-
-	return createToolRegistry(tools);
-}
-
-/**
- * Creates orchestrator domain tools. Skills run in the orchestrator now, so
- * domain tools keep their workflow-building surface while hiding raw full
- * WorkflowJSON read and update actions.
- */
-export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
-	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context, 'orchestrator')],
-		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
-		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
-		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
-		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
-		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
-		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
-	];
-
-	// eval-config is flag-gated: the adapter only wires evaluationConfigService
-	// when `088_config_evaluations` is on, so presence = expose the tool.
-	if (context.evaluationConfigService) {
-		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+		tools.push([
+			DOMAIN_TOOL_IDS.EVAL_CONFIG,
+			() => loadEvalConfigTool().createEvalConfigTool(context),
+		]);
 	}
 
 	// Same pattern: the adapter only wires mcpService when MCP access is enabled
 	// instance-wide and the user is in the MCP-connections experiment. Orchestrator
 	// only — sub-agents can't offer the user a connection.
 	if (context.mcpService) {
-		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
+		tools.push([
+			DOMAIN_TOOL_IDS.MCP_SERVERS,
+			() => loadMcpServersTool().createMcpServersTool(context),
+		]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
+		tools.push([
+			DOMAIN_TOOL_IDS.PARSE_FILE,
+			() => loadParseFileTool().createParseFileTool(context),
+		]);
 	}
+
+	return tools;
+}
+
+/** Returns only the native domain tool names active for this request. */
+export function getActiveOrchestratorDomainToolNames(context: InstanceAiContext): Set<string> {
+	return new Set(getOrchestratorDomainToolFactories(context).map(([name]) => name));
+}
+
+/** Creates the native n8n domain tools available to the orchestrator. */
+export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = getOrchestratorDomainToolFactories(context).map(
+		([name, createTool]) => [name, createTool()],
+	);
 
 	return createToolRegistry(tools);
 }
@@ -180,11 +161,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
 		],
-		[
-			ORCHESTRATION_TOOL_IDS.EVAL_SETUP_WITH_AGENT,
-			loadEvalSetupAgentTool().createEvalSetupAgentTool(context),
-		],
-		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
 	];
 
 	if (context.workflowTaskService) {

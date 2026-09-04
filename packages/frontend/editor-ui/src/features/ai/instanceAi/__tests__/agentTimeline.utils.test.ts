@@ -484,6 +484,27 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
 	});
 
+	test('historical eval setup calls are hidden without splitting a thinking run', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-before', 'r1'), toolEntry('tc-eval', 'r1'), toolEntry('tc-after', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-before' }),
+				makeToolCall({
+					toolCallId: 'tc-eval',
+					toolName: 'eval-setup-with-agent',
+					renderHint: 'eval-setup',
+				}),
+				makeToolCall({ toolCallId: 'tc-after' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-before' }),
+			expect.objectContaining({ toolCallId: 'tc-after' }),
+		]);
+	});
+
 	test('in-thread build-workflow renders as a trace row; agent-delegated builds stay hidden', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],

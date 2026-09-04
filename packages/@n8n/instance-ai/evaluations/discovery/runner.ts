@@ -46,10 +46,8 @@ import {
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
-import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
-	InstanceAiToolRegistry,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
@@ -142,9 +140,8 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
-		// for the heavy fields: discovery scenarios measure first-step tool-call
-		// decisions, not background execution.
+		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -277,13 +274,6 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to background agents such as eval-setup.
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
-	// background execution is out of scope. We still populate domainTools faithfully
-	// so any background agent that does spawn has a coherent toolset (avoids hitting
-	// "no tools" errors that would confuse the diagnostic comment).
-	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
-
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
@@ -299,14 +289,9 @@ function createStubOrchestrationContext(
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		domainTools,
 		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Discovery evals assert first-dispatch intent only. Production starts a
-		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the background agent.
-		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
