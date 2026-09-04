@@ -14,6 +14,7 @@ import {
 	StepReadyHandler,
 	StepSettledHandler,
 	StepWorker,
+	WaitSweeper,
 } from '../execution';
 import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
@@ -46,6 +47,8 @@ export interface EngineRuntimeOptions {
 	 * package, so only an integrated host can supply it.
 	 */
 	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
+	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
+	waitSweepIntervalMs?: number;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -73,6 +76,7 @@ export function createEngineRuntime({
 	logger = createConsoleLogger(),
 	responseSender,
 	externalDependencies,
+	waitSweepIntervalMs,
 }: EngineRuntimeOptions): EngineRuntime {
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
 	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
@@ -111,6 +115,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisher,
 		),
 	);
+	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
@@ -125,12 +130,16 @@ export function createEngineRuntime({
 		start: () => {
 			orchestrationWorker.start();
 			stepWorker.start();
+			waitSweeper.start();
 		},
 
 		stop: async () => {
 			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
+			// The sweeper first: it feeds the step queue, so stopping it before the
+			// workers means nothing lands after they have drained.
+			await waitSweeper.stop();
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
