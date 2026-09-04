@@ -265,8 +265,21 @@ export class WorkflowRunner {
 
 		const establishContextError = await this.establishContextForPersistence(data);
 
+		if (!establishContextError) {
+			try {
+				await this.credentialsPermissionChecker.check(
+					data.workflowData.id,
+					data.workflowData.nodes,
+				);
+			} catch (error) {
+				const executionId = await this.activeExecutions.add(data, existingExecution);
+				await this.failExecution(data, executionId, error, responsePromise);
+				return executionId;
+			}
+		}
+
 		let executionWorkflow: Workflow | undefined;
-		if (!existingExecution) {
+		if (!existingExecution && !establishContextError) {
 			try {
 				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
 			} catch (error) {
@@ -282,14 +295,7 @@ export class WorkflowRunner {
 			return executionId;
 		}
 
-		const { id: workflowId, nodes } = data.workflowData;
-
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
-		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
-			return executionId;
-		}
+		const { id: workflowId } = data.workflowData;
 
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);

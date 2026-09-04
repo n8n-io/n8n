@@ -975,6 +975,27 @@ describe('pre-persist context establishment', () => {
 		expect(addSpy).not.toHaveBeenCalled();
 	});
 
+	it('does not run preExecute when credential authorization fails', async () => {
+		const unauthorized = new Error('unauthorized');
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockRejectedValueOnce(unauthorized);
+
+		addSpy.mockReset();
+		addSpy.mockResolvedValue('exec-1');
+		// @ts-expect-error Private method
+		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run');
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).resolves.toBe('exec-1');
+
+		expect(gateSpy).not.toHaveBeenCalled();
+		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined);
+	});
+
 	it('skips the preExecute gate when claiming an existing execution', async () => {
 		const workflowPreExecute = Container.get(WorkflowPreExecute);
 		gateSpy = vi.spyOn(workflowPreExecute, 'run');
@@ -1069,6 +1090,17 @@ describe('pre-persist context establishment', () => {
 			expect(responseReject).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'hook augmentation failed' }),
 			);
+		});
+
+		it('does not run preExecute when context establishment failed', async () => {
+			const workflowPreExecute = Container.get(WorkflowPreExecute);
+			gateSpy = vi.spyOn(workflowPreExecute, 'run');
+
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			await runner.run(data);
+
+			expect(gateSpy).not.toHaveBeenCalled();
 		});
 	});
 });
