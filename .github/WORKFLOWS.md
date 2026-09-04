@@ -482,11 +482,23 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.18.1'
+  node-version:        # default: '26.5.1'
+  pnpm-version:        # default: '11.25.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The action caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and
+`pnpm-version`, and runs `pnpm/setup` only when that key misses. Without it every
+fresh job downloads pnpm from `registry.npmjs.org` before any cache is restored,
+so a registry outage fails unrelated jobs in their first step. The first job per
+key still downloads and then saves the cache, so a bump of `pnpm-version` costs
+one download per OS/arch and a re-run of a failed job reuses the warmed entry.
+Keep `pnpm-version` equal to the `packageManager` field in the root
+`package.json` — `pnpm/setup` fails the job when the two disagree. Windows keeps
+the plain `pnpm/setup` path. The pnpm store stays on the `actions/setup-node`
+`cache: pnpm` configuration.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per

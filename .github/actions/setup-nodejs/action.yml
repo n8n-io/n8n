@@ -10,6 +10,10 @@ inputs:
     description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
     default: '26.5.1'
+  pnpm-version:
+    description: 'pnpm version to use. Keep it equal to the `packageManager` field in the root package.json — pnpm/setup fails the job when the two disagree.'
+    required: false
+    default: '11.25.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -43,12 +47,66 @@ runs:
         echo "::error::enable-docker-cache is true but docker-cache-key is empty"
         exit 1
 
+    # pnpm/setup deletes its destination directory and downloads the pnpm
+    # executable from registry.npmjs.org on every fresh runner, before any
+    # cache is restored. A registry timeout or gateway error there fails the
+    # job in its first step, so a short registry outage blocks the whole CI
+    # fanout. Cache the executable itself, keyed on OS + arch + exact version,
+    # and skip the download when the key hits.
+    #
+    # Cache warming: the first job per key still downloads, and this step's
+    # post-run saves the result. Every later job on that key — including a
+    # re-run of a job that failed on the download — reuses it. A pnpm version
+    # bump therefore costs exactly one download per OS/arch, not one per job.
+    #
+    # Skipped on Windows: the cached-hit path below writes $GITHUB_PATH from
+    # Git Bash, whose POSIX home path the runner cannot use. The one Windows
+    # job keeps the plain pnpm/setup path.
+    #
+    # pnpm/setup also restores pnpm's lockfile-verification log, which a cache
+    # hit skips along with the rest of the action. The pnpm metadata cache
+    # below covers that same directory on the same lockfile hash, so nothing
+    # is lost.
+    - name: Restore pnpm executable
+      if: runner.os != 'Windows'
+      id: cache-pnpm-exe
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: pnpm-exe-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.pnpm-version }}
+
     - name: Setup pnpm
-      uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
         install: false
-        version: 11.25.0
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        version: ${{ inputs.pnpm-version }}
+
+    # The cache holds files, not the per-job PATH and env wiring that
+    # pnpm/setup does through $GITHUB_PATH and $GITHUB_ENV. Redo it here.
+    # `<dest>/bin` holds the shims of a self-updated pnpm and must win over
+    # `<dest>`; $GITHUB_PATH prepends each line, so the bin dir goes last.
+    - name: Activate cached pnpm executable
+      if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        PNPM_DEST="$HOME/setup-pnpm"
+        echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
+        echo "$PNPM_DEST" >> "$GITHUB_PATH"
+        echo "$PNPM_DEST/bin" >> "$GITHUB_PATH"
+
+    # Guards both paths. A truncated or stale cache entry must fail here
+    # instead of surfacing later as a confusing install error.
+    - name: Verify pnpm Version
+      shell: bash
+      env:
+        EXPECTED_PNPM_VERSION: ${{ inputs.pnpm-version }}
+      run: |
+        ACTUAL_PNPM_VERSION="$(pnpm --version)"
+        if [ "$ACTUAL_PNPM_VERSION" != "$EXPECTED_PNPM_VERSION" ]; then
+          echo "::error::pnpm ${EXPECTED_PNPM_VERSION} is not active (got ${ACTUAL_PNPM_VERSION})"
+          exit 1
+        fi
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
     # on every subsequent job. First fresh runner pays the download; later jobs
