@@ -231,10 +231,11 @@ parallelism). See the `--build-via-mcp` section in
 
 ### On PR Close/Merge
 
-| Event                      | Workflow                    |
-|----------------------------|-----------------------------|
-| PR closed (any)            | `util-notify-pr-status.yml` |
-| PR merged to `release/*`   | `release-publish.yml`       |
+| Event                              | Workflow                       |
+|------------------------------------|--------------------------------|
+| PR closed (any)                    | `util-notify-pr-status.yml`    |
+| PR merged to `release/*`           | `release-publish.yml`          |
+| PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
 ### Manual Triggers (PR Comments)
 
@@ -243,6 +244,27 @@ parallelism). See the `--build-via-mcp` section in
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
+
+### Label Triggers
+
+| Label                | Workflow                       | Effect                                          |
+|----------------------|--------------------------------|-------------------------------------------------|
+| `codespace-preview`  | `util-codespace-preview.yml`   | Runs the PR in a Codespace, comments the URL    |
+
+**Why:** A reviewer gets a running instance of the PR without a Docker build or a
+cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
+for each PR (display name `preview/pr-<number>`) and shares port 5678 with the
+organization. A later push serves the new head in the same box. Removing the
+label, or closing the PR, deletes the box.
+
+Only a PR from a branch in this repository is eligible: a codespace token is
+scoped to `n8n-io/n8n` and cannot check out a fork head.
+
+The job needs the `CODESPACE_PREVIEW_TOKEN` secret, a token that carries the
+`codespace` scope. Neither `GITHUB_TOKEN` nor a GitHub App token can create a
+codespace, because the Codespaces API belongs to a user and not to an
+installation. The job checks out the base branch, never the PR head, so a PR
+cannot supply the script that reads that token.
 
 ### Other Manual Workflows
 
@@ -568,6 +590,17 @@ Scripts in `.github/scripts/`:
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
+
+### Preview Scripts
+
+| Script                          | Purpose                                                                 | Called By                      |
+|---------------------------------|-------------------------------------------------------------------------|--------------------------------|
+| `codespace-preview.mjs`         | Map a `pull_request` event onto a preview operation, comment the result  | `util-codespace-preview.yml`   |
+| `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+
+`scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
+In `--json` mode it prints one object on stdout and sends all progress to stderr,
+so a workflow can read the URL from a run that also streams an in-box build log.
 
 ### Branch Replay Scripts
 

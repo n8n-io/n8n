@@ -1,0 +1,94 @@
+name: 'Util: Codespace Preview'
+run-name: Codespace preview for PR ${{ github.event.pull_request.number }}
+
+# Runs a preview instance of a pull request in a GitHub Codespace, then reports
+# the URL back to the PR in one comment that later runs edit in place.
+#
+# Triggers, all opt-in through the `codespace-preview` label:
+#  - labeled     -> `preview up`, which creates or starts the box and serves the head
+#  - synchronize -> `preview refresh`, which serves the new head in the same box
+#  - unlabeled   -> `preview down`
+#  - closed      -> `preview down`, so a merged PR does not hold a box for 24 h
+#
+# Only pull requests from a branch in this repository are eligible. A codespace
+# token is scoped to n8n-io/n8n, so it cannot check out a fork head, and
+# `scripts/preview.mjs` refuses a fork for that reason.
+#
+# Security: the job checks out the base branch, never the PR head. It runs
+# `scripts/preview.mjs` with a Codespaces token in the environment, so the PR
+# must not supply that script. The PR head code runs inside the codespace, which
+# holds only a repository-scoped token. One consequence: a PR that edits
+# `scripts/preview.mjs` previews with the version on the base branch.
+#
+# Output: a `<!-- codespace-preview -->` comment on the PR with the instance URL,
+# a one-click sign-in link, and the commit it serves.
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+      - synchronize
+      - closed
+    branches:
+      - master
+
+permissions: {}
+
+concurrency:
+  # Never cancel a run in progress. Cancelling during `gh codespace create` leaves
+  # a box that nothing tracks and the org still pays for. Keyed on the PR, so the
+  # up, refresh and down runs for one PR happen one after another.
+  group: codespace-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: Preview instance
+    # `github.event.label.name` is the label that just changed. `labels.*.name` is
+    # the set of labels the PR carries now, which is what a push or a close needs.
+    if: |
+      github.repository == 'n8n-io/n8n' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+          github.event.label.name == 'codespace-preview') ||
+        ((github.event.action == 'synchronize' || github.event.action == 'closed') &&
+          contains(github.event.pull_request.labels.*.name, 'codespace-preview'))
+      )
+    runs-on: ubuntu-latest
+    # `preview.mjs` alone allows 10 min for the box to accept ssh, and the in-box
+    # step then runs `pnpm install` and a build before the backend answers.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          # The job runs node scripts, never git. Keep the Actions token out of
+          # .git/config, where the Codespaces token also passes through.
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Run the preview operation
+        env:
+          # `gh` prefers GH_TOKEN over GITHUB_TOKEN. So the `gh` calls in
+          # preview.mjs use the Codespaces token, and Octokit comments as the
+          # Actions token. A GitHub App token cannot create a codespace: the
+          # Codespaces API belongs to a user, not to an installation.
+          # TODO: move CODESPACE_PREVIEW_TOKEN to a service account.
+          GH_TOKEN: ${{ secrets.CODESPACE_PREVIEW_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node .github/scripts/codespace-preview.mjs

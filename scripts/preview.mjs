@@ -8,7 +8,7 @@
 //   pnpm preview down <pr>      delete the box
 //   pnpm preview ls             list preview boxes
 //
-//   --json       print {pr, sha, codespace, url} for a workflow to consume
+//   --json       print {pr, sha, codespace, url} on stdout (progress goes to stderr)
 //   --dry-run    resolve the PR and print the commands, touching nothing
 import { execFileSync, spawnSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -35,11 +35,22 @@ const PREFIX = 'preview/pr-';
 // from here. Every box uses this one; the in-box script prints the resolved value.
 const FORWARDING_DOMAIN = 'app.github.dev';
 
+const args = process.argv.slice(2);
+const options = { json: args.includes('--json'), dryRun: args.includes('--dry-run') };
+const [cmd, pr] = args.filter((arg) => !arg.startsWith('--'));
+
 // The display name is the lookup key, so a preview can never be confused with a
 // developer's own `pnpm session` box on the same repo.
 const displayNameFor = (pr) => `${PREFIX}${pr}`;
 
-const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
+// In --json mode stdout carries one machine-readable line and nothing else, so
+// progress has to go to stderr. A caller parsing stdout gets no other output.
+const log = (...parts) => (options.json ? console.error(...parts) : console.log(...parts));
+
+// Send the child's stdout to our stderr in --json mode: `gh codespace ssh` inherits
+// stdio, so the whole in-box build would otherwise land on the JSON channel.
+const ghTty = (...args) =>
+	spawnSync('gh', args, { stdio: ['inherit', options.json ? 2 : 'inherit', 'inherit'] });
 
 function fail(message) {
 	console.error(message);
@@ -51,7 +62,13 @@ function ghJson(args, retry = false) {
 		return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }).trim());
 	} catch (error) {
 		if (!retry && error.message.includes('This API operation needs the "codespace" scope')) {
-			console.log('Requesting codespace scope…');
+			// `gh auth refresh` opens a browser and waits for an answer, so it can only
+			// run against a terminal. Without one it would hang the caller forever.
+			if (!process.stdin.isTTY)
+				fail(
+					'This token has no codespace scope, and `gh auth refresh` needs a terminal. Supply a token that already carries the scope.',
+				);
+			log('Requesting codespace scope…');
 			ghTty('auth', 'refresh', '-h', 'github.com', '-s', 'codespace');
 			return ghJson(args, true);
 		}
@@ -82,7 +99,7 @@ function prHead(pr) {
 		fail(
 			`PR #${pr} comes from a fork. A codespace's token is scoped to ${REPO}, so it cannot check out a fork head.`,
 		);
-	if (head.state !== 'OPEN') console.log(`Note: PR #${pr} is ${head.state}.`);
+	if (head.state !== 'OPEN') log(`Note: PR #${pr} is ${head.state}.`);
 	return head;
 }
 
@@ -147,7 +164,7 @@ async function waitForSsh(name, timeoutMs = 600_000) {
 		});
 		if (probe.status === 0) return;
 		lastError = (probe.stderr ?? '').trim().split('\n').pop() || `exit ${probe.status}`;
-		if (attempt++ === 0) console.log(`Waiting for ${name} to accept ssh…`);
+		if (attempt++ === 0) log(`Waiting for ${name} to accept ssh…`);
 		await sleep(5000);
 	}
 	fail(
@@ -164,7 +181,7 @@ async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
 	let waited = false;
 	while (!share.shared && Date.now() < deadline) {
 		if (!waited) {
-			console.log(`Waiting for port ${port} to be forwarded before sharing it…`);
+			log(`Waiting for port ${port} to be forwarded before sharing it…`);
 			waited = true;
 		}
 		await sleep(3000);
@@ -176,15 +193,15 @@ async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
 async function serve(pr, cs, head, { json, dryRun }) {
 	const command = serveCommand(head);
 	if (dryRun) {
-		console.log(`Would ssh to ${cs.name} and run:\n  ${command}`);
-		console.log(`Would then share port ${PORT} with the org.`);
+		log(`Would ssh to ${cs.name} and run:\n  ${command}`);
+		log(`Would then share port ${PORT} with the org.`);
 		report(pr, head, cs.name, json);
 		return;
 	}
 
 	await waitForSsh(cs.name);
 
-	console.log(`Serving ${head.headRefOid.slice(0, 7)} on ${cs.name}…`);
+	log(`Serving ${head.headRefOid.slice(0, 7)} on ${cs.name}…`);
 	const { status } = ghTty('codespace', 'ssh', '-c', cs.name, '--', command);
 	if (status !== 0) fail('Serving failed — see the output above.');
 
@@ -205,14 +222,14 @@ async function up(pr, options) {
 
 	if (!cs) {
 		if (options.dryRun) {
-			console.log(`Would create a box for PR #${pr} (${head.headRefName}):`);
-			console.log(`  gh ${createArgs(pr, head).join(' ')}`);
-			console.log(`Then ssh to it and run:\n  ${serveCommand(head)}`);
+			log(`Would create a box for PR #${pr} (${head.headRefName}):`);
+			log(`  gh ${createArgs(pr, head).join(' ')}`);
+			log(`Then ssh to it and run:\n  ${serveCommand(head)}`);
 			// No box yet, so there is no name and no URL to report.
-			console.log('The URL is only known once the box exists.');
+			log('The URL is only known once the box exists.');
 			return;
 		}
-		console.log(`Creating a preview box for PR #${pr} (${head.headRefName})…`);
+		log(`Creating a preview box for PR #${pr} (${head.headRefName})…`);
 		// Run interactive: the devcontainer asks for access to the private skills
 		// repo, so gh prints an authorization URL and waits for an answer.
 		const { status } = ghTty(...createArgs(pr, head));
@@ -222,7 +239,7 @@ async function up(pr, options) {
 		if (!cs) fail(`Created a box for PR #${pr} but could not find it — run \`pnpm preview ls\`.`);
 	} else if (cs.state !== 'Available') {
 		// There is no `gh codespace start`; ssh starts a stopped box.
-		console.log(`${cs.name} is ${cs.state} — ssh will start it (~30-60 s)…`);
+		log(`${cs.name} is ${cs.state} — ssh will start it (~30-60 s)…`);
 	}
 
 	await serve(pr, cs, head, options);
@@ -237,16 +254,16 @@ async function refresh(pr, options) {
 function down(pr, { dryRun }) {
 	const cs = findPreview(pr);
 	if (!cs) {
-		console.log(`No preview box for PR #${pr}.`);
+		log(`No preview box for PR #${pr}.`);
 		return;
 	}
 	if (dryRun) {
-		console.log(`Would delete ${cs.name} (PR #${pr}).`);
+		log(`Would delete ${cs.name} (PR #${pr}).`);
 		return;
 	}
 	const { status } = ghTty('codespace', 'delete', '-c', cs.name, '--force');
 	if (status !== 0) process.exit(status ?? 1);
-	console.log(`Deleted ${cs.name} (PR #${pr})`);
+	log(`Deleted ${cs.name} (PR #${pr})`);
 }
 
 function ls() {
@@ -259,30 +276,32 @@ function ls() {
 		console.log(`${cs.displayName}\t${cs.state}\t${cs.name}\tlast used ${cs.lastUsedAt}`);
 }
 
-const args = process.argv.slice(2);
-const options = { json: args.includes('--json'), dryRun: args.includes('--dry-run') };
-const [cmd, pr] = args.filter((arg) => !arg.startsWith('--'));
-
 /**
-	* Grabs the given PR number from command or tries to default to
-	* the PR number of the branch currently checked out.
-	* */
+ * Grabs the given PR number from command or tries to default to
+ * the PR number of the branch currently checked out.
+ * */
 async function requirePr() {
-	const noPrSpecified = !/^\d+$/.test(pr ?? '')
+	const noPrSpecified = !/^\d+$/.test(pr ?? '');
 
 	if (pr && noPrSpecified) {
-		fail(`Invalid PR number format. Usage example: \`pnpm preview ${cmd} 1234\``)
+		fail(`Invalid PR number format. Usage example: \`pnpm preview ${cmd} 1234\``);
 	}
 
 	if (noPrSpecified) {
-		const prInfoForCurrentBranch = ghJson(['pr', 'view', "--json", "number"]);
-		if (prInfoForCurrentBranch && Number.isInteger(prInfoForCurrentBranch.number)) {
-			return prInfoForCurrentBranch.number;
-		}
+		// `gh pr view` exits non-zero when the branch has no PR, which is not an
+		// error here: fall through to the message below instead of a stack trace.
+		try {
+			const prInfoForCurrentBranch = ghJson(['pr', 'view', '--json', 'number']);
+			if (prInfoForCurrentBranch && Number.isInteger(prInfoForCurrentBranch.number)) {
+				return prInfoForCurrentBranch.number;
+			}
+		} catch {}
 	}
 
 	if (noPrSpecified) {
-		fail(`Give a PR number, e.g. \`pnpm preview ${cmd} 1234\` or check out a branch that has an open PR and run \`pnpm preview ${cmd}\`.`)
+		fail(
+			`Give a PR number, e.g. \`pnpm preview ${cmd} 1234\` or check out a branch that has an open PR and run \`pnpm preview ${cmd}\`.`,
+		);
 	}
 	return pr;
 }
