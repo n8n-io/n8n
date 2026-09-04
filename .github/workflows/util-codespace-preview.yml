@@ -60,7 +60,7 @@ jobs:
     # Holds CODESPACE_PREVIEW_TOKEN, so only a job that names this environment can
     # read it. The environment must allow every branch: a pull_request run has the
     # ref `refs/pull/<n>/merge`, which no branch policy matches.
-    environment: codespace-preview
+    environment: codespaces
     # `preview.mjs` alone allows 10 min for the box to accept ssh, and the in-box
     # step then runs `pnpm install` and a build before the backend answers.
     timeout-minutes: 45
