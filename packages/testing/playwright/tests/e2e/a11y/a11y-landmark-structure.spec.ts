@@ -56,6 +56,55 @@ test.describe(
 
 			expect(ok).toBe(false);
 			expect(problems.map((problem) => problem.rule)).toContain('single-main');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/single-main/);
+		});
+
+		test('fails a page whose <main> is slotted into a landmark in a shadow root', async ({
+			page,
+		}) => {
+			await page.setContent('<div id="host"><main id="content">slotted</main></div>');
+			await page.evaluate(() => {
+				const host = document.querySelector('#host');
+				const shadow = host?.attachShadow({ mode: 'open' });
+				if (shadow) shadow.innerHTML = '<nav aria-label="Primary"><slot></slot></nav>';
+			});
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(ok).toBe(false);
+			expect(problems.map((problem) => problem.rule)).toContain('main-not-nested');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
+		});
+
+		test('fails a page whose <main> is inside a <section> named by aria-labelledby', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<section aria-labelledby="section-title">' +
+					'<h2 id="section-title">Settings</h2>' +
+					'<main id="content">nested</main>' +
+					'</section>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(ok).toBe(false);
+			expect(problems.map((problem) => problem.rule)).toContain('main-not-nested');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
+		});
+
+		test('passes a page whose <section> aria-labelledby resolves to nothing', async ({ page }) => {
+			await page.setContent(
+				'<section aria-labelledby="missing-title">' +
+					'<main id="content">not nested in a landmark</main>' +
+					'</section>' +
+					'<form aria-labelledby="empty-title"><span id="empty-title"> </span></form>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(problems).toEqual([]);
+			expect(ok).toBe(true);
 		});
 
 		test('passes a page with one top-level <main> and a unique id="content"', async ({ page }) => {

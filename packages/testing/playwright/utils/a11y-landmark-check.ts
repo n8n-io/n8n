@@ -40,16 +40,36 @@ export async function checkMainLandmarkStructure(page: Page): Promise<MainLandma
 		// <header> and <footer> only map to banner/contentinfo outside sectioning content.
 		const sectioningTags = new Set(['ARTICLE', 'ASIDE', 'MAIN', 'NAV', 'SECTION']);
 
-		// Composed-tree parent: an element at the root of a shadow tree continues at its host.
-		const parentOf = (node: Node): Element | null => {
-			const parent: ParentNode | null = node.parentNode;
+		// Composed-tree parent. A slotted element is rendered where its <slot> sits, so the
+		// walk continues there; an element at the root of a shadow tree continues at its host.
+		const parentOf = (element: Element): Element | null => {
+			if (element.assignedSlot) return element.assignedSlot;
+			const parent: ParentNode | null = element.parentNode;
 			if (parent instanceof ShadowRoot) return parent.host;
 			return parent instanceof Element ? parent : null;
 		};
 
-		const hasAccessibleName = (element: Element) =>
-			!!element.getAttribute('aria-label')?.trim() ||
-			!!element.getAttribute('aria-labelledby')?.trim();
+		// ID references resolve inside the element's own root, so a shadow tree
+		// resolves against itself and not against the document.
+		const rootOf = (element: Element): Document | ShadowRoot => {
+			const root = element.getRootNode();
+			return root instanceof ShadowRoot ? root : document;
+		};
+
+		const hasAccessibleName = (element: Element) => {
+			if (element.getAttribute('aria-label')?.trim()) return true;
+
+			// An aria-labelledby that resolves to nothing, or to empty elements, names nothing.
+			const labelledBy = element.getAttribute('aria-labelledby')?.trim();
+			if (!labelledBy) return false;
+
+			const root = rootOf(element);
+			return labelledBy.split(/\s+/).some((id) => {
+				const referenced = root.getElementById(id);
+				if (!referenced) return false;
+				return !!referenced.getAttribute('aria-label')?.trim() || !!referenced.textContent?.trim();
+			});
+		};
 
 		const landmarkRoleOf = (element: Element): string | undefined => {
 			// An explicit role wins over the tag, including when it is not a landmark.
