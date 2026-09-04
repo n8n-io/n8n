@@ -13,7 +13,7 @@ import { systemTaskType } from './system-task-type';
  */
 export function systemTaskProvisionRequest(
 	task: SystemTask,
-	owner: SystemTaskScheduledJobOwner,
+	systemTaskOwner: SystemTaskScheduledJobOwner,
 	defaultTimezone: string,
 	now: Date,
 ): ProvisionRequest {
@@ -22,7 +22,7 @@ export function systemTaskProvisionRequest(
 	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
 
 	return {
-		owner: owner.owner(task.name),
+		owner: systemTaskOwner.owner(task.name),
 		taskType: name,
 		payload: {},
 		desired: [{ name, schedule: task.schedule, firstRunAt }],
