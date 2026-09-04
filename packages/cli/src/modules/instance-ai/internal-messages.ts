@@ -32,6 +32,21 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+
+/**
+ * Wraps what is going on in this instance — what exists here, what changed lately, and what has
+ * run — so the agent can read the user's intent against it.
+ *
+ * On the turn rather than in the system prompt, and not negotiable: `getSystemPrompt()` is one
+ * shared prompt-cache entry across every thread on the instance, which is why the clock and the
+ * project name ride the turn too. A per-user block in the cached prefix would invalidate it for
+ * every user on every turn.
+ *
+ * LLM-facing only, and carries no structured payload to rebuild: the block is re-derivable, so on
+ * reload it is simply dropped.
+ */
+export const INSTANCE_CONTEXT_OPEN_TAG = '<instance-context>';
+export const INSTANCE_CONTEXT_CLOSE_TAG = '</instance-context>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 
@@ -42,7 +57,7 @@ export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;

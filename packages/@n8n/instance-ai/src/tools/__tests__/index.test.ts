@@ -228,6 +228,23 @@ describe('domain tool construction', () => {
 		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
 	});
 
+	it('gates the activity tool on the host-wired activityService', () => {
+		// Gates off: the adapter leaves activityService unset when the reader is disabled.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('activity')).toBeUndefined();
+
+		const enabled = makeContext({
+			activityService: {} as InstanceAiContext['activityService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('activity')).toBeDefined();
+		// Orchestrator only — the block that hands the agent ids to expand rides its turn.
+		expect(createAllTools(enabled).get('activity')).toBeUndefined();
+	});
+
+	it('never defers activity behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});

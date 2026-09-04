@@ -16,6 +16,7 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
+	ACTIVITY: 'activity',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -75,6 +76,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
+	// The instance-context block hands the agent ids and tells it to expand them, so deferring
+	// this would price every expand at search_tools + load_tool. It is only registered when the
+	// reader is enabled, so an instance without the feature pays nothing for the entry.
+	DOMAIN_TOOL_IDS.ACTIVITY,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

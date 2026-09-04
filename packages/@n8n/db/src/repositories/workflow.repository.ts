@@ -84,6 +84,56 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		super(WorkflowEntity, dataSource.manager, transactionRunner);
 	}
 
+	/**
+	 * The most recently worked-on non-archived workflows in these projects, newest first, with the
+	 * total in scope.
+	 *
+	 * For telling an agent what already exists here. An event log cannot answer that: a workflow
+	 * nobody has run or edited lately produces no events at all, so it is invisible to a feed while
+	 * being exactly the work somebody might want picked up.
+	 */
+	async findRecentForProjects(
+		projectIds: string[],
+		limit: number,
+	): Promise<{ total: number; workflows: Array<{ id: string; name: string; active: boolean }> }> {
+		if (projectIds.length === 0) return { total: 0, workflows: [] };
+		if (!Number.isInteger(limit) || limit <= 0) return { total: 0, workflows: [] };
+
+		// A workflow can be shared into several projects, so the join multiplies rows when more than
+		// one of them is in scope. Both the count and the page are made distinct on the workflow.
+		const base = () =>
+			this.createQueryBuilder('workflow')
+				.innerJoin(SharedWorkflow, 'shared', 'shared.workflowId = workflow.id')
+				.where('shared.projectId IN (:...projectIds)', { projectIds })
+				.andWhere('workflow.isArchived = :archived', { archived: false });
+
+		const totalRow = await base()
+			.select('COUNT(DISTINCT workflow.id)', 'total')
+			.getRawOne<{ total: number | string }>();
+
+		const rows = await base()
+			.select('workflow.id', 'id')
+			.addSelect('MAX(workflow.name)', 'name')
+			// Published state is `activeVersionId`, not the deprecated `active` column, so this
+			// agrees with every other reader here. Aggregated as an integer because Postgres has no
+			// `max(boolean)`, which would fail there while passing on sqlite.
+			.addSelect('MAX(CASE WHEN workflow.activeVersionId IS NOT NULL THEN 1 ELSE 0 END)', 'active')
+			.groupBy('workflow.id')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit)
+			.getRawMany<{ id: string; name: string; active: number | string | boolean }>();
+
+		return {
+			// Postgres returns COUNT as a bigint string.
+			total: Number(totalRow?.total ?? 0),
+			workflows: rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				active: Boolean(Number(row.active)),
+			})),
+		};
+	}
+
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },

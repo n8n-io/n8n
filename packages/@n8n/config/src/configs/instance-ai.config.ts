@@ -274,4 +274,19 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
 	maxConcurrentSubAgents: number = -1;
+
+	/**
+	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
+	 * changed recently, and what has run — plus the tool to read further back.
+	 *
+	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
+	 * The record is core and has other potential consumers; this flag gates one consumer's read.
+	 * Two of the three sources are not the activity log in the first place: what exists comes from
+	 * the workflows themselves, and runs come from `execution_entity`.
+	 *
+	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
+	 * the edit history stays empty, since no entry was ever written.
+	 */
+	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
+	instanceContextEnabled: boolean = false;
 }

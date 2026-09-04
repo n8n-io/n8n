@@ -379,6 +379,7 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			instanceContextEnabled: false,
 		},
 		queue: {
 			health: {

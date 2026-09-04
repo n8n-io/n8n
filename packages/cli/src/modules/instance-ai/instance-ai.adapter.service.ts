@@ -67,6 +67,7 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiActivityService,
 	InstanceAiMcpService,
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
@@ -175,6 +176,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceContextService } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -348,6 +350,7 @@ export class InstanceAiAdapterService {
 		// Appended rather than grouped with the other query services: existing tests construct this
 		// service positionally, so inserting mid-list renames every later argument.
 		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
+		private readonly instanceContext?: InstanceContextService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -429,6 +432,10 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			// Presence is the gate, as with the services above: no reader, no `activity` tool.
+			...(this.instanceContext?.enabled
+				? { activityService: this.createActivityAdapter(user, projectId) }
+				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -526,6 +533,33 @@ export class InstanceAiAdapterService {
 		return (
 			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
 		);
+	}
+
+	/**
+	 * Binds the reader to this conversation's user and project, so the tool can never widen its own
+	 * scope: what it may see is decided here, not by anything the model passes in.
+	 */
+	private createActivityAdapter(user: User, projectId?: string): InstanceAiActivityService {
+		const instanceContext = this.instanceContext;
+		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
+
+		return {
+			list: async (input) =>
+				await instanceContext.list({
+					user,
+					...(projectId !== undefined ? { projectId } : {}),
+					limit: input.limit,
+					...(input.category !== undefined ? { category: input.category } : {}),
+					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
+				}),
+			expand: async (id) =>
+				await instanceContext.expand({
+					id,
+					user,
+					...(projectId !== undefined ? { projectId } : {}),
+				}),
+		};
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {

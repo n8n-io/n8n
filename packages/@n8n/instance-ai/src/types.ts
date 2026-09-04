@@ -601,6 +601,48 @@ export interface ConnectedMcpService {
 	toolNames: string[];
 }
 
+/** One activity-log entry, flattened for the agent. `at` is ISO so the model can reason on it. */
+export interface InstanceAiActivityEntry {
+	id: number;
+	at: string;
+	category: string;
+	action: string;
+	resourceType?: string;
+	resourceId?: string;
+	resourceName?: string;
+	/** Whether the user in this conversation is the one who did it. */
+	byCurrentUser: boolean;
+	detail?: Record<string, unknown>;
+}
+
+/**
+ * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
+ * the live record: `workflows` and `credentials` already fetch those, and the entry carries the ids
+ * to call them with.
+ */
+export interface InstanceAiActivityExpansion {
+	entry: InstanceAiActivityEntry;
+	/** Other entries for the same resource, newest first. Empty when the entry names no resource. */
+	resourceHistory: InstanceAiActivityEntry[];
+	/** The call that fetches the live record, when one applies. */
+	liveRecordHint?: string;
+}
+
+/**
+ * Reads the activity log the agent is handed a window of at the start of a turn. Bound to one
+ * conversation's user and project by the adapter, so the tool cannot widen its own scope.
+ */
+export interface InstanceAiActivityService {
+	list(input: {
+		limit: number;
+		category?: string;
+		resourceId?: string;
+		beforeId?: number;
+	}): Promise<InstanceAiActivityEntry[]>;
+	/** Null when the id is pruned or out of scope — the two are indistinguishable on purpose. */
+	expand(id: number): Promise<InstanceAiActivityExpansion | null>;
+}
+
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 	getServers(slugs: string[]): Promise<McpRegistryConnectServerSummary[]>;
@@ -1184,6 +1226,8 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
+	activityService?: InstanceAiActivityService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
