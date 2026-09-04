@@ -296,8 +296,13 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			restore(new Set(event.payload.groups.map((group) => group.id)));
 		} else if (event.action === CHANGE_ACTION.ADD && !event.payload.startCollapsed) {
 			setGroupExpanded(event.payload.group.id, true);
-			// New groups open expanded and immediately make room for their frame;
-			// this keeps the in-session canvas consistent with a reload.
+			// New groups open expanded, but creating one shouldn't shove existing
+			// nodes/groups around. Keep it out of the active push sources for now —
+			// a page reload re-enables pushing via the persisted expanded state.
+			disabledPushSourceGroupIds.value = new Set([
+				...disabledPushSourceGroupIds.value,
+				event.payload.group.id,
+			]);
 		} else if (event.action === CHANGE_ACTION.DELETE) {
 			removeDeletedGroup(event.payload.id);
 		}
