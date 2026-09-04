@@ -91,5 +91,5 @@ export function useSetupPanelState(options: {
 		}));
 	});
 
-	return { rows, rowSource, isAgentBuilding };
+	return { rows, rowSource, isAgentBuilding, getNodeByName: derivation.getNodeByName };
 }

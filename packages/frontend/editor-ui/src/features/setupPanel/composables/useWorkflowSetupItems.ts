@@ -274,5 +274,10 @@ export function useWorkflowSetupItems(
 		return item.parameterNames.every((parameterName) => !Object.hasOwn(issues, parameterName));
 	}
 
-	return { isWorkflowAvailable, derivedItems, isItemDone };
+	/** The workflow node behind an item, for detail views that host node inputs. */
+	function getNodeByName(nodeName: string): INodeUi | undefined {
+		return nodesByName.value.get(nodeName);
+	}
+
+	return { isWorkflowAvailable, derivedItems, isItemDone, getNodeByName };
 }

@@ -85,6 +85,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -290,6 +291,25 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
+// --- Setup panel (checklist docked above the composer) ---
+// Anchors to the active canvas tab's workflow; on a hydrated thread with no
+// tab state yet, the latest workflow artifact wins (insertion order).
+const setupPanelWorkflowId = computed(() => {
+	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
+	const active = preview.activeWorkflowId.value;
+	if (active) return active;
+	let latest: string | undefined;
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'workflow') latest = entry.id;
+	}
+	return latest;
+});
+const setupPanelProjectId = computed(() =>
+	setupPanelWorkflowId.value
+		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
+		: undefined,
+);
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -1286,6 +1306,11 @@ async function dismissComposerContextChip() {
 											:amounts-hidden="quotaLocked"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
+										/>
+										<InstanceAiSetupPanel
+											v-if="setupPanelWorkflowId"
+											:workflow-id="setupPanelWorkflowId"
+											:project-id="setupPanelProjectId"
 										/>
 										<div :class="$style.inputSwap">
 											<Transition name="input-swap">
