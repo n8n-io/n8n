@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
+import { replaceCircularReferences } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
@@ -27,8 +27,6 @@ const handleError = (error: unknown) => {
 
 type ExecutionHandlers = {
 	retryExecution: PublicAPIEndpoint<ExecutionRequest.Retry>;
-	stopExecution: PublicAPIEndpoint<ExecutionRequest.Stop>;
-	stopManyExecutions: PublicAPIEndpoint<ExecutionRequest.StopMany>;
 };
 
 const executionHandlers: ExecutionHandlers = {
@@ -58,67 +56,6 @@ const executionHandlers: ExecutionHandlers = {
 			} catch (error) {
 				return handleError(error);
 			}
-		},
-	],
-	stopExecution: [
-		publicApiScope('execution:stop'),
-		async (req, res) => {
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			const { id } = req.params;
-
-			try {
-				const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
-
-				return res.json(replaceCircularReferences(stopResult));
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	stopManyExecutions: [
-		publicApiScope('execution:stop'),
-		async (req, res) => {
-			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
-			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));
-			if (!status || status.length === 0) {
-				return res.status(400).json({
-					message:
-						'Status filter is required. Please provide at least one status to stop executions.',
-					example: {
-						status: ['running', 'waiting', 'queued'],
-					},
-				});
-			}
-
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
-
-			if (!sharedWorkflowsIds.length) {
-				return res.json({ stopped: 0 });
-			}
-
-			if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
-				throw new NotFoundError('Workflow not found or not accessible');
-			}
-
-			const filter = {
-				workflowId: workflowId ?? 'all',
-				status,
-				startedAfter,
-				startedBefore,
-			};
-
-			const stopped = await Container.get(ExecutionService).stopMany(filter, sharedWorkflowsIds);
-
-			return res.json({ stopped });
 		},
 	],
 };

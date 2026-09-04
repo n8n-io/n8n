@@ -39,6 +39,7 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
@@ -130,7 +131,6 @@ const usersStore = useUsersStore();
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
 const isCreatingWorkflow = ref(false);
-
 const canCreateWorkflow = computed(() => {
 	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
 
@@ -892,5 +892,12 @@ function handleRowActivate(item: ToolConnectionItem) {
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
 		@create-workflow="handleCreateWorkflow"
-	/>
+	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+				:action="i18n.baseText('agents.tools.suggestion.action')"
+			/>
+		</template>
+	</ToolsConnectionModal>
 </template>
