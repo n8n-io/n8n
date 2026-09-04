@@ -409,6 +409,7 @@ describe('GlobalConfig', () => {
 					stalledInterval: 30_000,
 				},
 			},
+			suspendExecutionsOnShutdown: false,
 		},
 		taskRunners: {
 			mode: 'internal',
