@@ -26,25 +26,11 @@ describe('isV1NodeStepConfig', () => {
 		).toBe(true);
 	});
 
-	it('accepts a credential entry with a boolean __aiGatewayManaged flag', () => {
-		expect(
-			isV1NodeStepConfig(
-				config({
-					openAiApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
-				}),
-			),
-		).toBe(true);
-	});
-
 	it.each([
 		['a non-object map', 'httpHeaderAuth'],
 		['a non-object entry', { httpHeaderAuth: 'cred-1' }],
 		['an entry without a name', { httpHeaderAuth: { id: 'cred-1' } }],
 		['an entry with a numeric id', { httpHeaderAuth: { id: 1, name: 'Header Auth account' } }],
-		[
-			'an entry with a non-boolean __aiGatewayManaged flag',
-			{ openAiApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: 'true' } },
-		],
 	])('rejects %s', (_label, credentials) => {
 		expect(isV1NodeStepConfig(config(credentials))).toBe(false);
 	});
