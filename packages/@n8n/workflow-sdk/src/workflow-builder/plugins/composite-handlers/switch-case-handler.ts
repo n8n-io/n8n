@@ -6,8 +6,9 @@
 
 import {
 	collectFromTarget,
+	collectFromBuilderChains,
 	addBranchTargetNodes,
-	getBuilderChains,
+	addBuilderChainsToGraph,
 	getPrefixChainHead,
 	processBranchForComposite,
 	processBranchForBuilder,
@@ -50,27 +51,14 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 		if (prefixHead) {
 			return { name: prefixHead.name, id: prefixHead.id };
 		}
-		if (isSwitchCaseBuilder(input)) {
-			return { name: input.switchNode.name, id: input.switchNode.id };
-		}
-		const composite = input;
-		return { name: composite.switchNode.name, id: composite.switchNode.id };
+		return { name: input.switchNode.name, id: input.switchNode.id };
 	},
 
 	collectPinData(
 		input: SwitchCaseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
-		// Collect from the chains attached to the builder (prefix and feeders).
-		// Skip the input itself: a feeder chain contains the builder as its tail.
-		for (const chain of getBuilderChains(input)) {
-			for (const chainNode of chain.allNodes) {
-				if (chainNode && chainNode !== (input as unknown)) {
-					collector(chainNode);
-				}
-			}
-		}
-		// Collect from Switch node
+		collectFromBuilderChains(input, collector);
 		collector(input.switchNode);
 
 		// Collect from cases
@@ -88,10 +76,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	addNodes(input: SwitchCaseInput, ctx: MutablePluginContext): string {
-		// Materialize every chain attached to the builder (prefix and feeders).
-		for (const chain of getBuilderChains(input)) {
-			ctx.addBranchToGraph(chain);
-		}
+		addBuilderChainsToGraph(input, ctx);
 
 		// Build the switch node connections to its cases
 		const switchMainConns = new Map<number, ConnectionTarget[]>();

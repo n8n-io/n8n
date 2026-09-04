@@ -427,6 +427,12 @@ function retargetDeclaredConnections(
 	}
 }
 
+/** A node chain attached to a branching builder, as its inline prefix or as a feeder. */
+type BuilderChain = NodeChain<
+	NodeInstance<string, string, unknown>,
+	NodeInstance<string, string, unknown>
+>;
+
 /**
  * Internal NodeChain implementation
  *
@@ -565,6 +571,27 @@ class NodeChainImpl<
 	}
 
 	/**
+	 * Record how this chain relates to the builder returned by a chain-position
+	 * onTrue/onFalse/onCase call. A tail instance creates a fresh builder: this chain
+	 * is its inline prefix, and edges into the composite enter at the chain head. A
+	 * tail that already is a builder returns itself: this chain is one feeder of
+	 * possibly many into a shareable builder, so chain-internal edges that point at
+	 * the builder object are rewritten onto the branching node now.
+	 */
+	private claimBuilder(
+		tailIsBuilder: boolean,
+		builder: { prefixChain?: BuilderChain; feederChains: BuilderChain[] },
+		branchingNode: NodeInstance<string, string, unknown>,
+	): void {
+		if (tailIsBuilder) {
+			builder.feederChains.push(this);
+			retargetDeclaredConnections(this.allNodes, builder, branchingNode);
+		} else {
+			builder.prefixChain = this;
+		}
+	}
+
+	/**
 	 * Start building an IF branch with the true branch target.
 	 * Delegates to the tail node's onTrue method.
 	 */
@@ -574,17 +601,7 @@ class NodeChainImpl<
 		}
 		const builder = this.tail.onTrue(target);
 		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
-		if (isIfElseBuilder(this.tail)) {
-			// The chain feeds a pre-existing builder that other chains can share: record it
-			// as one feeder of possibly many. Chain-internal edges point at the builder
-			// object and mean "connect to the IF node", so rewrite them now.
-			builderImpl.feederChains.push(this);
-			retargetDeclaredConnections(this.allNodes, builder, builderImpl.ifNode);
-		} else {
-			// The tail IF instance created this builder: the chain is its inline prefix,
-			// and edges into the composite enter at the chain head.
-			builderImpl.prefixChain = this;
-		}
+		this.claimBuilder(isIfElseBuilder(this.tail), builderImpl, builderImpl.ifNode);
 		return builder;
 	}
 
@@ -598,17 +615,7 @@ class NodeChainImpl<
 		}
 		const builder = this.tail.onFalse(target);
 		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
-		if (isIfElseBuilder(this.tail)) {
-			// The chain feeds a pre-existing builder that other chains can share: record it
-			// as one feeder of possibly many. Chain-internal edges point at the builder
-			// object and mean "connect to the IF node", so rewrite them now.
-			builderImpl.feederChains.push(this);
-			retargetDeclaredConnections(this.allNodes, builder, builderImpl.ifNode);
-		} else {
-			// The tail IF instance created this builder: the chain is its inline prefix,
-			// and edges into the composite enter at the chain head.
-			builderImpl.prefixChain = this;
-		}
+		this.claimBuilder(isIfElseBuilder(this.tail), builderImpl, builderImpl.ifNode);
 		return builder;
 	}
 
@@ -622,17 +629,7 @@ class NodeChainImpl<
 		}
 		const builder = this.tail.onCase(index, target);
 		const builderImpl = builder as SwitchCaseBuilderImpl<TTail['_outputType']>;
-		if (isSwitchCaseBuilder(this.tail)) {
-			// The chain feeds a pre-existing builder that other chains can share: record it
-			// as one feeder of possibly many. Chain-internal edges point at the builder
-			// object and mean "connect to the Switch node", so rewrite them now.
-			builderImpl.feederChains.push(this);
-			retargetDeclaredConnections(this.allNodes, builder, builderImpl.switchNode);
-		} else {
-			// The tail Switch instance created this builder: the chain is its inline
-			// prefix, and edges into the composite enter at the chain head.
-			builderImpl.prefixChain = this;
-		}
+		this.claimBuilder(isSwitchCaseBuilder(this.tail), builderImpl, builderImpl.switchNode);
 		return builder;
 	}
 
@@ -818,14 +815,9 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 	/** All nodes from both branches (for workflow-builder) */
 	_allBranchNodes: Array<NodeInstance<string, string, unknown>> = [];
 	/** Chain that created this builder inline (a.to(ifNode).onTrue(...)); edges into the composite enter at its head */
-	prefixChain?: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	>;
+	prefixChain?: BuilderChain;
 	/** Chains that feed this pre-existing builder (t.to(builder).onX(...)); edges into the builder enter at the IF node */
-	feederChains: Array<
-		NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	> = [];
+	feederChains: BuilderChain[] = [];
 
 	constructor(ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>) {
 		this.ifNode = ifNode;
@@ -892,14 +884,9 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 	/** All nodes from all cases (for workflow-builder) */
 	_allCaseNodes: Array<NodeInstance<string, string, unknown>> = [];
 	/** Chain that created this builder inline (a.to(switchNode).onCase(...)); edges into the composite enter at its head */
-	prefixChain?: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	>;
+	prefixChain?: BuilderChain;
 	/** Chains that feed this pre-existing builder (t.to(builder).onCase(...)); edges into the builder enter at the Switch node */
-	feederChains: Array<
-		NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	> = [];
+	feederChains: BuilderChain[] = [];
 
 	constructor(switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>) {
 		this.switchNode = switchNode;

@@ -1839,79 +1839,55 @@ describe('Workflow Builder', () => {
 			expect(json.pinData).toBeUndefined();
 		});
 
-		it('should collect pinData from a branching node passed as a builder', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Route', pinData: [{ decision: 'pinned' }] },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+		type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
+		const cfg = (name: string, pinData?: Array<Record<string, string>>) =>
+			pinData ? { name, pinData } : { name };
+		const manualTrigger = (name: string) =>
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+		const ifNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.if', version: 2.2, config: cfg(name, pin) }) as IfNode;
+		const noOp = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.noOp', version: 1, config: cfg(name, pin) });
+		const setNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.set', version: 3.4, config: cfg(name, pin) });
 
-			const wf = workflow('test-id', 'Test').add(t).to(ifNode.onTrue!(yes).onFalse(no));
+		it('should collect pinData from a branching node passed as a builder', () => {
+			const t = manualTrigger('Start');
+			const route = ifNode('Route', [{ decision: 'pinned' }]);
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test').add(t).to(route.onTrue!(yes).onFalse(no));
 			const json = wf.toJSON();
 
 			expect(json.pinData?.['Route']).toEqual([{ decision: 'pinned' }]);
 		});
 
-		it('should collect pinData from source-chain nodes of a builder', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const prep = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Prep', pinData: [{ result: 'pinned' }] },
-			});
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Route' },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+		it('should collect pinData from the prefix chain of a builder', () => {
+			const t = manualTrigger('Start');
+			const prep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
 
-			const wf = workflow('test-id', 'Test').add(t).to(prep.to(ifNode).onTrue!(yes).onFalse(no));
+			const wf = workflow('test-id', 'Test').add(t).to(prep.to(route).onTrue!(yes).onFalse(no));
 			const json = wf.toJSON();
 
 			expect(json.pinData?.['Prep']).toEqual([{ result: 'pinned' }]);
 		});
 
-		it('should key pinData by the renamed node when a source-chain node collides with an existing name', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const existingPrep = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Prep' },
-			});
-			const pinnedPrep = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Prep', pinData: [{ result: 'pinned' }] },
-			});
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Route' },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+		it('should key pinData by the renamed node when a prefix-chain node collides with an existing name', () => {
+			const t = manualTrigger('Start');
+			const existingPrep = setNode('Prep');
+			const pinnedPrep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)
 				.to(existingPrep)
-				.to(pinnedPrep.to(ifNode).onTrue!(yes).onFalse(no));
+				.to(pinnedPrep.to(route).onTrue!(yes).onFalse(no));
 			const json = wf.toJSON();
 
 			// The colliding chain node is stored as 'Prep 1'; its pins must follow the rename
@@ -1921,31 +1897,15 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should collect pinData from a chain used as a branch target', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Route' },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const first = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'First', pinData: [{ head: 'pinned' }] },
-			});
-			const second = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Second', pinData: [{ tail: 'pinned' }] },
-			});
-			const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+			const t = manualTrigger('Start');
+			const route = ifNode('Route');
+			const first = setNode('First', [{ head: 'pinned' }]);
+			const second = setNode('Second', [{ tail: 'pinned' }]);
+			const no = noOp('No');
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.to(ifNode.onTrue!(first.to(second)).onFalse(no));
+				.to(route.onTrue!(first.to(second)).onFalse(no));
 			const json = wf.toJSON();
 
 			expect(json.pinData?.['First']).toEqual([{ head: 'pinned' }]);
@@ -1953,28 +1913,12 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should collect pinData from a nested builder used as a branch target', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
-			const outer = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Outer' },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const inner = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'Inner' },
-			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
-			const x = node({
-				type: 'n8n-nodes-base.noOp',
-				version: 1,
-				config: { name: 'X', pinData: [{ result: 'pinned' }] },
-			});
-			const y = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Y' } });
-			const z = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Z' } });
+			const t = manualTrigger('Start');
+			const outer = ifNode('Outer');
+			const inner = ifNode('Inner');
+			const x = noOp('X', [{ result: 'pinned' }]);
+			const y = noOp('Y');
+			const z = noOp('Z');
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)
@@ -1985,22 +1929,14 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should collect pinData from SplitInBatches done and each targets', () => {
-			const t = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: { name: 'Start' },
-			});
+			const t = manualTrigger('Start');
 			const sibNode = node({
 				type: 'n8n-nodes-base.splitInBatches',
 				version: 3,
 				config: { name: 'SIB' },
 			});
-			const doneNode = node({
-				type: 'n8n-nodes-base.noOp',
-				version: 1,
-				config: { name: 'Done', pinData: [{ result: 'pinned' }] },
-			});
-			const eachNode = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Each' } });
+			const doneNode = noOp('Done', [{ result: 'pinned' }]);
+			const eachNode = noOp('Each');
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)

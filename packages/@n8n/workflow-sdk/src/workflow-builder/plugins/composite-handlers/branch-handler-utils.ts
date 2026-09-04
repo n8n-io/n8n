@@ -42,12 +42,36 @@ export function getPrefixChainHead(target: unknown): { id: string; name: string 
 }
 
 /** All chains attached to a builder: the inline prefix chain plus every feeder chain. */
-export function getBuilderChains(target: unknown): NodeChain[] {
+function getBuilderChains(target: unknown): NodeChain[] {
 	const candidate = target as { prefixChain?: NodeChain; feederChains?: NodeChain[] };
 	const chains: NodeChain[] = [];
 	if (candidate.prefixChain) chains.push(candidate.prefixChain);
 	if (candidate.feederChains) chains.push(...candidate.feederChains);
 	return chains;
+}
+
+/**
+ * Collect pin data from every chain attached to a builder (prefix and feeders).
+ * Skips the builder itself: a feeder chain contains the builder as its tail.
+ */
+export function collectFromBuilderChains(
+	target: unknown,
+	collector: (node: NodeInstance<string, string, unknown>) => void,
+): void {
+	for (const chain of getBuilderChains(target)) {
+		for (const chainNode of chain.allNodes) {
+			if (chainNode && chainNode !== target) {
+				collector(chainNode);
+			}
+		}
+	}
+}
+
+/** Materialize every chain attached to a builder (prefix and feeders). */
+export function addBuilderChainsToGraph(target: unknown, ctx: MutablePluginContext): void {
+	for (const chain of getBuilderChains(target)) {
+		ctx.addBranchToGraph(chain);
+	}
 }
 
 /**

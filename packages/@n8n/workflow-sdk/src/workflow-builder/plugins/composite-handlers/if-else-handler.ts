@@ -6,8 +6,9 @@
 
 import {
 	collectFromTarget,
+	collectFromBuilderChains,
 	addBranchTargetNodes,
-	getBuilderChains,
+	addBuilderChainsToGraph,
 	getPrefixChainHead,
 	processBranchForComposite,
 	processBranchForBuilder,
@@ -50,47 +51,24 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 		if (prefixHead) {
 			return { name: prefixHead.name, id: prefixHead.id };
 		}
-		if (isIfElseBuilder(input)) {
-			return { name: input.ifNode.name, id: input.ifNode.id };
-		}
-		const composite = input;
-		return { name: composite.ifNode.name, id: composite.ifNode.id };
+		return { name: input.ifNode.name, id: input.ifNode.id };
 	},
 
 	collectPinData(
 		input: IfElseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
-		// Collect from the chains attached to the builder (prefix and feeders).
-		// Skip the input itself: a feeder chain contains the builder as its tail.
-		for (const chain of getBuilderChains(input)) {
-			for (const chainNode of chain.allNodes) {
-				if (chainNode && chainNode !== (input as unknown)) {
-					collector(chainNode);
-				}
-			}
-		}
-		// Collect from IF node
-		if (isIfElseBuilder(input)) {
-			collector(input.ifNode);
-			collectFromTarget(input.trueBranch, collector);
-			collectFromTarget(input.falseBranch, collector);
-			if (input.errorBranch) {
-				collectFromTarget(input.errorBranch, collector);
-			}
-		} else {
-			const composite = input;
-			collector(composite.ifNode);
-			collectFromTarget(composite.trueBranch, collector);
-			collectFromTarget(composite.falseBranch, collector);
+		collectFromBuilderChains(input, collector);
+		collector(input.ifNode);
+		collectFromTarget(input.trueBranch, collector);
+		collectFromTarget(input.falseBranch, collector);
+		if (isIfElseBuilder(input) && input.errorBranch) {
+			collectFromTarget(input.errorBranch, collector);
 		}
 	},
 
 	addNodes(input: IfElseInput, ctx: MutablePluginContext): string {
-		// Materialize every chain attached to the builder (prefix and feeders).
-		for (const chain of getBuilderChains(input)) {
-			ctx.addBranchToGraph(chain);
-		}
+		addBuilderChainsToGraph(input, ctx);
 
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 

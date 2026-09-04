@@ -401,6 +401,19 @@ describe('IF Else fluent API', () => {
 });
 
 describe('inline branch chains that end in an IF node', () => {
+	const ifNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name } }) as IfNode;
+	const noOp = (name: string) =>
+		node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name } });
+	const setNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name } });
+	const manualTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+	const webhookTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name } });
+	const scheduleTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name } });
+
 	it('expands a multi-node chain passed inline to .onFalse() instead of collapsing it', () => {
 		// Repro from a production trace: the retry chain passed to .onFalse() used to
 		// collapse to its IF tail. Build Repair 2, OpenRouter Call 2, and Validate Attempt 2
@@ -461,25 +474,13 @@ export default workflow('test-id', 'Test')
 	});
 
 	it('routes a nested branch target built from a chain to the chain head', () => {
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const outerIf = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Outer IF' },
-		}) as IfNode;
-		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const innerIf = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Inner IF' },
-		}) as IfNode;
-		const done = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Done' } });
-		const retry = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Retry' } });
+		const t = manualTrigger('Start');
+		const outerIf = ifNode('Outer IF');
+		const ok = noOp('OK');
+		const prep = setNode('Prep');
+		const innerIf = ifNode('Inner IF');
+		const done = noOp('Done');
+		const retry = noOp('Retry');
 
 		const inner = prep.to(innerIf).onTrue!(done).onFalse(retry);
 		const wf = workflow('test-id', 'Test').add(t).to(outerIf.onTrue!(ok).onFalse(inner));
@@ -498,22 +499,14 @@ export default workflow('test-id', 'Test')
 
 	it('connects the prefix node to the IF node when the chain tail is an existing builder', () => {
 		// t.to(builder) makes the builder the chain tail; .onFalse then returns that
-		// same builder with the chain as its source chain. The chain-internal edge
+		// same builder with the chain recorded as a feeder. The chain-internal edge
 		// must land on the IF node, not resolve back to the chain head (self-loop).
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const ifNode = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Route' },
-		}) as IfNode;
-		const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-		const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+		const t = manualTrigger('Start');
+		const check = ifNode('Route');
+		const yes = noOp('Yes');
+		const no = noOp('No');
 
-		const builder = ifNode.onTrue!(yes);
+		const builder = check.onTrue!(yes);
 		const wf = workflow('test-id', 'Test').add(t.to(builder).onFalse!(no));
 
 		const json = wf.toJSON();
@@ -527,24 +520,12 @@ export default workflow('test-id', 'Test')
 	});
 
 	it('merges branches into the renamed IF node when its name collides with an existing node', () => {
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const existingCheck = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Check' },
-		});
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Check' },
-		}) as IfNode;
-		const yes = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Yes' } });
-		const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+		const t = manualTrigger('Start');
+		const existingCheck = ifNode('Check');
+		const prep = setNode('Prep');
+		const check = ifNode('Check');
+		const yes = noOp('Yes');
+		const no = noOp('No');
 
 		const wf = workflow('test-id', 'Test')
 			.add(t)
@@ -565,30 +546,14 @@ export default workflow('test-id', 'Test')
 	});
 
 	it('keeps a second chain connected to the IF node when the first chain adds a branch', () => {
-		// Two chains share one builder object. When one chain calls .onFalse, it records
-		// itself as the builder's source chain. The other chain's edge must still land
+		// Two chains share one builder object. When one chain calls .onFalse, it becomes
+		// one of the builder's feeders. The other chain's edge must still land
 		// on the IF node, not on the claiming chain's head.
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
 
 		const branch = check.onTrue!(slack);
 		const fromWebhook = webhook.to(branch);
@@ -603,27 +568,11 @@ export default workflow('test-id', 'Test')
 	});
 
 	it('keeps a second chain connected to the IF node regardless of add order', () => {
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
 
 		const branch = check.onTrue!(slack);
 		const fromWebhook = webhook.to(branch);
@@ -639,33 +588,13 @@ export default workflow('test-id', 'Test')
 		// A builder claimed by a feeder chain (webhook.to(branch).onFalse(...)) can also
 		// be referenced as a branch target of another IF. That branch edge must land on
 		// the builder's IF node, not on the feeder chain's head.
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const outer = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Outer IF' },
-		}) as IfNode;
-		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
+		const t = manualTrigger('Start');
+		const outer = ifNode('Outer IF');
+		const ok = noOp('OK');
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
 
 		const branch = check.onTrue!(slack);
 		const claimed = webhook.to(branch).onFalse!(logError);
@@ -698,27 +627,11 @@ export default workflow('test-id', 'Test')
 		// wf.add(schedule).to(sharedBuilder): the cursor edge resolves through the
 		// composite head. A builder claimed by another chain must expose the IF node
 		// as its entry, not the claiming chain's head.
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
 
 		const branch = check.onTrue!(slack);
 		const fromWebhook = webhook.to(branch);
@@ -736,28 +649,12 @@ export default workflow('test-id', 'Test')
 	it('routes a composite literal branch into a shared builder to the IF node', () => {
 		// { ifNode, trueBranch, falseBranch } literals resolve branch entries through
 		// addBranchToGraph. A shared builder branch must land on its IF node.
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const t = manualTrigger('Start');
+		const ok = noOp('OK');
 
 		const branch = check.onTrue!(slack);
 		const claimed = webhook.to(branch).onFalse!(logError);
@@ -779,23 +676,11 @@ export default workflow('test-id', 'Test')
 		// .to(prep.to(builder).onFalse(x)) returns the builder itself, and the same
 		// object can be shared by other chains. The cursor edge lands on the IF node;
 		// the feeder keeps its own retargeted edge into the IF node.
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const prev = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const feeder = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const prev = manualTrigger('Start');
+		const feeder = setNode('Prep');
 
 		const branch = check.onTrue!(slack);
 
@@ -811,38 +696,14 @@ export default workflow('test-id', 'Test')
 		// Two chains claim the same builder via chain-position onX. Both are feeders
 		// into the IF node; both must reach the graph. Keeping only the last claim
 		// drops the earlier chain's nodes.
-		const check = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
-		const outer = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Outer IF' },
-		}) as IfNode;
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+		const t = manualTrigger('Start');
+		const ok = noOp('OK');
+		const outer = ifNode('Outer IF');
 
 		const branch = check.onTrue!(slack);
 		webhook.to(branch).onFalse!(logError);
@@ -866,33 +727,17 @@ export default workflow('test-id', 'Test')
 	});
 
 	it('keeps the prefix entry when a feeder chain also claims the builder', () => {
-		// prep.to(ifNode).onTrue(x) creates the builder with a prefix chain. A second
+		// prep.to(check).onTrue(x) creates the builder with a prefix chain. A second
 		// chain claiming it via onFalse is a feeder: it wires straight into the IF node
 		// and must not displace the prefix entry or drop the prefix nodes.
-		const ifNode = node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { name: 'Is Valid?' },
-		}) as IfNode;
-		const slack = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Send Slack' } });
-		const logError = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Log Error' },
-		});
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const prep = setNode('Prep');
+		const webhook = webhookTrigger('Webhook');
+		const t = manualTrigger('Start');
 
-		const branch = prep.to(ifNode).onTrue!(slack);
+		const branch = prep.to(check).onTrue!(slack);
 		webhook.to(branch).onFalse!(logError);
 
 		const json = workflow('id', 'w').add(t).to(branch).toJSON();

@@ -305,24 +305,29 @@ describe('Switch Case fluent API', () => {
 });
 
 describe('inline chains that end in a Switch node', () => {
+	const switchNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.switch', version: 3.2, config: { name } }) as SwitchNode;
+	const noOp = (name: string) =>
+		node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name } });
+	const setNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name } });
+	const manualTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+	const webhookTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name } });
+	const scheduleTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name } });
+
 	it('connects the previous node to the chain head, not the Switch node', () => {
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const switchNode = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'My Switch' },
-		}) as SwitchNode;
-		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
-		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+		const t = manualTrigger('Start');
+		const prep = setNode('Prep');
+		const sw = switchNode('My Switch');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
 
 		const wf = workflow('test-id', 'Test')
 			.add(t)
-			.to(prep.to(switchNode).onCase!(0, caseA).onCase(1, caseB));
+			.to(prep.to(sw).onCase!(0, caseA).onCase(1, caseB));
 
 		const json = wf.toJSON();
 
@@ -338,22 +343,14 @@ describe('inline chains that end in a Switch node', () => {
 
 	it('connects the prefix node to the Switch node when the chain tail is an existing builder', () => {
 		// t.to(builder) makes the builder the chain tail; .onCase then returns that
-		// same builder with the chain as its source chain. The chain-internal edge
+		// same builder with the chain recorded as a feeder. The chain-internal edge
 		// must land on the Switch node, not resolve back to the chain head (self-loop).
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const switchNode = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'My Switch' },
-		}) as SwitchNode;
-		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
-		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
+		const t = manualTrigger('Start');
+		const sw = switchNode('My Switch');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
 
-		const builder = switchNode.onCase!(0, caseA);
+		const builder = sw.onCase!(0, caseA);
 		const wf = workflow('test-id', 'Test').add(t.to(builder).onCase!(1, caseB));
 
 		const json = wf.toJSON();
@@ -369,32 +366,16 @@ describe('inline chains that end in a Switch node', () => {
 	it('serializes an incoming connection to the renamed chain head after a name collision', () => {
 		// The chain head 'Prep' collides with an existing node and is renamed 'Prep 1'.
 		// A workflow-level .to() must resolve the composite entry to the renamed key.
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const existingPrep = node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { name: 'Prep' },
-		});
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const switchNode = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Router' },
-		}) as SwitchNode;
-		const handler = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Handler' },
-		});
+		const t = manualTrigger('Start');
+		const existingPrep = setNode('Prep');
+		const prep = setNode('Prep');
+		const sw = switchNode('Router');
+		const handler = noOp('Handler');
 
 		const wf = workflow('test-id', 'Test')
 			.add(t)
 			.to(existingPrep)
-			.to(prep.to(switchNode).onCase!(0, handler));
+			.to(prep.to(sw).onCase!(0, handler));
 
 		const json = wf.toJSON();
 
@@ -409,37 +390,17 @@ describe('inline chains that end in a Switch node', () => {
 	it('serializes a node-declared connection to the renamed chain head after a name collision', () => {
 		// Same collision, but the edge into the composite is declared on a node
 		// (source.to(composite)) instead of at the workflow level.
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const existingPrep = node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { name: 'Prep' },
-		});
-		const source = node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { name: 'Source' },
-		});
-		const prep = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Prep' } });
-		const switchNode = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Router' },
-		}) as SwitchNode;
-		const handler = node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { name: 'Handler' },
-		});
+		const t = manualTrigger('Start');
+		const existingPrep = setNode('Prep');
+		const source = setNode('Source');
+		const prep = setNode('Prep');
+		const sw = switchNode('Router');
+		const handler = noOp('Handler');
 
 		const wf = workflow('test-id', 'Test')
 			.add(t)
 			.to(existingPrep)
-			.add(source.to(prep.to(switchNode).onCase!(0, handler)));
+			.add(source.to(prep.to(sw).onCase!(0, handler)));
 
 		const json = wf.toJSON();
 
@@ -452,26 +413,14 @@ describe('inline chains that end in a Switch node', () => {
 	});
 
 	it('keeps a second chain connected to the Switch node when the first chain adds a case', () => {
-		// Two chains share one builder object. When one chain calls .onCase, it records
-		// itself as the builder's source chain. The other chain's edge must still land
+		// Two chains share one builder object. When one chain calls .onCase, it becomes
+		// one of the builder's feeders. The other chain's edge must still land
 		// on the Switch node, not on the claiming chain's head.
-		const sw = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Router' },
-		}) as SwitchNode;
-		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
-		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
 
 		const branch = sw.onCase!(0, caseA);
 		const fromWebhook = webhook.to(branch);
@@ -489,29 +438,13 @@ describe('inline chains that end in a Switch node', () => {
 		// A builder claimed by a feeder chain (webhook.to(branch).onCase(...)) can also
 		// be referenced as a case target of another Switch. That case edge must land on
 		// the builder's Switch node, not on the feeder chain's head.
-		const t = trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { name: 'Start' },
-		});
-		const outer = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Outer Router' },
-		}) as SwitchNode;
-		const ok = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'OK' } });
-		const sw = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Router' },
-		}) as SwitchNode;
-		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
-		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
+		const t = manualTrigger('Start');
+		const outer = switchNode('Outer Router');
+		const ok = noOp('OK');
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
 
 		const branch = sw.onCase!(0, caseA);
 		const claimed = webhook.to(branch).onCase!(1, caseB);
@@ -533,23 +466,11 @@ describe('inline chains that end in a Switch node', () => {
 		// wf.add(schedule).to(sharedBuilder): the cursor edge resolves through the
 		// composite head. A builder claimed by another chain must expose the Switch
 		// node as its entry, not the claiming chain's head.
-		const sw = node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: { name: 'Router' },
-		}) as SwitchNode;
-		const caseA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case A' } });
-		const caseB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Case B' } });
-		const webhook = trigger({
-			type: 'n8n-nodes-base.webhook',
-			version: 2,
-			config: { name: 'Webhook' },
-		});
-		const schedule = trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.2,
-			config: { name: 'Schedule' },
-		});
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
 
 		const branch = sw.onCase!(0, caseA);
 		const fromWebhook = webhook.to(branch);
