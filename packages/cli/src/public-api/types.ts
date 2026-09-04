@@ -33,10 +33,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace ExecutionRequest {
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
-}
-
 export declare namespace TestRunRequest {
 	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
 	// resolves it from `req.params.id`); `runId` is the test run id.

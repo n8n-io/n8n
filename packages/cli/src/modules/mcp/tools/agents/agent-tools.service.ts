@@ -12,6 +12,7 @@ import {
 	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
 	sanitizeAgentJsonConfig,
@@ -314,7 +315,7 @@ const verifyMcpServerInput = {
 	),
 	transport: z.enum(['sse', 'streamableHttp']).optional().default('streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 		.optional()
 		.default('none')
 		.describe('Authentication method; every value other than none requires credential'),

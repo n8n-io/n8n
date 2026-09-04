@@ -1,7 +1,11 @@
+import type { Logger } from '@n8n/backend-common';
 import type { MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import { paginatedRequest } from '@/utils/strapi-utils';
 
+import { githubUsesCredentialsMockServer, notionMockServer } from '../mock-servers';
 import { McpRegistryApiClient } from '../mcp-registry-api.client';
 
 vi.mock('@/utils/strapi-utils', () => ({
@@ -16,6 +20,8 @@ const DEV_DEFAULT_URL = 'http://127.0.0.1:1337/api/mcp-servers';
 
 describe('McpRegistryApiClient', () => {
 	let client: McpRegistryApiClient;
+	let logger: Logger;
+	let credentialTypes: CredentialTypes;
 	const originalEnv = process.env.ENVIRONMENT;
 	const originalDevUrl = process.env.N8N_MCP_SERVERS_DEV_URL;
 
@@ -23,7 +29,16 @@ describe('McpRegistryApiClient', () => {
 		vi.clearAllMocks();
 		delete process.env.ENVIRONMENT;
 		delete process.env.N8N_MCP_SERVERS_DEV_URL;
-		client = new McpRegistryApiClient();
+		logger = mock<Logger>();
+		credentialTypes = mock<CredentialTypes>();
+		credentialTypes.recognizes = vi.fn().mockReturnValue(true);
+		credentialTypes.getParentTypes = vi.fn().mockReturnValue(['oAuth2Api']);
+		credentialTypes.getByName = vi.fn().mockImplementation((name) => ({
+			name,
+			displayName: name,
+			properties: [],
+		}));
+		client = new McpRegistryApiClient(logger, credentialTypes);
 	});
 
 	afterEach(() => {
@@ -128,6 +143,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
+					version: 2,
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -135,12 +151,71 @@ describe('McpRegistryApiClient', () => {
 		});
 
 		it('should return servers from paginatedRequest', async () => {
-			const mockServers = [{ name: 'server-a' }, { name: 'server-b' }];
+			const mockServers = [
+				notionMockServer,
+				{ ...notionMockServer, slug: 'server-b', name: 'server-b' },
+			];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
 			const result = await client.fetchAllServers();
 
 			expect(result).toEqual(mockServers);
+		});
+
+		it('should skip malformed registry entries without rejecting the response', async () => {
+			mockPaginatedRequest.mockResolvedValue([notionMockServer, { slug: 'broken' }]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toEqual([notionMockServer]);
+			expect(logger.warn).toHaveBeenCalledWith('Skipped invalid MCP registry entries', {
+				skippedCount: 1,
+			});
+		});
+
+		it.each([
+			['a bare array', ['docs'], ['docs']],
+			['a data envelope', { data: ['docs'] }, ['docs']],
+			['an empty envelope', {}, undefined],
+			['a null envelope', { data: null }, undefined],
+			['a missing value', undefined, undefined],
+		])('should keep a server whose tags come back as %s', async (_, tags, expected) => {
+			mockPaginatedRequest.mockResolvedValue([{ ...notionMockServer, tags }]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].tags).toEqual(expected);
+		});
+
+		it('should keep only OAuth2 credential options', async () => {
+			mockPaginatedRequest.mockResolvedValue([githubUsesCredentialsMockServer]);
+			vi.mocked(credentialTypes.getParentTypes).mockImplementation((credentialType) =>
+				credentialType === 'githubOAuth2Api' ? ['oAuth2Api'] : [],
+			);
+
+			const result = await client.fetchAllServers();
+
+			expect(result[0]).toMatchObject({
+				authType: 'usesCredentials',
+				usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+			});
+		});
+
+		it('should skip servers without an OAuth2 credential option', async () => {
+			mockPaginatedRequest.mockResolvedValue([
+				{
+					...githubUsesCredentialsMockServer,
+					usesCredentials: [
+						{ credentialType: 'githubApi', name: 'Access Token', value: 'accessToken' },
+					],
+				},
+			]);
+			vi.mocked(credentialTypes.getParentTypes).mockReturnValue([]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toEqual([]);
 		});
 	});
 
@@ -153,6 +228,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
+					version: 2,
 					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
@@ -182,6 +258,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
+					version: 2,
 					filters: {
 						slug: {
 							$in: ['server-a', 'server-b', 'server-c'],
@@ -194,7 +271,7 @@ describe('McpRegistryApiClient', () => {
 		});
 
 		it('should return fetched servers', async () => {
-			const mockServers = [{ name: 'server-a' }];
+			const mockServers = [{ ...notionMockServer, slug: 'server-a', name: 'server-a' }];
 			mockPaginatedRequest.mockResolvedValue(mockServers);
 
 			const result = await client.fetchServersBySlugs(['server-a']);
@@ -222,6 +299,7 @@ describe('McpRegistryApiClient', () => {
 				1,
 				PRODUCTION_URL,
 				{
+					version: 2,
 					filters: {
 						slug: {
 							$in: slugs.slice(0, 100),
@@ -237,6 +315,7 @@ describe('McpRegistryApiClient', () => {
 				2,
 				PRODUCTION_URL,
 				{
+					version: 2,
 					filters: {
 						slug: {
 							$in: slugs.slice(100, 200),
@@ -252,6 +331,7 @@ describe('McpRegistryApiClient', () => {
 				3,
 				PRODUCTION_URL,
 				{
+					version: 2,
 					filters: {
 						slug: {
 							$in: slugs.slice(200, 250),
@@ -265,8 +345,8 @@ describe('McpRegistryApiClient', () => {
 
 		it('should concatenate results from all batches', async () => {
 			const slugs = Array.from({ length: 150 }, (_, i) => `server-${i + 1}`);
-			const batch1 = [{ name: 'server-1' }];
-			const batch2 = [{ name: 'server-101' }];
+			const batch1 = [{ ...notionMockServer, slug: 'server-1', name: 'server-1' }];
+			const batch2 = [{ ...notionMockServer, slug: 'server-101', name: 'server-101' }];
 			mockPaginatedRequest.mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2);
 
 			const result = await client.fetchServersBySlugs(slugs);

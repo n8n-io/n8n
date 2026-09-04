@@ -75,6 +75,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createSetupItemsEmitter,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
@@ -2470,6 +2471,17 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		// Setup panel v2: wire the durable `setup-items` sink only while the flag
+		// is on — its presence is the package-side gate.
+		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
+			context.setupItemsEmitter = createSetupItemsEmitter({
+				eventBus: this.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+			});
+		}
 
 		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
