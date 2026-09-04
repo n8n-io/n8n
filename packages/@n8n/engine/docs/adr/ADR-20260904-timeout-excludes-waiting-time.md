@@ -6,56 +6,60 @@ Decision Owner: Catalysts
 
 ## Context
 
-A workflow can carry an execution timeout, after which a running execution is
-stopped. Engine v2 does not enforce timeouts yet; the value will reach the data
-plane with the rest of the workflow's settings.
+A workflow can have an execution timeout. The timeout stops a running
+execution after a given length of time. Engine v2 does not apply timeouts yet.
+The value reaches the data plane with the other settings of the workflow.
 
-Waits make the question ambiguous for the first time. An approval can sit
-unanswered for weeks and a scheduled wait can name a date months out, so
-whether that time counts against the timeout decides whether timeouts and waits
-can be used together at all.
+Waits make the rule unclear for the first time. An approval can stay
+unanswered for several weeks. A scheduled wait can name a date several months
+in the future. Therefore the answer decides if a user can use a timeout and a
+wait in the same workflow.
 
-In v1 they can, because a waiting execution is not running: it is serialized to
-the database and taken off the active list, and the poller starts it again as a
-fresh execution when the wait ends. The timeout applies to each active stretch,
-never to the pause between them. No one designed that; it fell out of how
-waiting was implemented.
+In engine v1 a user can use both, because a waiting execution does not run.
+Engine v1 writes the execution to the database and removes it from the list of
+active executions. The poller then starts the execution again when the wait
+ends. The timeout applies to each active period. It does not apply to the pause
+between two active periods. No one designed this behaviour. It is a result of
+the way engine v1 implements a wait.
 
 ## Decision
 
-The execution timeout measures time the execution was **runnable**, not wall
-clock. Time an execution spends reporting `waiting` does not count against it.
+The execution timeout measures the time in which the execution can run. It does
+not measure the clock time. Time in which the execution reports the `waiting`
+status does not count.
 
-This keeps v1's observable behaviour, and it is what makes a timeout mean what
-users take it to mean: a guard against an execution that is stuck doing
-something, not against one that is deliberately paused.
+This keeps the behaviour of engine v1. It also makes the timeout do what users
+expect. The timeout protects against an execution that cannot make progress. It
+does not protect against an execution that a workflow pauses on purpose.
 
 ## Alternatives Considered
 
-- **Wall clock from the execution's start.** The simplest thing to implement and
-  the easiest to explain, and it makes any timeout incompatible with any wait
-  longer than it. A workflow with a one-hour timeout and a one-day wait could
-  never finish, and the failure would look like a timeout rather than a
-  misconfiguration.
-- **Let the timeout bound the wait too.** Treats "how long may this execution
-  work" and "how long may this execution be paused" as one limit. They are
-  different questions with different right answers, and a wait already carries
-  its own deadline.
+- **Measure the clock time from the start of the execution.** This option is
+  the simplest to implement and to explain. It also makes a timeout
+  incompatible with a wait that is longer than the timeout. A workflow with a
+  timeout of one hour and a wait of one day could never finish. The result
+  would look like a timeout and not like a configuration error.
+- **Let the timeout also limit the wait.** This option treats two questions as
+  one. The first question is how long an execution can work. The second is how
+  long an execution can stay paused. The two questions have different answers.
+  A wait also has its own deadline.
 
 ## Consequences
 
-- Nothing enforces this yet. It records the rule for whoever implements
-  timeouts, and it is a rule about accounting rather than about waits, so it
-  belongs to that work.
-- Enforcement cannot be a single deadline computed at start. It needs either
-  elapsed time accumulated across runnable stretches, or a deadline recomputed
-  each time an execution stops waiting.
-- An execution that waits forever is never stopped by its timeout. Nothing
-  should rely on the timeout to bound a wait; a wait that must end needs a
-  deadline of its own.
-- The derived `waiting` status (ADR-20260902, decision 6) is the signal the
-  clock reads. An execution with one waiting branch and one executing branch
-  reports `running`, so its clock runs — which is correct, since it is working.
+- No component applies this rule yet. The ADR records the rule for the work
+  that adds timeouts. The rule is about time accounting and not about waits, so
+  it belongs to that work.
+- A single deadline that the engine calculates at the start cannot apply this
+  rule. The work needs one of two other methods. It can add up the time of each
+  period in which the execution can run. It can also calculate a new deadline
+  each time the execution stops waiting.
+- The timeout never stops an execution that waits without an end. No component
+  can use the timeout to limit a wait. A wait that must end needs its own
+  deadline.
+- The derived `waiting` status (ADR-20260902, decision 6) is the signal that the
+  time accounting reads. An execution with one waiting branch and one running
+  branch reports `running`. Its time therefore counts, which is correct, because
+  the execution can make progress.
 
 ## Links
 
