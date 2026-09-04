@@ -49,6 +49,10 @@ import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+import { WorkingCopyUpdater } from './working-copy-updater';
+import type { SelectivePushOptions } from './working-copy-updater';
+
+export type { SelectivePushOptions };
 
 /**
  * Subfolder of the working copy that holds the n8n-managed export. Keeping it
@@ -98,6 +102,7 @@ export class GitConnectionsService {
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('git-connections');
@@ -202,6 +207,7 @@ export class GitConnectionsService {
 		input: PushGitConnectionDto,
 	): Promise<GitConnectionPushResultDto> {
 		const connection = await this.getEntity(connectionId);
+		// TODO(LIGO-1030): resolve timestamped branch when "branching required" is on.
 		const { branchName } = connection;
 		if (!branchName) throw new BadRequestError('A branch name is required to push');
 
@@ -262,6 +268,101 @@ export class GitConnectionsService {
 			await this.repository.save(connection);
 
 			return { connectionId, counts: exportResult.counts, commitSha };
+		} finally {
+			await rm(stagingFolder, { recursive: true, force: true });
+		}
+	}
+
+	/**
+	 * Push selected workflows of one project and their dependencies to the
+	 * branch. Unselected workflows stay as-is, and so do the projects and
+	 * folders the branch already holds: a selective push creates a container,
+	 * never renames one, so nothing moves that the user did not select.
+	 */
+	async pushSelection(
+		connectionId: string,
+		actor: User,
+		input: PushGitConnectionDto,
+		selection: SelectivePushOptions,
+	): Promise<GitConnectionPushResultDto> {
+		const connection = await this.getEntity(connectionId);
+		// TODO(LIGO-1030): resolve timestamped branch when "branching required" is on.
+		const { branchName } = connection;
+		if (!branchName) throw new BadRequestError('A branch name is required to push');
+
+		this.workingCopy.validateSelection(selection);
+		await this.assertProjectLinked(connectionId, selection.projectId);
+
+		const rootFolder = this.rootFolder(connectionId);
+		if (!(await this.gitService.hasWorkingCopy(rootFolder))) {
+			throw new BadRequestError(
+				'This Git connection repository is not cloned. Clone it before pushing.',
+			);
+		}
+
+		const repositoryFolder = path.join(rootFolder, 'repository');
+		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
+
+		// No prior export: bootstrap from an empty branch.
+		const isFirstPush = !(await this.exportedWorkingCopyExists(exportFolder));
+		if (isFirstPush) {
+			await mkdir(exportFolder, { recursive: true });
+		}
+
+		const branchState = isFirstPush ? {} : await this.workingCopy.readBranchState(exportFolder);
+
+		this.workingCopy.assertDeletionsOnBranch(branchState, selection);
+
+		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${EXPORT_SUBFOLDER}-`));
+
+		try {
+			// The exporter writes only the selected workflows, the folders on the
+			// path to them, and the dependencies they use. Ids outside the project
+			// make it throw.
+			const { manifest: staging } = await this.n8nPackagesService.exportPackageToDirectory(
+				{
+					user: actor,
+					projectIds: [selection.projectId],
+					projectWorkflowIds: selection.workflowIds,
+					includeVariableValues: true,
+					canExportVariableValues: true,
+					includeTags: true,
+					// A sub-workflow nobody selected stays a reference. Failing here would
+					// block a push whose sub-workflow the branch already holds.
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				},
+				{ targetDir: stagingFolder },
+			);
+
+			const mergedManifest = await this.workingCopy.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				branchState,
+				selection,
+			);
+
+			const credentials = await this.decryptCredentials(connection);
+			const { commitSha, head } = await this.gitService.commitAndPush({
+				connection,
+				credentials,
+				rootFolder,
+				branchName,
+				author: this.commitAuthor(actor),
+				commitMessage: input.commitMessage,
+				force: input.force ?? false,
+				stagePathspec: EXPORT_SUBFOLDER,
+			});
+
+			connection.baseCommit = head;
+			await this.repository.save(connection);
+
+			return {
+				connectionId,
+				counts: this.workingCopy.deltaCounts(branchState, mergedManifest, selection),
+				commitSha,
+			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -592,6 +693,13 @@ export class GitConnectionsService {
 	/** Remove everything on disk for a connection, including the pinned host key. */
 	private async purge(id: string) {
 		await this.gitService.cleanup(this.rootFolder(id));
+	}
+
+	private async assertProjectLinked(connectionId: string, projectId: string): Promise<void> {
+		const link = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+		if (!link || link.gitConnectionId !== connectionId) {
+			throw new BadRequestError('The project is not linked to this Git connection');
+		}
 	}
 
 	private toPublic(connection: GitConnection): GitConnectionPublicDto {

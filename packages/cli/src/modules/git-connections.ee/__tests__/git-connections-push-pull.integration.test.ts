@@ -7,13 +7,13 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
@@ -26,7 +26,12 @@ import {
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingCredential,
+} from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { ProjectService } from '@/services/project.service.ee';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -36,6 +41,7 @@ import { GitConnectionProjectRepository } from '../database/repositories/git-con
 import { GitConnectionRepository } from '../database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
+import { WorkingCopyUpdater } from '../working-copy-updater';
 
 type TestRemote = {
 	bareDir: string;
@@ -84,6 +90,8 @@ beforeEach(async () => {
 		'Folder',
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -95,6 +103,7 @@ beforeEach(async () => {
 	cipher.decryptV2.mockImplementation(async (value) => value);
 	const instanceSettings = mock<InstanceSettings>({
 		n8nFolder: path.join(testRoot, 'instance'),
+		instanceId: 'inst-roundtrip',
 	});
 	const logger = mockLogger();
 	service = new GitConnectionsService(
@@ -106,6 +115,7 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
+		new WorkingCopyUpdater(instanceSettings),
 		logger,
 	);
 });
@@ -146,6 +156,21 @@ async function createConnection(repositoryUrl: string): Promise<GitConnection> {
 			keyGeneratorType: null,
 			baseCommit: null,
 		}),
+	);
+}
+
+async function inspectBranch(
+	bareDir: string,
+	branch = 'main',
+): Promise<{ git: SimpleGit; dir: string }> {
+	const inspectionDir = path.join(testRoot, `inspection-${Date.now()}`);
+	await simpleGit().clone(bareDir, inspectionDir, ['--branch', branch, '--single-branch']);
+	return { git: simpleGit(inspectionDir), dir: inspectionDir };
+}
+
+async function readBranchManifest(inspectionDir: string) {
+	return packageManifestSchema.parse(
+		jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
 	);
 }
 
@@ -262,5 +287,433 @@ describe('Git connection push and pull', () => {
 		expect((await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit).toBe(
 			remoteHead,
 		);
+	});
+});
+
+describe('Selective push', () => {
+	async function setupProjectWithWorkflows(
+		projectName: string,
+		workflowNames: string[],
+		connectionId: string,
+	) {
+		const project = await createTeamProject(projectName, owner);
+		await connectionProjectRepository.linkProject(project.id, connectionId);
+		const workflows = [];
+		for (const name of workflowNames) {
+			workflows.push(await createWorkflow({ name, nodes: [], connections: {} }, project));
+		}
+		return { project, workflows };
+	}
+
+	it('adds only the selected workflow, leaving existing workflows untouched', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2', 'w3'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
+
+		const result = await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Add w4' },
+			{ projectId: project.id, workflowIds: [w4.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows).toHaveLength(4);
+		const workflowIds = manifest.workflows!.map((w) => w.id);
+		expect(workflowIds).toContain(w4.id);
+		for (const w of workflows) {
+			expect(workflowIds).toContain(w.id);
+		}
+		expect(result.counts.workflows).toBe(1);
+	});
+
+	it('updates only the selected workflow, leaving others untouched', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2', 'w3'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+		const before = await inspectBranch(remote.bareDir);
+		const w1Target = (await readBranchManifest(before.dir)).workflows!.find(
+			(w) => w.id === workflows[0].id,
+		)!.target;
+		const w1FileBefore = await readFile(
+			path.join(before.dir, 'n8n-export', w1Target, 'workflow.json'),
+			'utf-8',
+		);
+
+		// Change both w1 and w2 on the instance, but select only w2. A regression to
+		// a full push would carry the w1 change to the branch as well.
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflows[0].id, {
+			name: 'w1-changed-but-not-selected',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+		await workflowRepository.update(workflows[1].id, { name: 'w2-updated' });
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Update w2' },
+			{
+				projectId: project.id,
+				workflowIds: [workflows[1].id],
+				deletedWorkflowIds: [],
+			},
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows).toHaveLength(3);
+		expect(manifest.workflows!.find((w) => w.id === workflows[1].id)!.name).toBe('w2-updated');
+
+		const w1Entry = manifest.workflows!.find((w) => w.id === workflows[0].id)!;
+		expect(w1Entry).toEqual({ id: workflows[0].id, name: 'w1', target: w1Target });
+		expect(await readFile(path.join(dir, 'n8n-export', w1Target, 'workflow.json'), 'utf-8')).toBe(
+			w1FileBefore,
+		);
+	});
+
+	it('deletes the selected workflow from the branch', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2', 'w3'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Delete w3' },
+			{
+				projectId: project.id,
+				workflowIds: [],
+				deletedWorkflowIds: [workflows[2].id],
+			},
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows).toHaveLength(2);
+		const workflowIds = manifest.workflows!.map((w) => w.id);
+		expect(workflowIds).not.toContain(workflows[2].id);
+		expect(workflowIds).toContain(workflows[0].id);
+		expect(workflowIds).toContain(workflows[1].id);
+	});
+
+	it('handles add and delete in the same push atomically', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2', 'w3'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Add w4, delete w3' },
+			{
+				projectId: project.id,
+				workflowIds: [w4.id],
+				deletedWorkflowIds: [workflows[2].id],
+			},
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows).toHaveLength(3);
+		const workflowIds = manifest.workflows!.map((w) => w.id);
+		expect(workflowIds).toContain(w4.id);
+		expect(workflowIds).not.toContain(workflows[2].id);
+	});
+
+	it('preserves workflows from other projects during selective push', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project: p1, workflows: p1Workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['p1-w1'],
+			connection.id,
+		);
+		const { workflows: p2Workflows } = await setupProjectWithWorkflows(
+			'Billing',
+			['p2-w1'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		const p1w2 = await createWorkflow({ name: 'p1-w2', nodes: [], connections: {} }, p1);
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Add p1-w2' },
+			{ projectId: p1.id, workflowIds: [p1w2.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		const workflowIds = manifest.workflows!.map((w) => w.id);
+		expect(workflowIds).toContain(p1Workflows[0].id);
+		expect(workflowIds).toContain(p1w2.id);
+		expect(workflowIds).toContain(p2Workflows[0].id);
+	});
+
+	async function saveProjectCredential(name: string, project: Project) {
+		return await saveCredential(
+			{ name, type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+	}
+
+	it('pushes only the dependencies of the selected workflows', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project } = await setupProjectWithWorkflows('Orders', [], connection.id);
+		const credA = await saveProjectCredential('Cred A', project);
+		const credB = await saveProjectCredential('Cred B', project);
+		const w1 = await buildWorkflowReferencingCredential({ name: 'w1', project, credential: credA });
+		await buildWorkflowReferencingCredential({ name: 'w2', project, credential: credB });
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Push w1' },
+			{ projectId: project.id, workflowIds: [w1.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows!.map((w) => w.id)).toEqual([w1.id]);
+		expect(manifest.credentials!.map((c) => c.id)).toEqual([credA.id]);
+		expect(manifest.requirements?.credentials).toEqual([
+			expect.objectContaining({ id: credA.id, usedByWorkflows: [w1.id] }),
+		]);
+		const credentialDir = path.join(dir, 'n8n-export', manifest.credentials![0].target);
+		await expect(stat(path.join(credentialDir, 'credential.json'))).resolves.toBeDefined();
+	});
+
+	it('lists a called sub-workflow as a requirement when the selection leaves it out', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['sub'],
+			connection.id,
+		);
+		const caller = await buildWorkflowCallingSubWorkflow({
+			name: 'caller',
+			project,
+			subWorkflowId: workflows[0].id,
+		});
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Update the caller only' },
+			{ projectId: project.id, workflowIds: [caller.id], deletedWorkflowIds: [] },
+		);
+
+		const manifest = await readBranchManifest((await inspectBranch(remote.bareDir)).dir);
+
+		// Nobody selected the sub-workflow, so the push states the reference and
+		// leaves the copy the branch holds alone.
+		expect(manifest.requirements?.workflows).toEqual([
+			expect.objectContaining({ id: workflows[0].id, usedByWorkflows: [caller.id] }),
+		]);
+		expect(manifest.workflows!.map((w) => w.id).sort()).toEqual(
+			[caller.id, workflows[0].id].sort(),
+		);
+	});
+
+	it('removes a dependency from the branch together with its last user', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project } = await setupProjectWithWorkflows('Orders', [], connection.id);
+		const shared = await saveProjectCredential('Shared', project);
+		const onlyW1 = await saveProjectCredential('Only W1', project);
+		const w1 = await buildWorkflowReferencingCredential({
+			name: 'w1',
+			project,
+			credential: onlyW1,
+		});
+		const w2 = await buildWorkflowReferencingCredential({
+			name: 'w2',
+			project,
+			credential: shared,
+		});
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+		const before = await readBranchManifest((await inspectBranch(remote.bareDir)).dir);
+		const onlyW1Target = before.credentials!.find((c) => c.id === onlyW1.id)!.target;
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Delete w1' },
+			{ projectId: project.id, workflowIds: [], deletedWorkflowIds: [w1.id] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows!.map((w) => w.id)).toEqual([w2.id]);
+		expect(manifest.credentials!.map((c) => c.id)).toEqual([shared.id]);
+		expect(manifest.requirements?.credentials).toEqual([
+			expect.objectContaining({ id: shared.id, usedByWorkflows: [w2.id] }),
+		]);
+		await expect(stat(path.join(dir, 'n8n-export', onlyW1Target))).rejects.toThrow();
+	});
+
+	it('moves a renamed workflow to its new directory and removes the old one', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+		const before = await readBranchManifest((await inspectBranch(remote.bareDir)).dir);
+		const oldTarget = before.workflows!.find((w) => w.id === workflows[1].id)!.target;
+
+		await Container.get(WorkflowRepository).update(workflows[1].id, { name: 'Renamed' });
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Rename w2' },
+			{ projectId: project.id, workflowIds: [workflows[1].id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+		const renamed = manifest.workflows!.find((w) => w.id === workflows[1].id)!;
+
+		expect(renamed.name).toBe('Renamed');
+		expect(renamed.target).not.toBe(oldTarget);
+		expect(renamed.target).toMatch(/\/workflows\/renamed$/);
+		await expect(
+			stat(path.join(dir, 'n8n-export', renamed.target, 'workflow.json')),
+		).resolves.toBeDefined();
+		await expect(stat(path.join(dir, 'n8n-export', oldTarget))).rejects.toThrow();
+		expect(manifest.workflows).toHaveLength(2);
+	});
+
+	it('leaves a renamed folder alone, so unselected workflows keep their place', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const project = await createTeamProject('Orders', owner);
+		await connectionProjectRepository.linkProject(project.id, connection.id);
+		const folder = await createFolder(project, { name: 'Sales' });
+		const selected = await createWorkflow(
+			{ name: 'Selected', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		const unselected = await createWorkflow(
+			{ name: 'Unselected', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+
+		const folderRepository = Container.get(FolderRepository);
+		await folderRepository.update(folder.id, { name: 'Revenue' });
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Rename folder, push one workflow' },
+			{ projectId: project.id, workflowIds: [selected.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+		const folderEntry = manifest.folders!.find((f) => f.id === folder.id)!;
+		const selectedEntry = manifest.workflows!.find((w) => w.id === selected.id)!;
+		const unselectedEntry = manifest.workflows!.find((w) => w.id === unselected.id)!;
+
+		// Nobody selected the rename, so the branch keeps the folder it has and
+		// the selected workflow lands next to its unselected sibling.
+		expect(folderEntry).toMatchObject({ name: 'Sales', target: expect.stringMatching(/sales$/) });
+		expect(selectedEntry.target).toBe(`${folderEntry.target}/workflows/selected`);
+		expect(unselectedEntry.target).toBe(`${folderEntry.target}/workflows/unselected`);
+		await expect(
+			stat(path.join(dir, 'n8n-export', unselectedEntry.target, 'workflow.json')),
+		).resolves.toBeDefined();
+		await expect(
+			stat(path.join(dir, 'n8n-export', folderEntry.target.replace(/sales$/, 'revenue'))),
+		).rejects.toThrow();
+
+		// The importer resolves a workflow's folder from its path, so both
+		// workflows must come back into the same folder on pull.
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.delete(unselected.id);
+		await service.pull(connection.id, owner);
+
+		expect(
+			await workflowRepository.findOne({
+				where: { id: unselected.id },
+				relations: ['parentFolder'],
+			}),
+		).toMatchObject({ name: 'Unselected', parentFolder: { id: folder.id } });
 	});
 });
