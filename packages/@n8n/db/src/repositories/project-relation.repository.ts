@@ -3,11 +3,27 @@ import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { ProjectRelation } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class ProjectRelationRepository extends Repository<ProjectRelation> {
 	constructor(dataSource: DataSource) {
 		super(ProjectRelation, dataSource.manager);
+	}
+
+	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {
+		const ownerEmails = new Map<string, string>();
+		for (const chunk of chunkIds([...new Set(projectIds)])) {
+			const rows = await this.createQueryBuilder('projectRelation')
+				.innerJoin('projectRelation.user', 'user')
+				.select('projectRelation.projectId', 'projectId')
+				.addSelect('user.email', 'email')
+				.where('projectRelation.projectId IN (:...projectIds)', { projectIds: chunk })
+				.andWhere('projectRelation.role = :role', { role: PROJECT_OWNER_ROLE_SLUG })
+				.getRawMany<{ projectId: string; email: string }>();
+			for (const { projectId, email } of rows) ownerEmails.set(projectId, email);
+		}
+		return ownerEmails;
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]) {
