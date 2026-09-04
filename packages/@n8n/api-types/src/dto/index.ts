@@ -435,3 +435,14 @@ export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
+
+export {
+	promotableResourceSchema,
+	promotableResourceStatusSchema,
+	promotableResourceTypeSchema,
+	promoteRequestSchema,
+	type PromotableResource,
+	type PromotableResourceStatus,
+	type PromotableResourceType,
+	type PromoteRequest,
+} from './promotions/promotable-resource.dto';

@@ -62,6 +62,7 @@ const PRE_HEAD = 'PREHEAD';
 const MASTER = 'MASTERSHA';
 const MERGE_TREE = 'MERGETREEOID';
 const POPULARITY = 'packages/frontend/editor-ui/data/node-popularity.json';
+const SETUPABILITY = 'packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json';
 
 const isRebase = (a) => a[0] === 'rebase' && a[1] !== '--abort';
 const favouringOwnSide = (a) => a[0] === 'rebase' && a.includes('-X') && a.includes('theirs');
@@ -138,9 +139,14 @@ test('classifyPaths and blocksLockfileRegen split mechanical from code conflicts
 	const { mechanical, code } = classifyPaths([
 		LOCKFILE,
 		'packages/cli/x.ts',
+		SETUPABILITY,
 		'.github/test-metrics/e2e-impact-map.json',
 	]);
-	assert.deepEqual(mechanical, [LOCKFILE, '.github/test-metrics/e2e-impact-map.json']);
+	assert.deepEqual(mechanical, [
+		LOCKFILE,
+		SETUPABILITY,
+		'.github/test-metrics/e2e-impact-map.json',
+	]);
 	assert.deepEqual(code, ['packages/cli/x.ts']);
 
 	assert.equal(blocksLockfileRegen(['packages/cli/package.json']), true);
