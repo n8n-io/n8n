@@ -127,6 +127,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'folder:list',
 	'oidc:manage',
 	'provisioning:manage',
+	'sso:manage',
 	'dataTable:create',
 	'dataTable:delete',
 	'dataTable:read',

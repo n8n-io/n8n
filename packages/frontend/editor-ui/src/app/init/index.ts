@@ -82,6 +82,7 @@ export async function initializeCore() {
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		managedByEnv: settingsStore.settings.sso.managedByEnv,
+		redirectLoginToSso: settingsStore.settings.sso.redirectLoginToSso,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
@@ -275,6 +276,7 @@ function registerAuthenticationHooks() {
 			authenticationMethod: settingsStore.userManagement
 				.authenticationMethod as AuthenticationMethod,
 			managedByEnv: settingsStore.settings.sso.managedByEnv,
+			redirectLoginToSso: settingsStore.settings.sso.redirectLoginToSso,
 			config: settingsStore.settings.sso,
 			features: {
 				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],

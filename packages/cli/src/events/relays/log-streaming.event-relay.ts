@@ -66,6 +66,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
+			'user-logged-in-with-sso-fallback': (event) => this.userLoggedInWithSsoFallback(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
@@ -558,6 +559,14 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.success',
 			payload: { ...user, authenticationMethod },
+		});
+	}
+
+	@Redactable()
+	private userLoggedInWithSsoFallback({ user }: RelayEventMap['user-logged-in-with-sso-fallback']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.login.ssoFallback',
+			payload: { ...user },
 		});
 	}
 

@@ -64,7 +64,7 @@ export class SsoConfig {
 
 	/** Whether the login screen redirects directly to SSO instead of showing email/password. */
 	@Env('N8N_SSO_REDIRECT_LOGIN_TO_SSO')
-	redirectLoginToSso: boolean = true;
+	redirectLoginToSso: boolean = false;
 
 	@Nested
 	saml: SamlConfig;
