@@ -34,6 +34,60 @@ export class TestTrigger implements INodeType {
 }`;
 }
 
+/** `description = { … } as INodeTypeDescription` — a widely used node layout. */
+function createTypeAssertedTriggerNode(webhookMethods: string | null): string {
+	const methodsProp = webhookMethods === null ? '' : `\n\twebhookMethods = ${webhookMethods};`;
+
+	return `
+import type { INodeType, INodeTypeDescription, IHookFunctions } from 'n8n-workflow';
+
+export class TestTrigger implements INodeType {
+	description = {
+		displayName: 'Test Trigger',
+		name: 'testTrigger',
+		group: ['trigger'],
+		version: 1,
+		description: 'A test trigger',
+		defaults: { name: 'Test Trigger' },
+		inputs: [],
+		outputs: ['main'],
+		webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],
+		properties: [],
+	} as INodeTypeDescription;${methodsProp}
+}`;
+}
+
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedTriggerNode(webhookMethods: string | null): string {
+	const methodsProp = webhookMethods === null ? '' : `\n\twebhookMethods = ${webhookMethods};`;
+
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription, IHookFunctions } from 'n8n-workflow';
+
+export class TestTriggerV1 implements INodeType {
+	description: INodeTypeDescription;${methodsProp}
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Trigger',
+			name: 'testTrigger',
+			group: ['trigger'],
+			version: 1,
+			description: 'A test trigger',
+			defaults: { name: 'Test Trigger' },
+			inputs: [],
+			outputs: ['main'],
+			webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],
+			properties: [],
+		};
+	}
+}`;
+}
+
 const completeWebhookMethods = `{
 	default: {
 		async checkExists(this: IHookFunctions): Promise<boolean> { return true; },
@@ -212,6 +266,16 @@ export class RegularClass {
 					data: { group: 'setup', missing: '`checkExists`' },
 				},
 			],
+		},
+		{
+			name: 'webhook trigger with type-asserted description missing webhookMethods',
+			code: createTypeAssertedTriggerNode(null),
+			errors: [{ messageId: 'missingWebhookMethods' }],
+		},
+		{
+			name: 'versioned webhook trigger assigning description in its constructor missing webhookMethods',
+			code: createVersionedTriggerNode(null),
+			errors: [{ messageId: 'missingWebhookMethods' }],
 		},
 	],
 });

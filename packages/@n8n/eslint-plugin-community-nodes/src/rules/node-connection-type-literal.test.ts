@@ -43,6 +43,54 @@ export class TestNode implements INodeType {
 }`;
 }
 
+/** `description = { … } as INodeTypeDescription` — a widely used node layout. */
+function createTypeAssertedNodeCode(inputs: string, outputs: string): string {
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: { name: 'Test Node' },
+		inputs: ${inputs},
+		outputs: ${outputs},
+		properties: [],
+	} as INodeTypeDescription;
+}`;
+}
+
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeCode(inputs: string, outputs: string): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Node',
+			name: 'testNode',
+			group: ['input'],
+			version: 1,
+			description: 'A test node',
+			defaults: { name: 'Test Node' },
+			inputs: ${inputs},
+			outputs: ${outputs},
+			properties: [],
+		};
+	}
+}`;
+}
+
 function createNonNodeClass(): string {
 	return `
 export class RegularClass {
@@ -123,6 +171,27 @@ ruleTester.run('node-connection-type-literal', NodeConnectionTypeLiteralRule, {
 			code: createNodeCode("['main']", '[NodeConnectionTypes.Main]'),
 			errors: [{ messageId: 'stringLiteralInInputs', data: { value: 'main', enumKey: 'Main' } }],
 			output: createNodeCode('[NodeConnectionTypes.Main]', '[NodeConnectionTypes.Main]'),
+		},
+		{
+			name: 'string literal in a type-asserted description',
+			code: createTypeAssertedNodeCode("['main']", "['main']"),
+			errors: [
+				{ messageId: 'stringLiteralInInputs', data: { value: 'main', enumKey: 'Main' } },
+				{ messageId: 'stringLiteralInOutputs', data: { value: 'main', enumKey: 'Main' } },
+			],
+			output: createTypeAssertedNodeCode(
+				'[NodeConnectionTypes.Main]',
+				'[NodeConnectionTypes.Main]',
+			),
+		},
+		{
+			name: 'string literal in a versioned node assigning description in its constructor',
+			code: createVersionedNodeCode("['main']", "['main']"),
+			errors: [
+				{ messageId: 'stringLiteralInInputs', data: { value: 'main', enumKey: 'Main' } },
+				{ messageId: 'stringLiteralInOutputs', data: { value: 'main', enumKey: 'Main' } },
+			],
+			output: createVersionedNodeCode('[NodeConnectionTypes.Main]', '[NodeConnectionTypes.Main]'),
 		},
 	],
 });
