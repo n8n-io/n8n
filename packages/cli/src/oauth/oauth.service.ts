@@ -1,9 +1,4 @@
-import {
-	LockAcquisitionTimeoutError,
-	LockNamespace,
-	LockService,
-	Logger,
-} from '@n8n/backend-common';
+import { LockNamespace, LockService, Logger, SingleFlightLease } from '@n8n/backend-common';
 import {
 	OutboundHttp,
 	SsrfProtectionService,
@@ -129,10 +124,7 @@ export class InvalidOAuthUrlError extends BadRequestError {
 
 @Service()
 export class OauthService {
-	private readonly oauth2Refreshes = new Map<
-		string,
-		Promise<OAuth2CredentialRefreshResult | null>
-	>();
+	private readonly oauth2Refreshes = new SingleFlightLease<OAuth2CredentialRefreshResult | null>();
 
 	constructor(
 		protected readonly logger: Logger,
@@ -801,9 +793,6 @@ export class OauthService {
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
 
-		const inFlight = this.oauth2Refreshes.get(credentialId);
-		if (inFlight) return await inFlight;
-
 		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
 			const currentCredential = await this.credentialsRepository.findOne({
 				where: { id: credentialId, usageScope: 'project' },
@@ -872,23 +861,18 @@ export class OauthService {
 			return this.buildOAuth2RefreshResult(refreshedTokenData, refreshed.accessToken);
 		};
 
-		const refresh = this.lockService
-			.withLease(LockNamespace.CREDENTIALS, credentialId, runRefresh, {
-				waitTimeoutMs: 10_000,
-				leaseTtlMs: 30_000,
-			})
-			.catch(async (error) => {
-				if (!(error instanceof LockAcquisitionTimeoutError)) throw error;
+		return await this.oauth2Refreshes.run(credentialId, runRefresh, {
+			lockService: this.lockService,
+			namespace: LockNamespace.CREDENTIALS,
+			waitTimeoutMs: 10_000,
+			leaseTtlMs: 30_000,
+			onLeaseTimeout: (error) => {
 				this.logger.warn('Could not acquire the OAuth2 credential refresh lock', {
 					credentialId,
 					error: error.message,
 				});
-				return await runRefresh();
-			})
-			.finally(() => this.oauth2Refreshes.delete(credentialId));
-		this.oauth2Refreshes.set(credentialId, refresh);
-
-		return await refresh;
+			},
+		});
 	}
 
 	/**
