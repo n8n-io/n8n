@@ -680,6 +680,7 @@ export class GoogleSheet {
 		returnAllMatches,
 		nodeVersion,
 		combineFilters = 'OR',
+		skipMissingColumns = false,
 	}: {
 		inputData: string[][];
 		keyRowIndex: number;
@@ -688,6 +689,9 @@ export class GoogleSheet {
 		nodeVersion: number;
 		returnAllMatches?: boolean;
 		combineFilters?: 'AND' | 'OR';
+		// When true, a filter naming a column this sheet does not have is skipped
+		// instead of throwing. Used by "All Sheets" read, where sheets can differ.
+		skipMissingColumns?: boolean;
 	}): Promise<IDataObject[]> {
 		const keys: string[] = [];
 
@@ -729,6 +733,8 @@ export class GoogleSheet {
 				returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
 				if (returnColumnIndex === -1) {
+					// This sheet has no such column, so it matches no rows for this filter
+					if (skipMissingColumns) continue lookupLoop;
 					throw new NodeOperationError(
 						this.executeFunctions.getNode(),
 						`The column "${lookupValue.lookupColumn}" could not be found`,
@@ -763,6 +769,11 @@ export class GoogleSheet {
 					returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
 					if (returnColumnIndex === -1) {
+						// A required column is missing here, so no row in this sheet can match all filters
+						if (skipMissingColumns) {
+							allMatch = false;
+							break;
+						}
 						throw new NodeOperationError(
 							this.executeFunctions.getNode(),
 							`The column "${lookupValue.lookupColumn}" could not be found`,
