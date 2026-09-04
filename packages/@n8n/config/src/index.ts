@@ -36,6 +36,7 @@ import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
+import { OutboundProxyConfig } from './configs/outbound-proxy.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -231,6 +232,9 @@ export class GlobalConfig {
 
 	@Nested
 	httpRequest: HttpRequestConfig;
+
+	@Nested
+	outboundProxy: OutboundProxyConfig;
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
