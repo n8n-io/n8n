@@ -3,6 +3,7 @@ import type { StepSlots, TriggerOutputs } from '@n8n/engine';
 import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { isTriggerNodeType, MANUAL_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
 
+import { toWorkflowDocument } from '@/executions/execution-data/types';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
@@ -75,6 +76,9 @@ export class EngineV2Dispatcher {
 				executionId,
 				workflowId: workflowData.id,
 				graph,
+				// Sent alongside the graph, so the execution read can report the
+				// workflow that ran even after the live one is edited.
+				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
 				mode: 'manual',
 			});

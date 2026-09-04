@@ -35,6 +35,7 @@ function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): Ex
 		status: record.status,
 		mode: record.mode,
 		graph: record.graph,
+		workflow: record.workflow,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,

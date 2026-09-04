@@ -19,6 +19,14 @@ const sampleGraph: WorkflowGraph = {
 	edges: [],
 };
 
+/** Opaque to the engine: it is stored and reported, never read into. */
+const sampleWorkflow = {
+	id: 'wf-1',
+	name: 'Sample',
+	nodes: [{ name: 'Manual Trigger' }],
+	connections: {},
+};
+
 const secret = 'a'.repeat(32);
 
 const authHeader = () => ({
@@ -29,6 +37,7 @@ const authHeader = () => ({
 const startBody = (overrides: Record<string, unknown> = {}) => ({
 	workflowId: 'wf-1',
 	graph: sampleGraph,
+	workflow: sampleWorkflow,
 	executionId: generateId(),
 	...overrides,
 });
@@ -88,6 +97,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
 		expect(row.graph).toEqual(sampleGraph);
+		expect(row.workflow).toEqual(sampleWorkflow);
 		expect(row.triggerOutputs).toEqual([[{ json: { hello: 'world' } }]]);
 
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
@@ -101,7 +111,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 			const response = await request(url)
 				.post('/api/workflow-executions')
 				.set(authHeader())
-				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+				.send({ workflowId: 'wf-1', graph: sampleGraph, workflow: sampleWorkflow, executionId });
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -113,6 +123,24 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send({ workflowId: 'wf-1' }); // missing graph
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it.each([
+		['absent', undefined],
+		['not an object', 'a workflow'],
+		['an array', []],
+	])('rejects a workflow that is %s with 400', async (_case, workflow) => {
+		const body = startBody();
+		if (workflow === undefined) delete (body as { workflow?: unknown }).workflow;
+		else (body as { workflow?: unknown }).workflow = workflow;
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -236,7 +264,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		return (response.body as { executionId: string }).executionId;
 	}
 
-	it('returns the persisted status, mode, workflow id, graph and ISO timestamps', async () => {
+	it('returns the persisted status, mode, workflow id, graph, workflow and ISO timestamps', async () => {
 		const executionId = await createExecution();
 
 		const response = await request(url)
@@ -250,6 +278,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			finishedAt: null,
 		});
 		expect(response.body).not.toHaveProperty('steps');
@@ -332,6 +361,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 
 		expect(response.status).toBe(200);
 		expect((response.body as { steps: unknown[] }).steps).toEqual([]);
+		// The steps are aggregated into the execution row, so the execution's own
+		// columns still have to come back beside them.
+		expect(response.body).toMatchObject({ graph: sampleGraph, workflow: sampleWorkflow });
 	});
 
 	it('returns 404 not_found for an unknown execution id even when steps are asked for', async () => {

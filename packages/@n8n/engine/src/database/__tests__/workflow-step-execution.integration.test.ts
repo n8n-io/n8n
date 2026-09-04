@@ -45,6 +45,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
+			workflow: {},
 			triggerOutputs: null,
 			finishedAt: null,
 		});
@@ -749,7 +750,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(steps.map((step) => step.nodeId).sort()).toEqual(['a', 'b']);
 	});
 
-	// The left join still has to report the execution itself.
+	// The aggregate still has to report the execution itself.
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView returns [] for an execution with no steps', async () => {
 		const executionId = await createExecution();
 
@@ -757,6 +758,20 @@ describe('workflow_step_execution table (integration)', () => {
 
 		expect(view.id).toBe(executionId);
 		expect(view.steps).toEqual([]);
+	});
+
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the steps oldest first', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		// Separate calls, so the rows do not share a created_at and the order is
+		// decided by time rather than by the tie-breakers.
+		await store.createSteps(executionId, [{ nodeId: 'a', iteration: 0, status: 'queued' }]);
+		await store.createSteps(executionId, [{ nodeId: 'b', iteration: 0, status: 'queued' }]);
+		await store.createSteps(executionId, [{ nodeId: 'c', iteration: 0, status: 'queued' }]);
+
+		const { steps } = await viewStore().loadExecutionWithStepsView(executionId);
+
+		expect(steps.map((step) => step.nodeId)).toEqual(['a', 'b', 'c']);
 	});
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView carries outputs, error and timestamps', async () => {

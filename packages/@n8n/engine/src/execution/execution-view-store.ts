@@ -5,6 +5,7 @@ import type {
 	StepError,
 	StepSlots,
 	StepStatus,
+	WorkflowDocument,
 } from './execution.types';
 
 /**
@@ -19,6 +20,8 @@ export interface ExecutionView {
 	mode: ExecutionMode;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
+	/** The workflow captured at start, alongside the graph and just as immutable. */
+	workflow: WorkflowDocument;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;

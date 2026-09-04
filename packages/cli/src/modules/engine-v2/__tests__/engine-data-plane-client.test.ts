@@ -21,6 +21,7 @@ describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		workflow: {},
 		executionId: EXECUTION_ID,
 	};
 
