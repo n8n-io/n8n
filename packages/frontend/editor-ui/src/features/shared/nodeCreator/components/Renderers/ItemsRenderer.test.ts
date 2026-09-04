@@ -83,7 +83,7 @@ describe('ItemsRenderer', () => {
 
 		await nextTick();
 
-		expect(getByTestId('node-creator-credits-balance').textContent).toContain('$5.00 remaining');
+		expect(getByTestId('node-creator-credits-balance').textContent).toContain('$5.00 left');
 	});
 
 	it('should render "No credits" when the balance is depleted', async () => {

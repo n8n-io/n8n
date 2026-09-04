@@ -2,7 +2,7 @@ import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
 	SharedWorkflow,
 	WorkflowEntity,
@@ -61,8 +61,10 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -119,6 +121,8 @@ export class WorkflowService {
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
@@ -406,6 +410,8 @@ export class WorkflowService {
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
+			/** Allows a package import to update archived content. */
+			allowArchivedUpdate?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -421,6 +427,7 @@ export class WorkflowService {
 			source = 'ui',
 			versionName,
 			versionDescription,
+			allowArchivedUpdate = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -436,7 +443,7 @@ export class WorkflowService {
 			);
 		}
 
-		if (workflow.isArchived) {
+		if (workflow.isArchived && !allowArchivedUpdate) {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
@@ -1470,6 +1477,17 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Resolved here for the same reason the hook below runs here: after the cascade the
+		// `shared_workflow` rows that name the project are gone. It only attributes the activity
+		// entry, so neither a missing owner row nor a failed query may fail the delete — hence the
+		// non-throwing lookup, and the catch for everything it does not cover.
+		let owningProject: Project | undefined;
+		try {
+			owningProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		} catch (error) {
+			this.logger.warn('Failed to resolve the project owning a workflow', { workflowId, error });
+		}
+
 		// Ahead of every destructive step: the hook captures rows the delete is about
 		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
 		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
@@ -1484,7 +1502,21 @@ export class WorkflowService {
 		// to hit a DB statement timeout, however large the execution history.
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
-		await this.workflowRepository.delete(workflowId);
+		// The workflow stops owning scheduled jobs here, and nothing in the database
+		// removes them with it. Normally there are none left, since a published
+		// workflow cannot be deleted and unpublishing deprovisions them. This covers
+		// the paths that never published and anything an interrupted unpublish left.
+		//
+		// Both writes commit together. A deprovision of its own would leave a workflow
+		// whose delete then failed alive with its schedules stripped.
+		await this.workflowRepository.runInTransaction({}, async (trx) => {
+			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
+				trx,
+				this.workflowScheduledJobOwner.ref(workflowId),
+			);
+
+			await trx.delete(WorkflowEntity, { id: workflowId });
+		});
 
 		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
 
@@ -1495,6 +1527,8 @@ export class WorkflowService {
 		this.eventService.emit('workflow-deleted', {
 			user,
 			workflowId,
+			workflowName: workflow.name,
+			projectId: owningProject?.id,
 			publicApi: options?.publicApi ?? false,
 		});
 		await this.externalHooks.run('workflow.afterDelete', [

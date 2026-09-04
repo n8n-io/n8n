@@ -51,6 +51,7 @@ describe('getStatus', () => {
 		mock(),
 	);
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
+	const eventService = mock<EventService>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		gitService,
@@ -60,7 +61,7 @@ describe('getStatus', () => {
 		tagRepository,
 		folderRepository,
 		workflowRepository,
-		mock<EventService>(),
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -885,6 +886,78 @@ describe('getStatus', () => {
 				(file) => file.type === 'project' && file.status === 'deleted',
 			);
 			expect(projectDeletions).toHaveLength(0);
+		});
+	});
+
+	describe('telemetry', () => {
+		const user = globalAdminUserWithId;
+
+		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is not set', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is `ui`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+				origin: 'ui',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-push-ui` with publicApi: true when origin is `publicApi`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+				origin: 'publicApi',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: true }),
+			);
+		});
+
+		it('emits `source-control-user-started-pull-ui` with publicApi: false when origin is not set', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-pull-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-pull-ui` with publicApi: true when origin is `publicApi`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+				origin: 'publicApi',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-pull-ui',
+				expect.objectContaining({ userId: user.id, publicApi: true }),
+			);
 		});
 	});
 

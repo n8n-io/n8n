@@ -57,6 +57,7 @@ That divergence is exactly why this project exists.
 | `mutate.mjs` | The whole engine. Runs Stryker over a package and emits an actionable summary. Exposed as `pnpm mutate`. |
 | `mutate.test.mjs` | Unit tests for its pure helpers (`node --test 'scripts/mutation-health/*.test.mjs'`). |
 | `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
+| `stryker.cli.mjs` | The default plus `vitest.related: false`, used for `packages/cli` targets. See [Scoping the tests](#scoping-the-tests-with---test-files). |
 
 Outputs land in `<package>/reports/mutation/` (gitignored):
 
@@ -81,6 +82,10 @@ pnpm mutate packages/@n8n/crdt/src/utils.ts:40-75
 
 # Package-relative target.
 pnpm mutate src/cron.ts --package-dir packages/workflow
+
+# One file, scoped to the tests that must kill its mutants.
+pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68 \
+  --test-files packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
 ```
 
 Exit codes: `0` gate passed · `1` gate failed (summary.json still written — this is the
@@ -103,16 +108,68 @@ cost tracks the related suite rather than package size. Measured end-to-end, who
 `@n8n/decorators` 1s · `@n8n/scheduler` 3s · `packages/workflow` 13s · `nodes-base` 26s ·
 `packages/cli` 88s. Line-scoping cuts these further.
 
+### Scoping the tests with `--test-files`
+
+By default Stryker's vitest runner uses [related mode](https://vitest.dev/guide/cli.html#vitest-related): it
+walks the import graph of the mutated file and runs every test file that reaches it. That is the
+right default for most packages, and it is what keeps cost tracking the related suite rather than
+package size.
+
+`--test-files` replaces that discovery with an explicit list. The value goes to Stryker's
+[`testFiles`](https://stryker-mutator.io/docs/stryker-js/configuration/#testfiles-string) config
+field, so only those files run — which also answers a sharper question: can this module's *own*
+unit tests kill its mutants, without help from the rest of the suite?
+
+The flag repeats and it also takes a comma-separated list. Paths may be repo-relative (what you
+type) or package-relative (what Stryker matches); `mutate.mjs` converts them. Globs work.
+
+```bash
+pnpm mutate packages/@n8n/crdt/src/utils.ts --test-files packages/@n8n/crdt/src/__tests__/utils.test.ts
+pnpm mutate src/utils.ts --package-dir packages/@n8n/crdt --test-files 'src/__tests__/*.test.ts'
+```
+
+`--test-files` needs a single target, so it does not combine with `--diff`.
+
+#### `packages/cli` requires it
+
+`packages/cli` runs vitest with `pool: 'forks'` and a global setup, so each test file costs a
+process. Related discovery finds hundreds of them for a typical source file, and the dry run alone
+outlives any usable timeout. A `packages/cli` target therefore **fails with exit `2`** until you
+name the test files:
+
+```bash
+$ pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68
+Mutating packages/cli needs --test-files.
+```
+
+Those runs also get `stryker.cli.mjs` instead of the shared default — same settings, with
+`vitest.related` turned off, because the explicit list already decides the scope. With it, the
+example above runs its 36-test file and finishes in seconds.
+
 ### In-place mutation
 
 Runs use Stryker's `--inPlace`. Its default sandbox copy breaks on any package whose vitest
 config resolves a workspace dependency through a path alias — the alias doesn't survive the
 copy, and `packages/cli` dies on `ERR_LOAD_URL … .stryker-tmp/@n8n/backend-test-utils`.
 
-Stryker restores your files on a clean exit and on `Ctrl-C`. Because a hard crash would not,
-and because in `--diff` mode those files hold *uncommitted work* (so `git checkout --` is not a
-safe undo), `mutate.mjs` snapshots the exact bytes of every target before the run and writes
-them back if they differ afterwards.
+Stryker restores your files on a clean exit and on `Ctrl-C`, but not after a crash, a timeout or
+a `SIGTERM` — and its preprocessing reaches past the mutate targets, so a target-only snapshot
+left mutated files behind.
+
+`mutate.mjs` therefore snapshots the **whole working tree** before the run:
+
+- the exact bytes of every tracked file that is already dirty, plus every target. In `--diff`
+  mode those files hold *uncommitted work*, so `git checkout --` is not a safe undo.
+- the dirty set itself. Anything dirty *after* the run that was clean before it was changed by
+  Stryker, and git holds its pre-run state, so `git checkout --` is the right undo there.
+
+One cleanup routine restores that snapshot and deletes every `stryker-setup-*.js` the vitest
+runner left under the repo root. It is idempotent and registered on every exit path: the usual
+one, an uncaught exception, `SIGINT` and `SIGTERM`. A cancelled run exits `130` (`143` for
+`SIGTERM`) with a clean `git status`.
+
+One caveat: files you edit in another terminal *while a run is in flight* look like Stryker's
+work and are reverted. Don't edit the repo during a run.
 
 ## Which packages can be scored
 
@@ -126,6 +183,9 @@ Not scored:
 - `@n8n/expression-runtime` — Stryker's dry run SIGABRTs on the isolated-vm engine ([DEVP-257](https://linear.app/n8n/issue/DEVP-257)).
 - `.vue` single-file components — every SFC package crashed Stryker's mutate step in the 2026-06 sweep, and the component layer is low-value to mutate.
 - Tests, declarations, stories, configs, migrations and build output.
+
+`packages/cli` is scored, but only with an explicit
+[`--test-files`](#packagescli-requires-it) list.
 
 ## Gate semantics
 

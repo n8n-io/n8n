@@ -28,7 +28,7 @@ runs:
   steps:
     - name: Restore image tarball from cache
       id: restore
-      uses: actions/cache/restore@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: n8n-docker-image-v2-${{ inputs.build-variant }}-${{ inputs.cache-sha || github.sha }}
         path: /tmp/n8n-images

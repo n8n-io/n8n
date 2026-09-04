@@ -366,7 +366,7 @@ function descriptorContainsSingleUseValue(descriptor: unknown): boolean {
  * A plain `formData` descriptor is rebuilt per send and stays replayable
  * unless one of its field values is itself a stream.
  */
-function hasSingleUseBody(requestOptions: {
+export function hasSingleUseBody(requestOptions: {
 	body?: unknown;
 	formData?: unknown;
 	headers?: unknown;

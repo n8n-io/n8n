@@ -18,6 +18,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -61,6 +62,7 @@ mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(DeprecationService);
 mockInstance(CredentialsOverwrites);
@@ -153,6 +155,7 @@ describe('Worker', () => {
 				taskRunners: {},
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				queue: { workerPool: { enabled: false, name: '' } },
 			};
 			// Stub the init steps that go beyond `super.init()`, as in start.test.ts
 			worker.setConcurrency = vi.fn().mockResolvedValue(undefined);

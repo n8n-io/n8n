@@ -1,6 +1,6 @@
 import type { McpRegistryServer } from './mcp-registry.types';
 
-export const notionMockServer: McpRegistryServer = {
+export const notionMockServer = {
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
@@ -37,9 +37,9 @@ export const notionMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['productivity', 'docs', 'knowledge-base'],
-};
+} satisfies McpRegistryServer;
 
-export const slackExtendingMockServer: McpRegistryServer = {
+export const slackExtendingMockServer = {
 	name: 'com.slack/mcp',
 	slug: 'slack',
 	title: 'Slack',
@@ -62,9 +62,9 @@ export const slackExtendingMockServer: McpRegistryServer = {
 		scope: 'channels:read chat:write',
 		authQueryParameters: '',
 	},
-};
+} satisfies McpRegistryServer;
 
-export const gmailDirectExtendMockServer: McpRegistryServer = {
+export const gmailDirectExtendMockServer = {
 	name: 'com.google/gmail-mcp',
 	slug: 'gmail',
 	title: 'Gmail',
@@ -82,6 +82,68 @@ export const gmailDirectExtendMockServer: McpRegistryServer = {
 	status: 'active',
 	extendsCredential: {
 		extends: 'gmailOAuth2',
+	},
+} satisfies McpRegistryServer;
+
+export const githubUsesCredentialsMockServer = {
+	name: 'custom/GitHub',
+	slug: 'git-hub',
+	title: 'GitHub',
+	description: 'MCP server for GitHub development workflows.',
+	tagline: 'Connect to the GitHub MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-08-25T10:00:00.000Z',
+	icons: [{ src: 'https://github.com/icon.svg', mimeType: 'image/svg+xml' }],
+	websiteUrl: 'https://github.com',
+	authType: 'usesCredentials',
+	usesCredentials: [
+		{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+		{ credentialType: 'githubApi', name: 'Access Token', value: 'accessToken' },
+	],
+	remotes: [{ type: 'streamable-http', url: 'https://api.githubcopilot.com/mcp/' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+} satisfies McpRegistryServer;
+
+export const databricksGenieTemplatedMockServer: McpRegistryServer = {
+	name: 'com.databricks/genie-mcp',
+	slug: 'databricks-genie',
+	title: 'Databricks Genie',
+	description: 'Databricks Genie MCP server, resolved per-customer from the workspace host.',
+	tagline: 'Connect to Databricks Genie',
+	version: '1.0.0',
+	updatedAt: '2026-08-20T10:00:00.000Z',
+	icons: [
+		{
+			src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iI0ZGMzYyMSIvPjwvc3ZnPg==',
+			mimeType: 'image/svg+xml',
+		},
+	],
+	websiteUrl: 'https://databricks.com',
+	authType: 'extendsCredential',
+	remotes: [
+		{
+			type: 'streamable-http-templated',
+			// Trailing slash stripped in case the customer pastes the host straight
+			// from the browser, matching DatabricksOAuth2Api's own accessTokenUrl/authUrl.
+			url: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+		},
+	],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	extendsCredential: {
+		extends: 'databricksOAuth2Api',
+		scope: 'genie offline_access',
+		grantType: 'authorizationCode',
+		// databricksOAuth2Api already provides a per-host authUrl default, no
+		// override needed. customScopes is hidden here because Genie's scope is
+		// fixed above; without this the parent's "Custom Scopes" toggle and its
+		// dependent fields would render with no effect.
+		customScopes: false,
 	},
 };
 
@@ -123,4 +185,4 @@ export const linearMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
-};
+} satisfies McpRegistryServer;

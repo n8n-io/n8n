@@ -61,7 +61,11 @@ const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
 				title: string;
 				tagline: string;
 				description: string;
-				credentialType: string;
+				credentials: Array<{
+					credentialType: string;
+					name: string;
+					value: string;
+				}>;
 				tools: never[];
 				icons: never[];
 				isOfficial: boolean;
@@ -208,7 +212,14 @@ const ToolsConnectionModalStub = defineComponent({
 		modalProps = props;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args): void {
@@ -245,6 +256,7 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -263,7 +275,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 				title: 'Linear',
 				tagline: 'Linear MCP',
 				description: 'Linear MCP',
-				credentialType: 'mcpOAuth2Api',
+				credentials: [{ credentialType: 'mcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 				tools: [],
 				icons: [],
 				isOfficial: true,
@@ -278,6 +290,13 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+	});
+
+	it('configures the suggestion footer copy', () => {
+		const { getByText } = renderComponent();
+
+		expect(getByText('instanceAi.connections.modal.suggestion.prompt')).toBeInTheDocument();
+		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
 
 	it('keeps the modal open after saving settings opened from the tools list', async () => {
