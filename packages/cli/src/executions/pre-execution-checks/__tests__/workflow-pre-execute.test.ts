@@ -81,6 +81,20 @@ describe('WorkflowPreExecute', () => {
 		);
 	});
 
+	it('passes pin data on the Workflow given to the hook and returns that instance', async () => {
+		const pinData = { NodeA: [{ json: { a: 1 } }] };
+
+		const workflow = await preExecute.run(workflowData, 'manual', undefined, pinData);
+
+		expect(workflow?.pinData).toEqual(pinData);
+		expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+			workflow,
+			'manual',
+			workflowContext,
+			undefined,
+		]);
+	});
+
 	it('writes hook mutations on the Workflow back onto workflowData', async () => {
 		externalHooks.run.mockImplementation(async (_name, args) => {
 			const workflow = args![0] as Workflow;

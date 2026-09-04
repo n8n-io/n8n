@@ -1,7 +1,12 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { IWorkflowBase, WorkflowExecuteMode, WorkflowExecutionSource } from 'n8n-workflow';
+import type {
+	IPinData,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { getWorkflowActiveStatusFromWorkflowData } from '../execution.utils';
@@ -32,7 +37,8 @@ export class WorkflowPreExecute {
 		workflowData: IWorkflowBase,
 		mode: WorkflowExecuteMode,
 		source?: WorkflowExecutionSource,
-	): Promise<void> {
+		pinData?: IPinData,
+	): Promise<Workflow | undefined> {
 		if (this.executionsConfig.preExecuteErrorCreatesExecution) {
 			return;
 		}
@@ -50,6 +56,7 @@ export class WorkflowPreExecute {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings ?? {},
+			pinData,
 		});
 
 		try {
@@ -65,5 +72,6 @@ export class WorkflowPreExecute {
 
 		workflowData.staticData = workflow.staticData;
 		workflowData.settings = workflow.settings;
+		return workflow;
 	}
 }

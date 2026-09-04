@@ -265,9 +265,9 @@ export class WorkflowRunner {
 
 		const establishContextError = await this.establishContextForPersistence(data);
 
-		if (!existingExecution) {
-			await this.prepareNewExecution(data, loadStaticData);
-		}
+		const executionWorkflow = existingExecution
+			? undefined
+			: await this.prepareNewExecution(data, loadStaticData);
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
@@ -328,6 +328,7 @@ export class WorkflowRunner {
 					data,
 					shouldReloadStaticData,
 					existingExecution?.executionId,
+					executionWorkflow,
 				);
 			}
 		} catch (error) {
@@ -373,10 +374,17 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (['manual', 'evaluation'].includes(data.executionMode)) {
+			return data.pinData ?? data.workflowData.pinData;
+		}
+		return undefined;
+	}
+
 	private async prepareNewExecution(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-	): Promise<void> {
+	): Promise<Workflow | undefined> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
 				data.workflowData.id,
@@ -384,10 +392,11 @@ export class WorkflowRunner {
 		}
 
 		try {
-			await this.workflowPreExecute.run(
+			return await this.workflowPreExecute.run(
 				data.workflowData,
 				data.executionMode,
 				data.source,
+				this.resolvePinData(data),
 			);
 		} catch (error) {
 			throw PreExecuteBlockedError.unwrap(error);
@@ -401,6 +410,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
+		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -419,22 +429,20 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
-		let pinData: IPinData | undefined;
-		if (['manual', 'evaluation'].includes(data.executionMode)) {
-			pinData = data.pinData ?? data.workflowData.pinData;
-		}
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: data.workflowData.name,
-			nodes: data.workflowData.nodes,
-			connections: data.workflowData.connections,
-			active: data.workflowData.activeVersionId !== null,
-			nodeTypes: this.nodeTypes,
-			staticData: data.workflowData.staticData,
-			settings: workflowSettings,
-			pinData,
-		});
+		const pinData = this.resolvePinData(data);
+		const workflow =
+			executionWorkflow ??
+			new Workflow({
+				id: workflowId,
+				name: data.workflowData.name,
+				nodes: data.workflowData.nodes,
+				connections: data.workflowData.connections,
+				active: data.workflowData.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+				staticData: data.workflowData.staticData,
+				settings: workflowSettings,
+				pinData,
+			});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			userId: data.userId,
