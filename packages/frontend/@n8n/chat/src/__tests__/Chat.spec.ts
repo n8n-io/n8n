@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import Chat from '../components/Chat.vue';
+import type { CredentialStatus } from '../types/credentialStatus';
 import type { ChatMessage } from '../types/messages';
 
 // Mock child components
@@ -47,6 +48,7 @@ const mockChatStore = {
 	initialize: vi.fn().mockResolvedValue(undefined),
 	startNewSession: vi.fn(),
 	messages: [] as ChatMessage[],
+	credentialStatus: { value: null as CredentialStatus | null },
 };
 
 const mockOptions = {
@@ -64,6 +66,7 @@ vi.mock('@n8n/chat/composables', () => ({
 		initialize: mockChatStore.initialize,
 		startNewSession: mockChatStore.startNewSession,
 		currentSessionId: { value: 'test-session' },
+		credentialStatus: mockChatStore.credentialStatus,
 	}),
 	useOptions: () => ({ options: mockOptions }),
 }));
@@ -81,6 +84,7 @@ describe('Chat', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockChatStore.messages = [];
+		mockChatStore.credentialStatus.value = null;
 	});
 
 	afterEach(() => {

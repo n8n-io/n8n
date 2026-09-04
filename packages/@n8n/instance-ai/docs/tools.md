@@ -617,7 +617,7 @@ List credentials accessible to the current user. Never exposes secrets.
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
 **Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-An n8n Connect managed entry can have `id: null` and
+A Gateway credits managed entry can have `id: null` and
 `__aiGatewayManaged: true`.
 
 ### `credentials(action="get")`
@@ -648,11 +648,11 @@ Search available credential types by name or description.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Search query. Required unless `n8nConnectOnly` is true |
-| `n8nConnectOnly` | boolean | no | Return credential types supported by n8n credits |
+| `query` | string | no | Search query. Required unless `gatewayCreditsOnly` is true |
+| `gatewayCreditsOnly` | boolean | no | Return credential types supported by Gateway credits |
 
-**Returns**: `{ results: [...] }`. n8n Connect-only results have
-`{ type, n8nConnect: true }`.
+**Returns**: `{ results: [...] }`. Gateway-credits-only results have
+`{ type, gatewayCredits: true }`.
 
 ### `credentials(action="setup")`
 
@@ -662,6 +662,7 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint? }` |
+| `workflowId` | string | no | The workflow the credentials are for, when one exists |
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
 
@@ -680,6 +681,19 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `credentials(action="setup")` again to select the created
 credential.
+
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+to a workflow (`workflowId`, or the workflow this run last saved) and the stage
+is not `finalize`, the tool does not suspend. It merges the credential types
+into the workflow's durable `setup-items` snapshot and returns
+`{ success: true, announced: true, workflowId, credentials: [{ credentialType,
+existingCredentials }], message }` so the build continues while the user
+connects credentials from the panel. The announcement is built from the saved
+workflow's analysis, so generic auth types land on their per-node rows; a type
+no saved node uses yet gets a node-less row (generic types wait for the next
+build snapshot). Standalone setup, `requireUserSelection`, and an entry with
+`preferNew` keep the card: the panel cannot express "replace the bound
+credential".
 
 ### `credentials(action="test")`
 
@@ -708,7 +722,7 @@ List available node types in the n8n instance.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Filter by name or description |
-| `n8nConnectOnly` | boolean | no | Return only nodes supported by n8n credits |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 

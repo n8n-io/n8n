@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ActivityLogConfig } from './configs/activity-log.config';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
@@ -62,6 +63,7 @@ export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
+export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
@@ -80,6 +82,7 @@ export {
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
@@ -95,6 +98,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
@@ -328,4 +332,7 @@ export class GlobalConfig {
 
 	@Nested
 	featureFlags: FeatureFlagConfig;
+
+	@Nested
+	activityLog: ActivityLogConfig;
 }

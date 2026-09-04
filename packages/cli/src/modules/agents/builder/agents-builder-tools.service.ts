@@ -31,6 +31,7 @@ import {
 	isDraftIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
@@ -70,6 +71,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -132,7 +134,7 @@ const readSkillInputSchema = z
 			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
 			.optional()
 			.describe(
-				'Optional reference paths whose content is needed. Omit to receive paths and UTF-8 byte sizes only.',
+				'Optional reference paths whose content is needed. Omit to receive paths and character counts only.',
 			),
 	})
 	.strict();
@@ -608,9 +610,9 @@ export class AgentsBuilderToolsService {
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
 			.description(
-				'List published agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+				'List agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
+					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
 					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
@@ -618,7 +620,7 @@ export class AgentsBuilderToolsService {
 				const agents = await this.agentsService.findByProjectId(projectId);
 				return {
 					agents: agents
-						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.filter((agent) => agent.id !== agentId)
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
@@ -825,11 +827,10 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)
@@ -944,6 +945,8 @@ export class AgentsBuilderToolsService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
 					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),
@@ -1064,7 +1067,7 @@ export class AgentsBuilderToolsService {
 		const readSkillTool = new Tool(BUILDER_TOOLS.READ_SKILL)
 			.description(
 				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
-					'references are returned as { path, sizeBytes } metadata by default to keep context small. ' +
+					'references are returned as { path, characterCount } metadata by default to keep context small. ' +
 					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill } or ' +
 					'{ ok: false, errors }.',
 			)
@@ -1096,7 +1099,7 @@ export class AgentsBuilderToolsService {
 								? {
 										references: references.map((reference) => ({
 											path: reference.path,
-											sizeBytes: new TextEncoder().encode(reference.content).byteLength,
+											characterCount: reference.content.length,
 											...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
 										})),
 									}
@@ -1321,7 +1324,9 @@ export class AgentsBuilderToolsService {
 		const listWorkflowsTool = new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
-					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
+					`Only returns workflows that start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger. ` +
+					'The published agent cannot call a workflow with `published: false` until the user publishes it. ' +
+					'Pass `searchTerm` to narrow by workflow name; ' +
 					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
 			.input(

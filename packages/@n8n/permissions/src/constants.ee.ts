@@ -24,7 +24,8 @@ export const RESOURCES = {
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
-	orchestration: ['read', 'list'] as const,
+	nodeTypePolicy: ['manage'] as const,
+	orchestration: ['read', 'list', 'manage'] as const,
 	// `manageMembers` gates changes to a project's membership list: adding a member
 	// with a role, changing a member's role, and removing a member. Kept separate
 	// from `update` so a role can edit project details without being able to
@@ -33,8 +34,8 @@ export const RESOURCES = {
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
-	sourceControl: ['pull', 'push', 'manage'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects'] as const,
+	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
 		'resetPassword',
@@ -107,8 +108,8 @@ export const API_KEY_RESOURCES = {
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
-	sourceControl: ['pull'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects'] as const,
+	sourceControl: ['pull', 'read'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,

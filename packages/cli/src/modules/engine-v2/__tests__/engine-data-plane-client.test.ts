@@ -21,6 +21,7 @@ describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		executionId: EXECUTION_ID,
 	};
 
 	let http: HttpRequestClient;
@@ -188,8 +189,22 @@ describe('EngineDataPlaneClient', () => {
 				expect.objectContaining({
 					url: `/api/workflow-executions/${EXECUTION_ID}`,
 					method: 'GET',
+					qs: undefined,
 					disableFollowRedirect: true,
 				}),
+			);
+		});
+
+		it('asks for the steps on the same request, so a read is one round trip', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID, { includeSteps: true })).resolves.toEqual(
+				snapshot,
+			);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ qs: { includeSteps: 'true' } }),
 			);
 		});
 

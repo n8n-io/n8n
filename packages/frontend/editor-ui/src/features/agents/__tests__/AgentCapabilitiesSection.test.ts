@@ -396,7 +396,10 @@ describe('AgentCapabilitiesSection', () => {
 			expect.objectContaining({
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
-					agents: [{ id: 'agent-3', name: 'Research Agent' }],
+					agents: [
+						{ id: 'agent-3', name: 'Research Agent' },
+						{ id: 'agent-4', name: 'Draft Agent' },
+					],
 				}),
 			}),
 		);
@@ -405,8 +408,8 @@ describe('AgentCapabilitiesSection', () => {
 			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
 		modalCall.data.onConfirm({
-			agentId: 'agent-3',
-			useWhen: 'Use for research requests.',
+			agentId: 'agent-4',
+			useWhen: 'Use for draft research requests.',
 		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
@@ -415,7 +418,7 @@ describe('AgentCapabilitiesSection', () => {
 					maxChildren: 7,
 					agents: [
 						{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
-						{ agentId: 'agent-3', useWhen: 'Use for research requests.' },
+						{ agentId: 'agent-4', useWhen: 'Use for draft research requests.' },
 					],
 				},
 			},
@@ -1022,6 +1025,33 @@ describe('AgentCapabilitiesSection', () => {
 			);
 			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
+			);
+		});
+
+		it('marks an unpublished workflow tool as a warning, not as invalid', async () => {
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Draft Flow' },
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', id: 'Draft Flow', index: 0, toolType: 'workflow' },
+						reason: 'not_published',
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			expect(chip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.notPublished',
 			);
 		});
 

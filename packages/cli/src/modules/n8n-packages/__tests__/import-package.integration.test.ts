@@ -624,11 +624,8 @@ describe('Package import workflowIdPolicy: source', () => {
 		expect(p1Share.projectId).toBe(projectP1.id);
 	});
 
-	it('blocks re-import when the previously imported workflow was archived, reporting the archived state', async () => {
+	it('unarchives and updates a previously imported workflow that was archived on the target', async () => {
 		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
 
 		await importPackage({
 			user: owner,
@@ -638,34 +635,91 @@ describe('Package import workflowIdPolicy: source', () => {
 			workflowIdPolicy: WorkflowIdPolicy.Source,
 		});
 
-		// Archived workflows are excluded from conflict matching but still occupy
-		// their id, so the re-import lands on the id check — the issue must point
-		// at the user's own project and flag the archived state.
+		// An archived target still matches, so the re-import updates it in place
+		// and brings it back to the package's (active) state.
 		await Container.get(WorkflowRepository).update({ id: 'STILTON' }, { isArchived: true });
 
-		await expect(
-			importPackage({
-				user: owner,
-				packageBuffer: await buildImportPackageBuffer([
-					serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
-				]),
-				workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
-				workflowIdPolicy: WorkflowIdPolicy.Source,
-			}),
-		).rejects.toMatchObject({
-			meta: {
-				issues: [
-					{
-						type: 'workflow-id-conflict',
-						sourceWorkflowId: 'STILTON',
-						existingWorkflowId: 'STILTON',
-						existingProjectId: personalProject.id,
-						isArchived: true,
-						name: 'Stilton',
-					},
-				],
-			},
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
 		});
+
+		expect(result.workflows).toEqual([
+			expect.objectContaining({
+				sourceWorkflowId: 'STILTON',
+				localId: 'STILTON',
+				status: 'updated',
+				isArchived: false,
+			}),
+		]);
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'STILTON' });
+		expect(stored.name).toBe('Stilton v2');
+		expect(stored.isArchived).toBe(false);
+	});
+
+	it('archives an active workflow after it updates the content', async () => {
+		const owner = await createOwner();
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2', isArchived: true }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			localId: 'STILTON',
+			status: 'updated',
+			isArchived: true,
+		});
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'STILTON' });
+		expect(stored.name).toBe('Stilton v2');
+		expect(stored.isArchived).toBe(true);
+	});
+
+	it('updates content when both workflows are archived', async () => {
+		const owner = await createOwner();
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+		await Container.get(WorkflowRepository).update({ id: 'STILTON' }, { isArchived: true });
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2', isArchived: true }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			localId: 'STILTON',
+			status: 'updated',
+			isArchived: true,
+		});
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'STILTON' });
+		expect(stored.name).toBe('Stilton v2');
+		expect(stored.isArchived).toBe(true);
 	});
 
 	it('blocks the whole package when one source id collides, writing nothing', async () => {
@@ -926,13 +980,13 @@ describe('Package import workflow conflict policy', () => {
 		expect(await workflowRepo.count()).toBe(workflowsBefore);
 	});
 
-	it('fails fast when duplicate sourceWorkflowId matches exist in the target project', async () => {
+	it('blocks when duplicate active source workflow matches exist', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
 		);
-		await seedExistingWorkflow(personalProject, 'First match', 'wf-ambiguous');
-		await seedExistingWorkflow(personalProject, 'Second match', 'wf-ambiguous');
+		const first = await seedExistingWorkflow(personalProject, 'First match', 'wf-ambiguous');
+		const second = await seedExistingWorkflow(personalProject, 'Second match', 'wf-ambiguous');
 
 		await expect(
 			importPackage({
@@ -943,9 +997,46 @@ describe('Package import workflow conflict policy', () => {
 				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
 			}),
 		).rejects.toMatchObject({
-			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
-			extra: { projectId: personalProject.id, sourceWorkflowId: 'wf-ambiguous' },
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-lineage-conflict',
+						sourceWorkflowId: 'wf-ambiguous',
+						projectId: personalProject.id,
+						existingWorkflows: [
+							{ id: first.id, name: 'First match', isArchived: false },
+							{ id: second.id, name: 'Second match', isArchived: false },
+						].sort((left, right) => left.id.localeCompare(right.id)),
+					},
+				],
+			},
 		});
+	});
+
+	it('prefers an active workflow over an archived duplicate source match', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const archived = await seedExistingWorkflow(personalProject, 'Archived match', 'wf-legacy');
+		await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
+		const active = await seedExistingWorkflow(personalProject, 'Active match', 'wf-legacy');
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-legacy', name: 'Updated active match' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		expect(result.workflows[0]).toMatchObject({ localId: active.id, status: 'updated' });
+		const workflowRepo = Container.get(WorkflowRepository);
+		expect((await workflowRepo.findOneByOrFail({ id: active.id })).name).toBe(
+			'Updated active match',
+		);
+		expect((await workflowRepo.findOneByOrFail({ id: archived.id })).name).toBe('Archived match');
 	});
 
 	it('matches a workflow authored on this instance when re-importing the package it exported', async () => {
@@ -1242,8 +1333,7 @@ describe('Package import event emission', () => {
 			);
 			expect(importedPayload.credentialIds.matched).toHaveLength(2);
 			expect(importedPayload.credentialIds.created).toHaveLength(1);
-			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
-			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.created[0]).toBe('missing-cred');
 			expect(importedPayload.credentialIds.updated).toEqual([]);
 			expect(importedPayload.counts).toEqual({
 				workflows: {
@@ -2088,8 +2178,7 @@ describe('credential-missing-mode: create-stub', () => {
 		});
 
 		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
-		expect(result.bindings.credentials['missing-cred']).toEqual(expect.any(String));
-		expect(result.bindings.credentials['missing-cred']).not.toBe('missing-cred');
+		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
 			where: { name: 'Stubbed cred workflow' },
@@ -2320,6 +2409,40 @@ describe('Package import workflow publishing policy', () => {
 		expect(result.workflows[0]?.activeVersionId !== null).toBe(
 			workflowPublishingPolicy === WorkflowPublishingPolicy.PublishAll,
 		);
+	});
+
+	it('creates an archived workflow as archived and never publishes it', async () => {
+		const owner = await createOwner();
+
+		// A create carries the archived flag on the entity into the real
+		// `WorkflowCreationService`. Assert the stored state, because publishing
+		// reads it back to skip the workflow.
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'STILTON',
+					name: 'Stilton',
+					isArchived: true,
+					isPublished: true,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows[0]).toMatchObject({
+			localId: 'STILTON',
+			status: 'created',
+			isArchived: true,
+			activeVersionId: null,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'STILTON' });
+		expect(stored.isArchived).toBe(true);
+		expect(stored.active).toBe(false);
+		expect(stored.activeVersionId).toBeNull();
 	});
 
 	it('"match-source" publishes only workflows that were active in the package', async () => {

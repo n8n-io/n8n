@@ -15,6 +15,7 @@ export type OtelSettingsResponse = OtelConfig & {
 
 export type OtelConnectionParams = Pick<
 	OtelConfig,
+	| 'exporterProtocol'
 	| 'exporterEndpoint'
 	| 'exporterTracingPath'
 	| 'exporterServiceName'
@@ -126,6 +127,7 @@ export class OtelSettingsService {
 		const pick = <K extends keyof OtelConnectionParams>(key: K): OtelConnectionParams[K] =>
 			this.isEnvManaged(key) ? this.config[key] : incoming[key];
 		return {
+			exporterProtocol: pick('exporterProtocol'),
 			exporterEndpoint: pick('exporterEndpoint'),
 			exporterTracingPath: pick('exporterTracingPath'),
 			exporterServiceName: pick('exporterServiceName'),
@@ -197,6 +199,7 @@ export class OtelSettingsService {
 	private buildConfig(pick: <K extends keyof OtelConfig>(key: K) => OtelConfig[K]): OtelConfig {
 		return {
 			enabled: pick('enabled'),
+			exporterProtocol: pick('exporterProtocol'),
 			exporterEndpoint: pick('exporterEndpoint'),
 			exporterTracingPath: pick('exporterTracingPath'),
 			exporterServiceName: pick('exporterServiceName'),

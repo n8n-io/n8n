@@ -20,6 +20,7 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "@n8n/frontend-module-sdk": "workspace:*",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/frontend-test-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",

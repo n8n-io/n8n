@@ -1,17 +1,36 @@
-import { describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import {
 	buildNoTestsSummary,
+	buildStrykerConfig,
 	buildSummary,
 	classifyRun,
+	cliScopeError,
 	coverageFromCounts,
+	createCleanup,
+	defaultConfigNameFor,
+	filesToCheckout,
+	findStrykerSetupFiles,
 	formatMutateArg,
 	isMutableSource,
 	mergeRanges,
+	parseArgs,
 	parseHunkRanges,
+	parseTestFiles,
+	registerCleanupHandlers,
+	removeStrykerSetupFiles,
+	restoreFiles,
 	scoreFromCounts,
+	snapshotFiles,
 	splitRange,
+	strykerCliArgs,
+	toPackageRelative,
 } from './mutate.mjs';
 
 // A minimal Stryker Mutation Testing Elements report for one source file. Mix
@@ -346,5 +365,525 @@ describe('splitRange', () => {
 
 	it('does not mistake a Windows drive letter or a colon in a dirname for a range', () => {
 		assert.deepEqual(splitRange('src/a:b/cron.ts'), { file: 'src/a:b/cron.ts', range: null });
+	});
+});
+
+describe('parseTestFiles', () => {
+	it('splits a comma-separated value', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts,b.test.ts']), ['a.test.ts', 'b.test.ts']);
+	});
+
+	it('collects a repeated flag', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts', 'b.test.ts']), ['a.test.ts', 'b.test.ts']);
+	});
+
+	it('accepts both forms at once, and trims the spaces around a comma', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts, b.test.ts', 'c.test.ts']), [
+			'a.test.ts',
+			'b.test.ts',
+			'c.test.ts',
+		]);
+	});
+
+	// A duplicate would make Stryker run the same file twice for every mutant.
+	it('drops blanks and duplicates', () => {
+		assert.deepEqual(parseTestFiles(['a.test.ts,,a.test.ts', '  ', 'b.test.ts']), [
+			'a.test.ts',
+			'b.test.ts',
+		]);
+	});
+
+	it('returns nothing when the flag was not given', () => {
+		assert.deepEqual(parseTestFiles([]), []);
+	});
+});
+
+describe('parseArgs', () => {
+	it('reads --test-files as a comma-separated list', () => {
+		const parsed = parseArgs([
+			'packages/cli/src/foo.ts:10-40',
+			'--test-files',
+			'packages/cli/src/__tests__/foo.test.ts,packages/cli/src/__tests__/bar.test.ts',
+		]);
+		assert.equal(parsed.targetArg, 'packages/cli/src/foo.ts:10-40');
+		assert.deepEqual(parsed.testFiles, [
+			'packages/cli/src/__tests__/foo.test.ts',
+			'packages/cli/src/__tests__/bar.test.ts',
+		]);
+	});
+
+	it('reads a repeated --test-files flag', () => {
+		const parsed = parseArgs([
+			'src/foo.ts',
+			'--test-files',
+			'src/__tests__/foo.test.ts',
+			'--test-files',
+			'src/__tests__/bar.test.ts',
+		]);
+		assert.deepEqual(parsed.testFiles, ['src/__tests__/foo.test.ts', 'src/__tests__/bar.test.ts']);
+	});
+
+	it('leaves testFiles empty when the flag is absent', () => {
+		assert.deepEqual(parseArgs(['src/foo.ts']).testFiles, []);
+	});
+
+	it('keeps reading the other flags', () => {
+		const parsed = parseArgs([
+			'src/cron.ts',
+			'--package-dir',
+			'packages/workflow',
+			'--config',
+			'custom.mjs',
+			'--base',
+			'upstream/master',
+		]);
+		assert.equal(parsed.packageDirArg, 'packages/workflow');
+		assert.equal(parsed.configArg, 'custom.mjs');
+		assert.equal(parsed.baseArg, 'upstream/master');
+		assert.equal(parsed.diffMode, false);
+	});
+
+	it('defaults the base ref and reads --diff', () => {
+		const parsed = parseArgs(['--diff']);
+		assert.equal(parsed.diffMode, true);
+		assert.equal(parsed.baseArg, 'origin/master');
+		assert.equal(parsed.targetArg, undefined);
+	});
+
+	it('reads --help', () => {
+		assert.equal(parseArgs(['--help']).helpMode, true);
+		assert.equal(parseArgs(['-h']).helpMode, true);
+		assert.equal(parseArgs(['src/foo.ts']).helpMode, false);
+	});
+});
+
+describe('toPackageRelative', () => {
+	// Stryker matches testFiles against the files under its run cwd, which is
+	// the package dir.
+	it('strips the package prefix off a repo-relative path', () => {
+		assert.equal(
+			toPackageRelative('packages/cli/src/__tests__/foo.test.ts', 'packages/cli'),
+			'src/__tests__/foo.test.ts',
+		);
+	});
+
+	it('leaves an already package-relative path alone', () => {
+		assert.equal(
+			toPackageRelative('src/__tests__/foo.test.ts', 'packages/cli'),
+			'src/__tests__/foo.test.ts',
+		);
+	});
+
+	it('leaves a glob alone', () => {
+		assert.equal(toPackageRelative('src/**/*.test.ts', 'packages/cli'), 'src/**/*.test.ts');
+	});
+
+	it('drops a leading ./', () => {
+		assert.equal(toPackageRelative('./src/foo.test.ts', 'packages/cli'), 'src/foo.test.ts');
+	});
+
+	// `packages/cli-utils` must not lose its prefix to `packages/cli`.
+	it('only strips a whole path segment', () => {
+		assert.equal(
+			toPackageRelative('packages/cli-utils/src/foo.test.ts', 'packages/cli'),
+			'packages/cli-utils/src/foo.test.ts',
+		);
+	});
+});
+
+describe('buildStrykerConfig', () => {
+	it('puts the supplied test files in the testFiles config field', () => {
+		const config = buildStrykerConfig({
+			targets: ['src/credentials/external-secrets.utils.ts:32-68'],
+			testFiles: ['src/credentials/__tests__/external-secrets.utils.test.ts'],
+		});
+		assert.deepEqual(config.testFiles, [
+			'src/credentials/__tests__/external-secrets.utils.test.ts',
+		]);
+		assert.deepEqual(config.mutate, ['src/credentials/external-secrets.utils.ts:32-68']);
+	});
+
+	// An empty `testFiles` is not the same as an absent one: Stryker reads a
+	// non-empty list as "run only these", so an empty one must not be sent.
+	it('leaves testFiles out when no test file was named', () => {
+		const config = buildStrykerConfig({ targets: ['src/cron.ts'] });
+		assert.equal('testFiles' in config, false);
+	});
+});
+
+describe('strykerCliArgs', () => {
+	it('forwards testFiles as one comma-joined flag', () => {
+		const args = strykerCliArgs(
+			buildStrykerConfig({
+				targets: ['src/a.ts:1-4', 'src/b.ts'],
+				testFiles: ['src/__tests__/a.test.ts', 'src/__tests__/b.test.ts'],
+			}),
+		);
+		assert.deepEqual(args, [
+			'--mutate',
+			'src/a.ts:1-4,src/b.ts',
+			'--testFiles',
+			'src/__tests__/a.test.ts,src/__tests__/b.test.ts',
+		]);
+	});
+
+	it('sends no --testFiles flag when no test file was named', () => {
+		const args = strykerCliArgs(buildStrykerConfig({ targets: ['src/cron.ts'] }));
+		assert.deepEqual(args, ['--mutate', 'src/cron.ts']);
+	});
+});
+
+describe('cliScopeError', () => {
+	it('refuses a packages/cli target with no --test-files', () => {
+		const error = cliScopeError('packages/cli', []);
+		assert.match(error, /--test-files/);
+	});
+
+	it('allows a packages/cli target once test files are named', () => {
+		assert.equal(cliScopeError('packages/cli', ['src/__tests__/foo.test.ts']), null);
+	});
+
+	it('leaves every other package alone', () => {
+		assert.equal(cliScopeError('packages/workflow', []), null);
+		// A prefix match would sweep in an unrelated package.
+		assert.equal(cliScopeError('packages/cli-utils', []), null);
+	});
+});
+
+describe('defaultConfigNameFor', () => {
+	it('gives packages/cli its own config, so related-test discovery stays off', () => {
+		assert.equal(defaultConfigNameFor('packages/cli'), 'stryker.cli.mjs');
+	});
+
+	it('gives every other package the shared default', () => {
+		assert.equal(defaultConfigNameFor('packages/workflow'), 'stryker.default.mjs');
+		assert.equal(defaultConfigNameFor('packages/@n8n/decorators'), 'stryker.default.mjs');
+	});
+});
+
+describe('the cli scope guard end to end', () => {
+	const wrapper = path.join(import.meta.dirname, 'mutate.mjs');
+	const target = 'packages/cli/src/credentials/external-secrets.utils.ts:32-68';
+
+	function run(args) {
+		return spawnSync(process.execPath, [wrapper, ...args], {
+			cwd: path.resolve(import.meta.dirname, '../..'),
+			encoding: 'utf8',
+		});
+	}
+
+	// The run must stop before Stryker starts, so a mistyped command costs
+	// nothing instead of forking a process for each of the package's test files.
+	it('exits non-zero and names the flag when a cli target has no --test-files', () => {
+		const res = run([target]);
+		assert.equal(res.status, 2);
+		assert.match(res.stderr, /--test-files/);
+		// Stryker never started.
+		assert.doesNotMatch(res.stderr, /Running Stryker/);
+	});
+
+	it('refuses --test-files together with --diff', () => {
+		const res = run(['--diff', '--test-files', 'packages/cli/src/__tests__/foo.test.ts']);
+		assert.equal(res.status, 2);
+		assert.match(res.stderr, /--diff/);
+	});
+
+	it('documents the flag in --help', () => {
+		const res = run(['--help']);
+		assert.equal(res.status, 0);
+		assert.match(res.stdout, /--test-files/);
+	});
+});
+
+describe('filesToCheckout', () => {
+	it('picks the files the run made dirty', () => {
+		assert.deepEqual(filesToCheckout(['a.ts'], ['a.ts', 'b.ts']), ['b.ts']);
+	});
+
+	// A file that was dirty before the run holds the user's uncommitted work.
+	// `git checkout --` would throw it away; the byte snapshot restores it.
+	it('leaves the already-dirty files to the byte snapshot', () => {
+		assert.deepEqual(filesToCheckout(['a.ts', 'b.ts'], ['a.ts', 'b.ts']), []);
+	});
+
+	it('returns nothing when the run left the tree as it found it', () => {
+		assert.deepEqual(filesToCheckout([], []), []);
+	});
+});
+
+describe('createCleanup', () => {
+	it('restores the tree and then removes the setup files', () => {
+		const calls = [];
+		const cleanup = createCleanup({
+			restore: () => {
+				calls.push('restore');
+				return ['src/cron.ts'];
+			},
+			removeSetupFiles: () => {
+				calls.push('remove');
+				return ['stryker-setup-0.js'];
+			},
+		});
+		assert.deepEqual(cleanup(), { restored: ['src/cron.ts'], removed: ['stryker-setup-0.js'] });
+		assert.deepEqual(calls, ['restore', 'remove']);
+	});
+
+	// Four exit paths are wired to the same routine, and more than one can fire
+	// (SIGINT, then `exit`). Doing the work twice would undo a restore the user
+	// made in between.
+	it('does the work once however many exit paths call it', () => {
+		let restores = 0;
+		let removals = 0;
+		const cleanup = createCleanup({
+			restore: () => {
+				restores++;
+				return [];
+			},
+			removeSetupFiles: () => {
+				removals++;
+				return [];
+			},
+		});
+		cleanup();
+		cleanup();
+		cleanup();
+		assert.equal(restores, 1);
+		assert.equal(removals, 1);
+	});
+
+	it('still removes the setup files when the restore throws', () => {
+		let removals = 0;
+		const cleanup = createCleanup({
+			restore: () => {
+				throw new Error('working tree is locked');
+			},
+			removeSetupFiles: () => {
+				removals++;
+				return ['stryker-setup-0.js'];
+			},
+		});
+		assert.deepEqual(cleanup(), { restored: [], removed: ['stryker-setup-0.js'] });
+		assert.equal(removals, 1);
+	});
+});
+
+describe('registerCleanupHandlers', () => {
+	// A stand-in process, so the tests can fire the handlers without signalling
+	// or ending the test runner.
+	function harness({ onSignal } = {}) {
+		const proc = new EventEmitter();
+		const exits = [];
+		const writes = [];
+		let cleaned = 0;
+		const handlers = registerCleanupHandlers({
+			cleanup: () => {
+				cleaned++;
+				return { restored: [], removed: [] };
+			},
+			onSignal,
+			proc,
+			exit: (code) => exits.push(code),
+			write: (msg) => writes.push(msg),
+		});
+		return { proc, exits, writes, handlers, cleaned: () => cleaned };
+	}
+
+	it('cleans up on the usual exit path', () => {
+		const h = harness();
+		h.proc.emit('exit', 0);
+		assert.equal(h.cleaned(), 1);
+	});
+
+	it('cleans up and exits 130 on SIGINT', () => {
+		const h = harness({ onSignal: () => false });
+		h.proc.emit('SIGINT');
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [130]);
+	});
+
+	it('cleans up and exits 143 on SIGTERM', () => {
+		const h = harness({ onSignal: () => false });
+		h.proc.emit('SIGTERM');
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [143]);
+	});
+
+	// While Stryker is alive the run has to unwind first: a restore that races
+	// Stryker's own writes fixes nothing. The run's `finally` then cleans up.
+	it('defers to a live run, which still reaches cleanup', () => {
+		const seen = [];
+		const h = harness({
+			onSignal: (signal) => {
+				seen.push(signal);
+				return true;
+			},
+		});
+		h.proc.emit('SIGINT');
+		h.proc.emit('SIGTERM');
+		assert.deepEqual(seen, ['SIGINT', 'SIGTERM']);
+		assert.equal(h.cleaned(), 0);
+		assert.deepEqual(h.exits, []);
+
+		h.proc.emit('exit', 130);
+		assert.equal(h.cleaned(), 1);
+	});
+
+	it('cleans up on an uncaught exception and exits 3', () => {
+		const h = harness();
+		h.proc.emit('uncaughtException', new Error('boom'));
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [3]);
+		assert.match(h.writes.join(''), /boom/);
+	});
+
+	it('stops listening after dispose, so the next job owns its own snapshot', () => {
+		const h = harness({ onSignal: () => false });
+		h.handlers.dispose();
+		h.proc.emit('exit', 0);
+		h.proc.emit('SIGINT');
+		h.proc.emit('SIGTERM');
+		h.proc.emit('uncaughtException', new Error('boom'));
+		assert.equal(h.cleaned(), 0);
+		assert.deepEqual(h.exits, []);
+	});
+});
+
+describe('working-tree cleanup', () => {
+	let root;
+
+	beforeEach(() => {
+		root = mkdtempSync(path.join(tmpdir(), 'mutate-cleanup-'));
+	});
+
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	// A mutate target plus two files outside it. The old target-only snapshot
+	// restored the target and left the other two mutated.
+	function seedTree() {
+		mkdirSync(path.join(root, 'packages/pkg/src'), { recursive: true });
+		mkdirSync(path.join(root, 'packages/other/src'), { recursive: true });
+		const files = {
+			target: path.join(root, 'packages/pkg/src/cron.ts'),
+			sibling: path.join(root, 'packages/pkg/src/helper.ts'),
+			test: path.join(root, 'packages/other/src/cron.test.ts'),
+		};
+		for (const [name, file] of Object.entries(files)) writeFileSync(file, `original ${name}\n`);
+		return files;
+	}
+
+	// A stand-in for Stryker: a real child process that rewrites each file it is
+	// given and drops a setup file for each worker, the way the vitest runner
+	// does. `--inPlace` means those writes hit the working tree.
+	function runMockStryker({ mutates = [], setupFiles = [] }) {
+		const script = [
+			"const { writeFileSync } = require('node:fs');",
+			`for (const f of ${JSON.stringify(mutates)}) writeFileSync(f, 'Stryker was here!\\n');`,
+			`for (const f of ${JSON.stringify(setupFiles)}) writeFileSync(f, '// stryker setup\\n');`,
+		].join('\n');
+		const res = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
+		assert.equal(res.status, 0, res.stderr);
+	}
+
+	it('restores every file the run modified, not only the mutate targets', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+
+		runMockStryker({ mutates: Object.values(files) });
+		for (const file of Object.values(files)) {
+			assert.equal(readFileSync(file, 'utf8'), 'Stryker was here!\n');
+		}
+
+		assert.deepEqual(new Set(restoreFiles(snap)), new Set(Object.values(files)));
+		for (const [name, file] of Object.entries(files)) {
+			assert.equal(readFileSync(file, 'utf8'), `original ${name}\n`);
+		}
+	});
+
+	it('reports only the files it had to write back', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+
+		runMockStryker({ mutates: [files.sibling] });
+
+		assert.deepEqual(restoreFiles(snap), [files.sibling]);
+	});
+
+	it('skips a file the run deleted instead of throwing', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+		rmSync(files.test);
+
+		assert.deepEqual(restoreFiles(snap), []);
+	});
+
+	it('deletes every stryker-setup-*.js under the repo root', () => {
+		const files = seedTree();
+		const setupFiles = [
+			path.join(root, 'stryker-setup-0.js'),
+			path.join(root, 'packages/pkg/stryker-setup-1.js'),
+			path.join(root, 'packages/other/src/stryker-setup-12.js'),
+		];
+		runMockStryker({ setupFiles });
+
+		assert.deepEqual(new Set(removeStrykerSetupFiles(root)), new Set(setupFiles));
+		for (const file of setupFiles) assert.equal(existsSync(file), false);
+		assert.deepEqual(findStrykerSetupFiles(root), []);
+		// The sources stay where they are.
+		assert.ok(existsSync(files.target));
+	});
+
+	it('leaves files that only look like a setup file alone', () => {
+		seedTree();
+		const keep = [
+			path.join(root, 'stryker-setup.js'),
+			path.join(root, 'stryker-setup-0.ts'),
+			path.join(root, 'my-stryker-setup-0.js'),
+		];
+		runMockStryker({ setupFiles: keep });
+
+		assert.deepEqual(removeStrykerSetupFiles(root), []);
+		for (const file of keep) assert.ok(existsSync(file));
+	});
+
+	// A full-repo walk that enters node_modules takes minutes, and Stryker's own
+	// packaged `stryker-setup.js` lives there.
+	it('does not walk node_modules', () => {
+		mkdirSync(path.join(root, 'node_modules/@stryker-mutator'), { recursive: true });
+		const inside = path.join(root, 'node_modules/@stryker-mutator/stryker-setup-0.js');
+		runMockStryker({ setupFiles: [inside] });
+
+		assert.deepEqual(removeStrykerSetupFiles(root), []);
+		assert.ok(existsSync(inside));
+	});
+
+	it('leaves neither mutants nor setup files behind when a run is interrupted', () => {
+		const files = seedTree();
+		const setupFiles = [path.join(root, 'packages/pkg/stryker-setup-0.js')];
+		const snap = snapshotFiles(Object.values(files));
+
+		const cleanup = createCleanup({
+			restore: () => restoreFiles(snap),
+			removeSetupFiles: () => removeStrykerSetupFiles(root),
+		});
+		const proc = new EventEmitter();
+		const exits = [];
+		registerCleanupHandlers({
+			cleanup,
+			onSignal: () => false, // Stryker is already gone
+			proc,
+			exit: (code) => exits.push(code),
+			write: () => {},
+		});
+
+		runMockStryker({ mutates: Object.values(files), setupFiles });
+		proc.emit('SIGINT'); // the user hits Ctrl-C mid-run
+
+		for (const [name, file] of Object.entries(files)) {
+			assert.equal(readFileSync(file, 'utf8'), `original ${name}\n`);
+		}
+		assert.deepEqual(findStrykerSetupFiles(root), []);
+		assert.deepEqual(exits, [130]);
 	});
 });

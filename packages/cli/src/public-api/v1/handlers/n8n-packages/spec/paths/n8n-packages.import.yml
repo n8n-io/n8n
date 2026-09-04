@@ -95,9 +95,12 @@ post:
                 - fail
                 - skip
               description: >
-                `new-version` updates matching workflows and creates a new version,
-                `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows unchanged.
+                `new-version` updates matching workflows and creates a new version;
+                the archived state follows the package, so a matching workflow is
+                archived or unarchived to match it. `fail` rejects the import when any
+                matching workflow exists, and `skip` leaves matching workflows unchanged.
+                Archived workflows in the target project match like any other. An archive
+                state change also needs the `workflow:delete` scope.
             workflowIdPolicy:
               type: string
               enum:
@@ -376,6 +379,7 @@ post:
               - projects
               - bindings
               - credentials
+              - dataTables
               - variables
               - tags
             properties:
@@ -404,6 +408,7 @@ post:
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - isArchived
                     - publishing
                     - status
                   properties:
@@ -430,6 +435,12 @@ post:
                       description: >
                         Published version on the target instance, if any. `null` when the
                         workflow is not published after import.
+                    isArchived:
+                      type: boolean
+                      description: >
+                        Whether the workflow is archived on the target after import. Under
+                        `new-version` this follows the package's `isArchived` flag. A skipped
+                        workflow keeps its own state.
                     publishing:
                       type: object
                       required:
@@ -631,6 +642,18 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+              dataTables:
+                type: object
+                required:
+                  - matched
+                  - created
+                properties:
+                  matched:
+                    type: integer
+                    minimum: 0
+                  created:
+                    type: integer
+                    minimum: 0
               variables:
                 type: object
                 description: >

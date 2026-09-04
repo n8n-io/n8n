@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
@@ -11,7 +12,8 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
-import { PROJECT_ROOT, UserError } from 'n8n-workflow';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
@@ -39,6 +41,13 @@ import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
+
+/**
+ * An import payload the clearance can bind to: `nodes` is what the subject hashes, and `id` is
+ * concrete rather than the function form a `QueryDeepPartialEntity` would otherwise allow.
+ */
+type UpsertableWorkflowContent = QueryDeepPartialEntity<WorkflowEntity> &
+	Pick<WorkflowEntity, 'nodes'> & { id?: string };
 
 type WorkflowFolderUnionRow = {
 	id: string;
@@ -167,6 +176,58 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<WorkflowEntity>,
+		ctx: OperationContext,
+	) {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+	}
+
+	/**
+	 * Persists a new workflow, gated on a clearance for its content.
+	 *
+	 * A create binds to the node hash, not the id — an id here is either generated on insert or
+	 * client-supplied, and neither is proof of what was checked. So nothing may mutate `nodes`
+	 * between the `enforceWorkflowSave` call and this write.
+	 *
+	 * `save`, not `insert`: only `save` writes the `workflows_tags` junction rows for a
+	 * populated `tags` relation, and returns the entity with its generated id.
+	 */
+	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
+		return await this.managerFor(ctx).save(workflow);
+	}
+
+	/**
+	 * Persists an imported workflow by id, gated on a clearance for its content.
+	 *
+	 * Bound to `contentImport`, not `workflowSave` — an import is not an edit, and a clearance
+	 * minted for one point must not unlock the other.
+	 *
+	 * @returns the id of the row written, which the caller needs when the import supplied none.
+	 */
+	async upsertImportedContent(
+		content: UpsertableWorkflowContent,
+		ctx: OperationContext,
+	): Promise<string> {
+		assertClearedFor(
+			ctx.policyCleared,
+			'contentImport',
+			workflowSubject({ id: content.id ?? null, nodes: content.nodes }),
+		);
+
+		const result = await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']);
+		const id = result.identifiers.at(0)?.id;
+
+		if (typeof id !== 'string') {
+			throw new UnexpectedError('Upsert of an imported workflow returned no id');
+		}
+
+		return id;
+	}
+
 	async findByCredentialResolverId(
 		resolverId: string,
 	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
@@ -276,13 +337,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// scope its check to nodes reachable from a supported trigger; without
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
-			select: ['id', 'name', 'nodes', 'connections'],
+			// `activeVersionId` tells the publish check whether the workflow is published.
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
 		});
 	}
 
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },
+		options: { withActiveVersion?: boolean } = {},
 	) {
 		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
 			reference.workflowId !== undefined
@@ -291,7 +354,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		return await this.findOne({
 			where: { ...workflowWhere, shared: { projectId } },
-			relations: ['shared'],
+			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
 		});
 	}
 

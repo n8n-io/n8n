@@ -135,6 +135,7 @@ of the breaking removal on `3.x`.
    `master` is dropped as empty.
 3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
    resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+   `packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json`, and
    `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
    exactly as a human resolver would: the lockfile is regenerated with
    `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
@@ -186,8 +187,8 @@ automation can find that for you. The PR names the `master` commit behind each c
 path so you can see what the change was.
 
 Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
-fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing,
-the same conflict reopens on the next sync, and the new PR will call out the abandoned one.
+fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing and
+the same conflict reopens on the next sync.
 
 `3.x` never holds markers at its tip, so nightly images keep building; the merge commit that
 carries them drops out of `3.x`'s history at the next sync (the replay takes the queue's

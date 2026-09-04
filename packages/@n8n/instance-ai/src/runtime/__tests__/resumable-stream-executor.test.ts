@@ -8,7 +8,6 @@ function createEventBus() {
 		publish: vi.fn(),
 		subscribe: vi.fn(),
 		getEventsAfter: vi.fn(),
-		getNextEventId: vi.fn(),
 		getEventsForRun: vi.fn().mockReturnValue([]),
 		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
@@ -420,7 +419,7 @@ describe('executeResumableStream', () => {
 		});
 
 		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
-		// The output redactor may merge contiguous deltas, so match by prefix.
+		// Match the segment's first delta by prefix; deltas publish per chunk.
 		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
 		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
 		const second = publishedEvents.find((event) => event.payload?.text === 'Second segment');
@@ -462,7 +461,7 @@ describe('executeResumableStream', () => {
 		});
 
 		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
-		// The output redactor may merge contiguous deltas, so match by prefix.
+		// Match each segment's delta by prefix.
 		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
 		const second = publishedEvents.find((event) => event.payload?.text?.startsWith('Second'));
 
