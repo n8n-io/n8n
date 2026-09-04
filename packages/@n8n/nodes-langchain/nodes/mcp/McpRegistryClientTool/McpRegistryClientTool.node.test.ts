@@ -91,14 +91,20 @@ describe('McpRegistryClientTool', () => {
 							endpointUrl: 'https://mcp.notion.com/mcp',
 							endpointHostname: 'mcp.notion.com',
 							transport: 'httpStreamable',
+							isTemplated: false,
 						}
 					: undefined,
 			prepareConnection: ({ connection }) => ({
 				ok: true,
 				value: {
-					...connection,
+					nodeTypeName: connection.nodeTypeName,
+					credentialType: connection.credentialType,
+					transport: connection.transport,
+					endpointUrl: connection.isTemplated
+						? 'https://mcp.notion.com/mcp'
+						: connection.endpointUrl,
 					headers: { authorization: 'Bearer test' },
-					allowedDomains: connection.endpointHostname,
+					allowedDomains: connection.isTemplated ? 'mcp.notion.com' : connection.endpointHostname,
 				},
 			}),
 		});
@@ -331,6 +337,7 @@ describe('McpRegistryClientTool', () => {
 						endpointUrl: 'https://mcp.notion.com/mcp',
 						endpointHostname: 'mcp.notion.com',
 						transport: 'httpStreamable',
+						isTemplated: false,
 					},
 					credentialData: { oauthTokenData: { access_token: 'token' } },
 				}),

@@ -17,7 +17,11 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
-import { SSO_ERROR_ACCESS_DENIED, SSO_ERROR_QUERY_PARAM } from '@n8n/api-types';
+import {
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_LOGIN_FAILED,
+	SSO_ERROR_QUERY_PARAM,
+} from '@n8n/api-types';
 import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
@@ -95,6 +99,19 @@ onMounted(async () => {
 		showAuthViewMessage({
 			title: locale.baseText('auth.signin.accessDenied.title'),
 			message: locale.baseText('auth.signin.accessDenied'),
+			type: 'error',
+			duration: 0,
+		});
+		return;
+	}
+
+	// The SSO callback failed to sign the user in (bad IdP response, invalid
+	// state/nonce, token failure). The provider's own message is untrusted and
+	// never shown, so give a generic retry message.
+	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_LOGIN_FAILED) {
+		showAuthViewMessage({
+			title: locale.baseText('auth.signin.ssoLoginFailed.title'),
+			message: locale.baseText('auth.signin.ssoLoginFailed'),
 			type: 'error',
 			duration: 0,
 		});

@@ -151,6 +151,20 @@ describe('SigninView', () => {
 		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
 	});
 
+	it('should show an error toast when the SSO login failed', () => {
+		const route = useRoute();
+		vi.spyOn(route, 'query', 'get').mockReturnValue({
+			ssoError: 'login-failed',
+		});
+
+		renderComponent();
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'error', duration: 0 }),
+		);
+		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
+	});
+
 	it('should show and submit email/password form (happy path)', async () => {
 		await signInWithValidUser();
 
