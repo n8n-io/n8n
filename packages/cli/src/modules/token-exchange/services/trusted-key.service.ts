@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { DbLock, DbLockService } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
-import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
@@ -44,20 +43,18 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 
 const STATIC_SOURCE_ID = 'static';
 
-/** How often the leader polls sources to check if any are due for refresh. */
-const REFRESH_POLL_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
-
 /**
  * Manages trusted public keys for JWT signature verification.
  *
  * Every instance resolves all configured key sources (env-var static keys,
  * JWKS endpoints) and writes them to the database at startup. Concurrent
  * writers are serialized by a distributed advisory lock, and the env-backed
- * source config is identical across mains, so the sync is idempotent. Only
- * the leader runs the periodic refresh poller thereafter. This ensures that
- * any main which begins serving traffic after `initialize()` resolves has
- * keys available in the database, avoiding a multi-main startup race where
- * a follower could previously verify against an empty table.
+ * source config is identical across mains, so the sync is idempotent. The
+ * periodic refresh thereafter is the `trusted-key-refresh` system task.
+ * This ensures that any main which begins serving traffic after
+ * `initialize()` resolves has keys available in the database, avoiding a
+ * multi-main startup race where a follower could previously verify against
+ * an empty table.
  *
  * All instances read keys from the database on every lookup, so multi-instance
  * consistency is preserved. A local crypto-primitive cache avoids repeated
@@ -66,10 +63,6 @@ const REFRESH_POLL_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
 @Service()
 export class TrustedKeyService {
 	private readonly logger: Logger;
-
-	private refreshInterval: NodeJS.Timeout | undefined;
-
-	private isShuttingDown = false;
 
 	private readonly cryptoCache = new Map<
 		string,
@@ -81,7 +74,6 @@ export class TrustedKeyService {
 		private readonly config: TokenExchangeConfig,
 		private readonly trustedKeySourceRepository: TrustedKeySourceRepository,
 		private readonly trustedKeyRepository: TrustedKeyRepository,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly dbLockService: DbLockService,
 		private readonly jwksResolverService: JwksResolverService,
 	) {
@@ -92,7 +84,6 @@ export class TrustedKeyService {
 
 	/**
 	 * All instances: parse config → sync sources to DB → refresh all.
-	 * Leader additionally starts the periodic refresh interval.
 	 *
 	 * Running the sync on every main (rather than leader-only) closes a
 	 * multi-main startup race where a follower could begin handling token
@@ -105,44 +96,13 @@ export class TrustedKeyService {
 		const sources = this.parseConfigSources();
 		await this.syncSourcesToDb(sources);
 		await this.refreshAllSources();
-
-		if (this.instanceSettings.isLeader) {
-			this.startRefresh();
-		} else {
-			this.logger.debug('Follower instance — skipping periodic refresh loop');
-		}
 	}
 
 	@OnLeaderTakeover()
 	async onLeaderTakeover() {
 		// A former follower has been elected leader: refresh from sources in
-		// case keys rotated while no poller was running, then start the
-		// periodic refresh loop. `startRefresh` is idempotent.
+		// case keys rotated while its refresh task was not running.
 		await this.refreshAllSources();
-		this.startRefresh();
-	}
-
-	startRefresh() {
-		if (this.isShuttingDown || this.refreshInterval) return;
-
-		this.refreshInterval = setInterval(
-			async () => await this.refreshDueSources(),
-			REFRESH_POLL_INTERVAL_MS,
-		);
-
-		this.logger.debug('Trusted key refresh poller started');
-	}
-
-	@OnLeaderStepdown()
-	stopRefresh() {
-		clearInterval(this.refreshInterval);
-		this.refreshInterval = undefined;
-	}
-
-	@OnShutdown()
-	shutdown() {
-		this.isShuttingDown = true;
-		this.stopRefresh();
 	}
 
 	// ─── Public read path ──────────────────────────────────────────────
@@ -333,8 +293,7 @@ export class TrustedKeyService {
 	// ─── Private: refresh ──────────────────────────────────────────────
 
 	/**
-	 * Initial refresh: refreshes all sources unconditionally.
-	 * Called once during `initialize` before the poll loop starts.
+	 * Refreshes all sources unconditionally. Never throws: a failed cycle is logged.
 	 */
 	private async refreshAllSources(): Promise<void> {
 		try {
@@ -348,23 +307,22 @@ export class TrustedKeyService {
 	}
 
 	/**
-	 * Poll-driven refresh: only refreshes sources whose `lastRefreshedAt`
-	 * is older than their configured refresh interval.
+	 * Refreshes only the sources whose `lastRefreshedAt` is older than their
+	 * configured refresh interval. A failed source is marked as error and does
+	 * not stop the cycle. Stops before the next source once `signal` aborts.
+	 * @throws When the sources cannot be loaded from the database.
 	 */
-	private async refreshDueSources(): Promise<void> {
-		try {
-			this.logger.debug('Refreshing due sources');
-			const sources = await this.trustedKeySourceRepository.find();
-			const now = Date.now();
-			for (const source of sources) {
-				const intervalMs = this.getRefreshIntervalMs(source);
-				const lastRefresh = source.lastRefreshedAt?.getTime() ?? 0;
-				if (now - lastRefresh >= intervalMs) {
-					await this.refreshSourceInternal(source);
-				}
+	async refreshDueSources(signal: AbortSignal): Promise<void> {
+		this.logger.debug('Refreshing due sources');
+		const sources = await this.trustedKeySourceRepository.find();
+		const now = Date.now();
+		for (const source of sources) {
+			if (signal.aborted) return;
+			const intervalMs = this.getRefreshIntervalMs(source);
+			const lastRefresh = source.lastRefreshedAt?.getTime() ?? 0;
+			if (now - lastRefresh >= intervalMs) {
+				await this.refreshSourceInternal(source);
 			}
-		} catch (error) {
-			this.logger.error('Failed to run trusted key refresh cycle', { error });
 		}
 	}
 
