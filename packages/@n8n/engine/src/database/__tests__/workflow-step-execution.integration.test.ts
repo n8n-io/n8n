@@ -619,6 +619,77 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(new Set(resumed.map(({ id }) => id))).toEqual(new Set([oldest, middle]));
 	});
 
+	/**
+	 * These two pin the claim's concurrency contract, which is the reason
+	 * `resumeDueSteps` is one statement rather than a scan and a transition per
+	 * row. Deadlines sit in 2019, earlier than every other case's, so only the
+	 * rows seeded here are ever due and leftovers cannot join the batch.
+	 */
+	const SWEEP_DUE = new Date('2019-06-01T00:00:00.000Z');
+
+	async function seedBacklog(executionId: string, count: number): Promise<string[]> {
+		const ids: string[] = [];
+		for (let n = 1; n <= count; n++) {
+			const { id } = await seedWaitingStep(
+				executionId,
+				`backlog-${n}`,
+				new Date(`2019-01-0${n}T00:00:00.000Z`),
+			);
+			ids.push(id);
+		}
+		return ids;
+	}
+
+	it('TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const [first, second, third, fourth] = await seedBacklog(executionId, 4);
+
+		// stand in for a concurrent sweeper mid-claim: hold the two oldest locked
+		const other = dataSource.createQueryRunner();
+		await other.connect();
+		await other.startTransaction();
+		const held = (await other.query(
+			`SELECT id FROM workflow_step_execution
+			 WHERE status = 'waiting' AND wait_till <= $1
+			 ORDER BY wait_till
+			 LIMIT 2
+			 FOR UPDATE SKIP LOCKED`,
+			[SWEEP_DUE],
+		)) as Array<{ id: string }>;
+		expect(held.map(({ id }) => id)).toEqual([first, second]);
+
+		// SKIP LOCKED, so this sweep neither blocks on them nor takes them again:
+		// it moves past the held head and drains the next two
+		const resumed = await store.resumeDueSteps(SWEEP_DUE, 2);
+
+		await other.commitTransaction();
+		await other.release();
+
+		expect(resumed.map(({ id }) => id).sort()).toEqual([third, fourth].sort());
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps hands no step to two concurrent sweeps', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const backlog = await seedBacklog(executionId, 4);
+
+		// both ask for more than the whole backlog at once
+		const [left, right] = await Promise.all([
+			store.resumeDueSteps(SWEEP_DUE, 10),
+			store.resumeDueSteps(SWEEP_DUE, 10),
+		]);
+		const leftIds = left.map(({ id }) => id);
+		const rightIds = right.map(({ id }) => id);
+
+		// no step reached both sweeps, and between them they drained this backlog.
+		// Restricted to the rows seeded here: the sweep is instance-wide, so an
+		// earlier case's still-waiting rows are legitimately in the batch too.
+		const seeded = (ids: string[]) => ids.filter((id) => backlog.includes(id));
+		expect(leftIds.filter((id) => rightIds.includes(id))).toEqual([]);
+		expect([...seeded(leftIds), ...seeded(rightIds)].sort()).toEqual([...backlog].sort());
+	});
+
 	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
