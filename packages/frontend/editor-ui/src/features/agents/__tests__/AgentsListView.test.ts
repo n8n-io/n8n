@@ -44,8 +44,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/execution/insights', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/execution/insights')>()),
+vi.mock('@n8n/frontend-module-insights', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-insights')>()),
 	useInsightsStore: () => ({
 		isSummaryEnabled: false,
 		weeklySummary: { isLoading: false, state: null },

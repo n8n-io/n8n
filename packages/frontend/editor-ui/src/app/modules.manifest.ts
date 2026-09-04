@@ -1,6 +1,5 @@
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
-import { InsightsModule } from '@/features/execution/insights/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
@@ -8,12 +7,12 @@ import { AgentsModule } from '@/features/agents/module.descriptor';
 import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
+import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
  */
 export const modules: FrontendModuleDescription[] = [
-	InsightsModule,
 	DataTableModule,
 	MCPModule,
 	ChatModule,
@@ -22,4 +21,5 @@ export const modules: FrontendModuleDescription[] = [
 	OtelModule,
 	WorkflowReviewsModule,
 	InstanceRegistryModule,
+	InsightsModule,
 ];

@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 	execute: vi.fn(),
 }));
 
-vi.mock('@/features/execution/insights', () => ({
+vi.mock('@n8n/frontend-module-insights', () => ({
 	useInsightsStore: () => ({
 		isSummaryEnabled: mocks.isSummaryEnabled,
 		weeklySummary: { execute: mocks.execute },
