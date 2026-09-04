@@ -101,10 +101,7 @@ export function useAgentPublish() {
 								: error instanceof Error
 									? error.message
 									: locale.baseText('agents.publish.error.publish');
-						return {
-							message,
-							items: failed.map((failure) => ({ ...toModalItem(failure), detail: failure.reason })),
-						};
+						return { message, failedItems: failed.map(({ id, reason }) => ({ id, reason })) };
 					}
 				},
 			});

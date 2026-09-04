@@ -4,6 +4,7 @@ import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -968,8 +969,9 @@ describe('AgentPublishService', () => {
 					],
 				},
 			});
-		const lookup = { id: 'wf-1', name: 'Lookup', activeVersionId: null } as WorkflowEntity;
-		const notify = { id: 'wf-2', name: 'Notify', activeVersionId: 'v-live' } as WorkflowEntity;
+		const nodes = [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }];
+		const lookup = { id: 'wf-1', name: 'Lookup', nodes, activeVersionId: null } as WorkflowEntity;
+		const notify = { id: 'wf-2', name: 'Notify', nodes, activeVersionId: 'v-live' } as WorkflowEntity;
 
 		it('publishes unpublished workflow tools before validating when publishDependencies is set', async () => {
 			const {
@@ -998,10 +1000,30 @@ describe('AgentPublishService', () => {
 
 		it('publishes every unpublished dependency, then rejects the agent publish naming the failures', async () => {
 			const { service, agentRepository, workflowRepository, workflowService } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(withWorkflowTools());
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...schema,
+						tools: [
+							{ type: 'workflow', workflowId: 'wf-1', workflow: 'Lookup' },
+							{ type: 'workflow', workflow: 'Notify' },
+							{ type: 'workflow', workflowId: 'wf-3', workflow: 'Manual' },
+						],
+					},
+				}),
+			);
+			// A workflow without the supported trigger cannot serve the agent, so
+			// it is reported with the fix instead of being published.
+			const manual = {
+				id: 'wf-3',
+				name: 'Manual',
+				nodes: [{ type: 'n8n-nodes-base.manualTrigger', name: 'Start' }],
+				activeVersionId: null,
+			} as WorkflowEntity;
 			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
 				lookup,
 				{ ...notify, activeVersionId: null } as WorkflowEntity,
+				manual,
 			]);
 			workflowService.activateWorkflow.mockImplementation(async (_user, workflowId) => {
 				if (workflowId === 'wf-1') throw new Error('Webhook path in use');
@@ -1017,6 +1039,12 @@ describe('AgentPublishService', () => {
 				meta: {
 					failedDependencies: [
 						{ type: 'workflow', id: 'wf-1', name: 'Lookup', reason: 'Webhook path in use' },
+						{
+							type: 'workflow',
+							id: 'wf-3',
+							name: 'Manual',
+							reason: expect.stringContaining("needs a 'When Executed by Another Workflow' trigger"),
+						},
 					],
 				},
 			});

@@ -19,6 +19,10 @@ const STUBS = {
 	N8nText: { template: '<span><slot /></span>' },
 	N8nIcon: { template: '<span />' },
 	N8nLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
+	N8nCallout: { template: '<div><slot /></div>' },
+	N8nBadge: { template: '<span><slot /></span>' },
+	// Renders the tooltip text inline so the reason is assertable.
+	N8nTooltip: { template: '<span><slot /><slot name="content" /></span>' },
 	// No `emits` declaration: the parent's `@click` falls through to the native button.
 	N8nButton: { template: '<button><slot /></button>' },
 };
@@ -40,12 +44,12 @@ function renderModal(data: Partial<AgentConfirmationModalData>) {
 }
 
 describe('AgentConfirmationModal', () => {
-	it('stays open showing the failed items until confirming succeeds', async () => {
+	it('stays open marking the failed items until confirming succeeds', async () => {
 		const onConfirm = vi
 			.fn()
 			.mockResolvedValueOnce({
-				message: 'Fix these first:',
-				items: [{ id: 'wf-1', name: 'Lookup', href: '/workflow/wf-1', detail: 'No trigger' }],
+				message: 'Some could not be published.',
+				failedItems: [{ id: 'wf-1', reason: 'No trigger' }],
 			})
 			.mockResolvedValueOnce(undefined);
 		const wrapper = renderModal({
@@ -61,13 +65,18 @@ describe('AgentConfirmationModal', () => {
 		await flushPromises();
 
 		expect(closeModalMock).not.toHaveBeenCalled();
+		// The original text and list stay; only the failed item gets marked.
 		expect(wrapper.find('[data-test-id="agent-confirmation-description"]').text()).toBe(
-			'Fix these first:',
+			'Also publishes these workflows:',
 		);
 		const items = wrapper.findAll('[data-test-id="agent-confirmation-items"] li');
-		expect(items).toHaveLength(1);
-		expect(items[0].find('a').attributes('href')).toBe('/workflow/wf-1');
+		expect(items).toHaveLength(2);
+		expect(items[0].find('[data-test-id="agent-confirmation-item-failed"]').exists()).toBe(true);
 		expect(items[0].text()).toContain('No trigger');
+		expect(items[1].find('[data-test-id="agent-confirmation-item-failed"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-confirmation-failure"]').text()).toBe(
+			'Some could not be published.',
+		);
 
 		await confirmButton.trigger('click');
 		await flushPromises();

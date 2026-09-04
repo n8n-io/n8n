@@ -526,9 +526,7 @@ describe('AgentPublishButton', () => {
 
 			await expect(getModalCallbacks().onConfirm()).resolves.toEqual({
 				message: 'agents.publish.dependencies.modal.failed',
-				items: [
-					{ id: 'wf-1', name: 'Lookup', href: '/workflow/wf-1', detail: 'Webhook path in use' },
-				],
+				failedItems: [{ id: 'wf-1', reason: 'Webhook path in use' }],
 			});
 			expect(wrapper.emitted('published')).toBeUndefined();
 		});

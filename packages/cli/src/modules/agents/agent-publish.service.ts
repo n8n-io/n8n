@@ -9,7 +9,12 @@ import {
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { isUniqueConstraintError, WorkflowRepository, type User } from '@n8n/db';
+import {
+	isUniqueConstraintError,
+	WorkflowRepository,
+	type User,
+	type WorkflowEntity,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
@@ -46,6 +51,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { validateCompatibility } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import {
 	configuredCapabilityKinds,
@@ -70,6 +76,12 @@ export interface AgentPublishEmitter {
 export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
 	status: 'valid';
 };
+
+const toDependency = ({ id, name }: WorkflowEntity): AgentPublishDependency => ({
+	type: 'workflow',
+	id,
+	name,
+});
 
 function requireValidValidation(
 	validation: AgentConfigValidationResponse,
@@ -274,22 +286,23 @@ export class AgentPublishService {
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
-		return await this.findUnpublishedDependencies(agent.schema, projectId);
+		const workflows = await this.findUnpublishedWorkflows(agent.schema, projectId);
+		return workflows.map(toDependency);
 	}
 
-	private async findUnpublishedDependencies(
+	private async findUnpublishedWorkflows(
 		config: AgentJsonConfig | null,
 		projectId: string,
-	): Promise<AgentPublishDependency[]> {
+	): Promise<WorkflowEntity[]> {
 		const refs = (config?.tools ?? []).filter(
 			(tool): tool is AgentJsonWorkflowToolConfig => tool.type === 'workflow',
 		);
 		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
 		// The map has one entry per reference, so a workflow referenced by id
 		// and by name appears twice.
-		const unpublished = new Map<string, AgentPublishDependency>();
-		for (const { id, name, activeVersionId } of workflows.values()) {
-			if (!activeVersionId) unpublished.set(id, { type: 'workflow', id, name });
+		const unpublished = new Map<string, WorkflowEntity>();
+		for (const workflow of workflows.values()) {
+			if (!workflow.activeVersionId) unpublished.set(workflow.id, workflow);
 		}
 		return [...unpublished.values()];
 	}
@@ -304,14 +317,17 @@ export class AgentPublishService {
 		user: User,
 	): Promise<void> {
 		const failedDependencies: AgentPublishDependencyFailure[] = [];
-		for (const dependency of await this.findUnpublishedDependencies(config, projectId)) {
+		for (const workflow of await this.findUnpublishedWorkflows(config, projectId)) {
 			try {
-				await this.workflowService.activateWorkflow(user, dependency.id, {
+				// Publishing a workflow the agent cannot run as a tool would not
+				// make the agent publishable, so name the fix instead.
+				validateCompatibility(workflow);
+				await this.workflowService.activateWorkflow(user, workflow.id, {
 					source: 'agent-publish',
 				});
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : String(error);
-				failedDependencies.push({ ...dependency, reason });
+				failedDependencies.push({ ...toDependency(workflow), reason });
 			}
 		}
 		if (failedDependencies.length > 0) {
