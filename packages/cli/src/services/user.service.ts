@@ -192,7 +192,10 @@ export class UserService {
 		});
 
 		const fetchPromise = new Promise<PublicUser>(async (resolve) => {
-			publicUser.featureFlags = await posthog.getFeatureFlags(publicUser);
+			const { featureFlags, featureFlagPayloads } =
+				await posthog.getFeatureFlagsAndPayloads(publicUser);
+			publicUser.featureFlags = featureFlags;
+			publicUser.featureFlagPayloads = featureFlagPayloads;
 			resolve(publicUser);
 		});
 

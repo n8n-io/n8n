@@ -1,7 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nInputLabel from './InputLabel.vue';
-import N8nInput from '../N8nInput';
 
 export default {
 	title: 'Core/InputLabel',
@@ -22,12 +21,9 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInputLabel,
-		N8nInput,
 	},
 	template: `
-			<n8n-input-label v-bind="args">
-				<n8n-input />
-			</n8n-input-label>
+			<n8n-input-label v-bind="args" />
 		`,
 });
 

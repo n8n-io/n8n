@@ -233,6 +233,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	workerPools: {
+		enabled: boolean;
+	};
 	collaboration: {
 		crdt: 'off' | 'local' | 'server';
 	};
@@ -331,6 +334,14 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+	};
+
+	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
 	};
 
 	/**

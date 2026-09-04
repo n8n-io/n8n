@@ -8,6 +8,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 16 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
@@ -98,6 +99,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
@@ -164,6 +166,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -293,6 +297,7 @@ erDiagram
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
@@ -354,6 +359,19 @@ erDiagram
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
+"public.activity_event" {
+  varchar_64_ action
+  varchar_32_ category
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer id
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  text resourceName
+  varchar_32_ resourceType
+  integer typeVersion
+  uuid userId FK
+}
 "public.agent_background_job" {
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
@@ -1261,6 +1279,12 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.project_pool_settings" {
+  timestamp_3__with_time_zone createdAt
+  varchar_63_ defaultPool
+  varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.project_relation" {

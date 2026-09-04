@@ -49,7 +49,17 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
+			await this.triggerExecutionContextFactory.findPublishedWorkflowData(workflowId);
+
+		if (workflowData === null) {
+			this.logger.debug('Workflow has no published version. Skipping the occurrence', {
+				taskId: task.id,
+				jobId: task.jobId,
+				workflowId,
+				nodeId,
+			});
+			return report.notDispatched();
+		}
 		const node = resolveTaskTriggerNode(
 			workflowData,
 			nodeId,
