@@ -67,9 +67,9 @@ Not in the frames and therefore **unchanged**: the description editor's Save + B
 - `mapGroupsToVueFlowNodes` → `height: titleBar.height` (was the constant).
 - `buildNodeGroupLayoutComponents({ ..., isEmptyGroup })` → `collapsedRect` accounts for the body so pushes clear the whole card.
 
-- [ ] **Step 1: Failing tests** in `useCanvasMapping.groups.test.ts`: collapsed rect height for an empty group = header + body; non-empty unchanged; `mapGroupsToVueFlowNodes` emits `height` = card height for empty, header for collapsed, header for expanded. In `useCanvasNodeGroupLayout.test.ts`: an empty group's component `collapsedRect.height` includes the body.
-- [ ] **Step 2: Implement** as above. Thread `isEmptyGroup` into `buildNodeGroupLayoutComponents` from `WorkflowCanvas.vue` (`workflowDocumentStore.value.isEmptyGroup`).
-- [ ] **Step 3: Run both test files, typecheck. Commit** `feat(editor): Size empty group cards to include the add-node body`.
+- [x] **Step 1: Failing tests** in `useCanvasMapping.groups.test.ts`: collapsed rect height for an empty group = header + body; non-empty unchanged; `mapGroupsToVueFlowNodes` emits `height` = card height for empty, header for collapsed, header for expanded. In `useCanvasNodeGroupLayout.test.ts`: an empty group's component `collapsedRect.height` includes the body.
+- [x] **Step 2: Implement** as above. Thread `isEmptyGroup` into `buildNodeGroupLayoutComponents` from `WorkflowCanvas.vue` (`workflowDocumentStore.value.isEmptyGroup`).
+- [x] **Step 3: Run both test files, typecheck. Commit** `feat(editor): Size empty group cards to include the add-node body` — `4e64139973`.
 
 ---
 
@@ -103,9 +103,9 @@ Not in the frames and therefore **unchanged**: the description editor's Save + B
 
 **Remove from this component:** the floating `descriptionPanel`, `showInfoIcon`, hover timers, pin/eye button, `NodeGroupDescriptionVisibilityKey` inject, `showCollapsedDescription`/`isPermanentlyVisible`. (Their upstream providers go in Task 5.)
 
-- [ ] **Step 1: Rewrite tests.** Keep every non-description test. Replace the `description` and `collapsed description` describes with: inline description shown in all three states; placeholder when empty; 1-line clamp class when expanded, 2-line when collapsed; click-to-edit; Enter/Escape/blur; Save and Build (empty) emits; EMPTY badge vs chevron in the right slot; "+" present only when empty and not read-only; handle dot class present when collapsed, connectable only when empty; wrapper height equals `getGroupCardHeight` for each state.
-- [ ] **Step 2: Implement** the template and styles. Tokens only. Header `var(--background--subtle)`, body/frame `var(--background--hover)`. Description clamp via `-webkit-line-clamp`. Below `GROUP_DESCRIPTION_MIN_ZOOM` hide the description text but keep the header height.
-- [ ] **Step 3: Tests, typecheck, lint. Commit** `feat(editor): Render node groups as a card with an inline description`.
+- [x] **Step 1: Rewrite tests.** Keep every non-description test. Replace the `description` and `collapsed description` describes with: inline description shown in all three states; placeholder when empty; 1-line clamp class when expanded, 2-line when collapsed; click-to-edit; Enter/Escape/blur; Save and Build (empty) emits; EMPTY badge vs chevron in the right slot; "+" present only when empty and not read-only; handle dot class present when collapsed, connectable only when empty; wrapper height equals `getGroupCardHeight` for each state.
+- [x] **Step 2: Implement** the template and styles. Tokens only. Card `var(--background--surface)`, frame `var(--background--hover)`. Description clamp via `-webkit-line-clamp`. Below `GROUP_DESCRIPTION_MIN_ZOOM` hide the description text but keep the header height. The editor overlays the card while editing so the card keeps the height the mapping gave it.
+- [x] **Step 3: Tests, typecheck, lint. Commit** `feat(editor): Render node groups as a card with an inline description` — `7565954a0f`.
 
 ---
 
@@ -120,9 +120,9 @@ Not in the frames and therefore **unchanged**: the description editor's Save + B
 - `NodeCreation` emit `addEmptyGroup: [position: XYPosition]` — mid-canvas like `addStickyNote`.
 - i18n `nodeView.addEmptyGroupHint`.
 
-- [ ] **Step 1: Failing tests.** `useCanvasOperations`: `addEmptyGroup` creates the node + group and records one bulk with an `AddNodeGroupCommand`. `NodeCreation`: the button renders and emits `addEmptyGroup` with a position.
-- [ ] **Step 2: Implement.** Button placed directly above the sticky-note button, `icon="square"`, `data-test-id="add-empty-group-button"`. `NodeView.onCreateEmptyGroup(position?)` calls `addEmptyGroup` then opens the rename flow as today.
-- [ ] **Step 3: Tests, typecheck, lint. Commit** `feat(editor): Add empty groups from the canvas toolbar in one undo step`.
+- [x] **Step 1: Failing tests.** `useCanvasOperations`: `addEmptyGroup` creates the node + group and records one bulk with an `AddNodeGroupCommand`. `NodeCreation`: the button renders and emits `addEmptyGroup` with a position.
+- [x] **Step 2: Implement.** Button placed directly above the sticky-note button, `icon="square"`, `data-test-id="add-empty-group-button"`. `NodeView.onCreateEmptyGroup(position?)` calls `addEmptyGroup` then opens the rename flow as today.
+- [x] **Step 3: Tests, typecheck, lint. Commit** `feat(editor): Add empty groups from the canvas toolbar in one undo step` — `fa776be833`.
 
 ---
 
@@ -134,19 +134,30 @@ Not in the frames and therefore **unchanged**: the description editor's Save + B
 
 ---
 
-### Task 5: Retire the description pin system (**pending decision**)
+### Task 5: Retire the description pin system
 
-The prototype shows descriptions always inline, so the pin/eye toggle, info-icon hover reveal, per-workflow pinned-state storage, and the four show/hide context-menu items have nothing left to control. This is shipped master behaviour (#34219, #34220), so it is gated on the user's go-ahead.
+Approved by the user on 2026-09-04. The prototype shows descriptions always inline, so the pin/eye toggle, info-icon hover reveal, per-workflow pinned-state storage, and the four show/hide context-menu items had nothing left to control.
 
-- [ ] Delete `useCanvasNodeGroupDescriptionVisibility.ts` (+ test), `LOCAL_STORAGE_CANVAS_GROUP_DESCRIPTION_PINNED`, the provide in `WorkflowCanvas.vue`, the inject + `onSetAllDescriptionsVisible`/`onSetGroupDescriptionVisible` in `Canvas.vue`, the four items in `useContextMenuItems.ts`, their i18n strings, and the matching `useContextMenu.test.ts` cases.
-- [ ] Typecheck, lint, tests. Commit `refactor(editor): Retire group description pinning in favour of the inline card`.
+- [x] Deleted `useCanvasNodeGroupDescriptionVisibility.ts` (+ test), `LOCAL_STORAGE_CANVAS_GROUP_DESCRIPTION_PINNED`, the provide in `WorkflowCanvas.vue`, the inject + handlers in `Canvas.vue`, the four items in `useContextMenuItems.ts`, `isDescriptionVisible` on the context-menu bridge, their i18n strings, and the matching `useContextMenu.test.ts` cases.
+- [x] Typecheck, lint, tests. Commit `refactor(editor): Retire group description pinning in favour of the inline card` — `0689e785f6`.
 
 ---
 
 ### Task 6: Verify against the frames in the running app
 
-- [ ] Start `pnpm dev:be` + `pnpm dev:fe:editor`. Reproduce frames 1, 2, 7, 8, 9 and screenshot each next to the prototype. Check specifically: handle dots at card middle; edges handle-to-handle between empty cards; fill via "+" reattaches Start→node→End; collapse shows chevron + 2-line description; expanded shows 1-line description; toolbar button creates a card at canvas centre; undo removes node + group together.
-- [ ] Update the scratchpad `empty-node-groups.html` build-status section with what is verified.
+Verified live on 2026-09-04 against the user's dev servers (built backend on 5678, `vite dev` on 8080) in a fresh workflow.
+
+- [x] **Frame 1** — toolbar: +, search, **add-group square**, sticky, side panel, AI (the prototype's pen icon is out of scope per the user). Clicking the square creates a card at the canvas centre and opens the rename modal.
+- [x] **Frame 7** — three cards Start / Middle / End: bold title, EMPTY badge, description (italic placeholder, or real text wrapping under the title), centered "+", grey handle dots at the card's vertical middle. Handle-to-handle edges Start → Middle → End.
+- [x] **Frame 8** — Middle's "+" opens the node creator in replacement mode ("Replace this step"); picking Edit Fields swaps the placeholder for the node inside Middle's frame. Start's edge now enters the node, the node's edge exits to End. Start and End stay EMPTY.
+- [x] **Frame 9** — collapsing Middle gives the same card shape as an empty group with the chevron in the right slot and no "+"; edges attach to its handle dots.
+- [x] **Frame 2** — selection thickens the card border (existing selected ring).
+- [x] **Undo** — one cmd+z removes a new group and its placeholder together.
+- [x] Description editing: click the text → in-place editor; Enter saves, Escape cancels; Build on empty groups.
+
+**Found and fixed during verification (`9261c50d89`):** the first group added after page load rendered as a bare placeholder node with no card. VueFlow 1.48 pauses its props→store sync for a tick after every store echo and vueuse's `watchPausable` drops changes that arrive in that window; `addEmptyGroup` mutated the store twice a microtask apart. Both mutations now run in one synchronous block so the mapping emits a single VueFlow update. The same hazard exists for any two canvas updates a microtask apart — see Known gaps.
+
+**Noted, not changed:** the toolbar always inserts at the canvas centre, like sticky notes, so successive groups stack until dragged. The placeholder node's *name* is deduplicated by `addNode` against earlier placeholders (e.g. "Group " after "Group 1"/"Group 2" exist); it is hidden on the canvas but visible in execution logs.
 
 ## Self-review checklist
 
@@ -157,6 +168,8 @@ The prototype shows descriptions always inline, so the pin/eye toggle, info-icon
 - i18n for every string; tokens for every style.
 
 ## Known gaps after this plan
+
+- **VueFlow drops a nodes update that lands in the tick after a store echo** (`watchNodesValue` in @vue-flow/core 1.48 + vueuse `watchPausable`). `addEmptyGroup` avoids it by mutating in one flush; the fill path (`addNodesAndConnections` → `replaceNode`) and mock generation still mutate across awaits and worked in the live check, but they sit on the same hazard. A guard in `Canvas.vue` that re-applies `props.nodes` when the store lags would close it for every flow.
 
 - Collapsed card width stays `GROUP_HEADER_WIDTH_COLLAPSED` (400). The prototype's cards read narrower; tune the constant once the layout engine's push tests are re-baselined.
 - Drag-drop of an existing on-canvas node into an empty card (free drag into frame) is still separate work.
