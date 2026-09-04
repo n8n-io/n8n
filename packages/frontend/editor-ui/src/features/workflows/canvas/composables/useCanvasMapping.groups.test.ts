@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
+import { CANVAS_NODE_GROUP_HANDLE_LEFT, CANVAS_NODE_GROUP_HANDLE_RIGHT } from '../canvas.types';
 import {
 	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
@@ -627,10 +628,10 @@ describe('remapCollapsedGroupConnections', () => {
 		expect(result).toHaveLength(2);
 		const incoming = result.find((c) => c.source === 'external');
 		expect(incoming?.target).toBe('group:g1');
-		expect(incoming?.targetHandle).toBe('left');
+		expect(incoming?.targetHandle).toBe(CANVAS_NODE_GROUP_HANDLE_LEFT);
 		const outgoing = result.find((c) => c.target === 'external2');
 		expect(outgoing?.source).toBe('group:g1');
-		expect(outgoing?.sourceHandle).toBe('right');
+		expect(outgoing?.sourceHandle).toBe(CANVAS_NODE_GROUP_HANDLE_RIGHT);
 	});
 
 	it('leaves external-only connections untouched', () => {
