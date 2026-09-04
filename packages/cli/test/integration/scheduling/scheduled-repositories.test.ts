@@ -555,7 +555,7 @@ describe('scheduled repositories', () => {
 		});
 	});
 
-	describe('ScheduledJobRepository.updateMisfirePolicy', () => {
+	describe('ScheduledJobRepository.updateRunOptions', () => {
 		it('rewrites the policy and grace of the given jobs only', async () => {
 			const updated = await createJob({
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
@@ -568,7 +568,7 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [updated.id], {
+					await jobRepository.updateRunOptions(trx, [updated.id], {
 						maxAttempts: updated.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
@@ -592,7 +592,7 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [job.id], {
+					await jobRepository.updateRunOptions(trx, [job.id], {
 						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
@@ -607,7 +607,7 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [], {
+					await jobRepository.updateRunOptions(trx, [], {
 						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,

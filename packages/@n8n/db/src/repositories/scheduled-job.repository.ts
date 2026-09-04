@@ -223,8 +223,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, { id }, update);
 	}
 
-	/** Updates attempts, misfire policy and grace only, leaving schedule and clock untouched. */
-	async updateMisfirePolicy(
+	/** Updates the run options only, leaving schedule and clock untouched. */
+	async updateRunOptions(
 		manager: EntityManager,
 		ids: number[],
 		update: Pick<ScheduledJob, 'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds'>,

@@ -238,7 +238,7 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				const outdatedPolicyJobIds: number[] = [];
+				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
@@ -253,7 +253,7 @@ export class DurableJobProvisioner {
 								row.misfirePolicy !== misfirePolicy ||
 								row.maxAttempts !== maxAttempts
 							) {
-								outdatedPolicyJobIds.push(row.id);
+								outdatedRunOptionJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -297,9 +297,9 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
-				// Only `redefine` touches a job's attempts, misfire policy and grace, so an
-				// unchanged schedule needs this to pick up a change to them on its own.
-				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
+				// Only `redefine` touches a job's run options, so an unchanged schedule
+				// needs this to pick up a change to them on its own.
+				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
 					maxAttempts,
 					misfirePolicy,
 					misfireGraceSeconds,

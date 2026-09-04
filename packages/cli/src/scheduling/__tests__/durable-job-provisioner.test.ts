@@ -199,7 +199,7 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
@@ -213,7 +213,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
@@ -234,7 +234,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], expect.anything());
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
 		});
 
@@ -248,7 +248,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
@@ -601,7 +601,7 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(30);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
@@ -616,7 +616,7 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(300);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
@@ -665,7 +665,7 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithAttempts(1);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
@@ -680,7 +680,7 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithAttempts(1);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 	});
 
