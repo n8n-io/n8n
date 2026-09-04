@@ -371,8 +371,9 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 		expect(resolved).toHaveLength(1);
 		expect(resolved[0]?.name).toBe('lookup-customer');
+		// The stub reloads the workflow on call; the container's loader mock finds none.
 		await expect(resolved[0]?.handler?.({}, mock())).rejects.toThrow(
-			'Workflow "Lookup customer" not found',
+			'Workflow "Lookup customer" is no longer accessible',
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_TOOL_UNAVAILABLE, {
 			agent_id: 'agent-1',

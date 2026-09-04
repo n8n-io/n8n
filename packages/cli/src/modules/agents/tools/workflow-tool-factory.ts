@@ -810,24 +810,34 @@ export async function resolveWorkflowTool(
 
 /**
  * Stands in for a workflow tool that cannot be built right now (workflow gone or
- * incompatible). It keeps the configured name in the tool list, so the model gets
- * the reason when it calls the tool instead of a bare "tool not found".
+ * incompatible). It keeps the configured name in the tool list and shares the real
+ * tool's handler, which reloads and re-validates the workflow on every call: the
+ * model gets the current reason instead of a bare "tool not found", and a workflow
+ * the user has fixed since works on the next call.
+ *
+ * Interim until AGENT-790: the runtime cache keeps this stub alive for up to 30 idle
+ * minutes because nothing invalidates an agent runtime when one of its workflows
+ * changes. Until the runtime is rebuilt the model only sees a free-form input
+ * schema, not the workflow's declared inputs. Once AGENT-790 invalidates the
+ * runtimes of dependent agents on workflow changes, a rebuilt runtime carries the
+ * real tool and this stub lives only while the workflow is actually broken.
  */
 export function buildUnavailableWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
-	error: WorkflowToolUnavailableError,
+	context: WorkflowToolContext,
 ): BuiltTool {
-	return {
-		name: toToolName(descriptor.name ?? descriptor.workflow),
-		description: descriptor.description ?? `Execute the "${descriptor.workflow}" workflow`,
-		editable: false,
+	return assembleWorkflowTool(descriptor, context, {
+		reference: toReference(descriptor),
 		inputSchema: z.object({}).passthrough(),
-		handler: async () => await Promise.reject(error),
-		metadata: {
-			kind: 'workflow',
-			workflowId: descriptor.workflowId,
-			workflowName: descriptor.workflow,
-		},
+	});
+}
+
+function toReference(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+): WorkflowToolWorkflowReference {
+	return {
+		workflowName: descriptor.workflow,
+		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
 	};
 }
 
@@ -835,40 +845,52 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const workflowName = descriptor.workflow;
-	const initialReference: WorkflowToolWorkflowReference = {
-		workflowName,
-		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
-	};
 	// An unpublished workflow still yields a real tool, built from its draft: the
 	// strict call-time load below reports the missing publish to the model, and
 	// the tool starts working as soon as the workflow is published.
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference, {
-		usePublishedVersion: context.usePublishedWorkflowVersion === true,
-		fallbackToDraft: true,
-	});
+	const workflow = await context.workflowLoader.loadWorkflow(
+		context.projectId,
+		toReference(descriptor),
+		{ usePublishedVersion: context.usePublishedWorkflowVersion === true, fallbackToDraft: true },
+	);
 	if (!workflow) {
-		throw new WorkflowToolUnavailableError('not_found', `Workflow "${workflowName}" not found`);
+		throw new WorkflowToolUnavailableError(
+			'not_found',
+			`Workflow "${descriptor.workflow}" not found`,
+		);
 	}
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+	const fullInputSchema = inferInputSchema(triggerNode, triggerType);
 
+	return assembleWorkflowTool(descriptor, context, {
+		reference: { workflowId: workflow.id, workflowName: workflow.name },
+		inputSchema: omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs),
+		triggerType,
+	});
+}
+
+/** The handler reloads `reference` on every call, so it never relies on build-time state. */
+function assembleWorkflowTool(
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
+	context: WorkflowToolContext,
+	tool: {
+		reference: WorkflowToolWorkflowReference;
+		inputSchema: z.ZodTypeAny;
+		triggerType?: string;
+	},
+): BuiltTool {
+	const { reference, inputSchema, triggerType } = tool;
 	// Always run through `toToolName` even when the user supplied `descriptor.name`.
 	// Anthropic and OpenAI both require tool names to match `^[a-zA-Z0-9_-]{1,128}$`,
 	// so a workflow display name like "D&D Invite" must be sanitized before reaching
 	// the model. Schema validation rejects invalid names on save (see
 	// `agent-json-config.ts`); this is the runtime safety net for legacy configs.
-	const toolName = toToolName(descriptor.name ?? workflowName);
-	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
-	const fullInputSchema = inferInputSchema(triggerNode, triggerType);
-	const inputSchema = omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs);
+	const toolName = toToolName(descriptor.name ?? descriptor.workflow);
+	const toolDescription = descriptor.description ?? `Execute the "${descriptor.workflow}" workflow`;
 	const toolInputs = descriptor.inputs;
 	const allOutputs = descriptor.allOutputs ?? false;
-	const reference: WorkflowToolWorkflowReference = {
-		workflowId: workflow.id,
-		workflowName: workflow.name,
-	};
 
 	// A body Wait node parks the sub-execution and hands off to the user — but only
 	// where a suspension can be resumed; elsewhere it reports the waiting status
@@ -944,9 +966,9 @@ async function buildWorkflowTool(
 		...built,
 		metadata: {
 			kind: 'workflow',
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			triggerType,
+			workflowId: reference.workflowId,
+			workflowName: reference.workflowName,
+			...(triggerType !== undefined && { triggerType }),
 		},
 	};
 }

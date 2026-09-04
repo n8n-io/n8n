@@ -9,6 +9,7 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
+	buildUnavailableWorkflowTool,
 	detectTriggerNode,
 	resolveWorkflowTool,
 	validateCompatibility,
@@ -230,6 +231,33 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		).rejects.toMatchObject({
 			constructor: WorkflowToolUnavailableError,
 			reason: 'incompatible',
+		});
+	});
+
+	it('runs a stubbed workflow tool as soon as the workflow is fixed', async () => {
+		const broken = makeWorkflow({ id: 'wf-1', name: 'Fixable' }, makeManualTriggerNode());
+		const fixed = makeWorkflow({ id: 'wf-1', name: 'Fixable' });
+		const context = makeContext(broken);
+		context.workflowLoader.loadWorkflow = vi
+			.fn()
+			.mockResolvedValueOnce(broken)
+			.mockResolvedValueOnce(fixed);
+		context.workflowRunner.run = vi.fn().mockResolvedValue('exec-1');
+		context.activeExecutions.has = vi.fn().mockReturnValue(false);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+		const descriptor = { type: 'workflow' as const, workflowId: 'wf-1', workflow: 'Fixable' };
+		const stub = buildUnavailableWorkflowTool(descriptor, context);
+
+		await expect(stub.handler?.({}, {})).rejects.toThrow(
+			"needs a 'When Executed by Another Workflow' trigger",
+		);
+		await expect(stub.handler?.({}, {})).resolves.toMatchObject({
+			executionId: 'exec-1',
+			status: 'success',
 		});
 	});
 

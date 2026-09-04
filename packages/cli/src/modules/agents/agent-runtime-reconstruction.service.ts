@@ -535,6 +535,7 @@ export class AgentRuntimeReconstructionService {
 				supportsHitl: supportsHitl ?? runtimeProfile === 'top-level',
 			},
 			instrumentation,
+			unavailable,
 		);
 		const resolvedTools: BuiltTool[] = [];
 
@@ -574,24 +575,7 @@ export class AgentRuntimeReconstructionService {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
-				let resolved: BuiltTool | null | undefined;
-				try {
-					resolved = await toolResolver(ref);
-				} catch (error) {
-					// A missing or incompatible workflow costs the agent one tool call, not
-					// the whole run: the stub keeps the tool listed and reports the reason.
-					if (!(error instanceof WorkflowToolUnavailableError) || ref.type !== 'workflow') {
-						throw error;
-					}
-					unavailable.push({
-						toolName: toolRefName(ref),
-						toolType: 'workflow',
-						reason: error.reason,
-						message: error.message,
-					});
-					const { buildUnavailableWorkflowTool } = await import('./tools/workflow-tool-factory.js');
-					resolved = buildUnavailableWorkflowTool(ref, error);
-				}
+				const resolved = await toolResolver(ref);
 				if (resolved) resolvedTools.push(resolved);
 				return resolved;
 			},
@@ -729,7 +713,9 @@ export class AgentRuntimeReconstructionService {
 			userId?: string;
 			supportsHitl: boolean;
 		},
-		instrumentation?: AgentRuntimeInstrumentation,
+		instrumentation: AgentRuntimeInstrumentation | undefined,
+		/** Receives every workflow tool that had to be stubbed. */
+		unavailable: UnavailableTool[],
 	): ToolResolver {
 		const {
 			projectId,
@@ -743,8 +729,10 @@ export class AgentRuntimeReconstructionService {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
-				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
-				return await resolveWorkflowTool(ref, {
+				const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
+					'./tools/workflow-tool-factory.js'
+				);
+				const context = {
 					workflowLoader: Container.get(WorkflowToolWorkflowLoader),
 					workflowRunner: await getWorkflowRunner(),
 					subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
@@ -757,7 +745,21 @@ export class AgentRuntimeReconstructionService {
 					integrationType,
 					userId,
 					supportsHitl,
-				});
+				};
+				try {
+					return await resolveWorkflowTool(ref, context);
+				} catch (error) {
+					// A missing or incompatible workflow costs the agent one tool call, not
+					// the whole run: the stub keeps the tool listed and reports the reason.
+					if (!(error instanceof WorkflowToolUnavailableError)) throw error;
+					unavailable.push({
+						toolName: toolRefName(ref),
+						toolType: 'workflow',
+						reason: error.reason,
+						message: error.message,
+					});
+					return buildUnavailableWorkflowTool(ref, context);
+				}
 			}
 
 			if (ref.type === 'node') {
