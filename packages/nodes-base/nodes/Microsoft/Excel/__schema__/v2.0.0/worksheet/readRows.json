@@ -1,9 +1,0 @@
-{
-	"properties": {
-		"row": {
-			"type": "string"
-		}
-	},
-	"required": ["row"],
-	"type": "object"
-}

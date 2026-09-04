@@ -9,9 +9,7 @@
 		"id": {
 			"type": "string"
 		},
-		"last_message_id": {
-			"type": "null"
-		},
+		"last_message_id": {},
 		"name": {
 			"type": "string"
 		},
@@ -38,19 +36,5 @@
 			"type": "number"
 		}
 	},
-	"required": [
-		"id",
-		"type",
-		"last_message_id",
-		"flags",
-		"guild_id",
-		"name",
-		"parent_id",
-		"rate_limit_per_user",
-		"topic",
-		"position",
-		"permission_overwrites",
-		"nsfw"
-	],
 	"type": "object"
 }

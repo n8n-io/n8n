@@ -34,18 +34,5 @@
 			"type": "string"
 		}
 	},
-	"required": [
-		"style",
-		"name",
-		"showFilterButton",
-		"id",
-		"highlightLastColumn",
-		"highlightFirstColumn",
-		"legacyId",
-		"showBandedColumns",
-		"showBandedRows",
-		"showHeaders",
-		"showTotals"
-	],
 	"type": "object"
 }

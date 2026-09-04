@@ -12,11 +12,18 @@
  * (or resource-less `{operation}.json`) convention AND the target node's own
  * saved parameters/pinData give an unambiguous resource, operation, and
  * sample. Fixtures that don't are skipped and reported, never guessed.
+ *
+ * A sample is evidence, not a contract, so what it can prove is bounded:
+ * every fixture covering one (resource, operation) is merged rather than the
+ * first one winning, `required` is never emitted, a null value widens to
+ * unknown instead of pinning the type to `null`, and operations whose output
+ * is shaped by the user's own data are left out entirely.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 
+import type { JsonSchema } from './generate-types';
 import { padVersion } from './generate-types';
 import { generateJsonSchemaFromData } from './json-schema-from-data';
 
@@ -60,7 +67,8 @@ export interface UnmappedFixture {
 		| 'no-unique-target-node'
 		| 'no-operation-determined'
 		| 'no-output-sample'
-		| 'superseded-major';
+		| 'superseded-major'
+		| 'user-shaped-output';
 }
 
 export interface HarvestResult {
@@ -196,6 +204,107 @@ function sortKeysReplacer(_key: string, value: unknown): unknown {
 	return sorted;
 }
 
+/**
+ * Operations whose output rows are the user's own spreadsheet columns. A
+ * fixture pins the columns of one test workbook, so harvesting it would
+ * declare those column names as the node's contract for every user.
+ */
+const USER_SHAPED_OPERATIONS = new Set([
+	'n8n-nodes-base.microsoftExcel:table:append',
+	'n8n-nodes-base.microsoftExcel:table:getRows',
+	'n8n-nodes-base.microsoftExcel:table:lookup',
+	'n8n-nodes-base.microsoftExcel:worksheet:append',
+	'n8n-nodes-base.microsoftExcel:worksheet:readRows',
+	'n8n-nodes-base.microsoftExcel:worksheet:update',
+	'n8n-nodes-base.microsoftExcel:worksheet:upsert',
+]);
+
+/**
+ * Output properties that hold per-account custom fields. Their keys belong to
+ * whichever account recorded the fixture, so only the container is knowable.
+ */
+const OPAQUE_OUTPUT_PROPERTIES = new Set(['custom_fields']);
+
+/**
+ * A fixture is one sample, not a contract. It cannot prove a property is
+ * always present, and a property that happened to be null says nothing about
+ * the type it carries when set — so `required` is dropped and null widens to
+ * unknown. This also matches the pre-existing corpus, where `required` is
+ * near-absent.
+ */
+function relaxInferredSchema(schema: JsonSchema): JsonSchema {
+	if (schema.type === 'null') return {};
+
+	if (schema.type === 'array') {
+		return { type: 'array', items: schema.items ? relaxInferredSchema(schema.items) : {} };
+	}
+
+	if (schema.type === 'object' && schema.properties) {
+		const properties: Record<string, JsonSchema> = {};
+		for (const [key, value] of Object.entries(schema.properties)) {
+			properties[key] = OPAQUE_OUTPUT_PROPERTIES.has(key)
+				? { type: 'object' }
+				: relaxInferredSchema(value);
+		}
+		return { type: 'object', properties };
+	}
+
+	return schema;
+}
+
+function unionTypes(a: JsonSchema['type'], b: JsonSchema['type']): JsonSchema['type'] {
+	const types = [...new Set([a ?? [], b ?? []].flat())].sort();
+	return types.length === 1 ? types[0] : types;
+}
+
+/**
+ * Union two samples of the same (resource, operation). Several fixtures often
+ * cover one operation with different scenarios — a minimal response and a full
+ * one — so keeping only the first drops fields the node really returns.
+ */
+function mergeSchemas(a: JsonSchema, b: JsonSchema): JsonSchema {
+	if (a.type === undefined) return b;
+	if (b.type === undefined) return a;
+
+	if (a.type === 'object' && b.type === 'object' && a.properties && b.properties) {
+		const properties: Record<string, JsonSchema> = { ...a.properties };
+		for (const [key, value] of Object.entries(b.properties)) {
+			const existing = properties[key];
+			properties[key] = existing ? mergeSchemas(existing, value) : value;
+		}
+		return { type: 'object', properties };
+	}
+
+	if (a.type === 'array' && b.type === 'array') {
+		return { type: 'array', items: mergeSchemas(a.items ?? {}, b.items ?? {}) };
+	}
+
+	return a.type === b.type ? a : { type: unionTypes(a.type, b.type) };
+}
+
+/**
+ * Whether any version directory of the same major already holds this
+ * resource/operation. Such a schema resolves through the per-file fallback in
+ * `discoverSchemasForNode`, so harvesting the combination again adds nothing —
+ * and a thin fixture sample written to a nearer minor would shadow a richer
+ * schema recorded for a neighbouring one.
+ */
+function isCoveredBySameMajor(schemaDir: string, major: number, relativeFile: string): boolean {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(schemaDir, { withFileTypes: true });
+	} catch {
+		return false;
+	}
+	return entries.some(
+		(entry) =>
+			entry.isDirectory() &&
+			VERSION_SEGMENT.test(entry.name) &&
+			Number(entry.name.slice(1).split('.')[0]) === major &&
+			fs.existsSync(path.join(schemaDir, entry.name, relativeFile)),
+	);
+}
+
 export function harvestOutputSchemas(options: HarvestOptions): HarvestResult {
 	const { nodesRootDir, dryRun = false } = options;
 
@@ -205,12 +314,12 @@ export function harvestOutputSchemas(options: HarvestOptions): HarvestResult {
 
 	const result: HarvestResult = { written: [], skippedExisting: [], unmapped: [] };
 	// Multiple fixtures (different test scenarios) can map to the same
-	// (resource, operation): the first one wins (fixturePaths is sorted, so
-	// this is deterministic), the rest are reported as already covered. In
-	// dry-run mode nothing is written to disk, so this claims-in-memory set
-	// is what makes that de-duplication happen instead of every duplicate
-	// showing up as a separate "would write".
-	const claimedPaths = new Set<string>();
+	// (resource, operation). Their schemas are merged into one claim, so the
+	// file is written once (the first fixture, in sorted order, owns the
+	// `written` entry and the rest are reported as already covered) but no
+	// field a later fixture recorded is lost. Claims live in memory, so
+	// dry-run reports the same de-duplication as a real run.
+	const claims = new Map<string, JsonSchema>();
 
 	for (const fixturePath of fixturePaths) {
 		const parsed = parseFixturePath(nodesRootDir, fixturePath);
@@ -246,11 +355,17 @@ export function harvestOutputSchemas(options: HarvestOptions): HarvestResult {
 		}
 		const resource = isStringParam(params.resource) ? params.resource : (pathResource ?? '');
 
+		if (USER_SHAPED_OPERATIONS.has(`${targetNode.type}:${resource}:${operation}`)) {
+			result.unmapped.push({ fixturePath, reason: 'user-shaped-output' });
+			continue;
+		}
+
 		const sample = findOutputSample(fixture, targetNode);
 		if (sample === undefined) {
 			result.unmapped.push({ fixturePath, reason: 'no-output-sample' });
 			continue;
 		}
+		const inferredSchema = relaxInferredSchema(generateJsonSchemaFromData(sample));
 
 		const targetVersion = targetNode.typeVersion ?? 1;
 		const versionDir = `v${padVersion(targetVersion)}`;
@@ -263,21 +378,21 @@ export function harvestOutputSchemas(options: HarvestOptions): HarvestResult {
 			result.unmapped.push({ fixturePath, reason: 'superseded-major' });
 			continue;
 		}
-		const filePath = resource
-			? path.join(schemaDir, versionDir, resource, `${operation}.json`)
-			: path.join(schemaDir, versionDir, `${operation}.json`);
+		const relativeFile = resource ? path.join(resource, `${operation}.json`) : `${operation}.json`;
+		const filePath = path.join(schemaDir, versionDir, relativeFile);
 
-		if (fs.existsSync(filePath) || claimedPaths.has(filePath)) {
+		const claim = claims.get(filePath);
+		if (claim) {
+			claims.set(filePath, mergeSchemas(claim, inferredSchema));
 			result.skippedExisting.push({ fixturePath, filePath });
 			continue;
 		}
-		claimedPaths.add(filePath);
-
-		if (!dryRun) {
-			fs.mkdirSync(path.dirname(filePath), { recursive: true });
-			fs.writeFileSync(filePath, stringifySorted(generateJsonSchemaFromData(sample)));
+		if (isCoveredBySameMajor(schemaDir, Math.floor(targetVersion), relativeFile)) {
+			result.skippedExisting.push({ fixturePath, filePath });
+			continue;
 		}
 
+		claims.set(filePath, inferredSchema);
 		result.written.push({
 			fixturePath,
 			filePath,
@@ -286,6 +401,13 @@ export function harvestOutputSchemas(options: HarvestOptions): HarvestResult {
 			resource,
 			operation,
 		});
+	}
+
+	if (!dryRun) {
+		for (const [filePath, schema] of claims) {
+			fs.mkdirSync(path.dirname(filePath), { recursive: true });
+			fs.writeFileSync(filePath, stringifySorted(schema));
+		}
 	}
 
 	return result;

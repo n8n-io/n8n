@@ -3,24 +3,16 @@
 		"add_time": {
 			"type": "string"
 		},
-		"archive_time": {
-			"type": "null"
-		},
+		"archive_time": {},
 		"cc_email": {
 			"type": "string"
 		},
-		"channel": {
-			"type": "null"
-		},
-		"channel_id": {
-			"type": "null"
-		},
+		"channel": {},
+		"channel_id": {},
 		"creator_id": {
 			"type": "number"
 		},
-		"expected_close_date": {
-			"type": "null"
-		},
+		"expected_close_date": {},
 		"id": {
 			"type": "string"
 		},
@@ -31,27 +23,21 @@
 			"items": {},
 			"type": "array"
 		},
-		"next_activity_id": {
-			"type": "null"
-		},
+		"next_activity_id": {},
 		"organization_id": {
 			"type": "number"
 		},
 		"origin": {
 			"type": "string"
 		},
-		"origin_id": {
-			"type": "null"
-		},
+		"origin_id": {},
 		"owner_id": {
 			"type": "number"
 		},
 		"person_id": {
 			"type": "number"
 		},
-		"source_deal_id": {
-			"type": "null"
-		},
+		"source_deal_id": {},
 		"source_name": {
 			"type": "string"
 		},
@@ -61,9 +47,7 @@
 		"update_time": {
 			"type": "string"
 		},
-		"value": {
-			"type": "null"
-		},
+		"value": {},
 		"visible_to": {
 			"type": "string"
 		},
@@ -71,30 +55,5 @@
 			"type": "boolean"
 		}
 	},
-	"required": [
-		"id",
-		"title",
-		"owner_id",
-		"creator_id",
-		"label_ids",
-		"value",
-		"expected_close_date",
-		"person_id",
-		"organization_id",
-		"is_archived",
-		"archive_time",
-		"source_name",
-		"source_deal_id",
-		"origin",
-		"origin_id",
-		"channel",
-		"channel_id",
-		"was_seen",
-		"next_activity_id",
-		"add_time",
-		"update_time",
-		"visible_to",
-		"cc_email"
-	],
 	"type": "object"
 }

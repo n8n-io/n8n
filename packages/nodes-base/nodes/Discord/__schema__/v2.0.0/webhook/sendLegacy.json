@@ -6,9 +6,7 @@
 		},
 		"author": {
 			"properties": {
-				"avatar": {
-					"type": "null"
-				},
+				"avatar": {},
 				"bot": {
 					"type": "boolean"
 				},
@@ -18,9 +16,7 @@
 				"flags": {
 					"type": "number"
 				},
-				"global_name": {
-					"type": "null"
-				},
+				"global_name": {},
 				"id": {
 					"type": "string"
 				},
@@ -31,16 +27,6 @@
 					"type": "string"
 				}
 			},
-			"required": [
-				"id",
-				"username",
-				"avatar",
-				"discriminator",
-				"public_flags",
-				"flags",
-				"bot",
-				"global_name"
-			],
 			"type": "object"
 		},
 		"channel_id": {
@@ -53,9 +39,7 @@
 		"content": {
 			"type": "string"
 		},
-		"edited_timestamp": {
-			"type": "null"
-		},
+		"edited_timestamp": {},
 		"embeds": {
 			"items": {
 				"properties": {
@@ -65,7 +49,6 @@
 								"type": "string"
 							}
 						},
-						"required": ["name"],
 						"type": "object"
 					},
 					"color": {
@@ -81,7 +64,6 @@
 						"type": "string"
 					}
 				},
-				"required": ["type", "description", "color", "timestamp", "author"],
 				"type": "object"
 			},
 			"type": "array"
@@ -119,24 +101,5 @@
 			"type": "string"
 		}
 	},
-	"required": [
-		"id",
-		"type",
-		"content",
-		"channel_id",
-		"author",
-		"attachments",
-		"embeds",
-		"mentions",
-		"mention_roles",
-		"pinned",
-		"mention_everyone",
-		"tts",
-		"timestamp",
-		"edited_timestamp",
-		"flags",
-		"components",
-		"webhook_id"
-	],
 	"type": "object"
 }

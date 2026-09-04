@@ -8,14 +8,15 @@
 		},
 		"parentReference": {
 			"properties": {
+				"driveId": {
+					"type": "string"
+				},
 				"id": {
 					"type": "string"
 				}
 			},
-			"required": ["id"],
 			"type": "object"
 		}
 	},
-	"required": ["id", "name", "parentReference"],
 	"type": "object"
 }

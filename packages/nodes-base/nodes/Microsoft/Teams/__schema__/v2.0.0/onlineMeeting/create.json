@@ -1,13 +1,62 @@
 {
 	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"creationDateTime": {
+			"type": "string"
+		},
 		"endDateTime": {
 			"type": "string"
 		},
 		"id": {
 			"type": "string"
 		},
+		"joinMeetingIdSettings": {
+			"properties": {
+				"isPasscodeRequired": {
+					"type": "boolean"
+				},
+				"joinMeetingId": {
+					"type": "string"
+				},
+				"passcode": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
 		"joinWebUrl": {
 			"type": "string"
+		},
+		"participants": {
+			"properties": {
+				"organizer": {
+					"properties": {
+						"identity": {
+							"properties": {
+								"user": {
+									"properties": {
+										"displayName": {
+											"type": "string"
+										},
+										"id": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"upn": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
 		},
 		"startDateTime": {
 			"type": "string"
@@ -16,6 +65,5 @@
 			"type": "string"
 		}
 	},
-	"required": ["id", "startDateTime", "endDateTime", "joinWebUrl", "subject"],
 	"type": "object"
 }

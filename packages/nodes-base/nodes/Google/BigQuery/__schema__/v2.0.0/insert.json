@@ -4,6 +4,5 @@
 			"type": "string"
 		}
 	},
-	"required": ["kind"],
 	"type": "object"
 }

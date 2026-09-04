@@ -6,12 +6,8 @@
 		"billing_frequency": {
 			"type": "string"
 		},
-		"billing_frequency_cycles": {
-			"type": "null"
-		},
-		"billing_start_date": {
-			"type": "null"
-		},
+		"billing_frequency_cycles": {},
+		"billing_start_date": {},
 		"comments": {
 			"type": "string"
 		},
@@ -45,9 +41,7 @@
 		"product_id": {
 			"type": "number"
 		},
-		"product_variation_id": {
-			"type": "null"
-		},
+		"product_variation_id": {},
 		"quantity": {
 			"type": "number"
 		},
@@ -64,28 +58,5 @@
 			"type": "string"
 		}
 	},
-	"required": [
-		"id",
-		"sum",
-		"tax",
-		"deal_id",
-		"name",
-		"product_id",
-		"product_variation_id",
-		"order_nr",
-		"add_time",
-		"update_time",
-		"comments",
-		"currency",
-		"discount",
-		"quantity",
-		"item_price",
-		"tax_method",
-		"discount_type",
-		"is_enabled",
-		"billing_frequency",
-		"billing_frequency_cycles",
-		"billing_start_date"
-	],
 	"type": "object"
 }

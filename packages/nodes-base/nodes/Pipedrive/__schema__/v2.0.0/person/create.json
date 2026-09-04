@@ -4,18 +4,6 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"properties": {
-				"test_enum": {
-					"type": "null"
-				},
-				"test_multi": {
-					"type": "null"
-				},
-				"test_number": {
-					"type": "null"
-				}
-			},
-			"required": ["test_number", "test_enum", "test_multi"],
 			"type": "object"
 		},
 		"emails": {
@@ -31,7 +19,6 @@
 						"type": "string"
 					}
 				},
-				"required": ["label", "value", "primary"],
 				"type": "object"
 			},
 			"type": "array"
@@ -74,37 +61,15 @@
 						"type": "string"
 					}
 				},
-				"required": ["label", "value", "primary"],
 				"type": "object"
 			},
 			"type": "array"
 		},
-		"picture_id": {
-			"type": "null"
-		},
-		"update_time": {
-			"type": "null"
-		},
+		"picture_id": {},
+		"update_time": {},
 		"visible_to": {
 			"type": "number"
 		}
 	},
-	"required": [
-		"id",
-		"name",
-		"first_name",
-		"last_name",
-		"add_time",
-		"update_time",
-		"visible_to",
-		"custom_fields",
-		"owner_id",
-		"label_ids",
-		"org_id",
-		"is_deleted",
-		"picture_id",
-		"phones",
-		"emails"
-	],
 	"type": "object"
 }

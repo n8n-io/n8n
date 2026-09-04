@@ -3,30 +3,16 @@
 		"add_time": {
 			"type": "string"
 		},
-		"address": {
-			"type": "null"
-		},
-		"annual_revenue": {
-			"type": "null"
-		},
+		"address": {},
+		"annual_revenue": {},
 		"custom_fields": {
-			"properties": {
-				"test_string": {
-					"type": "null"
-				}
-			},
-			"required": ["test_string"],
 			"type": "object"
 		},
-		"employee_count": {
-			"type": "null"
-		},
+		"employee_count": {},
 		"id": {
 			"type": "number"
 		},
-		"industry": {
-			"type": "null"
-		},
+		"industry": {},
 		"is_deleted": {
 			"type": "boolean"
 		},
@@ -34,9 +20,7 @@
 			"items": {},
 			"type": "array"
 		},
-		"linkedin": {
-			"type": "null"
-		},
+		"linkedin": {},
 		"name": {
 			"type": "string"
 		},
@@ -49,26 +33,7 @@
 		"visible_to": {
 			"type": "number"
 		},
-		"website": {
-			"type": "null"
-		}
+		"website": {}
 	},
-	"required": [
-		"id",
-		"name",
-		"add_time",
-		"update_time",
-		"visible_to",
-		"custom_fields",
-		"owner_id",
-		"label_ids",
-		"website",
-		"linkedin",
-		"industry",
-		"annual_revenue",
-		"employee_count",
-		"is_deleted",
-		"address"
-	],
 	"type": "object"
 }

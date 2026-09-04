@@ -6,15 +6,9 @@
 		"busy": {
 			"type": "boolean"
 		},
-		"conference_meeting_client": {
-			"type": "null"
-		},
-		"conference_meeting_id": {
-			"type": "null"
-		},
-		"conference_meeting_url": {
-			"type": "null"
-		},
+		"conference_meeting_client": {},
+		"conference_meeting_id": {},
+		"conference_meeting_url": {},
 		"creator_user_id": {
 			"type": "number"
 		},
@@ -27,30 +21,18 @@
 		"due_date": {
 			"type": "string"
 		},
-		"due_time": {
-			"type": "null"
-		},
-		"duration": {
-			"type": "null"
-		},
+		"due_time": {},
+		"duration": {},
 		"id": {
 			"type": "number"
 		},
 		"is_deleted": {
 			"type": "boolean"
 		},
-		"lead_id": {
-			"type": "null"
-		},
-		"location": {
-			"type": "null"
-		},
-		"marked_as_done_time": {
-			"type": "null"
-		},
-		"note": {
-			"type": "null"
-		},
+		"lead_id": {},
+		"location": {},
+		"marked_as_done_time": {},
+		"note": {},
 		"org_id": {
 			"type": "number"
 		},
@@ -67,7 +49,6 @@
 						"type": "boolean"
 					}
 				},
-				"required": ["person_id", "primary"],
 				"type": "object"
 			},
 			"type": "array"
@@ -75,15 +56,9 @@
 		"person_id": {
 			"type": "number"
 		},
-		"priority": {
-			"type": "null"
-		},
-		"project_id": {
-			"type": "null"
-		},
-		"public_description": {
-			"type": "null"
-		},
+		"priority": {},
+		"project_id": {},
+		"public_description": {},
 		"subject": {
 			"type": "string"
 		},
@@ -94,34 +69,5 @@
 			"type": "string"
 		}
 	},
-	"required": [
-		"id",
-		"subject",
-		"type",
-		"owner_id",
-		"creator_user_id",
-		"is_deleted",
-		"add_time",
-		"update_time",
-		"deal_id",
-		"lead_id",
-		"person_id",
-		"org_id",
-		"project_id",
-		"due_date",
-		"due_time",
-		"duration",
-		"done",
-		"busy",
-		"marked_as_done_time",
-		"location",
-		"participants",
-		"conference_meeting_client",
-		"conference_meeting_url",
-		"conference_meeting_id",
-		"public_description",
-		"priority",
-		"note"
-	],
 	"type": "object"
 }

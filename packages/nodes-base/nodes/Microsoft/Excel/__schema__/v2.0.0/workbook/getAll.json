@@ -7,6 +7,5 @@
 			"type": "string"
 		}
 	},
-	"required": ["@odata.type", "name"],
 	"type": "object"
 }

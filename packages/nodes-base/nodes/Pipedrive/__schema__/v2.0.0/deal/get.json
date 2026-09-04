@@ -6,21 +6,13 @@
 		"add_time": {
 			"type": "string"
 		},
-		"archive_time": {
-			"type": "null"
-		},
+		"archive_time": {},
 		"arr": {
 			"type": "number"
 		},
-		"channel": {
-			"type": "null"
-		},
-		"channel_id": {
-			"type": "null"
-		},
-		"close_time": {
-			"type": "null"
-		},
+		"channel": {},
+		"channel_id": {},
+		"close_time": {},
 		"creator_user_id": {
 			"type": "number"
 		},
@@ -28,23 +20,9 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"properties": {
-				"test_enum": {
-					"type": "null"
-				},
-				"test_multi": {
-					"type": "null"
-				},
-				"test_string": {
-					"type": "null"
-				}
-			},
-			"required": ["test_string", "test_enum", "test_multi"],
 			"type": "object"
 		},
-		"expected_close_date": {
-			"type": "null"
-		},
+		"expected_close_date": {},
 		"id": {
 			"type": "number"
 		},
@@ -58,21 +36,11 @@
 			"items": {},
 			"type": "array"
 		},
-		"local_close_date": {
-			"type": "null"
-		},
-		"local_lost_date": {
-			"type": "null"
-		},
-		"local_won_date": {
-			"type": "null"
-		},
-		"lost_reason": {
-			"type": "null"
-		},
-		"lost_time": {
-			"type": "null"
-		},
+		"local_close_date": {},
+		"local_lost_date": {},
+		"local_won_date": {},
+		"lost_reason": {},
+		"lost_time": {},
 		"mrr": {
 			"type": "number"
 		},
@@ -82,9 +50,7 @@
 		"origin": {
 			"type": "string"
 		},
-		"origin_id": {
-			"type": "null"
-		},
+		"origin_id": {},
 		"owner_id": {
 			"type": "number"
 		},
@@ -94,12 +60,8 @@
 		"pipeline_id": {
 			"type": "number"
 		},
-		"probability": {
-			"type": "null"
-		},
-		"stage_change_time": {
-			"type": "null"
-		},
+		"probability": {},
+		"stage_change_time": {},
 		"stage_id": {
 			"type": "number"
 		},
@@ -118,47 +80,7 @@
 		"visible_to": {
 			"type": "number"
 		},
-		"won_time": {
-			"type": "null"
-		}
+		"won_time": {}
 	},
-	"required": [
-		"id",
-		"title",
-		"creator_user_id",
-		"value",
-		"person_id",
-		"org_id",
-		"stage_id",
-		"currency",
-		"add_time",
-		"update_time",
-		"status",
-		"probability",
-		"lost_reason",
-		"visible_to",
-		"close_time",
-		"pipeline_id",
-		"won_time",
-		"lost_time",
-		"stage_change_time",
-		"local_won_date",
-		"local_lost_date",
-		"local_close_date",
-		"expected_close_date",
-		"custom_fields",
-		"owner_id",
-		"label_ids",
-		"is_deleted",
-		"origin",
-		"origin_id",
-		"channel",
-		"channel_id",
-		"acv",
-		"arr",
-		"mrr",
-		"is_archived",
-		"archive_time"
-	],
 	"type": "object"
 }

@@ -17,11 +17,8 @@
 				"joinMeetingId": {
 					"type": "string"
 				},
-				"passcode": {
-					"type": "null"
-				}
+				"passcode": {}
 			},
-			"required": ["isPasscodeRequired", "joinMeetingId", "passcode"],
 			"type": "object"
 		},
 		"joinWebUrl": {
@@ -42,22 +39,18 @@
 											"type": "string"
 										}
 									},
-									"required": ["id", "displayName"],
 									"type": "object"
 								}
 							},
-							"required": ["user"],
 							"type": "object"
 						},
 						"upn": {
 							"type": "string"
 						}
 					},
-					"required": ["upn", "identity"],
 					"type": "object"
 				}
 			},
-			"required": ["organizer"],
 			"type": "object"
 		},
 		"startDateTime": {
@@ -67,15 +60,5 @@
 			"type": "string"
 		}
 	},
-	"required": [
-		"id",
-		"creationDateTime",
-		"startDateTime",
-		"endDateTime",
-		"joinWebUrl",
-		"subject",
-		"participants",
-		"joinMeetingIdSettings"
-	],
 	"type": "object"
 }

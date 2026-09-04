@@ -13,6 +13,5 @@
 			"type": "array"
 		}
 	},
-	"required": ["address", "values"],
 	"type": "object"
 }

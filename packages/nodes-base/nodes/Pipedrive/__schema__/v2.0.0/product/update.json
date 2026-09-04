@@ -6,22 +6,12 @@
 		"billing_frequency": {
 			"type": "string"
 		},
-		"billing_frequency_cycles": {
-			"type": "null"
-		},
-		"category": {
-			"type": "null"
-		},
+		"billing_frequency_cycles": {},
+		"category": {},
 		"code": {
 			"type": "string"
 		},
 		"custom_fields": {
-			"properties": {
-				"test_string": {
-					"type": "null"
-				}
-			},
-			"required": ["test_string"],
 			"type": "object"
 		},
 		"description": {
@@ -64,7 +54,6 @@
 						"type": "number"
 					}
 				},
-				"required": ["product_id", "price", "currency", "cost", "direct_cost", "notes"],
 				"type": "object"
 			},
 			"type": "array"
@@ -82,24 +71,5 @@
 			"type": "number"
 		}
 	},
-	"required": [
-		"id",
-		"name",
-		"tax",
-		"add_time",
-		"update_time",
-		"description",
-		"code",
-		"unit",
-		"owner_id",
-		"category",
-		"is_deleted",
-		"is_linkable",
-		"prices",
-		"custom_fields",
-		"visible_to",
-		"billing_frequency",
-		"billing_frequency_cycles"
-	],
 	"type": "object"
 }

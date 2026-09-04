@@ -3,9 +3,7 @@
 		"auto_provision": {
 			"type": "boolean"
 		},
-		"auto_type": {
-			"type": "null"
-		},
+		"auto_type": {},
 		"created_by": {
 			"type": "string"
 		},
@@ -18,9 +16,7 @@
 		"date_update": {
 			"type": "number"
 		},
-		"deleted_by": {
-			"type": "null"
-		},
+		"deleted_by": {},
 		"description": {
 			"type": "string"
 		},
@@ -56,7 +52,6 @@
 					"type": "array"
 				}
 			},
-			"required": ["channels", "groups"],
 			"type": "object"
 		},
 		"team_id": {
@@ -73,27 +68,5 @@
 			"type": "array"
 		}
 	},
-	"required": [
-		"auto_provision",
-		"auto_type",
-		"created_by",
-		"date_create",
-		"date_delete",
-		"date_update",
-		"deleted_by",
-		"description",
-		"enterprise_subteam_id",
-		"handle",
-		"id",
-		"is_external",
-		"is_subteam",
-		"is_usergroup",
-		"name",
-		"prefs",
-		"team_id",
-		"updated_by",
-		"user_count",
-		"users"
-	],
 	"type": "object"
 }

@@ -54,26 +54,8 @@
 					"type": "string"
 				}
 			},
-			"required": ["name", "address"],
 			"type": "object"
 		}
 	},
-	"required": [
-		"@odata.context",
-		"id",
-		"name",
-		"color",
-		"hexColor",
-		"isDefaultCalendar",
-		"changeKey",
-		"canShare",
-		"canViewPrivateItems",
-		"canEdit",
-		"allowedOnlineMeetingProviders",
-		"defaultOnlineMeetingProvider",
-		"isTallyingResponses",
-		"isRemovable",
-		"owner"
-	],
 	"type": "object"
 }

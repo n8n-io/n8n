@@ -16,7 +16,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["contentType", "content"],
 			"type": "object"
 		},
 		"channelIdentity": {
@@ -28,7 +27,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["teamId", "channelId"],
 			"type": "object"
 		},
 		"createdDateTime": {
@@ -39,12 +37,8 @@
 		},
 		"from": {
 			"properties": {
-				"application": {
-					"type": "null"
-				},
-				"device": {
-					"type": "null"
-				},
+				"application": {},
+				"device": {},
 				"user": {
 					"properties": {
 						"@odata.type": {
@@ -60,11 +54,9 @@
 							"type": "string"
 						}
 					},
-					"required": ["@odata.type", "id", "displayName", "userIdentityType"],
 					"type": "object"
 				}
 			},
-			"required": ["application", "device", "user"],
 			"type": "object"
 		},
 		"id": {
@@ -93,27 +85,7 @@
 		"replyToId": {
 			"type": "string"
 		},
-		"subject": {
-			"type": "null"
-		}
+		"subject": {}
 	},
-	"required": [
-		"@odata.context",
-		"id",
-		"replyToId",
-		"etag",
-		"messageType",
-		"createdDateTime",
-		"lastModifiedDateTime",
-		"subject",
-		"importance",
-		"locale",
-		"from",
-		"body",
-		"channelIdentity",
-		"attachments",
-		"mentions",
-		"reactions"
-	],
 	"type": "object"
 }

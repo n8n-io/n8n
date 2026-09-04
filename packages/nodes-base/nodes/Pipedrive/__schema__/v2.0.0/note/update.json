@@ -15,7 +15,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["title"],
 			"type": "object"
 		},
 		"deal_id": {
@@ -27,12 +26,8 @@
 		"last_update_user_id": {
 			"type": "number"
 		},
-		"lead": {
-			"type": "null"
-		},
-		"lead_id": {
-			"type": "null"
-		},
+		"lead": {},
+		"lead_id": {},
 		"org_id": {
 			"type": "number"
 		},
@@ -42,7 +37,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["name"],
 			"type": "object"
 		},
 		"person": {
@@ -51,7 +45,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["name"],
 			"type": "object"
 		},
 		"person_id": {
@@ -75,12 +68,8 @@
 		"pinned_to_task_flag": {
 			"type": "boolean"
 		},
-		"project_id": {
-			"type": "null"
-		},
-		"task_id": {
-			"type": "null"
-		},
+		"project_id": {},
+		"task_id": {},
 		"update_time": {
 			"type": "string"
 		},
@@ -89,9 +78,7 @@
 				"email": {
 					"type": "string"
 				},
-				"icon_url": {
-					"type": "null"
-				},
+				"icon_url": {},
 				"is_you": {
 					"type": "boolean"
 				},
@@ -99,38 +86,11 @@
 					"type": "string"
 				}
 			},
-			"required": ["email", "name", "icon_url", "is_you"],
 			"type": "object"
 		},
 		"user_id": {
 			"type": "number"
 		}
 	},
-	"required": [
-		"id",
-		"user_id",
-		"deal_id",
-		"person_id",
-		"org_id",
-		"lead_id",
-		"project_id",
-		"task_id",
-		"content",
-		"add_time",
-		"update_time",
-		"active_flag",
-		"pinned_to_deal_flag",
-		"pinned_to_person_flag",
-		"pinned_to_organization_flag",
-		"pinned_to_lead_flag",
-		"pinned_to_project_flag",
-		"pinned_to_task_flag",
-		"last_update_user_id",
-		"organization",
-		"person",
-		"deal",
-		"lead",
-		"user"
-	],
 	"type": "object"
 }

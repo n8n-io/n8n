@@ -13,6 +13,5 @@
 			"type": "string"
 		}
 	},
-	"required": ["id", "name", "position", "visibility"],
 	"type": "object"
 }

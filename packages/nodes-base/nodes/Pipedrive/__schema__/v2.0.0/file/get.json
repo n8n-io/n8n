@@ -3,24 +3,18 @@
 		"active_flag": {
 			"type": "boolean"
 		},
-		"activity_id": {
-			"type": "null"
-		},
+		"activity_id": {},
 		"add_time": {
 			"type": "string"
 		},
-		"cid": {
-			"type": "null"
-		},
+		"cid": {},
 		"deal_id": {
 			"type": "number"
 		},
 		"deal_name": {
 			"type": "string"
 		},
-		"description": {
-			"type": "null"
-		},
+		"description": {},
 		"file_name": {
 			"type": "string"
 		},
@@ -36,21 +30,11 @@
 		"inline_flag": {
 			"type": "boolean"
 		},
-		"lead_id": {
-			"type": "null"
-		},
-		"lead_name": {
-			"type": "null"
-		},
-		"log_id": {
-			"type": "null"
-		},
-		"mail_message_id": {
-			"type": "null"
-		},
-		"mail_template_id": {
-			"type": "null"
-		},
+		"lead_id": {},
+		"lead_name": {},
+		"log_id": {},
+		"mail_message_id": {},
+		"mail_template_id": {},
 		"name": {
 			"type": "string"
 		},
@@ -66,21 +50,15 @@
 		"person_name": {
 			"type": "string"
 		},
-		"product_id": {
-			"type": "null"
-		},
-		"product_name": {
-			"type": "null"
-		},
+		"product_id": {},
+		"product_name": {},
 		"remote_id": {
 			"type": "string"
 		},
 		"remote_location": {
 			"type": "string"
 		},
-		"s3_bucket": {
-			"type": "null"
-		},
+		"s3_bucket": {},
 		"update_time": {
 			"type": "string"
 		},
@@ -91,37 +69,5 @@
 			"type": "number"
 		}
 	},
-	"required": [
-		"id",
-		"user_id",
-		"log_id",
-		"add_time",
-		"update_time",
-		"file_name",
-		"file_size",
-		"active_flag",
-		"inline_flag",
-		"remote_location",
-		"remote_id",
-		"s3_bucket",
-		"url",
-		"name",
-		"description",
-		"deal_id",
-		"lead_id",
-		"person_id",
-		"org_id",
-		"product_id",
-		"activity_id",
-		"deal_name",
-		"lead_name",
-		"person_name",
-		"org_name",
-		"product_name",
-		"mail_message_id",
-		"mail_template_id",
-		"cid",
-		"file_type"
-	],
 	"type": "object"
 }

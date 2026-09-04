@@ -4,8 +4,7 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"items": {},
-			"type": "array"
+			"type": "object"
 		},
 		"id": {
 			"type": "number"
@@ -21,9 +20,7 @@
 		},
 		"organization": {
 			"properties": {
-				"address": {
-					"type": "null"
-				},
+				"address": {},
 				"id": {
 					"type": "number"
 				},
@@ -31,7 +28,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["id", "name", "address"],
 			"type": "object"
 		},
 		"owner": {
@@ -40,7 +36,6 @@
 					"type": "number"
 				}
 			},
-			"required": ["id"],
 			"type": "object"
 		},
 		"person": {
@@ -52,7 +47,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["id", "name"],
 			"type": "object"
 		},
 		"pipeline": {
@@ -61,7 +55,6 @@
 					"type": "number"
 				}
 			},
-			"required": ["id"],
 			"type": "object"
 		},
 		"result_score": {
@@ -76,7 +69,6 @@
 					"type": "string"
 				}
 			},
-			"required": ["id", "name"],
 			"type": "object"
 		},
 		"status": {
@@ -95,23 +87,5 @@
 			"type": "number"
 		}
 	},
-	"required": [
-		"result_score",
-		"id",
-		"type",
-		"title",
-		"value",
-		"currency",
-		"status",
-		"visible_to",
-		"owner",
-		"stage",
-		"pipeline",
-		"person",
-		"organization",
-		"custom_fields",
-		"notes",
-		"is_archived"
-	],
 	"type": "object"
 }

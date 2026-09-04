@@ -30,12 +30,9 @@
 					"type": "string"
 				}
 			},
-			"required": ["street", "city", "state", "countryOrRegion", "postalCode"],
 			"type": "object"
 		},
-		"businessHomePage": {
-			"type": "null"
-		},
+		"businessHomePage": {},
 		"businessPhones": {
 			"items": {
 				"type": "string"
@@ -74,9 +71,7 @@
 		"fileAs": {
 			"type": "string"
 		},
-		"generation": {
-			"type": "null"
-		},
+		"generation": {},
 		"givenName": {
 			"type": "string"
 		},
@@ -95,30 +90,20 @@
 			"items": {},
 			"type": "array"
 		},
-		"initials": {
-			"type": "null"
-		},
-		"jobTitle": {
-			"type": "null"
-		},
+		"initials": {},
+		"jobTitle": {},
 		"lastModifiedDateTime": {
 			"type": "string"
 		},
 		"manager": {
 			"type": "string"
 		},
-		"middleName": {
-			"type": "null"
-		},
+		"middleName": {},
 		"mobilePhone": {
 			"type": "string"
 		},
-		"nickName": {
-			"type": "null"
-		},
-		"officeLocation": {
-			"type": "null"
-		},
+		"nickName": {},
+		"officeLocation": {},
 		"otherAddress": {
 			"properties": {},
 			"type": "object"
@@ -129,9 +114,7 @@
 		"personalNotes": {
 			"type": "string"
 		},
-		"profession": {
-			"type": "null"
-		},
+		"profession": {},
 		"spouseName": {
 			"type": "string"
 		},
@@ -141,57 +124,9 @@
 		"title": {
 			"type": "string"
 		},
-		"yomiCompanyName": {
-			"type": "null"
-		},
-		"yomiGivenName": {
-			"type": "null"
-		},
-		"yomiSurname": {
-			"type": "null"
-		}
+		"yomiCompanyName": {},
+		"yomiGivenName": {},
+		"yomiSurname": {}
 	},
-	"required": [
-		"@odata.context",
-		"@odata.etag",
-		"id",
-		"createdDateTime",
-		"lastModifiedDateTime",
-		"changeKey",
-		"categories",
-		"parentFolderId",
-		"birthday",
-		"fileAs",
-		"displayName",
-		"givenName",
-		"initials",
-		"middleName",
-		"nickName",
-		"surname",
-		"title",
-		"yomiGivenName",
-		"yomiSurname",
-		"yomiCompanyName",
-		"generation",
-		"imAddresses",
-		"jobTitle",
-		"companyName",
-		"department",
-		"officeLocation",
-		"profession",
-		"businessHomePage",
-		"assistantName",
-		"manager",
-		"homePhones",
-		"mobilePhone",
-		"businessPhones",
-		"spouseName",
-		"personalNotes",
-		"children",
-		"emailAddresses",
-		"homeAddress",
-		"businessAddress",
-		"otherAddress"
-	],
 	"type": "object"
 }

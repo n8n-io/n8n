@@ -4,8 +4,7 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"items": {},
-			"type": "array"
+			"type": "object"
 		},
 		"id": {
 			"type": "number"
@@ -19,7 +18,6 @@
 					"type": "number"
 				}
 			},
-			"required": ["id"],
 			"type": "object"
 		},
 		"result_score": {
@@ -35,16 +33,5 @@
 			"type": "number"
 		}
 	},
-	"required": [
-		"result_score",
-		"id",
-		"type",
-		"name",
-		"code",
-		"tax",
-		"visible_to",
-		"owner",
-		"custom_fields"
-	],
 	"type": "object"
 }
