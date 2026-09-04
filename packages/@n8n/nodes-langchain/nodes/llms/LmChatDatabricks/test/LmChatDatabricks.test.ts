@@ -28,7 +28,7 @@ const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
 const mockedCreateDatabricksFetch = vi.mocked(createDatabricksFetch);
 
-const mockTokenProvider = vi.fn(async () => 'test-token');
+const mockTokenProvider = { getToken: vi.fn(async () => 'test-token'), expiredStatus: 403 };
 const mockFetch = vi.fn() as unknown as typeof fetch;
 
 const mockCredential = {
@@ -128,11 +128,7 @@ describe('LmChatDatabricks', () => {
 
 			await node.supplyData.call(ctx, 0);
 
-			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(
-				mockNodeDef,
-				mockCredential,
-				undefined,
-			);
+			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(ctx, mockCredential, undefined);
 			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider, undefined);
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.fetch).toBe(mockFetch);
@@ -151,7 +147,7 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(
-				mockNodeDef,
+				ctx,
 				mockCredential,
 				egressFilter,
 			);
@@ -220,11 +216,12 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
-		it('should reject authorizationCode credentials', async () => {
+		it('should accept authorizationCode credentials', async () => {
 			const ctx = setupMockContext({ grantType: 'authorizationCode' });
 
-			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(NodeOperationError);
-			expect(MockedChatOpenAI).not.toHaveBeenCalled();
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalled();
 		});
 
 		it('should reject non-https hosts', async () => {

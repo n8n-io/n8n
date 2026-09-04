@@ -16,13 +16,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { makeDatabricksFailedAttemptHandler } from './error-handling';
 import type { DatabricksOAuth2Credential } from './token-provider';
 import {
 	CHAT_MODEL_USER_AGENT,
 	createDatabricksFetch,
 	getDatabricksTokenProvider,
 } from './token-provider';
-import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 // Every request carries a secret (bearer token, or the client secret on the
 // mint path), so an http host would ship it in cleartext
@@ -277,14 +277,6 @@ export class LmChatDatabricks implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credential = await this.getCredentials<DatabricksOAuth2Credential>('databricksOAuth2Api');
 
-		// ENT-381 adds user-grant support; until then the in-node mint only works
-		// with a client secret
-		if (credential.grantType === 'authorizationCode') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'User (Authorization Code) login is not supported by this node yet - use a Client Credentials (Service Principal) credential',
-			);
-		}
 		assertHttpsHost(this, credential.host);
 
 		const baseURL = `${credential.host.replace(/\/$/, '')}/serving-endpoints`;
@@ -307,12 +299,10 @@ export class LmChatDatabricks implements INodeType {
 		const egressFilter = this.helpers.getSecureEgressFilter();
 
 		const timeout = options.timeout;
+		const tokenSource = getDatabricksTokenProvider(this, credential, egressFilter);
 		const configuration: ClientOptions = {
 			baseURL,
-			fetch: createDatabricksFetch(
-				getDatabricksTokenProvider(this.getNode(), credential, egressFilter),
-				egressFilter,
-			),
+			fetch: createDatabricksFetch(tokenSource, egressFilter),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,
@@ -340,7 +330,10 @@ export class LmChatDatabricks implements INodeType {
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
+				this,
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus),
+			),
 		});
 
 		return {
