@@ -11,13 +11,10 @@ import {
  * the things the data plane can already do: report lifecycle events, or read a
  * credential for a step it runs.
  */
-export type ActionScope = 'lifecycle-events:write' | 'credentials:read';
+export const ACTION_SCOPES = ['lifecycle-events:write', 'credentials:read'] as const;
 
-/** Every scope, so the schema and the type cannot drift apart. */
-export const ACTION_SCOPES = [
-	'lifecycle-events:write',
-	'credentials:read',
-] as const satisfies readonly ActionScope[];
+/** Derived from the list, so a scope cannot exist in the type without the schema knowing it. */
+export type ActionScope = (typeof ACTION_SCOPES)[number];
 
 /**
  * Deliberately the mirror image of the identity token's spec. The swapped
