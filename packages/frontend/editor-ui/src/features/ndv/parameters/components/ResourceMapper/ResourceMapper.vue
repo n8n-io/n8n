@@ -82,9 +82,10 @@ const state = reactive({
 		schema: [] as ResourceMapperField[],
 		attemptToConvertTypes: false,
 		// The execution engine no longer reads this. It stays in the saved value so an
-		// older instance that still reads it keeps casting values instead of falling
-		// back to the legacy uncast passthrough. Always `true` when
-		// `showTypeConversionOptions` is set, never user-editable.
+		// older instance that still reads it keeps casting instead of falling back to
+		// the legacy uncast passthrough. `onMounted` sets it to `true` when
+		// `showTypeConversionOptions` is set, but the stored node values spread after
+		// that, so a persisted value survives untouched. No control ever writes it.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
