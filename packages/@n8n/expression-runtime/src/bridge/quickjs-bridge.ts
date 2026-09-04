@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
-
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
@@ -19,7 +16,7 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 	return _quickjs;
 }
 
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -239,8 +236,20 @@ function serializeError(err: unknown): ErrorSentinel {
  * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
+ *
+ * Uses dynamic imports for node:fs/promises and node:path so that this
+ * function is tree-shaken in browser builds (where QuickJsBridge.initialize()
+ * is always called with a runtimeBundle config, not this file-read path).
  */
 async function readRuntimeBundle(): Promise<string> {
+	if (typeof process === 'undefined' || !process.versions?.node) {
+		throw new Error(
+			'readRuntimeBundle() is not available in browser environments. ' +
+				'Pass `runtimeBundle` in BridgeConfig instead.',
+		);
+	}
+	const { readFile } = await import('node:fs/promises');
+	const path = await import('node:path');
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
@@ -539,7 +548,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	private async loadRuntimeBundle(): Promise<void> {
 		if (!this.vm) throw new Error('Context not initialized');
 
-		const runtimeBundle = await readRuntimeBundle();
+		const runtimeBundle = this.config.runtimeBundle
+			? this.config.runtimeBundle
+			: await readRuntimeBundle();
 
 		const result = this.vm.evalCode(runtimeBundle);
 		if (result.error) {

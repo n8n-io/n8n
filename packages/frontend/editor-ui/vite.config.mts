@@ -40,8 +40,44 @@ const alias = editorUiAliases(__dirname, packagesDir);
 
 const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
 
+/**
+ * Shim node:fs/promises for browser builds.
+ *
+ * The nodePolyfills plugin maps 'node:fs' → empty.js via a string alias.
+ * Rolldown (and vite's alias system) treats string finds as prefix matches,
+ * so 'node:fs/promises' resolves to 'empty.js/promises' — an invalid path.
+ *
+ * We add a config() hook with enforce:'post' so our alias is prepended AFTER
+ * the nodePolyfills config() hook runs. Because mergeAlias prepends the
+ * incoming aliases ([...newAliases, ...existingAliases]), the last plugin to
+ * run its config() hook ends up with its aliases first in the array, giving
+ * them highest priority. 'post' plugins run last, so our explicit
+ * 'node:fs/promises' alias wins over the generic 'node:fs' alias.
+ *
+ * QuickJsBridge imports node:fs/promises only in readRuntimeBundle(), which
+ * is only called on the Node.js path. In the browser it is dead code because
+ * initialize() is always called with a runtimeBundle string.
+ */
+const nodeFsPromisesShimPlugin = (): UserConfig['plugins'][number] => ({
+	name: 'node-fs-promises-shim',
+	enforce: 'post',
+	config() {
+		return {
+			resolve: {
+				alias: [
+					{
+						find: 'node:fs/promises',
+						replacement: resolve(__dirname, 'vite/node-fs-promises-shim.ts'),
+					},
+				],
+			},
+		};
+	},
+});
+
 const plugins: UserConfig['plugins'] = [
 	devServerPlugin(process.env),
+	nodeFsPromisesShimPlugin(),
 	nodePopularityPlugin(),
 	lucideIconsPlugin(),
 	icons({
