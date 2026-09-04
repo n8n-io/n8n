@@ -23,8 +23,18 @@ export function throwIfOnlineMeetingUnsupported(this: IExecuteFunctions): void {
 	}
 }
 
+export function optionalText(this: IExecuteFunctions, value: unknown, label: string) {
+	const text = value instanceof DateTime || value instanceof Date ? value.toJSON() : value;
+	if (typeof text === 'object' && text !== null) {
+		throw new NodeOperationError(this.getNode(), `The ${label} must be text`, {
+			description: `Check that the '${label}' expression resolves to text`,
+		});
+	}
+	return String(text ?? '').trim();
+}
+
 export function requiredText(this: IExecuteFunctions, name: string, i: number, label: string) {
-	const value = String(this.getNodeParameter(name, i) ?? '').trim();
+	const value = optionalText.call(this, this.getNodeParameter(name, i), label);
 	if (value) return value;
 	throw new NodeOperationError(this.getNode(), `The ${label} must not be empty`, {
 		description: `Check that the '${label}' parameter is correctly set`,
