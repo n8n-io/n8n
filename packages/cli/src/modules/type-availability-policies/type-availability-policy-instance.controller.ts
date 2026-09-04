@@ -105,7 +105,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getPolicy(_req: AuthenticatedRequest, _res: Response, @Param('policyId') policyId: string) {
-		const policy = await this.service.getPolicyDocument(policyId);
+		const policy = await this.service.getPolicyDocument(policyId, NODE_TYPES_KIND);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
 		}
@@ -124,6 +124,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	) {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
 			policyId,
+			NODE_TYPES_KIND,
 			dto.rules,
 			req.user.id,
 		);
@@ -139,7 +140,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		_res: Response,
 		@Param('policyId') policyId: string,
 	) {
-		await this.service.deletePolicyDocument(policyId, req.user.id);
+		await this.service.deletePolicyDocument(policyId, NODE_TYPES_KIND, req.user.id);
 
 		return { success: true };
 	}

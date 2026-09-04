@@ -84,9 +84,10 @@ describe('type availability policy repositories', () => {
 
 			const updated = await policyRepo.updateRules(policy.id, [ALLOW_BASE], 'user-2', ROOT);
 
-			expect(updated?.version).toBe(2);
-			expect(updated?.rules).toEqual([ALLOW_BASE]);
-			expect(updated?.updatedBy).toBe('user-2');
+			expect(updated?.before.version).toBe(1);
+			expect(updated?.after.version).toBe(2);
+			expect(updated?.after.rules).toEqual([ALLOW_BASE]);
+			expect(updated?.after.updatedBy).toBe('user-2');
 		});
 
 		it('leaves the version alone when the rules are unchanged', async () => {
@@ -99,8 +100,8 @@ describe('type availability policy repositories', () => {
 				ROOT,
 			);
 
-			expect(updated?.version).toBe(1);
-			expect(updated?.updatedBy).toBe('user-1');
+			expect(updated?.after.version).toBe(1);
+			expect(updated?.after.updatedBy).toBe('user-1');
 		});
 
 		it('treats reordered rules as a change, since order decides first match', async () => {
@@ -113,7 +114,7 @@ describe('type availability policy repositories', () => {
 				ROOT,
 			);
 
-			expect(updated?.version).toBe(2);
+			expect(updated?.after.version).toBe(2);
 		});
 
 		// Sequential only — the overlapping case is covered by the unit test on the
@@ -125,8 +126,8 @@ describe('type availability policy repositories', () => {
 			await policyRepo.updateRules(policy.id, [DENY_SLACK], 'user-3', ROOT);
 			const third = await policyRepo.updateRules(policy.id, [ALLOW_BASE, DENY_SLACK], 'u', ROOT);
 
-			expect(third?.version).toBe(4);
-			expect(third?.rules).toEqual([ALLOW_BASE, DENY_SLACK]);
+			expect(third?.after.version).toBe(4);
+			expect(third?.after.rules).toEqual([ALLOW_BASE, DENY_SLACK]);
 		});
 
 		it('treats a differently-ordered rule object as unchanged', async () => {
@@ -141,12 +142,30 @@ describe('type availability policy repositories', () => {
 
 			const updated = await policyRepo.updateRules(policy.id, [reordered], 'user-2', ROOT);
 
-			expect(updated?.version).toBe(1);
-			expect(updated?.updatedBy).toBe('user-1');
+			expect(updated?.after.version).toBe(1);
+			expect(updated?.after.updatedBy).toBe('user-1');
 		});
 
 		it('returns null when updating a policy that does not exist', async () => {
 			expect(await policyRepo.updateRules('missing', [ALLOW_BASE], 'user-1', ROOT)).toBeNull();
+		});
+
+		it('returns null and writes nothing when expectedKind does not match, without checking it first', async () => {
+			const policy = await createPolicy([DENY_SLACK]);
+
+			const result = await policyRepo.updateRules(
+				policy.id,
+				[ALLOW_BASE],
+				'user-2',
+				ROOT,
+				'credential-types',
+			);
+
+			expect(result).toBeNull();
+			const stored = await policyRepo.findById(policy.id, ROOT);
+			expect(stored?.rules).toEqual([DENY_SLACK]);
+			expect(stored?.version).toBe(1);
+			expect(stored?.updatedBy).toBe('user-1');
 		});
 
 		it('finds many by id and ignores unknown ids', async () => {

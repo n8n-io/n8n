@@ -1,4 +1,5 @@
 import type { OperationContext, TransactionRunner } from '@n8n/db';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -43,6 +44,11 @@ function makePolicy(overrides: Partial<TypeAvailabilityPolicy> = {}) {
 		updatedBy: 'user-1',
 		...overrides,
 	});
+}
+
+/** A Postgres unique-violation, shaped the way `isUniqueConstraintError` recognizes it. */
+function makeUniqueConstraintError(): QueryFailedError {
+	return new QueryFailedError('insert', undefined, { code: '23505' } as unknown as Error);
 }
 
 describe('TypeAvailabilityPolicyService', () => {
@@ -107,7 +113,9 @@ describe('TypeAvailabilityPolicyService', () => {
 
 	describe('setDefaultAction', () => {
 		it('throws ConflictError on a stale version and writes nothing', async () => {
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(
+				makeScope({ version: 2 }),
+			);
 
 			await expect(service.setDefaultAction(KIND, null, 'deny', 1, 'user-2')).rejects.toThrow(
 				ConflictError,
@@ -119,7 +127,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('lazily creates the scope on first write and emits once', async () => {
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(null);
 			const created = makeScope({ defaultAction: 'deny', version: 1 });
 			scopeRepository.createScope.mockResolvedValue(created);
 
@@ -143,7 +151,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 		it('updates an existing scope and emits before/after', async () => {
 			const existing = makeScope({ defaultAction: 'allow', version: 1 });
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(existing);
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(existing);
 			const updated = makeScope({ defaultAction: 'deny', version: 2 });
 			scopeRepository.updateDefaultAction.mockResolvedValue(updated);
 
@@ -157,6 +165,17 @@ describe('TypeAvailabilityPolicyService', () => {
 				before: { defaultAction: 'allow', version: 1 },
 				after: { defaultAction: 'deny', version: 2 },
 			});
+		});
+
+		it('reports a concurrent first write as ConflictError, not a raw constraint violation', async () => {
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(null);
+			scopeRepository.createScope.mockRejectedValue(makeUniqueConstraintError());
+
+			await expect(service.setDefaultAction(KIND, null, 'deny', 0, 'user-2')).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -195,21 +214,22 @@ describe('TypeAvailabilityPolicyService', () => {
 
 	describe('updatePolicyDocument', () => {
 		it('throws NotFoundError when the document does not exist', async () => {
-			policyRepository.findById.mockResolvedValue(null);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+			policyRepository.updateRules.mockResolvedValue(null);
 
-			await expect(service.updatePolicyDocument('missing', [RULE], 'user-1')).rejects.toThrow(
+			await expect(service.updatePolicyDocument('missing', KIND, [RULE], 'user-1')).rejects.toThrow(
 				NotFoundError,
 			);
-			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('emits once with before/after rules and version', async () => {
 			const before = makePolicy({ rules: [], version: 1 });
-			policyRepository.findById.mockResolvedValue(before);
 			const after = makePolicy({ rules: [RULE], version: 2 });
-			policyRepository.updateRules.mockResolvedValue(after);
+			policyRepository.updateRules.mockResolvedValue({ before, after });
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 
-			await service.updatePolicyDocument(before.id, [RULE], 'user-2');
+			await service.updatePolicyDocument(before.id, KIND, [RULE], 'user-2');
 
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
 			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-document-updated', {
@@ -220,24 +240,81 @@ describe('TypeAvailabilityPolicyService', () => {
 				after: { rules: [RULE], version: 2 },
 			});
 		});
+
+		it('locks the attached scopes before the policy row, then fans the version bump out to them, on a real change', async () => {
+			const before = makePolicy({ rules: [], version: 1 });
+			const after = makePolicy({ rules: [RULE], version: 2 });
+			policyRepository.updateRules.mockResolvedValue({ before, after });
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1', 'scope-2']);
+
+			await service.updatePolicyDocument(before.id, KIND, [RULE], 'user-2');
+
+			expect(scopeRepository.lockScopesByIds).toHaveBeenCalledWith(['scope-1', 'scope-2'], ROOT);
+			expect(scopeRepository.bumpVersions).toHaveBeenCalledWith(['scope-1', 'scope-2'], ROOT);
+		});
+
+		it('does not fan out a version bump when the write is a content no-op', async () => {
+			const unchanged = makePolicy({ rules: [RULE], version: 1 });
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			policyRepository.updateRules.mockResolvedValue({ before: unchanged, after: unchanged });
+
+			await service.updatePolicyDocument(unchanged.id, KIND, [RULE], 'user-2');
+
+			expect(scopeRepository.bumpVersions).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the document resolves to a different kind', async () => {
+			// The repository itself rejects a kind mismatch before any write — see
+			// `updateRules`'s `expectedKind` parameter. A service-level check running only
+			// after `updateRules` resolved would be too late: the write would already have
+			// landed on the wrong kind's document.
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+			policyRepository.updateRules.mockResolvedValue(null);
+
+			await expect(
+				service.updatePolicyDocument('policy-1', KIND, [RULE], 'user-1'),
+			).rejects.toThrow(NotFoundError);
+
+			expect(policyRepository.updateRules).toHaveBeenCalledWith(
+				'policy-1',
+				[RULE],
+				'user-1',
+				ROOT,
+				KIND,
+			);
+			expect(scopeRepository.bumpVersions).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('deletePolicyDocument', () => {
 		it('throws NotFoundError when the document does not exist', async () => {
-			policyRepository.findById.mockResolvedValue(null);
+			policyRepository.findByIdForUpdate.mockResolvedValue(null);
 
-			await expect(service.deletePolicyDocument('missing', 'user-1')).rejects.toThrow(
+			await expect(service.deletePolicyDocument('missing', KIND, 'user-1')).rejects.toThrow(
 				NotFoundError,
 			);
 			expect(attachmentRepository.listScopeIdsAttachedToPolicy).not.toHaveBeenCalled();
 		});
 
+		it('throws NotFoundError when the document resolves to a different kind, and never calls delete', async () => {
+			const existing = makePolicy({ kind: 'other-kind' });
+			policyRepository.findByIdForUpdate.mockResolvedValue(existing);
+
+			await expect(service.deletePolicyDocument(existing.id, KIND, 'user-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(attachmentRepository.listScopeIdsAttachedToPolicy).not.toHaveBeenCalled();
+			expect(policyRepository.deletePolicy).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('throws ConflictError when still attached, and never calls delete', async () => {
 			const existing = makePolicy();
-			policyRepository.findById.mockResolvedValue(existing);
+			policyRepository.findByIdForUpdate.mockResolvedValue(existing);
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1', 'scope-2']);
 
-			await expect(service.deletePolicyDocument(existing.id, 'user-1')).rejects.toThrow(
+			await expect(service.deletePolicyDocument(existing.id, KIND, 'user-1')).rejects.toThrow(
 				ConflictError,
 			);
 			expect(policyRepository.deletePolicy).not.toHaveBeenCalled();
@@ -246,12 +323,12 @@ describe('TypeAvailabilityPolicyService', () => {
 
 		it('deletes and emits once when detached', async () => {
 			const existing = makePolicy();
-			policyRepository.findById.mockResolvedValue(existing);
+			policyRepository.findByIdForUpdate.mockResolvedValue(existing);
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 
-			await service.deletePolicyDocument(existing.id, 'user-1');
+			await service.deletePolicyDocument(existing.id, KIND, 'user-1');
 
-			expect(policyRepository.deletePolicy).toHaveBeenCalledWith(existing.id, {});
+			expect(policyRepository.deletePolicy).toHaveBeenCalledWith(existing.id, ROOT);
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
 			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-document-deleted', {
 				updatedBy: 'user-1',
@@ -259,6 +336,28 @@ describe('TypeAvailabilityPolicyService', () => {
 				policyId: existing.id,
 				before: { rules: existing.rules, version: existing.version },
 			});
+		});
+	});
+
+	describe('getPolicyDocument', () => {
+		it('returns null for a genuinely unknown id', async () => {
+			policyRepository.findById.mockResolvedValue(null);
+
+			expect(await service.getPolicyDocument('missing', KIND)).toBeNull();
+		});
+
+		it('returns the document when the kind matches', async () => {
+			const policy = makePolicy();
+			policyRepository.findById.mockResolvedValue(policy);
+
+			expect(await service.getPolicyDocument(policy.id, KIND)).toBe(policy);
+		});
+
+		it('throws NotFoundError when the document resolves to a different kind', async () => {
+			const policy = makePolicy({ kind: 'other-kind' });
+			policyRepository.findById.mockResolvedValue(policy);
+
+			await expect(service.getPolicyDocument(policy.id, KIND)).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -275,7 +374,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				),
 			).rejects.toThrow('Duplicate policyId');
 
-			expect(scopeRepository.findScopeById).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByIdForUpdate).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
@@ -295,7 +394,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('throws NotFoundError when the scope does not exist', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(null);
+			scopeRepository.findScopeByIdForUpdate.mockResolvedValue(null);
 
 			await expect(
 				service.replaceAttachments(
@@ -308,9 +407,8 @@ describe('TypeAvailabilityPolicyService', () => {
 
 		it('replaces attachments, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
-			scopeRepository.findScopeById
-				.mockResolvedValueOnce(scope)
-				.mockResolvedValueOnce(makeScope({ version: 2 }));
+			scopeRepository.findScopeByIdForUpdate.mockResolvedValue(scope);
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
 			attachmentRepository.listAttachmentsForScope
 				.mockResolvedValueOnce([])
 				.mockResolvedValueOnce([{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false }]);
@@ -345,7 +443,9 @@ describe('TypeAvailabilityPolicyService', () => {
 
 	describe('setEffectivePolicy', () => {
 		it('throws ConflictError on a stale version and writes nothing', async () => {
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(
+				makeScope({ version: 2 }),
+			);
 
 			await expect(
 				service.setEffectivePolicy(
@@ -362,8 +462,26 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('reports a concurrent first write as ConflictError, not a raw constraint violation', async () => {
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(null);
+			scopeRepository.createScope.mockRejectedValue(makeUniqueConstraintError());
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('creates the scope and its first document on first write', async () => {
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(null);
 			const createdScope = makeScope({ defaultAction: 'deny', version: 1 });
 			scopeRepository.createScope.mockResolvedValue(createdScope);
 			const createdPolicy = makePolicy({ rules: [RULE], version: 1 });
@@ -398,16 +516,43 @@ describe('TypeAvailabilityPolicyService', () => {
 			);
 		});
 
+		it('throws UserError when the scope already has multiple attachments', async () => {
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false },
+				{ policyId: 'p2', rules: [], priority: 1, isFloor: false },
+			]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-1',
+				),
+			).rejects.toThrow('use PUT /scopes/:scopeId/attachments');
+
+			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('updates the existing scope and document, emitting both facets', async () => {
 			const scope = makeScope({ defaultAction: 'allow', version: 1 });
-			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(scope);
 			const existingPolicy = makePolicy({ rules: [], version: 1 });
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
 				{ policyId: existingPolicy.id, rules: [], priority: 0, isFloor: false },
 			]);
-			policyRepository.findById.mockResolvedValue(existingPolicy);
 			const updatedPolicy = makePolicy({ rules: [RULE], version: 2 });
-			policyRepository.updateRules.mockResolvedValue(updatedPolicy);
+			policyRepository.updateRules.mockResolvedValue({
+				before: existingPolicy,
+				after: updatedPolicy,
+			});
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([scope.id]);
 			scopeRepository.findScopeById.mockResolvedValue(
 				makeScope({ defaultAction: 'deny', version: 3 }),
 			);
@@ -426,6 +571,10 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
+			// The only scope this document is attached to is the one being edited here —
+			// its own bump is unconditional (asserted via `bumpVersion` elsewhere), so no
+			// *other* scope should be fanned out to.
+			expect(scopeRepository.bumpVersions).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledTimes(2);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
@@ -434,6 +583,39 @@ describe('TypeAvailabilityPolicyService', () => {
 					after: { rules: [RULE], version: 2 },
 				}),
 			);
+		});
+
+		it('fans the version bump out to other scopes sharing the edited document', async () => {
+			const scope = makeScope({ id: 'scope-1', defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProjectForUpdate.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [], priority: 0, isFloor: false },
+			]);
+			const updatedPolicy = makePolicy({ rules: [RULE], version: 2 });
+			policyRepository.updateRules.mockResolvedValue({
+				before: existingPolicy,
+				after: updatedPolicy,
+			});
+			// The edited document is also attached to two other scopes.
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([
+				'scope-1',
+				'scope-2',
+				'scope-3',
+			]);
+			scopeRepository.findScopeById.mockResolvedValue(
+				makeScope({ id: 'scope-1', defaultAction: 'deny', version: 3 }),
+			);
+
+			await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [RULE], defaultAction: 'deny' },
+				1,
+				'user-2',
+			);
+
+			expect(scopeRepository.bumpVersions).toHaveBeenCalledWith(['scope-2', 'scope-3'], ROOT);
 		});
 	});
 });
