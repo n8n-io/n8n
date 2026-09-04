@@ -264,6 +264,13 @@ export function useSetupPanelActions(options: {
 					NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType)?.parameters ??
 					null,
 			});
+			// Applied parameters can change the node's dynamic inputs.
+			const workflowObject = documentStore.getWorkflowObjectAccessorSnapshot();
+			documentStore.setNodeIssue({
+				node: nodeName,
+				type: 'input',
+				value: nodeHelpers.getNodeInputIssues(workflowObject, node, nodeType)?.input ?? null,
+			});
 		}
 
 		documentStore.setVersionData({

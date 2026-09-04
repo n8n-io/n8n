@@ -31,9 +31,12 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 
 // useNodeHelpers injects the host's document store at init, which needs a
 // component setup context — stub the one getter the mirror uses.
-const { getNodeCredentialIssues } = vi.hoisted(() => ({ getNodeCredentialIssues: vi.fn() }));
+const { getNodeCredentialIssues, getNodeInputIssues } = vi.hoisted(() => ({
+	getNodeCredentialIssues: vi.fn(),
+	getNodeInputIssues: vi.fn(),
+}));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
-	useNodeHelpers: () => ({ getNodeCredentialIssues }),
+	useNodeHelpers: () => ({ getNodeCredentialIssues, getNodeInputIssues }),
 }));
 
 const WORKFLOW_ID = 'wf-1';
@@ -94,6 +97,8 @@ describe('useSetupPanelActions', () => {
 		vi.mocked(getWorkflow).mockReset();
 		getNodeCredentialIssues.mockReset();
 		getNodeCredentialIssues.mockReturnValue(null);
+		getNodeInputIssues.mockReset();
+		getNodeInputIssues.mockReturnValue(null);
 	});
 
 	it('binds a credential through the version-guarded workflow PATCH', async () => {
@@ -483,27 +488,44 @@ describe('useSetupPanelActions', () => {
 			type: 'credentials',
 			value: { slackApi: ['Credentials not set'] },
 		});
+		documentStore.setNodeIssue({
+			node: 'Slack',
+			type: 'input',
+			value: { main: ['Missing input'] },
+		});
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
 
-		// The stale credential warning clears; the missing required parameter
-		// still reports until it is applied.
+		// The stale credential and input warnings clear; the missing required
+		// parameter still reports until it is applied.
 		expect(getNodeCredentialIssues).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: 'Slack',
 				credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 			}),
 		);
+		expect(getNodeInputIssues).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ name: 'Slack' }),
+			slackNodeType,
+		);
 		expect(documentStore.allNodes[0].issues?.credentials).toBeUndefined();
+		expect(documentStore.allNodes[0].issues?.input).toBeUndefined();
 		expect(documentStore.allNodes[0].issues?.parameters).toEqual({
 			channel: ['Parameter "Channel" is required.'],
 		});
+
+		// Applied parameters can change dynamic inputs: a newly derived input
+		// issue must land on the document too.
+		getNodeInputIssues.mockReturnValue({ input: { main: ['Input "main" is missing'] } });
 
 		await expect(actions.applyParameterValues('Slack', { channel: '#general' })).resolves.toBe(
 			'applied',
 		);
 
-		expect(documentStore.allNodes[0].issues).toEqual({});
+		expect(documentStore.allNodes[0].issues).toEqual({
+			input: { main: ['Input "main" is missing'] },
+		});
 	});
 
 	it('sends the Execute message through the normal send endpoint with the setup panel context', async () => {
