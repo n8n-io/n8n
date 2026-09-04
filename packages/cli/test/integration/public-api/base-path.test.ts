@@ -24,4 +24,13 @@ describe('Public API base path', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.resources).toBeDefined();
 	});
+
+	test('returns OpenAPI YAML with the base-path-prefixed server URL', async () => {
+		const response = await authOwnerAgent.get('/openapi.yml');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers['content-type']).toMatch(/yaml|text/);
+		expect(response.text).toContain('/n8n/api/v1');
+		expect(response.text).not.toContain('url: /api/v1');
+	});
 });
