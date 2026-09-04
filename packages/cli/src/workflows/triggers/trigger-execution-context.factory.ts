@@ -377,7 +377,7 @@ export class TriggerExecutionContextFactory {
 					void this.engineV2ActiveTriggers
 						.discardFiles(data)
 						.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
-					this.engineV2ActiveTriggers.assertPollSupported();
+					this.engineV2ActiveTriggers.assertPollPayloadSupported(data);
 				}
 
 				const cursor = takeStagedCursor();
@@ -390,15 +390,42 @@ export class TriggerExecutionContextFactory {
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
-					cursor === null
-						? await this.workflowExecutionService.runWorkflow(
+				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
+					// The registration snapshot above can be stale by the time this
+					// resolves (e.g. the workflow was just republished onto engine 2.0),
+					// so a payload that slipped past that check is guarded again here,
+					// against the copy that actually decides where this run goes.
+					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
+					if (routesToV2) {
+						try {
+							await this.engineV2ActiveTriggers.assertPayloadSupported(data);
+						} catch (error) {
+							responsePromise?.reject(ensureError(error));
+							throw error;
+						}
+					}
+
+					if (cursor === null) {
+						return await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						);
+					}
+
+					return routesToV2
+						? await this.workflowExecutionService.runPolledWorkflowV2(
 								freshWorkflowData,
 								node,
 								data,
 								additionalData,
 								mode,
+								cursor,
 								responsePromise,
+								fence,
 							)
 						: await this.workflowExecutionService.runPolledWorkflow(
 								freshWorkflowData,
@@ -409,8 +436,8 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
-							),
-				);
+							);
+				});
 
 				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
