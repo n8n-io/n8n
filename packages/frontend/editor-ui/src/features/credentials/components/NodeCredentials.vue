@@ -76,7 +76,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 // Nodes that let the user pick their own predefined credential type via a
 // parameter ("Authentication" → "Predefined Credential Type") rather than
-// declaring a fixed credential in their node type. n8n credits mints a
+// declaring a fixed credential in their node type. Gateway credits mints a
 // managed credential for a specific, known provider — it can't stand in for
 // an arbitrary user-chosen one, so these nodes never offer it. Includes the
 // AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
