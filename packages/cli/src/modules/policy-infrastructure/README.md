@@ -140,9 +140,8 @@ package, a source-control pull skips and reports the workflow.
 
 ## The decision audit line
 
-Every veto writes one line, from one place: `PolicyDecisionService.audit`. A policy
-feature gets uniform enforcement logging without building any. If SIEM-forwardable
-enforcement events are wanted later, they land here too.
+Every veto writes one line, from one place: `PolicyDecisionService.audit`. A check
+never logs its own — it reports violations and the line follows.
 
 ```
 warn  Policy blocked workflowSave  {
