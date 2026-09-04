@@ -1,5 +1,17 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+const orgUnitPathField: INodeProperties = {
+	displayName: 'Organizational Unit Name or ID',
+	name: 'orgUnitPath',
+	type: 'options',
+	typeOptions: {
+		loadOptionsMethod: 'getOrgUnits',
+	},
+	default: '/',
+	description:
+		'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
 const rolesOptions = [
 	{
 		name: 'Directory Sync Admin',
@@ -488,17 +500,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Select the roles you want to assign to the user',
 				options: rolesOptions,
 			},
-			{
-				displayName: 'Organizational Unit Name or ID',
-				name: 'orgUnitPath',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getOrgUnits',
-				},
-				default: '/',
-				description:
-					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
+			orgUnitPathField,
 			{
 				displayName: 'Custom Fields',
 				name: 'customFields',
@@ -1193,17 +1195,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Select the roles you want to assign to the user',
 				options: rolesOptions,
 			},
-			{
-				displayName: 'Organizational Unit Name or ID',
-				name: 'orgUnitPath',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getOrgUnits',
-				},
-				default: '/',
-				description:
-					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
+			orgUnitPathField,
 			{
 				displayName: 'Custom Fields',
 				name: 'customFields',

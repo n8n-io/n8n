@@ -13,6 +13,7 @@ describe('Google GSuiteAdmin Node - Create User', () => {
 				},
 				password: '12345678',
 				primaryEmail: 'new@example.com',
+				changePasswordAtNextLogin: true,
 				phones: [
 					{
 						type: 'work',

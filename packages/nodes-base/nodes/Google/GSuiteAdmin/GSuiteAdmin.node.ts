@@ -114,7 +114,8 @@ export class GSuiteAdmin implements INodeType {
 					{},
 					{ orgUnitPath: '/', type: 'all' },
 				)) as {
-					organizationUnits: Array<{
+					// the key is omitted entirely when the customer has no organizational units
+					organizationUnits?: Array<{
 						name: string;
 						orgUnitPath: string;
 					}>;
@@ -126,7 +127,7 @@ export class GSuiteAdmin implements INodeType {
 					value: '/',
 				});
 
-				for (const unit of orgUnits.organizationUnits) {
+				for (const unit of orgUnits.organizationUnits ?? []) {
 					returnData.push({
 						name: unit.name,
 						value: unit.orgUnitPath,
