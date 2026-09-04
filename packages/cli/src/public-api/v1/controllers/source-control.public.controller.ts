@@ -1,20 +1,30 @@
-import { SourceControlStatusPublicDto, SourceControlStatusQueryPublicDto } from '@n8n/api-types';
+import {
+	SourceControlPushConflictErrorPublicDto,
+	SourceControlPushRequestPublicDto,
+	SourceControlPushResponsePublicDto,
+	SourceControlStatusPublicDto,
+	SourceControlStatusQueryPublicDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Get,
 	Licensed,
+	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { SourceControlPushConflictError } from '@/errors/response-errors/source-control-push-conflict.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -60,5 +70,53 @@ export class SourceControlPublicController {
 		const files = Array.isArray(result) ? result : result.sourceControlledFiles;
 
 		return { data: files };
+	}
+
+	@Post('/push')
+	@Licensed(LICENSE_FEATURES.SOURCE_CONTROL)
+	@ApiKeyScope('sourceControl:push')
+	@ApiSummary('Push local source control changes')
+	@ApiDescription(
+		'Commits and pushes the selected files to the connected Git repository. Each entry in ' +
+			'`fileNames` is resolved against a fresh preview of the pending changes: only its ' +
+			'`id` and `type` are read, so the file path, status, and conflict state pushed are ' +
+			'always the server-derived ones, never client-supplied. Call `GET /source-control/status`' +
+			' with `direction=push` first to see what is eligible.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, SourceControlPushResponsePublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(409, {
+		dto: SourceControlPushConflictErrorPublicDto,
+		description:
+			'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.',
+	})
+	async pushSourceControl(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: SourceControlPushRequestPublicDto,
+	): Promise<SourceControlPushResponsePublicDto> {
+		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
+
+		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
+			throw new BadRequestError('Source Control is not connected to a repository');
+		}
+
+		const result = await this.sourceControlService.pushWorkfolder(
+			req.user,
+			{
+				commitMessage: body.commitMessage,
+				fileNames: body.fileNames,
+				force: body.force,
+			},
+			{ origin: 'publicApi' },
+		);
+
+		if (result.statusCode === 409) {
+			throw new SourceControlPushConflictError(result.statusResult);
+		}
+
+		return { data: result.statusResult };
 	}
 }

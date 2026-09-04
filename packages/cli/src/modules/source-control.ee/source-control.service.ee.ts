@@ -1,8 +1,4 @@
-import type {
-	PullWorkFolderRequestDto,
-	PushWorkFolderRequestDto,
-	SourceControlledFile,
-} from '@n8n/api-types';
+import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -47,6 +43,17 @@ import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+/**
+ * Narrower than `PushWorkFolderRequestDto`: only `id`/`type` per file are ever read (see
+ * `resolveAuthorizedFilesToPush`), so the public API can select files without echoing back
+ * the full `SourceControlledFile` shape. The internal DTO is structurally assignable here.
+ */
+export interface PushWorkfolderOptions {
+	commitMessage?: string;
+	force?: boolean;
+	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
+}
 
 @Service()
 export class SourceControlService {
@@ -307,14 +314,15 @@ export class SourceControlService {
 
 	async pushWorkfolder(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		{ origin = 'ui' }: { origin?: 'ui' | 'publicApi' } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options),
+			async () => await this.pushWorkfolderWithoutLock(user, options, { origin }),
 		);
 	}
 
@@ -327,7 +335,7 @@ export class SourceControlService {
 	 */
 	private async resolveAuthorizedFilesToPush(
 		user: User,
-		requestedFiles: SourceControlledFile[],
+		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
 	): Promise<SourceControlledFile[]> {
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
@@ -370,7 +378,8 @@ export class SourceControlService {
 
 	private async pushWorkfolderWithoutLock(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		{ origin = 'ui' }: { origin?: 'ui' | 'publicApi' } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -510,10 +519,10 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		this.eventService.emit(
-			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(user.id, statusResult),
-		);
+		this.eventService.emit('source-control-user-finished-push-ui', {
+			...getTrackingInformationFromPostPushResult(user.id, statusResult),
+			publicApi: origin === 'publicApi',
+		});
 		// #endregion
 
 		return {

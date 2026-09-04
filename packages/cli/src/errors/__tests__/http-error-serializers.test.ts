@@ -7,6 +7,7 @@ import {
 } from '@/errors/http-error-serializers';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SourceControlPushConflictError } from '@/errors/response-errors/source-control-push-conflict.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -144,6 +145,38 @@ describe('http-error-serializers', () => {
 				code: 403,
 				message: 'Slack is not available in this project',
 				meta: { violations },
+			},
+		});
+	});
+
+	it('both serializers expose source control push conflicts on a 409', () => {
+		const conflicts = [
+			{
+				file: 'workflows/wf-1.json',
+				id: 'wf-1',
+				name: 'My workflow',
+				type: 'workflow' as const,
+				status: 'modified' as const,
+				location: 'local' as const,
+				conflict: true,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		];
+		const descriptor = classifyHttpError(new SourceControlPushConflictError(conflicts));
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				message: expect.stringContaining('conflicting files'),
+				conflicts,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: expect.stringContaining('conflicting files'),
+				meta: { conflicts },
 			},
 		});
 	});

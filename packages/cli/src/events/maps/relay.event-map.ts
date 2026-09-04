@@ -727,6 +727,7 @@ export type RelayEventMap = {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
+		publicApi: boolean;
 	};
 
 	// #endregion
