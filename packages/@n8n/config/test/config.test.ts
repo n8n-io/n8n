@@ -200,7 +200,7 @@ describe('GlobalConfig', () => {
 		},
 		activityLog: {
 			enabled: false,
-			retentionDays: 14,
+			retentionDays: 0,
 			maxEntries: 1_000,
 		},
 		nodes: {

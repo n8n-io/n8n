@@ -165,7 +165,10 @@ export class ActivityEventRelay extends EventRelay {
 			resourceType: 'workflow',
 			resourceId: workflowId,
 			resourceName: workflow.name,
-			data: provenance(source),
+			// The version name is worth more than the id here: the assistant and MCP both set a
+			// descriptive one. Present when publishing, since the service attaches the version it
+			// activated; absent when unpublishing, which clears the relation before it emits.
+			data: { ...provenance(source), ...versionName(workflow.activeVersion?.name) },
 		});
 	}
 
@@ -405,6 +408,11 @@ function listNodeTypes(types: string[], listKey: string, totalKey: string): IDat
 	if (types.length <= maxListedNodeTypes) return { [listKey]: types };
 
 	return { [listKey]: types.slice(0, maxListedNodeTypes), [totalKey]: types.length };
+}
+
+/** Free text a user typed, so it is clipped like every other name that reaches `data`. */
+function versionName(name: string | null | undefined): IDataObject {
+	return name ? { versionName: clip(name) } : {};
 }
 
 /** Keeps an unbounded string from spending the whole `data` budget on its own. */

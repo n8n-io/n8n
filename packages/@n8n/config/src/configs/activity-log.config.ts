@@ -10,9 +10,14 @@ export class ActivityLogConfig {
 	@Env('N8N_ACTIVITY_LOG_ENABLED')
 	enabled: boolean = false;
 
-	/** Days of activity to keep. Entries older than this are pruned. `0` keeps them until the count cap bites. */
+	/**
+	 * Days of activity to keep. Off by default: the entry cap below already bounds the table, and
+	 * an age cap on top only decides how long a quiet instance keeps entries it has room for.
+	 * Set it where entries naming deleted resources should expire on a clock rather than on volume.
+	 * `0` disables it.
+	 */
 	@Env('N8N_ACTIVITY_LOG_RETENTION_DAYS', nonnegativeIntSchema)
-	retentionDays: number = 14;
+	retentionDays: number = 0;
 
 	/**
 	 * Hard ceiling on stored entries, instance-wide rather than per project — so a busy project

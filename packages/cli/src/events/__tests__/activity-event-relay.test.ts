@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { ActivityLogConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
+	WorkflowHistory,
 	IWorkflowDb,
 	Project,
 	SharedCredentialsRepository,
@@ -129,10 +130,20 @@ describe('ActivityEventRelay', () => {
 					s.emit('workflow-activated', {
 						user,
 						workflowId: 'workflow1',
-						workflow: workflowWith([]),
+						workflow: mock<IWorkflowDb>({
+							id: 'workflow1',
+							name: 'Lead enrichment',
+							nodes: [],
+							activeVersion: mock<WorkflowHistory>({ name: 'Adds retry on the HTTP node' }),
+						}),
 						publicApi: false,
 					}),
-				{ category: 'workflow', action: 'published', resourceName: 'Lead enrichment' },
+				{
+					category: 'workflow',
+					action: 'published',
+					resourceName: 'Lead enrichment',
+					data: { versionName: 'Adds retry on the HTTP node' },
+				},
 			],
 			[
 				'workflow-deactivated',
@@ -249,6 +260,48 @@ describe('ActivityEventRelay', () => {
 			expect(activityEventRepository.record).toHaveBeenCalledTimes(1);
 			expect(activityEventRepository.record).toHaveBeenCalledWith(
 				expect.objectContaining({ userId: 'user1', projectId: 'project1', ...expected }),
+			);
+		});
+
+		it('clips a version name rather than letting it spend the whole budget', async () => {
+			relayWith(true);
+
+			eventService.emit('workflow-activated', {
+				user,
+				workflowId: 'workflow1',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow1',
+					name: 'Lead enrichment',
+					nodes: [],
+					activeVersion: mock<WorkflowHistory>({ name: 'v'.repeat(2_000) }),
+				}),
+				publicApi: false,
+			});
+			await flushPromises();
+
+			expect(activityEventRepository.record).toHaveBeenCalledWith(
+				expect.objectContaining({ data: { versionName: 'v'.repeat(64) } }),
+			);
+		});
+
+		it('records no version name when unpublishing, which clears the relation first', async () => {
+			relayWith(true);
+
+			eventService.emit('workflow-deactivated', {
+				user,
+				workflowId: 'workflow1',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow1',
+					name: 'Lead enrichment',
+					activeVersion: null,
+				}),
+				publicApi: false,
+				deactivatedVersionId: 'version1',
+			});
+			await flushPromises();
+
+			expect(activityEventRepository.record).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'unpublished', data: {} }),
 			);
 		});
 
