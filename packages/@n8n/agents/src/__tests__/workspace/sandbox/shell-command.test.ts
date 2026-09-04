@@ -16,6 +16,10 @@ describe('shellEscape', () => {
 	it('quotes an argument that contains a single quote', () => {
 		expect(shellEscape("it's")).toBe("'it'\\''s'");
 	});
+
+	it('keeps an empty argument as an empty quoted string', () => {
+		expect(shellEscape('')).toBe("''");
+	});
 });
 
 describe('toShellCommand', () => {
@@ -28,5 +32,9 @@ describe('toShellCommand', () => {
 		expect(toShellCommand('echo', ['--user=a@b', 'hello world'])).toBe(
 			"echo --user=a@b 'hello world'",
 		);
+	});
+
+	it('keeps an empty argument in the command line', () => {
+		expect(toShellCommand('echo', ['', 'x'])).toBe("echo '' x");
 	});
 });
