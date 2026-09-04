@@ -121,6 +121,7 @@ import {
 	shouldIgnoreCanvasShortcut,
 } from '@/features/workflows/canvas/canvas.utils';
 import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
+import { useGroupNodeGeneration } from '@/features/workflows/canvas/composables/useGroupNodeGeneration';
 import { useGroupNodeOperations } from '@/features/workflows/canvas/composables/useGroupNodeOperations';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -198,7 +199,13 @@ const workflowExecutionState = computed(() =>
 );
 const workflowsListStore = useWorkflowsListStore();
 const groupNodeOperations = useGroupNodeOperations();
+const { planInterior } = useGroupNodeGeneration();
 const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
+/**
+ * Group the node creator fills, set by the "+" on an empty group's card. The
+ * picked node joins that group's interior instead of landing on the canvas.
+ */
+const pendingGroupIdForNodeCreator = ref<string | undefined>(undefined);
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const credentialsStore = useCredentialsStore();
@@ -896,6 +903,56 @@ async function onCreateEmptyGroup(position?: XYPosition) {
 	canvasEventBus.emit('rename:group', { groupId: group.id });
 }
 
+/**
+ * Fills an empty group with the MOCK generator.
+ *
+ * `useGroupNodeGeneration` plans the interior; this applies it through the
+ * canvas operations, so undo, grouping, and connection handling behave like any
+ * other edit. The generated nodes chain left to right, so the group gets one
+ * interior entry and one interior exit, and its own ports keep the boundary
+ * edges. A real generator would replace `planInterior`'s generator argument and
+ * nothing here would change.
+ */
+async function onGenerateGroup(groupId: string) {
+	if (!checkIfEditingIsAllowed()) return;
+
+	const plan = planInterior(groupId);
+	if (plan === undefined || plan.nodes.length === 0) return;
+
+	await addNodesAndConnections(
+		plan.nodes.map((generated) => ({
+			type: generated.type,
+			name: generated.name,
+			position: generated.position,
+		})),
+		plan.edges.map(([from, to]) => ({ from: { nodeIndex: from }, to: { nodeIndex: to } })),
+		{},
+	);
+
+	// The nodes exist on the canvas; move them inside the group so the boundary
+	// hides them and the group stops being empty. Both steps record their own
+	// undo entries, so no extra bracketing is needed here.
+	const createdIds = plan.nodes
+		.map((generated) => workflowDocumentStore.value.getNodeByName(generated.name)?.id)
+		.filter((id): id is string => id !== undefined);
+	groupNodeOperations.addNodesToGroup(groupId, createdIds);
+}
+
+/**
+ * Opens the node creator for an empty group. The picked node goes into the
+ * group's interior, which is one `parentId` change.
+ */
+function onAddNodeToGroup(groupId: string) {
+	if (!checkIfEditingIsAllowed()) return;
+	if (groupNodeOperations.getGroupNode(groupId) === undefined) return;
+
+	pendingGroupIdForNodeCreator.value = groupId;
+	nodeCreatorStore.openNodeCreatorForRegularNodes(
+		workflowId.value,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+	);
+}
+
 function onCreateConnection(connection: Connection) {
 	const source = resolveGroupEndpoint(connection.source, CanvasConnectionMode.Output);
 	const target = resolveGroupEndpoint(connection.target, CanvasConnectionMode.Input);
@@ -1019,6 +1076,8 @@ const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
 
 function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
+	// Closing without a pick leaves the group empty, which needs no clean-up.
+	pendingGroupIdForNodeCreator.value = undefined;
 }
 
 async function onAddNodesAndConnections(
@@ -1046,6 +1105,15 @@ async function onAddNodesAndConnections(
 		telemetry: true,
 		replaceNodeId: nodeCreatorReplaceTargetId.value,
 	});
+
+	// A node picked from an empty group's "+" joins that group's interior.
+	if (pendingGroupIdForNodeCreator.value !== undefined && addedNodes.length > 0) {
+		groupNodeOperations.addNodesToGroup(
+			pendingGroupIdForNodeCreator.value,
+			addedNodes.map((node) => node.id),
+		);
+		pendingGroupIdForNodeCreator.value = undefined;
+	}
 
 	if (addedNodes.length > 0) {
 		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
@@ -2092,6 +2160,9 @@ onBeforeUnmount(() => {
 			@update:logs:output-open="logsStore.toggleOutputOpen"
 			@update:has-range-selection="canvasStore.setHasRangeSelection"
 			@update:selected-group="canvasStore.setSelectedGroupId"
+			@generate:group="onGenerateGroup"
+			@add-node:group="onAddNodeToGroup"
+			@create:empty-group="onCreateEmptyGroup"
 			@open:sub-workflow="onOpenSubWorkflow"
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
