@@ -463,6 +463,71 @@ describe('validateValueAgainstSchema', () => {
 					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
 				).toThrow("Invalid input for 'count' [item 0]");
 			});
+
+			test('should cast to string even when the stored convertFieldsToString is false', () => {
+				const nodeType = {
+					description: {
+						properties: [
+							{
+								displayName: 'Workflow Inputs',
+								name: 'workflowInputs',
+								type: 'resourceMapper',
+								noDataExpression: true,
+								typeOptions: {
+									resourceMapper: {
+										showTypeConversionOptions: true,
+										mode: 'map',
+									},
+								},
+							},
+						],
+					},
+				} as unknown as INodeType;
+
+				const node: INode = {
+					parameters: {
+						workflowInputs: {
+							mappingMode: 'defineBelow',
+							value: {
+								note: '={{ $json.note }}',
+							},
+							matchingColumns: [],
+							attemptToConvertTypes: true,
+							// Only a non-UI writer can produce `false` here. The UI always
+							// writes `true` when showTypeConversionOptions is set.
+							convertFieldsToString: false,
+							schema: [
+								{
+									id: 'note',
+									displayName: 'note',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'call sub-workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1.2,
+					position: [420, 0],
+				};
+
+				const result = validateValueAgainstSchema(
+					node,
+					nodeType,
+					{ note: 42 },
+					'workflowInputs.value',
+					0,
+					0,
+				);
+
+				expect(result).toEqual({ note: '42' });
+			});
 		});
 
 		describe('schema field lookup', () => {

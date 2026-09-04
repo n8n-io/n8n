@@ -66,7 +66,6 @@ workflowInputs: {
     },
   ],
   attemptToConvertTypes: false,
-  convertFieldsToString: true,
 }
 </pattern>
 </patterns>`,

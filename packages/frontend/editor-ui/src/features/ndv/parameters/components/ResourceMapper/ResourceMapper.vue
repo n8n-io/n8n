@@ -81,9 +81,10 @@ const state = reactive({
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
 		attemptToConvertTypes: false,
-		// This should always be true if `showTypeConversionOptions` is provided
-		// It's used to avoid accepting any value as string without casting it
-		// Which is the legacy behavior without these type options.
+		// The execution engine no longer reads this. It stays in the saved value so an
+		// older instance that still reads it keeps casting values instead of falling
+		// back to the legacy uncast passthrough. Always `true` when
+		// `showTypeConversionOptions` is set, never user-editable.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,

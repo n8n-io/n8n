@@ -86,7 +86,11 @@ const validateResourceMapperValue = (
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
 				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
-				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
+				// Derived from the node description, not from the stored value. The stored
+				// `convertFieldsToString` is redundant with `showTypeConversionOptions` for
+				// anything the UI writes, so reading it only let a caller that omitted or
+				// cleared it opt out of casting in a way the UI cannot show or undo.
+				parseStrings: enableTypeValidationOptions,
 			});
 
 			if (!validationResult.valid) {
