@@ -90,8 +90,10 @@ export class EngineV2Runtime {
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
-					// TODO(CAT-2880): no credential access. A v1 node that needs credentials
-					// fails when it asks for them.
+					// TODO(CAT-2926): credentials resolve in this process, through the
+					// `CredentialsHelper` that `getBase` attaches, which works only while
+					// the engine runs inside the control plane. Intended for now; a helper
+					// that asks the control plane over HTTP replaces it.
 					additionalDataFactory: async ({ executionId }) => {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
