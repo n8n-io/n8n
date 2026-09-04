@@ -35,6 +35,10 @@ const PREFIX = 'preview/pr-';
 // from here. Every box uses this one; the in-box script prints the resolved value.
 const FORWARDING_DOMAIN = 'app.github.dev';
 
+// The location defaults to the GH runner location, which might send it to
+// use a region that doesn't have prebuilds set up. Hard code to Europe but allow overriding.
+const LOCATION = process.env.PREVIEW_LOCATION || 'WestEurope';
+
 const args = process.argv.slice(2);
 const options = { json: args.includes('--json'), dryRun: args.includes('--dry-run') };
 const [cmd, pr] = args.filter((arg) => !arg.startsWith('--'));
@@ -157,6 +161,8 @@ const createArgs = (pr, head) => [
 	IDLE_TIMEOUT,
 	'--retention-period',
 	RETENTION_PERIOD,
+	'--location',
+	LOCATION,
 ];
 
 function report(pr, head, codespace, json, orgVisible = false) {
