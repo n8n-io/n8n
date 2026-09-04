@@ -867,6 +867,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: Mock;
 				isConfigEvalsEnabled: Mock;
 				isMcpConnectionsEnabled: Mock;
+				isNodeUsageEnabled: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -914,6 +915,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
+			isNodeUsageEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {

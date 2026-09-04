@@ -11,6 +11,7 @@ import {
 	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
@@ -59,18 +60,6 @@ function getMcpRegistryCredentialHeader(
 }
 
 /**
- * Picks the server's remote endpoint and parses its hostname.
- */
-function resolveCredentialRemote(
-	server: McpRegistryServer,
-): { endpointUrl: string; hostname: string } | null {
-	const connection = resolveMcpRegistryConnection(server);
-	return connection
-		? { endpointUrl: connection.endpointUrl, hostname: connection.endpointHostname }
-		: null;
-}
-
-/**
  * Locks the synthetic credential's HTTP requests to the MCP server's hostname.
  */
 function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
@@ -91,11 +80,14 @@ function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
 }
 
 /**
- * Registry MCP server → service-specific credential type for OAuth2 auth type
+ * Registry MCP server → service-specific credential type for OAuth2 auth type.
+ * Plain `oauth2` credentials have no user-editable, host-bearing field of
+ * their own to resolve a templated URL against, so templated remotes are
+ * unsupported here and drop the row, same as an unparseable URL.
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
-	const remote = resolveCredentialRemote(server);
-	if (!remote) return null;
+	const remote = resolveMcpRegistryConnection(server);
+	if (!remote || remote.isTemplated) return null;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -111,7 +103,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				displayName: 'Server URL',
 				name: 'serverUrl',
 				type: 'hidden',
-				default: remote.endpointUrl,
+				default: getConfiguredEndpointUrl(remote),
 			},
 			{
 				displayName: 'Resource URL',
@@ -119,7 +111,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				type: 'hidden',
 				default: '',
 			},
-			...buildDomainRestrictionProperties(remote.hostname),
+			...buildDomainRestrictionProperties(remote.endpointHostname),
 		],
 	};
 }
@@ -164,7 +156,11 @@ function getValidatedUsesCredentials(
 }
 
 /**
- * Builds a dedicated credential type extending a known n8n credential.
+ * Builds a dedicated credential type extending a known n8n credential. A
+ * templated remote has no literal hostname, so the endpoint and the domain
+ * pin are both written as `$self`-expressions resolved against the parent
+ * credential's own `host` field, the same field the Strapi-authored URL
+ * template itself already depends on.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
@@ -173,7 +169,7 @@ function serverToExtendedCredentialDescription(
 	const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
 	if (!validated) return null;
 
-	const remote = resolveCredentialRemote(server);
+	const remote = resolveMcpRegistryConnection(server);
 	if (!remote) return null;
 
 	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
@@ -185,10 +181,26 @@ function serverToExtendedCredentialDescription(
 		}),
 	);
 
+	const serverUrlProperty: INodeProperties = {
+		displayName: 'Server URL',
+		name: 'serverUrl',
+		type: 'hidden',
+		default: getConfiguredEndpointUrl(remote),
+	};
+	const serverUrlOverride = remote.isTemplated ? [serverUrlProperty] : [];
+
+	const allowedDomainsDefault = remote.isTemplated
+		? '={{$self["host"].extractDomain()}}'
+		: remote.endpointHostname;
+
 	return {
 		...getMcpRegistryCredentialHeader(server),
 		extends: [validated.parentType],
-		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
+		properties: [
+			...overrideProperties,
+			...serverUrlOverride,
+			...buildDomainRestrictionProperties(allowedDomainsDefault),
+		],
 	};
 }
 
@@ -346,7 +358,7 @@ export function serverToNodeDescription(
 	description.properties = withRemoteDefaults(
 		description.properties,
 		connection.transport,
-		connection.endpointUrl,
+		getConfiguredEndpointUrl(connection),
 	);
 	const authenticationProperty = getAuthenticationProperty(server, isKnownCredentialType);
 	if (authenticationProperty) {

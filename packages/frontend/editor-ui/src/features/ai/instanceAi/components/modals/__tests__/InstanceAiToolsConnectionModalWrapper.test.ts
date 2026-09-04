@@ -212,7 +212,14 @@ const ToolsConnectionModalStub = defineComponent({
 		modalProps = props;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args): void {
@@ -249,6 +256,7 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -282,6 +290,13 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+	});
+
+	it('configures the suggestion footer copy', () => {
+		const { getByText } = renderComponent();
+
+		expect(getByText('instanceAi.connections.modal.suggestion.prompt')).toBeInTheDocument();
+		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
 
 	it('keeps the modal open after saving settings opened from the tools list', async () => {

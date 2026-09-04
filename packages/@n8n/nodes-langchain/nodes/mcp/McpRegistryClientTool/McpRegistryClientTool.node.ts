@@ -3,6 +3,7 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type INodePropertyOptions,
+	getConfiguredEndpointUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -187,7 +188,7 @@ export class McpRegistryClientTool implements INodeType {
 				return await loadMcpToolOptions(this, {
 					authentication,
 					transport: resolved.connection.transport,
-					endpointUrl: resolved.connection.endpointUrl,
+					endpointUrl: getConfiguredEndpointUrl(resolved.connection),
 					registryCredential: {
 						connection: resolved.connection,
 						credentialType: authentication,
@@ -222,7 +223,7 @@ function resolveConfig(
 	return {
 		authentication,
 		transport: resolved.connection.transport,
-		endpointUrl: resolved.connection.endpointUrl,
+		endpointUrl: getConfiguredEndpointUrl(resolved.connection),
 		registryCredential: {
 			connection: resolved.connection,
 			credentialType: authentication,

@@ -107,7 +107,47 @@ export const githubUsesCredentialsMockServer = {
 	status: 'active',
 } satisfies McpRegistryServer;
 
-export const linearMockServer = {
+export const databricksGenieTemplatedMockServer: McpRegistryServer = {
+	name: 'com.databricks/genie-mcp',
+	slug: 'databricks-genie',
+	title: 'Databricks Genie',
+	description: 'Databricks Genie MCP server, resolved per-customer from the workspace host.',
+	tagline: 'Connect to Databricks Genie',
+	version: '1.0.0',
+	updatedAt: '2026-08-20T10:00:00.000Z',
+	icons: [
+		{
+			src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iI0ZGMzYyMSIvPjwvc3ZnPg==',
+			mimeType: 'image/svg+xml',
+		},
+	],
+	websiteUrl: 'https://databricks.com',
+	authType: 'extendsCredential',
+	remotes: [
+		{
+			type: 'streamable-http-templated',
+			// Trailing slash stripped in case the customer pastes the host straight
+			// from the browser, matching DatabricksOAuth2Api's own accessTokenUrl/authUrl.
+			url: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+		},
+	],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	extendsCredential: {
+		extends: 'databricksOAuth2Api',
+		scope: 'genie offline_access',
+		grantType: 'authorizationCode',
+		// databricksOAuth2Api already provides a per-host authUrl default, no
+		// override needed. customScopes is hidden here because Genie's scope is
+		// fixed above; without this the parent's "Custom Scopes" toggle and its
+		// dependent fields would render with no effect.
+		customScopes: false,
+	},
+};
+
+export const linearMockServer: McpRegistryServer = {
 	name: 'app.linear/linear',
 	slug: 'linear',
 	title: 'Linear',

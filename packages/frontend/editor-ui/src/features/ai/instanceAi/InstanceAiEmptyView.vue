@@ -10,6 +10,8 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
@@ -494,6 +496,12 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
+	const nodeCount = countAttachedNodes(attachments);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
 	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,

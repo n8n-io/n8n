@@ -124,6 +124,9 @@ export interface BuildMcpClientDeps {
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
+/** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
+const UNRESOLVED_CREDENTIAL_URL = 'https://credential-unresolved.invalid/';
+
 /**
  * Build a connected-but-lazy SDK `McpClient` for a single JSON-config MCP
  * server entry. The returned client opens its transport on first use
@@ -203,26 +206,39 @@ export async function buildMcpClientForServer(
 
 	// An unresolved credential fails at connect time so the real reason travels
 	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
-	// connecting unauthenticated returns an opaque 401/403 instead. Rejecting
-	// rather than throwing keeps both `promise-function-async` and
-	// `require-await` satisfied.
-	const authFetch: typeof fetch = credentialError
-		? async () =>
-				await Promise.reject(
-					new OperationalError(
-						`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
-					),
-				)
-		: createAuthFetch({
-				baseFetch: proxyFetch,
-				initialHeaders,
-				onUnauthorized,
-				allowedDomains,
-			});
+	// connecting unauthenticated returns an opaque 401/403 instead.
+	//
+	// The url and the fetch are chosen together on purpose. A templated registry
+	// URL is still an unresolved `$self`-expression when the credential fails,
+	// and the SDK rejects that URL before it ever calls fetch, so the real cause
+	// would be replaced by an opaque "Invalid URL". The placeholder keeps the
+	// connect on the path where the rejecting fetch reports the real reason, and
+	// is only ever paired with that fetch, which sends no request.
+	const { url, fetch: authFetch } = credentialError
+		? {
+				url: UNRESOLVED_CREDENTIAL_URL,
+				// Rejecting rather than throwing keeps both `promise-function-async`
+				// and `require-await` satisfied.
+				fetch: (async () =>
+					await Promise.reject(
+						new OperationalError(
+							`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
+						),
+					)) as typeof fetch,
+			}
+		: {
+				url: runtimeUrl,
+				fetch: createAuthFetch({
+					baseFetch: proxyFetch,
+					initialHeaders,
+					onUnauthorized,
+					allowedDomains,
+				}),
+			};
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,
-		url: runtimeUrl,
+		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
 		toolFilter: server.toolFilter,

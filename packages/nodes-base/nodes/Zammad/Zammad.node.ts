@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { removeTrailingSlash } from '@utils/utilities';
+
 import {
 	groupDescription,
 	organizationDescription,
@@ -33,7 +35,6 @@ import {
 	isCustomer,
 	isNotZammadFoundation,
 	throwOnEmptyUpdate,
-	tolerateTrailingSlash,
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 } from './GenericFunctions';
@@ -282,7 +283,7 @@ export class Zammad implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ZammadTypes.BasicAuthCredentials;
 
-				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+				const baseUrl = removeTrailingSlash(credentials.baseUrl);
 
 				const options: IRequestOptions = {
 					method: 'GET',
@@ -315,7 +316,7 @@ export class Zammad implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ZammadTypes.TokenAuthCredentials;
 
-				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+				const baseUrl = removeTrailingSlash(credentials.baseUrl);
 
 				const options: IRequestOptions = {
 					method: 'GET',

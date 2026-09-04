@@ -11,7 +11,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
@@ -43,7 +43,8 @@ interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
 	authType: McpRegistryServer['authType'];
-	connection: NonNullable<ReturnType<typeof resolveMcpRegistryConnection>>;
+	/** Never templated: this path cannot resolve a template, so those are skipped. */
+	connection: LiteralMcpRegistryConnection;
 }
 
 const MCP_REGISTRY_SERVER_PREFIX = 'mcp_';
@@ -141,6 +142,15 @@ export class InstanceAiMcpRegistryService {
 		const server = await this.mcpRegistryService.get(input.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
+		}
+
+		// This path cannot resolve a templated server URL, so `getRegistryMcpServers`
+		// skips such a row at load time. Reject it here too, otherwise the connection
+		// persists and reads as connected while contributing nothing.
+		if (resolveMcpRegistryConnection(server)?.isTemplated) {
+			throw new BadRequestError(
+				`MCP registry server "${input.serverSlug}" cannot be connected here`,
+			);
 		}
 
 		// v1 invariant: at most one connection per (user, serverSlug). To switch
@@ -414,6 +424,18 @@ export class InstanceAiMcpRegistryService {
 		const connection = resolveMcpRegistryConnection(server);
 		if (!connection) {
 			this.logger.warn('Skipping MCP registry connection without supported remote transport', {
+				connectionId,
+				serverSlug,
+				credentialId,
+			});
+			return null;
+		}
+
+		// This path reads the credential without resolving expressions, so a
+		// templated row's URL would stay an unresolved template. Skipping keeps
+		// the row out of the picker instead of offering a connection that breaks.
+		if (connection.isTemplated) {
+			this.logger.warn('Skipping MCP registry connection with a templated server URL', {
 				connectionId,
 				serverSlug,
 				credentialId,

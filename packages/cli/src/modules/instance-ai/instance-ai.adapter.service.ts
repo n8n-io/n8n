@@ -4,6 +4,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -38,6 +39,7 @@ import type {
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
+	NodeUsageResult,
 	WorkflowDetail,
 	WorkflowNode,
 	WorkflowVersionSummary,
@@ -141,8 +143,10 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
 } from '@/modules/mcp-registry/node-description-transform';
+import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -341,6 +345,9 @@ export class InstanceAiAdapterService {
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		// Appended rather than grouped with the other query services: existing tests construct this
+		// service positionally, so inserting mid-list renames every later argument.
+		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -371,6 +378,9 @@ export class InstanceAiAdapterService {
 			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
+			/** Per-user node-usage gate (via `isNodeUsageEnabled`). Falsy → neither the
+			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
+			nodeUsageEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -386,6 +396,7 @@ export class InstanceAiAdapterService {
 			agentId,
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			nodeUsageEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -404,7 +415,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			modelId,
-			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId, nodeUsageEnabled),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
@@ -489,6 +500,21 @@ export class InstanceAiAdapterService {
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
 	}
 
+	/**
+	 * Gate for the node-usage context surface. PostHog owns cohort rollout;
+	 * `N8N_INSTANCE_AI_NODE_USAGE_ENABLED` force-enables because {@link PostHogClient}
+	 * layers that override on top of the resolved flags. Fails closed on any PostHog
+	 * error, so an outage never switches a context surface on by accident.
+	 */
+	async isNodeUsageEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			return flags?.[INSTANCE_AI_NODE_USAGE_FLAG] === true;
+		} catch {
+			return false;
+		}
+	}
+
 	/** Gate for MCP registry discovery tool. All three must hold:
 	 * 1. the `mcp-registry` module is active
 	 * 2. the admin allows MCP access instance-wide
@@ -503,13 +529,18 @@ export class InstanceAiAdapterService {
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {
+		// Templated rows are dropped rather than offered: this path reads credentials
+		// without resolving expressions, so `createConnection` refuses them. Offering
+		// one would walk the user to a credential picker and then an error.
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
-			servers.map((server) => ({
-				slug: server.slug,
-				title: server.title,
-				description: server.description,
-				tools: server.tools.map((tool) => tool.name),
-			}));
+			servers
+				.filter((server) => !server.isTemplated)
+				.map((server) => ({
+					slug: server.slug,
+					title: server.title,
+					description: server.description,
+					tools: server.tools.map((tool) => tool.name),
+				}));
 
 		return {
 			/** Connected servers are filtered out: `connected` answers what the user has,
@@ -525,7 +556,11 @@ export class InstanceAiAdapterService {
 			getServers: async (slugs: string[]): Promise<McpRegistryConnectServerSummary[]> => {
 				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
 				return servers
-					.filter((server) => server.status === 'active')
+					.filter((server) => {
+						if (server.status !== 'active') return false;
+						const connection = resolveMcpRegistryConnection(server);
+						return connection !== null && !connection.isTemplated;
+					})
 					.map((server) => ({
 						slug: server.slug,
 						title: server.title,
@@ -662,6 +697,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
+		nodeUsageGateOpen = false,
 	): InstanceAiWorkflowService {
 		const {
 			workflowService,
@@ -678,9 +714,23 @@ export class InstanceAiAdapterService {
 			telemetry,
 			collaborationService,
 			policyEnforcementService,
+			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		// Resolved once per context, upstream in `createContext`: the tool registers the action from
+		// the method's presence, so nothing downstream has to know a rollout flag exists.
+		const nodeUsageEnabled = nodeUsageGateOpen && workflowDependencyQueryService !== undefined;
+
+		/**
+		 * Which project a read targets. An explicit `projectId` wins, otherwise the thread's own
+		 * project unless the caller widened to the whole instance. Shared by `list` and `nodeUsage`
+		 * so the two never disagree about what "this project" means.
+		 */
+		const resolveTargetProjectId = (options?: {
+			projectId?: string;
+			scope?: 'project' | 'instance';
+		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
@@ -713,18 +763,49 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
+			// Present only when the index is wired and the flag is on; the tool reads that presence
+			// to decide whether the action exists at all.
+			...(nodeUsageEnabled && workflowDependencyQueryService
+				? {
+						async nodeUsage(options): Promise<NodeUsageResult> {
+							const targetProjectId = resolveTargetProjectId(options);
+							const result = await workflowDependencyQueryService.getNodeTypeUsage(user, {
+								...(targetProjectId ? { projectId: targetProjectId } : {}),
+								...(options?.nodeType ? { nodeType: options.nodeType } : {}),
+								...(options?.limit !== undefined ? { limit: options.limit } : {}),
+							});
+
+							return {
+								workflowsInScope: result.workflowsInScope,
+								...(result.nodeTypes ? { nodeTypes: result.nodeTypes } : {}),
+								...(result.workflows
+									? {
+											workflows: result.workflows.map((workflow) => ({
+												...workflow,
+												updatedAt: workflow.updatedAt.toISOString(),
+											})),
+										}
+									: {}),
+								...(result.truncated ? { truncated: true } : {}),
+							};
+						},
+					}
+				: {}),
+
 			async list(options) {
-				// An explicit projectId targets one project; otherwise the thread's own
-				// project unless the caller widened to the whole instance. Either way it
-				// goes in as a *filter* on `getMany`, which resolves readability from the
-				// user's own project/workflow roles — so this can only narrow the set the
+				// The target project goes in as a *filter* on `getMany`, which resolves readability
+				// from the user's own project/workflow roles — so this can only narrow the set the
 				// caller could already read, never widen it. Writes keep using
 				// `resolveBoundProjectId` and stay locked to the bound project.
-				const targetProjectId =
-					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+				const targetProjectId = resolveTargetProjectId(options);
 				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(targetProjectId ? { projectId: targetProjectId } : {}),
+					// Part of the scope, not of the name filter: `totalInScope` has to describe the
+					// same node-type-filtered set, or the "hidden workflows" note misreports.
+					...(nodeUsageEnabled && options?.nodeTypes?.length
+						? { nodeTypes: options.nodeTypes }
+						: {}),
 				};
 				const filter = {
 					...scopeFilter,

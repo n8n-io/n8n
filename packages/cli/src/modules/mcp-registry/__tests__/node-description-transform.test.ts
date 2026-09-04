@@ -7,6 +7,7 @@ import {
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -441,6 +442,28 @@ describe('serverToNodeDescription', () => {
 			expect(description?.credentials).toEqual([{ name: 'githubOAuth2Api', required: true }]);
 			expect(description?.properties.some(({ name }) => name === 'authentication')).toBe(false);
 		});
+
+		it('builds a tile for a templated streamable-http-templated remote, unresolved endpointUrl and all', () => {
+			const description = serverToNodeDescription(
+				databricksGenieTemplatedMockServer,
+				baseDescription,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([
+				{ name: 'databricksGenieMcpOAuth2Api', required: true },
+			]);
+
+			// The node's own endpointUrl parameter still gets patched with the raw
+			// template; the runtime never reads it once a credential serverUrl is
+			// resolvable (see McpRegistryClientTool), but the description build
+			// itself does not special-case a templated remote.
+			const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
+			const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
+			expect(serverTransport?.default).toBe('httpStreamable');
+			expect(endpointUrl?.default).toBe('={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie');
+		});
 	});
 });
 
@@ -679,6 +702,133 @@ describe('serverToCredentialDescription', () => {
 			const description = serverToCredentialDescription(server, isKnownCredentialType);
 
 			expect(description?.extends).toEqual(['mcpOAuth2Api']);
+		});
+
+		it('writes a $self-expression serverUrl and allowedDomains for a streamable-http-templated remote', () => {
+			const description = serverToCredentialDescription(
+				databricksGenieTemplatedMockServer,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).toEqual({
+				name: 'databricksGenieMcpOAuth2Api',
+				displayName: 'Databricks Genie MCP OAuth2',
+				extends: ['databricksOAuth2Api'],
+				icon: 'node:@n8n/mcp-registry.databricksGenie',
+				properties: [
+					{ displayName: 'scope', name: 'scope', type: 'hidden', default: 'genie offline_access' },
+					{
+						displayName: 'grantType',
+						name: 'grantType',
+						type: 'hidden',
+						default: 'authorizationCode',
+					},
+					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
+					},
+					{
+						displayName: 'Server URL',
+						name: 'serverUrl',
+						type: 'hidden',
+						default: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+					},
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: '={{$self["host"].extractDomain()}}',
+					},
+				],
+			});
+		});
+	});
+
+	it('drops the row for a templated remote paired with plain oauth2 auth, no host-bearing field to resolve against', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http-templated', url: '={{$self["host"]}}/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+	});
+
+	it('drops the row when the remote type is unrecognised, the back-compat gate for future remote types', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'some-future-remote-type' as never, url: 'https://mcp.notion.com/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+	});
+
+	describe('back-compat: an old n8n instance loading a streamable-http-templated row', () => {
+		/**
+		 * Verbatim snapshot of pickRemote/resolveCredentialRemote as they shipped
+		 * before this ticket (commit e60c43112c3, the tip this feature branched
+		 * from). Neither function knows about `streamable-http-templated`, so this
+		 * proves the exact pre-existing code drops the row, not a stand-in that
+		 * merely resembles it. Two independent guards do the dropping, checked
+		 * separately below: the unrecognised-type match in pickRemote, and the
+		 * new URL() parse in resolveCredentialRemote, so a future change to
+		 * either one alone still leaves old instances safe.
+		 */
+		function oldPickRemote(
+			server: McpRegistryServer,
+		): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
+			const streamable = server.remotes.find((r) => r.type === 'streamable-http');
+			if (streamable) return { transport: 'httpStreamable', endpointUrl: streamable.url };
+
+			const sse = server.remotes.find((r) => r.type === 'sse');
+			if (sse) return { transport: 'sse', endpointUrl: sse.url };
+
+			return null;
+		}
+
+		function oldResolveCredentialRemote(
+			server: McpRegistryServer,
+		): { endpointUrl: string; hostname: string } | null {
+			const remote = oldPickRemote(server);
+			if (!remote) return null;
+			try {
+				return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
+			} catch {
+				return null;
+			}
+		}
+
+		it('old pickRemote never matches streamable-http-templated, so the row is invisible to it', () => {
+			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull();
+		});
+
+		it('even if a row used the plain streamable-http type with a template-string url, new URL() rejects it independently', () => {
+			const serverWithOldTypeName: McpRegistryServer = {
+				...databricksGenieTemplatedMockServer,
+				remotes: databricksGenieTemplatedMockServer.remotes.map((remote) => ({
+					...remote,
+					type: 'streamable-http',
+				})),
+			};
+
+			expect(oldResolveCredentialRemote(serverWithOldTypeName)).toBeNull();
+		});
+
+		it('the current, patched code builds a tile old code could never build for the same row', () => {
+			expect(
+				serverToCredentialDescription(
+					databricksGenieTemplatedMockServer,
+					(name) => name === 'databricksOAuth2Api',
+				),
+			).not.toBeNull(); // current code DOES build a tile once the parent credential is known...
+			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull(); // ...but old code drops it regardless
 		});
 	});
 });

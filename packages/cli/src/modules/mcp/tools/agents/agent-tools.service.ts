@@ -139,6 +139,13 @@ const httpUrlSchema = z
 	.url()
 	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
 
+/**
+ * A registry server's endpoint can be an unresolved `$self`-expression instead
+ * of a literal URL. The registry connection substitutes it per-credential
+ * before the connection is opened, so it only validates as a URL after that.
+ */
+const mcpEndpointUrlSchema = z.union([httpUrlSchema, z.string().startsWith('=')]);
+
 const agentIdentityShape = {
 	agentId: z.string().min(1).describe('Agent ID'),
 } satisfies z.ZodRawShape;
@@ -303,7 +310,9 @@ const verifyMcpServerInput = {
 		.min(1)
 		.max(64)
 		.regex(/^[a-zA-Z0-9_-]+$/),
-	url: httpUrlSchema.describe('HTTP(S) MCP server endpoint'),
+	url: mcpEndpointUrlSchema.describe(
+		'HTTP(S) MCP server endpoint, or a registry `$self`-expression when metadata.nodeTypeName is set',
+	),
 	transport: z.enum(['sse', 'streamableHttp']).optional().default('streamableHttp'),
 	authentication: z
 		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
@@ -1604,6 +1613,11 @@ export class McpAgentToolsService {
 
 	private async verifyMcpServer(user: User, input: VerifyMcpServerInput) {
 		await this.assertScope(user, input.projectId, 'agent:read');
+		if (input.url.startsWith('=') && !input.metadata?.nodeTypeName) {
+			throw new UserError(
+				'A templated server URL needs metadata.nodeTypeName so the registry can resolve it',
+			);
+		}
 		const credentialProvider = this.credentialProvider(user, input.projectId);
 		if (input.authentication !== 'none') {
 			if (!input.credential) {

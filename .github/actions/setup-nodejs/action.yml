@@ -64,7 +64,7 @@ runs:
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
       if: runner.os == 'Linux' && runner.arch == 'X64'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
         key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
@@ -119,7 +119,7 @@ runs:
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
       id: cache-safe-chain
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.safe-chain/bin
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
