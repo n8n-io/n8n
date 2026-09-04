@@ -6,7 +6,7 @@ import { AgentCredentialDependencyRepository } from './repositories/agent-creden
 import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
-export class AgentCredentialIndexService {
+export class AgentDependencyIndexService {
 	private readonly batchSize: number;
 
 	private readonly logger: Logger;
@@ -33,7 +33,7 @@ export class AgentCredentialIndexService {
 		let afterId: string | null = null;
 
 		while (true) {
-			const agents = await this.agentRepository.findCredentialIndexAgentIdsBatch(
+			const agents = await this.agentRepository.findDependencyIndexAgentIdsBatch(
 				afterId,
 				this.batchSize,
 			);
@@ -42,7 +42,7 @@ export class AgentCredentialIndexService {
 				try {
 					await this.refresh(agentId);
 				} catch (error) {
-					this.logger.error('Failed to index agent credential dependencies', { agentId, error });
+					this.logger.error('Failed to index agent dependencies', { agentId, error });
 				}
 			}
 
