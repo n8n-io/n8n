@@ -1,29 +1,21 @@
 <script setup lang="ts">
-import {
-	computed,
-	inject,
-	nextTick,
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	useCssModule,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
-import { HOVER_DELAY } from '@/app/constants';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
+	GROUP_EMPTY_BODY_HEIGHT as EMPTY_BODY_HEIGHT,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	GROUP_DESCRIPTION_MIN_ZOOM,
 } from '../../../stores/canvasNodeGroups.constants';
-import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
-import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+import {
+	computeGroupFrameRects,
+	getGroupCardHeight,
+} from '../../../composables/useCanvasMapping.groups';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
@@ -84,14 +76,27 @@ const isAutofocusReady = computed(
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
 const isEmptyGroup = computed(() => props.data.isEmptyGroup);
+// The mapping forces an empty group collapsed; the body renders on that state.
+const showEmptyBody = computed(() => isEmptyGroup.value && isCollapsed.value);
 
-// An empty group is wired through the chip itself, so its handles must be
-// visible and grabbable; a normal group keeps the decorative hidden handles.
-const handleClass = computed(() =>
-	isEmptyGroup.value && !props.readOnly
-		? `${$style.handle} ${$style.handleConnectable}`
-		: $style.handle,
+// The card is exactly as tall as the VueFlow node the mapping created, so the
+// side handles (at 50% of this element) sit at the middle of the whole card.
+const cardHeight = computed(() =>
+	getGroupCardHeight({ isCollapsed: isCollapsed.value, isEmptyGroup: isEmptyGroup.value }),
 );
+
+// Collapsed cards re-anchor their edges onto the side handles, so the dots are
+// shown; only an empty card accepts a new connection, which then lands on its
+// placeholder node (see NodeView.resolveGroupEndpoint).
+const isHandleConnectable = computed(() => isEmptyGroup.value && !props.readOnly);
+const handleClass = computed(() => [
+	$style.handle,
+	{
+		[$style.handleVisible]: isCollapsed.value,
+		[$style.handleConnectable]: isHandleConnectable.value,
+	},
+]);
+
 const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
@@ -105,6 +110,7 @@ const wrapperClasses = computed(() => [
 	{
 		[$style.collapsed]: isCollapsed.value,
 		[$style.empty]: isEmptyGroup.value,
+		[$style.readOnly]: props.readOnly,
 		[$style.selected]: props.selected,
 		[$style.deactivated]: allNodesDisabled.value,
 		[$style.success]: executionStatus.value === 'success',
@@ -160,10 +166,6 @@ function onTitleUpdate(value: string) {
 	emit('update:name', group.value.id, value);
 }
 
-function onDescriptionUpdate(value: string) {
-	emit('update:description', group.value.id, value);
-}
-
 function onUngroupClick() {
 	emit('ungroup', group.value.id);
 }
@@ -172,8 +174,8 @@ function onAddNodeClick() {
 	emit('add-node', group.value.id);
 }
 
-// Build in the description editor = save the objective, then generate. The
-// description is already committed by saveDescription's update:description emit.
+// Build = save the objective, then generate. saveDescription emits
+// update:description first, so the generator sees the committed text.
 function onBuildClick() {
 	saveDescription();
 	emit('generate', group.value.id);
@@ -201,9 +203,9 @@ function onToggleClick() {
 }
 
 function onOpenContextMenu(event: MouseEvent) {
-	// While the title is being edited, the native text menu (copy/paste,
-	// spellcheck) must win over the group menu. Other interactive children
-	// (chevron, ungroup button, title preview) still get the group menu.
+	// While the title or description is being edited, the native text menu
+	// (copy/paste, spellcheck) must win over the group menu. Other interactive
+	// children (chevron, ungroup button, title preview) still get the group menu.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('input, textarea, [contenteditable]')) return;
 
@@ -213,8 +215,8 @@ function onOpenContextMenu(event: MouseEvent) {
 // Plain header clicks toggle collapse — handled at the canvas level
 // (Canvas.onNodeClick), because VueFlow synthesizes node clicks that bypass
 // this DOM tree when the pointer moved a little. Clicks on interactive
-// children (title rename) must not bubble there, or they would select the
-// group and toggle it.
+// children (title rename, description editor) must not bubble there, or they
+// would select the group and toggle it.
 function onWrapperClick(event: MouseEvent) {
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) {
@@ -260,85 +262,20 @@ const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
 const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
-// Description visibility (pin) state — collapsed groups only.
-const descriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
+/**
+ * Description — always inline under the title, in every state. Clamped to one
+ * line when expanded (the frame below carries the detail) and two when the
+ * card is all there is. Hidden below the zoom threshold; the header keeps its
+ * height so the card does not jump.
+ */
 const descriptionTextarea = useTemplateRef<HTMLTextAreaElement>('descriptionTextarea');
-
 const isEditingDescription = ref(false);
 const editDescriptionText = ref('');
-const isDescriptionHovered = ref(false);
-let hoverShowTimer: ReturnType<typeof setTimeout> | undefined;
-let hoverLeaveTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Hidden entirely below this zoom, both expanded and collapsed.
-const isDescriptionEnabled = computed(() => viewport.value.zoom >= GROUP_DESCRIPTION_MIN_ZOOM);
-const isDescriptionPinned = computed(
-	() => descriptionVisibility?.isVisible(group.value.id) ?? false,
+const showDescription = computed(() => viewport.value.zoom >= GROUP_DESCRIPTION_MIN_ZOOM);
+const descriptionText = computed(
+	() => group.value.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder'),
 );
-const isPermanentlyVisible = computed(
-	() => isDescriptionEnabled.value && isDescriptionPinned.value,
-);
-
-const showExpandedDescription = computed(() => !isCollapsed.value && isDescriptionEnabled.value);
-// A collapsed group reads as a titled block, so its description is shown right
-// under the title whenever there is one. An empty group always shows it (its
-// objective is the whole point, and it can be added inline). The info-icon
-// reveal only remains for the one case the description is not already shown:
-// a collapsed group with no description that the user could still add one to.
-const alwaysShowDescription = computed(() => isEmptyGroup.value || !isDescriptionEmpty.value);
-const showInfoIcon = computed(
-	() =>
-		isCollapsed.value &&
-		isDescriptionEnabled.value &&
-		!isPermanentlyVisible.value &&
-		!alwaysShowDescription.value &&
-		!props.readOnly,
-);
-const showCollapsedDescription = computed(
-	() =>
-		isCollapsed.value &&
-		(isEmptyGroup.value ||
-			(isDescriptionEnabled.value &&
-				(alwaysShowDescription.value ||
-					isPermanentlyVisible.value ||
-					isEditingDescription.value ||
-					isDescriptionHovered.value))),
-);
-
-function clearHoverTimers() {
-	clearTimeout(hoverShowTimer);
-	clearTimeout(hoverLeaveTimer);
-}
-
-function scheduleDescriptionHide() {
-	hoverLeaveTimer = setTimeout(() => {
-		isDescriptionHovered.value = false;
-	}, HOVER_DELAY.LEAVE);
-}
-
-// The info icon reveals the description after a short intent delay.
-function onInfoMouseEnter() {
-	clearTimeout(hoverLeaveTimer);
-	hoverShowTimer = setTimeout(() => {
-		isDescriptionHovered.value = true;
-	}, HOVER_DELAY.SHOW);
-}
-
-// Leaving the icon only cancels a pending reveal; hiding is driven by leaving
-// the whole group, so the cursor can travel from the icon down to the panel.
-function onInfoMouseLeave() {
-	clearTimeout(hoverShowTimer);
-}
-
-// Keep the revealed description alive while the cursor is anywhere over the
-// group (header or panel); only start hiding once it leaves the group entirely.
-function onGroupMouseEnter() {
-	clearTimeout(hoverLeaveTimer);
-}
-
-function onGroupMouseLeave() {
-	scheduleDescriptionHide();
-}
 
 function autoResizeTextarea() {
 	const textarea = descriptionTextarea.value;
@@ -362,16 +299,16 @@ function cancelEditingDescription() {
 	isEditingDescription.value = false;
 }
 
-// A click anywhere on the panel opens the editor. Track editing state at
-// pointerdown so the same click that blurs (and saves) the textarea doesn't
-// immediately reopen it with stale text.
+// A click anywhere on the description opens the editor. Track editing state
+// at pointerdown so the same click that blurs (and saves) the textarea
+// doesn't immediately reopen it with stale text.
 let wasEditingOnPointerDown = false;
 
-function onDescriptionPanelPointerDown() {
+function onDescriptionPointerDown() {
 	wasEditingOnPointerDown = isEditingDescription.value;
 }
 
-function onDescriptionPanelClick() {
+function onDescriptionClick() {
 	if (wasEditingOnPointerDown) return;
 	startEditingDescription();
 }
@@ -396,17 +333,6 @@ function onDescriptionKeydown(event: KeyboardEvent) {
 		saveDescription();
 	}
 }
-
-// Toggle the pin; opening an empty description drops straight into editing.
-function onTogglePinDescription() {
-	if (!descriptionVisibility) return;
-	descriptionVisibility.toggleVisible(group.value.id);
-	if (isDescriptionEmpty.value && descriptionVisibility.isVisible(group.value.id)) {
-		startEditingDescription();
-	}
-}
-
-onBeforeUnmount(clearHoverTimers);
 
 // Clear unrelated pre-existing selection before VueFlow snapshots which
 // nodes to drag — otherwise those nodes ride along with the group drag.
@@ -437,7 +363,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		:class="wrapperClasses"
 		:style="{
 			width: '100%',
-			height: `${HEADER_HEIGHT}px`,
+			height: `${cardHeight}px`,
 			...nodeBorderOpacityStyle,
 		}"
 		data-test-id="canvas-node-group"
@@ -446,23 +372,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@click="onWrapperClick"
 		@dblclick.stop
 		@contextmenu="onOpenContextMenu"
-		@mouseenter="onGroupMouseEnter"
-		@mouseleave="onGroupMouseLeave"
 	>
-		<div :class="$style.titleBar">
+		<div :class="$style.card">
 			<Handle
 				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
 				type="target"
 				:position="Position.Left"
 				:class="handleClass"
-				:is-connectable="isEmptyGroup && !readOnly"
+				:is-connectable="isHandleConnectable"
 			/>
 			<Handle
 				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
 				type="source"
 				:position="Position.Right"
 				:class="handleClass"
-				:is-connectable="isEmptyGroup && !readOnly"
+				:is-connectable="isHandleConnectable"
 			/>
 
 			<div
@@ -471,9 +395,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 				data-test-id="canvas-node-group-toolbar"
 			>
 				<div :class="$style.toolbarItems">
-					<!-- Empty groups build through the description editor's Build button,
-					not a standalone toolbar sparkle. Ungrouping an empty group would
-					leave its placeholder bare on the canvas. -->
+					<!-- Ungrouping an empty group would leave its placeholder bare on the canvas. -->
 					<KeyboardShortcutTooltip
 						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
@@ -522,119 +444,182 @@ function onWrapperPointerDown(event: PointerEvent) {
 				</div>
 			</div>
 
-			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<div :class="$style.titleColumn">
-					<div :class="$style.titleRow">
-						<div :class="$style.title" data-test-id="canvas-node-group-title">
+			<div
+				:class="$style.header"
+				:style="{ height: `${HEADER_HEIGHT}px` }"
+				data-test-id="canvas-node-group-header"
+			>
+				<div :class="$style.titleRow">
+					<div :class="$style.title" data-test-id="canvas-node-group-title">
+						<N8nTooltip
+							:content="group.name"
+							:disabled="!isTitleTruncated"
+							:show-after="500"
+							placement="bottom"
+						>
+							<div ref="titleText" :class="$style.titleText">
+								<N8nInlineTextEdit
+									v-if="!isCollapsed"
+									ref="titleEdit"
+									:class="['nodrag', $style.inlineEdit]"
+									:model-value="group.name"
+									:read-only="readOnly"
+									:min-width="0"
+									max-width="100%"
+									:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
+									@update:model-value="onTitleUpdate"
+								/>
+								<div
+									v-else
+									ref="collapsedTitle"
+									:class="$style.collapsedTitle"
+									data-test-id="canvas-node-group-collapsed-title"
+								>
+									{{ group.name }}
+								</div>
+								<div
+									v-if="allNodesDisabled"
+									:class="$style.deactivatedLabel"
+									data-test-id="canvas-node-group-deactivated-label"
+								>
+									({{ i18n.baseText('node.disabled') }})
+								</div>
+							</div>
+						</N8nTooltip>
+					</div>
+
+					<!-- Right slot: an empty group is labelled, a filled one collapses. -->
+					<span
+						v-if="isEmptyGroup"
+						:class="$style.emptyBadge"
+						data-test-id="canvas-node-group-empty-badge"
+					>
+						{{ i18n.baseText('canvas.nodeGroup.emptyBadge') }}
+					</span>
+					<N8nIconButton
+						v-else
+						class="nodrag"
+						:class="$style.toggle"
+						variant="ghost"
+						size="small"
+						:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
+						:aria-label="toggleLabel"
+						:aria-expanded="!isCollapsed"
+						data-test-id="canvas-node-group-toggle"
+						@click.stop="onToggleClick"
+					/>
+				</div>
+
+				<div
+					v-if="showDescription"
+					:class="[
+						$style.description,
+						{ nodrag: !readOnly, [$style.descriptionEditing]: isEditingDescription },
+					]"
+					data-test-id="canvas-node-group-description"
+					@pointerdown="onDescriptionPointerDown"
+					@click="onDescriptionClick"
+				>
+					<!-- The editor overlays the card so a long objective can grow while
+					the card keeps the height the mapping gave it. -->
+					<div v-if="isEditingDescription" :class="$style.descriptionEditor">
+						<textarea
+							ref="descriptionTextarea"
+							v-model="editDescriptionText"
+							:class="$style.descriptionInput"
+							:maxlength="GROUP_DESCRIPTION_MAX_LENGTH"
+							:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+							data-test-id="canvas-node-group-description-input"
+							@blur="saveDescription"
+							@input="autoResizeTextarea"
+							@keydown="onDescriptionKeydown"
+						/>
+						<div :class="$style.descriptionActions">
 							<N8nTooltip
-								:content="group.name"
-								:disabled="!isTitleTruncated"
-								:show-after="500"
+								:content="i18n.baseText('canvas.nodeGroup.cancelEdit')"
 								placement="bottom"
 							>
-								<div ref="titleText" :class="$style.titleText">
-									<N8nInlineTextEdit
-										v-if="!isCollapsed"
-										ref="titleEdit"
-										:class="['nodrag', $style.inlineEdit]"
-										:model-value="group.name"
-										:read-only="readOnly"
-										:min-width="0"
-										max-width="100%"
-										:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
-										@update:model-value="onTitleUpdate"
-									/>
-									<div
-										v-else
-										ref="collapsedTitle"
-										:class="$style.collapsedTitle"
-										data-test-id="canvas-node-group-collapsed-title"
-									>
-										{{ group.name }}
-									</div>
-									<div
-										v-if="allNodesDisabled"
-										:class="$style.deactivatedLabel"
-										data-test-id="canvas-node-group-deactivated-label"
-									>
-										({{ i18n.baseText('node.disabled') }})
-									</div>
-								</div>
+								<N8nIconButton
+									class="nodrag"
+									variant="ghost"
+									size="small"
+									icon="x"
+									:aria-label="i18n.baseText('canvas.nodeGroup.cancelEdit')"
+									data-test-id="canvas-node-group-description-cancel"
+									@mousedown.prevent
+									@click.stop="cancelEditingDescription"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
+								:content="i18n.baseText('canvas.nodeGroup.saveDescription')"
+								placement="bottom"
+							>
+								<N8nIconButton
+									class="nodrag"
+									variant="ghost"
+									size="small"
+									icon="check"
+									:aria-label="i18n.baseText('canvas.nodeGroup.saveDescription')"
+									data-test-id="canvas-node-group-description-save"
+									@mousedown.prevent
+									@click.stop="saveDescription"
+								/>
+							</N8nTooltip>
+							<!-- Build = save the objective, then generate. Empty groups only. -->
+							<N8nTooltip
+								v-if="isEmptyGroup"
+								:content="i18n.baseText('canvas.nodeGroup.build')"
+								placement="bottom"
+							>
+								<N8nIconButton
+									class="nodrag"
+									variant="solid"
+									size="small"
+									icon="sparkles"
+									:aria-label="i18n.baseText('canvas.nodeGroup.build')"
+									data-test-id="canvas-node-group-description-build"
+									@mousedown.prevent
+									@click.stop="onBuildClick"
+								/>
 							</N8nTooltip>
 						</div>
-
-						<span
-							v-if="isEmptyGroup"
-							:class="$style.emptyBadge"
-							data-test-id="canvas-node-group-empty-badge"
-						>
-							{{ i18n.baseText('canvas.nodeGroup.emptyBadge') }}
-						</span>
-
-						<N8nIcon
-							v-if="showInfoIcon"
-							class="nodrag"
-							:class="$style.infoIcon"
-							icon="info"
-							:aria-label="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
-							data-test-id="canvas-node-group-info"
-							@mouseenter="onInfoMouseEnter"
-							@mouseleave="onInfoMouseLeave"
-						/>
 					</div>
-
 					<div
-						v-if="showExpandedDescription"
-						:class="$style.description"
-						data-test-id="canvas-node-group-description"
+						v-else
+						:class="[
+							$style.descriptionText,
+							isCollapsed ? $style.twoLines : $style.oneLine,
+							{ [$style.descriptionEmpty]: isDescriptionEmpty },
+						]"
+						data-test-id="canvas-node-group-description-text"
 					>
-						<N8nInlineTextEdit
-							:class="[
-								'nodrag',
-								$style.inlineEdit,
-								$style.descriptionInline,
-								{ [$style.descriptionEmpty]: isDescriptionEmpty },
-							]"
-							:model-value="group.description ?? ''"
-							:read-only="readOnly"
-							:min-width="0"
-							max-width="100%"
-							:max-length="GROUP_DESCRIPTION_MAX_LENGTH"
-							:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
-							@update:model-value="onDescriptionUpdate"
-						/>
+						{{ descriptionText }}
 					</div>
 				</div>
-				<!-- An empty group fills by picking a node here instead of expanding. -->
+			</div>
+
+			<!-- An empty group fills by picking a node here instead of expanding. -->
+			<div
+				v-if="showEmptyBody"
+				:class="$style.body"
+				:style="{ height: `${EMPTY_BODY_HEIGHT}px` }"
+				data-test-id="canvas-node-group-body"
+			>
 				<N8nTooltip
-					v-if="isEmptyGroup && !readOnly"
+					v-if="!readOnly"
 					:content="i18n.baseText('canvas.nodeGroup.addNode')"
 					placement="bottom"
 				>
 					<N8nIconButton
 						class="nodrag"
-						:class="$style.addNode"
-						variant="ghost"
-						size="large"
+						variant="subtle"
+						size="small"
 						icon="plus"
 						:aria-label="i18n.baseText('canvas.nodeGroup.addNode')"
 						data-test-id="canvas-node-group-add-node"
 						@click.stop="onAddNodeClick"
 					/>
 				</N8nTooltip>
-				<!-- An empty group always renders as the chip, so collapse has no effect. -->
-				<N8nIconButton
-					v-if="!isEmptyGroup"
-					class="nodrag"
-					:class="$style.toggle"
-					variant="ghost"
-					size="large"
-					:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
-					:aria-label="toggleLabel"
-					:aria-expanded="!isCollapsed"
-					data-test-id="canvas-node-group-toggle"
-					@click.stop="onToggleClick"
-				/>
 			</div>
 
 			<div
@@ -666,130 +651,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 			:style="selectionRingStyle"
 			data-test-id="canvas-node-group-selection-ring"
 		/>
-
-		<!-- The gap below the card keeps the selection ring from overlapping the panel border. -->
-		<div
-			v-if="showCollapsedDescription"
-			:class="[
-				'nodrag',
-				$style.descriptionPanel,
-				{ [$style.descriptionPanelEditing]: isEditingDescription },
-			]"
-			:style="{
-				top: `calc(${HEADER_HEIGHT}px + var(--spacing--2xs))`,
-				cursor: !readOnly && !isEditingDescription ? 'text' : 'default',
-			}"
-			data-test-id="canvas-node-group-description-panel"
-			@pointerdown="onDescriptionPanelPointerDown"
-			@click="onDescriptionPanelClick"
-		>
-			<div :class="$style.descriptionPanelContent">
-				<textarea
-					v-if="isEditingDescription"
-					ref="descriptionTextarea"
-					v-model="editDescriptionText"
-					:class="$style.descriptionPanelEdit"
-					:maxlength="GROUP_DESCRIPTION_MAX_LENGTH"
-					:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
-					data-test-id="canvas-node-group-description-input"
-					@blur="saveDescription"
-					@input="autoResizeTextarea"
-					@keydown="onDescriptionKeydown"
-				/>
-				<div
-					v-else
-					:class="[$style.descriptionPanelText, { [$style.descriptionEmpty]: isDescriptionEmpty }]"
-					data-test-id="canvas-node-group-description-text"
-				>
-					{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
-				</div>
-			</div>
-
-			<div v-if="!readOnly" :class="$style.descriptionPanelActions">
-				<template v-if="isEditingDescription">
-					<N8nTooltip :content="i18n.baseText('canvas.nodeGroup.cancelEdit')" placement="bottom">
-						<N8nIconButton
-							class="nodrag"
-							variant="ghost"
-							size="small"
-							icon="x"
-							:aria-label="i18n.baseText('canvas.nodeGroup.cancelEdit')"
-							data-test-id="canvas-node-group-description-cancel"
-							@mousedown.prevent
-							@click.stop="cancelEditingDescription"
-						/>
-					</N8nTooltip>
-					<N8nTooltip
-						:content="i18n.baseText('canvas.nodeGroup.saveDescription')"
-						placement="bottom"
-					>
-						<N8nIconButton
-							class="nodrag"
-							variant="ghost"
-							size="small"
-							icon="check"
-							:aria-label="i18n.baseText('canvas.nodeGroup.saveDescription')"
-							data-test-id="canvas-node-group-description-save"
-							@click.stop="saveDescription"
-						/>
-					</N8nTooltip>
-					<!-- Build = save the objective, then generate. Empty groups only. -->
-					<N8nTooltip
-						v-if="isEmptyGroup"
-						:content="i18n.baseText('canvas.nodeGroup.build')"
-						placement="bottom"
-					>
-						<N8nIconButton
-							class="nodrag"
-							variant="solid"
-							size="small"
-							icon="sparkles"
-							:aria-label="i18n.baseText('canvas.nodeGroup.build')"
-							data-test-id="canvas-node-group-description-build"
-							@click.stop="onBuildClick"
-						/>
-					</N8nTooltip>
-				</template>
-				<template v-else>
-					<N8nTooltip
-						:content="i18n.baseText('canvas.nodeGroup.editDescription')"
-						placement="bottom"
-					>
-						<N8nIconButton
-							class="nodrag"
-							variant="ghost"
-							size="small"
-							icon="pen"
-							:aria-label="i18n.baseText('canvas.nodeGroup.editDescription')"
-							data-test-id="canvas-node-group-edit-description"
-							@click.stop="startEditingDescription"
-						/>
-					</N8nTooltip>
-					<N8nTooltip
-						:content="
-							isPermanentlyVisible
-								? i18n.baseText('canvas.nodeGroup.unpinDescription')
-								: i18n.baseText('canvas.nodeGroup.pinDescription')
-						"
-						placement="bottom"
-					>
-						<N8nIconButton
-							class="nodrag"
-							variant="ghost"
-							size="small"
-							:icon="isPermanentlyVisible ? 'eye-off' : 'eye'"
-							:aria-label="
-								isPermanentlyVisible
-									? i18n.baseText('canvas.nodeGroup.unpinDescription')
-									: i18n.baseText('canvas.nodeGroup.pinDescription')
-							"
-							data-test-id="canvas-node-group-pin-description"
-							@click.stop="onTogglePinDescription"
-						/>
-					</N8nTooltip>
-				</template>
-			</div>
-		</div>
 	</div>
 </template>
 
@@ -804,23 +665,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: relative;
 }
 
-.titleBar {
+// The card: header (+ body when empty). A group reads as a plan block, so it
+// carries a dashed border in every state, matching the frame below it.
+.card {
 	position: relative;
+	display: flex;
+	flex-direction: column;
 	width: 100%;
 	height: 100%;
 	background: var(--background--surface);
 	background-clip: padding-box;
-	@include styles.canvas-node-border;
+	@include styles.canvas-node-border(dashed);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
 	.wrapper.collapsed & {
 		border-radius: var(--radius--lg);
-	}
-
-	// An empty group reads as a plan placeholder, not a finished block, so its
-	// chip carries the same dashed border the group frame uses.
-	.wrapper.empty & {
-		@include styles.canvas-node-border(dashed);
 	}
 
 	// When expanded, the selection ring is drawn by .selectionRing around the
@@ -849,66 +708,46 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 /* stylelint-disable */
-.wrapper.collapsed.running .titleBar::after,
-.wrapper.collapsed.waiting .titleBar::after {
+.wrapper.collapsed.running .card::after,
+.wrapper.collapsed.waiting .card::after {
 	@include styles.status-animated-after;
 	border-radius: var(--radius--lg);
 }
-.wrapper.collapsed.running .titleBar::after {
+.wrapper.collapsed.running .card::after {
 	@include styles.status-running-animation;
 }
-.wrapper.collapsed.waiting .titleBar::after {
+.wrapper.collapsed.waiting .card::after {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
 /* stylelint-enable */
 
-.content {
+// Title row on top, description under it. Fixed height (from the mapping) with
+// the description clamped, so no DOM measurement is ever needed for layout.
+.header {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	height: 100%;
-	padding: var(--spacing--lg);
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	padding: var(--spacing--sm) var(--spacing--md);
+	box-sizing: border-box;
 	overflow: hidden;
 }
 
-.toggle {
-	flex-shrink: 0;
-}
-
-/*  Don't render the aria-expanded toggle as "pressed" while inactive */
-.toggle[aria-expanded='true']:not(:active) {
-	background-color: transparent;
-}
-
-/* Hovering anywhere on the header highlights the toggle */
-.titleBar:hover .toggle:not(:active) {
-	background-color: var(--button--color--background-hover);
-}
-
-// Stacks the title and, when expanded, the description within the header box.
-.titleColumn {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	justify-content: center;
-	gap: var(--spacing--3xs);
-	min-width: 0;
-	height: 100%;
-}
-
-// Title text and the info icon sit side by side, the icon right after the title.
 .titleRow {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 	min-width: 0;
 }
 
 .title {
 	display: flex;
 	align-items: center;
+	flex: 1;
 	min-width: 0;
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
@@ -935,28 +774,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .collapsedTitle {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
 	overflow: hidden;
-	// Names without break opportunities still wrap instead of overflowing
-	overflow-wrap: anywhere;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	line-height: var(--line-height--md);
 	min-width: 0;
 	max-width: 100%;
-}
-
-// One-line description shown under the title in the header box.
-.description {
-	display: flex;
-	min-width: 0;
-	max-width: 100%;
-}
-
-.descriptionInline {
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
 }
 
 .deactivatedLabel {
@@ -964,13 +787,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	white-space: nowrap;
 }
 
-.infoIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
-	cursor: pointer;
-}
-
-// Small uppercase tag on an empty group chip, muted next to the title.
+// Small uppercase tag in the header's right slot, muted next to the title.
 .emptyBadge {
 	flex-shrink: 0;
 	font-size: var(--font-size--3xs);
@@ -980,8 +797,110 @@ function onWrapperPointerDown(event: PointerEvent) {
 	color: var(--text-color--subtler);
 }
 
-.addNode {
+.toggle {
 	flex-shrink: 0;
+}
+
+/*  Don't render the aria-expanded toggle as "pressed" while inactive */
+.toggle[aria-expanded='true']:not(:active) {
+	background-color: transparent;
+}
+
+/* Hovering anywhere on the card highlights the toggle */
+.card:hover .toggle:not(:active) {
+	background-color: var(--button--color--background-hover);
+}
+
+.description {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.descriptionText {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
+	color: var(--text-color--subtle);
+	white-space: pre-wrap;
+}
+
+.oneLine {
+	-webkit-line-clamp: 1;
+	line-clamp: 1;
+}
+
+.twoLines {
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+}
+
+// No description yet: the italic prompt to add one.
+.descriptionEmpty {
+	font-style: italic;
+	color: var(--text-color--subtler);
+}
+
+.wrapper:not(.readOnly) .descriptionText {
+	cursor: text;
+}
+
+// While editing, the editor floats over the card from the description's top
+// edge so it can grow with the text without resizing the card.
+.descriptionEditor {
+	position: absolute;
+	top: calc(-1 * var(--spacing--2xs));
+	left: calc(-1 * var(--spacing--2xs));
+	right: calc(-1 * var(--spacing--2xs));
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	background: var(--background--surface);
+	border: var(--border-width, 1px) solid var(--focus--border-color);
+	border-radius: var(--radius--xs);
+	box-sizing: border-box;
+	// A description can run to GROUP_DESCRIPTION_MAX_LENGTH; cap the editor
+	// so a long one scrolls instead of covering the canvas.
+	max-height: 40vh;
+	z-index: var.$index-popper;
+}
+
+.descriptionInput {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	border: none;
+	outline: none;
+	background: none;
+	color: var(--text-color--subtle);
+	font-family: inherit;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
+	resize: none;
+	overflow: auto;
+	box-sizing: border-box;
+}
+
+.descriptionActions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+}
+
+// Empty group only: the centered add-node button under the header.
+.body {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	box-sizing: border-box;
 }
 
 // Overlay the bottom-right corner, matching node status icons (CanvasNodeDefault)
@@ -1017,7 +936,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	transition: opacity 0.1s ease-in;
 }
 
-.titleBar:hover .toolbarItems {
+.card:hover .toolbarItems {
 	opacity: 1;
 }
 
@@ -1044,101 +963,33 @@ function onWrapperPointerDown(event: PointerEvent) {
 	@include styles.canvas-node-selected-ring;
 }
 
+// Expanded groups wire through their member nodes, so the card's own handles
+// stay out of the way.
 .handle {
 	opacity: 0;
 	pointer-events: none;
 }
 
-// An empty group is wired through the chip itself, so its handles must be
-// grabbable. Normal groups keep the decorative, non-interactive handles above.
-.handleConnectable {
+// A collapsed card re-anchors its edges onto these dots.
+.handleVisible {
 	width: 14px;
 	height: 14px;
 	opacity: 1;
-	pointer-events: all;
 	background: var(--color--foreground--shade-1);
 	border: var(--border);
+}
 
-	// Enlarge the pointer target well past the dot so a dropped connection
-	// lands without pixel-perfect aim, matching how nodes accept a drop.
+// Only an empty card accepts a new connection. Enlarge the pointer target
+// well past the dot so a dropped connection lands without pixel-perfect aim,
+// matching how nodes accept a drop.
+.handleConnectable {
+	pointer-events: all;
+
 	&::before {
 		content: '';
 		position: absolute;
 		inset: -10px;
 		border-radius: 50%;
 	}
-}
-
-// Floating description shown below a collapsed group on hover or when pinned.
-// Raised above the group's own layers; collapsed groups hide their members,
-// so it doesn't cover any of the group's nodes.
-.descriptionPanel {
-	position: absolute;
-	left: 0;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--lg);
-	box-sizing: border-box;
-	// A description can run to GROUP_DESCRIPTION_MAX_LENGTH; cap the panel
-	// so a long one scrolls instead of covering the canvas.
-	max-height: 40vh;
-	overflow-y: auto;
-	background: var(--background--subtle);
-	@include styles.canvas-node-border;
-	border-radius: var(--radius--xs);
-	z-index: var.$index-popper;
-}
-
-.descriptionPanelEditing {
-	border-color: var(--focus--border-color);
-}
-
-.descriptionPanelContent {
-	min-width: 0;
-}
-
-.descriptionPanelText {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	color: var(--text-color--subtle);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	cursor: text;
-}
-
-.descriptionPanelEdit {
-	width: 100%;
-	margin: 0;
-	padding: 0;
-	border: none;
-	outline: none;
-	background: none;
-	color: var(--text-color--subtle);
-	font-family: inherit;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	resize: none;
-	overflow: hidden;
-	box-sizing: border-box;
-}
-
-.descriptionPanelActions {
-	display: none;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--3xs);
-	flex-shrink: 0;
-}
-
-// Reveal the actions while hovering the collapsed group (header or panel).
-.wrapper.collapsed:hover .descriptionPanelActions,
-.descriptionPanelEditing .descriptionPanelActions {
-	display: flex;
-}
-
-.descriptionEmpty {
-	color: var(--text-color--disabled);
 }
 </style>
