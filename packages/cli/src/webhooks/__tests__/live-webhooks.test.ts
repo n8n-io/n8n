@@ -635,7 +635,28 @@ describe('LiveWebhooks', () => {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				options: [{ displayName: 'Only Run If', name: 'onlyRunIf', type: 'string', default: '' }],
+				options: [
+					{ displayName: 'Only Run If', name: 'onlyRunIf', type: 'string', default: '' },
+					{
+						displayName: 'Trigger Conditions',
+						name: 'triggerConditions',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: true },
+						default: {},
+						options: [
+							{
+								name: 'conditions',
+								displayName: 'Condition',
+								values: [
+									{ displayName: 'Source', name: 'source', type: 'string', default: 'body' },
+									{ displayName: 'Property', name: 'property', type: 'string', default: '' },
+									{ displayName: 'Operator', name: 'operator', type: 'string', default: 'equals' },
+									{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+								],
+							},
+						],
+					},
+				],
 			},
 		];
 
@@ -672,7 +693,10 @@ describe('LiveWebhooks', () => {
 				type: nodeType,
 				typeVersion,
 				position: [0, 0],
-				parameters,
+				// Assigned after the mock() calls below: mock() deep-wraps its
+				// overrides and mangles nested arrays-of-objects (e.g. a
+				// fixedCollection value), silently dropping the parameter.
+				parameters: {},
 				credentials,
 			};
 
@@ -740,6 +764,8 @@ describe('LiveWebhooks', () => {
 				void webhookCallback(null, {});
 			});
 
+			node.parameters = parameters;
+
 			return mock<WebhookRequest>({ method: httpMethod, params: { path: webhookPath } });
 		};
 
@@ -775,6 +801,48 @@ describe('LiveWebhooks', () => {
 					path: webhookPath,
 					httpMethod,
 					options: { onlyRunIf: '={{ $json.body.id === 1 }}' },
+				},
+			});
+
+			await liveWebhooks.executeWebhook(request, mock<Response>());
+
+			expect(acquireIsolate).toHaveBeenCalled();
+		});
+
+		it('skips acquisition for a 2.2 node with static trigger conditions', async () => {
+			const request = setupMocks({
+				typeVersion: 2.2,
+				parameters: {
+					path: webhookPath,
+					httpMethod,
+					options: {
+						triggerConditions: {
+							conditions: [
+								{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'invite' },
+							],
+						},
+					},
+				},
+			});
+
+			await liveWebhooks.executeWebhook(request, mock<Response>());
+
+			expect(acquireIsolate).not.toHaveBeenCalled();
+		});
+
+		it('acquires when a trigger condition field holds an expression', async () => {
+			const request = setupMocks({
+				typeVersion: 2.2,
+				parameters: {
+					path: webhookPath,
+					httpMethod,
+					options: {
+						triggerConditions: {
+							conditions: [
+								{ source: 'body', property: '={{ $json.foo }}', operator: 'equals', value: 'x' },
+							],
+						},
+					},
 				},
 			});
 
