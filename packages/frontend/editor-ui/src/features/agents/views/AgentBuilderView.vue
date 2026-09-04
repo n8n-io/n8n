@@ -1844,7 +1844,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:show-assistant="instanceAiAvailable && !isPreviewDockOpen"
+			:show-assistant="instanceAiAvailable"
 			:assistant-disabled="!agent"
 			@header-action="onHeaderAction"
 			@open-assistant="onOpenInstanceAi"
