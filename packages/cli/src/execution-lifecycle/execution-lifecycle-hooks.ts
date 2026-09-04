@@ -487,12 +487,7 @@ function hookFunctionsPreExecute(
 	const externalHooks = Container.get(ExternalHooks);
 	const workflowContext = Container.get(WorkflowHookContextService);
 	hooks.addHandler('workflowExecuteBefore', async function (workflow) {
-		await externalHooks.run('workflow.preExecute', [
-			workflow,
-			this.mode,
-			workflowContext,
-			source,
-		]);
+		await externalHooks.run('workflow.preExecute', [workflow, this.mode, workflowContext, source]);
 	});
 }
 
