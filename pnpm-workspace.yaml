@@ -18,7 +18,6 @@ allowUnusedPatches: true
 verifyDepsBeforeRun: false
 
 pmOnFail: warn
-fund: false
 updateNotifier: false
 loglevel: warn
 packageImportMethod: clone-or-copy

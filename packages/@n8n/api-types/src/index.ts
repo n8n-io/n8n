@@ -432,6 +432,7 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -446,6 +447,8 @@ export type {
 	InstanceAiWebSearchSource,
 	InstanceAiSetupState,
 	InstanceAiSetupStateInput,
+	InstanceAiRunLimitReason,
+	InstanceAiRunLimitMeta,
 } from './schemas/instance-ai.schema';
 
 export type {

@@ -3,9 +3,10 @@
  * `PolicyEnforcementService`, so they prove the service method is called with the right arguments
  * but not that a registered check actually runs.
  *
- * The two hosts differ on purpose. CLI import enforces: a denied workflow is skipped, and the
- * rest of the batch still lands, so one bad artifact cannot cost an operator a whole restore.
- * Source-control pull is still advisory — it reports and imports everything.
+ * Both hosts enforce the same way: a denied workflow is skipped and reported, and the rest of the
+ * batch or pull still lands, so one bad artifact cannot cost an operator a whole restore. A check
+ * that cannot answer is an infrastructure fault rather than a property of one workflow, so it
+ * fails the whole operation instead of silently skipping every workflow in turn.
  */
 import type { SourceControlledFile } from '@n8n/api-types';
 import { getPersonalProject, getWorkflowById, newWorkflow, testDb } from '@n8n/backend-test-utils';
@@ -300,7 +301,7 @@ describe('contentImport policy wiring', () => {
 			});
 		});
 
-		test('flags only the denied workflow in the result and leaves the rest of the batch unaffected', async () => {
+		test('skips the denied workflow and pulls the rest', async () => {
 			const clean = makeWorkflowImport({ name: 'Clean workflow' });
 			const flagged = makeWorkflowImport({ name: 'Denied workflow' });
 			deniedWorkflowNames.add(flagged.name);
@@ -337,9 +338,8 @@ describe('contentImport policy wiring', () => {
 			]);
 			expect(result[0]).not.toHaveProperty('contentImportPolicy');
 
-			// The pull completes for every workflow regardless of the violation.
 			await expect(workflowRepository.findOne({ where: { id: clean.id } })).resolves.toBeTruthy();
-			await expect(workflowRepository.findOne({ where: { id: flagged.id } })).resolves.toBeTruthy();
+			await expect(workflowRepository.findOne({ where: { id: flagged.id } })).resolves.toBeNull();
 		});
 
 		test('imports normally when no check objects', async () => {
@@ -355,28 +355,19 @@ describe('contentImport policy wiring', () => {
 			expect(result[0]).not.toHaveProperty('contentImportPolicy');
 		});
 
-		test('does not fail the pull when the registered check throws for one workflow', async () => {
+		test('fails the whole pull when the registered check throws', async () => {
 			const broken = makeWorkflowImport({ name: 'Broken workflow' });
 			throwingWorkflowNames.add(broken.name);
 			const file = putWorkflowFile(broken.id, broken);
 
-			const result = await sourceControlImportService.importWorkflowFromWorkFolder(
-				[mock<SourceControlledFile>({ id: broken.id, file })],
-				owner.id,
-			);
+			await expect(
+				sourceControlImportService.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: broken.id, file })],
+					owner.id,
+				),
+			).rejects.toThrow();
 
-			// A check that errors instead of answering surfaces as a `checkError`, not a
-			// violation — but either way nothing here fails the pull.
-			expect(result).toEqual([
-				expect.objectContaining({
-					id: broken.id,
-					contentImportPolicy: {
-						violations: [],
-						checkErrors: [{ checkId: CHECK_ID, correlationId: expect.any(String) }],
-					},
-				}),
-			]);
-			await expect(workflowRepository.findOne({ where: { id: broken.id } })).resolves.toBeTruthy();
+			await expect(workflowRepository.findOne({ where: { id: broken.id } })).resolves.toBeNull();
 		});
 	});
 });
