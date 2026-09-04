@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -25,6 +26,7 @@ export const DEFAULT_EXECUTE_NODE_TIMEOUT_MS = 30_000;
 export const MAX_EXECUTE_NODE_TIMEOUT_MS = 60_000;
 
 const NODE_NAME = 'Node';
+const MULTI_MAIN_POLL_INTERVAL_MS = 1_000;
 
 /** Mirrors a workflow-sdk node (`{ type, version, config }`) so callers can
  *  pass a node they are building verbatim. */
@@ -82,6 +84,7 @@ export class ExecuteNodeService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -258,6 +261,7 @@ export class ExecuteNodeService {
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
 		if (!this.activeExecutions.has(executionId)) return false;
 
+		const abort = new AbortController();
 		let timeoutId: NodeJS.Timeout | undefined;
 		// The workflow's executionTimeout is the primary bound; this race only
 		// catches an execution that never settles.
@@ -269,10 +273,11 @@ export class ExecuteNodeService {
 		});
 
 		try {
-			await Promise.race([this.activeExecutions.getPostExecutePromise(executionId), timeout]);
+			await Promise.race([this.waitForSettled(executionId, abort.signal), timeout]);
 			return false;
 		} catch (error) {
 			if (error instanceof TimeoutExecutionCancelledError) {
+				abort.abort();
 				try {
 					this.activeExecutions.stopExecution(executionId, error);
 				} catch {
@@ -283,6 +288,26 @@ export class ExecuteNodeService {
 			throw error;
 		} finally {
 			clearTimeout(timeoutId);
+		}
+	}
+
+	/** The post-execute promise does not reliably settle on multi-main (Bull's
+	 *  `job.finished()` behind it), so poll the execution row there — same as
+	 *  chat-hub's `waitForExecutionCompletion`. */
+	private async waitForSettled(executionId: string, signal: AbortSignal): Promise<void> {
+		if (!this.instanceSettings.isMultiMain) {
+			await this.activeExecutions.getPostExecutePromise(executionId);
+			return;
+		}
+
+		while (!signal.aborted) {
+			const execution = await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: false,
+				unflattenData: false,
+			});
+			const inFlight = execution?.status === 'new' || execution?.status === 'running';
+			if (!inFlight) return;
+			await new Promise((resolve) => setTimeout(resolve, MULTI_MAIN_POLL_INTERVAL_MS));
 		}
 	}
 

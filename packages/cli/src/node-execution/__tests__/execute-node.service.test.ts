@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { InstanceSettings } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -53,6 +54,7 @@ describe('ExecuteNodeService', () => {
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const executionPersistence = mockInstance(ExecutionPersistence);
+	const instanceSettings = mockInstance(InstanceSettings);
 
 	const service = new ExecuteNodeService(
 		nodeTypes,
@@ -62,6 +64,7 @@ describe('ExecuteNodeService', () => {
 		workflowRunner,
 		activeExecutions,
 		executionPersistence,
+		instanceSettings,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -69,6 +72,7 @@ describe('ExecuteNodeService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType());
 		workflowRepository.createWorkflowWithOwner.mockImplementation(async (workflow) => {
 			workflow.id = 'temp-wf-1';
@@ -337,6 +341,26 @@ describe('ExecuteNodeService', () => {
 				});
 				expect(activeExecutions.stopExecution).toHaveBeenCalledWith('exec-1', expect.any(Error));
 				expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('polls the execution row instead of the post-execute promise on multi-main', async () => {
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
+			vi.useFakeTimers();
+			try {
+				executionPersistence.findSingleExecution
+					.mockResolvedValueOnce({ status: 'running' } as never)
+					.mockResolvedValueOnce({ status: 'success' } as never);
+
+				const promise = service.run(user, baseRequest());
+				await vi.advanceTimersByTimeAsync(1_500);
+				const result = await promise;
+
+				expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+				expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(3);
+				expect(result).toEqual({ status: 'success', output: [[{ json: { done: true } }]] });
 			} finally {
 				vi.useRealTimers();
 			}
