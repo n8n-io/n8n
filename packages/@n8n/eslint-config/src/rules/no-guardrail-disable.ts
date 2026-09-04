@@ -1,8 +1,21 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
-const DISABLE_DIRECTIVE = /^eslint-disable(-next-line|-line)?\b/;
+/** Captures the directive kind, then an optional rule list and an optional `-- reason`. */
+const DISABLE_DIRECTIVE = /^eslint-disable(-next-line|-line)?(?![\w-])([\s\S]*)$/;
+const PLUGIN_PREFIX = 'n8n-local-rules/';
+const SELF = 'no-guardrail-disable';
 
 type GuardedRule = { rule: string; message: string };
+
+/** Rule IDs named by a directive, with the plugin prefix dropped. Empty means "all rules". */
+const disabledRuleIds = (directiveTail: string): string[] => {
+	const [ruleList = ''] = directiveTail.split('--', 1);
+	return ruleList
+		.split(',')
+		.map((id) => id.trim())
+		.filter((id) => id !== '')
+		.map((id) => (id.startsWith(PLUGIN_PREFIX) ? id.slice(PLUGIN_PREFIX.length) : id));
+};
 
 /**
  * Guards ratchet rules: an inline disable is the one way to smuggle a new violation past CI.
@@ -16,6 +29,8 @@ export const NoGuardrailDisableRule = ESLintUtils.RuleCreator.withoutDocs({
 		},
 		messages: {
 			noDisable: 'Do not disable `{{rule}}` inline. {{message}}',
+			noBlanketDisable:
+				'This directive also disables the guardrails `{{rules}}`. Name the rules you mean, and never this rule.',
 		},
 		schema: [
 			{
@@ -40,13 +55,37 @@ export const NoGuardrailDisableRule = ESLintUtils.RuleCreator.withoutDocs({
 	},
 	defaultOptions: [{ guarded: [] as GuardedRule[] }],
 	create(context, [{ guarded }]) {
+		if (guarded.length === 0) return {};
+		const { sourceCode } = context;
 		return {
 			Program() {
-				for (const comment of context.sourceCode.getAllComments()) {
-					const text = comment.value.trim();
-					if (!DISABLE_DIRECTIVE.test(text)) continue;
-					const hit = guarded.find(({ rule }) => text.includes(rule));
-					if (hit) {
+				for (const comment of sourceCode.getAllComments()) {
+					const match = DISABLE_DIRECTIVE.exec(comment.value.trim());
+					if (!match) continue;
+					const [, kind, tail] = match;
+					const ids = disabledRuleIds(tail);
+					if (ids.length === 0 || ids.includes(SELF)) {
+						// Such a directive silences this rule too, so the report must land outside its
+						// reach: before the comment, or on the previous line for `-line`.
+						const reach =
+							kind === '-line'
+								? sourceCode.getIndexFromLoc({ line: comment.loc.start.line, column: 0 })
+								: comment.range[0];
+						const loc =
+							reach > 0
+								? {
+										start: sourceCode.getLocFromIndex(reach - 1),
+										end: sourceCode.getLocFromIndex(reach),
+									}
+								: comment.loc;
+						context.report({
+							loc,
+							messageId: 'noBlanketDisable',
+							data: { rules: guarded.map(({ rule }) => rule).join('`, `') },
+						});
+						continue;
+					}
+					for (const hit of guarded.filter(({ rule }) => ids.includes(rule))) {
 						context.report({
 							loc: comment.loc,
 							messageId: 'noDisable',
