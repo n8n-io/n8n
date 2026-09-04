@@ -5,10 +5,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import type { INodeTypeDescription } from 'n8n-workflow';
+
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -23,6 +27,13 @@ import {
 vi.mock('@/app/api/workflows', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	getWorkflow: vi.fn(),
+}));
+
+// useNodeHelpers injects the host's document store at init, which needs a
+// component setup context — stub the one getter the mirror uses.
+const { getNodeCredentialIssues } = vi.hoisted(() => ({ getNodeCredentialIssues: vi.fn() }));
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: () => ({ getNodeCredentialIssues }),
 }));
 
 const WORKFLOW_ID = 'wf-1';
@@ -81,6 +92,8 @@ describe('useSetupPanelActions', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.mocked(getWorkflow).mockReset();
+		getNodeCredentialIssues.mockReset();
+		getNodeCredentialIssues.mockReturnValue(null);
 	});
 
 	it('binds a credential through the version-guarded workflow PATCH', async () => {
@@ -399,6 +412,98 @@ describe('useSetupPanelActions', () => {
 			httpBasicAuth: { id: 'cred-basic', name: 'Basic' },
 			slackApi: { id: 'cred-1', name: 'My Slack' },
 		});
+	});
+
+	it('keeps a newer local edit on the same field the delta wrote', async () => {
+		const { actions } = createHarness();
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
+		documentStore.hydrate(makeWorkflow());
+		// Unsaved edits on the very fields the applies target, made mid-flight.
+		documentStore.updateNodeProperties({
+			name: 'Slack',
+			properties: {
+				parameters: { channel: '#local' },
+				credentials: { slackApi: { id: 'cred-local', name: 'Local' } },
+			},
+		});
+
+		await expect(
+			actions.applyParameterValues('Slack', { channel: '#general', text: 'hi' }),
+		).resolves.toBe('applied');
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
+
+		// The locally edited fields win; the untouched delta key still mirrors.
+		expect(documentStore.allNodes[0].parameters).toEqual({ channel: '#local', text: 'hi' });
+		expect(documentStore.allNodes[0].credentials).toEqual({
+			slackApi: { id: 'cred-local', name: 'Local' },
+		});
+		// The version still advances so the document's next save carries the edits.
+		expect(documentStore.versionId).toBe('v2');
+		expect(documentStore.checksum).toBe('c2');
+	});
+
+	it('does not mark the editor dirty when mirroring saved state', async () => {
+		const { actions } = createHarness();
+		const uiStore = useUIStore();
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
+		documentStore.hydrate(makeWorkflow());
+		expect(uiStore.stateIsDirty).toBe(false);
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
+		await expect(actions.applyParameterValues('Slack', { channel: '#general' })).resolves.toBe(
+			'applied',
+		);
+
+		expect(documentStore.allNodes[0].credentials).toEqual({
+			slackApi: { id: 'cred-1', name: 'My Slack' },
+		});
+		expect(uiStore.stateIsDirty).toBe(false);
+	});
+
+	it('recomputes issues for mirrored nodes so stale warnings clear', async () => {
+		const { actions } = createHarness();
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
+		documentStore.hydrate(makeWorkflow());
+		const slackNodeType = {
+			displayName: 'Slack',
+			name: 'n8n-nodes-base.set',
+			version: 1,
+			group: [],
+			description: '',
+			defaults: { name: 'Slack' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{ displayName: 'Channel', name: 'channel', type: 'string', default: '', required: true },
+			],
+		} as unknown as INodeTypeDescription;
+		mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(slackNodeType);
+		documentStore.setNodeIssue({
+			node: 'Slack',
+			type: 'credentials',
+			value: { slackApi: ['Credentials not set'] },
+		});
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
+
+		// The stale credential warning clears; the missing required parameter
+		// still reports until it is applied.
+		expect(getNodeCredentialIssues).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Slack',
+				credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+			}),
+		);
+		expect(documentStore.allNodes[0].issues?.credentials).toBeUndefined();
+		expect(documentStore.allNodes[0].issues?.parameters).toEqual({
+			channel: ['Parameter "Channel" is required.'],
+		});
+
+		await expect(actions.applyParameterValues('Slack', { channel: '#general' })).resolves.toBe(
+			'applied',
+		);
+
+		expect(documentStore.allNodes[0].issues).toEqual({});
 	});
 
 	it('sends the Execute message through the normal send endpoint with the setup panel context', async () => {

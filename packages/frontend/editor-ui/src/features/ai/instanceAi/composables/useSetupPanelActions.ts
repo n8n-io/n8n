@@ -1,4 +1,5 @@
 import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import isEqual from 'lodash/isEqual';
 
 import type {
 	InstanceAiAttachment,
@@ -8,10 +9,13 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { NodeHelpers } from 'n8n-workflow';
 import type { INodeParameters } from 'n8n-workflow';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createWorkflowDocumentId,
 	useExistingWorkflowDocumentStore,
@@ -68,6 +72,13 @@ interface NodesDelta {
 	credentialBinds: CredentialBind[];
 	parameterApplies: ParameterApply[];
 }
+
+/**
+ * Pre-PATCH server values keyed by node name, snapshotted before
+ * `applyDeltaToNodes` mutates the fetched nodes. The mirror compares against
+ * these to tell a newer unsaved local edit from plain server state.
+ */
+type NodesBaseline = Map<string, Pick<INodeUi, 'credentials' | 'parameters'>>;
 
 /**
  * Re-applies the delta onto freshly fetched nodes. Mutates the given array's
@@ -132,6 +143,8 @@ export function useSetupPanelActions(options: {
 	const i18n = useI18n();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const nodeHelpers = useNodeHelpers();
 
 	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
 	const pendingParameterApplies = shallowReactive(new Map<string, INodeParameters>());
@@ -166,36 +179,90 @@ export function useSetupPanelActions(options: {
 	 * Mirrors an applied delta into a live canvas document, if a host has one
 	 * hydrated: the derivation reads the document's nodes while it exists, and
 	 * the document's next save would otherwise clobber the bind (its nodes) or
-	 * version-conflict (its stale versionId/checksum). The delta merges into the
-	 * document's own nodes (not the server copy) so unsaved local edits on the
-	 * same node survive the mirror.
+	 * version-conflict (its stale versionId/checksum).
+	 *
+	 * The delta merges into the document's own nodes (not the server copy) so
+	 * unsaved local edits survive. That includes the field the delta itself
+	 * wrote: a document value that already diverged from the pre-PATCH server
+	 * value is a newer local edit — it stays, and wins on the document's next
+	 * save. Mirror writes carry already-saved state, so they do not mark the
+	 * editor dirty, and the touched nodes' issues are recomputed so stale
+	 * warnings clear right away.
 	 */
-	function syncHydratedDocument(workflowId: string, delta: NodesDelta, updated: IWorkflowDb) {
+	function syncHydratedDocument(
+		workflowId: string,
+		delta: NodesDelta,
+		baseline: NodesBaseline,
+		updated: IWorkflowDb,
+	) {
 		const documentStore = useExistingWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		if (!documentStore?.hydrated) return;
 
 		// Only mirror nodes the PATCH actually landed on.
 		const updatedNodeNames = new Set(updated.nodes.map((node) => node.name));
+		const touchedNodeNames = new Set<string>();
 		for (const { item, credential } of delta.credentialBinds) {
 			for (const binding of item.nodeBindings ?? []) {
 				if (!updatedNodeNames.has(binding.nodeName)) continue;
 				const docNode = documentStore.getNodeByName(binding.nodeName);
 				if (!docNode) continue;
-				documentStore.updateNodeProperties({
-					name: binding.nodeName,
-					properties: {
-						credentials: { ...docNode.credentials, [item.credentialType]: { ...credential } },
+				const base = baseline.get(binding.nodeName);
+				const current = docNode.credentials?.[item.credentialType];
+				if (!isEqual(current, base?.credentials?.[item.credentialType])) continue;
+				documentStore.updateNodeProperties(
+					{
+						name: binding.nodeName,
+						properties: {
+							credentials: { ...docNode.credentials, [item.credentialType]: { ...credential } },
+						},
 					},
-				});
+					{ markDirty: false },
+				);
+				touchedNodeNames.add(binding.nodeName);
 			}
 		}
 		for (const { nodeName, values } of delta.parameterApplies) {
 			if (!updatedNodeNames.has(nodeName)) continue;
 			const docNode = documentStore.getNodeByName(nodeName);
 			if (!docNode) continue;
-			documentStore.updateNodeProperties({
-				name: nodeName,
-				properties: { parameters: { ...docNode.parameters, ...values } },
+			const base = baseline.get(nodeName);
+			// The same-field rule holds per key: keep the locally edited keys,
+			// mirror the rest.
+			const mirrorValues = Object.fromEntries(
+				Object.entries(values).filter(([key]) =>
+					isEqual(docNode.parameters?.[key], base?.parameters?.[key]),
+				),
+			);
+			if (Object.keys(mirrorValues).length === 0) continue;
+			documentStore.updateNodeProperties(
+				{
+					name: nodeName,
+					properties: { parameters: { ...docNode.parameters, ...mirrorValues } },
+				},
+				{ markDirty: false },
+			);
+			touchedNodeNames.add(nodeName);
+		}
+
+		// The mirror bypasses the canvas editing paths, so nothing else
+		// re-derives node issues. Recompute them the way the canvas does, but
+		// against this document (useNodeHelpers writes to its injected one).
+		for (const nodeName of touchedNodeNames) {
+			const node = documentStore.getNodeByName(nodeName);
+			if (!node) continue;
+			documentStore.setNodeIssue({
+				node: nodeName,
+				type: 'credentials',
+				value: nodeHelpers.getNodeCredentialIssues(node)?.credentials ?? null,
+			});
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType) continue;
+			documentStore.setNodeIssue({
+				node: nodeName,
+				type: 'parameters',
+				value:
+					NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType)?.parameters ??
+					null,
 			});
 		}
 
@@ -229,6 +296,14 @@ export function useSetupPanelActions(options: {
 			if (!fresh.checksum) return 'error';
 
 			const nodes = fresh.nodes;
+			// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
+			// values first so the mirror can spot newer local edits.
+			const baseline: NodesBaseline = new Map(
+				nodes.map((node) => [
+					node.name,
+					{ credentials: { ...node.credentials }, parameters: { ...node.parameters } },
+				]),
+			);
 			const outcome = applyDeltaToNodes(nodes, delta);
 			if (outcome !== 'changed') return outcome;
 
@@ -249,7 +324,7 @@ export function useSetupPanelActions(options: {
 					versionId: fresh.versionId,
 					expectedChecksum: fresh.checksum,
 				});
-				syncHydratedDocument(workflowId, delta, updated);
+				syncHydratedDocument(workflowId, delta, baseline, updated);
 				return 'applied';
 			} catch (error) {
 				const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;
