@@ -556,12 +556,14 @@ describe('scheduled repositories', () => {
 	});
 
 	describe('ScheduledJobRepository.updateRunOptions', () => {
-		it('rewrites the policy and grace of the given jobs only', async () => {
+		it('rewrites the attempts, policy and grace of the given jobs only', async () => {
 			const updated = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
 			const untouched = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
@@ -569,19 +571,21 @@ describe('scheduled repositories', () => {
 			await dataSource.transaction(
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [updated.id], {
-						maxAttempts: updated.maxAttempts,
+						maxAttempts: 5,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 					}),
 			);
 
 			const after = await jobRepository.findOneByOrFail({ id: updated.id });
+			expect(after.maxAttempts).toBe(5);
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 			expect(after.misfireGraceSeconds).toBe(120);
 			expect(after.intervalSeconds).toBe(updated.intervalSeconds);
 			expect(after.nextRunAt).toEqual(updated.nextRunAt);
 
 			const other = await jobRepository.findOneByOrFail({ id: untouched.id });
+			expect(other.maxAttempts).toBe(1);
 			expect(other.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
 			expect(other.misfireGraceSeconds).toBe(60);
 		});
