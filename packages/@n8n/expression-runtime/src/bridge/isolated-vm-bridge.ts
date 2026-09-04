@@ -27,15 +27,9 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
 
-// V8 compile cache for the runtime bundle: produced by the first bundle
-// compile (pool warmup) and consumed by every later isolate build, skipping
-// the parse phase of the ~470KB bundle (~23% off a cold start, measured).
-// V8 validates the data and silently recompiles when it is stale, so this is
-// safe across bundle changes within one process lifetime. Full heap
-// snapshots (Isolate.createSnapshot) were measured NET SLOWER than a plain
-// eval — deserializing the heap costs more than lazily parsing the bundle.
-// TODO(POC): promote the enable flag to ExpressionEngineConfig.
-const isCompileCacheEnabled = () => process.env.N8N_EXPRESSION_ENGINE_COMPILE_CACHE === 'true';
+// V8 compile cache for the runtime bundle (BridgeConfig.compileCache): the
+// first bundle compile produces it, later builds consume it and skip
+// re-parsing. V8 validates the data and recompiles when it is stale.
 let _bundleCachedData: ivm.ExternalCopy<ArrayBuffer> | null = null;
 
 // The runtime sets Script.cachedData when produceCachedData is passed, but
@@ -233,7 +227,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
-			if (isCompileCacheEnabled()) {
+			if (this.config.compileCache) {
 				const script = await this.isolate.compileScript(
 					runtimeBundle,
 					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
@@ -348,7 +342,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const jail = this.context.global;
 			jail.setSync('global', jail.derefInto());
 
-			if (isCompileCacheEnabled()) {
+			if (this.config.compileCache) {
 				const script = this.isolate.compileScriptSync(
 					readRuntimeBundleSync(),
 					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },

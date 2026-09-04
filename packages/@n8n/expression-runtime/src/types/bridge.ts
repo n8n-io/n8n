@@ -92,6 +92,12 @@ export interface BridgeConfig {
 
 	/** Optional logger. Falls back to no-op if not provided. */
 	logger?: Logger;
+
+	/**
+	 * Reuse V8 compile cache for the runtime bundle. isolated-vm only.
+	 * Default: false
+	 */
+	compileCache?: boolean;
 }
 
 const NO_OP_LOGGER: Logger = {
@@ -106,6 +112,7 @@ export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
 	logger: NO_OP_LOGGER,
+	compileCache: false,
 };
 
 /** Options for a single execute() call. */

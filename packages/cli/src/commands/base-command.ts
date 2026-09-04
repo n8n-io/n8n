@@ -247,6 +247,7 @@ export abstract class BaseCommand<F = never> {
 				bridgeMemoryLimit,
 				idleTimeout,
 				lazyAcquire,
+				compileCache,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
@@ -258,6 +259,7 @@ export abstract class BaseCommand<F = never> {
 					bridgeMemoryLimit,
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 					lazyAcquire,
+					compileCache,
 					observability,
 				});
 			} catch (error) {

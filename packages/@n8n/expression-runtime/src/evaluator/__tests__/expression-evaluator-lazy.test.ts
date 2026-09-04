@@ -117,6 +117,16 @@ describe('ExpressionEvaluator — lazy acquisition', () => {
 		expect(coldBridge.initializeSync).toHaveBeenCalledTimes(1);
 		expect(acquiredCount(observability)).toBe(2);
 
+		// The sync cold start is tracked separately from regular acquisition.
+		const coldStartCounts = vi
+			.mocked(observability.metrics.counter)
+			.mock.calls.filter(([name]) => name === EXPRESSION_METRICS.poolColdStartSync.name);
+		expect(coldStartCounts).toHaveLength(1);
+		expect(observability.metrics.histogram).toHaveBeenCalledWith(
+			EXPRESSION_METRICS.poolColdStartSyncDuration.name,
+			expect.any(Number),
+		);
+
 		await evaluator.release(callerA);
 		await evaluator.release(callerB);
 		await evaluator.dispose();

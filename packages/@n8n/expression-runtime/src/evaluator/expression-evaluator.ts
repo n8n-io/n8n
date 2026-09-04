@@ -154,6 +154,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			bridge = this.config.createBridge();
 			// A failed cold start must not leak the bridge: it is not yet
 			// recorded anywhere, so dispose it here before rethrowing.
+			const coldStartStart = performance.now();
 			try {
 				if (typeof bridge.initializeSync !== 'function') {
 					throw new IsolateError(
@@ -165,6 +166,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 				void bridge.dispose();
 				throw initError;
 			}
+			this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolColdStartSync.name, 1);
+			this.config.observability?.metrics.histogram(
+				EXPRESSION_METRICS.poolColdStartSyncDuration.name,
+				(performance.now() - coldStartStart) / 1000,
+			);
 		}
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		return bridge;

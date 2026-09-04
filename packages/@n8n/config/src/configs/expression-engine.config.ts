@@ -77,11 +77,22 @@ export class ExpressionEngineConfig {
 	allowWebhookIsolateSkip: boolean = true;
 
 	/**
-	 * Lazy isolate acquisition (experimental): acquire calls only open a scope,
+	 * Experimental: lazy isolate acquisition. Acquire calls only open a scope,
 	 * and an isolate is created on the first expression that actually needs the
-	 * engine. Scopes that evaluate nothing (or only expressions the native fast
-	 * path handles) never consume an isolate.
+	 * engine. Scopes that evaluate no expression never consume an isolate. When
+	 * the pool is exhausted, the isolate is built synchronously on the request
+	 * path (see the `expression.pool.cold_start_sync` metrics).
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE')
 	lazyAcquire: boolean = false;
+
+	/**
+	 * Experimental: reuse the V8 compile cache for the expression runtime
+	 * bundle. The first bundle compile produces V8 cached data, and every
+	 * later isolate build consumes it, skipping re-parsing the bundle. V8
+	 * validates the cached data and silently recompiles when it is stale.
+	 * Only affects the `vm` engine.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_COMPILE_CACHE')
+	compileCache: boolean = false;
 }
