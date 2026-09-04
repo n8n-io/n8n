@@ -99,14 +99,30 @@ describe('activity tool', () => {
 		expect(output.notFound).toBe(true);
 	});
 
-	it('asks for the id rather than guessing one', async () => {
-		const tool = createActivityTool(makeContext(makeService()));
+	describe('input schema', () => {
+		function inputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
+			return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+				.inputSchema;
+		}
 
-		await expect(executeTool(tool, { action: 'expand' })).rejects.toThrow('needs the `id`');
+		/** The union carries the arity, so the handler never has to check for a missing id. */
+		it('refuses an expand with no id', () => {
+			const schema = inputSchema(createActivityTool(makeContext(makeService())));
+
+			expect(schema.safeParse({ action: 'expand' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'expand', id: 20 }).success).toBe(true);
+		});
+
+		it('refuses a category outside the vocabulary, so a typo cannot widen the read', () => {
+			const schema = inputSchema(createActivityTool(makeContext(makeService())));
+
+			expect(schema.safeParse({ action: 'list', category: 'execution' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'list', category: 'workflow' }).success).toBe(true);
+		});
 	});
 
-	it('bounds how much of a resource history one expand can return', async () => {
-		const history = Array.from({ length: 40 }, (_, index) => ({ ...savedEntry, id: index }));
+	it('returns the history the service gives it, without re-bounding it', async () => {
+		const history = Array.from({ length: 5 }, (_, index) => ({ ...savedEntry, id: index }));
 		const service = makeService({
 			expand: vi.fn().mockResolvedValue({ entry: savedEntry, resourceHistory: history }),
 		});
@@ -117,6 +133,6 @@ describe('activity tool', () => {
 			id: 20,
 		});
 
-		expect(output.resourceHistory).toHaveLength(20);
+		expect(output.resourceHistory).toHaveLength(5);
 	});
 });

@@ -1,7 +1,7 @@
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
-	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -44,7 +44,7 @@ describe('InstanceContextService', () => {
 	}
 
 	it('carries what exists, what changed and what ran, in one block', async () => {
-		const workflow = await createWorkflow({ name: 'Lead enrichment', active: true }, project);
+		const workflow = await createActiveWorkflow({ name: 'Lead enrichment' }, project);
 		await record({
 			category: 'workflow',
 			action: 'saved',
@@ -260,17 +260,16 @@ describe('InstanceContextService', () => {
 		expect(expansion?.liveRecordHint).toBe('workflows(action="get", workflowId="wf-1")');
 	});
 
-	it('reads every project the user belongs to when the conversation is unscoped', async () => {
-		const second = await createTeamProject();
-		await linkUserToProject(user, second, 'project:admin');
-		await createWorkflow({ name: 'In the first' }, project);
-		await createWorkflow({ name: 'In the second' }, second);
-		await createWorkflow({ name: 'Not mine' }, otherProject);
+	it('reads nothing when the conversation is bound to no project', async () => {
+		await createWorkflow({ name: 'Mine' }, project);
+		await record({
+			category: 'workflow',
+			action: 'saved',
+			projectId: project.id,
+			resourceType: 'workflow',
+			resourceId: 'wf-1',
+		});
 
-		const built = await service.buildBlock({ userId: user.id, cursor: null });
-
-		expect(built?.block).toContain('In the first');
-		expect(built?.block).toContain('In the second');
-		expect(built?.block).not.toContain('Not mine');
+		expect(await service.buildBlock({ userId: user.id, cursor: null })).toBeNull();
 	});
 });

@@ -136,12 +136,12 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
+import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
 	readInstanceContextCursor,
 } from './instance-context.service';
-import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';

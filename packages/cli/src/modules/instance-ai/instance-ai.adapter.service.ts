@@ -170,8 +170,8 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import { InstanceContextService } from './instance-context.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceContextService } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';

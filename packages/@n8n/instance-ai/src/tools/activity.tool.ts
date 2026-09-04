@@ -16,42 +16,40 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 const defaultListLimit = 30;
 const maxListLimit = 100;
 
-/** One entry's own resource cannot plausibly need more than this to be understood. */
-const resourceHistoryLimit = 20;
-
-const activityInputSchema = z.object({
-	action: z
-		.enum(['list', 'expand'])
-		.describe(
-			'`list` reads the log — further back than the window you were given, or filtered. ' +
-				'`expand` opens one entry by its id.',
-		),
-	id: z
-		.number()
-		.int()
-		.optional()
-		.describe('For `expand`: the bracketed id of the entry, as shown in the list you were given.'),
-	category: z
-		.string()
-		.optional()
-		.describe('For `list`: restrict to one kind — "workflow" or "credential".'),
-	resourceId: z
-		.string()
-		.optional()
-		.describe('For `list`: restrict to one resource, e.g. a single workflow id.'),
-	beforeId: z
-		.number()
-		.int()
-		.optional()
-		.describe('For `list`: page backwards — only entries older than this id.'),
-	limit: z
-		.number()
-		.int()
-		.min(1)
-		.max(maxListLimit)
-		.optional()
-		.describe(`For \`list\`: how many entries to return (default ${defaultListLimit}).`),
-});
+const activityInputSchema = z.discriminatedUnion('action', [
+	z.object({
+		action: z
+			.literal('list')
+			.describe('Read the log — further back than the list you were given, or filtered.'),
+		category: z
+			.enum(['workflow', 'credential'])
+			.optional()
+			.describe('Restrict to one kind of entry.'),
+		resourceId: z
+			.string()
+			.optional()
+			.describe('Restrict to one resource, e.g. a single workflow id.'),
+		beforeId: z
+			.number()
+			.int()
+			.optional()
+			.describe('Page backwards — only entries older than this id.'),
+		limit: z
+			.number()
+			.int()
+			.min(1)
+			.max(maxListLimit)
+			.optional()
+			.describe(`How many entries to return (default ${defaultListLimit}).`),
+	}),
+	z.object({
+		action: z.literal('expand').describe('Open one entry by its id.'),
+		id: z
+			.number()
+			.int()
+			.describe('The bracketed id of the entry, as shown in the list you were given.'),
+	}),
+]);
 
 const activityEntrySchema = z.object({
 	id: z.number(),
@@ -95,9 +93,6 @@ export function createActivityTool(context: InstanceAiContext) {
 			}
 
 			if (input.action === 'expand') {
-				if (input.id === undefined) {
-					throw new Error('`expand` needs the `id` of the entry to open.');
-				}
 				const expansion = await service.expand(input.id);
 				// Entries are pruned, so a stale id is expected rather than exceptional — and an id
 				// outside this conversation's scope answers the same way, so the tool cannot be used
@@ -106,7 +101,7 @@ export function createActivityTool(context: InstanceAiContext) {
 
 				return {
 					entry: expansion.entry,
-					resourceHistory: expansion.resourceHistory.slice(0, resourceHistoryLimit),
+					resourceHistory: expansion.resourceHistory,
 					...(expansion.liveRecordHint ? { liveRecordHint: expansion.liveRecordHint } : {}),
 				};
 			}

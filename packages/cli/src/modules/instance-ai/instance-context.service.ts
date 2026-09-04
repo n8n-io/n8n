@@ -5,11 +5,11 @@ import {
 	ActivityEventRepository,
 	activityEventCategories,
 	ExecutionRepository,
-	ProjectRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { ActivityEvent, ActivityEventCategory, ActivityResourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -57,8 +57,8 @@ const resourceHistoryLimit = 20;
  * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
  * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
  * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". Keeping the cap above `windowSize` is
- * what makes even that much true, which is why it is derived from it rather than set by hand.
+ * could be displayed", not "every straggler is recovered". What makes even that much true is
+ * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
  */
 const activityLagIds = 200;
 
@@ -70,9 +70,9 @@ const activityLagIds = 200;
 const seenIdsCap = activityLagIds;
 
 /**
- * Rows one delta reads. Above `windowSize` on purpose — see the note on `activityLagIds`, which
- * depends on it — and above it by enough that collapsing and the age filter still leave a full
- * window to show.
+ * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
+ * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
+ * leaves room for the age filter to discard rows and still fill a window.
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
@@ -81,12 +81,6 @@ const entryFetchLimit = windowSize * fetchMultiplier;
  * run finishing and its row committing.
  */
 const runLagMs = 2 * Time.minutes.toMilliseconds;
-
-/**
- * Projects a single read may span. `IN (...)` is bound-variable limited — sqlite caps a statement
- * at 999 — and a user in more projects than this has an estate no per-turn block can summarise.
- */
-const maxProjectsInScope = 200;
 
 /** Thread-metadata key holding what this thread has already been shown. */
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
@@ -121,10 +115,6 @@ export function readInstanceContextCursor(
 			: [],
 		runsThrough,
 	};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 type RunSummary = {
@@ -164,7 +154,6 @@ export class InstanceContextService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
@@ -199,7 +188,7 @@ export class InstanceContextService {
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			const projectIds = await this.visibleProjectIds(input.userId, input.projectId);
+			const projectIds = this.visibleProjectIds(input.projectId);
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
@@ -237,7 +226,7 @@ export class InstanceContextService {
 			};
 		} catch (error) {
 			// Context is an enhancement; failing to build it must not fail the user's turn.
-			this.logger.debug('Failed to build the instance-context block', { error });
+			this.logger.warn('Failed to build the instance-context block', { error });
 			return null;
 		}
 	}
@@ -251,11 +240,15 @@ export class InstanceContextService {
 		resourceId?: string;
 		beforeId?: number;
 	}): Promise<InstanceAiActivityEntry[]> {
-		const projectIds = await this.visibleProjectIds(input.userId, input.projectId);
+		// A category the vocabulary does not hold matches nothing. Dropping the filter instead would
+		// answer a narrowing request by widening it to the whole feed.
+		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
+
+		const projectIds = this.visibleProjectIds(input.projectId);
 		const rows = await this.activityEventRepository.findFeed({
 			limit: input.limit,
 			projectIds,
-			...(isKnownCategory(input.category) ? { category: input.category } : {}),
+			...(input.category !== undefined ? { category: input.category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 		});
@@ -272,7 +265,7 @@ export class InstanceContextService {
 		userId: string;
 		projectId?: string;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = await this.visibleProjectIds(input.userId, input.projectId);
+		const projectIds = this.visibleProjectIds(input.projectId);
 		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
 		if (!row) return null;
 
@@ -323,18 +316,21 @@ export class InstanceContextService {
 				!alreadyShown.has(row.id) && input.now.getTime() - row.createdAt.getTime() <= maxAgeMs,
 		);
 
+		const shown = fresh.slice(0, windowSize);
 		const mark = rows.reduce(
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// Only ids inside the band need remembering: below it, the floor already excludes them.
-		const seen = [...alreadyShown, ...rows.map((row) => row.id)]
+		// What was shown, not what was read: an entry the window cut is still unseen, and the band
+		// gives it another turn to appear rather than burying it under a mark it never reached.
+		// Only ids inside the band need remembering — below it, the floor already excludes them.
+		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
 			.filter((id) => id > mark - activityLagIds)
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
 		return {
-			rows: fresh.slice(0, windowSize),
+			rows: shown,
 			mark,
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
@@ -360,15 +356,18 @@ export class InstanceContextService {
 	}
 
 	/**
-	 * Which projects this reader may see. A project-scoped conversation sees that project and
-	 * nothing else; an unscoped one sees every project the user is a member of — never the whole
-	 * instance, which would surface names from projects they cannot open.
+	 * The one project this reader may see: the conversation's own, which the thread is bound to
+	 * and which was authorised when the thread was created. A conversation without one reads
+	 * nothing.
+	 *
+	 * Deliberately not "every project the user belongs to". That would be a second scoping path
+	 * beside `SharedWorkflowRepository.buildSharedWorkflowIdsSubquery`, which the rest of the
+	 * codebase reads through, and a second path is the likeliest thing here to drift into a leak.
+	 * Bare project membership is also not read access — `project:chatUser` holds neither
+	 * `workflow:read` nor `credential:read`.
 	 */
-	private async visibleProjectIds(userId: string, projectId?: string): Promise<string[]> {
-		if (projectId !== undefined) return [projectId];
-
-		const projects = await this.projectRepository.getAccessibleProjects(userId);
-		return projects.slice(0, maxProjectsInScope).map((project) => project.id);
+	private visibleProjectIds(projectId?: string): string[] {
+		return projectId === undefined ? [] : [projectId];
 	}
 }
 
@@ -401,7 +400,9 @@ function renderInventory(inventory: Inventory): string[] {
 
 	const named = inventory.workflows.map(
 		(workflow) =>
-			`  - "${workflow.name}" (workflow:${workflow.id})${workflow.active ? ' [published]' : ''}`,
+			`  - "${sanitiseForBlock(workflow.name)}" (workflow:${workflow.id})${
+				workflow.active ? ' [published]' : ''
+			}`,
 	);
 	const more = inventory.total - inventory.workflows.length;
 
@@ -432,7 +433,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 			: '';
 
 		return `  - ${[
-			`"${run.workflowName}" (workflow:${run.workflowId})`,
+			`"${sanitiseForBlock(run.workflowName)}" (workflow:${run.workflowId})`,
 			outcome,
 			failure,
 			formatAge(run.lastStoppedAt, now),
@@ -521,9 +522,45 @@ function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): stri
 		.join(' · ');
 }
 
+/**
+ * Longest a single stored value may be once inside the block. `activity_event` already truncates
+ * `resourceName` on write, but a workflow name reaches the inventory leg straight from its own
+ * table, so the bound is applied here for every leg.
+ */
+const blockValueMaxLength = 128;
+
+/**
+ * Neutralises a stored value before it enters the block.
+ *
+ * Names are written by users and the block is prose the model reads as trusted, so a name holding a
+ * newline and a closing tag ends the block early: whatever follows reads as the user's own words,
+ * and on reload `cleanStoredUserMessage` strips the wrong span and shows the injected text as the
+ * message. A project is the boundary here, not authorship, so the name need not be the reader's own.
+ *
+ * Angle brackets are escaped rather than dropped, so a name that legitimately contains one still
+ * reads as itself.
+ */
+function sanitiseForBlock(value: string): string {
+	// Control characters are replaced by code point rather than by a regex class, which the
+	// `no-control-regex` rule rejects.
+	const printable = Array.from(value)
+		.map((character) => {
+			const code = character.codePointAt(0) ?? 0;
+			return code < 0x20 || code === 0x7f ? ' ' : character;
+		})
+		.join('');
+
+	return printable
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, blockValueMaxLength);
+}
+
 function formatResource(row: ActivityEvent): string {
 	if (!row.resourceId) return '';
-	const name = row.resourceName ? `"${row.resourceName}" ` : '';
+	const name = row.resourceName ? `"${sanitiseForBlock(row.resourceName)}" ` : '';
 	return `${name}(${row.resourceType ?? 'resource'}:${row.resourceId})`;
 }
 
@@ -550,9 +587,11 @@ function nodeChange(data: IDataObject): string {
 	const removedTotal = readNumber(data, 'nodesRemovedTotal') ?? removed.length;
 
 	const parts = [
-		...(addedTotal > 0 ? [`+${addedTotal}${added.length ? ` ${added.join(', ')}` : ''}`] : []),
+		...(addedTotal > 0
+			? [`+${addedTotal}${added.length ? ` ${sanitiseForBlock(added.join(', '))}` : ''}`]
+			: []),
 		...(removedTotal > 0
-			? [`−${removedTotal}${removed.length ? ` ${removed.join(', ')}` : ''}`]
+			? [`−${removedTotal}${removed.length ? ` ${sanitiseForBlock(removed.join(', '))}` : ''}`]
 			: []),
 	];
 	if (parts.length > 0) return parts.join(', ');
@@ -572,9 +611,10 @@ function provenanceClause(data: IDataObject): string {
 
 function versionClause(data: IDataObject): string {
 	const versionName = readString(data, 'versionName');
-	if (versionName) return `version "${versionName}"`;
+	if (versionName) return `version "${sanitiseForBlock(versionName)}"`;
 
-	return readString(data, 'credentialType') ?? '';
+	const credentialType = readString(data, 'credentialType');
+	return credentialType ? sanitiseForBlock(credentialType) : '';
 }
 
 /** Compact on purpose: every row pays for its own width, and the agent only needs the ordering. */
