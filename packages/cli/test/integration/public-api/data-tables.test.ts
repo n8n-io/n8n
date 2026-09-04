@@ -100,6 +100,9 @@ describe('GET /data-tables', () => {
 		expect(response.body.data[0]).toHaveProperty('id');
 		expect(response.body.data[0]).toHaveProperty('name');
 		expect(response.body.data[0]).toHaveProperty('columns');
+		for (const dataTable of response.body.data) {
+			expect(typeof dataTable.sizeBytes).toBe('number');
+		}
 	});
 
 	test('should paginate data tables', async () => {
@@ -360,6 +363,7 @@ describe('POST /data-tables', () => {
 		expect(response.body).toHaveProperty('columns');
 		expect(response.body.columns).toHaveLength(2);
 		expect(response.body).toHaveProperty('projectId', ownerPersonalProject.id);
+		expect(typeof response.body.sizeBytes).toBe('number');
 	});
 
 	test('should fail with duplicate name', async () => {
@@ -445,6 +449,7 @@ describe('GET /data-tables/:dataTableId', () => {
 		expect(response.body).toHaveProperty('name', 'test-table');
 		expect(response.body).toHaveProperty('columns');
 		expect(response.body.columns).toHaveLength(2);
+		expect(typeof response.body.sizeBytes).toBe('number');
 	});
 
 	test('should return 403 when user does not have access to the data table', async () => {
@@ -504,6 +509,7 @@ describe('PATCH /data-tables/:dataTableId', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toHaveProperty('id', dataTable.id);
 		expect(response.body).toHaveProperty('name', 'new-name');
+		expect(typeof response.body.sizeBytes).toBe('number');
 	});
 
 	test('should fail with duplicate name', async () => {
@@ -2171,89 +2177,22 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 	});
 });
 
-describe('sizeBytes on data table responses', () => {
-	// Instance-wide cache, so clear it between tests.
-	const resetSizeCache = () => Container.get(DataTableSizeValidator).reset();
-
-	beforeEach(() => {
-		resetSizeCache();
+test('should report a non-zero size for a table holding rows', async () => {
+	const dataTable = await createDataTable(ownerPersonalProject, {
+		name: 'sized-with-rows',
+		columns: [{ name: 'name', type: 'string' }],
 	});
 
-	test('should return sizeBytes when creating a data table', async () => {
-		const response = await authOwnerAgent.post('/data-tables').send({
-			name: 'sized-on-create',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-
-		expect(response.statusCode).toBe(201);
-		expect(typeof response.body.sizeBytes).toBe('number');
+	await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
+		data: Array.from({ length: 50 }, (_, index) => ({ name: `row-${index}` })),
+		returnType: 'count',
 	});
 
-	test('should return sizeBytes when reading a single data table', async () => {
-		const dataTable = await createDataTable(ownerPersonalProject, {
-			name: 'sized-on-read',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-		resetSizeCache();
+	// The rows landed after the last refresh, so re-measure before reading.
+	Container.get(DataTableSizeValidator).reset();
 
-		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+	const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
 
-		expect(response.statusCode).toBe(200);
-		expect(typeof response.body.sizeBytes).toBe('number');
-	});
-
-	test('should return sizeBytes on every item when listing', async () => {
-		await createDataTable(ownerPersonalProject, {
-			name: 'sized-list-one',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-		await createDataTable(ownerPersonalProject, {
-			name: 'sized-list-two',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-		resetSizeCache();
-
-		const response = await authOwnerAgent.get('/data-tables');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBeGreaterThanOrEqual(2);
-		for (const dataTable of response.body.data) {
-			expect(typeof dataTable.sizeBytes).toBe('number');
-		}
-	});
-
-	test('should return sizeBytes when updating a data table', async () => {
-		const dataTable = await createDataTable(ownerPersonalProject, {
-			name: 'sized-on-update',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-		resetSizeCache();
-
-		const response = await authOwnerAgent
-			.patch(`/data-tables/${dataTable.id}`)
-			.send({ name: 'sized-renamed' });
-
-		expect(response.statusCode).toBe(200);
-		expect(typeof response.body.sizeBytes).toBe('number');
-	});
-
-	test('should report a non-zero size for a table holding rows', async () => {
-		const dataTable = await createDataTable(ownerPersonalProject, {
-			name: 'sized-with-rows',
-			columns: [{ name: 'name', type: 'string' }],
-		});
-
-		await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
-			data: Array.from({ length: 50 }, (_, index) => ({ name: `row-${index}` })),
-			returnType: 'count',
-		});
-
-		// The rows landed after the last refresh, so re-measure before reading.
-		resetSizeCache();
-
-		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.sizeBytes).toBeGreaterThan(0);
-	});
+	expect(response.statusCode).toBe(200);
+	expect(response.body.sizeBytes).toBeGreaterThan(0);
 });
