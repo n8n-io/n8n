@@ -59,6 +59,23 @@ describe('SsoController', () => {
 			expect(ssoSettingsService.setRedirectLoginToSso).not.toHaveBeenCalled();
 		});
 
+		it('allows an unlicensed instance to disable the redirect', async () => {
+			const { controller, ssoSettingsService } = createController({
+				samlLicensed: false,
+				oidcLicensed: false,
+			});
+			const res = mock<Response>();
+
+			await controller.setLoginRedirect(
+				mock<AuthenticatedRequest>(),
+				res,
+				new SsoRedirectToggleDto({ redirectLoginToSso: false }),
+			);
+
+			expect(ssoSettingsService.setRedirectLoginToSso).toHaveBeenCalledWith(false);
+			expect(res.sendStatus).toHaveBeenCalledWith(200);
+		});
+
 		it('rejects the change when SSO is managed by env', async () => {
 			const { controller, ssoSettingsService } = createController({
 				samlLicensed: true,

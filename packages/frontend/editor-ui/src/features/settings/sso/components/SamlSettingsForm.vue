@@ -42,6 +42,7 @@ const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
 const isRulesMappingInN8n = computed(() => mappingMethod.value === 'rules_in_n8n');
 
 const savingForm = ref<boolean>(false);
+const samlConfigLoaded = ref(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const redirectUrl = ref();
@@ -100,6 +101,7 @@ async function loadSamlConfig() {
 
 const getSamlConfig = async () => {
 	const config = await ssoStore.getSamlConfig();
+	samlConfigLoaded.value = true;
 
 	entityId.value = config?.entityID;
 	redirectUrl.value = config?.returnUrl;
@@ -254,6 +256,13 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 			}
 		}
 		if (!isSamlConfigDirty.value) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sso.settings.save.success'),
+				type: 'success',
+			});
+			return true;
+		}
+		if (!samlConfigLoaded.value) {
 			toast.showMessage({
 				title: i18n.baseText('settings.sso.settings.save.success'),
 				type: 'success',

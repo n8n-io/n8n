@@ -21,13 +21,17 @@ export class SsoController {
 	 * Enable or disable auto-redirecting the login page to the SSO provider.
 	 */
 	@Post('/settings/login-redirect')
-	@GlobalScope('sso:manage')
+	@GlobalScope('saml:manage')
 	async setLoginRedirect(
 		_req: AuthenticatedRequest,
 		res: Response,
 		@Body { redirectLoginToSso }: SsoRedirectToggleDto,
 	) {
-		if (!this.licenseState.isSamlLicensed() && !this.licenseState.isOidcLicensed()) {
+		if (
+			redirectLoginToSso &&
+			!this.licenseState.isSamlLicensed() &&
+			!this.licenseState.isOidcLicensed()
+		) {
 			throw new ForbiddenError('SSO is not available with the current license');
 		}
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {

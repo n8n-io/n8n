@@ -262,8 +262,7 @@ describe('SSO store', () => {
 	});
 
 	describe('resolveActiveSsoRedirectUrl', () => {
-		it('uses the SAML init endpoint when SAML is the active protocol', async () => {
-			vi.mocked(ssoApi.initSSO).mockResolvedValue('https://idp.example/saml');
+		it('uses the browser SAML init endpoint when SAML is the active protocol', async () => {
 			ssoStore.initialize({
 				authenticationMethod: 'saml' as AuthenticationMethod,
 				config: { saml: { loginEnabled: true } },
@@ -271,23 +270,20 @@ describe('SSO store', () => {
 			});
 
 			await expect(ssoStore.resolveActiveSsoRedirectUrl('/home')).resolves.toBe(
-				'https://idp.example/saml',
+				'/rest/sso/saml/initsso?redirect=%2Fhome',
 			);
-			expect(ssoApi.initSSO).toHaveBeenCalledWith(expect.anything(), '/home');
 		});
 
-		it('uses the OIDC login URL when OIDC is the active protocol', async () => {
-			vi.mocked(ssoApi.initSSO).mockClear();
+		it('adds the requested destination to the OIDC login URL', async () => {
 			ssoStore.initialize({
 				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: { oidc: { loginEnabled: true, loginUrl: 'https://idp.example/oidc' } },
 				features: { saml: false, ldap: false, oidc: true },
 			});
 
-			await expect(ssoStore.resolveActiveSsoRedirectUrl()).resolves.toBe(
-				'https://idp.example/oidc',
+			await expect(ssoStore.resolveActiveSsoRedirectUrl('/workflows/123')).resolves.toBe(
+				'https://idp.example/oidc?redirect=%2Fworkflows%2F123',
 			);
-			expect(ssoApi.initSSO).not.toHaveBeenCalled();
 		});
 
 		it('throws when OIDC is active but no login URL is configured', async () => {

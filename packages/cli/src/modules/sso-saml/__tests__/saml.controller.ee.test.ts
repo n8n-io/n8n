@@ -354,6 +354,7 @@ describe('SAML Login Flow', () => {
 			await controller.initSsoGet(req, res);
 
 			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://idp.example.com/login');
 		});
 
 		test('validates redirect URL that is passed in via referrer header', async () => {

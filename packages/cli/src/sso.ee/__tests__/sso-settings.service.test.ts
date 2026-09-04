@@ -31,6 +31,14 @@ describe('SsoSettingsService', () => {
 				{ transaction: false },
 			);
 		});
+
+		it('updates runtime config only after persistence succeeds', async () => {
+			settingsRepository.save = vi.fn().mockRejectedValue(new Error('Save failed'));
+
+			await expect(service.setRedirectLoginToSso(false)).rejects.toThrow('Save failed');
+
+			expect(globalConfig.sso.redirectLoginToSso).toBe(true);
+		});
 	});
 
 	describe('reloadRedirectLoginToSso', () => {

@@ -24,6 +24,7 @@ const toast = useToast();
 const message = useMessage();
 
 const savingForm = ref<boolean>(false);
+const oidcConfigLoaded = ref(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
 const isRulesMappingInN8n = computed(() => mappingMethod.value === 'rules_in_n8n');
@@ -83,6 +84,7 @@ const isAdditionalScopesInvalid = computed(() =>
 
 const getOidcConfig = async () => {
 	const config = await ssoStore.getOidcConfig();
+	oidcConfigLoaded.value = true;
 
 	clientId.value = config.clientId;
 	clientSecret.value = config.clientSecret;
@@ -180,6 +182,13 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		}
 	}
 	if (isOidcConfigUnchanged.value) {
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
+		return true;
+	}
+	if (!oidcConfigLoaded.value) {
 		toast.showMessage({
 			title: i18n.baseText('settings.sso.settings.save.success'),
 			type: 'success',

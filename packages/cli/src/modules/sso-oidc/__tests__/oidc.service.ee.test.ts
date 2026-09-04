@@ -118,6 +118,24 @@ describe('OidcService', () => {
 		setOidcState(true, true);
 	});
 
+	describe('login state', () => {
+		it('stores and restores the requested destination', () => {
+			const state = 'n8n_state:123e4567-e89b-12d3-a456-426614174000';
+			jwtService.sign = vi.fn().mockReturnValue('signed-state');
+			jwtService.verify = vi.fn().mockReturnValue({ state, redirectUrl: '/workflows/123' });
+
+			expect(oidcService.generateState(false, '/workflows/123').signed).toBe('signed-state');
+			expect(jwtService.sign).toHaveBeenCalledWith(
+				{ state: expect.stringMatching(/^n8n_state:/), redirectUrl: '/workflows/123' },
+				{ expiresIn: '15m' },
+			);
+			expect(oidcService.verifyState('signed-state')).toEqual({
+				state,
+				redirectUrl: '/workflows/123',
+			});
+		});
+	});
+
 	describe('reload', () => {
 		it('should reload OIDC configuration from database', async () => {
 			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);

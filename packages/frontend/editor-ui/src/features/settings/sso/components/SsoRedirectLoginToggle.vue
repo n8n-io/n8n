@@ -6,6 +6,7 @@ import { useSSOStore } from '../sso.store';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const label = i18n.baseText('settings.sso.settings.redirectToSso.label');
 
 const modelValue = defineModel<boolean>({ required: true });
 </script>
@@ -17,12 +18,15 @@ const modelValue = defineModel<boolean>({ required: true });
 			:class="[$style.settingsItem, $style.settingsItemNoBorder]"
 		>
 			<div :class="$style.settingsItemLabel">
-				<label>{{ i18n.baseText('settings.sso.settings.redirectToSso.label') }}</label>
+				<label for="sso-redirect-login-switch">{{ label }}</label>
 				<small>{{ i18n.baseText('settings.sso.settings.redirectToSso.description') }}</small>
 			</div>
 			<div :class="$style.settingsItemControl">
 				<N8nSwitch
+					id="sso-redirect-login-switch"
 					v-model="modelValue"
+					size="large"
+					:aria-label="label"
 					:disabled="ssoStore.ssoManagedByEnv"
 					data-test-id="sso-redirect-login-switch"
 				/>

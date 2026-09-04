@@ -22,7 +22,6 @@ export class SsoSettingsService {
 	) {}
 
 	async setRedirectLoginToSso(enabled: boolean): Promise<void> {
-		this.globalConfig.sso.redirectLoginToSso = enabled;
 		// `loadOnStartup: false` — this key lives in GlobalConfig, not the legacy
 		// config schema, so the generic startup loader must not try to apply it.
 		// Startup hydration goes through `reloadRedirectLoginToSso()` instead.
@@ -30,6 +29,7 @@ export class SsoSettingsService {
 			{ key: REDIRECT_LOGIN_TO_SSO_SETTING_KEY, value: enabled.toString(), loadOnStartup: false },
 			{ transaction: false },
 		);
+		this.globalConfig.sso.redirectLoginToSso = enabled;
 		await this.broadcastReload();
 	}
 

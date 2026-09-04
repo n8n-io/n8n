@@ -770,9 +770,40 @@ describe('SettingsSso View', () => {
 			await waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(
 					expect.anything(),
-					'Error updating SSO login redirect setting',
+					"Login redirect couldn't be updated. Try again.",
 				),
 			);
+		});
+
+		it('saves only the redirect setting when the SAML config cannot load', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getSamlConfig.mockRejectedValueOnce(new Error('Load failed'));
+
+			const { getByTestId } = renderView();
+
+			await userEvent.click(await waitFor(() => getByTestId('sso-redirect-login-switch')));
+			await userEvent.click(getByTestId('sso-save'));
+
+			expect(ssoStore.toggleRedirectLoginToSso).toHaveBeenCalledWith(false);
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('saves only the redirect setting when the OIDC config cannot load', async () => {
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.getOidcConfig.mockRejectedValueOnce(new Error('Load failed'));
+
+			const { getByTestId } = renderView();
+
+			await userEvent.click(await waitFor(() => getByTestId('sso-redirect-login-switch')));
+			await userEvent.click(getByTestId('sso-oidc-save'));
+
+			expect(ssoStore.toggleRedirectLoginToSso).toHaveBeenCalledWith(false);
+			expect(ssoStore.saveOidcConfig).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
 	});
 

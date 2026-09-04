@@ -33,12 +33,16 @@ export const useSSOStore = defineStore('sso', () => {
 				isDefaultAuthenticationOidc.value),
 	);
 
-	const getSSORedirectUrl = async (existingRedirect?: string) =>
-		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
+	const getSSORedirectUrl = async (existingRedirect = '') => {
+		const query = existingRedirect
+			? `?${new URLSearchParams({ redirect: existingRedirect }).toString()}`
+			: '';
+		return `${rootStore.restUrl}/sso/saml/initsso${query}`;
+	};
 
 	/**
-	 * Resolve the redirect URL for the currently active SSO protocol: SAML needs a
-	 * server round-trip to build the IdP URL, OIDC exposes a static login URL.
+	 * Resolve a browser-navigable URL for the active SSO protocol. The SAML endpoint
+	 * returns a redirect or an auto-submit form based on the configured binding.
 	 * Fails fast when the OIDC login URL is missing so callers do not navigate to an
 	 * empty URL (which reloads the current page and can loop the auto-redirect).
 	 */
@@ -50,7 +54,9 @@ export const useSSOStore = defineStore('sso', () => {
 		if (!oidcLoginUrl) {
 			throw new Error('OIDC login URL is not configured');
 		}
-		return oidcLoginUrl;
+		if (!existingRedirect) return oidcLoginUrl;
+		const separator = oidcLoginUrl.includes('?') ? '&' : '?';
+		return `${oidcLoginUrl}${separator}${new URLSearchParams({ redirect: existingRedirect })}`;
 	};
 
 	const initialize = (options: {

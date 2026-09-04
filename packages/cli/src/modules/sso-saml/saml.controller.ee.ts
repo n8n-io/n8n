@@ -274,7 +274,7 @@ export class SamlController {
 	private async handleInitSSO(res: Response, relayState?: string) {
 		const result = await this.samlService.getLoginRequestUrl(relayState);
 		if (result?.binding === 'redirect') {
-			return result.context.context;
+			return res.redirect(result.context.context);
 		} else if (result?.binding === 'post') {
 			return res.send(
 				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),

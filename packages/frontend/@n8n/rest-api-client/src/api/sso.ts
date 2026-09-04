@@ -13,10 +13,6 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export const initSSO = async (context: IRestApiContext, redirectUrl = ''): Promise<string> => {
-	return await makeRestApiRequest(context, 'GET', `/sso/saml/initsso?redirect=${redirectUrl}`);
-};
-
 export const getSamlMetadata = async (context: IRestApiContext): Promise<SamlPreferences> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/saml/metadata');
 };

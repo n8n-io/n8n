@@ -34,4 +34,12 @@ describe('SsoRedirectLoginToggle', () => {
 
 		expect(getByTestId('sso-redirect-login-switch')).toBeDisabled();
 	});
+
+	it('associates the visible label with the switch', () => {
+		const { getByLabelText, getByText } = renderComponent({ props: { modelValue: true } });
+
+		const switchControl = getByLabelText('Redirect login to SSO');
+		expect(switchControl).toHaveAttribute('id', 'sso-redirect-login-switch');
+		expect(getByText('Redirect login to SSO')).toHaveAttribute('for', 'sso-redirect-login-switch');
+	});
 });

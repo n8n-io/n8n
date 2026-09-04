@@ -19,6 +19,7 @@ import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-acces
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
 	OIDC_CLIENT_SECRET_REDACTED_VALUE,
@@ -94,8 +95,9 @@ export class OidcController {
 
 	@Get('/login', { skipAuth: true })
 	@Licensed('feat:oidc')
-	async redirectToAuthProvider(_req: Request, res: Response) {
-		const authorization = await this.oidcService.generateLoginUrl();
+	async redirectToAuthProvider(req: Request<{}, {}, {}, { redirect?: string }>, res: Response) {
+		const redirectUrl = validateRedirectUrl(req.query.redirect ?? '');
+		const authorization = await this.oidcService.generateLoginUrl(redirectUrl);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 
 		res.cookie(OIDC_STATE_COOKIE_NAME, authorization.state, {
@@ -188,7 +190,7 @@ export class OidcController {
 				authenticationMethod: 'oidc',
 			});
 
-			return res.redirect('/');
+			return res.redirect(validateRedirectUrl(stateInfo.redirectUrl ?? ''));
 		} catch (error) {
 			if (error instanceof SsoAccessDeniedError) {
 				this.eventService.emit('user-login-failed', {

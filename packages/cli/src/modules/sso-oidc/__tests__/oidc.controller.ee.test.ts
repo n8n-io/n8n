@@ -106,6 +106,26 @@ describe('OidcController', () => {
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
+		test('Should restore the requested destination after login', async () => {
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '/workflows/123',
+			});
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('/workflows/123');
+		});
+
 		test('Should handle callback URL with different query parameters', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl:
@@ -516,7 +536,7 @@ describe('OidcController', () => {
 
 	describe('redirectToAuthProvider', () => {
 		test('Should redirect to generated authorization URL', async () => {
-			const req = mock<Request>();
+			const req = mock<Request>({ query: { redirect: '/workflows/123' } });
 			const res = mock<Response>();
 			globalConfig.auth.cookie = { samesite: 'lax', secure: true };
 
@@ -531,7 +551,7 @@ describe('OidcController', () => {
 
 			await controller.redirectToAuthProvider(req, res);
 
-			expect(oidcService.generateLoginUrl).toHaveBeenCalled();
+			expect(oidcService.generateLoginUrl).toHaveBeenCalledWith('/workflows/123');
 			expect(res.redirect).toHaveBeenCalledWith(
 				'https://provider.com/auth?client_id=123&redirect_uri=http://localhost:5678/callback',
 			);

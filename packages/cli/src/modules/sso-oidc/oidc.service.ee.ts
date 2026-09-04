@@ -131,11 +131,14 @@ export class OidcService {
 		};
 	}
 
-	generateState(testMode = false) {
+	generateState(testMode = false, redirectUrl?: string) {
 		const state = `n8n_state:${randomUUID()}`;
 		const payload: Record<string, unknown> = { state };
 		if (testMode) {
 			payload.testMode = true;
+		}
+		if (redirectUrl) {
+			payload.redirectUrl = redirectUrl;
 		}
 		return {
 			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
@@ -143,13 +146,15 @@ export class OidcService {
 		};
 	}
 
-	verifyState(signedState: string): { state: string; testMode?: boolean } {
+	verifyState(signedState: string): { state: string; testMode?: boolean; redirectUrl?: string } {
 		let state: string;
 		let testMode: boolean | undefined;
+		let redirectUrl: string | undefined;
 		try {
 			const decodedState = this.jwtService.verify(signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
+			redirectUrl = decodedState?.redirectUrl;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -175,7 +180,7 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return { state, testMode };
+		return { state, testMode, ...(typeof redirectUrl === 'string' && { redirectUrl }) };
 	}
 
 	generateNonce() {
@@ -225,12 +230,14 @@ export class OidcService {
 		}
 	}
 
-	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+	async generateLoginUrl(
+		redirectUrl?: string,
+	): Promise<{ url: URL; state: string; nonce: string }> {
 		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const state = this.generateState();
+		const state = this.generateState(false, redirectUrl);
 		const nonce = this.generateNonce();
 
 		const prompt = this.oidcConfig.prompt;

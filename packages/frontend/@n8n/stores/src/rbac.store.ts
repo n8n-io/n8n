@@ -41,7 +41,6 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		saml: {},
 		oidc: {},
 		provisioning: {},
-		sso: {},
 		securityAudit: {},
 		folder: {},
 		insights: {},
