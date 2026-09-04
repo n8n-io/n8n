@@ -50,7 +50,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: 'MiniMax-M2.7' },
+		default: { mode: 'list', value: 'MiniMax-M3' },
 		required: true,
 		description: 'The model to use for generating the response',
 		modes: [

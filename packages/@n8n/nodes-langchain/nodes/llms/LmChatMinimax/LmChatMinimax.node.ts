@@ -98,7 +98,7 @@ export class LmChatMinimax implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'MiniMax-M2.7' },
+				default: { mode: 'list', value: 'MiniMax-M3' },
 				required: true,
 				description:
 					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',

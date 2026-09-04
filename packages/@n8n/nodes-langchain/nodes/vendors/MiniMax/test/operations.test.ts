@@ -160,7 +160,7 @@ describe('MiniMax Operations', () => {
 
 			expect(currentModelProperty).toMatchObject({
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'MiniMax-M2.7' },
+				default: { mode: 'list', value: 'MiniMax-M3' },
 				modes: expect.arrayContaining([
 					expect.objectContaining({
 						name: 'list',
