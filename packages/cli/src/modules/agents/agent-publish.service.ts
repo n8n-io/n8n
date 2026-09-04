@@ -2,11 +2,19 @@ import {
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
+	type AgentJsonWorkflowToolConfig,
+	type AgentPublishDependency,
+	type AgentPublishDependencyFailure,
 	type AgentSkill,
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { isUniqueConstraintError, type User } from '@n8n/db';
+import {
+	isUniqueConstraintError,
+	WorkflowRepository,
+	type User,
+	type WorkflowEntity,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
@@ -15,14 +23,17 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentPublishDependenciesError } from './agent-publish-dependencies.error';
 import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
 import {
 	AgentModificationTelemetryService,
@@ -41,6 +52,8 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { validateCompatibility } from './tools/workflow-tool-factory';
+import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import {
 	configuredCapabilityKinds,
 	countAgentCapabilities,
@@ -64,6 +77,19 @@ export interface AgentPublishEmitter {
 export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
 	status: 'valid';
 };
+
+const toDependency = ({ id, name }: WorkflowEntity): AgentPublishDependency => ({
+	type: 'workflow',
+	id,
+	name,
+});
+
+/** Errors that mean "fix the workflow", as opposed to a bug or an outage. */
+function isDependencyPublishFailure(error: unknown): error is Error {
+	return (
+		error instanceof UserError || (error instanceof ResponseError && error.httpStatusCode < 500)
+	);
+}
 
 function requireValidValidation(
 	validation: AgentConfigValidationResponse,
@@ -103,6 +129,8 @@ export class AgentPublishService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async publishAgent(
@@ -111,6 +139,7 @@ export class AgentPublishService {
 		user: User,
 		emitter: AgentPublishEmitter,
 		versionId?: string,
+		options: { publishDependencies?: boolean } = {},
 	): Promise<PublishAgentResult> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -119,14 +148,6 @@ export class AgentPublishService {
 
 		const expectedRevision = agent.revision;
 
-		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-			return { agent };
-		}
-
-		if (versionId !== undefined && versionId === agent.activeVersionId) {
-			return { agent };
-		}
-
 		let targetHistory: AgentHistory | undefined;
 		if (versionId) {
 			const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
@@ -134,6 +155,24 @@ export class AgentPublishService {
 				throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
 			}
 			targetHistory = target;
+		}
+
+		// Before the idempotent returns: a live agent can lose a workflow tool's
+		// published version, and the caller confirmed publishing exactly that.
+		if (options.publishDependencies) {
+			await this.publishUnpublishedDependencies(
+				agentId,
+				targetHistory ? targetHistory.schema : agent.schema,
+				projectId,
+				user,
+			);
+		}
+
+		if (
+			(!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) ||
+			(versionId !== undefined && versionId === agent.activeVersionId)
+		) {
+			return { agent };
 		}
 
 		const tasks = versionId
@@ -242,6 +281,80 @@ export class AgentPublishService {
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return versionId ? { agent } : { agent, draftValidation: validation };
+	}
+
+	/**
+	 * Workflow tools of the current draft whose workflow has no published
+	 * version. Production runs load the published version, so these block
+	 * publishing the agent.
+	 */
+	async listUnpublishedDependencies(
+		agentId: string,
+		projectId: string,
+	): Promise<AgentPublishDependency[]> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		const workflows = await this.findUnpublishedWorkflows(agent.schema, projectId);
+		return workflows.map(toDependency);
+	}
+
+	private async findUnpublishedWorkflows(
+		config: AgentJsonConfig | null,
+		projectId: string,
+	): Promise<WorkflowEntity[]> {
+		const refs = (config?.tools ?? []).filter(
+			(tool): tool is AgentJsonWorkflowToolConfig => tool.type === 'workflow',
+		);
+		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
+		// The map has one entry per reference, so a workflow referenced by id
+		// and by name appears twice.
+		const unpublished = new Map<string, WorkflowEntity>();
+		for (const workflow of workflows.values()) {
+			if (!workflow.activeVersionId) unpublished.set(workflow.id, workflow);
+		}
+		return [...unpublished.values()];
+	}
+
+	/**
+	 * Try every dependency, then fail with all failures: the agent must not go
+	 * live with an unpublished tool.
+	 */
+	private async publishUnpublishedDependencies(
+		agentId: string,
+		config: AgentJsonConfig | null,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		const failedDependencies: AgentPublishDependencyFailure[] = [];
+		let published = false;
+		try {
+			for (const workflow of await this.findUnpublishedWorkflows(config, projectId)) {
+				try {
+					// Publishing a workflow the agent cannot run as a tool would not
+					// make the agent publishable, so name the fix instead.
+					validateCompatibility(workflow);
+					// Before the call: an activation can commit and still throw after.
+					published = true;
+					await this.workflowService.activateWorkflow(user, workflow.id, {
+						source: 'agent-publish',
+					});
+				} catch (error) {
+					// Only failures the user can act on belong in the 400; an outage or
+					// a bug keeps its own status.
+					if (!isDependencyPublishFailure(error)) throw error;
+					failedDependencies.push({ ...toDependency(workflow), reason: error.message });
+				}
+			}
+		} finally {
+			// A live agent's cached runtimes built the tool while the workflow was
+			// unpublished, so they are stale even when the rest of the publish fails.
+			if (published) this.runtimeCacheService.clearRuntimes(agentId);
+		}
+		if (failedDependencies.length > 0) {
+			throw new AgentPublishDependenciesError({ failedDependencies });
+		}
 	}
 
 	/**

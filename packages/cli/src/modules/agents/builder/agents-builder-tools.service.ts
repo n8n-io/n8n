@@ -635,7 +635,9 @@ export class AgentsBuilderToolsService {
 					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
 					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
 					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
-					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
+					'If the draft uses workflows that are not published yet, the run suspends until the user approves publishing ' +
+					'them together with the agent; a rejection returns { ok: false, declined: true, errors }. ' +
+					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId, publishedDependencies? } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
@@ -648,34 +650,69 @@ export class AgentsBuilderToolsService {
 						),
 				}),
 			)
-			.handler(async ({ versionId }: { versionId?: string }) => {
-				if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
-					return {
-						ok: false,
-						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
-					};
-				}
-				try {
-					const { agent } = await this.agentPublishService.publishAgent(
-						agentId,
-						projectId,
-						user,
-						{ by: 'builder', trigger: 'explicit' },
-						versionId,
-					);
-					return {
-						ok: true,
-						agentId,
-						activeVersionId: agent.activeVersionId,
-						versionId: agent.versionId,
-					};
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
+			.suspend(APPROVAL_SUSPEND_SCHEMA)
+			.resume(APPROVAL_RESUME_SCHEMA)
+			.handler(
+				async (
+					{ versionId }: { versionId?: string },
+					ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+				) => {
+					if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
+						return {
+							ok: false,
+							errors: [
+								{ message: 'You do not have permission to publish agents in this project.' },
+							],
+						};
+					}
+					try {
+						// Republishing a snapshot skips the draft pre-flight, mirroring the MCP tool.
+						const dependencies = versionId
+							? []
+							: await this.agentPublishService.listUnpublishedDependencies(agentId, projectId);
+						if (ctx.resumeData === undefined && dependencies.length > 0) {
+							return await ctx.suspend({
+								type: 'approval',
+								toolName: BUILDER_TOOLS.PUBLISH_AGENT,
+								displayName: `Publish agent and ${dependencies.length} workflow${dependencies.length === 1 ? '' : 's'}`,
+								args: { workflows: dependencies.map(({ id, name }) => ({ id, name })) },
+							});
+						}
+						if (ctx.resumeData?.approved === false) {
+							return {
+								ok: false,
+								declined: true,
+								errors: [
+									{
+										message:
+											'The user declined publishing the unpublished workflows, so the agent was not published.',
+									},
+								],
+							};
+						}
+						const { agent } = await this.agentPublishService.publishAgent(
+							agentId,
+							projectId,
+							user,
+							{ by: 'builder', trigger: 'explicit' },
+							versionId,
+							{ publishDependencies: ctx.resumeData?.approved === true },
+						);
+						return {
+							ok: true,
+							agentId,
+							activeVersionId: agent.activeVersionId,
+							versionId: agent.versionId,
+							...(dependencies.length > 0 ? { publishedDependencies: dependencies } : {}),
+						};
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
 			.build();
 
 		const unpublishAgentTool = new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)

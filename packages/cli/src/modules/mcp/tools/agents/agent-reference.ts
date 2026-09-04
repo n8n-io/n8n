@@ -48,7 +48,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
 8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
-   or making the Agent live, or confirms publication after the build.
+   or making the Agent live, or confirms publication after the build. If publish_agent fails because
+   the Agent uses workflows that are not published yet, list those workflows to the user and call
+   publish_agent again with publishDependencies: true only after they confirm.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
 

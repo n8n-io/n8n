@@ -960,6 +960,7 @@ describe('McpAgentToolsService', () => {
 	describe('publish_agent', () => {
 		beforeEach(() => {
 			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
+			agentPublishService.listUnpublishedDependencies.mockResolvedValue([]);
 		});
 
 		it('refuses to publish an agent that fails publish-scope validation', async () => {
@@ -1000,6 +1001,7 @@ describe('McpAgentToolsService', () => {
 				user,
 				{ by: 'mcp', trigger: 'explicit' },
 				undefined,
+				{ publishDependencies: false },
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -1019,18 +1021,73 @@ describe('McpAgentToolsService', () => {
 			const result = await callTool('publish_agent', { agentId: 'agent-1', versionId: 'v1' });
 
 			expect(agentValidationService.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
+			expect(agentPublishService.listUnpublishedDependencies).not.toHaveBeenCalled();
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				user,
 				{ by: 'mcp', trigger: 'explicit' },
 				'v1',
+				{ publishDependencies: false },
 			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				published: true,
 				versionId: 'v3',
 				activeVersionId: 'v1',
+			});
+		});
+
+		describe('with unpublished workflow tools', () => {
+			const notPublishedIssue = {
+				code: 'incompatible_reference',
+				reason: 'not_published',
+				path: 'tools.0.workflowId',
+				capability: { kind: 'tool', toolType: 'workflow', index: 0 },
+			};
+
+			beforeEach(() => {
+				agentPublishService.listUnpublishedDependencies.mockResolvedValue([
+					{ type: 'workflow', id: 'wf-1', name: 'Lookup' },
+				]);
+				agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+					status: 'invalid',
+					issues: [notPublishedIssue],
+				} as never);
+			});
+
+			it('refuses to publish and names the workflows when publishDependencies is not set', async () => {
+				const result = await callTool('publish_agent', { agentId: 'agent-1' });
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({
+					error: expect.stringContaining('"Lookup" (wf-1)'),
+				});
+				expect(result.structuredContent).toMatchObject({
+					error: expect.stringContaining('publishDependencies: true'),
+				});
+				expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			});
+
+			it('publishes the workflows with the agent when publishDependencies is set', async () => {
+				agentPublishService.publishAgent.mockResolvedValue({
+					agent: agentEntity({ versionId: 'v2', activeVersionId: 'v2' }),
+				});
+
+				const result = await callTool('publish_agent', {
+					agentId: 'agent-1',
+					publishDependencies: true,
+				});
+
+				expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+					'agent-1',
+					'project-1',
+					user,
+					{ by: 'mcp', trigger: 'explicit' },
+					undefined,
+					{ publishDependencies: true },
+				);
+				expect(result.structuredContent).toMatchObject({ ok: true, published: true });
 			});
 		});
 	});

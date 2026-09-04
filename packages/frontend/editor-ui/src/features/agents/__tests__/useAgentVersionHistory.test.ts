@@ -237,12 +237,9 @@ describe('useAgentVersionHistory', () => {
 			const history = useAgentVersionHistory();
 			const result = await history.publishVersion('project-1', 'agent-1', 'v1');
 
-			expect(mocks.publishAgent).toHaveBeenCalledWith(
-				expect.anything(),
-				'project-1',
-				'agent-1',
-				'v1',
-			);
+			expect(mocks.publishAgent).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', {
+				versionId: 'v1',
+			});
 			expect(mocks.openAgentConfirmationModal).not.toHaveBeenCalled();
 			expect(mocks.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({

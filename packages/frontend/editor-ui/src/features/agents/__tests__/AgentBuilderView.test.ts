@@ -2026,7 +2026,10 @@ describe('AgentBuilderView — configuration validation', () => {
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
-			.mockResolvedValueOnce({ status: 'invalid', issues: [] });
+			.mockResolvedValueOnce({
+				status: 'invalid',
+				issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+			});
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {

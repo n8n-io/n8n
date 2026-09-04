@@ -281,6 +281,8 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 
 export class PublishAgentDto extends Z.class({
 	versionId: z.string().min(1).optional(),
+	/** Also publish workflow tools that have no published version yet. */
+	publishDependencies: z.boolean().optional(),
 }) {}
 
 export class RevertAgentToVersionDto extends Z.class({

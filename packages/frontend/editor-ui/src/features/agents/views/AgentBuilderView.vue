@@ -86,6 +86,7 @@ import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/con
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
+import { hasBlockingIssues } from '../utils/validationIssues';
 
 const props = withDefaults(
 	defineProps<{
@@ -639,11 +640,14 @@ function closePreviewDock() {
 }
 
 function onPublished(updated: AgentResource) {
+	// The publish may have waited in a modal while the route moved on.
+	if (updated.id !== agent.value?.id) return;
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
 }
 
 function onUnpublished(updated: AgentResource) {
+	if (updated.id !== agent.value?.id) return;
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
 }
@@ -1005,7 +1009,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 		return false;
 	}
 	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value?.status === 'valid';
+	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
 }
 
 /** Open the current agent in Instance AI without sending an opening message. */
