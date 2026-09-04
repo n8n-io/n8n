@@ -5,7 +5,7 @@ autoInstallPeers: true
 linkWorkspacePackages: deep
 hoist: true
 hoistWorkspacePackages: false
-# pnpm 11 hoists TS7 into node_modules/.pnpm/node_modules, where it shadows the root's real
+# pnpm hoists TS7 into node_modules/.pnpm/node_modules, where it shadows the root's real
 # TS6 and breaks vue-tsc — it needs `typescript/lib/_tsc`, which TS7 and the
 # `@typescript/typescript6` alias both lack — in packages on the typescript-tooling catalog.
 hoistPattern:
@@ -13,7 +13,7 @@ hoistPattern:
   - '!typescript'
 allowUnusedPatches: true
 # The docker build trims frontend manifests and deploys with --prod before later
-# scripts run; pnpm 11's pre-run install would reinstall production-only and prune
+# scripts run; pnpm's pre-run install would reinstall production-only and prune
 # the devDependencies those scripts import.
 verifyDepsBeforeRun: false
 
