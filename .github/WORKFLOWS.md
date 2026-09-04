@@ -483,22 +483,36 @@ Composite actions in `.github/actions/`:
 ```yaml
 inputs:
   node-version:        # default: '26.5.1'
-  pnpm-version:        # default: '11.25.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
 
-The action caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and
-`pnpm-version`, and runs `pnpm/setup` only when that key misses. Without it every
+The action reads the pnpm version from the `packageManager` field in the root
+`package.json`. There is no version input to keep in sync: a version bump in
+`package.json` moves the setup step, the cache key and the version check
+together. The action fails early when that field is absent or does not pin pnpm.
+
+It caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and that
+version, and runs `pnpm/setup` only when the key misses. Without the cache every
 fresh job downloads pnpm from `registry.npmjs.org` before any cache is restored,
-so a registry outage fails unrelated jobs in their first step. The first job per
-key still downloads and then saves the cache, so a bump of `pnpm-version` costs
-one download per OS/arch and a re-run of a failed job reuses the warmed entry.
-Keep `pnpm-version` equal to the `packageManager` field in the root
-`package.json` — `pnpm/setup` fails the job when the two disagree. Windows keeps
-the plain `pnpm/setup` path. The pnpm store stays on the `actions/setup-node`
+so a registry outage fails unrelated jobs in their first step. Windows keeps the
+plain `pnpm/setup` path. The pnpm store stays on the `actions/setup-node`
 `cache: pnpm` configuration.
+
+The action saves the entry with an explicit `actions/cache/save` step directly
+after the version check, not through the `actions/cache` post-run. The post-run
+only saves when the whole job succeeds, so a job that later failed its install
+or build left the key cold for every following job.
+
+Cache warming has a known limit. GitHub cache keys are write-once, and jobs that
+start together all miss a cold key before any of them saves it. A version bump
+therefore costs one download for each job already running in that first fan-out,
+not one download in total. Jobs that start after the first save hit the cache —
+including later fan-out waves, later runs, and a re-run of a job that failed on
+the download. A prerequisite job that warms the key would remove the initial
+fan-out cost, but it would serialize a job in front of every workflow to save a
+download that happens only when the pinned pnpm version changes.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
