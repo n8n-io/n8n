@@ -4,7 +4,7 @@
  * properly distinguishing between root executions and subworkflow executions.
  *
  * This test actually executes workflows (not just mocking) to ensure end-to-end correctness.
- * It configures the system for fast compaction and waits for automatic processing.
+ * It configures the system for fast flushing and drives compaction explicitly.
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
@@ -30,7 +30,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// Configure insights for fast flushing and compaction BEFORE loading modules
 		process.env.N8N_INSIGHTS_FLUSH_BATCH_SIZE = '10'; // Flush after 10 events
 		process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
-		process.env.N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES = '0.05'; // Compact every ~3 seconds
 		process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
 
 		await testModules.loadModules(['insights']);
@@ -94,15 +93,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 
 		// Initialize insights collection service (config already set via env vars)
 		insightsCollectionService.init();
-
-		// Start automatic compaction timer
-		insightsCompactionService.startCompactionTimer();
-	});
-
-	afterAll(async () => {
-		// Stop compaction timer and wait for any in-flight run to finish before the
-		// sibling afterAll terminates the DB connection.
-		await insightsCompactionService.stopCompactionTimer();
 	});
 
 	beforeEach(async () => {
@@ -174,12 +164,14 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	}
 
 	/**
-	 * Helper to wait for insights to be compacted.
+	 * Helper to compact insights and wait for the result.
 	 *
-	 * Polls until the compacted success count reaches the expected total. Waiting on the
-	 * terminal count (rather than "some compacted data exists and raw is drained") avoids a
-	 * race where events still buffered in the collection service haven't been flushed to
-	 * InsightsRaw yet, so compaction runs on a partial set and the count comes up short.
+	 * Runs a compaction pass per poll (the periodic cadence lives on the `insights-compaction`
+	 * system task, which is not running here) and polls until the compacted success count
+	 * reaches the expected total. Waiting on the terminal count (rather than "some compacted
+	 * data exists and raw is drained") avoids a race where events still buffered in the
+	 * collection service haven't been flushed to InsightsRaw yet, so compaction runs on a
+	 * partial set and the count comes up short.
 	 */
 	async function waitForCompaction(
 		workflowId: string,
@@ -188,6 +180,8 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
+			await insightsCompactionService.compactInsights();
+
 			const compactedInsights = await insightsByPeriodRepository.find({
 				where: {
 					metadata: { workflowId },
@@ -246,7 +240,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// Wait for workflow statistics to be recorded
 		await waitForStatistics(workflow.id, 10);
 
-		// Wait for automatic compaction to complete
+		// Compact and wait for the result
 		await waitForCompaction(workflow.id, 10);
 
 		// ============================================================

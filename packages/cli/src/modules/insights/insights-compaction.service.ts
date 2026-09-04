@@ -17,19 +17,12 @@ type CompactionStopReason = 'max-batches' | 'max-runtime';
 
 /**
  * This service is responsible for compacting lower granularity insights data
- * into higher granularity to control the size of the insights data.
+ * into higher granularity to control the size of the insights data. The
+ * periodic cadence, overlap protection, and graceful stop live on the
+ * `insights-compaction` system task's runner.
  */
 @Service()
 export class InsightsCompactionService {
-	private compactInsightsTimer: NodeJS.Timeout | undefined;
-
-	/** Tracks the in-flight compaction run so stopping the timer can await it. */
-	private compactionPromise: Promise<void> | undefined;
-
-	private get isCompactionRunning() {
-		return this.compactionPromise !== undefined;
-	}
-
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -39,44 +32,8 @@ export class InsightsCompactionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startCompactionTimer() {
-		void this.stopCompactionTimer();
-		this.compactInsightsTimer = setInterval(
-			async () => await this.compactInsights(),
-			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toMilliseconds,
-		);
-		this.logger.debug('Started compaction timer');
-	}
-
-	async stopCompactionTimer() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-			this.logger.debug('Stopped compaction timer');
-		}
-		// Wait for an in-flight run to finish so its transaction isn't left running
-		// against a connection that may be closed right after stopping.
-		await this.compactionPromise?.catch(() => {});
-	}
-
+	/** One full compaction run: raw→hour, hour→day, day→week, in bounded batches. */
 	async compactInsights() {
-		if (this.isCompactionRunning) {
-			this.logger.debug('Skipping insights compaction because another compaction run is active');
-			return;
-		}
-
-		const compactionPromise = this.runCompaction();
-		const trackedCompactionPromise = compactionPromise.finally(() => {
-			if (this.compactionPromise === trackedCompactionPromise) {
-				this.compactionPromise = undefined;
-			}
-		});
-		this.compactionPromise = trackedCompactionPromise;
-
-		await this.compactionPromise;
-	}
-
-	private async runCompaction() {
 		const runState: CompactionRunState = {
 			startedAt: Date.now(),
 			batchesProcessed: 0,
