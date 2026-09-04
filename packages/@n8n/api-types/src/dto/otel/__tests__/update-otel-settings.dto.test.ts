@@ -23,8 +23,6 @@ describe('UpdateOtelSettingsDto', () => {
 
 		assert(!result.success, 'Expected validation to fail for an empty body');
 
-		// A field that gains a default parses instead of erroring, so it must be added
-		// to `defaultedFields` deliberately: the PUT must not silently reset omissions.
 		const missing = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
 		expect(missing).toEqual(
 			Object.keys(validSettings)
@@ -85,8 +83,6 @@ describe('UpdateOtelSettingsDto', () => {
 		},
 	);
 
-	// Uppercase schemes stay verbatim here. The service lowercases the scheme
-	// before it reaches the exporter.
 	it.each([
 		'http://localhost:4318',
 		'https://collector.example.com:4317',
@@ -192,8 +188,6 @@ describe('TestOtelTraceDto', () => {
 		);
 	});
 
-	// `UpdateOtelSettingsDto` above covers the full endpoint matrix. One accept and
-	// one reject prove that the pick carries the field and its scheme rule.
 	it('accepts an https exporter endpoint', () => {
 		const result = TestOtelTraceDto.safeParse({
 			...validConnection,

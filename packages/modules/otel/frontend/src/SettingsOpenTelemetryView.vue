@@ -85,8 +85,6 @@ const statusDescription = computed(() =>
 		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
 );
 
-// gRPC takes no URL path (so the trace-path row goes away) and sends headers as
-// metadata, so the connection copy follows the protocol.
 const isGrpc = computed(() => otelStore.settings.exporterProtocol === 'grpc');
 
 const endpointDescription = computed(() =>
@@ -113,7 +111,6 @@ const headersDescription = computed(() =>
 	),
 );
 
-// element-plus types the emitted value as `any`, so narrow it before it reaches the store.
 function onProtocolChange(value: unknown) {
 	if (isOtlpProtocol(value)) {
 		otelStore.settings.exporterProtocol = value;

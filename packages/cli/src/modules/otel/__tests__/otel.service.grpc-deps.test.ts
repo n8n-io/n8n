@@ -83,8 +83,6 @@ describe('OtelService with real gRPC dependencies', () => {
 		});
 	});
 
-	// The API and the UI both accept a zero timeout, but the exporter rejects it in
-	// its constructor.
 	it('reports a zero timeout as a failed test trace', async () => {
 		const result = await service.sendTestTrace({
 			...grpcConnection,
@@ -98,8 +96,6 @@ describe('OtelService with real gRPC dependencies', () => {
 		});
 	});
 
-	// The gRPC packages are imported at exporter construction, so a missing or
-	// renamed dependency surfaces only when an instance runs on gRPC.
 	it('resolves the lazily imported gRPC exporter and grpc-js', async () => {
 		const exporterModule = await vi.importActual<
 			typeof import('@opentelemetry/exporter-trace-otlp-grpc')

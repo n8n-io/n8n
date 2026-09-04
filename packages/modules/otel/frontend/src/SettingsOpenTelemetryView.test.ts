@@ -86,10 +86,6 @@ const typeIntoUnitInput = async (input: HTMLElement, value: string) => {
 	await userEvent.tab();
 };
 
-/**
- * Opens the element-plus select, then clicks the option. The dropdown is teleported
- * to the body, so the option comes from `screen`, not the render container.
- */
 const selectProtocol = async (optionLabel: string) => {
 	const select = screen.getByTestId('otel-exporter-protocol');
 	await userEvent.click(select.querySelector('input')!);

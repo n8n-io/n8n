@@ -9,11 +9,9 @@ export class OtelConfig {
 	@Env(OTEL_ENV_VARS.enabled)
 	enabled: boolean = false;
 
-	/** Wire protocol used to export spans. A gRPC endpoint takes no URL path. */
 	@Env(OTEL_ENV_VARS.exporterProtocol, otlpProtocolSchema)
 	exporterProtocol: OtlpProtocol = 'http/protobuf';
 
-	/** Reuses the API DTO schema, so env- and UI-supplied endpoints accept the same values. */
 	@Env(OTEL_ENV_VARS.exporterEndpoint, exporterEndpointSchema)
 	exporterEndpoint: string = 'http://localhost:4318';
 

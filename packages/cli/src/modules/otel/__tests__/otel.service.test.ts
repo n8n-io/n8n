@@ -22,7 +22,6 @@ const outboundHttp = {
 	transport: () => ({ asCustomFetch: () => fetchMock }),
 } as unknown as OutboundHttp;
 
-// Hoisted because the service imports grpc-js lazily, inside the exporter and probe.
 const {
 	metadataEntries,
 	MetadataMock,
@@ -36,7 +35,6 @@ const {
 } = vi.hoisted(() => {
 	const entries = new Map<string, string>();
 
-	/** Records only. `otel.service.grpc-deps.test.ts` owns the real key rules. */
 	class MetadataMock {
 		set(key: string, value: string) {
 			entries.set(key, value);
@@ -517,7 +515,6 @@ describe('OtelService', () => {
 			shutdown.mockClear();
 			await service.shutdown();
 
-			// The failed start left no SDK behind, so the next shutdown has nothing to flush.
 			expect(shutdown).not.toHaveBeenCalled();
 		});
 	});

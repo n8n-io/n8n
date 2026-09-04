@@ -285,8 +285,6 @@ describe('useOtelStore', () => {
 			expect(store.testState).toBe('idle');
 		});
 
-		// The protocol is non-default here, so the payload cannot pass by echoing the
-		// store default.
 		it('sends only the connection fields from the current settings', async () => {
 			fetchMock.mockResolvedValueOnce(
 				makeSettings({

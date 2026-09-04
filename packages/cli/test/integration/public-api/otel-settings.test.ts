@@ -184,7 +184,6 @@ describe('OpenTelemetry settings in Public API', () => {
 				});
 			expect(grpc.status).toBe(200);
 			expect(grpc.body.exporterProtocol).toBe('grpc');
-			// The trace path is meaningless over gRPC but must survive the round-trip.
 			expect(grpc.body.exporterTracingPath).toBe(validSettings.exporterTracingPath);
 
 			const http = await testServer
@@ -357,8 +356,6 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 
 		it('rejects a body that omits the env-managed protocol with 409', async () => {
-			// The omitted field defaults to `http/protobuf`, which conflicts with the
-			// env-enforced `grpc`.
 			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
 
 			const response = await testServer
