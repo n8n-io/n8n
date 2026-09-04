@@ -12,8 +12,8 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 ## One-time setup (~5 min)
 
 1. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces).
-   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for Flaky's
-   OpenCode worker. Give both secrets access to `n8n-io/n8n`.
+   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for OpenCode.
+   Give both secrets access to `n8n-io/n8n`.
    (Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.)
 2. Give the GitHub CLI the codespace scope:
 
@@ -24,23 +24,64 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 ## Daily flow
 
 ```bash
-pnpm session              # attach the default agent session (creates everything on first run)
-pnpm session fix-flaky    # a second, parallel agent in its own git worktree
-pnpm session ls           # what's running
-pnpm session tunnel       # forward n8n ports (default 5678, 8080) to localhost; Ctrl-C to stop
-pnpm session stop         # end of day: billing stops, disk survives
-pnpm session rm           # delete the codespace
+pnpm session                       # attach Claude Code (creates everything on first run)
+pnpm session:shell                 # open a shell in the default checkout
+pnpm session:opencode              # attach OpenCode in auto mode
+pnpm session:opencode fix-flaky    # OpenCode in a separate worktree
+pnpm session fix-flaky             # Claude Code in a separate worktree
+pnpm session ls                    # what's running
+pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
+pnpm session stop                  # end of day: billing stops, disk survives
+pnpm session rm                    # delete the codespace
 ```
+
+The dev container supports Codespaces with 2, 4, or 8 cores. The session commands
+create an 8-core Codespace by default.
 
 - **Detach** with `Ctrl-b d` — the agent keeps working without you.
 - **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
   terminal's own text selection, hold **Shift** and drag.
-- **Reattach** by running the same `pnpm session <name>` from any machine.
+- **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
   `session/<name>`), so parallel agents never touch each other's tree. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+
+## PR previews (a running instance of someone else's PR)
+
+A preview is a codespace that serves one pull request, so a reviewer can use the
+PR instead of reading it. It is a different box from a `pnpm session`: it uses
+`.devcontainer/preview/devcontainer.json`, and its display name is
+`preview/pr-<number>`.
+
+**From GitHub:** for a PR targeting master, add the `codespace-preview` label to the PR.
+[util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
+creates the box, serves the PR head, shares port 5678 with the org, and comments
+the URL on the PR. A later push serves the new head in the same box. Remove the
+label, or close the PR, to delete the box.
+
+**From your laptop:** `pnpm preview up <pr>` does the same thing, plus
+`pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
+needs `gh` with the codespace scope, the same as `pnpm session`.
+
+- **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
+  seeded owner and sends you to the editor. The credentials are
+  `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
+  the org-visible forwarded port, which needs a GitHub sign-in and n8n org
+  membership.
+- **Configure the instance with `preview:*` labels.** `preview:enterprise` serves
+  it with a licence, so enterprise features such as SSO and source control are
+  present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
+  re-serves the box; it never creates or deletes one. From a laptop the labels
+  apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
+  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
+- **A preview sleeps after 30 minutes** of no use and GitHub deletes it after 24
+  hours. Add the label again to get a new one.
+- **A PR from a fork gets no preview.** A codespace's token is scoped to
+  `n8n-io/n8n`, so it cannot check out a fork head.
+- **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The
+  serve step says so and stops; rebase the PR on master and retry.
 
 ## Agent worker (drive a session from n8n)
 
@@ -59,7 +100,7 @@ It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
 The worker starts on each container start (`postStartCommand`). It needs three
-secrets and uses one optional secret. Add them at
+secrets and uses three optional secrets. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
 
@@ -67,6 +108,11 @@ same way as `ANTHROPIC_API_KEY`:
 - `N8N_DEQUEUE_URL` — the n8n webhook that returns a pending turn.
 - `OPENROUTER_API_KEY` — the model provider key for Sol.
 - `SLACK_BOT_TOKEN` — optional bot token for progress messages. It needs `chat:write` only.
+- `FLAKY_MCP_URL` and `FLAKY_MCP_TOKEN` — optional Flaky MCP connection for OpenCode.
+
+The worker explicitly reloads `/usr/local/lib/codespaces-env.sh` when its tmux
+session starts. An existing tmux server can otherwise retain an environment
+that did not load the Codespaces secrets.
 
 The dequeue payload can include `slack.channel` and `slack.thread_ts`. The
 worker posts one placeholder in that thread. It coalesces completed tool calls.
@@ -74,7 +120,11 @@ It updates the message at most once every 1.5 seconds. It does not send reasonin
 text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
 The worker does not export its dequeue or Slack credentials to OpenCode.
-Interactive Claude Code sessions unset all worker-only credentials before they start.
+Interactive sessions remove all worker-only credentials before they start.
+
+An idle worker starts with a 3-second poll interval. After each empty dequeue,
+it doubles the interval and limits it to 30 seconds. Work resets the interval
+to 3 seconds. Queued turns run without a delay between them.
 
 The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
 watch it, run `tmux attach -t agent-worker`. The worker does not start if a
@@ -133,11 +183,12 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 
 ## Flaky tools (MCP)
 
-Claude sessions get the `flaky` MCP server automatically: Currents
+Claude sessions and the headless OpenCode worker get the `flaky` MCP server automatically: Currents
 flaky/quarantine data, the `qa_*` BigQuery dataset, Sentry RCA, live Linear,
-and repo investigation. Login registers it from the repo-level
-`FLAKY_MCP_TOKEN` / `FLAKY_MCP_URL` secrets. Forks have no secrets and skip
-it. Tell the agent to call `get_flaky_context` first — it returns the rules
+and repo investigation. The worker keeps the token in its environment and puts
+only an environment reference in the OpenCode config. Claude login registers
+the same server without writing the token to disk. Forks have no secrets and
+skip it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
 
 ## Quality and security skills (Claude plugins)
@@ -289,3 +340,7 @@ Compute bills only while the codespace runs: ~$0.72/hr for the 8-core box,
 ~nothing stopped. Usage draws from a shared monthly org budget, so
 `pnpm session stop` when you leave; the idle timeout is the backstop, not the
 plan.
+
+Previews draw from the same budget on a 2-core box. Remove the
+`codespace-preview` label when the review is done instead of waiting for the
+24-hour retention.

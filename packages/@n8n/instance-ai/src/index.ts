@@ -516,6 +516,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export { createSetupItemsEmitter } from './tools/workflows/setup-items';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -633,6 +634,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,

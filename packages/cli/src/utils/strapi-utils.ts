@@ -47,6 +47,7 @@ type PaginationRequestParams = {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
+	version?: number;
 };
 
 const REQUEST_TIMEOUT_MS = 6000;

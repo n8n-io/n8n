@@ -263,4 +263,41 @@ describe('Git connection push and pull', () => {
 			remoteHead,
 		);
 	});
+
+	it('pushes an archived workflow and archives it on pull instead of removing it', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflow.id, { isArchived: true });
+
+		const pushResult = await service.push(connection.id, owner, {
+			commitMessage: 'Archive order flow',
+		});
+		expect(pushResult.counts.workflows).toBe(1);
+
+		// The target still holds the active copy; the pull must archive it, not delete it.
+		await workflowRepository.update(workflow.id, { isArchived: false });
+
+		const firstPull = await service.pull(connection.id, owner);
+
+		expect(await workflowRepository.findOneBy({ id: workflow.id })).toMatchObject({
+			isArchived: true,
+		});
+		expect(firstPull.counts.workflows).toMatchObject({ updated: 1, deleted: 0, archived: 0 });
+
+		// Archived on both sides now; a second pull must still succeed.
+		const secondPull = await service.pull(connection.id, owner);
+
+		expect(secondPull.counts.workflows).toMatchObject({ updated: 1, deleted: 0 });
+		expect(await workflowRepository.findOneBy({ id: workflow.id })).toMatchObject({
+			isArchived: true,
+		});
+	});
 });

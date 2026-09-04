@@ -5,9 +5,9 @@
 	// Codespaces clones the repo into /workspaces/<repo>, unlike the laptop config
 	"workspaceFolder": "/workspaces/n8n",
 	"hostRequirements": {
-		"cpus": 8,
-		"memory": "32gb",
-		"storage": "64gb"
+		"cpus": 2,
+		"memory": "8gb",
+		"storage": "32gb"
 	},
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
