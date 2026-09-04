@@ -38,7 +38,7 @@ import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capaci
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
 
-const CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
+const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 @Service()
 export class ActiveExecutions {
@@ -325,7 +325,13 @@ export class ActiveExecutions {
 		);
 	}
 
-	async cancelRunningExecutions(): Promise<string[]> {
+	/**
+	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
+	 *   Pass what the caller's own shutdown window can still afford.
+	 */
+	async cancelRunningExecutions(
+		writeDeadlineMs = DEFAULT_CANCEL_WRITE_TIMEOUT_MS,
+	): Promise<string[]> {
 		// An execution is registered before its workflow execution is attached. To
 		// cancel inside that window records the execution as failed, not cancelled.
 		const executionIds = this.getRunningExecutionIds().filter(
@@ -336,7 +342,7 @@ export class ActiveExecutions {
 
 		// The engine's own write for a cancel is fire-and-forget and conditional on the
 		// execution not being canceled, so recording first makes it a no-op, not a race.
-		await this.recordAsCancelled(executionIds);
+		await this.recordAsCancelled(executionIds, writeDeadlineMs);
 
 		for (const executionId of executionIds) {
 			this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
@@ -346,16 +352,16 @@ export class ActiveExecutions {
 	}
 
 	/** Record executions as cancelled, bounded so a stalling database cannot hold up shutdown. */
-	private async recordAsCancelled(executionIds: string[]) {
+	private async recordAsCancelled(executionIds: string[], writeDeadlineMs: number) {
 		let timeout: NodeJS.Timeout | undefined;
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelMany(executionIds),
+				this.executionRepository.cancelManyRunning(executionIds),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),
-						CANCEL_WRITE_TIMEOUT_MS,
+						writeDeadlineMs,
 					);
 				}),
 			]);

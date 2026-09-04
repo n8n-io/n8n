@@ -35,6 +35,13 @@ import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-re
 
 const DRAIN_POLL_INTERVAL_MS = 500;
 
+/** Kept back from the cancellation write so the rest of the shutdown still gets to run. */
+const CANCEL_WRITE_MARGIN_MS = 1 * Time.seconds.toMilliseconds;
+
+/** Floor and ceiling for the cancellation write, so any shutdown window yields a sane deadline. */
+const MIN_CANCEL_WRITE_TIMEOUT_MS = 500;
+const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
+
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
@@ -184,10 +191,12 @@ export class ScalingService {
 	private async stopWorker() {
 		await this.pauseQueue();
 
+		const shutdownWindowMs =
+			this.globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds;
+
 		// The budget bounds only the in-process wait. The queued-job wait stays
 		// unbounded, so a long queued execution still runs to completion.
-		const drainTimeoutMs =
-			this.globalConfig.generic.gracefulShutdownTimeout * 0.8 * Time.seconds.toMilliseconds;
+		const drainTimeoutMs = shutdownWindowMs * 0.8;
 
 		const start = Date.now();
 
@@ -221,7 +230,16 @@ export class ScalingService {
 			);
 			this.logExecutionsToDrain();
 
-			const cancelledExecutionIds = await this.activeExecutions.cancelRunningExecutions();
+			// The force-exit timer is armed at the full window, so the write can only have
+			// what is left of it.
+			const remainingWindowMs = shutdownWindowMs - (Date.now() - start) - CANCEL_WRITE_MARGIN_MS;
+			const writeDeadlineMs = Math.min(
+				MAX_CANCEL_WRITE_TIMEOUT_MS,
+				Math.max(MIN_CANCEL_WRITE_TIMEOUT_MS, remainingWindowMs),
+			);
+
+			const cancelledExecutionIds =
+				await this.activeExecutions.cancelRunningExecutions(writeDeadlineMs);
 
 			if (cancelledExecutionIds.length > 0) {
 				this.logger.warn(

@@ -494,6 +494,30 @@ describe('ScalingService', () => {
 				expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
 				expect(scopedLogger.warn).not.toHaveBeenCalled();
 			});
+
+			it.each([
+				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },
+				{ shutdownTimeout: 10, expectedDeadlineMs: 1_000, case: 'what is left of a short window' },
+				{ shutdownTimeout: 1, expectedDeadlineMs: 500, case: 'the floor when nothing is left' },
+			])(
+				'should give the cancellation write $case',
+				async ({ shutdownTimeout, expectedDeadlineMs }) => {
+					vi.useFakeTimers();
+					// @ts-expect-error readonly property
+					instanceSettings.instanceType = 'worker';
+					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
+					await scalingService.setupQueue();
+					jobProcessor.getRunningJobIds.mockReturnValue([]);
+					activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+					activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+
+					const stopped = scalingService.stop();
+					await vi.advanceTimersByTimeAsync(shutdownTimeout * 1_000);
+					await stopped;
+
+					expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalledWith(expectedDeadlineMs);
+				},
+			);
 		});
 	});
 

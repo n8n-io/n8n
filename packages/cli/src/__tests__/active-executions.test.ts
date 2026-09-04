@@ -91,7 +91,7 @@ describe('ActiveExecutions', () => {
 			executionsConfig,
 		);
 
-		executionRepository.cancelMany.mockResolvedValue();
+		executionRepository.cancelManyRunning.mockResolvedValue();
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(new Date());
@@ -616,7 +616,7 @@ describe('ActiveExecutions', () => {
 			expect(activeExecutions.getRunningExecutionIds()).toEqual([]);
 			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([]);
 			expect(activeExecutions.has(waitingExecutionId)).toBe(true);
-			expect(executionRepository.cancelMany).not.toHaveBeenCalled();
+			expect(executionRepository.cancelManyRunning).not.toHaveBeenCalled();
 		});
 
 		test('Should record the executions as cancelled before returning', async () => {
@@ -625,14 +625,14 @@ describe('ActiveExecutions', () => {
 			const postExecute = activeExecutions.getPostExecutePromise(executionId);
 
 			let hasRecorded = false;
-			executionRepository.cancelMany.mockImplementation(async () => {
+			executionRepository.cancelManyRunning.mockImplementation(async () => {
 				hasRecorded = true;
 			});
 
 			await activeExecutions.cancelRunningExecutions();
 
 			expect(hasRecorded).toBe(true);
-			expect(executionRepository.cancelMany).toHaveBeenCalledWith([executionId]);
+			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([executionId]);
 			await expect(postExecute).rejects.toThrow(SystemShutdownExecutionCancelledError);
 		});
 
@@ -641,7 +641,7 @@ describe('ActiveExecutions', () => {
 			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 			const postExecute = activeExecutions.getPostExecutePromise(executionId);
 
-			executionRepository.cancelMany.mockRejectedValue(new Error('Connection terminated'));
+			executionRepository.cancelManyRunning.mockRejectedValue(new Error('Connection terminated'));
 
 			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([executionId]);
 
@@ -658,7 +658,7 @@ describe('ActiveExecutions', () => {
 			const executionId = await addExecutionWithStatus('running');
 			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-			executionRepository.cancelMany.mockReturnValue(new Promise(() => {}));
+			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
 
 			let hasCancelled = false;
 			const cancelling = activeExecutions.cancelRunningExecutions().then((ids) => {
@@ -667,6 +667,36 @@ describe('ActiveExecutions', () => {
 			});
 
 			await vi.advanceTimersByTimeAsync(2_999);
+
+			expect(hasCancelled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			await expect(cancelling).resolves.toEqual([executionId]);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to record 1 cancelled executions: Timed out writing the cancelled status',
+				{ executionIds: [executionId] },
+			);
+
+			vi.useRealTimers();
+		});
+
+		test('Should give up on a recording that outlives the deadline the caller passed', async () => {
+			vi.useFakeTimers();
+
+			const executionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			executionRepository.cancelManyRunning.mockReturnValue(new Promise(() => {}));
+
+			let hasCancelled = false;
+			const cancelling = activeExecutions.cancelRunningExecutions(1_000).then((ids) => {
+				hasCancelled = true;
+				return ids;
+			});
+
+			await vi.advanceTimersByTimeAsync(999);
 
 			expect(hasCancelled).toBe(false);
 
