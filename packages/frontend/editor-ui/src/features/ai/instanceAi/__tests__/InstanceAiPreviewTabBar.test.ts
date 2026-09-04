@@ -129,6 +129,23 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(getByText('My Table')).toBeInTheDocument();
 	});
 
+	it('shows a spinner instead of the artifact icon while the AI is building the artifact', () => {
+		const { container } = renderComponent({
+			props: {
+				tabs: [{ ...agentTab, building: true }, workflowTab],
+				activeTabId: 'agent-1',
+			},
+		});
+
+		const buildingTab = container.querySelector('[data-tab-id="agent-1"]');
+		const idleTab = container.querySelector('[data-tab-id="wf-1"]');
+
+		expect(
+			buildingTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]'),
+		).not.toBeNull();
+		expect(idleTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
+	});
+
 	it('marks the active tab with data-state=active', () => {
 		const { container } = renderComponent({
 			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },

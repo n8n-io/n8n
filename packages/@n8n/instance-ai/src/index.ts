@@ -187,6 +187,8 @@ const loadValidateAttachments = lazyModule(
 
 export { MAX_STEPS } from './constants/max-steps';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
+export { modelConfigId } from './utils/model-config-id';
+export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
@@ -666,6 +668,7 @@ export type {
 	WorkflowTaskService,
 	WorkflowSummary,
 	WorkflowDetail,
+	NodeUsageResult,
 	WorkflowNode,
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
@@ -698,6 +701,7 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
+	AgentCapabilitiesSummary,
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	BuilderOpenSuspension,

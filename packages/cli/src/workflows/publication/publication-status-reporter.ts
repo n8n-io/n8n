@@ -14,6 +14,7 @@ import { OperationalError } from 'n8n-workflow';
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
@@ -183,9 +184,9 @@ export class PublicationStatusReporter {
 
 	/** Builds a human-readable message naming each failed node and its error. */
 	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
-		const detail = failures
-			.map((status) => `"${status.nodeName}": ${status.errorMessage}`)
-			.join('; ');
+		const detail = formatNodeFailures(
+			failures.map(({ nodeName, errorMessage }) => ({ nodeName, message: errorMessage })),
+		);
 
 		return `Some triggers failed to activate: ${detail}`;
 	}
@@ -236,9 +237,9 @@ export class PublicationStatusReporter {
 	): string | undefined {
 		if (!teardownFailures?.length) return undefined;
 
-		const detail = teardownFailures
-			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
-			.join('; ');
+		const detail = formatNodeFailures(
+			teardownFailures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		);
 		const message = `External webhook deregistration failed for: ${detail}`;
 
 		this.errorReporter.error(
