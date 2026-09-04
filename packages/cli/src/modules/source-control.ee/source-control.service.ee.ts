@@ -41,6 +41,7 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlActionOrigin } from './types/source-control-action-origin';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -315,7 +316,7 @@ export class SourceControlService {
 	async pushWorkfolder(
 		user: User,
 		options: PushWorkfolderOptions,
-		{ origin = 'ui' }: { origin?: 'ui' | 'publicApi' } = {},
+		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -336,11 +337,13 @@ export class SourceControlService {
 	private async resolveAuthorizedFilesToPush(
 		user: User,
 		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
+		origin: SourceControlActionOrigin,
 	): Promise<SourceControlledFile[]> {
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
+			origin,
 		});
 
 		// No explicit selection: push everything the user is allowed to.
@@ -379,7 +382,7 @@ export class SourceControlService {
 	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkfolderOptions,
-		{ origin = 'ui' }: { origin?: 'ui' | 'publicApi' } = {},
+		{ origin = 'ui' }: { origin?: SourceControlActionOrigin } = {},
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -393,7 +396,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames);
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, origin);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
