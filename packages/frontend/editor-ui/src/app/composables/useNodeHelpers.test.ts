@@ -1440,6 +1440,40 @@ describe('useNodeHelpers()', () => {
 				);
 			});
 
+			it('does not warn a disjoint node that a reachable node serves as an ai_tool', () => {
+				// Webhook (incompatible) → Notion (main); Notion is ALSO the ai_tool SOURCE
+				// feeding DisjointAgent, which runs on its own branch. A forward walk must not
+				// cross Notion's outgoing ai_tool edge and pull DisjointAgent into the blocked
+				// set. (A plain 'ALL' walk would; the main-only walk here does not.)
+				mockConnectedPrivateCred(true);
+				const manual = buildTriggerNode(MANUAL_TRIGGER, { name: 'Manual' });
+				const webhook = buildTriggerNode(WEBHOOK_TRIGGER, { name: 'Webhook' });
+				const notion = buildNotionNode('Notion');
+				const disjoint = buildNotionNode('DisjointAgent');
+				mockDocumentStore.workflowTriggerNodes = [manual, webhook];
+				const bySource = {
+					Webhook: { main: [[{ node: 'Notion', type: NodeConnectionTypes.Main, index: 0 }]] },
+					Notion: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'DisjointAgent', type: NodeConnectionTypes.AiTool, index: 0 }],
+						],
+					},
+				};
+				mockDocumentStore.connectionsBySourceNode = bySource;
+				mockDocumentStore.connectionsByDestinationNode = mapConnectionsByDestination(
+					bySource as never,
+				);
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+
+				// DisjointAgent is not reachable from the incompatible Webhook trigger.
+				expect(getNodeCredentialIssues(disjoint, notionNodeType)).toBeNull();
+				// Sanity: Notion, on the webhook branch, is still warned.
+				expect(
+					getNodeCredentialIssues(notion, notionNodeType)?.credentials?.[NOTION_API]?.[0],
+				).toContain("End-user credentials aren't supported by this workflow's trigger");
+			});
+
 			it('warns when no trigger in a multi-trigger workflow is compatible', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [

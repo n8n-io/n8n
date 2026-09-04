@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
@@ -439,10 +439,14 @@ export function useNodeHelpers() {
 	//
 	// A workflow with no triggers is left un-warned: it's a transient state while building.
 	// The backend still catches incompatible workflows at publish time.
-	function getPrivateCredentialTriggerWarning(): {
+	// Computed so the graph walk runs once per reactive change rather than once per node:
+	// `collectPrivateCredentialIssues` reads it inside `updateNodesCredentialsIssues`, which
+	// loops over every node, so recomputing per call would be quadratic. Vue caches the result
+	// until the triggers / connections / resolver setting actually change.
+	const privateCredentialTriggerWarning = computed<{
 		reachable: Set<string> | null;
 		isSystemResolver: boolean;
-	} | null {
+	} | null>(() => {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
@@ -477,7 +481,11 @@ export function useNodeHelpers() {
 		const reachable = new Set<string>();
 		for (const trigger of blockingTriggers) {
 			reachable.add(trigger.name);
-			for (const child of getChildNodes(bySource, trigger.name, 'ALL')) {
+			// Forward walk follows `main` only. A sub-node wired into a reachable node is the
+			// source of an `ai_*` connection, so walking 'ALL' here would also cross that edge
+			// backwards and pull in the sub-node's own (possibly unreachable) parent. The
+			// reverse ALL_NON_MAIN pass below is what attaches sub-nodes, correctly.
+			for (const child of getChildNodes(bySource, trigger.name, NodeConnectionTypes.Main)) {
 				reachable.add(child);
 			}
 		}
@@ -489,7 +497,7 @@ export function useNodeHelpers() {
 		}
 
 		return { reachable, isSystemResolver };
-	}
+	});
 
 	function collectPrivateCredentialIssues(
 		node: INodeUi,
@@ -497,7 +505,7 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const warning = getPrivateCredentialTriggerWarning();
+		const warning = privateCredentialTriggerWarning.value;
 		if (!warning) return;
 		// With a compatible trigger present, warn only the nodes the incompatible trigger
 		// can reach; a node on the valid branch is left alone. `reachable === null` means
