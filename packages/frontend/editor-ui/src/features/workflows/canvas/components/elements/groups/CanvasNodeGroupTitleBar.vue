@@ -271,10 +271,11 @@ const isPermanentlyVisible = computed(
 );
 
 const showExpandedDescription = computed(() => !isCollapsed.value && isDescriptionEnabled.value);
-// Show the affordance when collapsed and there's either a description to read
-// or (when editable) a description to add.
+// An empty group is a planning block: its objective is the whole point, so the
+// description is always shown and the reveal affordance (info icon) is dropped.
 const showInfoIcon = computed(
 	() =>
+		!isEmptyGroup.value &&
 		isCollapsed.value &&
 		isDescriptionEnabled.value &&
 		!isPermanentlyVisible.value &&
@@ -283,8 +284,9 @@ const showInfoIcon = computed(
 const showCollapsedDescription = computed(
 	() =>
 		isCollapsed.value &&
-		isDescriptionEnabled.value &&
-		(isPermanentlyVisible.value || isEditingDescription.value || isDescriptionHovered.value),
+		(isEmptyGroup.value ||
+			(isDescriptionEnabled.value &&
+				(isPermanentlyVisible.value || isEditingDescription.value || isDescriptionHovered.value))),
 );
 
 function clearHoverTimers() {
@@ -982,12 +984,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 // An empty group is wired through the chip itself, so its handles must be
 // grabbable. Normal groups keep the decorative, non-interactive handles above.
 .handleConnectable {
-	width: 12px;
-	height: 12px;
+	width: 14px;
+	height: 14px;
 	opacity: 1;
 	pointer-events: all;
 	background: var(--color--foreground--shade-1);
 	border: var(--border);
+
+	// Enlarge the pointer target well past the dot so a dropped connection
+	// lands without pixel-perfect aim, matching how nodes accept a drop.
+	&::before {
+		content: '';
+		position: absolute;
+		inset: -10px;
+		border-radius: 50%;
+	}
 }
 
 // Floating description shown below a collapsed group on hover or when pinned.

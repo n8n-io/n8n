@@ -70,7 +70,8 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
-import { GROUP_PLACEHOLDER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { GROUP_PLACEHOLDER_NODE_TYPE, SET_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -81,6 +82,7 @@ import {
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
+	mapConnectionsByDestination,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -1102,8 +1104,14 @@ async function onGenerateGroup(groupId: string) {
 	const placeholder = workflowDocumentStore.value.getEmptyGroupPlaceholder(groupId);
 	if (!group || !placeholder) return;
 
-	// ponytail: free-text prompt to the builder; replace with an Instance AI
-	// tool that takes the group id and enforces the single entry/exit contract.
+	// ponytail: when the AI builder is unavailable, mock generation by dropping
+	// three demo nodes into the group so the round trip is demoable without a
+	// live model. Replace both branches with an Instance AI tool later.
+	if (!builderStore.isAIBuilderEnabled) {
+		mockGenerateGroup(groupId, placeholder);
+		return;
+	}
+
 	const text = [
 		`Generate the nodes for the node group "${group.name}".`,
 		group.description ? `Objective: ${group.description}` : '',
@@ -1116,6 +1124,99 @@ async function onGenerateGroup(groupId: string) {
 
 	await chatPanelStore.open({ mode: 'builder' });
 	await builderStore.sendChatMessage({ text, source: 'canvas' });
+}
+
+// Demo stand-in for AI generation: replaces the group's placeholder with three
+// chained nodes, keeps them inside the group, and hands the placeholder's main
+// boundary connections to the first and last node. Reuses the tested canvas
+// operations so undo, grouping, and connection handling behave like real edits.
+async function mockGenerateGroup(groupId: string, placeholder: INodeUi) {
+	const store = workflowDocumentStore.value;
+	const [px, py] = placeholder.position;
+	const main = NodeConnectionTypes.Main;
+	const bySource = store.connectionsBySourceNode;
+	const byDestination = mapConnectionsByDestination(bySource);
+	const incoming = (byDestination[placeholder.name]?.[main]?.flat() ?? []).filter(
+		(c): c is IConnection => Boolean(c),
+	);
+	const outgoing = (bySource[placeholder.name]?.[main]?.flat() ?? []).filter(
+		(c): c is IConnection => Boolean(c),
+	);
+
+	const { uniqueNodeName } = useUniqueNodeName();
+	const names = ['Extract', 'Transform', 'Load'].map((label) => uniqueNodeName(label));
+
+	// Add the three nodes chained left to right.
+	await addNodesAndConnections(
+		names.map((name, i) => ({
+			type: SET_NODE_TYPE,
+			name,
+			position: [px + i * 240, py] as XYPosition,
+		})),
+		names.slice(0, -1).map((_name, i) => ({
+			from: { nodeIndex: i },
+			to: { nodeIndex: i + 1 },
+		})),
+		{},
+	);
+
+	const firstId = store.getNodeByName(names[0])?.id;
+	const lastName = names[names.length - 1];
+	if (!firstId) return;
+
+	// Reattach the placeholder's boundary edges to the section entry and exit.
+	for (const c of incoming) {
+		const src = store.getNodeByName(c.node);
+		if (src) {
+			createConnection(
+				{
+					source: src.id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: main,
+						index: c.index,
+					}),
+					target: firstId,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: main,
+						index: 0,
+					}),
+				},
+				{ trackHistory: true },
+			);
+		}
+	}
+	for (const c of outgoing) {
+		const tgt = store.getNodeByName(c.node);
+		const lastId = store.getNodeByName(lastName)?.id;
+		if (tgt && lastId) {
+			createConnection(
+				{
+					source: lastId,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: main,
+						index: 0,
+					}),
+					target: tgt.id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: main,
+						index: c.index,
+					}),
+				},
+				{ trackHistory: true },
+			);
+		}
+	}
+
+	// Move the generated nodes into the group, then drop the placeholder.
+	const createdIds = names
+		.map((name) => store.getNodeByName(name)?.id)
+		.filter((id): id is string => Boolean(id));
+	store.addNodesToGroup(groupId, createdIds);
+	deleteNode(placeholder.id, { trackHistory: true });
 }
 
 function onClickConnectionAdd(connection: Connection) {
