@@ -9,6 +9,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import {
 	meetingRequest,
+	optionalText,
 	requiredText,
 	throwIfOnlineMeetingUnsupported,
 	toGraphUtc,
@@ -39,7 +40,7 @@ const properties: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'The date and time when the meeting ends. Requires a start time and must be later than it. Defaults to one hour after the start time.',
+					'The date and time when the meeting ends. Must be later than Start Time, which must also be set. If left out, the meeting lasts one hour.',
 			},
 			{
 				displayName: 'Start Time',
@@ -80,13 +81,15 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const options = this.getNodeParameter('options', i);
 	if (options.endDateTime && !options.startDateTime) {
 		throw new NodeOperationError(this.getNode(), 'End Time requires a Start Time', {
-			description: "Set 'Start Time' as well, or remove 'End Time' to use the default length",
+			description:
+				"Microsoft Graph rejects an End Time without a Start Time. Set 'Start Time' as well, or remove 'End Time' to use the default length",
 		});
 	}
 
 	const body: IDataObject = { externalId };
-	if (options.subject) {
-		body.subject = options.subject;
+	const subject = optionalText.call(this, options.subject, 'Subject');
+	if (subject) {
+		body.subject = subject;
 	}
 	if (options.startDateTime) {
 		body.startDateTime = toGraphUtc.call(this, options.startDateTime, 'Start Time');
