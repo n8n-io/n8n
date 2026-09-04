@@ -199,6 +199,15 @@ export class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
+		// Extract BrowserId from headers
+		this.app.use((req: APIRequest, _, next) => {
+			const browserId = req.headers['browser-id'];
+			if (typeof browserId === 'string') {
+				req.browserId = browserId;
+			}
+			next();
+		});
+
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
@@ -211,12 +220,6 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 		}
-
-		// Extract BrowserId from headers
-		this.app.use((req: APIRequest, _, next) => {
-			req.browserId = req.headers['browser-id'] as string;
-			next();
-		});
 
 		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
 		// already registered the webhook and form routes, so they never reach this

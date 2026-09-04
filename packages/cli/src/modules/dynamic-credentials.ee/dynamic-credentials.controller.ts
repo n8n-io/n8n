@@ -266,8 +266,14 @@ export class DynamicCredentialsController {
 						? req.originalUrl.slice(basePath.length)
 						: req.originalUrl;
 				const returnUrl = `${instanceBaseUrl}${requestPath}`;
+				// The editor is served under the base path. Add it when the configured
+				// editor URL does not include it, so /signin resolves.
+				const signinBaseUrl =
+					basePath !== '/' && !instanceBaseUrlHasBasePath
+						? `${instanceBaseUrl}${basePath}`
+						: instanceBaseUrl;
 				res.redirect(
-					`${instanceBaseUrl}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+					`${signinBaseUrl}/signin?redirect=${encodeURIComponent(returnUrl)}`,
 				);
 				return;
 			}

@@ -694,7 +694,7 @@ describe('DynamicCredentialsController', () => {
 			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
 		});
 
-		it('preserves the base path when the editor URL does not include it', async () => {
+		it('appends the base path to the sign-in URL when the editor URL omits it', async () => {
 			const req = mock<Request>({
 				params: { id: 'cred-1' },
 				query: { token: 'tok' },
@@ -715,7 +715,7 @@ describe('DynamicCredentialsController', () => {
 			await controller.authorizeCredentialRedirect(req, res);
 
 			expect(res.redirect).toHaveBeenCalledWith(
-				`http://localhost:5678/signin?redirect=${encodeURIComponent(
+				`http://localhost:5678/n8n/signin?redirect=${encodeURIComponent(
 					'http://localhost:5678/n8n/rest/credentials/cred-1/authorize?token=tok',
 				)}`,
 			);

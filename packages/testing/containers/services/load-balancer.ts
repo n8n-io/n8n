@@ -68,7 +68,7 @@ ${sharedReverseProxyBlock}
 }`;
 	}
 
-	const webhookMatcher = WEBHOOK_PROC_PATHS.join(' ');
+	const webhookMatcher = WEBHOOK_PROC_PATHS.map((path) => `${basePath}${path}`).join(' ');
 	return `
 :80 {
   request_body {
