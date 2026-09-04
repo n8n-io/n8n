@@ -1,0 +1,142 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_dc1bcc8544e6b1::t_43859aa105e8fc 5,14-22
+  s_dc1bcc8544e6b1::t_9bcb187809e111 120,124-135
+  s_dc1bcc8544e6b1::t_c6de4b983f19d6 6
+  s_dc1bcc8544e6b1::t_157365f15eaa81 227-229
+  s_dc1bcc8544e6b1::t_4f2f91a8681dc1 386
+  s_dc1bcc8544e6b1::t_b37b20b6c4f833 139
+  s_dc1bcc8544e6b1::t_925011cc943f8a 165,167-168
+  s_dc1bcc8544e6b1::t_9a7ed3eaeadab6 419
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 478,486-488,537-539
+  s_dc1bcc8544e6b1::t_6f17cbec34f72c 511-535,550
+  s_dc1bcc8544e6b1::t_41df4978d9097b 544
+  s_dc1bcc8544e6b1::t_2591e5659dbbf2 207-209
+  s_dc1bcc8544e6b1::t_d695bcaea87978 255-257
+  s_dc1bcc8544e6b1::t_43f760535039c3 462-477,479-485,489-507,510,536,540-543,545-549
+  s_dc1bcc8544e6b1::t_7b2452e1cd7a32 136
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_dc1bcc8544e6b1::t_8c85bc5c6b438b 36,46-55
+  s_dc1bcc8544e6b1::t_ab935f2a9ed39b 2
+  s_dc1bcc8544e6b1::t_ead855c723e0f1 56-58
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_dc1bcc8544e6b1::t_d0a147b24ddf7b 762-769
+  s_dc1bcc8544e6b1::t_db5e45ec668439 22
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_dc1bcc8544e6b1::t_bcc582a584766c 1562-1566,1580-1584
+  s_dc1bcc8544e6b1::t_55f95d2a6d0e4f 173-178
+  s_dc1bcc8544e6b1::t_5ad043867e22e2 774,778-782,790-802,815
+  s_dc1bcc8544e6b1::t_4b299002dc09c5 764
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dc1bcc8544e6b1::t_fb63fbb13b70af 7624-7626
+  s_dc1bcc8544e6b1::t_1db96471df061c 7627
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_dc1bcc8544e6b1::t_d12203df4bd438 2402,2421,2444-2445,2452
+  s_dc1bcc8544e6b1::t_e6acf2e61a85ae 2479,2492-2554
+  s_dc1bcc8544e6b1::t_ef886d0ecf3a35 2555-2556
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_840ab01ea77af3 26
+  s_dc1bcc8544e6b1::t_dfb1b82c709305 30
+  s_dc1bcc8544e6b1::t_01e0ea7e2442ae 5-6,12
+  s_dc1bcc8544e6b1::t_668d62249e0c2c 49
+  s_dc1bcc8544e6b1::t_7a87274e2f183f 154-161
+  s_dc1bcc8544e6b1::t_2512b86b535148 264-305,308,312,315-316,319-321
+  s_dc1bcc8544e6b1::t_089aab9d82f43e 112-113,122
+  s_dc1bcc8544e6b1::t_49a2e864df195c 306-307,309-311,313-314,317-318
+  s_dc1bcc8544e6b1::t_82912dcb1e6964 7
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_dc1bcc8544e6b1::t_ad7ca8b2fa53e9 129-131
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_dc1bcc8544e6b1::t_fada4324ce7249 3,18
+  s_dc1bcc8544e6b1::t_35b7b4791b3b5b 76,81,86,90-92
+  s_dc1bcc8544e6b1::t_76afef2d3d102a 2,7-14,19,22-23,35-37,51-52
+  s_dc1bcc8544e6b1::t_f6665981e3f3dd 77-80,82-85,87-89
+  s_dc1bcc8544e6b1::t_ad4ca7ac82dd1d 121-133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 2029-2032
+packages/@n8n/api-types/src/agents/types.ts
+  s_dc1bcc8544e6b1::t_2552ad74460094 349-351
+  s_dc1bcc8544e6b1::t_5a44989c40aa2d 346-348
+packages/frontend/editor-ui/src/features/agents/utils/validationIssues.ts
+  s_dc1bcc8544e6b1::t_27842b10c59d3e 10-14
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_dc1bcc8544e6b1::t_67bbc1f2d3aa8d 51-53
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dc1bcc8544e6b1::t_617fcae6782014 10
+  s_dc1bcc8544e6b1::t_215810fed83fa8 340,346-358
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_dc1bcc8544e6b1::t_3698ca6e3613c6 335-337
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_dc1bcc8544e6b1::t_cc5d0bb7cafa5d 48
+packages/@n8n/api-types/src/agents/dto.ts
+  s_dc1bcc8544e6b1::t_aa5cb041de9130 284-285
+packages/cli/src/modules/agents/agent-publish-dependencies.error.ts
+  s_dc1bcc8544e6b1::t_25a04511e61784 1-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentConfirmationModal.test.ts
+  s_dc1bcc8544e6b1::t_7ab702513df799 1-21,24-77
+  s_dc1bcc8544e6b1::t_905643198f1d39 22-23
+packages/frontend/editor-ui/src/app/components/PublicationIndicator.vue
+  s_dc1bcc8544e6b1::t_ff88b509a15680 1-52
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_dc1bcc8544e6b1::t_e7095993c1cc96 1004,1024,1031,1040-1091
+  s_dc1bcc8544e6b1::t_82d5df5df44a18 963
+  s_dc1bcc8544e6b1::t_982007db730652 1092
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_dc1bcc8544e6b1::t_606fd32d31db64 2,8-14
+  s_dc1bcc8544e6b1::t_c056635f721bbc 66
+  s_dc1bcc8544e6b1::t_f1dcaabeeea1bc 42,74-80,110
+  s_dc1bcc8544e6b1::t_5df9245e3f44a1 3,5,19-34,49-65,67-69,81-109,111
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_dc1bcc8544e6b1::t_93e4f094e46b44 638-640,653-662,666-715
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 663-665
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfirmationModal.ts
+  s_dc1bcc8544e6b1::t_4b882fd3f8fee8 8,13-16,25-27,29
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_dc1bcc8544e6b1::t_925d04b70eb10d 208,210,212
+  s_dc1bcc8544e6b1::t_bd066cbbc0096c 16
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dc1bcc8544e6b1::t_06605c975ec8ac 1009
+  s_dc1bcc8544e6b1::t_dfd6d123b5d778 89
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_dc1bcc8544e6b1::t_955b7a292ba876 240-242
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_dc1bcc8544e6b1::t_05a50ff588a9fc 1001
+  s_dc1bcc8544e6b1::t_60f191cc75443d 1015-1022
+  s_dc1bcc8544e6b1::t_99a332f2a5880e 165-166,183-184
+  s_dc1bcc8544e6b1::t_12ebb2e2888191 975-981
+  s_dc1bcc8544e6b1::t_8b0ebedbbd29bb 147
+  s_dc1bcc8544e6b1::t_1c10f66ae7d393 958-959,971-974,983-1000,1002-1007,1009-1014,1023-1032,1034-1061
+  s_dc1bcc8544e6b1::t_1d2fc0632424cb 1033
+  s_dc1bcc8544e6b1::t_8f5006b0fa6d91 1008
+  s_dc1bcc8544e6b1::t_7898f6bb045a73 3,13
+  s_dc1bcc8544e6b1::t_e01307467f6a2b 960-970,982
+  s_dc1bcc8544e6b1::t_f9bef28556fcd8 120-121
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_dc1bcc8544e6b1::t_3b5bca29cc34c8 310-311
+  s_dc1bcc8544e6b1::t_e6f7397425fd41 29
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_dc1bcc8544e6b1::t_d99a2fee24c246 10
+  s_dc1bcc8544e6b1::t_fa22175a73b4a7 60-65
+packages/cli/src/events/maps/relay.event-map.ts
+  s_dc1bcc8544e6b1::t_acc4b909fe9edb 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e28e37228653261e35afc0730c77adccf8847478",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
