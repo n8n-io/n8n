@@ -206,9 +206,6 @@ const remainingChannelOptionLabels = computed(() => {
 		:class="[$style.row, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<N8nText size="small" :class="$style.rowLabel">
-			{{ i18n.baseText('agents.builder.triggers.title') }}
-		</N8nText>
 		<div :class="$style.innerRow" :inert="props.disabled || undefined">
 			<button
 				v-for="channel in channelRows"
@@ -274,12 +271,6 @@ const remainingChannelOptionLabels = computed(() => {
 
 .disabled {
 	opacity: 0.5;
-}
-
-.rowLabel {
-	line-height: var(--height--lg);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
 }
 
 .innerRow {

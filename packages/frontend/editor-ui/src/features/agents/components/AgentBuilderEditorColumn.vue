@@ -25,6 +25,7 @@ import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
@@ -116,64 +117,64 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentChannelsSection
-						:key="`${projectId}:${agentId}`"
-						:connected-triggers="connectedTriggers"
-						:disabled="childrenDisabled"
-						:agent-id="agentId"
-						:project-id="projectId"
-						:is-published="Boolean(agent?.activeVersionId)"
-						:validation-issues="configValidationIssues ?? []"
-						:simple-channel-setup="artifactMode"
-						:agent-unsaved="agentUnsaved"
-						:ensure-agent-persisted="ensureAgentPersisted"
-						@update:connected-triggers="emit('update:connected-triggers', $event)"
-						@trigger-added="emit('trigger-added', $event)"
-						@agent-changed="emit('agent-changed')"
-					/>
-
-					<AgentCapabilitiesSection
-						:config="localConfig"
-						:tools="localConfig?.tools ?? []"
-						:custom-tools="agent?.tools ?? {}"
-						:skills="appliedSkills"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:is-published="Boolean(agent?.activeVersionId)"
-						:task-refs="localConfig?.tasks ?? []"
-						:reload-key="tasksReloadKey"
-						:validation-issues="configValidationIssues ?? []"
-						:agent-unsaved="agentUnsaved"
-						@open-tool="emit('open-tool', $event)"
-						@open-skill="emit('open-skill', $event)"
-						@add-tool="emit('add-tool')"
-						@add-skill="emit('add-skill')"
-						@update:config="emit('update:config', $event)"
-						@remove-tool="emit('remove-tool', $event)"
-						@remove-skill="emit('remove-skill', $event)"
-						@toggle-task="emit('toggle-task', $event)"
-						@tasks-changed="emit('tasks-changed')"
-					/>
-
 					<AgentInfoPanel
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
-						:show-instructions="false"
-						embedded
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentInfoPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:show-model="false"
 						:show-instructions-toolbar="true"
 						instructions-max-height="none"
-						embedded
 						@update:config="emit('update:config', $event)"
 					/>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.triggers.title')"
+						:description="i18n.baseText('agents.builder.triggers.description')"
+					>
+						<AgentChannelsSection
+							:key="`${projectId}:${agentId}`"
+							:connected-triggers="connectedTriggers"
+							:disabled="childrenDisabled"
+							:agent-id="agentId"
+							:project-id="projectId"
+							:is-published="Boolean(agent?.activeVersionId)"
+							:validation-issues="configValidationIssues ?? []"
+							:simple-channel-setup="artifactMode"
+							:agent-unsaved="agentUnsaved"
+							:ensure-agent-persisted="ensureAgentPersisted"
+							@update:connected-triggers="emit('update:connected-triggers', $event)"
+							@trigger-added="emit('trigger-added', $event)"
+							@agent-changed="emit('agent-changed')"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.capabilities.title')"
+						description="What this agent can do and how it does it"
+					>
+						<AgentCapabilitiesSection
+							:config="localConfig"
+							:tools="localConfig?.tools ?? []"
+							:custom-tools="agent?.tools ?? {}"
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
+							:validation-issues="configValidationIssues ?? []"
+							:agent-unsaved="agentUnsaved"
+							@open-tool="emit('open-tool', $event)"
+							@open-skill="emit('open-skill', $event)"
+							@add-tool="emit('add-tool')"
+							@add-skill="emit('add-skill')"
+							@update:config="emit('update:config', $event)"
+							@remove-tool="emit('remove-tool', $event)"
+							@remove-skill="emit('remove-skill', $event)"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
+						/>
+					</AgentPanel>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel

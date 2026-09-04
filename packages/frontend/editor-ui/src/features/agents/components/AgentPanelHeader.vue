@@ -11,7 +11,7 @@ defineProps<{
 	<div :class="$style.text">
 		<div :class="$style.row">
 			<div :class="$style.copy">
-				<N8nText tag="h3" size="xlarge" :bold="true">{{ title }}</N8nText>
+				<N8nText tag="h3" step="sm" :bold="true">{{ title }}</N8nText>
 				<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
 			</div>
 			<div v-if="$slots.actions" :class="$style.actions">

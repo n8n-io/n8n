@@ -8137,7 +8137,7 @@
 	"agents.builder.quickActions.memoriesUsed.keyMemory": "Memory",
 	"agents.builder.capabilities.title": "Capabilities",
 	"agents.builder.triggers.title": "Channels",
-	"agents.builder.triggers.description": "Channels that can invoke this agent",
+	"agents.builder.triggers.description": "Where and when this agent runs",
 	"agents.builder.triggers.count": "{count} channel connected | {count} channels connected",
 	"agents.builder.triggers.empty": "No channels connected yet.",
 	"agents.builder.triggers.add": "Add channel",
