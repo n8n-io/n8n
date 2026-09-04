@@ -197,11 +197,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [\n    {\n        json:{\n            id: Math.round(Math.random()*1000),\n            name: 'test1'\n        }   \n    },\n    {\n        json:{\n            id: Math.round(Math.random()*1000),\n            name: 'test2'\n        }   \n    }\n]\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [\n    {\n        json:{\n            id: Math.round(Math.random()*1000),\n            name: 'test1'\n        }   \n    },\n    {\n        json:{\n            id: Math.round(Math.random()*1000),\n            name: 'test2'\n        }   \n    }\n]\nreturn items;"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [440, 360],
 			"notesInFlow": true,
 			"notes": "create the input data",

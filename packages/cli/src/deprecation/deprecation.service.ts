@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -14,15 +13,6 @@ type Deprecation = {
 
 	/** Function to identify the specific value in the env var that is deprecated. */
 	checkValue?: (value?: string) => boolean;
-
-	/** Whether to show a deprecation warning if the env var is missing. */
-	warnIfMissing?: boolean;
-
-	/** Whether a config value is required to trigger a deprecation warning. */
-	matchConfig?: boolean;
-
-	/** Function to run to check whether to disable this deprecation warning. */
-	disableIf?: () => boolean;
 };
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
@@ -47,12 +37,7 @@ export class DeprecationService {
 		},
 		{
 			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
-			message:
-				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
-			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
-			warnIfMissing: true,
-			matchConfig: this.globalConfig.executions.mode === 'queue',
-			disableIf: () => this.instanceSettings.instanceType !== 'main',
+			message: `In queue mode, manual executions are always routed to workers. ${SAFE_TO_REMOVE}`,
 		},
 		{
 			envVar: 'N8N_EXPRESSION_EVALUATOR',
@@ -68,30 +53,6 @@ export class DeprecationService {
 				'Use N8N_WEBHOOK_URL instead, which sets the base URL for both test and production webhooks.',
 		},
 		{
-			envVar: 'N8N_UNVERIFIED_PACKAGES_ENABLED',
-			message:
-				'The default for this variable will change to `false` in a future version. Set it to `true` explicitly to keep installing unverified community packages.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
-			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
-			message:
-				'The default for this variable will be reduced from 300 (5 minutes) to 60 (1 minute) in a future version. Set it explicitly to keep your current task timeout.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
-			envVar: 'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
-			message:
-				'The default for this variable will be reduced from 2 GiB to 256 MiB in a future version. Set it explicitly to keep your current limit.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
-			envVar: 'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
-			message:
-				'The default for this variable will be reduced from 5000 to 1000 in a future version. Set it explicitly to keep your current limit.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
@@ -100,7 +61,7 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			message:
-				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',
+				'In-memory binary data storage (`default` mode) has been removed. This value is now ignored and n8n falls back to `filesystem` mode (`database` in scaling mode). Remove this environment variable or set it to `filesystem`, `s3`, or `database`.',
 			checkValue: (value?: string) => value === 'default',
 		},
 		{
@@ -134,25 +95,15 @@ export class DeprecationService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	warn() {
 		this.deprecations.forEach((d) => {
-			if (d.disableIf?.()) {
-				this.state.set(d, { mustWarn: false });
-				return;
-			}
-
 			const envValue = process.env[d.envVar];
 
-			const matchConfig = d.matchConfig === true || d.matchConfig === undefined;
-			const warnIfMissing = d.warnIfMissing !== undefined && envValue === undefined;
-			const checkValue = d.checkValue ? d.checkValue(envValue) : envValue !== undefined;
-
 			this.state.set(d, {
-				mustWarn: matchConfig && (warnIfMissing || checkValue),
+				mustWarn: d.checkValue ? d.checkValue(envValue) : envValue !== undefined,
 			});
 		});
 

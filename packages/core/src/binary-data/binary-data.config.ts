@@ -1,13 +1,22 @@
-import { Config, Env, ExecutionsConfig } from '@n8n/config';
+import { Config, Env, ExecutionsConfig, readEnvValue } from '@n8n/config';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { InstanceSettings } from '@/instance-settings';
 import { StorageConfig } from '@/storage.config';
 
-export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'azure', 'database'] as const;
+export const BINARY_DATA_MODES = ['filesystem', 's3', 'azure', 'database'] as const;
 
 const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
+
+/**
+ * Whether the removed in-memory mode (`default`) is configured. The schema rejects it, so
+ * `BinaryDataConfig.mode` can never hold it — detection code must read the env value the way
+ * the config loader would, including the `_FILE` variant and quote/whitespace normalization.
+ */
+export function isInMemoryModeConfigured(): boolean {
+	return readEnvValue('N8N_DEFAULT_BINARY_DATA_MODE') === 'default';
+}
 
 const availableModesSchema = z
 	.string()

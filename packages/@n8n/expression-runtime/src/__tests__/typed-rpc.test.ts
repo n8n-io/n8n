@@ -772,7 +772,7 @@ describe('Typed RPC: $evaluateExpression() routes via evaluateExpression', () =>
 	});
 });
 
-describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
+describe('Typed RPC: $getPairedItem is removed', () => {
 	let evaluator: ExpressionEvaluator;
 	const caller = {};
 
@@ -790,50 +790,16 @@ describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
 		await evaluator.dispose();
 	});
 
-	it('returns the value of data.$getPairedItem(...)', () => {
+	it('throws in the isolate even when the host data provides it', () => {
 		const data: Record<string, unknown> = {
 			$getPairedItem: () => ({ json: { city: 'Prague' } }),
 		};
 
-		const result = evaluator.evaluate(
-			"{{ JSON.stringify($getPairedItem('source', { previousNode: 'source' }, { item: 0 })) }}",
-			data,
-			caller,
+		// The in-isolate thrower shadows whatever the host supplies, so a stale
+		// host binding cannot silently keep the removed helper alive.
+		expect(() => evaluator.evaluate("{{ $getPairedItem('n', {}, {}) }}", data, caller)).toThrow(
+			'$getPairedItem was removed',
 		);
-		expect(result).toBe(JSON.stringify({ json: { city: 'Prague' } }));
-	});
-
-	it('forwards destinationNodeName, incomingSourceData, initialPairedItem verbatim', () => {
-		const calls: Array<unknown[]> = [];
-		const data: Record<string, unknown> = {
-			$getPairedItem: (...args: unknown[]) => {
-				calls.push(args);
-				return 'ok';
-			},
-		};
-
-		evaluator.evaluate(
-			"{{ $getPairedItem('dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }) }}",
-			data,
-			caller,
-		);
-		evaluator.evaluate("{{ $getPairedItem('dest', null, { item: 0 }) }}", data, caller);
-
-		expect(calls).toEqual([
-			['dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }],
-			['dest', null, { item: 0 }],
-		]);
-	});
-
-	it('handles missing data.$getPairedItem gracefully (returns undefined)', () => {
-		const data: Record<string, unknown> = {};
-
-		const result = evaluator.evaluate(
-			"{{ $getPairedItem('dest', null, { item: 0 }) }}",
-			data,
-			caller,
-		);
-		expect(result).toBeUndefined();
 	});
 });
 

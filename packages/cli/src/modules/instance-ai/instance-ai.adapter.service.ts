@@ -1512,12 +1512,9 @@ export class InstanceAiAdapterService {
 				// serialization, so wrap them into `executionData` — mirroring
 				// `workflow-execution.service`. A trigger run already carries its stack in
 				// `executionData`, so only wrap when it's absent.
-				const offloadingManualExecutionsInQueueMode =
-					globalConfig.executions?.mode === 'queue' &&
-					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 				if (
 					runData.executionMode === 'manual' &&
-					offloadingManualExecutionsInQueueMode &&
+					globalConfig.executions?.mode === 'queue' &&
 					!runData.executionData
 				) {
 					runData.executionData = createRunExecutionData({

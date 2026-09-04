@@ -1,0 +1,141 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-5-20250929",
+        "stream": false,
+        "max_tokens": 16384,
+        "tools": [],
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hey!"
+          }
+        ]
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5Iiwic3RyZWFtIjpmYWxzZSwibWF4X3Rva2VucyI6MTYzODQsInRvb2xzIjpbXSwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZXkhIn1dfQ=="
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-f1c52ee99f73583686daa0441673663f-e60872cffc2acf37-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011Ce2nSpEinRwgLudnHczWD"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-workspace-id": [
+        "wrkspc_01CX1ZSKRt7BzNiHusZETrjN"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-08-14T14:17:31Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-08-14T14:17:30Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-08-14T14:17:31Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-08-14T14:17:31Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "15000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Fri, 14 Aug 2026 14:17:31 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "a2b0955d7985b4c5-TXL"
+      ]
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-5-20250929",
+        "id": "msg_011Ce2nSqGyR6sxyz6nYD4YU",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Hello! How can I help you today?"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 9,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 22,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ICJjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOSIsICJpZCI6ICJtc2dfMDExQ2UyblNxR3lSNnN4eXo2bllENFlVIiwgInR5cGUiOiAibWVzc2FnZSIsICJyb2xlIjogImFzc2lzdGFudCIsICJjb250ZW50IjogW3sidHlwZSI6ICJ0ZXh0IiwgInRleHQiOiAiSGVsbG8hIEhvdyBjYW4gSSBoZWxwIHlvdSB0b2RheT8ifV0sICJzdG9wX3JlYXNvbiI6ICJlbmRfdHVybiIsICJzdG9wX3NlcXVlbmNlIjogbnVsbCwgInN0b3BfZGV0YWlscyI6IG51bGwsICJ1c2FnZSI6IHsiaW5wdXRfdG9rZW5zIjogOSwgImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6IDAsICJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6IDAsICJjYWNoZV9jcmVhdGlvbiI6IHsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6IDAsICJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjogMH0sICJvdXRwdXRfdG9rZW5zIjogMjIsICJzZXJ2aWNlX3RpZXIiOiAic3RhbmRhcmQiLCAiaW5mZXJlbmNlX2dlbyI6ICJub3RfYXZhaWxhYmxlIn19"
+    }
+  },
+  "id": "1786717060404-unknown-host-POST-_v1_messages-hey-20721faa.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

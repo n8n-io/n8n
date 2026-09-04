@@ -19,9 +19,9 @@ export class CommunityPackagesConfig {
 	@Env('N8N_REINSTALL_MISSING_PACKAGES')
 	reinstallMissing: boolean = false;
 
-	/** Whether to block installation of not verified packages */
+	/** Whether to allow installing and loading packages not verified by n8n */
 	@Env('N8N_UNVERIFIED_PACKAGES_ENABLED')
-	unverifiedEnabled: boolean = true;
+	unverifiedEnabled: boolean = false;
 
 	/** Whether to enable and show search suggestion of packages verified by n8n */
 	@Env('N8N_VERIFIED_PACKAGES_ENABLED')

@@ -40,6 +40,16 @@ const readEnv = (envName: string) => {
 // `echo value > file`); strip both so parsing doesn't silently fall back to the default value.
 const normalizeEnvValue = (value: string) => value.trim().replace(/^(['"])(.*)\1$/, '$2');
 
+/**
+ * Reads an env value the way `@Env` does — including the `_FILE` variant and
+ * whitespace/quote normalization — for code that must inspect raw values the
+ * config schema rejects (e.g. detecting removed modes).
+ */
+export const readEnvValue = (envName: string): string | undefined => {
+	const value = readEnv(envName);
+	return value === undefined ? undefined : normalizeEnvValue(value);
+};
+
 export const Config: ClassDecorator = (ConfigClass: Class) => {
 	const factory = function (...args: unknown[]) {
 		const config = new (ConfigClass as new (...a: unknown[]) => Record<PropertyKey, unknown>)(

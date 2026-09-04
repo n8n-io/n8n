@@ -389,11 +389,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "throw Error('Problem in boolean statement');\n"
+				"mode": "runOnceForAllItems",
+				"jsCode": "throw Error('Problem in boolean statement');\n"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [800, 90],
 			"notesInFlow": true,
 			"notes": "Boolean Error",
@@ -401,11 +402,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "throw Error('Problem in Date&Time statement');\n"
+				"mode": "runOnceForAllItems",
+				"jsCode": "throw Error('Problem in Date&Time statement');\n"
 			},
 			"name": "Function1",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [790, 250],
 			"notesInFlow": true,
 			"notes": "Date&Time Error",
@@ -413,11 +415,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "throw Error('Problem in Number statement');\n"
+				"mode": "runOnceForAllItems",
+				"jsCode": "throw Error('Problem in Number statement');\n"
 			},
 			"name": "Function2",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [840, 540],
 			"notesInFlow": true,
 			"notes": "Number Error",
@@ -425,11 +428,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "throw Error('Problem in String comparison statement');\n"
+				"mode": "runOnceForAllItems",
+				"jsCode": "throw Error('Problem in String comparison statement');\n"
 			},
 			"name": "Function3",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [970, 840],
 			"notesInFlow": true,
 			"notes": "String Error",

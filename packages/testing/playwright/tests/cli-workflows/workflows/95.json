@@ -33,11 +33,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData =  JSON.stringify({\n  name: \"test\"\n});\n\nif(JSON.stringify($node['Set'].json)!==testData){\n  throw new Error('Error in Set node');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData =  JSON.stringify({\n  name: \"test\"\n});\n\nif(JSON.stringify($node['Set'].json)!==testData){\n  throw new Error('Error in Set node');\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [600, 300],
 			"notesInFlow": true,
 			"notes": "Verify the result of set node",

@@ -113,7 +113,6 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
-		env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
 		if (mains > 1) {
 			if (!process.env.N8N_LICENSE_ACTIVATION_KEY && !process.env.N8N_LICENSE_CERT) {

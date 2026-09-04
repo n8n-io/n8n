@@ -4,7 +4,6 @@ import type {
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
-	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
 	IRunExecutionData,
@@ -95,6 +94,70 @@ describe('processRunExecutionData', () => {
 
 		// ASSERT
 		expect(result.data.resultData.runData).toMatchObject({ node: [{ data: taskDataConnection }] });
+	});
+
+	describe('alwaysOutputData', () => {
+		const multiOutputNode: INodeType = {
+			...passThroughNode,
+			description: { ...passThroughNode.description, outputs: ['main', 'main'] },
+		};
+
+		const runWorkflowWithNodeOutput = async (nodeType: INodeType) => {
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const node = {
+				...createNodeData({ name: 'node', type: 'multiOutput' }),
+				alwaysOutputData: true,
+			};
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				multiOutput: { type: nodeType, sourcePath: '' },
+			});
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node)
+				.addConnections({ from: trigger, to: node })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{ data: { main: [[{ json: { foo: 1 } }]] }, node: trigger, source: null },
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			return result.data.resultData.runData.node[0].data?.main;
+		};
+
+		test('does not add an empty item to the first output when another output has data', async () => {
+			const nodeType = modifyNode(multiOutputNode)
+				.return([[], [{ json: { routed: true } }]])
+				.done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toEqual([]);
+			expect(main?.[1]).toMatchObject([{ json: { routed: true } }]);
+		});
+
+		test('adds an empty item to the first output when every output is empty', async () => {
+			const nodeType = modifyNode(multiOutputNode).return([[], []]).done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toMatchObject([{ json: {} }]);
+			expect(main?.[1]).toEqual([]);
+		});
+
+		test('adds an empty item when a single-output node returns no data', async () => {
+			const nodeType = modifyNode(passThroughNode).return([[]]).done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toMatchObject([{ json: {} }]);
+		});
 	});
 
 	test('calls the right hooks in the right order', async () => {
@@ -1142,14 +1205,8 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions, response?: EngineResponse) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData =
-							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
-								.connectionInputData || [];
-						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
-						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$('DataNode').item as INodeExecutionData;
 						const fieldValue = dataNodeItem?.json?.field;
 						const nestedValue = (dataNodeItem?.json?.nested as IDataObject)?.value;
 
@@ -1286,14 +1343,8 @@ describe('processRunExecutionData', () => {
 				.return(function (this: IExecuteFunctions) {
 					try {
 						const proxy = this.getWorkflowDataProxy(0);
-						const connectionInputData =
-							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
-								.connectionInputData ?? [];
-						const firstItem = connectionInputData[0];
-						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
-						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const dataNodeItem = proxy.$('DataNode').item as INodeExecutionData;
 						const email = dataNodeItem?.json?.email;
 
 						return [

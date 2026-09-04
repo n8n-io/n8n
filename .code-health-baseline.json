@@ -339,6 +339,12 @@
 				"line": 56,
 				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "6a9e12780943"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b6a694c807bc"
 			}
 		],
 		"packages/frontend/editor-ui/package.json": [
@@ -489,6 +495,12 @@
 				"line": 38,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "67f9d81d9528"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 38,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6c742564e868"
 			}
 		],
 		"packages/@n8n/cli/package.json": [
@@ -497,6 +509,12 @@
 				"line": 75,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "733c3960022e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "78dcf13f2250"
 			}
 		],
 		"packages/@n8n/computer-use/package.json": [

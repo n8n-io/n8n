@@ -10,7 +10,6 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	VIEWS,
 	DUPLICATE_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -204,24 +203,10 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 
 	if (canEdit) {
 		importExport.push({
-			id: WORKFLOW_MENU_ACTIONS.IMPORT,
-			label: locale.baseText('menuActions.import'),
+			id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+			label: locale.baseText('menuActions.importJson'),
 			icon: { type: 'icon', value: 'upload' },
 			disabled: onExecutionsTab.value,
-			children: [
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-					label: locale.baseText('menuActions.importFromUrl'),
-					icon: { type: 'icon', value: 'link' },
-					disabled: onExecutionsTab.value,
-				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-					label: locale.baseText('menuActions.importFromFile'),
-					icon: { type: 'icon', value: 'file-input' },
-					disabled: onExecutionsTab.value,
-				},
-			],
 		});
 	}
 
@@ -388,10 +373,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
