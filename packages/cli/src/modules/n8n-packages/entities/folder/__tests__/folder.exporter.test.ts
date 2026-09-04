@@ -43,7 +43,7 @@ function makeExporter(found: Folder[]) {
 // WorkflowExporter, aggregation of its output, and abort propagation.
 describe('FolderExporter', () => {
 	it('honors basePrefix so the tree composes under a project namespace', async () => {
-		const { exporter } = makeExporter([makeFolder()]);
+		const { exporter, workflowFinder } = makeExporter([makeFolder()]);
 
 		const { entries } = await exporter.export({
 			user,
@@ -51,10 +51,31 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 			basePrefix: 'projects/team-ligo',
 		});
 
 		expect(entries[0].target).toMatch(/^projects\/team-ligo\/folders\//);
+		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld-1'], {
+			includeArchived: false,
+		});
+	});
+
+	it('includes archived workflows when requested', async () => {
+		const { exporter, workflowFinder } = makeExporter([makeFolder()]);
+
+		await exporter.export({
+			user,
+			folderIds: ['fld-1'],
+			writer: new CapturingWriter(),
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: true,
+		});
+
+		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld-1'], {
+			includeArchived: true,
+		});
 	});
 
 	it('delegates contained workflows to WorkflowExporter and aggregates its output', async () => {
@@ -84,6 +105,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
+			includeArchivedWorkflows: false,
 		});
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
@@ -121,6 +143,7 @@ describe('FolderExporter', () => {
 				writer: new CapturingWriter(),
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
+				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow(/not found or not accessible/);
 	});
