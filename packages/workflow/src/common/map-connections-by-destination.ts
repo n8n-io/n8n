@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-for-in-array */
 
 import type { IConnections, NodeConnectionType } from '../interfaces';
+import { UserError } from '../errors';
 
 // Connection indexes address node outputs, which are single digits in
 // practice. Cap the padding so a corrupt or hostile stored workflow cannot
@@ -37,7 +38,7 @@ export function mapConnectionsByDestination(connections: IConnections) {
 
 					maxIndex = returnConnection[connectionInfo.node][connectionInfo.type].length - 1;
 					if (connectionInfo.index > MAX_CONNECTION_INDEX) {
-						throw new Error(
+						throw new UserError(
 							`Connection index ${connectionInfo.index} exceeds the maximum of ${MAX_CONNECTION_INDEX}`,
 						);
 					}

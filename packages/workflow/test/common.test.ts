@@ -1,6 +1,7 @@
 import type { IConnections, IConnection } from '../src/interfaces';
 import { NodeConnectionTypes } from '../src/interfaces';
 import { mapConnectionsByDestination } from '../src/common';
+import { UserError } from '../src/errors';
 
 describe('getConnectionsByDestination', () => {
 	it('should return empty object when there are no connections', () => {
@@ -121,6 +122,7 @@ describe('connection index cap (#37783)', () => {
 			},
 		};
 
+		expect(() => mapConnectionsByDestination(connections)).toThrow(UserError);
 		expect(() => mapConnectionsByDestination(connections)).toThrow(/exceeds the maximum/);
 	});
 
