@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DeploymentKey } from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
@@ -127,5 +128,32 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
 			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
 		});
+	}
+
+	// Deployment keys must never be deleted: data encrypted with a key becomes
+	// unreadable without it. Keys are deactivated instead (`markInactive` /
+	// `promoteToActive`). These parameterless shadows close the inherited
+	// TypeORM delete surface twice over — calls with arguments no longer
+	// type-check, and any call throws at runtime. Call sites are additionally
+	// rejected in CI by `n8n-local-rules/no-deployment-key-delete`.
+
+	async delete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async remove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softDelete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softRemove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async clear(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
 	}
 }
