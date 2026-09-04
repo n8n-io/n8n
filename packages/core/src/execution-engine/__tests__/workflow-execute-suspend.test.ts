@@ -25,7 +25,8 @@ describe('WorkflowExecute suspension', () => {
 	/** Runs the workflow, requesting suspension right after `suspendAfterNode` executes. */
 	const runAndSuspend = async (suspendAfterNode: string) => {
 		const workflow = createWorkflow();
-		const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+		const workflowExecuteAfter = createDeferredPromise<IRun>();
+		const additionalData = Helpers.WorkflowExecuteAdditionalData(workflowExecuteAfter);
 		const setExecutionStatus = vi.fn();
 		additionalData.setExecutionStatus = setExecutionStatus;
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode);
@@ -35,14 +36,19 @@ describe('WorkflowExecute suspension', () => {
 		});
 
 		const run = await workflowExecute.run({ workflow, startNode: trigger });
-		return { run, workflow, setExecutionStatus };
+		return { run, workflow, setExecutionStatus, workflowExecuteAfter };
 	};
 
 	test('suspend mid-run parks the execution as waiting with an intact stack', async () => {
-		const { run, setExecutionStatus } = await runAndSuspend('node1');
+		const { run, setExecutionStatus, workflowExecuteAfter } = await runAndSuspend('node1');
 
 		expect(run.status).toBe('waiting');
 		expect(setExecutionStatus).toHaveBeenCalledWith('waiting');
+
+		// The save hooks persist off this event: it must fire with the waiting run.
+		const hookRun = await workflowExecuteAfter.promise;
+		expect(hookRun.status).toBe('waiting');
+		expect(hookRun.waitTill).toBeInstanceOf(Date);
 		expect(run.waitTill).toBeInstanceOf(Date);
 		expect(run.finished).not.toBe(true);
 		expect(run.data.resumeInstruction).toBe('run-stack-head');
