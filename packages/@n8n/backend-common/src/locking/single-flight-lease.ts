@@ -21,10 +21,11 @@ export class SingleFlightLease<T> {
 		fn: (signal: AbortSignal) => Promise<T>,
 		options: SingleFlightLeaseOptions,
 	): Promise<T> {
-		const inFlight = this.inFlight.get(key);
+		const { lockService, namespace, waitTimeoutMs, leaseTtlMs, onLeaseTimeout } = options;
+		const inFlightKey = `${namespace}:${key}`;
+		const inFlight = this.inFlight.get(inFlightKey);
 		if (inFlight) return await inFlight;
 
-		const { lockService, namespace, waitTimeoutMs, leaseTtlMs, onLeaseTimeout } = options;
 		const promise = lockService
 			.withLease(namespace, key, fn, { waitTimeoutMs, leaseTtlMs })
 			.catch((error: unknown) => {
@@ -32,9 +33,9 @@ export class SingleFlightLease<T> {
 				onLeaseTimeout?.(error);
 				throw error;
 			})
-			.finally(() => this.inFlight.delete(key));
+			.finally(() => this.inFlight.delete(inFlightKey));
 
-		this.inFlight.set(key, promise);
+		this.inFlight.set(inFlightKey, promise);
 		return await promise;
 	}
 }

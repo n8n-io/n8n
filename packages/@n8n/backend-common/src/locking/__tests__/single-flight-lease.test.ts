@@ -34,6 +34,34 @@ describe('SingleFlightLease', () => {
 		await expect(Promise.all([first, second])).resolves.toEqual(['first', 'second']);
 	});
 
+	it('does not coalesce the same key across namespaces', async () => {
+		const lockService = new LockService(new InProcessLockService());
+		const coordinator = new SingleFlightLease<string>();
+		let finishFirst: (() => void) | undefined;
+		const firstOperation = vi.fn(
+			async () =>
+				await new Promise<string>((resolve) => {
+					finishFirst = () => resolve('first');
+				}),
+		);
+		const secondOperation = vi.fn().mockResolvedValue('second');
+
+		const first = coordinator.run('shared-key', firstOperation, {
+			lockService,
+			namespace: LockNamespace.CREDENTIALS,
+		});
+		const second = coordinator.run('shared-key', secondOperation, {
+			lockService,
+			namespace: LockNamespace.KNOWN_LOCKS,
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+		finishFirst?.();
+
+		await expect(Promise.all([first, second])).resolves.toEqual(['first', 'second']);
+		expect(firstOperation).toHaveBeenCalledTimes(1);
+		expect(secondOperation).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not run work when lease acquisition times out', async () => {
 		const lockService = mock<ILockService>();
 		const timeout = new LockAcquisitionTimeoutError('Timed out waiting for lock');
