@@ -41,6 +41,8 @@ import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-tri
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { EngineV2ActiveTriggerEmit } from '@/workflows/triggers/engine-v2-active-triggers';
+import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -82,6 +84,7 @@ export class TriggerExecutionContextFactory {
 		private readonly nodeTypes: NodeTypes,
 		private readonly pollCursorService: PollCursorService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -104,6 +107,29 @@ export class TriggerExecutionContextFactory {
 					: await this.activeExecutions.getPostExecutePromise(executionId),
 			)
 			.then(donePromise.resolve, (error: unknown) => donePromise.reject(ensureError(error)));
+	}
+
+	/**
+	 * Refuses an emit the engine 2.0 path cannot carry, settling the response
+	 * promise on the way out. `runWorkflow` never receives that promise when the
+	 * emit is refused, and an unsettled deferred promise leaves the node waiting.
+	 * The done promise needs no help here: {@link settleDonePromise} rejects it
+	 * from the returned promise chain.
+	 */
+	private async assertEngineV2Supported(
+		data: INodeExecutionData[][],
+		emit: EngineV2ActiveTriggerEmit,
+	): Promise<void> {
+		try {
+			// Files first, because this check deletes what it refuses: a refusal for
+			// any other reason would otherwise leave the stored files behind, owned by
+			// no execution.
+			await this.engineV2ActiveTriggers.assertPayloadSupported(data);
+			this.engineV2ActiveTriggers.assertSupported(emit);
+		} catch (error) {
+			emit.responsePromise?.reject(ensureError(error));
+			throw error;
+		}
 	}
 
 	/**
@@ -179,18 +205,23 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
-					.then(
-						async (freshWorkflowData) =>
-							await this.workflowExecutionService.runWorkflow(
-								freshWorkflowData,
-								node,
-								data,
-								additionalData,
-								mode,
-								responsePromise,
-								deduplicationKey,
-							),
-					)
+					.then(async (freshWorkflowData) => {
+						// Checked against the fresh data, so this agrees with the dispatcher,
+						// which decides on the same copy.
+						if (this.engineV2ActiveTriggers.handles(freshWorkflowData, mode)) {
+							await this.assertEngineV2Supported(data, { responsePromise, donePromise });
+						}
+
+						return await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+							deduplicationKey,
+						);
+					})
 					.catch((error: unknown) => {
 						if (error instanceof DuplicateExecutionError) {
 							const context = {
@@ -336,6 +367,18 @@ export class TriggerExecutionContextFactory {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
+
+				// Ahead of the cursor take, so a refused poll leaves its window to be
+				// retried. Reads the registration's copy of the workflow rather than the
+				// fresh one for the same reason: the fresh read comes too late.
+				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
+					// Detached because `__emit` is synchronous. The poll may have stored
+					// attachments, and no execution will ever own them.
+					void this.engineV2ActiveTriggers
+						.discardFiles(data)
+						.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
+					this.engineV2ActiveTriggers.assertPollSupported();
+				}
 
 				const cursor = takeStagedCursor();
 
