@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-instance-registry",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
