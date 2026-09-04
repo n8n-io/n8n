@@ -21,6 +21,7 @@ import type {
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
 	IRunExecutionData,
+	IConnections,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -1956,27 +1957,46 @@ describe('WorkflowExecuteAdditionalData', () => {
 		];
 		const expectedItemsFromTheFinalRunOnly = [[{ json: { itemId: 1 } }, { json: { itemId: 2 } }]];
 
+		function workflowWithLastNode(extraNodes: INode[] = []) {
+			return {
+				nodes: [...extraNodes, mock<INode>({ name: LAST_NODE_EXECUTED, disabled: false })],
+				connections: {} as IConnections,
+			};
+		}
+
 		it('merges every run when the trigger is v1.2+', () => {
-			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], false);
+			const output = buildSubWorkflowOutput(
+				buildRun({ mode: 'trigger' }),
+				workflowWithLastNode([trigger(1.2)]),
+				false,
+			);
 			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
 		});
 
 		it('falls back to `lastRunOnly` for pre-1.2 triggers by default', () => {
-			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.1)], false);
+			const output = buildSubWorkflowOutput(
+				buildRun({ mode: 'trigger' }),
+				workflowWithLastNode([trigger(1.1)]),
+				false,
+			);
 			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
 		});
 
 		it('honours a pre-1.2 trigger that opted in via `returnOutput`', () => {
 			const output = buildSubWorkflowOutput(
 				buildRun({ mode: 'trigger' }),
-				[trigger(1.1, 'allRuns')],
+				workflowWithLastNode([trigger(1.1, 'allRuns')]),
 				false,
 			);
 			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
 		});
 
 		it('caller can force `lastRunOnly` even when the trigger declares `allRuns`', () => {
-			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], true);
+			const output = buildSubWorkflowOutput(
+				buildRun({ mode: 'trigger' }),
+				workflowWithLastNode([trigger(1.2)]),
+				true,
+			);
 			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
 		});
 
@@ -1987,7 +2007,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						mode: 'trigger',
 						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
 					}),
-					[trigger(1.2)],
+					workflowWithLastNode([trigger(1.2)]),
 					false,
 				);
 				expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
@@ -1999,7 +2019,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						mode: 'manual',
 						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
 					}),
-					[trigger(1.2)],
+					workflowWithLastNode([trigger(1.2)]),
 					false,
 				);
 
@@ -2012,7 +2032,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(
 				buildSubWorkflowOutput(
 					buildRun({ mode: 'trigger', runData: {}, lastNodeExecuted: undefined }),
-					[trigger(1.2)],
+					workflowWithLastNode([trigger(1.2)]),
 					false,
 				),
 			).toEqual([null]);
