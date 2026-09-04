@@ -59,6 +59,7 @@ import type {
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { parseDbTime } from '../utils/dialect-time';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -753,7 +754,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// Postgres returns COUNT as a bigint string.
 			total: Number(row.total),
 			failed: Number(row.failed),
-			lastStoppedAt: new Date(row.lastStoppedAt),
+			lastStoppedAt: parseDbTime(row.lastStoppedAt),
 			lastFailedExecutionId:
 				row.lastFailedExecutionId === null ? null : String(row.lastFailedExecutionId),
 		}));

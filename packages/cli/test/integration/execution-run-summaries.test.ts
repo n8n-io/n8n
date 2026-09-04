@@ -49,6 +49,26 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 		});
 	});
 
+	/**
+	 * sqlite stores this as UTC wall-clock text with no zone, which `new Date` would read as local
+	 * time — shifting every run by the box's offset and making a stale failure look current. Only
+	 * fails outside UTC, so run it with `TZ=America/New_York` to see it bite.
+	 */
+	it('reports the instant the run stopped, not one shifted by the local zone', async () => {
+		const workflow = await createWorkflow({}, project);
+		const stoppedAt = new Date(Date.now() - 3 * 60 * 60_000);
+		await createExecution({ status: 'success', stoppedAt }, workflow);
+
+		const [summary] = await repository.summariseRunsForProjects({
+			projectIds: [project.id],
+			stoppedAfter: new Date(Date.now() - 24 * 60 * 60_000),
+			workflowLimit: 10,
+		});
+
+		// Second precision: the column does not keep milliseconds on every driver.
+		expect(Math.abs(summary.lastStoppedAt.getTime() - stoppedAt.getTime())).toBeLessThan(1_000);
+	});
+
 	it('names the failed run rather than the newest one, so a recovered schedule still reports it', async () => {
 		const workflow = await createWorkflow({}, project);
 		const failed = await createExecution(

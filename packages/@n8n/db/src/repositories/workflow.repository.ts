@@ -114,9 +114,10 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const rows = await base()
 			.select('workflow.id', 'id')
 			.addSelect('MAX(workflow.name)', 'name')
-			// Aggregated as an integer rather than as the boolean column: Postgres has no
-			// `max(boolean)`, so aggregating the column directly fails there while passing on sqlite.
-			.addSelect('MAX(CASE WHEN workflow.active THEN 1 ELSE 0 END)', 'active')
+			// Published state is `activeVersionId`, not the deprecated `active` column, so this
+			// agrees with every other reader here. Aggregated as an integer because Postgres has no
+			// `max(boolean)`, which would fail there while passing on sqlite.
+			.addSelect('MAX(CASE WHEN workflow.activeVersionId IS NOT NULL THEN 1 ELSE 0 END)', 'active')
 			.groupBy('workflow.id')
 			.orderBy('MAX(workflow.updatedAt)', 'DESC')
 			.limit(limit)

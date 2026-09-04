@@ -1,4 +1,5 @@
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	shareWorkflowWithProjects,
@@ -34,12 +35,14 @@ describe('WorkflowRepository.findRecentForProjects', () => {
 	});
 
 	/**
-	 * Read back as a boolean whichever driver is underneath. Aggregating the column itself would
-	 * fail on Postgres, which has no `max(boolean)`, while passing on sqlite.
+	 * Published means `activeVersionId`, not the deprecated `active` column — a workflow can carry
+	 * `active: true` with no published version. Read back as a boolean whichever driver is
+	 * underneath: aggregating the column itself would fail on Postgres, which has no
+	 * `max(boolean)`, while passing on sqlite.
 	 */
 	it('reports whether a workflow is published', async () => {
-		await createWorkflow({ name: 'Live', active: true }, project);
-		await createWorkflow({ name: 'Draft', active: false }, project);
+		await createActiveWorkflow({ name: 'Live' }, project);
+		await createWorkflow({ name: 'Draft' }, project);
 
 		const inventory = await repository.findRecentForProjects([project.id], 10);
 
@@ -49,6 +52,16 @@ describe('WorkflowRepository.findRecentForProjects', () => {
 				expect.objectContaining({ name: 'Draft', active: false }),
 			]),
 		);
+	});
+
+	it('does not call a workflow published when only the deprecated flag is set', async () => {
+		await createWorkflow({ name: 'Flagged but unpublished', active: true }, project);
+
+		const inventory = await repository.findRecentForProjects([project.id], 10);
+
+		expect(inventory.workflows).toEqual([
+			expect.objectContaining({ name: 'Flagged but unpublished', active: false }),
+		]);
 	});
 
 	it('counts everything in scope while naming only the page asked for', async () => {
