@@ -1,3 +1,12 @@
+## [2.38.4](https://github.com/n8n-io/n8n/compare/n8n@2.38.3...n8n@2.38.4) (2026-09-04)
+
+
+### Bug Fixes
+
+* **core:** Cap task runner task timeouts to the graceful shutdown window ([#37765](https://github.com/n8n-io/n8n/issues/37765)) ([6e12447](https://github.com/n8n-io/n8n/commit/6e12447f9b747da8f41cf7246e57ca0fa7ed5f16))
+* **core:** Prevent Anthropic agent threads from breaking permanently and keep run errors visible ([#37722](https://github.com/n8n-io/n8n/issues/37722)) ([1007dff](https://github.com/n8n-io/n8n/commit/1007dff4befe77fc97aa438b934db0a3e948a360))
+
+
 ## [2.38.3](https://github.com/n8n-io/n8n/compare/n8n@2.38.2...n8n@2.38.3) (2026-09-03)
 
 
