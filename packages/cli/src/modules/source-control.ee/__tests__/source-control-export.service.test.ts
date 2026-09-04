@@ -416,6 +416,7 @@ describe('SourceControlExportService', () => {
 			});
 			tagRepository.find.mockResolvedValue([mockTag]);
 			workflowTagMappingRepository.find.mockResolvedValue([mockWorkflow]);
+			workflowRepository.find.mockResolvedValue([]);
 			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
@@ -459,6 +460,44 @@ describe('SourceControlExportService', () => {
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(1);
 			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
+		});
+
+		it('should load only workflow ids and replace mappings of accessible workflows', async () => {
+			// Arrange
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			const accessibleMapping = { tagId: 'tag1', workflowId: 'workflow1' } as WorkflowTagMapping;
+			const inaccessibleMapping = { tagId: 'tag2', workflowId: 'workflow2' };
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([accessibleMapping]);
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: 'workflow1' }),
+			]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [],
+					mappings: [{ tagId: 'stale', workflowId: 'workflow1' }, inaccessibleMapping],
+				}),
+			);
+
+			// Act
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			// Assert
+			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ select: { id: true } }),
+			);
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value).mappings).toEqual([
+				inaccessibleMapping,
+				accessibleMapping,
+			]);
 		});
 	});
 
@@ -681,6 +720,67 @@ describe('SourceControlExportService', () => {
 			const exported = JSON.parse(dataCaptor.value);
 			expect('description' in exported).toBe(true);
 			expect(exported.description).toBeNull();
+		});
+
+		it('should load and write workflows in batches', async () => {
+			// Arrange
+			const workflowIds = Array.from({ length: 45 }, (_, index) => `wf-${index}`);
+			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
+				workflowIds.map(
+					(workflowId) =>
+						mock<SharedWorkflow>({
+							workflowId,
+							project: mock({ type: 'team', id: 'team-1', name: 'Team 1' }),
+							workflow: mock(),
+						} as never) as SharedWorkflow,
+				),
+			);
+			const toWorkflowEntity = (id: string) =>
+				Object.assign(new WorkflowEntity(), {
+					id,
+					name: `Workflow ${id}`,
+					nodes: [],
+					connections: {},
+					settings: {},
+					triggerCount: 0,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups: [],
+				});
+			workflowRepository.find
+				.mockResolvedValueOnce(workflowIds.slice(0, 20).map(toWorkflowEntity))
+				.mockResolvedValueOnce(workflowIds.slice(20, 40).map(toWorkflowEntity))
+				.mockResolvedValueOnce(workflowIds.slice(40).map(toWorkflowEntity));
+
+			// Act
+			const result = await service.exportWorkflowsToWorkFolder(
+				workflowIds.map((id) => mock<SourceControlledFile>({ id })),
+			);
+
+			// Assert
+			expect(workflowRepository.find).toHaveBeenCalledTimes(3);
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(1, {
+				where: { id: In(workflowIds.slice(0, 20)) },
+				relations: ['parentFolder'],
+			});
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(2, {
+				where: { id: In(workflowIds.slice(20, 40)) },
+				relations: ['parentFolder'],
+			});
+			expect(workflowRepository.find).toHaveBeenNthCalledWith(3, {
+				where: { id: In(workflowIds.slice(40)) },
+				relations: ['parentFolder'],
+			});
+
+			const findOrder = workflowRepository.find.mock.invocationCallOrder;
+			const writeOrder = fsWriteFile.mock.invocationCallOrder;
+			expect(writeOrder).toHaveLength(45);
+			expect(writeOrder[19]).toBeLessThan(findOrder[1]);
+			expect(writeOrder[39]).toBeLessThan(findOrder[2]);
+
+			expect(result.count).toBe(45);
+			expect(result.files.map((file) => file.id)).toEqual(workflowIds);
 		});
 
 		it('should throw an error if workflow has no owner', async () => {

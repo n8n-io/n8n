@@ -124,30 +124,27 @@ export class SourceControlExportService {
 		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, RemoteResourceOwner>,
 	) {
-		const workflowChunks = chunk(workflowsToBeExported, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE);
-		for (const workflowChunk of workflowChunks) {
-			await Promise.all(
-				workflowChunk.map(async (workflow) => {
-					const fileName = this.getWorkflowPath(workflow.id);
-					const sanitizedWorkflow: ExportableWorkflow = {
-						id: workflow.id,
-						name: workflow.name,
-						description: workflow.description ?? null,
-						nodes: workflow.nodes,
-						connections: workflow.connections,
-						settings: workflow.settings,
-						triggerCount: workflow.triggerCount,
-						versionId: workflow.versionId,
-						owner: owners[workflow.id],
-						parentFolderId: workflow.parentFolder?.id ?? null,
-						isArchived: workflow.isArchived,
-						nodeGroups: workflow.nodeGroups ?? [],
-					};
-					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
-					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
-				}),
-			);
-		}
+		await Promise.all(
+			workflowsToBeExported.map(async (workflow) => {
+				const fileName = this.getWorkflowPath(workflow.id);
+				const sanitizedWorkflow: ExportableWorkflow = {
+					id: workflow.id,
+					name: workflow.name,
+					description: workflow.description ?? null,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					settings: workflow.settings,
+					triggerCount: workflow.triggerCount,
+					versionId: workflow.versionId,
+					owner: owners[workflow.id],
+					parentFolderId: workflow.parentFolder?.id ?? null,
+					isArchived: workflow.isArchived,
+					nodeGroups: workflow.nodeGroups ?? [],
+				};
+				this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
+				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+			}),
+		);
 	}
 
 	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
@@ -155,10 +152,6 @@ export class SourceControlExportService {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
 			const sharedWorkflows = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-			const workflows = await this.workflowRepository.find({
-				where: { id: In(workflowIds) },
-				relations: ['parentFolder'],
-			});
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, RemoteResourceOwner> = {};
@@ -199,17 +192,25 @@ export class SourceControlExportService {
 				}
 			});
 
-			// write the workflows to the export folder as json files
-			await this.writeExportableWorkflowsToExportFolder(workflows, owners);
+			const files: ExportResult['files'] = [];
+			for (const workflowIdChunk of chunk(workflowIds, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE)) {
+				const workflows = await this.workflowRepository.find({
+					where: { id: In(workflowIdChunk) },
+					relations: ['parentFolder'],
+				});
+				await this.writeExportableWorkflowsToExportFolder(workflows, owners);
+				files.push(
+					...workflows.map((workflow) => ({
+						id: workflow.id,
+						name: this.getWorkflowPath(workflow.name),
+					})),
+				);
+			}
 
-			// await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,
-				files: workflows.map((e) => ({
-					id: e?.id,
-					name: this.getWorkflowPath(e?.name),
-				})),
+				files,
 			};
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw error;
@@ -477,18 +478,18 @@ export class SourceControlExportService {
 			});
 
 			const allowedWorkflows = await this.workflowRepository.find({
+				select: { id: true },
 				where:
 					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 			});
+			const allowedWorkflowIds = new Set(allowedWorkflows.map((workflow) => workflow.id));
 
 			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
 
 			// keep all mappings that are not accessible by the current user
-			const mappingsToKeep = existingTagsAndMapping.mappings.filter((mapping) => {
-				return !allowedWorkflows.some(
-					(allowedWorkflow) => allowedWorkflow.id === mapping.workflowId,
-				);
-			});
+			const mappingsToKeep = existingTagsAndMapping.mappings.filter(
+				(mapping) => !allowedWorkflowIds.has(mapping.workflowId),
+			);
 
 			await fsWriteFile(
 				fileName,
