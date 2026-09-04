@@ -16,6 +16,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UnexpectedError, UserError } from './errors';
+import { resolveGroupConnections } from './group-execution-graph';
 import { WorkflowExpression } from './workflow-expression';
 import { getGlobalState } from './global-state';
 import type {
@@ -62,9 +63,19 @@ export class Workflow {
 
 	nodes: INodes = {};
 
+	/**
+	 * Connections with every group boundary resolved: this is the graph the
+	 * engine runs. A group node marks a boundary, so it never appears here.
+	 */
 	connectionsBySourceNode: IConnections = {};
 
 	connectionsByDestinationNode: IConnections = {};
+
+	/**
+	 * Connections as the user authored them, with group nodes still in place.
+	 * The canvas and the group validation read this; execution does not.
+	 */
+	authoredConnectionsBySourceNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
 
@@ -141,8 +152,20 @@ export class Workflow {
 		}
 	}
 
+	/**
+	 * Resolves every group boundary once, so the engine only ever sees runnable
+	 * nodes and ordinary main connections.
+	 *
+	 * The runner, webhooks, workers, sub-workflows, partial runs, and expression
+	 * resolution all read the indices below, so all of them inherit the boundary
+	 * behaviour without a change of their own. A workflow with no group node is
+	 * untouched.
+	 *
+	 * See `.agents/specs/group-as-first-class-node.md`.
+	 */
 	setConnections(connections: IConnections) {
-		this.connectionsBySourceNode = connections;
+		this.authoredConnectionsBySourceNode = connections;
+		this.connectionsBySourceNode = resolveGroupConnections(Object.values(this.nodes), connections);
 		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
