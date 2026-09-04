@@ -3770,9 +3770,12 @@ export function useCanvasOperations() {
 
 	/**
 	 * Adds an empty group: a group whose only member is a hidden placeholder
-	 * node. The node and the group land in one undo step, so undo removes both
-	 * together. Without a position the placeholder is placed like any other new
-	 * node (last click / last interacted node).
+	 * node. The node and the group land in one undo step, so undo removes both.
+	 *
+	 * Both store mutations run in the same synchronous block on purpose. The
+	 * canvas mapping turns them into a single VueFlow update; two updates a
+	 * microtask apart can be dropped by VueFlow, which pauses its props sync for
+	 * a tick after every store echo (see `watchNodesValue` in @vue-flow/core).
 	 */
 	async function addEmptyGroup({
 		position,
@@ -3781,28 +3784,33 @@ export function useCanvasOperations() {
 		const name = workflowDocumentStore.value.getNextDefaultName(
 			i18n.baseText('canvas.nodeGroup.defaultTitle'),
 		);
+		const type = GROUP_PLACEHOLDER_NODE_TYPE;
+		const nodeTypeDescription = requireNodeTypeDescription(type);
+		const typeVersion = resolveNodeVersion(nodeTypeDescription);
+		// The only await, before any mutation: everything below is one flush.
+		await loadNodeTypesProperties([{ type, typeVersion }]);
 
 		if (trackHistory) {
 			historyStore.startRecordingUndo();
 		}
-
-		const [placeholder] = await addNodes(
-			[{ type: GROUP_PLACEHOLDER_NODE_TYPE, name, id: window.crypto.randomUUID(), position }],
-			{ trackHistory, trackBulk: false, telemetry: true },
-		);
-
 		let group: IWorkflowGroup | undefined;
-		if (placeholder) {
+		try {
+			const placeholder = addNode(
+				{ type, typeVersion, name, id: window.crypto.randomUUID(), position },
+				nodeTypeDescription,
+				{ trackHistory, telemetry: true },
+			);
 			group = workflowDocumentStore.value.createGroup([placeholder.id], name);
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
 			}
+		} catch (error) {
+			toast.showError(error, i18n.baseText('error'));
+		} finally {
+			if (trackHistory) {
+				historyStore.stopRecordingUndo();
+			}
 		}
-
-		if (trackHistory) {
-			historyStore.stopRecordingUndo();
-		}
-
 		return group;
 	}
 
