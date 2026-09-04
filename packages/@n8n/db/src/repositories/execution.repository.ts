@@ -668,6 +668,97 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	/**
+	 * Runs per workflow in these projects, one row for each workflow, newest first.
+	 *
+	 * For telling an agent what has been running and what broke. Aggregated in the database on
+	 * purpose: the alternative is reading every row and folding in memory, and a busy instance has
+	 * far more runs than a reader would ever show. The grouping is also what makes runs fold per
+	 * workflow across the whole window rather than only where they happen to be adjacent — two
+	 * schedules on different intervals interleave.
+	 *
+	 * Scoped by project, because a run has no acting user: a schedule that failed at 03:00 belongs
+	 * to nobody, and is exactly the row worth surfacing. An empty scope therefore reads nothing
+	 * rather than falling back to something wider.
+	 *
+	 * Bounded by `stoppedAt`, which carries its own index, rather than by an execution id: a run
+	 * that started before a caller's last read and failed after it has a low id and a recent
+	 * outcome, and is the row a reader most needs.
+	 */
+	async summariseRunsForProjects(query: {
+		projectIds: string[];
+		/** Only runs that finished at or after this. Outcomes are only known once a run stops. */
+		stoppedAfter: Date;
+		/** How many workflows may contribute, so schedules cannot crowd out everything else. */
+		workflowLimit: number;
+	}): Promise<
+		Array<{
+			workflowId: string;
+			workflowName: string;
+			total: number;
+			failed: number;
+			lastStoppedAt: Date;
+			lastFailedExecutionId: string | null;
+		}>
+	> {
+		if (query.projectIds.length === 0) return [];
+		if (!Number.isInteger(query.workflowLimit) || query.workflowLimit <= 0) return [];
+
+		// `crashed` and `error` are the failure half of `CompletedExecutionStatus`. `canceled` is
+		// somebody stopping a run on purpose, which is not a fault to report.
+		const failureStatuses: ExecutionStatus[] = ['error', 'crashed'];
+
+		const rows = await this.createQueryBuilder('execution')
+			.select('execution.workflowId', 'workflowId')
+			.addSelect('MAX(workflow.name)', 'workflowName')
+			// A workflow can be shared into several projects, so the join multiplies rows when more
+			// than one of them is in scope. Every aggregate here counts distinct executions.
+			.addSelect('COUNT(DISTINCT execution.id)', 'total')
+			.addSelect(
+				'COUNT(DISTINCT CASE WHEN execution.status IN (:...failureStatuses) THEN execution.id END)',
+				'failed',
+			)
+			.addSelect('MAX(execution.stoppedAt)', 'lastStoppedAt')
+			// Named so a reader can hand the agent the failure itself rather than the newest run,
+			// which on a schedule that has since recovered is a success.
+			.addSelect(
+				'MAX(CASE WHEN execution.status IN (:...failureStatuses) THEN execution.id END)',
+				'lastFailedExecutionId',
+			)
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = execution.workflowId')
+			.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = workflow.id')
+			.where('sw.projectId IN (:...projectIds)', { projectIds: query.projectIds })
+			.andWhere('execution.deletedAt IS NULL')
+			// An evaluation suite is machine-paced and would bury everything a person did. The
+			// activity feed used to keep eval runs in their own category for the same reason.
+			.andWhere('execution.mode != :evaluationMode', { evaluationMode: 'evaluation' })
+			.andWhere('execution.stoppedAt IS NOT NULL')
+			.andWhere('execution.stoppedAt >= :stoppedAfter', { stoppedAfter: query.stoppedAfter })
+			.setParameter('failureStatuses', failureStatuses)
+			.groupBy('execution.workflowId')
+			.orderBy('MAX(execution.stoppedAt)', 'DESC')
+			.limit(query.workflowLimit)
+			.getRawMany<{
+				workflowId: string;
+				workflowName: string;
+				total: number | string;
+				failed: number | string;
+				lastStoppedAt: Date | string;
+				lastFailedExecutionId: number | string | null;
+			}>();
+
+		return rows.map((row) => ({
+			workflowId: row.workflowId,
+			workflowName: row.workflowName,
+			// Postgres returns COUNT as a bigint string.
+			total: Number(row.total),
+			failed: Number(row.failed),
+			lastStoppedAt: new Date(row.lastStoppedAt),
+			lastFailedExecutionId:
+				row.lastFailedExecutionId === null ? null : String(row.lastFailedExecutionId),
+		}));
+	}
+
 	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
