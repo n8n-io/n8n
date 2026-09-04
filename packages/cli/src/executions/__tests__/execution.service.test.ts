@@ -221,7 +221,11 @@ describe('ExecutionService', () => {
 			/**
 			 * Act
 			 */
-			const retry = executionService.retry(mock<User>(), 'original-123', []);
+			const retry = executionService.retry({
+				executionId: 'original-123',
+				sharedWorkflowIds: [],
+				user: mock<User>(),
+			});
 
 			/**
 			 * Assert
@@ -296,8 +300,11 @@ describe('ExecutionService', () => {
 			/**
 			 * Act
 			 */
-			await localExecutionService.retry(mockUser, 'original-123', ['workflow-1'], {
-				loadWorkflow: false,
+			await localExecutionService.retry({
+				executionId: 'original-123',
+				options: { loadWorkflow: false },
+				sharedWorkflowIds: ['workflow-1'],
+				user: mockUser,
 			});
 
 			/**
@@ -356,12 +363,12 @@ describe('ExecutionService', () => {
 			return { service, workflowRunner };
 		};
 
-		const retryArgs = (): Parameters<ExecutionService['retry']> => [
-			mock<User>({ id: 'user-1' }),
-			'original-123',
-			['workflow-1'],
-			{ loadWorkflow: false },
-		];
+		const retryArgs = (): Parameters<ExecutionService['retry']>[0] => ({
+			executionId: 'original-123',
+			options: { loadWorkflow: false },
+			sharedWorkflowIds: ['workflow-1'],
+			user: mock<User>({ id: 'user-1' }),
+		});
 
 		/**
 		 * Builds a crashed (status 'error') source execution to retry. The data is a real
@@ -399,7 +406,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: undefined }),
 			);
 
-			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
@@ -413,7 +420,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Missing Node', runData }),
 			);
 
-			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
@@ -428,7 +435,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Crash Node', runData }),
 			);
 
-			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Crash Node']).toHaveLength(0);
 		});
@@ -441,7 +448,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Last Node', runData }),
 			);
 
-			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Last Node']).toHaveLength(1);
 		});
@@ -454,7 +461,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Empty Node', runData }),
 			);
 
-			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Empty Node']).toHaveLength(0);
 		});

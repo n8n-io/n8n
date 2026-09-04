@@ -430,12 +430,12 @@ export class ExecutionsPublicController {
 		}
 
 		try {
-			const retriedExecution = await this.executionService.retry(
-				req.user,
+			const retriedExecution = await this.executionService.retry({
 				executionId,
-				sharedWorkflowsIds,
-				{ loadWorkflow: body.loadWorkflow },
-			);
+				options: { loadWorkflow: body.loadWorkflow },
+				sharedWorkflowIds: sharedWorkflowsIds,
+				user: req.user,
+			});
 
 			this.eventService.emit('user-retried-execution', {
 				userId: req.user.id,

@@ -433,12 +433,12 @@ describe('POST /executions/:id/retry', () => {
 			.send({ loadWorkflow: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(executionServiceSpy).toHaveBeenCalledWith(
-			expect.objectContaining({ id: user1.id }),
-			execution.id,
-			expect.arrayContaining([workflow.id]),
-			{ loadWorkflow: true },
-		);
+		expect(executionServiceSpy).toHaveBeenCalledWith({
+			executionId: execution.id,
+			options: { loadWorkflow: true },
+			sharedWorkflowIds: expect.arrayContaining([workflow.id]),
+			user: expect.objectContaining({ id: user1.id }),
+		});
 
 		executionServiceSpy.mockRestore();
 	});

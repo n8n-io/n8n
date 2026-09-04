@@ -257,12 +257,17 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retry(
-		user: User,
-		executionId: string,
-		sharedWorkflowIds: string[],
-		options: { loadWorkflow?: boolean; redactExecutionData?: boolean } = {},
-	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
+	async retry({
+		executionId,
+		options = {},
+		sharedWorkflowIds,
+		user,
+	}: {
+		executionId: string;
+		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+		sharedWorkflowIds: string[];
+		user: User;
+	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,

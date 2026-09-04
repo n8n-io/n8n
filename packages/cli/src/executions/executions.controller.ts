@@ -134,9 +134,14 @@ export class ExecutionsController {
 
 		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
 
-		return await this.executionService.retry(req.user, req.params.id, workflowIds, {
-			loadWorkflow: req.body.loadWorkflow,
-			redactExecutionData: redactQuery.success ? redactQuery.data.redactExecutionData : undefined,
+		return await this.executionService.retry({
+			executionId: req.params.id,
+			options: {
+				loadWorkflow: req.body.loadWorkflow,
+				redactExecutionData: redactQuery.success ? redactQuery.data.redactExecutionData : undefined,
+			},
+			sharedWorkflowIds: workflowIds,
+			user: req.user,
 		});
 	}
 
