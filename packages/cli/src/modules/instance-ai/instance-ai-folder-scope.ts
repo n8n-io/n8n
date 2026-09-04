@@ -58,7 +58,9 @@ export function resolveRequestedFolder(
 
 	const candidates = listCandidatePaths(foldersInScope);
 
-	if (requested.folderId) {
+	// Presence decides precedence, not truthiness: an explicit id, even an empty
+	// one, must not fall through to whatever the path would select.
+	if (requested.folderId !== undefined) {
 		const byId = foldersInScope.find((folder) => folder.id === requested.folderId);
 		return byId ? { folderId: byId.id } : { reason: 'not-found', candidates };
 	}

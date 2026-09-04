@@ -23,6 +23,15 @@ describe('resolveRequestedFolder', () => {
 		});
 	});
 
+	it('lets an explicit but empty folderId win over folderPath, as not-found', () => {
+		// Presence decides precedence, not truthiness: an invalid explicit id must not
+		// quietly select whatever the path resolves to.
+		expect(resolveRequestedFolder({ folderId: '', folderPath: 'Clients/Acme' }, scope)).toEqual({
+			reason: 'not-found',
+			candidates: expect.arrayContaining(['Clients/Acme']),
+		});
+	});
+
 	it('resolves a bare nested folder name', () => {
 		expect(resolveRequestedFolder({ folderPath: 'logsearch' }, scope)).toEqual({
 			folderId: 'logsearch',

@@ -182,6 +182,7 @@ import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
 	listCandidatePaths,
+	normalizeFolderPath,
 	resolveRequestedFolder,
 	type FolderInScope,
 } from './instance-ai-folder-scope';
@@ -761,6 +762,10 @@ export class InstanceAiAdapterService {
 		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
 	): InstanceAiWorkflowService {
 		const foldersOn = options.folderExploration === true;
+		// Attribution reveals folder ids, names and paths on every row, so it needs
+		// the licence as well as the flag. Resolution stays on the flag alone so an
+		// unlicensed instance still answers a folder request loudly (`unsupported`).
+		const foldersAttributed = foldersOn && this.license.isLicensed('feat:folders');
 		const { folderRepository, folderFinderService, projectService } = this;
 		const {
 			workflowService,
@@ -818,26 +823,65 @@ export class InstanceAiAdapterService {
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.
+		 *
+		 * Resolution must not depend on a capped scan: a project can hold more
+		 * folders than `FOLDER_SCAN_LIMIT`, and a valid folder past that page must
+		 * still resolve. So the request is looked up directly first — by id, or by
+		 * the last path segment's name, which every resolver stage requires to
+		 * match — and the capped scan only supplies the candidates listed on a miss.
 		 */
 		const readFoldersInScope = async (
 			projectIds: string[],
+			requested: { folderId?: string; folderPath?: string },
 		): Promise<FolderInScope[] | undefined> => {
 			if (!license.isLicensed('feat:folders') || !folderRepository) return undefined;
 
-			const folders: FolderInScope[] = [];
+			const wantedLeaf =
+				requested.folderPath !== undefined
+					? normalizeFolderPath(requested.folderPath).split('/').at(-1)
+					: undefined;
+
+			const byId = new Map<string, FolderInScope>();
+			const add = (row: { id: string; name: string }, projectId: string) => {
+				if (!byId.has(row.id))
+					byId.set(row.id, { id: row.id, name: row.name, path: row.name, projectId });
+			};
 			for (const projectId of projectIds) {
 				if (!(await userHasScopes(user, ['folder:list'], false, { projectId }))) continue;
-				const rows = await folderRepository.getMany({
-					filter: { projectId },
-					take: FOLDER_SCAN_LIMIT,
-				});
-				for (const row of rows) {
-					folders.push({ id: row.id, name: row.name, path: row.name, projectId });
+				if (requested.folderId !== undefined && requested.folderId !== '') {
+					try {
+						add(
+							await folderRepository.findOneOrFailFolderInProject(requested.folderId, projectId),
+							projectId,
+						);
+					} catch {
+						// Not in this project; the miss is reported after every project was tried.
+					}
+				} else if (wantedLeaf) {
+					// The repository matches names with LIKE; the resolver applies the exact rules.
+					const rows = await folderRepository.getMany({
+						filter: { projectId, name: wantedLeaf },
+						take: FOLDER_SCAN_LIMIT,
+					});
+					for (const row of rows) add(row, projectId);
 				}
 			}
 
+			// Nothing matched directly: scan (capped) so the miss can list real folders.
+			if (byId.size === 0) {
+				for (const projectId of projectIds) {
+					if (!(await userHasScopes(user, ['folder:list'], false, { projectId }))) continue;
+					const rows = await folderRepository.getMany({
+						filter: { projectId },
+						take: FOLDER_SCAN_LIMIT,
+					});
+					for (const row of rows) add(row, projectId);
+				}
+			}
+
+			const folders = [...byId.values()];
 			// Paths are needed for exact-path and suffix matching, and for the candidates
-			// listed on a miss. One CTE for all scanned folders.
+			// listed on a miss. One CTE for all folders in hand.
 			const paths = await readFolderPaths(
 				folderRepository,
 				folders.map((folder) => folder.id),
@@ -970,7 +1014,10 @@ export class InstanceAiAdapterService {
 					if (targetProjectId === undefined && projectIds.length > FOLDER_SCAN_PROJECT_LIMIT) {
 						return failFolderResolution({ requested, reason: 'scope-too-wide', candidates: [] });
 					}
-					const foldersInScope = await readFoldersInScope(projectIds);
+					const foldersInScope = await readFoldersInScope(projectIds, {
+						folderPath: options.folderPath,
+						folderId: options.folderId,
+					});
 					const resolved = resolveRequestedFolder(
 						{ folderPath: options.folderPath, folderId: options.folderId },
 						foldersInScope,
@@ -1042,7 +1089,7 @@ export class InstanceAiAdapterService {
 				// the mapping discarded it. Only the root-relative path needs a lookup,
 				// and only for the folders on this page.
 				const folderPaths =
-					foldersOn && folderRepository
+					foldersAttributed && folderRepository
 						? await readFolderPaths(
 								folderRepository,
 								rows.flatMap((wf) => readParentFolder(wf)?.id ?? []),
@@ -1063,7 +1110,7 @@ export class InstanceAiAdapterService {
 				return {
 					workflows: rows.map((wf): WorkflowSummary => {
 						const project = attributeProjects ? readHomeProject(wf) : undefined;
-						const parent = foldersOn ? readParentFolder(wf) : undefined;
+						const parent = foldersAttributed ? readParentFolder(wf) : undefined;
 						const folder: WorkflowFolderRef | undefined = parent
 							? {
 									id: parent.id,
@@ -1267,7 +1314,10 @@ export class InstanceAiAdapterService {
 				let placement: FolderInScope | undefined;
 				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
 					const requested = options.folderId ?? options.folderPath ?? '';
-					const foldersInScope = await readFoldersInScope([projectId]);
+					const foldersInScope = await readFoldersInScope([projectId], {
+						folderPath: options.folderPath,
+						folderId: options.folderId,
+					});
 					const resolved = resolveRequestedFolder(
 						{ folderPath: options.folderPath, folderId: options.folderId },
 						foldersInScope,

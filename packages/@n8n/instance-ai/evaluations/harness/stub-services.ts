@@ -83,13 +83,14 @@ export async function createStubServices(
 		async list(options) {
 			// A folder request gets a realistic miss so the transcript shows what the
 			// agent does with `folderResolution`, instead of an empty success.
-			if (options?.folderPath) {
+			const requestedFolder = options?.folderId ?? options?.folderPath;
+			if (requestedFolder !== undefined) {
 				return {
 					workflows: [],
 					total: 0,
 					totalInScope: 0,
 					folderResolution: {
-						requested: options.folderPath,
+						requested: requestedFolder,
 						reason: 'not-found',
 						candidates: ['Clients/Acme', 'Clients/Globex'],
 					},

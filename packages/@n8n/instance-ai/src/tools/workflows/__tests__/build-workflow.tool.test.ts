@@ -269,6 +269,22 @@ describe('createBuildWorkflowTool', () => {
 			expect(parsed.success && 'folderPath' in (parsed.data as object)).toBe(false);
 		});
 
+		it('advertises the folder output only while folder exploration is on', () => {
+			const outputShape = (tool: unknown) =>
+				(tool as { outputSchema: { shape: Record<string, unknown> } }).outputSchema.shape;
+
+			expect(outputShape(createBuildWorkflowTool(makeContext({}).context))).not.toHaveProperty(
+				'folder',
+			);
+			expect(
+				outputShape(
+					createBuildWorkflowTool(
+						makeContext({ overrides: { folderExplorationEnabled: true } }).context,
+					),
+				),
+			).toHaveProperty('folder');
+		});
+
 		it('advertises folderPath while folder exploration is on', () => {
 			const { context, filePath } = makeContext({
 				overrides: { folderExplorationEnabled: true },

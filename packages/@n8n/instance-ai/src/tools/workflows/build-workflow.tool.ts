@@ -479,6 +479,45 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 	};
 }
 
+const buildWorkflowOutputSchema = z.object({
+	success: z.boolean(),
+	filePath: z.string(),
+	sourceHash: z.string().optional(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	workItemId: z.string().optional(),
+	triggerNodes: z.array(triggerNodeOutputSchema).optional(),
+	verificationReadiness: verificationReadinessOutputSchema.optional(),
+	/** Effective intent after merging with the prior outcome for this work
+	 *  item — a repair rebuild that omits the input keeps the stored value. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
+	setupRequirement: setupRequirementOutputSchema.optional(),
+	postBuildFlow: postBuildFlowOutputSchema.optional(),
+	isSupportingWorkflow: z.boolean().optional(),
+	mockedNodeNames: z.array(z.string()).optional(),
+	mockedCredentialTypes: z.array(z.string()).optional(),
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
+	credentialResolutionNote: z.string().optional(),
+	referencedWorkflowIds: z.array(z.string()).optional(),
+	hasUnresolvedPlaceholders: z.boolean().optional(),
+	denied: z.boolean().optional(),
+	reason: z.string().optional(),
+	remediation: remediationMetadataSchema.optional(),
+	errors: z.array(z.string()).optional(),
+	warnings: z.array(z.string()).optional(),
+});
+
+/** The output mirrors the input gate: `folder` is advertised only while folder exploration is on. */
+function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
+	return context.folderExplorationEnabled === true
+		? buildWorkflowOutputSchema.extend({
+				/** Folder the workflow was created in, when a `folderPath` was given. */
+				folder: z.object({ id: z.string(), name: z.string(), path: z.string() }).optional(),
+			})
+		: buildWorkflowOutputSchema;
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -492,38 +531,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
-		.output(
-			z.object({
-				success: z.boolean(),
-				filePath: z.string(),
-				sourceHash: z.string().optional(),
-				workflowId: z.string().optional(),
-				workflowName: z.string().optional(),
-				workItemId: z.string().optional(),
-				/** Folder the workflow was created in, when a `folderPath` was given. */
-				folder: z.object({ id: z.string(), name: z.string(), path: z.string() }).optional(),
-				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
-				verificationReadiness: verificationReadinessOutputSchema.optional(),
-				/** Effective intent after merging with the prior outcome for this work
-				 *  item — a repair rebuild that omits the input keeps the stored value. */
-				executionIntent: z.enum(['one-off', 'reusable']).optional(),
-				setupRequirement: setupRequirementOutputSchema.optional(),
-				postBuildFlow: postBuildFlowOutputSchema.optional(),
-				isSupportingWorkflow: z.boolean().optional(),
-				mockedNodeNames: z.array(z.string()).optional(),
-				mockedCredentialTypes: z.array(z.string()).optional(),
-				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
-				credentialResolutionNote: z.string().optional(),
-				referencedWorkflowIds: z.array(z.string()).optional(),
-				hasUnresolvedPlaceholders: z.boolean().optional(),
-				denied: z.boolean().optional(),
-				reason: z.string().optional(),
-				remediation: remediationMetadataSchema.optional(),
-				errors: z.array(z.string()).optional(),
-				warnings: z.array(z.string()).optional(),
-			}),
-		)
+		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {

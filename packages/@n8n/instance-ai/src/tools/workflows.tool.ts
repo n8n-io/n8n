@@ -646,9 +646,9 @@ function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
 		case 'ambiguous':
 			return `Folder "${failure.requested}" matches more than one folder, so no rows were returned.${candidates}${guidance} Identical paths mean the same folder path exists in more than one project; pass \`projectId\` to pick one.`;
 		case 'unsupported':
-			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Tell the user and ask the user how to proceed.`;
+			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Tell the user and ask the user how to proceed.`;
 		case 'scope-too-wide':
-			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
 		default:
 			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
 	}

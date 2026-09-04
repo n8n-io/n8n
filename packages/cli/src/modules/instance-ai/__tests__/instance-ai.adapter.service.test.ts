@@ -2008,6 +2008,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	const mockFolderRepository = {
 		getFolderPathsToRoot: vi.fn().mockResolvedValue(new Map<string, string[]>()),
 		getMany: vi.fn().mockResolvedValue([]),
+		findOneOrFailFolderInProject: vi.fn().mockRejectedValue(new Error('not found')),
 	};
 	const mockFolderFinderService = {
 		findFolderFilterIdsWithoutAccessCheck: vi.fn().mockResolvedValue([]),
@@ -2405,7 +2406,7 @@ describe('createWorkflowAdapter', () => {
 
 		it('attributes each row to its folder with a root-relative path when on', async () => {
 			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
-				createWorkflowAdapterForTests({ folderExploration: true });
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
 			mockWorkflowService.getMany.mockResolvedValue({
 				workflows: [
 					{
@@ -2435,7 +2436,7 @@ describe('createWorkflowAdapter', () => {
 
 		it('chunks the path lookup and merges the chunks on a large page', async () => {
 			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
-				createWorkflowAdapterForTests({ folderExploration: true });
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
 			const rows = Array.from({ length: 1001 }, (_, index) => ({
 				...savedWorkflow,
 				id: `wf-${index}`,
@@ -2537,7 +2538,7 @@ describe('createWorkflowAdapter', () => {
 				});
 				// Nothing was written: an unplaced workflow at the root is the silent
 				// degradation this option exists to remove.
-				expect(mockWorkflowRepository.manager.transaction).not.toHaveBeenCalled();
+				expect(mockWorkflowRepository.runInTransaction).not.toHaveBeenCalled();
 				expect(mockWorkflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -2583,6 +2584,81 @@ describe('createWorkflowAdapter', () => {
 					{ source: 'n8n-ai' },
 				);
 			});
+		});
+
+		it('finds a folder beyond the candidate scan cap by querying its name', async () => {
+			const { adapter, mockFolderRepository, mockFolderFinderService, mockWorkflowService } =
+				withFolders();
+			// The capped scan returns other folders; only the name-targeted query knows "Deep".
+			mockFolderRepository.getMany.mockImplementation(
+				async (options: { filter?: { name?: string } }) =>
+					options.filter?.name !== undefined
+						? [
+								{
+									id: 'deep',
+									name: 'Deep',
+									parentFolderId: 'archive',
+									homeProject: { id: 'team-project-id' },
+								},
+							]
+						: folders,
+			);
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([...paths, ['deep', ['Archive', 'Deep']]]),
+			);
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['deep']);
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			const result = await adapter.list({ folderPath: 'Archive/Deep' });
+
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.getMany).toHaveBeenCalledWith(
+				expect.objectContaining({ filter: { projectId: 'team-project-id', name: 'deep' } }),
+			);
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'deep',
+				true,
+			);
+		});
+
+		it('resolves an explicit folderId with a targeted in-project lookup', async () => {
+			const { adapter, mockFolderRepository, mockFolderFinderService, mockWorkflowService } =
+				withFolders();
+			mockFolderRepository.getMany.mockResolvedValue([]);
+			mockFolderRepository.findOneOrFailFolderInProject.mockResolvedValue({
+				id: 'deep',
+				name: 'Deep',
+				parentFolderId: 'archive',
+			});
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([['deep', ['Archive', 'Deep']]]),
+			);
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['deep']);
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			const result = await adapter.list({ folderId: 'deep' });
+
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
+				'deep',
+				'team-project-id',
+			);
+		});
+
+		it('adds no folder attribution while the flag is on but folders are unlicensed', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: false });
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{ ...savedWorkflow, parentFolder: { id: 'f1', name: 'Triggers', parentFolderId: null } },
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list();
+
+			expect(result.workflows[0]).not.toHaveProperty('folder');
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
 		});
 
 		it('scopes the listing to the resolved folder and its subtree by default', async () => {
@@ -2665,9 +2741,10 @@ describe('createWorkflowAdapter', () => {
 
 			await adapter.list({ projectId: 'p2', folderPath: 'Clients' });
 
+			// The name-targeted lookup found it, so no candidate scan was needed.
 			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(1);
 			expect(mockFolderRepository.getMany).toHaveBeenCalledWith({
-				filter: { projectId: 'p2' },
+				filter: { projectId: 'p2', name: 'clients' },
 				take: 200,
 			});
 		});
@@ -2696,7 +2773,7 @@ describe('createWorkflowAdapter', () => {
 
 			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(1);
 			expect(mockFolderRepository.getMany).toHaveBeenCalledWith({
-				filter: { projectId: 'team-project-id' },
+				filter: { projectId: 'team-project-id', name: 'nope' },
 				take: 200,
 			});
 			expect(result.folderResolution?.reason).toBe('not-found');
