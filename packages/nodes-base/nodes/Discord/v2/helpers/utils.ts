@@ -143,6 +143,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Not a valid JSON', error);
 				}
+				return embedReturnData;
 			} else {
 				delete embed.inputMethod;
 
