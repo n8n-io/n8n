@@ -374,11 +374,12 @@ function onInstructionsInput(value: string) {
 		<div :class="$style.panels">
 			<div v-if="props.showModel" data-testid="agent-model-panel">
 				<div :class="$style.field">
-					<label :class="[$style.label, props.disabled && shared.disabled]">
+					<div :class="[$style.label, props.disabled && shared.disabled]">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText('agents.builder.agent.model.label') }}
 						</N8nText>
-					</label>
+						<N8nText step="sm" color="text-light">What model this agent uses</N8nText>
+					</div>
 					<AgentModelSelector
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
@@ -448,12 +449,14 @@ function onInstructionsInput(value: string) {
 				:class="$style.field"
 				data-testid="agent-instructions-panel"
 			>
-				<label :class="[$style.label, props.disabled && shared.disabled]">
+				<div :class="[$style.label, props.disabled && shared.disabled]">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">
 						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
 					</N8nText>
-				</label>
+					<N8nText step="sm" color="text-light"> What this agent should do </N8nText>
+				</div>
 				<N8nMarkdownEditor
+					id="editor"
 					:class="$style.instructionsDocument"
 					:model-value="instructions"
 					:disabled="props.disabled"
@@ -506,7 +509,10 @@ function onInstructionsInput(value: string) {
 }
 
 .label {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	user-select: none;
 }
 
 .defaultHint {
