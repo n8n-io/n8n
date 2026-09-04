@@ -1,5 +1,4 @@
 import type { Metadata } from '@grpc/grpc-js';
-import { exporterEndpointSchema, otlpProtocolSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -21,7 +20,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
-import { ATTR, OTEL_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
 import { N8N_VERSION } from '@/constants';
 
@@ -50,7 +49,6 @@ export class OtelService {
 
 	async init(): Promise<void> {
 		const settings = await this.otelSettingsService.loadSettings();
-		this.warnAboutInvalidEnvValues(settings);
 		await this.start(settings);
 	}
 
@@ -275,37 +273,6 @@ export class OtelService {
 			headers[trimmedKey] = rest.join('=').trim();
 		}
 		return headers;
-	}
-
-	/**
-	 * `@n8n/config` only prints to the console when an env var fails its schema, and
-	 * the field still reads as env-managed in the UI. Repeat it through the n8n logger.
-	 */
-	private warnAboutInvalidEnvValues(settings: OtelConfig): void {
-		const checks = [
-			{
-				envVar: OTEL_ENV_VARS.exporterProtocol,
-				parse: (value: string) => otlpProtocolSchema.safeParse(value),
-				valueInUse: settings.exporterProtocol,
-			},
-			{
-				envVar: OTEL_ENV_VARS.exporterEndpoint,
-				parse: (value: string) => exporterEndpointSchema.safeParse(value),
-				valueInUse: settings.exporterEndpoint,
-			},
-		];
-
-		for (const { envVar, parse, valueInUse } of checks) {
-			const rawValue = process.env[envVar];
-			if (rawValue === undefined) continue;
-
-			const result = parse(rawValue);
-			if (result.success) continue;
-
-			this.logger.warn(
-				`Ignoring the invalid value "${rawValue}" of ${envVar}. n8n uses "${valueInUse}" instead. ${result.error.issues[0].message}`,
-			);
-		}
 	}
 
 	private configureDiagnosticsLogger() {

@@ -670,41 +670,6 @@ describe('OtelService', () => {
 		});
 	});
 
-	describe('invalid env var values', () => {
-		afterEach(() => {
-			delete process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL;
-			delete process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT;
-		});
-
-		it('warns which env var is invalid and which value n8n uses instead', async () => {
-			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'http/json';
-			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'localhost:4318';
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
-			await service.init();
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining(
-					'Ignoring the invalid value "http/json" of N8N_OTEL_EXPORTER_OTLP_PROTOCOL. n8n uses "http/protobuf" instead.',
-				),
-			);
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining(
-					'Ignoring the invalid value "localhost:4318" of N8N_OTEL_EXPORTER_OTLP_ENDPOINT. n8n uses "http://localhost:4318" instead.',
-				),
-			);
-		});
-
-		it('stays quiet for a valid or an unset env var', async () => {
-			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
-			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
-
-			await service.init();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('parseHeaders', () => {
 		it('should parse a single header', () => {
 			expect(service.parseOtlpHeaders('key=value')).toEqual({ key: 'value' });
