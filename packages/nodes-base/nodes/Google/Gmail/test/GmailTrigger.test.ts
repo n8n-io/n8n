@@ -251,6 +251,7 @@ describe('GmailTrigger', () => {
 		expect(workflowStaticData.possibleDuplicates).toBeUndefined();
 		expect(workflowStaticData['Gmail Trigger']).toEqual({
 			lastTimeChecked: 2000000000,
+			noProgressTicks: 0,
 			possibleDuplicates: ['2'],
 			pendingMessageIds: [],
 		});
@@ -289,6 +290,7 @@ describe('GmailTrigger', () => {
 		expect(Object.hasOwn(workflowStaticData, 'toString')).toBe(true);
 		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
 			lastTimeChecked: 2000000000,
+			noProgressTicks: 0,
 			possibleDuplicates: ['1'],
 			pendingMessageIds: [],
 		});
@@ -1658,7 +1660,9 @@ describe('GmailTrigger', () => {
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				mode: 'manual',
-				node: { parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
