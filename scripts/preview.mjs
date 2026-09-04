@@ -57,6 +57,22 @@ function fail(message) {
 	process.exit(1);
 }
 
+// A token failure names an endpoint, not a fix, and two of these are not about
+// scopes at all. Map each to the thing that resolves it.
+function tokenErrorHint(message) {
+	const [org] = REPO.split('/');
+	if (message.includes('forbids access via a personal access token (classic)'))
+		return `${org} refuses classic tokens. Use a fine-grained one — see the CODESPACE_PREVIEW_TOKEN section of .github/WORKFLOWS.md.`;
+	if (message.includes('Resource not accessible by personal access token')) {
+		let missing = 'Codespaces (read and write)';
+		if (message.includes('/codespaces/machines')) missing = 'Codespaces metadata (read)';
+		else if (/\/(start|stop)\b/.test(message))
+			missing = 'Codespaces lifecycle admin (read and write)';
+		return `This fine-grained token is missing the ${missing} permission — see the CODESPACE_PREVIEW_TOKEN section of .github/WORKFLOWS.md.`;
+	}
+	return undefined;
+}
+
 function ghJson(args, retry = false) {
 	try {
 		return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }).trim());
@@ -72,6 +88,8 @@ function ghJson(args, retry = false) {
 			ghTty('auth', 'refresh', '-h', 'github.com', '-s', 'codespace');
 			return ghJson(args, true);
 		}
+		const hint = tokenErrorHint(error.message);
+		if (hint) fail(hint);
 		throw new Error(error.message);
 	}
 }

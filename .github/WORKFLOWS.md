@@ -260,24 +260,49 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
-The job needs `CODESPACE_PREVIEW_TOKEN`, a **classic** personal access token with
-the `repo` and `codespace` scopes, held in the `codespace-preview` environment.
-Three constraints drive that:
+#### The `CODESPACE_PREVIEW_TOKEN` secret
 
-- `GITHUB_TOKEN` has no `codespace` scope, and a GitHub App token cannot create a
-  codespace at all: the Codespaces API belongs to a user, not to an installation.
-- A fine-grained token does not work either. The create endpoints take a classic
-  token, which cannot be narrowed to one repository — so the token is broad by
-  construction and belongs on a service account, not on a person's account.
-- The environment is what keeps that broad token away from every other workflow:
-  only a job that names `codespace-preview` can read it. **The environment must
-  allow every branch.** A `pull_request` run has the ref `refs/pull/<n>/merge`,
-  which no deployment branch policy matches, so a branch rule would block every
-  preview. Add required reviewers only if a click for each preview is acceptable.
+The job needs `CODESPACE_PREVIEW_TOKEN`, a **fine-grained** personal access token,
+held in the `codespaces` environment. Set the resource owner to `n8n-io` and limit
+repository access to `n8n-io/n8n`. Grant these repository permissions:
+
+| Permission | Level | What it unlocks |
+|---|---|---|
+| Metadata | Read | Mandatory, selected for you |
+| Codespaces | Read and write | Create, list and delete a box |
+| Codespaces metadata | Read | `GET .../codespaces/machines`, which resolves the machine type |
+| Codespaces lifecycle admin | Read and write | Start a stopped box, which is what `gh codespace ssh` does |
+| Contents | Read | Read the repository |
+| Pull requests | Read | `gh pr view`, to resolve the head ref and SHA |
+
+`Codespaces metadata` is a **different permission** from `Codespaces`. Without it
+the run fails with `HTTP 403: Resource not accessible by personal access token` on
+the `machines` endpoint, after the org billing check has already printed a tick —
+so the failure looks unrelated to permissions.
+
+An organization owner may have to approve the token. It stays pending until then.
+
+No other credential can do this:
+
+- `GITHUB_TOKEN` has no Codespaces access.
+- A GitHub App **installation** token cannot create a codespace at all. The
+  Codespaces API belongs to a user, not to an installation.
+- A **classic** token is refused by org policy:
+  `` `n8n-io` forbids access via a personal access token (classic) ``. So no
+  combination of classic scopes works, whatever the API reference says about the
+  `codespace` scope.
+
+The environment keeps the token away from every other workflow: only a job that
+names `codespaces` can read it. **The environment must allow every branch.** A
+`pull_request` run has the ref `refs/pull/<n>/merge`, which no deployment branch
+policy matches, so a branch rule would block every preview. Add required
+reviewers only if a click for each preview is acceptable.
 
 The codespace belongs to whoever owns the token, and shows up in that account's
 codespace list. Billing still goes to the organization, because the repository is
-organization-owned and has a Codespaces budget.
+organization-owned and has a Codespaces budget. A service account is therefore
+better than a person's account for quota attribution, though the token is scoped
+to one repository either way.
 
 The job checks out the base branch, never the PR head, so a PR cannot supply the
 script that reads that token.
