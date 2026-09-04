@@ -36,6 +36,7 @@
   "devDependencies": {
     "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/frontend-test-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
