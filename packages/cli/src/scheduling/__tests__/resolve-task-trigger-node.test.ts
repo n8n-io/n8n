@@ -13,10 +13,15 @@ describe('resolveTaskTriggerNode', () => {
 
 	const task = mock<ClaimedTask>({ id: 'task-1', jobId: 7 });
 
-	const message = 'Trigger task points to a node that is missing or disabled';
+	const errorMessage = 'Trigger task points to a node that is missing or disabled';
 
 	test('returns the node the task points to', () => {
-		const node = resolveTaskTriggerNode(buildWorkflowData([triggerNode]), 'node-1', task, message);
+		const node = resolveTaskTriggerNode(
+			buildWorkflowData([triggerNode]),
+			'node-1',
+			task,
+			errorMessage,
+		);
 
 		expect(node).toBe(triggerNode);
 	});
@@ -27,13 +32,13 @@ describe('resolveTaskTriggerNode', () => {
 	])('throws the caller message with the task extras when the node is %s', (_case, nodes) => {
 		let caught: UnexpectedError | undefined;
 		try {
-			resolveTaskTriggerNode(buildWorkflowData(nodes), 'node-1', task, message);
+			resolveTaskTriggerNode(buildWorkflowData(nodes), 'node-1', task, errorMessage);
 		} catch (error) {
 			caught = error as UnexpectedError;
 		}
 
 		expect(caught).toBeInstanceOf(UnexpectedError);
-		expect(caught?.message).toBe(message);
+		expect(caught?.message).toBe(errorMessage);
 		expect(caught?.extra).toEqual({
 			taskId: 'task-1',
 			jobId: 7,
