@@ -3784,6 +3784,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      moment:
+        specifier: 2.30.1
+        version: 2.30.1
       n8n-core:
         specifier: workspace:*
         version: link:../../core

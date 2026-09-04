@@ -423,7 +423,7 @@ try {
 	// orders of magnitude smaller than the n8n one, so the strips above are not
 	// worth duplicating here — the closure figure they report covers the n8n image
 	// only, not the shipped total.
-	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --config.inject-workspace-packages=true deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 	// Check the production closure for single-instance dependency duplication. A curated
 	// library resolving to more than one physical copy silently breaks instanceof /

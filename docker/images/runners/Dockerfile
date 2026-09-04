@@ -10,34 +10,23 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-# Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
-# packageManager field from the deployed package.json, so nothing else here pins it.
-ARG PNPM_VERSION
-RUN npm i -g "pnpm@${PNPM_VERSION}"
-
-# Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
+# Remove workspace-only references from package.json to allow `pnpm add` in extended images.
 RUN node -e "const pkg = require('./package.json'); \
     Object.keys(pkg.dependencies || {}).forEach(k => { \
         const val = pkg.dependencies[k]; \
-        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:')) \
+        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:') || val.startsWith('file:') || val.includes('@file:')) \
             delete pkg.dependencies[k]; \
     }); \
     Object.keys(pkg.devDependencies || {}).forEach(k => { \
         const val = pkg.devDependencies[k]; \
-        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:')) \
+        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:') || val.startsWith('file:') || val.includes('@file:')) \
             delete pkg.devDependencies[k]; \
     }); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
-# `--config.minimum-release-age=0`: pnpm 11 defaults it to 1440 (24h), which would make
-# this reject any dependency published less than a day ago — e.g. a first-party
-# @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
-# re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
-# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
-# Install moment (special case for backwards compatibility)
-RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile --config.minimum-release-age=0
+# Remove deploy metadata that points to workspace-only settings and patch files.
+RUN rm -f pnpm-lock.yaml node_modules/.modules.yaml node_modules/.pnpm/lock.yaml node_modules/.pnpm-workspace-state-v1.json
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
