@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import {
-	REQUEST_NODE_FORM_URL,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
@@ -12,13 +12,6 @@ import NoResults from './NoResults.vue';
 const renderComponent = createComponentRenderer(NoResults, {
 	global: {
 		stubs: {
-			NoResultsIcon: {
-				template: '<div data-test-id="no-results-icon" />',
-			},
-			N8nIcon: {
-				template: '<span data-test-id="n8n-icon" />',
-				props: ['icon', 'title'],
-			},
 			N8nLink: {
 				template:
 					'<a :href="href" data-test-id="n8n-link" @click="$emit(\'click\', $event)"><slot /></a>',
@@ -39,47 +32,45 @@ describe('NoResults', () => {
 		cleanup();
 	});
 
-	it('should render icon only when showIcon is true', () => {
-		renderComponent({ props: { showIcon: true } });
-		expect(screen.getByTestId('no-results-icon')).toBeInTheDocument();
+	it('renders the search query and HTTP Request guidance', () => {
+		renderComponent({ props: { query: 'Gmail MCP', rootView: REGULAR_NODE_CREATOR_VIEW } });
 
-		cleanup();
-		renderComponent({ props: { showIcon: false } });
-		expect(screen.queryByTestId('no-results-icon')).not.toBeInTheDocument();
+		expect(screen.getByText('No results for "Gmail MCP"')).toBeInTheDocument();
+		expect(screen.getByTestId('node-creator-no-results')).toHaveTextContent(
+			'Connect to almost any service or API using our HTTP Request node',
+		);
 	});
 
-	it('should render Regular view action and emit addHttpNode on click', async () => {
+	it('emits addHttpNode when the HTTP Request link is clicked', async () => {
 		const wrapper = renderComponent({
-			props: { rootView: REGULAR_NODE_CREATOR_VIEW, showRequest: false, showIcon: false },
+			props: { query: 'Gmail MCP', rootView: REGULAR_NODE_CREATOR_VIEW },
 		});
-
-		expect(screen.getByText('HTTP Request')).toBeInTheDocument();
-		expect(screen.queryByText('Webhook')).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByText('HTTP Request'));
 		expect(wrapper.emitted('addHttpNode')).toHaveLength(1);
 	});
 
-	it('should render Trigger view actions and emit addWebhookNode/addHttpNode on click', async () => {
+	it('also suggests a Webhook node for trigger searches', async () => {
 		const wrapper = renderComponent({
-			props: { rootView: TRIGGER_NODE_CREATOR_VIEW, showRequest: false, showIcon: false },
+			props: { query: 'Gmail MCP', rootView: TRIGGER_NODE_CREATOR_VIEW },
 		});
-
-		expect(screen.getByText('Webhook')).toBeInTheDocument();
-		expect(screen.getByText('HTTP Request')).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByText('Webhook'));
-		await fireEvent.click(screen.getByText('HTTP Request'));
 
 		expect(wrapper.emitted('addWebhookNode')).toHaveLength(1);
-		expect(wrapper.emitted('addHttpNode')).toHaveLength(1);
+		expect(screen.getByText('HTTP Request')).toBeInTheDocument();
+		expect(screen.getByTestId('node-creator-no-results')).toHaveTextContent(
+			/Webhook or HTTP Request/,
+		);
 	});
 
-	it('should render request section when showRequest is true, linking to the request form', () => {
-		renderComponent({ props: { showRequest: true, showIcon: false } });
+	it('does not suggest incompatible nodes in specialized AI views', () => {
+		renderComponent({
+			props: { query: 'Gmail MCP', rootView: AI_OTHERS_NODE_CREATOR_VIEW },
+		});
 
-		expect(screen.getByText('Want us to make it faster?')).toBeInTheDocument();
-		const link = screen.getByText('Request the node').closest('a');
-		expect(link).toHaveAttribute('href', REQUEST_NODE_FORM_URL);
+		expect(screen.getByText('No results for "Gmail MCP"')).toBeInTheDocument();
+		expect(screen.queryByText('Webhook')).not.toBeInTheDocument();
+		expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
 	});
 });

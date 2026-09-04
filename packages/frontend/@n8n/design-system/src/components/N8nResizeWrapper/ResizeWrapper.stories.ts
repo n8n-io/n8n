@@ -67,8 +67,8 @@ const Template: StoryFn = (args) => ({
 		</div>`,
 });
 
-export const Resize = Template.bind({});
-Resize.args = {
+export const Default = Template.bind({});
+Default.args = {
 	width: 200,
 	height: 200,
 	minWidth: 200,

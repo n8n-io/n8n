@@ -27,7 +27,6 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -115,16 +114,12 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .devcontainer/codespaces/agent-worker*.mjs
               OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
               .agents/review-rules/**
-            performance:
-              packages/testing/performance/**
-              packages/workflow/src/**
-              packages/@n8n/expression-runtime/src/**
-              .github/workflows/test-bench-reusable.yml
             e2e-performance:
               packages/testing/playwright/tests/performance/**
               packages/testing/playwright/utils/performance-helper.ts
@@ -323,14 +318,6 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
 
-  performance:
-    name: Performance
-    needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
-    uses: ./.github/workflows/test-bench-reusable.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
   e2e-performance:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
@@ -396,7 +383,6 @@ jobs:
         e2e,
         dev-server-smoke,
         db-tests,
-        performance,
         security-checks,
         workflow-scripts,
       ]
@@ -439,6 +425,35 @@ jobs:
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-build' \
             --text "<${PR_URL}|Required Checks failed on the ${HEAD_REF} PR> - the batched fixes stay unpublished until it is green."
+
+  # The tarball is scoped to one run and nothing else deleted it, so it evicted
+  # the entries that are reused across runs (DEVP-912). Gated on the whole run
+  # being green, not just the image consumers: a re-run of a red workflow should
+  # restore the image rather than rebuild it.
+  #
+  # Blacksmith-only rather than following the usual `runs-on` provider switch: off
+  # Blacksmith the tarball lands in GitHub's own cache, which this action does not
+  # address, so there is nothing here to delete.
+  cleanup-docker-image:
+    name: Cleanup Docker image
+    needs: [prepare-docker, e2e-performance, required-checks]
+    if: |
+      always() &&
+      vars.RUNNER_PROVIDER != 'github' &&
+      needs.prepare-docker.result == 'success' &&
+      needs.required-checks.result == 'success' &&
+      (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      # Not `gh api --method DELETE`: written on Blacksmith runners, where
+      # actions/cache is transparently intercepted, so GitHub's cache has no
+      # such entry and the REST call would no-op.
+      # Key must track build-n8n-docker/load-n8n-docker; a mismatch makes the
+      # delete a silent no-op rather than a failure.
+      - name: Delete the image tarball from the cache
+        uses: useblacksmith/cache-delete@941f534fcf46c8d0a89feeceeb0f5377d82dd5e7 # v2
+        with:
+          key: n8n-docker-image-v2-standard-${{ github.sha }}
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
