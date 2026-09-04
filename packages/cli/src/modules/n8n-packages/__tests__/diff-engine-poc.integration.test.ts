@@ -3,7 +3,6 @@ import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +10,7 @@ import { simpleGit } from 'simple-git';
 
 import { createOwner } from '@test-integration/db/users';
 
+import { diffSnapshots, gitBlobHash, parseLsTree, type SideMap } from '../diff/diff-engine';
 import { WorkflowExporter } from '../entities/workflow/workflow.exporter';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
@@ -23,94 +23,15 @@ import { WorkflowVersionPolicy } from '../n8n-packages.types';
  * the Base side is what the real WorkflowExporter writes to disk, the Desired
  * side is the real WorkflowSerializer output formatted the way the exporter
  * formats it and hashed with git's own blob format. The two sides are joined
- * by id against a real `git ls-tree` of a throwaway repo.
+ * by id against a real `git ls-tree` of a throwaway repo. The diffing itself
+ * lives in `../diff/diff-engine.ts`.
  *
  * Path generation here is a stub (`<slug>-<id>.json`) — real path
  * determinism/collision handling is tracked in a separate ticket.
  */
 
-const ID_LENGTH = 16;
-
-function parseIdFromPath(path: string): string {
-	const withoutExt = path.endsWith('.json') ? path.slice(0, -'.json'.length) : path;
-	return withoutExt.slice(-ID_LENGTH);
-}
-
 function expectedPath(id: string, name: string): string {
 	return `${generateSlug(name, 'workflow')}-${id}.json`;
-}
-
-function gitBlobHash(content: string): string {
-	const bytes = Buffer.from(content, 'utf-8');
-	const header = Buffer.from(`blob ${bytes.length}\0`, 'utf-8');
-	return createHash('sha1')
-		.update(Buffer.concat([header, bytes]))
-		.digest('hex');
-}
-
-interface Snapshot {
-	path: string;
-	hash: string;
-}
-type SideMap = Map<string, Snapshot>;
-
-async function buildBaseMap(repoDir: string): Promise<SideMap> {
-	const git = simpleGit(repoDir);
-	const raw = await git.raw(['ls-tree', '-r', 'HEAD']);
-	const map: SideMap = new Map();
-	for (const line of raw.split('\n').filter(Boolean)) {
-		const [meta, path] = line.split('\t');
-		const sha = meta.split(' ')[2];
-		map.set(parseIdFromPath(path), { path, hash: sha });
-	}
-	return map;
-}
-
-type ExternalStatus = 'created' | 'deleted' | 'modified';
-type InternalStatus = ExternalStatus | 'moved' | 'moved+modified';
-
-interface DiffEntry {
-	id: string;
-	status: ExternalStatus;
-	internalStatus: InternalStatus;
-	basePath?: string;
-	desiredPath?: string;
-}
-
-function diff(base: SideMap, desired: SideMap): DiffEntry[] {
-	const results: DiffEntry[] = [];
-	const allIds = new Set<string>([...base.keys(), ...desired.keys()]);
-	for (const id of allIds) {
-		const b = base.get(id);
-		const d = desired.get(id);
-		if (!b) {
-			results.push({ id, status: 'created', internalStatus: 'created', desiredPath: d!.path });
-			continue;
-		}
-		if (!d) {
-			results.push({ id, status: 'deleted', internalStatus: 'deleted', basePath: b.path });
-			continue;
-		}
-		const hashSame = b.hash === d.hash;
-		const pathSame = b.path === d.path;
-		if (hashSame && pathSame) continue; // unchanged, dropped from output
-
-		const internalStatus: InternalStatus = hashSame
-			? 'moved'
-			: pathSame
-				? 'modified'
-				: 'moved+modified';
-		// UI has no distinct "Moved" badge yet — fold moved/moved+modified into modified,
-		// but keep internalStatus for callers that need the real classification.
-		results.push({
-			id,
-			status: 'modified',
-			internalStatus,
-			basePath: b.path,
-			desiredPath: d.path,
-		});
-	}
-	return results;
 }
 
 const START_NODE: INode = {
@@ -241,7 +162,7 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 		await git.add('.');
 		await git.commit('seed base state');
 
-		const baseMap = await buildBaseMap(repoDir);
+		const baseMap = parseLsTree(await git.raw(['ls-tree', '-r', 'HEAD']));
 
 		const desiredMap: SideMap = new Map();
 		for (const workflow of [unchanged, created, modified, moved, movedModified]) {
@@ -251,7 +172,7 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 			});
 		}
 
-		const results = diff(baseMap, desiredMap);
+		const results = diffSnapshots(baseMap, desiredMap);
 		const byId = new Map(results.map((r) => [r.id, r]));
 
 		expect(byId.has(unchanged.id)).toBe(false);
@@ -282,7 +203,7 @@ describe('diff engine POC (Option 1: serialize + hash)', () => {
 		await writeFile(join(repoDir, expectedPath(workflow.id, workflow.name)), firstExport);
 		await git.add('.');
 		await git.commit('seed base state');
-		const [base] = [...(await buildBaseMap(repoDir)).values()];
+		const [base] = [...parseLsTree(await git.raw(['ls-tree', '-r', 'HEAD'])).values()];
 
 		expect(gitBlobHash(await engineContentOf(workflow.id))).toBe(base.hash);
 

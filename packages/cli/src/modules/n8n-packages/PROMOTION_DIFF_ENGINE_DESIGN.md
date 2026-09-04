@@ -220,7 +220,12 @@ endpoint.
 
 ## POC status
 
-File: `packages/cli/src/modules/n8n-packages/__tests__/diff-engine-poc.integration.test.ts`.
+Engine: `packages/cli/src/modules/n8n-packages/diff/diff-engine.ts`. Four pure
+functions with no dependencies beyond `node:crypto`: `parseIdFromPath`,
+`gitBlobHash`, `parseLsTree` (raw `git ls-tree -r` text to the Base map), and
+`diffSnapshots` (the join and classification).
+
+Test: `packages/cli/src/modules/n8n-packages/__tests__/diff-engine-poc.integration.test.ts`.
 
 Two tests pass. The first covers all 6 classifications: created, deleted,
 modified, moved, moved+modified, and unchanged (dropped from output). The
