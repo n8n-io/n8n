@@ -58,6 +58,7 @@ import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -80,6 +81,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowPreExecute: WorkflowPreExecute,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
 	async runWorkflow(
@@ -186,6 +188,12 @@ export class WorkflowExecutionService {
 			responsePromise?.reject(ensureError(establishContextError));
 
 			return undefined;
+		}
+
+		if (workflowData.id) {
+			workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
+				workflowData.id,
+			);
 		}
 
 		try {
