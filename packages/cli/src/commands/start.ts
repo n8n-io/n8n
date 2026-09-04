@@ -425,17 +425,16 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
-		Container.get(SystemTaskRunner).init();
-		Container.get(DurableScheduler).start();
 
 		const systemTaskMetadata = Container.get(SystemTaskMetadata);
 		for (const taskClass of mainSystemTasks()) {
 			systemTaskMetadata.register(taskClass);
 		}
 
-		// Every task has registered by now: the modules' during `initModules`, the
-		// main command's own just above.
-		await Container.get(SystemTaskRunner).provisionDurableJobs();
+		// The runner provisions the durable system task jobs, so it must finish
+		// before the scheduler can claim one.
+		await Container.get(SystemTaskRunner).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(

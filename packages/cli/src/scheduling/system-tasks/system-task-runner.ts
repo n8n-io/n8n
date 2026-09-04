@@ -81,11 +81,11 @@ export class SystemTaskRunner {
 
 	/**
 	 * Take ownership of the registry: route every task registered so far and
-	 * every one registered later, then start the in-memory timers if this
-	 * instance is already the leader. Later leadership changes arrive through
-	 * {@link startTimers} and {@link stopTimers}.
+	 * every one registered later, start the in-memory timers if this instance is
+	 * already the leader, and provision the durable jobs. Later leadership
+	 * changes arrive through {@link startTimers} and {@link stopTimers}.
 	 */
-	init(): void {
+	async init(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
 		if (!this.initialized) {
@@ -96,16 +96,10 @@ export class SystemTaskRunner {
 			if (this.instanceSettings.isLeader) {
 				this.startTimers();
 			}
-		}
-	}
 
-	/**
-	 * Provision the durable jobs of every task routed so far, one task at a time.
-	 * The caller owns the timing, and calls this once every task has registered.
-	 */
-	async provisionDurableJobs(): Promise<void> {
-		for (const routed of this.durableTasks()) {
-			await this.provisionOne(routed);
+			for (const routed of this.durableTasks()) {
+				await this.provisionOne(routed);
+			}
 		}
 	}
 
