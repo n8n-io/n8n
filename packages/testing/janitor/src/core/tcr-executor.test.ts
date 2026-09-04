@@ -172,10 +172,8 @@ describe('TcrExecutor', () => {
 			// Stage the new file
 			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
 
-			// The default `npx playwright test` would fetch playwright from the registry in this
-			// dependency-less temp dir; a hermetic command keeps the run off the network.
 			const tcr = new TcrExecutor();
-			const result = tcr.run({ verbose: false, testCommand: 'true' });
+			const result = tcr.run({ verbose: false });
 
 			// Should detect the actual test file, not just the directory
 			expect(result.changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
