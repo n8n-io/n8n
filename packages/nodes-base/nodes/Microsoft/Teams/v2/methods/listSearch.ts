@@ -96,12 +96,13 @@ export async function getChats(
 		});
 	}
 
-	// The page held chats but every one was 1:1, so the dropdown would otherwise show an
-	// unexplained empty list for a state no search term can fix.
+	// Every chat on the page was 1:1, so the dropdown would otherwise show an unexplained
+	// empty list for a state no search term can fix. Only one page is fetched, so the
+	// message states what this list holds and never that the account has no group chats.
 	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
-		throw new NodeOperationError(this.getNode(), 'No group chats found', {
+		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
 			description:
-				'Only group chats can have members added. A 1:1 chat has a fixed roster, so Teams does not allow adding to it.',
+				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
