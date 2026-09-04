@@ -64,6 +64,12 @@ export class StepNotFoundError extends Error {
 	}
 }
 
+/** A wait the sweep resumed: what `step:ready` needs, and nothing more. */
+export interface DueStep {
+	id: string;
+	executionId: string;
+}
+
 /** Persistence interface for step records. */
 export interface StepStore {
 	/**
@@ -129,6 +135,21 @@ export interface StepStore {
 	 * whoever accepts it, not here.
 	 */
 	resumeStep(id: string, resume: StepResume): Promise<boolean>;
+
+	/**
+	 * Resume every waiting step whose deadline has passed, oldest first, up to
+	 * `limit`, and return the rows resumed.
+	 *
+	 * One statement, unlike `resumeStep`, and that is the point: a second
+	 * sweeper cannot take a step this one already claimed, and a step resolved
+	 * by request and re-suspended with a later deadline cannot be fired early.
+	 * Reading the rows and then transitioning them one by one leaves a window
+	 * for both.
+	 *
+	 * `limit` bounds the batch, so a backlog cannot turn one sweep into a single
+	 * long-running update.
+	 */
+	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;

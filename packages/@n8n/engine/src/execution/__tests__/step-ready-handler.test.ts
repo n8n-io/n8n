@@ -115,6 +115,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		suspendStep: vi.fn().mockResolvedValue(true),
 		resumeStep: vi.fn().mockResolvedValue(true),
+		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -720,7 +721,7 @@ describe('StepReadyHandler', () => {
 describe('StepReadyHandler waits', () => {
 	/** What the shim returns for a Wait node in time mode. */
 	const timeWait: WaitDeclaration = {
-		resumeAt: '2026-09-02T12:00:00.000Z',
+		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
 		acceptsResumeRequest: false,
 	};
@@ -784,7 +785,7 @@ describe('StepReadyHandler waits', () => {
 
 describe('StepReadyHandler resumes', () => {
 	const timeWait: WaitDeclaration = {
-		resumeAt: '2026-09-02T12:00:00.000Z',
+		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
 		acceptsResumeRequest: false,
 	};
