@@ -22,6 +22,9 @@ paths:
   /executions/{executionId}/stop:
     post:
       $ref: ./handlers/executions/spec/paths/stopExecution.generated.yml
+  /executions/{executionId}/retry:
+    post:
+      $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml

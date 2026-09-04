@@ -6,6 +6,8 @@ import {
 	GetExecutionQueryDto,
 	ListExecutionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	RetriedExecutionPublicDto,
+	RetryExecutionPublicDto,
 	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
 	StopManyExecutionsPublicDto,
 	StoppedExecutionPublicDto,
@@ -33,7 +35,9 @@ import {
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -399,6 +403,57 @@ export class ExecutionsPublicController {
 			throw error;
 		}
 	}
+
+	@Post('/:executionId/retry')
+	@ApiKeyScope('execution:retry')
+	@ApiSummary('Retry an execution')
+	@ApiDescription('Retry an execution from your instance.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, RetriedExecutionPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async retryExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+		@Body body: RetryExecutionPublicDto,
+	): Promise<RetriedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const retriedExecution = await this.executionService.retry({
+				executionId,
+				options: { loadWorkflow: body.loadWorkflow },
+				sharedWorkflowIds: sharedWorkflowsIds,
+				user: req.user,
+			});
+
+			this.eventService.emit('user-retried-execution', {
+				userId: req.user.id,
+				publicApi: true,
+			});
+
+			return toRetriedExecutionPublicDto(retriedExecution);
+		} catch (error) {
+			if (
+				error instanceof QueuedExecutionRetryError ||
+				error instanceof AbortedExecutionRetryError
+			) {
+				throw new ConflictError(error.message);
+			}
+
+			throw error;
+		}
+	}
 }
 
 function toBaseFields(execution: PublicExecution) {
@@ -502,4 +557,24 @@ function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPu
 		finished: stopResult.finished,
 		status: stopResult.status,
 	};
+}
+
+function toRetriedExecutionPublicDto(
+	retried: Omit<IExecutionResponse, 'createdAt'>,
+): RetriedExecutionPublicDto {
+	return replaceCircularReferences({
+		id: retried.id,
+		mode: retried.mode,
+		startedAt: retried.startedAt.toISOString(),
+		workflowId: retried.workflowId,
+		finished: retried.finished,
+		retryOf: retried.retryOf ?? null,
+		status: retried.status,
+		waitTill: retried.waitTill instanceof Date ? retried.waitTill.toISOString() : retried.waitTill,
+		data: retried.data,
+		workflowData: retried.workflowData,
+		customData: retried.customData,
+		annotation: retried.annotation,
+		storedAt: retried.storedAt,
+	}) as unknown as RetriedExecutionPublicDto;
 }

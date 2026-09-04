@@ -381,6 +381,14 @@ export {
 	executionListItemPublicSchema,
 } from './executions/execution-public.dto';
 export {
+	RetriedExecutionPublicDto,
+	retriedExecutionPublicSchema,
+} from './executions/retried-execution-public.dto';
+export {
+	RetryExecutionPublicDto,
+	retryExecutionPublicSchema,
+} from './executions/retry-execution-public.dto';
+export {
 	StoppedExecutionPublicDto,
 	StoppedExecutionsPublicDto,
 	stoppedExecutionPublicSchema,

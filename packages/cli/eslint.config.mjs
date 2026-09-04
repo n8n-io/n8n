@@ -163,7 +163,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/executions/executions.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/insights/insights.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
