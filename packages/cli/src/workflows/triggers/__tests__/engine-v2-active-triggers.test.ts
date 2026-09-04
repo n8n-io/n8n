@@ -18,6 +18,7 @@ describe('EngineV2ActiveTriggers', () => {
 		vi.clearAllMocks();
 		payloadGuard.assertNoFiles.mockResolvedValue(undefined);
 		payloadGuard.discardFiles.mockResolvedValue(undefined);
+		payloadGuard.hasFiles.mockReturnValue(false);
 		engineV2ActiveTriggers = new EngineV2ActiveTriggers(dispatcher, payloadGuard);
 	});
 
@@ -88,12 +89,21 @@ describe('EngineV2ActiveTriggers', () => {
 		});
 	});
 
-	describe('assertPollSupported', () => {
-		it('always refuses', () => {
-			expect(() => engineV2ActiveTriggers.assertPollSupported()).toThrow(UserError);
-			expect(() => engineV2ActiveTriggers.assertPollSupported()).toThrow(
-				'Engine 2.0 cannot run polling triggers yet.',
+	describe('assertPollPayloadSupported', () => {
+		it('allows a payload with no files', () => {
+			payloadGuard.hasFiles.mockReturnValue(false);
+
+			expect(() => engineV2ActiveTriggers.assertPollPayloadSupported([[]])).not.toThrow();
+		});
+
+		it('refuses a payload that carries files', () => {
+			const slots = [[{ json: {}, binary: { data: mock<IBinaryData>() } }]];
+			payloadGuard.hasFiles.mockReturnValue(true);
+
+			expect(() => engineV2ActiveTriggers.assertPollPayloadSupported(slots)).toThrow(
+				'Engine 2.0 cannot receive files from a trigger yet.',
 			);
+			expect(payloadGuard.hasFiles).toHaveBeenCalledWith(slots);
 		});
 	});
 });

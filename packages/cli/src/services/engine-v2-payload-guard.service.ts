@@ -34,12 +34,20 @@ export class EngineV2PayloadGuard {
 	 * served rather than a generic message.
 	 */
 	async assertNoFiles(slots: PayloadSlots, reason: string): Promise<void> {
-		const files = this.filesIn(slots);
-		if (files.length === 0) return;
+		if (!this.hasFiles(slots)) return;
 
-		await this.deleteStoredFiles(files);
+		await this.deleteStoredFiles(this.filesIn(slots));
 
 		throw new UserError(reason);
+	}
+
+	/**
+	 * Whether a payload carries a file, checked synchronously so a caller that
+	 * cannot await (a poll's `__emit`) can still refuse before doing anything
+	 * that only makes sense for a run it is about to start.
+	 */
+	hasFiles(slots: PayloadSlots): boolean {
+		return this.filesIn(slots).length > 0;
 	}
 
 	/**

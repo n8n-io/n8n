@@ -85,6 +85,25 @@ describe('EngineV2PayloadGuard', () => {
 		});
 	});
 
+	describe('hasFiles', () => {
+		it.each([
+			{ name: 'no slots', slots: [] },
+			{ name: 'an empty slot', slots: [[]] },
+			{ name: 'a null slot', slots: [null] },
+			{ name: 'items with no binary key', slots: [[{ json: {} }]] },
+			{ name: 'an empty binary map', slots: [[{ json: {}, binary: {} }]] },
+		])('answers false for a payload with $name', ({ slots }) => {
+			expect(guard.hasFiles(slots)).toBe(false);
+		});
+
+		it.each([
+			{ name: 'a stored file', file: stored('filesystem:abc') },
+			{ name: 'an in-memory file', file: inMemory() },
+		])('answers true for a payload with $name', ({ file }) => {
+			expect(guard.hasFiles([[{ json: {}, binary: { attachment: file } }]])).toBe(true);
+		});
+	});
+
 	describe('discardFiles', () => {
 		it('deletes the stored files without refusing', async () => {
 			const slots = [[{ json: {}, binary: { attachment: stored('filesystem:abc') } }]];

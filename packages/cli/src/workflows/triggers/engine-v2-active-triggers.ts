@@ -85,13 +85,14 @@ export class EngineV2ActiveTriggers {
 	}
 
 	/**
-	 * Rejects a polled emit.
-	 *
-	 * A migrated poll node commits its cursor in the same transaction as the
-	 * execution row, which a v2 run does not create.
-	 * TODO(CAT-4078): commit the cursor against a data-plane execution instead.
+	 * Rejects a polled emit that carries files, synchronously so the refusal
+	 * happens before the poll's cursor is taken. The caller discards any files
+	 * already stored separately, since deleting them needs an await `__emit`
+	 * cannot give.
 	 */
-	assertPollSupported(): never {
-		throw new UserError('Engine 2.0 cannot run polling triggers yet.');
+	assertPollPayloadSupported(slots: Array<INodeExecutionData[] | null>): void {
+		if (!this.payloadGuard.hasFiles(slots)) return;
+
+		throw new UserError('Engine 2.0 cannot receive files from a trigger yet.');
 	}
 }
