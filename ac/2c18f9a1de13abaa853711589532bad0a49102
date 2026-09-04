@@ -1,0 +1,50 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_74c2aec9bd4605::t_b3308e907f2d4f 354-395,401-421
+  s_74c2aec9bd4605::t_8c2ecc111b9693 396-400
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_74c2aec9bd4605::t_6ab905e0388dca 451-581,745,749,753,756,764,767,770,778,781,784,792,798,806,813
+  s_74c2aec9bd4605::t_bd0433e9aa49ad 708,711-719,727-728
+  s_74c2aec9bd4605::t_87ab378a7af961 607-612
+  s_74c2aec9bd4605::t_2e3f086e3f149e 7
+  s_74c2aec9bd4605::t_0de7453950b1d6 742-744
+  s_74c2aec9bd4605::t_faf1f34c4d4332 746-748
+  s_74c2aec9bd4605::t_386123fe204c8c 752
+  s_74c2aec9bd4605::t_6871d26da2907a 754-755
+  s_74c2aec9bd4605::t_4023b0c6c13dad 757-759,761-763
+  s_74c2aec9bd4605::t_f76b4fb9034d5a 765-766
+  s_74c2aec9bd4605::t_fa89ee6bb7b7bb 768-769
+  s_74c2aec9bd4605::t_5152bd50a44156 771-773,775-777
+  s_74c2aec9bd4605::t_79bf15da14ed45 779-780
+  s_74c2aec9bd4605::t_74b06148207de9 782-783
+  s_74c2aec9bd4605::t_2d9d163264b515 785-787
+  s_74c2aec9bd4605::t_4cd0f3b950fd39 793-794
+  s_74c2aec9bd4605::t_894f720cd352e9 797
+  s_74c2aec9bd4605::t_6a1f1036f705c7 799-801,803-805
+  s_74c2aec9bd4605::t_5b121dcc0dc7a4 807-812
+  s_74c2aec9bd4605::t_801308c88c8e88 814-816
+  s_677bfcfecbca8f::t_e1ca6122d1cd58 697-701,739-741,760,774,788-789,802,817,819-823,830-839,900-940
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ac2c18f9a1de13abaa853711589532bad0a49102",
+  "prompts": {},
+  "sessions": {
+    "s_677bfcfecbca8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a15ee87d5027f2ee7",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_74c2aec9bd4605": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "463b8362-726a-4b2b-bb94-60e03f5814ba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

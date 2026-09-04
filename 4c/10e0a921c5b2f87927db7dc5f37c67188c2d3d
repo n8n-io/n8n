@@ -1,0 +1,25 @@
+docs/generated/postgres-schema/README.md
+  ai_agent 66
+docs/generated/sqlite-schema/README.md
+  ai_agent 66
+docs/generated/sqlite-schema/git_connection.md
+  ai_agent 9
+packages/cli/test/migration/1786547629549-create-git-connection-table.test.ts
+  s_8053f0bb71ad95::t_c4f859e02fae8a 30,35-36,46-47,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c10e0a921c5b2f87927db7dc5f37c67188c2d3d",
+  "prompts": {},
+  "sessions": {
+    "s_8053f0bb71ad95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c246ad00-27ab-4953-b8eb-326089f5028f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

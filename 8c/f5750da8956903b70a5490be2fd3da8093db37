@@ -1,0 +1,46 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2cda0531643dad::t_a073505b837699 2272-2280
+packages/@n8n/instance-ai/evaluations/data/workflows/opens-the-workflow-the-folder-disambiguates.json
+  ai_agent 1-67,69-117,119-141,143-148
+  s_2cda0531643dad::t_5047f6e60085f4 68,118,142
+packages/@n8n/instance-ai/evaluations/data/workflows/scopes-a-bulk-change-to-the-named-folder.json
+  ai_agent 1,3-61,63-115,117-160,162-164,166-210,212-229,231-236
+  s_2cda0531643dad::t_5047f6e60085f4 2,62,116,161,165,211,230
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_2cda0531643dad::t_e4c9eccec170fd 32-35
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.integration.test.ts
+  s_2cda0531643dad::t_3c2b83d3c54652 6,10
+  s_2cda0531643dad::t_67a054464e993f 42-43,122-123
+packages/@n8n/instance-ai/evaluations/data/workflows/lists-only-the-workflows-inside-the-named-folder.json
+  ai_agent 1-286
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_2cda0531643dad::t_e7b14b20850173 7,11
+  s_2cda0531643dad::t_67a054464e993f 31-39
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_2cda0531643dad::t_fcc24040201733 10,18-21
+  s_2cda0531643dad::t_57c71ad94214ef 14,17
+  s_2cda0531643dad::t_62498044c5f99a 70-71
+  s_2cda0531643dad::t_ba2a22016b9b05 241-243,246-249,260-264,271-292,295-301,305-306,317-319
+  s_2cda0531643dad::t_304c439443cafe 265-270,293-294,302-304,307-316,320-341
+  s_2cda0531643dad::t_6791de7c2b8544 365
+  s_2cda0531643dad::t_8589296bca1403 407
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-report-a-foldered-workflow-as-missing.json
+  ai_agent 1-67,69-134,136-141,143-167
+  s_2cda0531643dad::t_5047f6e60085f4 68,135,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cf5750da8956903b70a5490be2fd3da8093db37",
+  "prompts": {},
+  "sessions": {
+    "s_2cda0531643dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79806e82-049b-43d0-9d0c-650e50a5028e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

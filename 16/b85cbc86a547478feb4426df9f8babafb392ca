@@ -1,0 +1,26 @@
+browser-use-analysis/data/records/fbdfe0da-d22d-46fb-9611-443fe1b19878.json
+  s_aa8cba362f5a72::t_9a4e1127f2fdf8 1
+browser-use-analysis/data/traces/fbdfe0da-d22d-46fb-9611-443fe1b19878.json
+  s_aa8cba362f5a72::t_9a4e1127f2fdf8 1-1233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "16b85cbc86a547478feb4426df9f8babafb392ca",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_aa8cba362f5a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fe85434-bcf5-4c35-acc4-c11fe21ead7a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

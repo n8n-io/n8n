@@ -1,0 +1,29 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_5b586951f97f35::t_dc71ad4fd3ea65 135-139
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_5b586951f97f35::t_b3a5d3d39ce482 415-421
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_5b586951f97f35::t_14ce2563740bb6 125-136,145-152
+  s_5b586951f97f35::t_f54c0cbc142838 137-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "14be1f293838bac9b6cb3c91eb11bc83f6716618",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

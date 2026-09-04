@@ -1,0 +1,9 @@
+packages/@n8n/scheduler/README.md
+  ai_agent 219-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd2b23ff6d36f883db15c57ac93193dc328d7dc8",
+  "prompts": {}
+}

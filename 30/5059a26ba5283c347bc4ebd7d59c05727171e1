@@ -1,0 +1,79 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_51cc314dd74007::t_850f102427c40d 163-166
+packages/cli/src/commands/start.ts
+  s_db82e27b87b35e::t_38bc601e6e15d2 77-78
+packages/@n8n/backend-network/src/testing.ts
+  s_51cc314dd74007::t_d2560750c481c3 10
+packages/@n8n/scan-community-package/scanner/env-proxy.test.mjs
+  s_51cc314dd74007::t_704431cddf59b6 1-112
+packages/cli/src/commands/base-command.ts
+  s_db82e27b87b35e::t_17486ce7d9db18 101-103,106-107
+  s_db82e27b87b35e::t_6deefe9dd1a926 272
+  s_51cc314dd74007::t_a8b7fb59d8c214 12
+  s_db82e27b87b35e::t_7b9164e2ac017f 105
+  s_db82e27b87b35e::t_fdc3eec3c6c672 266-271,273-276
+packages/cli/src/deprecation/deprecation.service.ts
+  s_db82e27b87b35e::t_4435b80753bdc0 114-115,117
+  s_db82e27b87b35e::t_83fa06c00f1bc5 116
+packages/@n8n/scan-community-package/scanner/env-proxy.mjs
+  s_51cc314dd74007::t_4e6a4227ab8aa0 1-38
+packages/@n8n/scan-community-package/package.json
+  s_51cc314dd74007::t_80a5cdaa92c319 21-23
+packages/cli/src/commands/__tests__/start.test.ts
+  s_db82e27b87b35e::t_c00659c4e01bc2 216,253
+  s_51cc314dd74007::t_da3a652e722198 442-458,471-472,483-489
+  s_51cc314dd74007::t_cfbc504c148372 9-10
+  s_db82e27b87b35e::t_adf7914bd066dd 159,281,368
+  s_db82e27b87b35e::t_643362ad9693e5 459-470
+  s_51cc314dd74007::t_63dd9ceb888ac2 473-478,480-482
+  s_51cc314dd74007::t_ee5ca2fec4e30d 4
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.proxy-routing.test.ts
+  s_51cc314dd74007::t_b319b770980205 81-86,88
+  s_51cc314dd74007::t_5fb3e9f31ccbbb 1-80,87,89-119
+packages/@n8n/config/src/index.ts
+  s_db82e27b87b35e::t_521a138ba91466 39
+  s_db82e27b87b35e::t_a731ff6c9483cc 236-238
+packages/@n8n/config/test/config.test.ts
+  s_db82e27b87b35e::t_15ed8f474c2853 622-624
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_db82e27b87b35e::t_bfcc400811c9cd 12
+  s_db82e27b87b35e::t_3a8688a3164cbd 80-114
+  s_db82e27b87b35e::t_e94702b4bcf5b9 10-11
+  s_db82e27b87b35e::t_43845159362579 2
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_db82e27b87b35e::t_6e105f952b77ce 76-78
+packages/@n8n/scan-community-package/scanner/scanner.mjs
+  s_51cc314dd74007::t_229a322a2e62b1 14,17
+packages/@n8n/config/src/configs/outbound-proxy.config.ts
+  s_db82e27b87b35e::t_d1d8fdcfba60a7 12-15,17,23-26
+  s_db82e27b87b35e::t_26343b87e3c50f 1-11,16,18-22,27-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "305059a26ba5283c347bc4ebd7d59c05727171e1",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_db82e27b87b35e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c007baaa-5d25-4b75-8191-c13a6d0b6028",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

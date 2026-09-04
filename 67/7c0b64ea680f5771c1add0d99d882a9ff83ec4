@@ -1,0 +1,96 @@
+packages/cli/src/services/user.service.ts
+  h_ed1b2d65e81e8e 37,507-508,512-514
+  s_1cffc118a8bd7e::t_69969fdbf50c44 637-639
+  s_1cffc118a8bd7e::t_989fac6c7686ab 511,518
+  s_1cffc118a8bd7e::t_d68267052395a5 572,680
+  s_1cffc118a8bd7e::t_1b2af5817df3ba 515
+  s_1cffc118a8bd7e::t_4b6b3613dd9eb4 621
+  s_1cffc118a8bd7e::t_80b833d36c7f88 665-667
+  s_1cffc118a8bd7e::t_af64fdd10deae4 501-504
+  s_1cffc118a8bd7e::t_d5ce8d8320cde5 645
+  s_1cffc118a8bd7e::t_bc94dacf20a9be 711-713,716-717
+  s_1cffc118a8bd7e::t_e04d5a21055828 4,6
+  s_1cffc118a8bd7e::t_b55f106ac555a7 7,12-13,16,19,30
+  s_1cffc118a8bd7e::t_6b974548ff22ec 521
+  s_1cffc118a8bd7e::t_bb8d1fc8e6771d 32-36,38-39,45,47,50,52,54,58-66,80-86
+  s_1cffc118a8bd7e::t_e10a392835aff7 500,505-506,509-510,516-517,519-520,522-571,573-620,622-636,640-644,646-664,668-679,681-710,714-715
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_1cffc118a8bd7e::t_3950894bb63fed 779,789-790
+  s_1cffc118a8bd7e::t_8d9942d51fd26f 5
+  s_1cffc118a8bd7e::t_25c52e7df09ede 791-792
+  s_1cffc118a8bd7e::t_bbdb8ce715800e 764,768
+  s_1cffc118a8bd7e::t_7fab5486153ba5 786
+  s_1cffc118a8bd7e::t_3fb86e11b9a177 15,19,21,25-26,31
+  s_1cffc118a8bd7e::t_93eeec92197e62 63-65,75,82-88
+  s_1cffc118a8bd7e::t_813916c9a8d209 796
+  s_1cffc118a8bd7e::t_deb120a0b40627 743,752,755,758,766,769
+  s_1cffc118a8bd7e::t_4f4a83bd39c7fb 27-28
+  s_1cffc118a8bd7e::t_b1fb0088c19a40 783
+  s_1cffc118a8bd7e::t_9fb7ff8c360351 741-742,744-749,751,753,756-757,759-763,765,767,770-778,780-782,784-785,787-788,793-795,797,818-905,908-910,917-920,924-936,938-944,946-949,951-957,959-962,964-970,972-973
+  s_1cffc118a8bd7e::t_ca2c655e41f3e1 750,754,921,937,950,963
+  s_1cffc118a8bd7e::t_73a1db8dd4b484 906-907,911-916,922-923,945,958,971
+  s_1cffc118a8bd7e::t_44f07866917c73 798-817
+  s_1cffc118a8bd7e::t_c565000fc13884 1,34
+packages/cli/src/public-api/v1/handlers/users/users.mapper.ts
+  s_1cffc118a8bd7e::t_ba1ceffa1ba2f9 13,15,17-20,23-24,28,30-31
+  s_1cffc118a8bd7e::t_65e88d33a00f9a 14
+  s_1cffc118a8bd7e::t_0b0a3abc1d20dd 21,25
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_1cffc118a8bd7e::t_8ebfc3bc6c7056 800-810
+packages/cli/src/controllers/invitation.controller.ts
+  s_1cffc118a8bd7e::t_d9b3f9f7f13b4d 43
+packages/cli/src/public-api/v1/handlers/users/users.handler.ee.ts
+  s_1cffc118a8bd7e::t_a0e199508f7e4a 70
+  s_1cffc118a8bd7e::t_e2afda3efd291d 42
+  s_1cffc118a8bd7e::t_fd2f1c50eff4ec 2,5,15-19,53,62,64,66-67,82,106
+  h_ed1b2d65e81e8e 71
+  s_1cffc118a8bd7e::t_7dd185777cf4cb 99
+  s_1cffc118a8bd7e::t_8d9942d51fd26f 120
+  s_1cffc118a8bd7e::t_b62e640208be0c 20-21
+packages/cli/src/services/project.service.ee.ts
+  s_1cffc118a8bd7e::t_90664decf142d0 843-846
+packages/cli/src/controllers/__tests__/invitation.controller.test.ts
+  s_1cffc118a8bd7e::t_00d1957a802641 47-49,52,60-61
+  s_1cffc118a8bd7e::t_8d9942d51fd26f 5
+  s_1cffc118a8bd7e::t_1aa19b177781cb 3,9-10,16,19-21
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_1cffc118a8bd7e::t_9c88dd33d0b01b 6
+  s_1cffc118a8bd7e::t_28844b902c46bc 50
+  s_1cffc118a8bd7e::t_1ff3fa716da6d7 33,37-38,44,46,48-49,51-53,55,57-58
+  s_1cffc118a8bd7e::t_8d9942d51fd26f 40-41
+  s_1cffc118a8bd7e::t_639db93dff32db 5
+  s_1cffc118a8bd7e::t_2130ae455fc3a9 3,9
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_1cffc118a8bd7e::t_7b2348119a1d18 44
+  s_1cffc118a8bd7e::t_feb3f83dfb4163 30-31,36-37
+  s_1cffc118a8bd7e::t_3f37730462daaa 23-25,38-39
+  s_1cffc118a8bd7e::t_b19310c72fd551 41-42,45,54-63
+  s_1cffc118a8bd7e::t_80467afaeabb68 46-50,52-53
+  s_1cffc118a8bd7e::t_1a57ee64e7d859 51
+  s_1cffc118a8bd7e::t_e31c31863860fd 40
+  s_1cffc118a8bd7e::t_b188eb5a0d71d3 43
+packages/cli/src/controllers/users.controller.ts
+  s_1cffc118a8bd7e::t_a185f533afb257 50
+  s_1cffc118a8bd7e::t_e52200818c237d 195,207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "677c0b64ea680f5771c1add0d99d882a9ff83ec4",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1cffc118a8bd7e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27515cbd-cd65-4ec9-a2f2-60e46985ca0d",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

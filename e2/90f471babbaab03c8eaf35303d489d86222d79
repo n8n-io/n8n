@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ac255d31d4818::t_72f40089e9a368 46,513-523
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_4ac255d31d4818::t_f1a460f1848019 489-493,525-527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e290f471babbaab03c8eaf35303d489d86222d79",
+  "prompts": {},
+  "sessions": {
+    "s_4ac255d31d4818": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "59165f5c-6518-4b66-b303-3c73c4371cf1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

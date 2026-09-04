@@ -1,0 +1,41 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_6415615520e467::t_c04059cf9a1351 618-646
+  s_6415615520e467::t_3ba7ef404e2350 607,609,649
+  s_6415615520e467::t_f53d9c8a2c75a2 6
+  s_6415615520e467::t_2cd8ed19e31922 248-250,252-255,257-258
+  s_6415615520e467::t_579d94d03a82e9 278-292
+  s_6415615520e467::t_f4b134dbc45e93 105,107-114,117-123,126,131
+  s_6358c8cb4cd2a5::t_cfeaddaee868b4 647
+packages/@n8n/expression-runtime/src/__tests__/test-bridge.ts
+  s_6415615520e467::t_fbbde0e716e8b7 3,13-17,19
+packages/@n8n/expression-runtime/src/__tests__/host-fn-shadowing.test.ts
+  s_6415615520e467::t_a07106a98a55df 93,107-114
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_6415615520e467::t_abbb3f4ae3230d 1,10-18,24-30,35,43
+packages/workflow/test/setup-vm-evaluator.ts
+  s_6415615520e467::t_67ea07182b3bd7 16-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7c4d3ca7387433e17236773caa5147b8af72f760",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

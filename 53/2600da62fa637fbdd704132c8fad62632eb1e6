@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_ba69ba1c5b4f62::t_75318a0baac9a6 336
+  s_ba69ba1c5b4f62::t_ac03f1173a0598 337-340
+  s_ba69ba1c5b4f62::t_4fa23abbfcee72 533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "532600da62fa637fbdd704132c8fad62632eb1e6",
+  "prompts": {},
+  "sessions": {
+    "s_ba69ba1c5b4f62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3efc7b03-680d-4f33-a39b-aa29a80b9979",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

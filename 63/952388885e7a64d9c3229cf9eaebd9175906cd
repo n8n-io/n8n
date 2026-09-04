@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-report-a-foldered-workflow-as-missing.json
+  s_2cda0531643dad::t_5047f6e60085f4 68,135,142
+packages/@n8n/instance-ai/evaluations/data/workflows/opens-the-workflow-the-folder-disambiguates.json
+  s_2cda0531643dad::t_5047f6e60085f4 68,118,142
+packages/@n8n/instance-ai/evaluations/data/workflows/scopes-a-bulk-change-to-the-named-folder.json
+  s_2cda0531643dad::t_5047f6e60085f4 2,62,116,161,165,211,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63952388885e7a64d9c3229cf9eaebd9175906cd",
+  "prompts": {},
+  "sessions": {
+    "s_2cda0531643dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79806e82-049b-43d0-9d0c-650e50a5028e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

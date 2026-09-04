@@ -1,0 +1,15 @@
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  ai_agent 1-247
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  ai_agent 1-393
+packages/@n8n/config/src/configs/logging.config.ts
+  ai_agent 55
+packages/cli/src/commands/start.ts
+  ai_agent 41,424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf7ddb0265fee7f6ad7b2cf23e432741af0b222b",
+  "prompts": {}
+}

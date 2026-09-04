@@ -1,0 +1,43 @@
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_2cda0531643dad::t_0fee303cc23f27 47-103
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_2cda0531643dad::t_e92dbed424e5e2 68-84,100-103,111,121,123-126
+  s_2cda0531643dad::t_bfa9f47b1b5c4a 140,142,452,455-457,478-481
+  s_2cda0531643dad::t_9c5aee399ca846 354,376,453-454
+  s_2cda0531643dad::t_60178b3dc9d70c 404-406
+  s_2cda0531643dad::t_764bc4de356813 437,1815
+  s_2cda0531643dad::t_9667c8fad17abb 551,1814
+  s_2cda0531643dad::t_4db61aae6057b4 115-117,119
+  s_2cda0531643dad::t_e2cbe249a4f054 595-639
+  s_2cda0531643dad::t_09fb017e836de3 141,143-145,482-487
+  s_2cda0531643dad::t_0f742edb666702 23
+packages/@n8n/instance-ai/src/types.ts
+  s_2cda0531643dad::t_82ae5a265e593e 371-376,378-390
+  s_2cda0531643dad::t_93f1722db626a3 322-335
+packages/@n8n/instance-ai/src/index.ts
+  s_2cda0531643dad::t_bfa9f47b1b5c4a 191
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.node-usage.test.ts
+  s_2cda0531643dad::t_a44a5b4399f703 1-181
+packages/@n8n/instance-ai/src/utils/node-usage-context-enabled.ts
+  s_2cda0531643dad::t_bfa9f47b1b5c4a 1-11
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_2cda0531643dad::t_7ecd6ccbf3be08 24,297,626,885,4099-4101
+  s_2cda0531643dad::t_be7e90bb722d33 837-884,886-900
+  s_2cda0531643dad::t_8ec6ba6d10f06f 774-776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b8935c6e9d23f8c336f0f64c8097d36097971061",
+  "prompts": {},
+  "sessions": {
+    "s_2cda0531643dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79806e82-049b-43d0-9d0c-650e50a5028e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

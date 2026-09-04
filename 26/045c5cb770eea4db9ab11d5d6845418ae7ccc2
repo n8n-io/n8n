@@ -1,0 +1,66 @@
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_60dc2ad9ff7de2::t_1f9a62a4cfbd80 3,9,15-19,23
+  s_60dc2ad9ff7de2::t_1480744a20a424 43-44
+  s_60dc2ad9ff7de2::t_0db1c0d683820c 92-121
+  s_60dc2ad9ff7de2::t_5fdeb90095d84b 56-62
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_60dc2ad9ff7de2::t_2a4bbfe1bedc0f 30
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_60dc2ad9ff7de2::t_9886f0a7067afa 84
+  s_60dc2ad9ff7de2::t_a4ad29dd416cca 53-70
+  s_60dc2ad9ff7de2::t_859d99ba13f319 28-37,40-50
+  s_60dc2ad9ff7de2::t_6e914fa919158f 195-199,211
+  s_60dc2ad9ff7de2::t_d5e05411859ab3 3-5,7
+  s_60dc2ad9ff7de2::t_380f184ac442b0 137-172
+  s_60dc2ad9ff7de2::t_ed1e9a9c0169da 231-235
+  s_60dc2ad9ff7de2::t_3fe1c2b63b3b88 275-341
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_60dc2ad9ff7de2::t_1a61e23cf48bd3 1111,1119-1121
+  s_60dc2ad9ff7de2::t_a495e3e54f0659 168-169
+  s_60dc2ad9ff7de2::t_09b6dad05406ce 50-54
+  s_60dc2ad9ff7de2::t_15c15db827cf36 1065
+  s_60dc2ad9ff7de2::t_53efde82e211a0 759-783,785-799,803-829
+  s_60dc2ad9ff7de2::t_8ba43d0dd5c097 784,800-802
+  s_60dc2ad9ff7de2::t_f787b1f3291846 1112-1118
+  s_60dc2ad9ff7de2::t_2e7dfc5c7f196c 627
+  s_60dc2ad9ff7de2::t_3e623bb601109f 18
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_60dc2ad9ff7de2::t_df2e6b841ec758 58-60
+  s_60dc2ad9ff7de2::t_818b92ea39de81 11-12,18
+  s_60dc2ad9ff7de2::t_068af98b33fd5b 86
+  s_60dc2ad9ff7de2::t_20a75c7fbfada6 340-416
+  s_60dc2ad9ff7de2::t_83553f1aa4b7a5 39
+  s_60dc2ad9ff7de2::t_50091c50ee9251 57,71-72
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_60dc2ad9ff7de2::t_d864686e4fe741 579
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_60dc2ad9ff7de2::t_ce7f5166d71bea 2
+  s_60dc2ad9ff7de2::t_d1fbbf118a72c7 6
+  s_60dc2ad9ff7de2::t_3dcfe7243efed5 7
+  s_60dc2ad9ff7de2::t_349ee946ef8be4 62
+  s_60dc2ad9ff7de2::t_d64ab0749b5e8c 17-19,22-33
+  s_60dc2ad9ff7de2::t_528834e63caf36 79,83
+  s_60dc2ad9ff7de2::t_8434f67a10165b 353-533
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_60dc2ad9ff7de2::t_3ce75d62c840e5 181
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_60dc2ad9ff7de2::t_c159b29040a15e 16
+  s_60dc2ad9ff7de2::t_fde6525bed605f 775-938,943-953
+  ai_agent 939-942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26045c5cb770eea4db9ab11d5d6845418ae7ccc2",
+  "prompts": {},
+  "sessions": {
+    "s_60dc2ad9ff7de2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "469357ba-a39d-4452-ac53-8a787319ebd9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_a235dbe09d6bee::t_2ffde8de2803a9 190-191
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_a235dbe09d6bee::t_2372973e3b9227 106-119
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_a235dbe09d6bee::t_86b873d9f78f47 243-244
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a235dbe09d6bee::t_9845c5c825b7f5 880-888
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_a235dbe09d6bee::t_6a5805b8613a5e 298
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a235dbe09d6bee::t_63d0b1a9cf5e34 956,961,963-982
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "38cd70306e93bf9a6e3baf131ab022aa28798ab4",
+  "prompts": {},
+  "sessions": {
+    "s_a235dbe09d6bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f00e6df-fa03-417b-a459-c3a03b6bbe4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

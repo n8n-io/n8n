@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_8f01588005a737::t_25978566c8438f 234-236
+  s_8f01588005a737::t_6037e817be673b 192-194
+  s_8f01588005a737::t_3ff08bfc7d427d 219-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6190ee15e3c8bc5fb14bd8d44c8fea0d0181dea",
+  "prompts": {},
+  "sessions": {
+    "s_8f01588005a737": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eada786-0154-42ef-b3b3-7f3f46debc77",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

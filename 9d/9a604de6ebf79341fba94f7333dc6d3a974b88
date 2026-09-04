@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_77e2521f9359d8::t_57ac61e9d595a2 269-272
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/preserve-node-positions.test.ts
+  s_77e2521f9359d8::t_8582d999352051 176-178,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9d9a604de6ebf79341fba94f7333dc6d3a974b88",
+  "prompts": {},
+  "sessions": {
+    "s_77e2521f9359d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "002a141a-8e10-481b-9445-fb7a8e4b8876",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

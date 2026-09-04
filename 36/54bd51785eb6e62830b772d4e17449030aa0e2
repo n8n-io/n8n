@@ -1,0 +1,19 @@
+packages/cli/test/integration/shared/types.ts
+  s_909fa6f565ea9a::t_0fd020292f5d35 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3654bd51785eb6e62830b772d4e17449030aa0e2",
+  "prompts": {},
+  "sessions": {
+    "s_909fa6f565ea9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

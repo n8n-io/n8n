@@ -1,0 +1,62 @@
+packages/@n8n/scheduler/src/core/index.ts
+  s_d15034b3cbc778::t_4ec8957c71dc99 80
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  s_d15034b3cbc778::t_4ec8957c71dc99 3
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  s_37b3037d1e56c4::t_7f5eaea0041fc8 3-17
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_37b3037d1e56c4::t_388bf0c56b6ba1 9,13,28-38,43-44,47-49,57-77,79-81,143,158-159,181-183,196,216-218,360,365-366,369-370,372-373,422-424,440
+  s_d15034b3cbc778::t_ece29a23a34cb2 10-12,14-16,39,78,82-121,123-126,137,142,157,160-168,193-195,215,219,222
+  s_37b3037d1e56c4::t_a6ee1b9522af9f 42,45,122,127-136,197-214,220-221,223-226,230-234,237-239,241-351,413,435,441-445
+  s_d15034b3cbc778::t_8d51eda966b14e 52,396,401-405,407-412
+  s_d15034b3cbc778::t_54f0668520ae8d 140,144-147,180,184-192,227,235
+  s_7c60ac0b471cf2::t_793aa7e5f42ee1 141
+  s_d15034b3cbc778::t_9d28cce0e65afd 240,356-359,361-364,367-368,371,374-385,390-395,398-400,406,415-418
+  s_d15034b3cbc778::t_659061245ee1ab 388
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_37b3037d1e56c4::t_7f5eaea0041fc8 3-44,55,57,66-68
+  s_d15034b3cbc778::t_f1448040093372 54,56,58-63
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_d15034b3cbc778::t_d05ddbd5db23fa 5,470-508,510-517,525-527,529-532,535,539,541,544-545,549
+  s_d15034b3cbc778::t_75d8d98beeaa34 100-226
+  s_d15034b3cbc778::t_d7d84b68871e0a 231-294
+  s_7c60ac0b471cf2::t_e9af358c351c3b 295-314
+  s_d15034b3cbc778::t_03a20d3b399aaf 361-384,386-391,393
+  s_37b3037d1e56c4::t_3003cdbbcc15b2 385,392,509
+  s_d15034b3cbc778::t_18b0e8f5b90718 518-524,528
+  s_d15034b3cbc778::t_ecb0727dea8562 533-534,536-538,540,542-543,546-548
+  s_37b3037d1e56c4::t_994f624a465b14 573-630,632-633
+  s_37b3037d1e56c4::t_068762bb26914d 631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8b0bb7476f7b6abfbe08d9d5ff5695c2dcaddd3",
+  "prompts": {},
+  "sessions": {
+    "s_37b3037d1e56c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fd19c94-4cd5-47b2-9b97-9e2f6644c16a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_7c60ac0b471cf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0097287e-6c78-43bf-90ca-fa186ed48a6b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d15034b3cbc778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5af38261-8873-4c30-be0a-dee2f9578ac4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
