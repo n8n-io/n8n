@@ -207,6 +207,12 @@ export async function truncate(entities: EntityName[]) {
 		await connection.query(`DELETE FROM ${tableName}`);
 	}
 
+	// `workflow_published_version` references workflows and history rows with
+	// RESTRICT, so it has to go before either of them.
+	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
+		await connection.getRepository('WorkflowPublishedVersion').delete({});
+	}
+
 	for (const name of entities) {
 		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
 		// can't go through the repository, so we clear it directly.
