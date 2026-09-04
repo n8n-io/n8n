@@ -874,6 +874,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 	border: var(--border-width, 1px) solid var(--focus--border-color);
 	border-radius: var(--radius--xs);
 	box-sizing: border-box;
+	// Elevate the overlay so it reads as a popover floating above the member
+	// nodes it covers, not as a box glued on top of them.
+	box-shadow: var(--shadow--md);
 	// A description can run to GROUP_DESCRIPTION_MAX_LENGTH; cap the editor
 	// so a long one scrolls instead of covering the canvas.
 	max-height: 40vh;

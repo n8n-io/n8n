@@ -14,8 +14,13 @@ export const GROUP_EMPTY_BODY_HEIGHT = GRID_SIZE * 4;
 export const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 /** Character cap on a group description; shared with the backend so validation matches. */
 export { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
-/** Below this zoom level all group descriptions and their affordances are hidden. */
-export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
+/**
+ * Below this zoom level all group descriptions and their affordances are hidden.
+ * Kept low enough that a fit-to-view of a normal workflow still shows the
+ * description (and its click-to-edit target), so an empty group stays editable
+ * after "fit view" instead of losing its only affordance.
+ */
+export const GROUP_DESCRIPTION_MIN_ZOOM = 0.4;
 
 /**
  * Canvas stacking contract (VueFlow resolves `node.zIndex ?? style.zIndex ?? 0`
