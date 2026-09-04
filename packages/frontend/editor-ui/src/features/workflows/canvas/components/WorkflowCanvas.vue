@@ -182,6 +182,7 @@ const layoutComponents = computed(() =>
 				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+				isEmptyGroup: (id) => workflowDocumentStore.value.isEmptyGroup(id),
 			}),
 );
 

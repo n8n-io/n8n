@@ -46,6 +46,8 @@ export interface BuildNodeGroupLayoutComponentsInput {
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	isGroupCollapsed: (id: string) => boolean;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup?: (id: string) => boolean;
 }
 
 export interface ComputeNodeGroupLayoutPushesInput {
@@ -71,6 +73,7 @@ export function buildNodeGroupLayoutComponents({
 	getNodeById,
 	getNodeDisplaySize,
 	isGroupCollapsed,
+	isEmptyGroup = () => false,
 }: BuildNodeGroupLayoutComponentsInput): NodeGroupLayoutComponent[] {
 	const components: NodeGroupLayoutComponent[] = [];
 	const groupedNodeIds = new Set<string>();
@@ -81,13 +84,17 @@ export function buildNodeGroupLayoutComponents({
 		if (!hasMember) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-		const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
+		const isEmpty = isEmptyGroup(group.id);
+		const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect, {
+			isEmpty,
+		});
 		components.push({
 			id: createCanvasGroupNodeId(group.id),
 			kind: 'group',
 			groupId: group.id,
 			nodeIds: [...group.nodeIds],
-			rect: isGroupCollapsed(group.id) ? collapsedRect : expandedRect,
+			// An empty group always renders as its card, whatever the view state says.
+			rect: isEmpty || isGroupCollapsed(group.id) ? collapsedRect : expandedRect,
 			collapsedRect,
 			expandedRect,
 		});

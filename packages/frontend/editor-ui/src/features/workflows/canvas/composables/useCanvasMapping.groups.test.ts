@@ -7,11 +7,13 @@ import {
 	buildCollapsedGroupByNodeId,
 	computeGroupFrameRects,
 	computeNodesRectFromStore,
+	getGroupCardHeight,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
 	titleBarFromNodesRect,
 } from './useCanvasMapping.groups';
 import {
+	GROUP_EMPTY_BODY_HEIGHT,
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
@@ -72,10 +74,21 @@ describe('computeGroupFrameRects', () => {
 		expect(expanded).toMatchObject({ x, y });
 	});
 
-	it('sizes the collapsed rect as a fixed-size chip', () => {
+	it('sizes the collapsed rect as a fixed-size card', () => {
 		const { collapsed } = computeGroupFrameRects(nodesRect);
 		expect(collapsed.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 		expect(collapsed.height).toBe(GROUP_HEADER_HEIGHT);
+	});
+
+	// An empty group's card carries the add-node body under the header, so its
+	// side handles sit at the middle of the whole card, not the header.
+	it('adds the add-node body to the collapsed rect of an empty group', () => {
+		const { collapsed, expanded } = computeGroupFrameRects(nodesRect, { isEmpty: true });
+		expect(collapsed.height).toBe(GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT);
+		// The expanded rect never applies to an empty group; it stays unchanged.
+		expect(expanded.height).toBe(
+			GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		);
 	});
 
 	it('sizes the expanded rect to span the cluster plus padding', () => {
@@ -112,10 +125,32 @@ describe('titleBarFromNodesRect', () => {
 		expect(titleBar.position.x).not.toBe(expanded.x);
 	});
 
-	it('uses the chip width when collapsed and the expanded width otherwise', () => {
+	it('uses the card width when collapsed and the expanded width otherwise', () => {
 		expect(titleBarFromNodesRect(nodesRect, true).width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 		expect(titleBarFromNodesRect(nodesRect, false).width).toBe(
 			nodesRect.width + 2 * GROUP_PADDING_X,
+		);
+	});
+
+	it('reports the rendered height: header when expanded or collapsed, header + body when empty', () => {
+		expect(titleBarFromNodesRect(nodesRect, false).height).toBe(GROUP_HEADER_HEIGHT);
+		expect(titleBarFromNodesRect(nodesRect, true).height).toBe(GROUP_HEADER_HEIGHT);
+		expect(titleBarFromNodesRect(nodesRect, true, true).height).toBe(
+			GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT,
+		);
+	});
+});
+
+describe('getGroupCardHeight', () => {
+	it('is the single source for the group node height in every state', () => {
+		expect(getGroupCardHeight({ isCollapsed: false, isEmptyGroup: false })).toBe(
+			GROUP_HEADER_HEIGHT,
+		);
+		expect(getGroupCardHeight({ isCollapsed: true, isEmptyGroup: false })).toBe(
+			GROUP_HEADER_HEIGHT,
+		);
+		expect(getGroupCardHeight({ isCollapsed: true, isEmptyGroup: true })).toBe(
+			GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT,
 		);
 	});
 });
@@ -521,6 +556,26 @@ describe('mapGroupsToVueFlowNodes', () => {
 
 		expect(out[0].data?.isCollapsed).toBe(true);
 		expect(out[0].data?.isEmptyGroup).toBe(true);
+	});
+
+	it('sizes the VueFlow node to the card: header + add-node body for an empty group', () => {
+		const group: IWorkflowGroup = { id: 'g1', name: 'Plan', nodeIds: ['p1'] };
+		const getById = nodeStore(makeNode('p1', 0, 0));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			isEmptyGroup: (id) => id === 'g1',
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].height).toBe(GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT);
+	});
+
+	it('sizes the VueFlow node to the header for collapsed and expanded groups', () => {
+		expect(setup(true)[0].height).toBe(GROUP_HEADER_HEIGHT);
+		expect(setup(false)[0].height).toBe(GROUP_HEADER_HEIGHT);
 	});
 });
 
