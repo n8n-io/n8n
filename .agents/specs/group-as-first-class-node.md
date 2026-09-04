@@ -1,8 +1,9 @@
 # Group as a first-class node
 
-Status: in progress. Feature flag: `group-node` (front end) /
-`N8N_GROUP_NODE_ENABLED` (back end). The old `nodeGroups` path stays the default
-until the flag is on by default and the migration is proven.
+Status: in progress. Two gates, both needed: the `109_group_node` PostHog flag
+(front end) and `N8N_GROUP_NODE_ENABLED` (back end). The old `nodeGroups` path
+stays the default until the flag is on by default and the migration is proven.
+See "The feature flag" below.
 
 ## Why
 
@@ -99,7 +100,7 @@ An empty group forwards its input to its output unchanged. It is a no-op. This
 falls out of the two rules above: with no entry nodes the input has nowhere to
 go, so it goes straight to the output.
 
-## Where the engine change lives
+## Where the engine change lives, in code
 
 Constraint: the boundary is resolved **once**, not at each call site. The old
 design resolved group boundaries at 23 separate places, and that is the failure
@@ -133,6 +134,24 @@ Because the rewrite happens where connections are indexed, the execution loop
 in `workflow-execute.ts` still sees a flat graph of runnable nodes. Its
 `addNodeToBeExecuted` fan-in logic already waits for every input of a node with
 several inputs, so the collect semantics reuses it rather than duplicating it.
+
+The one seam is `Workflow.setConnections`:
+
+| Field | Holds |
+|---|---|
+| `authoredConnectionsBySourceNode` | the graph the user drew, group nodes in place |
+| `connectionsBySourceNode` | the graph the engine runs, boundaries resolved |
+| `connectionsByDestinationNode` | the same, inverted |
+
+`DirectedGraph.fromWorkflow` reads `connectionsBySourceNode`, so partial
+execution inherits the boundary with no code of its own. A test pins that: the
+group node stays a node of the workflow, and no connection touches it.
+
+`n8n-nodes-base.group` is a registered node type with a pass-through `execute`.
+The registration matters because the engine reads `nodeType.description.inputs`
+and `.outputs` in several places, and an unregistered type throws there. The
+`execute` is a safety net only; the rewrite removes the node from the graph, so
+a run never reaches it. A test pins that the group node never executes.
 
 ## Validation
 
@@ -203,3 +222,20 @@ a centered "+" in the body of an empty card.
 
 One new visual: where a boundary edge enters the interior, it fans to the
 interior entry nodes.
+
+## The feature flag
+
+Two gates, and both must be on:
+
+| Gate | Where |
+|---|---|
+| `N8N_GROUP_NODE_ENABLED` | `WorkflowsConfig.groupNodeEnabled`, reaching the editor as the `groupNode.enabled` setting |
+| `109_group_node` | the PostHog flag for the rollout |
+
+The instance gate wins, so a self-hosted instance keeps the older path whatever
+the rollout says. `useGroupNodeExperiment` combines them, and the editor reads
+only that composable.
+
+With the flag off the editor keeps the `nodeGroups` path unchanged. The old
+validation in `node-grouping-validation.ts` and the old canvas path both stay
+until the flag is on by default and the migration is proven.
