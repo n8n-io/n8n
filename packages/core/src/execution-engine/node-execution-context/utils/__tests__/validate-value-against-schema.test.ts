@@ -463,39 +463,33 @@ describe('validateValueAgainstSchema', () => {
 					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
 				).toThrow("Invalid input for 'count' [item 0]");
 			});
+		});
 
-			test('should cast to string even when the stored convertFieldsToString is false', () => {
-				const nodeType = {
-					description: {
-						properties: [
-							{
-								displayName: 'Workflow Inputs',
-								name: 'workflowInputs',
-								type: 'resourceMapper',
-								noDataExpression: true,
-								typeOptions: {
-									resourceMapper: {
-										showTypeConversionOptions: true,
-										mode: 'map',
-									},
-								},
+		describe('convertFieldsToString across the 1.4 boundary', () => {
+			const nodeType = {
+				description: {
+					properties: [
+						{
+							displayName: 'Workflow Inputs',
+							name: 'workflowInputs',
+							type: 'resourceMapper',
+							noDataExpression: true,
+							typeOptions: {
+								resourceMapper: { showTypeConversionOptions: true, mode: 'map' },
 							},
-						],
-					},
-				} as unknown as INodeType;
+						},
+					],
+				},
+			} as unknown as INodeType;
 
-				const node: INode = {
+			const makeNode = (typeVersion: number, flags: Record<string, unknown>): INode =>
+				({
 					parameters: {
 						workflowInputs: {
 							mappingMode: 'defineBelow',
-							value: {
-								note: '={{ $json.note }}',
-							},
+							value: { note: '={{ $json.note }}' },
 							matchingColumns: [],
-							attemptToConvertTypes: true,
-							// Only a non-UI writer can produce `false` here. The UI always
-							// writes `true` when showTypeConversionOptions is set.
-							convertFieldsToString: false,
+							...flags,
 							schema: [
 								{
 									id: 'note',
@@ -513,12 +507,13 @@ describe('validateValueAgainstSchema', () => {
 					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
 					name: 'call sub-workflow',
 					type: 'n8n-nodes-base.executeWorkflow',
-					typeVersion: 1.2,
+					typeVersion,
 					position: [420, 0],
-				};
+				}) as unknown as INode;
 
-				const result = validateValueAgainstSchema(
-					node,
+			const run = (typeVersion: number, flags: Record<string, unknown>) =>
+				validateValueAgainstSchema(
+					makeNode(typeVersion, flags),
 					nodeType,
 					{ note: 42 },
 					'workflowInputs.value',
@@ -526,7 +521,42 @@ describe('validateValueAgainstSchema', () => {
 					0,
 				);
 
-				expect(result).toEqual({ note: '42' });
+			describe.each([1.2, 1.3])('on v%s the stored flag still decides', (typeVersion) => {
+				// Anything authored outside the NDV can omit the flag, so these two must keep
+				// passing values through untouched rather than starting to reject them.
+				test('passes the value through when the flag is absent', () => {
+					expect(run(typeVersion, { attemptToConvertTypes: false })).toEqual({ note: 42 });
+				});
+
+				test('passes the value through when the flag is false', () => {
+					expect(
+						run(typeVersion, { attemptToConvertTypes: false, convertFieldsToString: false }),
+					).toEqual({ note: 42 });
+				});
+
+				test('rejects a type mismatch when the flag is true', () => {
+					expect(() =>
+						run(typeVersion, { attemptToConvertTypes: false, convertFieldsToString: true }),
+					).toThrow(ExpressionError);
+				});
+			});
+
+			describe('on v1.4 the stored flag is ignored', () => {
+				test('casts to string even when the flag is false', () => {
+					expect(run(1.4, { attemptToConvertTypes: true, convertFieldsToString: false })).toEqual({
+						note: '42',
+					});
+				});
+
+				test('casts to string when the flag is absent', () => {
+					expect(run(1.4, { attemptToConvertTypes: true })).toEqual({ note: '42' });
+				});
+
+				test('rejects a type mismatch when conversion is off, whatever the flag says', () => {
+					expect(() =>
+						run(1.4, { attemptToConvertTypes: false, convertFieldsToString: false }),
+					).toThrow(ExpressionError);
+				});
 			});
 		});
 
