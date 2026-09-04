@@ -2,7 +2,7 @@ operationId: getSourceControlStatus
 tags:
   - SourceControl
 summary: Preview pending source control changes
-description: Previews the pending changes between the instance and the connected Git repository, in either direction. Does not modify the instance or the repository. The diff is computed on every call, so the result is a live snapshot at request time.
+description: Previews the pending changes between the instance and the connected Git repository in either the `push` or `pull` direction.
 x-required-scope: sourceControl:read
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

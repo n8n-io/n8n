@@ -34,9 +34,7 @@ export class SourceControlPublicController {
 	@ApiKeyScope('sourceControl:read')
 	@ApiSummary('Preview pending source control changes')
 	@ApiDescription(
-		'Previews the pending changes between the instance and the connected Git repository, ' +
-			'in either direction. Does not modify the instance or the repository. The diff is computed on every call, ' +
-			'so the result is a live snapshot at request time.',
+		'Previews the pending changes between the instance and the connected Git repository in either the `push` or `pull` direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlStatusPublicDto)
