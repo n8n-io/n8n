@@ -110,6 +110,21 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		expect(wrapper.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
 	});
 
+	it('keeps raw mode inactive and hides its toggle for the floating toolbar', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'floating',
+			},
+		});
+
+		await waitFor(() =>
+			expect(wrapper.getByTestId('markdown-editor-bubble-menu')).toBeInTheDocument(),
+		);
+		expect(wrapper.queryByTestId('n8n-markdown-editor-raw-content')).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('button', { name: 'Raw markdown' })).not.toBeInTheDocument();
+	});
+
 	it('does not add fixed-toolbar padding for the floating toolbar', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {

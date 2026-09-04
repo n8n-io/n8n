@@ -40,6 +40,7 @@ const {
 	disabled = false,
 	dataTestId,
 	credentialDataTestId,
+	showChevron = true,
 } = defineProps<{
 	/** Menu items to render in the dropdown. */
 	items: Array<AiModelSelectorMenuItem<TData>>;
@@ -63,6 +64,8 @@ const {
 	dataTestId: string;
 	/** Test id applied to the selected credential label. */
 	credentialDataTestId: string;
+	/** Whether to show the chevron icon in the trigger. */
+	showChevron?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -152,7 +155,7 @@ defineExpose({
 						</N8nText>
 					</div>
 				</div>
-				<N8nIcon :class="$style.chevron" icon="chevron-down" size="medium" />
+				<N8nIcon v-if="showChevron" :class="$style.chevron" icon="chevron-down" size="medium" />
 			</Primitive>
 		</template>
 
@@ -237,7 +240,7 @@ defineExpose({
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	height: var(--height--lg);
+	height: var(--n8n-ai-select--height, var(--height--lg));
 	padding: 0 var(--spacing--xs);
 	gap: var(--spacing--xs);
 	border: var(--border);
@@ -271,9 +274,16 @@ defineExpose({
 .dropdownButtonBorderless {
 	border-color: transparent;
 	background-color: transparent;
+	padding: 0 var(--spacing--2xs);
 
 	&:hover {
-		background-color: var(--color--foreground);
+		background-color: var(--background--hover);
+	}
+
+	&:active,
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
+		background-color: var(--background--active);
 	}
 }
 
