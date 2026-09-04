@@ -60,6 +60,18 @@ jobs:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      # `@n8n/design-system` and `@n8n/chat` emit their declarations only when `RELEASE` is
+      # set, because no consumer in this repo reads them and the emit costs ~15s of build time.
+      # This step fails the release rather than publishing a package with no types.
+      - name: Verify the published frontend packages carry declarations
+        run: |
+          for pkg in packages/frontend/@n8n/design-system packages/frontend/@n8n/chat; do
+            if [ -z "$(find "$pkg/dist" -name '*.d.ts' -print -quit 2>/dev/null)" ]; then
+              echo "::error::$pkg/dist has no .d.ts — the RELEASE-gated declaration emit did not run"
+              exit 1
+            fi
+          done
+
       - name: Install script dependencies
         run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
