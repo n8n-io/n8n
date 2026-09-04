@@ -269,6 +269,7 @@ describe('JobProcessor', () => {
 	describe('suspension', () => {
 		beforeEach(() => {
 			workflowExecuteSuspendMock.mockClear();
+			logger.info.mockClear();
 		});
 
 		const createJobProcessor = (executionPersistence: ExecutionPersistence) =>
@@ -317,6 +318,10 @@ describe('JobProcessor', () => {
 
 			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Requested suspension of 1 execution(s)'),
+			);
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('exec-1'));
 
 			resolveRun(successRun());
 			await processPromise;
@@ -354,6 +359,7 @@ describe('JobProcessor', () => {
 
 			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('Requested suspension'));
 
 			resolveRun(successRun());
 			await processPromise;
