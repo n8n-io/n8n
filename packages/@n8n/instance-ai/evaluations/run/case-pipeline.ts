@@ -202,6 +202,35 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
 		};
 
+		// A staged prior run that never produced an execution record leaves the case
+		// grading against history the instance does not have. Checked BEFORE every other
+		// branch, and independently of `build.success`, because the biting case is a build
+		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
+		// otherwise be scored as an agent failure on a premise that never existed.
+		if (build.priorRunFailed) {
+			return await attachExpectations({
+				buildSuccess: build.success,
+				passed: false,
+				// Not graded rather than failed — the same treatment an ungraded expectation
+				// gets, so this stays out of the pass rate instead of landing in the
+				// builder's baseline as a red.
+				incomplete: true,
+				score: 0,
+				reasoning: `Prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+				failureCategory: 'framework_issue',
+				attribution: 'framework_issue',
+				execErrors: [build.priorRunFailed],
+				buildDurationMs,
+				...buildSpendFields,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+			});
+		}
+
 		// Build-only case — the build plus its expectation judging (in getOrBuild) is the
 		// whole test; skip execution. The sentinel's outcome IS the expectation verdicts,
 		// so LangSmith pass metrics stay truthful for scenario-less cases. Checked before

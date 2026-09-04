@@ -147,6 +147,18 @@ describe('McpProtectedResource', () => {
 		});
 	});
 
+	describe('isAvailable', () => {
+		it.each([true, false])(
+			'should follow the instance MCP access setting (%s)',
+			async (enabled) => {
+				mcpSettingsService.getEnabled.mockResolvedValue(enabled);
+
+				await expect(resource.isAvailable()).resolves.toBe(enabled);
+				await expect(resource.authorize(mock())).resolves.toBe(enabled);
+			},
+		);
+	});
+
 	describe('getAllowedRedirectUris', () => {
 		it('should delegate to the MCP settings service', async () => {
 			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);

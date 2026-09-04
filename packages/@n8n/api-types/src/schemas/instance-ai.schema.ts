@@ -292,6 +292,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -655,7 +663,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -993,7 +1009,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -1023,8 +1041,12 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone). No delta/retraction protocol. */
-	items: z.array(setupItemSchema),
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -1041,8 +1063,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
@@ -1461,6 +1483,21 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
+
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
 
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
@@ -2220,6 +2257,10 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
