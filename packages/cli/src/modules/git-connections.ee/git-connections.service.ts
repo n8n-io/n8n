@@ -327,6 +327,8 @@ export class GitConnectionsService {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
+					// A sub-workflow nobody selected stays a reference. Failing here would
+					// block a push whose sub-workflow the branch already holds.
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
 					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 				},
@@ -338,7 +340,7 @@ export class GitConnectionsService {
 				stagingFolder,
 				staging,
 				branchState,
-				new Set(selection.deletedWorkflowIds),
+				selection,
 			);
 
 			const credentials = await this.decryptCredentials(connection);

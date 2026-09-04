@@ -20,17 +20,16 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
-import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
-import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
-import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingCredential,
+} from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { ProjectService } from '@/services/project.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
@@ -49,9 +48,6 @@ type TestRemote = {
 	workingDir: string;
 	git: SimpleGit;
 };
-
-const packageImportConfig = Container.get(PackageImportConfig);
-const packageContents = Container.get(PackageContentsReader);
 
 const licenseMocker = new LicenseMocker();
 
@@ -119,7 +115,7 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageContents),
+		new WorkingCopyUpdater(instanceSettings),
 		logger,
 	);
 });
@@ -170,25 +166,6 @@ async function inspectBranch(
 	const inspectionDir = path.join(testRoot, `inspection-${Date.now()}`);
 	await simpleGit().clone(bareDir, inspectionDir, ['--branch', branch, '--single-branch']);
 	return { git: simpleGit(inspectionDir), dir: inspectionDir };
-}
-
-/** Both sides list in their own order, so compare them sorted. */
-function sortRequirements(requirements?: PackageRequirements) {
-	const byContent = (a: unknown, b: unknown) => JSON.stringify(a).localeCompare(JSON.stringify(b));
-
-	return Object.fromEntries(
-		Object.entries(requirements ?? {})
-			.filter(([, list]) => list !== undefined)
-			.map(([kind, list]) => [
-				kind,
-				list
-					.map((item: { usedByWorkflows: string[] }) => ({
-						...item,
-						usedByWorkflows: [...item.usedByWorkflows].sort(),
-					}))
-					.sort(byContent),
-			]),
-	);
 }
 
 async function readBranchManifest(inspectionDir: string) {
@@ -425,56 +402,6 @@ describe('Selective push', () => {
 		);
 	});
 
-	it('keeps a workflow the committed manifest lost, because the directories decide', async () => {
-		const remote = await createRemote();
-		const connection = await createConnection(remote.bareDir);
-		await service.clone(connection.id);
-
-		const { project, workflows } = await setupProjectWithWorkflows(
-			'Orders',
-			['w1', 'w2'],
-			connection.id,
-		);
-
-		await service.push(connection.id, owner, { commitMessage: 'Full push' });
-		const before = await inspectBranch(remote.bareDir);
-		const w1Target = (await readBranchManifest(before.dir)).workflows!.find(
-			(w) => w.id === workflows[0].id,
-		)!.target;
-
-		// A merge that went wrong drops the entries from the manifest, while the
-		// directories on the branch stay intact.
-		const workingCopy = path.join(
-			testRoot,
-			'instance',
-			'git-connections',
-			connection.id,
-			'repository',
-		);
-		const { workflows: _lost, ...withoutEntries } = await readBranchManifest(workingCopy);
-		await writeFile(
-			path.join(workingCopy, 'n8n-export', 'manifest.json'),
-			JSON.stringify(withoutEntries, null, '\t'),
-		);
-
-		await service.pushSelection(
-			connection.id,
-			owner,
-			{ commitMessage: 'Update w2' },
-			{ projectId: project.id, workflowIds: [workflows[1].id], deletedWorkflowIds: [] },
-		);
-
-		const { dir } = await inspectBranch(remote.bareDir);
-		const manifest = await readBranchManifest(dir);
-
-		expect(manifest.workflows).toEqual(
-			expect.arrayContaining([{ id: workflows[0].id, name: 'w1', target: w1Target }]),
-		);
-		await expect(
-			stat(path.join(dir, 'n8n-export', w1Target, 'workflow.json')),
-		).resolves.toBeDefined();
-	});
-
 	it('deletes the selected workflow from the branch', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);
@@ -617,29 +544,40 @@ describe('Selective push', () => {
 		await expect(stat(path.join(credentialDir, 'credential.json'))).resolves.toBeDefined();
 	});
 
-	it('derives the same requirements from the branch files that the exporter wrote', async () => {
+	it('lists a called sub-workflow as a requirement when the selection leaves it out', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);
 		await service.clone(connection.id);
 
-		const { project } = await setupProjectWithWorkflows('Orders', [], connection.id);
-		const credential = await saveProjectCredential('Cred A', project);
-		await buildWorkflowReferencingCredential({ name: 'w1', project, credential });
-		await buildWorkflowReferencingCredential({ name: 'w2', project, credential });
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['sub'],
+			connection.id,
+		);
+		const caller = await buildWorkflowCallingSubWorkflow({
+			name: 'caller',
+			project,
+			subWorkflowId: workflows[0].id,
+		});
 
 		await service.push(connection.id, owner, { commitMessage: 'Full push' });
-
-		const { dir } = await inspectBranch(remote.bareDir);
-		const reader = new DirectoryPackageReader(path.join(dir, 'n8n-export'), packageImportConfig);
-		const derived = (await packageContents.read(reader)).requirements;
-
-		// The exporter states the requirements from the database; the reader
-		// derives them from the files it wrote. They have to agree, because the
-		// derivation replaces the statement when the manifest leaves the branch.
-		expect(sortRequirements(derived)).toEqual(
-			sortRequirements((await readBranchManifest(dir)).requirements),
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Update the caller only' },
+			{ projectId: project.id, workflowIds: [caller.id], deletedWorkflowIds: [] },
 		);
-		expect(derived?.credentials).toHaveLength(1);
+
+		const manifest = await readBranchManifest((await inspectBranch(remote.bareDir)).dir);
+
+		// Nobody selected the sub-workflow, so the push states the reference and
+		// leaves the copy the branch holds alone.
+		expect(manifest.requirements?.workflows).toEqual([
+			expect.objectContaining({ id: workflows[0].id, usedByWorkflows: [caller.id] }),
+		]);
+		expect(manifest.workflows!.map((w) => w.id).sort()).toEqual(
+			[caller.id, workflows[0].id].sort(),
+		);
 	});
 
 	it('removes a dependency from the branch together with its last user', async () => {

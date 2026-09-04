@@ -13,13 +13,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities/credential/credential-requirements.extractor';
-import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
-import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
-import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
-import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -42,13 +36,6 @@ const emptyManifest = packageManifestSchema.parse({
 	sourceId: 'inst-1',
 });
 
-const packageContents = new PackageContentsReader(
-	new WorkflowSerializer(),
-	new CredentialRequirementsExtractor(),
-	new DataTableRequirementsExtractor(),
-	new VariableRequirementsExtractor(),
-);
-
 /** What an export writes for a workflow, so the branch can be read back. */
 const branchWorkflowFile = (id: string, name: string) =>
 	JSON.stringify({
@@ -61,13 +48,6 @@ const branchWorkflowFile = (id: string, name: string) =>
 		isPublished: false,
 		isArchived: false,
 	});
-
-const packageImportConfig = mock<PackageImportConfig>({
-	maxUncompressedBytes: 300 * 1024 * 1024,
-	maxEntryBytes: 5 * 1024 * 1024,
-	maxEntries: 5_000,
-	maxPathLength: 1024,
-});
 
 vi.mock('@/permissions.ee/check-access');
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
@@ -93,7 +73,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings, packageImportConfig, packageContents),
+		new WorkingCopyUpdater(instanceSettings),
 		logger,
 	);
 
@@ -312,7 +292,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig, packageContents),
+				new WorkingCopyUpdater(settings),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -592,7 +572,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				selectiveInstanceSettings,
-				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig, packageContents),
+				new WorkingCopyUpdater(selectiveInstanceSettings),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -889,7 +869,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings, packageImportConfig, packageContents),
+				new WorkingCopyUpdater(settings),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());

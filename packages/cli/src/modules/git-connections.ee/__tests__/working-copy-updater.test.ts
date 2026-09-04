@@ -4,24 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities/credential/credential-requirements.extractor';
-import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
-import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
-import { WorkflowSerializer } from '@/modules/n8n-packages/entities/workflow/workflow.serializer';
-import { PackageContentsReader } from '@/modules/n8n-packages/engine/package-contents';
-import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import type { BranchState } from '../branch-placement';
+import type { BranchState } from '../manifest-merge';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
-
-const packageImportConfig = mock<PackageImportConfig>({
-	maxUncompressedBytes: 300 * 1024 * 1024,
-	maxEntryBytes: 5 * 1024 * 1024,
-	maxEntries: 5_000,
-	maxPathLength: 1024,
-});
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
@@ -34,6 +21,9 @@ const makeManifest = (overrides: Partial<PackageManifest> = {}): PackageManifest
 	...baseMetadata,
 	...overrides,
 });
+
+const CREDENTIAL_TYPE = 'httpBasicAuth';
+const NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
 const alpha = { id: 'p1', name: 'Alpha', target: 'projects/alpha' };
 const wf = (id: string) => ({
@@ -59,8 +49,8 @@ const credReq = (id: string, usedByWorkflows: string[]) => ({
 	usedByWorkflows,
 });
 
-// The files an export writes. Their ids and names are what the branch state is
-// read from, so they must agree with the entry helpers above.
+// The files an export writes. The manifest states what the branch holds; these
+// are the directories the push moves and removes.
 const projectFile = JSON.stringify({ id: alpha.id, name: alpha.name });
 const folderFile = (id: string, name: string) => JSON.stringify({ id, name });
 const workflowFile = (id: string, extra: Record<string, unknown> = {}) =>
@@ -75,23 +65,6 @@ const workflowFile = (id: string, extra: Record<string, unknown> = {}) =>
 		isArchived: false,
 		...extra,
 	});
-
-const CREDENTIAL_TYPE = 'httpBasicAuth';
-const NODE_TYPE = 'n8n-nodes-base.httpRequest';
-
-/** A workflow whose nodes use `credentialIds`, so the branch shows who needs what. */
-const workflowUsing = (id: string, credentialIds: string[]) =>
-	workflowFile(id, {
-		nodes: credentialIds.map((credentialId, index) => ({
-			id: `${id}-n${index}`,
-			name: `Call ${index}`,
-			type: NODE_TYPE,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			credentials: { [CREDENTIAL_TYPE]: { id: credentialId, name: credentialId } },
-		})),
-	});
 const credentialFile = (id: string) => JSON.stringify({ id, name: id });
 
 const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePushOptions => ({
@@ -101,20 +74,16 @@ const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePush
 	...overrides,
 });
 
+interface Side {
+	manifest: PackageManifest;
+	files: Record<string, string>;
+}
+
 describe('WorkingCopyUpdater', () => {
 	let root: string;
 	let exportFolder: string;
 	let stagingFolder: string;
-	const updater = new WorkingCopyUpdater(
-		mock<InstanceSettings>({ instanceId: 'inst-1' }),
-		packageImportConfig,
-		new PackageContentsReader(
-			new WorkflowSerializer(),
-			new CredentialRequirementsExtractor(),
-			new DataTableRequirementsExtractor(),
-			new VariableRequirementsExtractor(),
-		),
-	);
+	const updater = new WorkingCopyUpdater(mock<InstanceSettings>({ instanceId: 'inst-1' }));
 
 	const writeTree = async (base: string, files: Record<string, string>) => {
 		for (const [filePath, content] of Object.entries(files)) {
@@ -129,31 +98,27 @@ describe('WorkingCopyUpdater', () => {
 	const expectAbsent = async (relative: string) =>
 		await expect(stat(path.join(exportFolder, relative))).rejects.toThrow();
 
-	/**
-	 * Write the branch and the staging export, then apply the selection. The
-	 * branch manifest carries no entries: they are read from the directories.
-	 */
+	/** Write the branch and the staging export, then apply the selection. */
 	const apply = async (
-		branchFiles: Record<string, string>,
-		staging: PackageManifest,
-		stagingFiles: Record<string, string>,
-		{
-			deleted = [],
-			branchManifest = makeManifest(),
-		}: { deleted?: string[]; branchManifest?: PackageManifest } = {},
+		branch: Side,
+		staging: Side,
+		overrides: Partial<SelectivePushOptions> = {},
 	) => {
 		await writeTree(exportFolder, {
-			'manifest.json': manifestFile(branchManifest),
-			...branchFiles,
+			'manifest.json': manifestFile(branch.manifest),
+			...branch.files,
 		});
-		await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging), ...stagingFiles });
-		const branch = await updater.readBranchState(exportFolder);
+		await writeTree(stagingFolder, {
+			'manifest.json': manifestFile(staging.manifest),
+			...staging.files,
+		});
+		const state = await updater.readBranchState(exportFolder);
 		return await updater.applySelection(
 			exportFolder,
 			stagingFolder,
-			staging,
-			branch,
-			new Set(deleted),
+			staging.manifest,
+			state,
+			selection(overrides),
 		);
 	};
 
@@ -194,13 +159,16 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('readBranchState', () => {
-		it('reads one entry for each entity from the directories', async () => {
+		it('takes the entries and the requirements from the branch manifest', async () => {
 			await writeTree(exportFolder, {
-				// The manifest states nothing: the files carry all of it.
-				'manifest.json': manifestFile(makeManifest()),
-				'projects/alpha/project.json': projectFile,
-				'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1']),
-				'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+				'manifest.json': manifestFile(
+					makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1')],
+						credentials: [cred('c1')],
+						requirements: { credentials: [credReq('c1', ['w1'])] },
+					}),
+				),
 			});
 
 			const branch = await updater.readBranchState(exportFolder);
@@ -208,41 +176,28 @@ describe('WorkingCopyUpdater', () => {
 			expect(branch.projects).toEqual([alpha]);
 			expect(branch.workflows).toEqual([wf('w1')]);
 			expect(branch.credentials).toEqual([cred('c1')]);
+			expect(branch.requirements?.credentials).toEqual([credReq('c1', ['w1'])]);
 		});
 
-		it('rejects a workflow file that fails validation, before the push writes anything', async () => {
+		it('drops the export metadata, which always comes from the new export', async () => {
 			await writeTree(exportFolder, {
-				'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ name: 'no id' }),
-			});
-
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
-				'Package holds a workflow file that failed validation at "projects/alpha/workflows/w1"',
-			);
-		});
-
-		it('keeps the variable ids the manifest knows, because the files omit them', async () => {
-			const target = 'projects/alpha/variables/api-key';
-			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(
-					makeManifest({ variables: [{ id: 'v1', name: 'API_KEY', target }] }),
-				),
-				[`${target}/variable.json`]: JSON.stringify({ name: 'API_KEY', type: 'string' }),
+				'manifest.json': manifestFile(makeManifest({ workflows: [wf('w1')] })),
 			});
 
 			const branch = await updater.readBranchState(exportFolder);
 
-			expect(branch.variables).toEqual([{ id: 'v1', name: 'API_KEY', target }]);
+			expect(branch).not.toHaveProperty('exportedAt');
+			expect(branch).not.toHaveProperty('sourceId');
 		});
 
-		it('works on a branch that has no manifest at all', async () => {
+		it('rejects an export that has no manifest', async () => {
 			await writeTree(exportFolder, {
-				'projects/alpha/project.json': projectFile,
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			const branch = await updater.readBranchState(exportFolder);
-
-			expect(branch.workflows).toEqual([wf('w1')]);
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'The export has no manifest.json',
+			);
 		});
 	});
 
@@ -280,23 +235,34 @@ describe('WorkingCopyUpdater', () => {
 		it('keeps a renamed folder where the branch has it, so unselected workflows stay put', async () => {
 			await apply(
 				{
-					'projects/alpha/project.json': projectFile,
-					'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
-					'projects/alpha/folders/sales/workflows/w1/workflow.json': workflowFile('w1', { v: 1 }),
-					'projects/alpha/folders/sales/workflows/w2/workflow.json': workflowFile('w2'),
-					'projects/alpha/folders/sales/workflows/w3/workflow.json': workflowFile('w3'),
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Sales', 'sales')],
+						workflows: [inFolder('w1', 'sales'), inFolder('w2', 'sales'), inFolder('w3', 'sales')],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+						'projects/alpha/folders/sales/workflows/w1/workflow.json': workflowFile('w1', { v: 1 }),
+						'projects/alpha/folders/sales/workflows/w2/workflow.json': workflowFile('w2'),
+						'projects/alpha/folders/sales/workflows/w3/workflow.json': workflowFile('w3'),
+					},
 				},
-				makeManifest({
-					projects: [alpha],
-					folders: [folder('f1', 'Revenue', 'revenue')],
-					workflows: [inFolder('w1', 'revenue')],
-				}),
 				{
-					'projects/alpha/project.json': projectFile,
-					'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
-					'projects/alpha/folders/revenue/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Revenue', 'revenue')],
+						workflows: [inFolder('w1', 'revenue')],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
+						'projects/alpha/folders/revenue/workflows/w1/workflow.json': workflowFile('w1', {
+							v: 2,
+						}),
+					},
 				},
-				{ deleted: ['w3'] },
+				{ workflowIds: ['w1'], deletedWorkflowIds: ['w3'] },
 			);
 
 			await expectAbsent('projects/alpha/folders/revenue');
@@ -313,36 +279,52 @@ describe('WorkingCopyUpdater', () => {
 			);
 			const manifest = await updater.readManifest(exportFolder);
 			expect(manifest.folders).toEqual([folder('f1', 'Sales', 'sales')]);
-			// Sorted by directory, because the manifest restates the tree.
-			expect(manifest.workflows).toEqual([inFolder('w1', 'sales'), inFolder('w2', 'sales')]);
+			// The unselected workflow keeps its place in the list; the selected one
+			// is re-appended under the directory the branch keeps.
+			expect(manifest.workflows).toEqual([inFolder('w2', 'sales'), inFolder('w1', 'sales')]);
 		});
 
 		it('keeps both folders where the branch has them when their names swap', async () => {
 			// f1 is now named B (slug b) and f2 is named A (slug a); w1 and w3 are selected.
 			await apply(
 				{
-					'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
-					'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
-					'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1'),
-					'projects/alpha/folders/a/workflows/w2/workflow.json': workflowFile('w2'),
-					'projects/alpha/folders/b/workflows/w3/workflow.json': workflowFile('w3'),
-					'projects/alpha/folders/b/workflows/w4/workflow.json': workflowFile('w4'),
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'A', 'a'), folder('f2', 'B', 'b')],
+						workflows: [
+							inFolder('w1', 'a'),
+							inFolder('w2', 'a'),
+							inFolder('w3', 'b'),
+							inFolder('w4', 'b'),
+						],
+					}),
+					files: {
+						'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
+						'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
+						'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/folders/a/workflows/w2/workflow.json': workflowFile('w2'),
+						'projects/alpha/folders/b/workflows/w3/workflow.json': workflowFile('w3'),
+						'projects/alpha/folders/b/workflows/w4/workflow.json': workflowFile('w4'),
+					},
 				},
-				makeManifest({
-					projects: [alpha],
-					folders: [folder('f1', 'B', 'b'), folder('f2', 'A', 'a')],
-					workflows: [inFolder('w1', 'b'), inFolder('w3', 'a')],
-				}),
 				{
-					'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
-					'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
-					'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', {
-						moved: true,
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'B', 'b'), folder('f2', 'A', 'a')],
+						workflows: [inFolder('w1', 'b'), inFolder('w3', 'a')],
 					}),
-					'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', {
-						moved: true,
-					}),
+					files: {
+						'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
+						'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
+						'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', {
+							moved: true,
+						}),
+						'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', {
+							moved: true,
+						}),
+					},
 				},
+				{ workflowIds: ['w1', 'w3'] },
 			);
 
 			// Each selected workflow lands in the directory its folder has on the
@@ -367,56 +349,43 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
-		it('ignores a workflow that the manifest lists but the branch no longer holds', async () => {
-			// The old behaviour aborted the push here, because the manifest drove
-			// the reconciliation. The directories decide now, so w2 is simply not
-			// on the branch.
-			const merged = await apply(
-				{
-					'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
-					'projects/alpha/folders/sales/workflows/w1/workflow.json': workflowFile('w1'),
-				},
-				makeManifest({
-					projects: [alpha],
-					folders: [folder('f1', 'Revenue', 'revenue')],
-					workflows: [inFolder('w1', 'revenue')],
-				}),
-				{
-					'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
-					'projects/alpha/folders/revenue/workflows/w1/workflow.json': workflowFile('w1'),
-				},
-				{
-					branchManifest: makeManifest({
-						folders: [folder('f1', 'Sales', 'sales')],
-						workflows: [inFolder('w1', 'sales'), inFolder('w2', 'sales')],
-					}),
-				},
-			);
-
-			expect(merged.workflows).toEqual([inFolder('w1', 'sales')]);
-			await expectAbsent('projects/alpha/folders/revenue');
-		});
-
 		it('removes a dependency directory once its last user dropped it', async () => {
 			const merged = await apply(
 				{
-					'projects/alpha/project.json': projectFile,
-					// On the branch w1 still uses both; the push re-exports it with one.
-					'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1', 'c-old']),
-					'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
-					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
-					'projects/alpha/credentials/c-old/credential.json': credentialFile('c-old'),
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1'), wf('w2')],
+						credentials: [cred('c1'), cred('c-old')],
+						requirements: {
+							credentials: [credReq('c1', ['w1']), credReq('c-old', ['w1'])],
+							nodeTypes: [{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] }],
+						},
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+						'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+						'projects/alpha/credentials/c-old/credential.json': credentialFile('c-old'),
+					},
 				},
-				makeManifest({
-					workflows: [wf('w1')],
-					projects: [alpha],
-					credentials: [cred('c1')],
-					requirements: { credentials: [credReq('c1', ['w1'])] },
-				}),
 				{
-					'projects/alpha/workflows/w1/workflow.json': workflowUsing('w1', ['c1']),
-					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+					// w1 is re-exported and now uses c1 only.
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1')],
+						credentials: [cred('c1')],
+						requirements: {
+							credentials: [credReq('c1', ['w1'])],
+							nodeTypes: [{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] }],
+						},
+					}),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+						'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+					},
 				},
+				{ workflowIds: ['w1'] },
 			);
 
 			await expectAbsent('projects/alpha/credentials/c-old');
@@ -424,11 +393,43 @@ describe('WorkingCopyUpdater', () => {
 				credentialFile('c1'),
 			);
 			expect(merged.credentials).toEqual([cred('c1')]);
-			// The manifest states the tree the push produced, requirements included.
 			expect(merged.requirements?.credentials).toEqual([credReq('c1', ['w1'])]);
-			expect(merged.requirements?.nodeTypes).toEqual([
-				{ type: NODE_TYPE, typeVersion: 1, usedByWorkflows: ['w1'] },
-			]);
+		});
+
+		it('keeps an unused dependency that belongs to another project', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			const betaCred = { id: 'c-beta', name: 'c-beta', target: 'projects/beta/credentials/c-beta' };
+
+			const merged = await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha, beta],
+						workflows: [wf('w1')],
+						credentials: [cred('c-old'), betaCred],
+						requirements: { credentials: [credReq('c-old', ['w1'])] },
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/credentials/c-old/credential.json': credentialFile('c-old'),
+						'projects/beta/credentials/c-beta/credential.json': credentialFile('c-beta'),
+					},
+				},
+				{
+					// w1 drops its credential. Beta is not part of this push.
+					manifest: makeManifest({ projects: [alpha], workflows: [wf('w1')] }),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			await expectAbsent('projects/alpha/credentials/c-old');
+			expect(await readExported('projects/beta/credentials/c-beta/credential.json')).toBe(
+				credentialFile('c-beta'),
+			);
+			expect(merged.credentials).toEqual([betaCred]);
 		});
 	});
 
@@ -471,21 +472,9 @@ describe('WorkingCopyUpdater', () => {
 			await mkdir(outside, { recursive: true });
 		});
 
-		it('refuses to read a branch that holds a symbolic link', async () => {
+		it('writes nothing through a symbolic link', async () => {
 			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(makeManifest()),
-				'projects/alpha/project.json': projectFile,
-			});
-			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
-
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
-				'disallowed entry type for "projects/alpha/workflows"',
-			);
-		});
-
-		it('writes nothing through a symbolic link, whatever state the caller hands over', async () => {
-			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(makeManifest()),
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha] })),
 				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
@@ -501,7 +490,7 @@ describe('WorkingCopyUpdater', () => {
 					stagingFolder,
 					staging,
 					{ projects: [alpha] },
-					new Set(),
+					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(outside)).toEqual([]);
@@ -513,16 +502,14 @@ describe('WorkingCopyUpdater', () => {
 			await symlink(outside, exportFolder);
 
 			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
-				'disallowed entry type for "."',
+				/"\." on the branch is a symbolic link/,
 			);
 		});
 
 		it('rejects a stale target whose parent is a symbolic link instead of deleting through it', async () => {
-			// The scan skips a link, so this state cannot come from the tree. The
-			// guard has to hold for any state the caller hands over.
 			await writeTree(outside, { 'w1/workflow.json': workflowFile('w1') });
 			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(makeManifest()),
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha] })),
 				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
@@ -531,7 +518,13 @@ describe('WorkingCopyUpdater', () => {
 			const branch: BranchState = { projects: [alpha], workflows: [wf('w1')] };
 
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, staging, branch, new Set(['w1'])),
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					branch,
+					selection({ deletedWorkflowIds: ['w1'] }),
+				),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(path.join(outside, 'w1'))).toEqual(['workflow.json']);
 		});
