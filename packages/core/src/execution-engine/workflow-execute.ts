@@ -26,6 +26,7 @@ import type {
 	IRunData,
 	ITaskData,
 	ITaskDataConnections,
+	ITaskDataConnectionsSource,
 	ITaskMetadata,
 	NodeOperationError,
 	Workflow,
@@ -942,8 +943,19 @@ export class WorkflowExecute {
 	/**
 	 * Handles execution of disabled nodes by passing through input data
 	 */
-	private handleDisabledNode(inputData: ITaskDataConnections): IRunNodeResponse {
+	private handleDisabledNode(
+		inputData: ITaskDataConnections,
+		forwardAllOutputs = false,
+	): IRunNodeResponse {
 		if (Object.hasOwn(inputData, 'main') && inputData.main.length > 0) {
+			// Resumed waiting webhook nodes are flagged as disabled so the wait does not
+			// start over, but their `main` already holds the full set of output branches
+			// returned by `webhook()`. Forward all of them so items routed to outputs
+			// other than the first are not silently dropped.
+			// See https://github.com/n8n-io/n8n/issues/12823
+			if (forwardAllOutputs) {
+				return { data: inputData.main as INodeExecutionData[][] };
+			}
 			// If the node is disabled simply return the data from the first main input
 			if (inputData.main[0] === null) {
 				return { data: undefined };
@@ -957,7 +969,9 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		nodeType: INodeType,
 		customOperation: ReturnType<WorkflowExecute['getCustomOperation']>,
+		node: INode,
 		inputData: ITaskDataConnections,
+		source: ITaskDataConnectionsSource | null,
 	): INodeExecutionData[] | null {
 		if (
 			nodeType.execute ||
@@ -977,6 +991,26 @@ export class WorkflowExecute {
 				// for that reason do we use the data of the first one that contains any
 				for (const mainData of inputData.main) {
 					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
+			} else if (!connectionInputData?.length && source?.main?.[0] === null) {
+				// The first input is empty and can no longer receive data. If another
+				// input got its data from a node further down the workflow (a loop
+				// back to this node), use that data so the loop keeps running. Data
+				// from anywhere else keeps the old behavior: skip this node run.
+				const descendants = workflow.getChildNodes(node.name);
+				for (let inputIndex = 0; inputIndex < inputData.main.length; inputIndex++) {
+					const mainData = inputData.main[inputIndex];
+					const previousNode = source.main[inputIndex]?.previousNode;
+					if (
+						mainData?.length &&
+						previousNode !== undefined &&
+						// getChildNodes never lists the node itself, so a direct
+						// self-edge counts as a loop back too
+						(previousNode === node.name || descendants.includes(previousNode))
+					) {
 						connectionInputData = mainData;
 						break;
 					}
@@ -1349,7 +1383,7 @@ export class WorkflowExecute {
 		}
 
 		if (node.disabled === true) {
-			return this.handleDisabledNode(inputData);
+			return this.handleDisabledNode(inputData, executionData.metadata?.forwardAllOutputs);
 		}
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1359,7 +1393,9 @@ export class WorkflowExecute {
 			workflow,
 			nodeType,
 			customOperation,
+			node,
 			inputData,
+			executionData.source,
 		);
 
 		if (connectionInputData === null) {

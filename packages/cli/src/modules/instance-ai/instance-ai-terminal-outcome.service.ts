@@ -14,6 +14,7 @@ import {
 	type TerminalResponseStatus,
 	type WorkSummary,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import { OperationalError } from 'n8n-workflow';
 
@@ -28,10 +29,6 @@ import type {
 } from './tracing/instance-ai-tracing.service';
 
 type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 function getBackgroundOutcomeResponseId(outcome: TerminalOutcome): string {
 	return `background-outcome:${outcome.id}`;

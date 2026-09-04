@@ -38,21 +38,36 @@ const makeFreshService = () => {
 describe('KeyManagerService', () => {
 	const repository = mockInstance(DeploymentKeyRepository);
 	const cipher = mockInstance(Cipher);
-	mockInstance(InstanceSettings, { encryptionKey: 'test_key' });
+	const instanceSettings = mockInstance(InstanceSettings, {
+		encryptionKey: 'test-instance-key',
+	});
 	mockInstance(Logger);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	describe('getActiveKey()', () => {
-		it('returns KeyInfo when one active key exists', async () => {
+	describe('getActiveKey() with rotation enabled', () => {
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+		});
+
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		it('returns the active key as a prefixed descriptor', async () => {
 			const key = makeKey();
 			repository.find.mockResolvedValue([key]);
 
 			const result = await Container.get(KeyManagerService).getActiveKey();
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: key.algorithm });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: key.algorithm,
+				format: 'prefixed',
+			});
 		});
 
 		it('throws NotFoundError when no active key exists', async () => {
@@ -70,6 +85,43 @@ describe('KeyManagerService', () => {
 		});
 	});
 
+	describe('getActiveKey() with rotation disabled', () => {
+		beforeEach(() => {
+			// The disabled path must not depend on the ambient environment.
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		// Fresh instances: the legacy descriptor is memoized per service instance.
+		const createService = () =>
+			new KeyManagerService(repository, cipher, instanceSettings, mock<Logger>());
+
+		it('returns the legacy no-prefix descriptor without touching the database', async () => {
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+
+			const result = await createService().getActiveKey();
+
+			expect(result).toEqual({
+				id: 'instance-key',
+				value: 'wrapped-instance-key',
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
+			});
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test-instance-key');
+			expect(repository.find).not.toHaveBeenCalled();
+		});
+
+		it('memoizes the legacy descriptor', async () => {
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+			const service = createService();
+
+			const first = await service.getActiveKey();
+			const second = await service.getActiveKey();
+
+			expect(second).toBe(first);
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getKeyById()', () => {
 		it('returns KeyInfo when key exists', async () => {
 			const key = makeKey();
@@ -77,7 +129,12 @@ describe('KeyManagerService', () => {
 
 			const result = await Container.get(KeyManagerService).getKeyById('key-1');
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: key.algorithm });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: key.algorithm,
+				format: 'prefixed',
+			});
 			expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 'key-1' } });
 		});
 
@@ -97,7 +154,12 @@ describe('KeyManagerService', () => {
 
 			const result = await Container.get(KeyManagerService).getLegacyKey();
 
-			expect(result).toEqual({ id: key.id, value: key.value, algorithm: 'aes-256-cbc' });
+			expect(result).toEqual({
+				id: key.id,
+				value: key.value,
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
+			});
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
@@ -144,6 +206,7 @@ describe('KeyManagerService', () => {
 				id: 'instance-key',
 				value: 'wrapped-instance-key',
 				algorithm: 'aes-256-cbc',
+				format: 'no-prefix',
 			});
 			expect(second).toBe(first);
 		});
