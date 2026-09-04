@@ -38,6 +38,20 @@ pre-commit:
       skip:
         - merge
         - rebase
+    # Two globs, two triggers: a manifest change can drop the script, and moving
+    # style files into a package can outrun it.
+    lint_styles_coverage_manifests:
+      glob: 'packages/**/package.json'
+      run: node scripts/check-lint-styles-coverage.mjs
+      skip:
+        - merge
+        - rebase
+    lint_styles_coverage_styles:
+      glob: 'packages/**/*.{scss,sass,vue}'
+      run: node scripts/check-lint-styles-coverage.mjs
+      skip:
+        - merge
+        - rebase
     skill_links_check:
       glob: '.agents/skills/**'
       run: node scripts/sync-agent-skill-links.mjs --check
