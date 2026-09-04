@@ -5,7 +5,13 @@ import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { openCodeEnvironment, pollOnce, runOpenCode, startSlackProgress } from './agent-worker.mjs';
+import {
+	openCodeConfig,
+	openCodeEnvironment,
+	pollOnce,
+	runOpenCode,
+	startSlackProgress,
+} from './agent-worker.mjs';
 
 const turn = {
 	turnId: 'turn-1',
@@ -340,4 +346,33 @@ test('keeps broker credentials out of the OpenCode process', () => {
 		OPENROUTER_API_KEY: 'openrouter',
 		GITHUB_TOKEN: 'github',
 	});
+});
+
+test('configures Flaky MCP without serializing its token', () => {
+	const token = 'flaky-secret';
+	const environment = openCodeEnvironment({
+		FLAKY_MCP_URL: 'https://example.com/mcp',
+		FLAKY_MCP_TOKEN: token,
+		OPENROUTER_API_KEY: 'openrouter',
+	});
+
+	assert.deepEqual(JSON.parse(environment.OPENCODE_CONFIG_CONTENT), {
+		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+		mcp: {
+			flaky: {
+				type: 'remote',
+				url: 'https://example.com/mcp',
+				enabled: true,
+				oauth: false,
+				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			},
+		},
+	});
+	assert.equal(environment.FLAKY_MCP_TOKEN, token);
+	assert.equal(environment.OPENCODE_CONFIG_CONTENT.includes(token), false);
+});
+
+test('omits Flaky MCP when either setting is missing', () => {
+	assert.equal(openCodeConfig({ FLAKY_MCP_URL: 'https://example.com/mcp' }).mcp, undefined);
+	assert.equal(openCodeConfig({ FLAKY_MCP_TOKEN: 'flaky-secret' }).mcp, undefined);
 });
