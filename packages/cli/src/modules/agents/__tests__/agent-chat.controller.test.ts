@@ -1,12 +1,14 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { jsonParse } from 'n8n-workflow';
+import { FileNotFoundError } from 'n8n-core';
 import { EventEmitter } from 'node:events';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { FileNotFoundError } from 'n8n-core';
-
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentActiveChatRunRegistry } from '../agent-active-chat-run.registry';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -41,6 +43,7 @@ function makeController() {
 		}),
 	);
 
+	const activeChatRunRegistry = new AgentActiveChatRunRegistry();
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
 		agentTestRunService,
@@ -49,6 +52,7 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
+		activeChatRunRegistry,
 	);
 
 	return {
@@ -56,6 +60,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		activeChatRunRegistry,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -91,6 +96,13 @@ function makeSseResponse(writes: string[]): FlushableResponse {
 	return res as unknown as FlushableResponse;
 }
 
+/** Parse the `data:` frames a handler wrote to its SSE response. */
+function sseEvents(writes: string[]): Array<Record<string, unknown>> {
+	return writes
+		.filter((line) => line.startsWith('data: '))
+		.map((line) => jsonParse<Record<string, unknown>>(line.slice(6).trim()));
+}
+
 describe('AgentChatController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentChatController);
 
@@ -99,6 +111,7 @@ describe('AgentChatController route access scopes', () => {
 	it.each([
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
+		['cancelActiveChatRun', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
@@ -165,16 +178,17 @@ describe('AgentChatController chat message history', () => {
 });
 
 describe('AgentChatController SSE done payload', () => {
-	it('does not start a chat after the response closes during preparation', async () => {
-		const { controller, agentTestRunService } = makeController();
-		let resolvePreparation = (_value: { status: 'ready'; sessionId: string }) => {};
-		agentTestRunService.prepareDraftRun.mockReturnValue(
-			new Promise((resolve) => {
-				resolvePreparation = resolve;
-			}),
-		);
+	it('runs a chat to completion when the response closes during preparation', async () => {
+		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
+		const preparing = createDeferredPromise<{ status: 'ready'; sessionId: string }>();
+		agentTestRunService.prepareDraftRun.mockReturnValue(preparing.promise);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			yield { type: 'text-delta', id: 'text-1', delta: 'answer' } as never;
+			config.onExecutionRecorded?.('exec-after-close');
+		});
 
-		const res = makeSseResponse([]);
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
 		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
@@ -184,10 +198,78 @@ describe('AgentChatController SSE done payload', () => {
 		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
 
 		(res as unknown as EventEmitter).emit('close');
-		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
+		preparing.resolve({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
+		// The turn outlives the connection: it streams to the end and is recorded,
+		// so a reload shows the finished answer.
+		expect(agentTestRunService.streamDraftRun).toHaveBeenCalled();
+		expect(sseEvents(writes)).toContainEqual({
+			type: 'done',
+			sessionId: 'thread-1',
+			executionId: 'exec-after-close',
+		});
+	});
+
+	it('stops a chat that is still being prepared', async () => {
+		// Stop is live from the moment the client posts, so the run must be
+		// registered before preparation awaits — otherwise it starts anyway.
+		const { controller, agentTestRunService, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		const preparing = createDeferredPromise<{ status: 'ready'; sessionId: string }>();
+		agentTestRunService.prepareDraftRun.mockReturnValue(preparing.promise);
+
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse([]),
+			'agent-1',
+			{ message: 'hi' } as never,
+		);
+		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
+
+		await expect(
+			controller.cancelActiveChatRun(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				{} as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ cancelled: true });
+
+		preparing.resolve({ status: 'ready', sessionId: 'thread-1' });
+		await request;
+
+		expect(agentTestRunService.streamDraftRun.mock.calls[0][0].abortSignal?.aborted).toBe(true);
+	});
+
+	it('stops writing SSE events once the response is gone', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		const runStarted = createDeferredPromise();
+		const runBlocked = createDeferredPromise();
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield { type: 'text-delta', id: 'text-1', delta: 'before' } as never;
+			runStarted.resolve();
+			await runBlocked.promise;
+			yield { type: 'text-delta', id: 'text-1', delta: 'after' } as never;
+		});
+
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+		await runStarted.promise;
+
+		Object.assign(res, { destroyed: true });
+		(res as unknown as EventEmitter).emit('close');
+		runBlocked.resolve();
+		await request;
+
+		const deltas = sseEvents(writes).map((event) => event.delta);
+		expect(deltas).toContain('before');
+		expect(deltas).not.toContain('after');
 	});
 
 	it('includes executionId on done when recorded', async () => {
@@ -207,9 +289,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ message: 'hi', sessionId: 'thread-1' } as never,
 		);
 
-		const events = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		const events = sseEvents(writes);
 
 		expect(events).toContainEqual({
 			type: 'done',
@@ -235,9 +315,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
 		);
 
-		const events = writes
-			.filter((line) => line.startsWith('data: '))
-			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		const events = sseEvents(writes);
 
 		expect(events).toContainEqual({
 			type: 'done',
@@ -268,33 +346,141 @@ describe('AgentChatController SSE done payload', () => {
 				),
 			method: 'resumeForChat' as const,
 		},
-	])('aborts the $name when its SSE response closes early', async ({ start, method }) => {
+	])('lets the $name outlive an SSE response that closes early', async ({ start, method }) => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
 
 		let receivedSignal: AbortSignal | undefined;
-		let releaseRun = () => {};
-		let markStarted = () => {};
-		const runStarted = new Promise<void>((resolve) => {
-			markStarted = resolve;
-		});
-		const runBlocked = new Promise<void>((resolve) => {
-			releaseRun = resolve;
-		});
+		const runStarted = createDeferredPromise();
+		const runBlocked = createDeferredPromise();
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
-			markStarted();
-			await runBlocked;
+			runStarted.resolve();
+			await runBlocked.promise;
 			yield* [];
 		});
 
 		const res = makeSseResponse([]);
 		const request = start(controller, res);
-		await runStarted;
+		await runStarted.promise;
 		(res as unknown as EventEmitter).emit('close');
-		releaseRun();
-		await request;
 
+		// The run keeps going: it is recorded, and a reload shows the result.
+		expect(receivedSignal?.aborted).toBe(false);
+
+		runBlocked.resolve();
+		await request;
+	});
+
+	it.each([
+		{
+			name: 'new chat',
+			start: async (controller: AgentChatController, res: FlushableResponse) =>
+				await controller.chat(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					res,
+					'agent-1',
+					{ message: 'hi' } as never,
+				),
+			method: 'executeForChat' as const,
+		},
+		{
+			name: 'resumed chat',
+			start: async (controller: AgentChatController, res: FlushableResponse) =>
+				await controller.chatResume(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					res,
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+				),
+			method: 'resumeForChat' as const,
+		},
+	])('aborts the $name on an explicit stop', async ({ start, method }) => {
+		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+
+		let receivedSignal: AbortSignal | undefined;
+		const runStarted = createDeferredPromise();
+		const runBlocked = createDeferredPromise();
+		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
+			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
+			runStarted.resolve();
+			await runBlocked.promise;
+			yield* [];
+		});
+
+		const res = makeSseResponse([]);
+		const request = start(controller, res);
+		await runStarted.promise;
+
+		await expect(
+			controller.cancelActiveChatRun(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				{} as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ cancelled: true });
 		expect(receivedSignal?.aborted).toBe(true);
+
+		runBlocked.resolve();
+		await request;
+	});
+
+	it('reports no active run to stop once the turn has ended', async () => {
+		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield* [];
+		});
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse([]),
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		await expect(
+			controller.cancelActiveChatRun(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				{} as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ cancelled: false });
+	});
+
+	it('does not stop another user’s run on the same agent', async () => {
+		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+
+		let receivedSignal: AbortSignal | undefined;
+		const runStarted = createDeferredPromise();
+		const runBlocked = createDeferredPromise();
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			receivedSignal = config.abortSignal;
+			runStarted.resolve();
+			await runBlocked.promise;
+			yield* [];
+		});
+
+		const request = controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse([]),
+			'agent-1',
+			{ message: 'hi' } as never,
+		);
+		await runStarted.promise;
+
+		await expect(
+			controller.cancelActiveChatRun(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-2' } } as never,
+				{} as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ cancelled: false });
+		expect(receivedSignal?.aborted).toBe(false);
+
+		runBlocked.resolve();
+		await request;
 	});
 });
 

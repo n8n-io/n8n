@@ -20,6 +20,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentActiveChatRunRegistry } from './agent-active-chat-run.registry';
 import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
@@ -45,6 +46,7 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly activeChatRunRegistry: AgentActiveChatRunRegistry,
 	) {}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
@@ -116,9 +118,17 @@ export class AgentChatController {
 		);
 
 		const { send } = initSseStream(res);
+		// The run is NOT tied to this connection: a dropped SSE stream lets the
+		// turn finish and be recorded, so a reload shows the completed response.
+		// Only an explicit Stop (see `cancelActiveChatRun`) aborts it.
 		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		// Registered before the first await: the client enables Stop as soon as it
+		// posts, so a stop during preparation has to reach this run too.
+		const unregisterRun = this.activeChatRunRegistry.register(
+			agentId,
+			req.user.id,
+			abortController,
+		);
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
@@ -128,7 +138,6 @@ export class AgentChatController {
 				sessionId,
 				credentialProvider,
 			});
-			if (abortController.signal.aborted) return;
 			if (prepared.status === 'session_not_found') {
 				send({ type: 'error', message: 'Session not found' });
 				return;
@@ -184,7 +193,7 @@ export class AgentChatController {
 				send({ type: 'error', message: errorMessage });
 			}
 		} finally {
-			res.off('close', abortOnClose);
+			unregisterRun();
 			res.end();
 		}
 	}
@@ -201,9 +210,13 @@ export class AgentChatController {
 		const { runId, toolCallId, resumeData } = payload;
 		const { send } = initSseStream(res);
 
+		// Same lifetime rule as `chat`: the resumed turn survives its connection.
 		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		const unregisterRun = this.activeChatRunRegistry.register(
+			agentId,
+			req.user.id,
+			abortController,
+		);
 		try {
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
@@ -232,9 +245,32 @@ export class AgentChatController {
 				send({ type: 'error', message: errorMessage });
 			}
 		} finally {
-			res.off('close', abortOnClose);
+			unregisterRun();
 			res.end();
 		}
+	}
+
+	/**
+	 * Stop the turn this user is streaming on this agent. Dropping the SSE
+	 * connection no longer cancels a run, so the client asks for the stop it
+	 * means — otherwise the turn would finish and reappear on the next reload.
+	 *
+	 * Returns `cancelled: false` when no run was found, which is expected: the
+	 * turn may have just ended, or (multi-main) be held by another instance.
+	 */
+	@Delete('/:agentId/chat/active-run')
+	@ProjectScope('agent:execute')
+	async cancelActiveChatRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const cancelled = this.activeChatRunRegistry.cancel(agentId, req.user.id);
+		return { cancelled };
 	}
 
 	@Delete('/:agentId/chat/runs/:runId')

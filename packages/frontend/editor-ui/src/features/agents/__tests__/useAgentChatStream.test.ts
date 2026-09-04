@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick, effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -12,13 +13,16 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+const showErrorSpy = vi.fn();
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: showErrorSpy }),
 }));
 
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+const cancelActiveAgentChatRunMock = vi.fn();
 
 const pushListeners: Array<(event: unknown) => void> = [];
 const pushConnectMock = vi.fn();
@@ -43,6 +47,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
+		cancelActiveAgentChatRun: (...args: unknown[]) => cancelActiveAgentChatRunMock(...args),
 	};
 });
 
@@ -164,6 +169,9 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		});
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		cancelActiveAgentChatRunMock.mockReset();
+		cancelActiveAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		showErrorSpy.mockClear();
 		getTestChatMessagesMock.mockReset();
 	});
 
@@ -2317,6 +2325,9 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		cancelActiveAgentChatRunMock.mockReset();
+		cancelActiveAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		showErrorSpy.mockClear();
 		getTestChatMessagesMock.mockReset();
 	});
 
@@ -2391,8 +2402,79 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		await nextTick();
 
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
-		// No backend cancel call — there is no runId/suspension to cancel.
+		// No backend cancel call — there is no runId/suspension to cancel, and no
+		// live run either, so the stop is purely local recovery.
 		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+		expect(cancelActiveAgentChatRunMock).not.toHaveBeenCalled();
+	});
+
+	it('asks the backend to stop a live turn before dropping the connection', async () => {
+		// The run outlives its connection now, so aborting the fetch alone would
+		// leave it going and it would reappear, finished, on the next reload.
+		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse([], init.signal ?? null),
+		) as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('take your time');
+		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
+
+		await hook.stopGenerating();
+		await send;
+
+		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(hook.isStreaming.value).toBe(false);
+		expect(hook.isCancelling.value).toBe(false);
+	});
+
+	it('still settles the chat when the stop request fails', async () => {
+		cancelActiveAgentChatRunMock.mockRejectedValue(new Error('request failed'));
+		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse([], init.signal ?? null),
+		) as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('take your time');
+		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
+
+		await hook.stopGenerating();
+		await send;
+
+		// The request has to have been made, or the rejection proves nothing.
+		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(showErrorSpy).toHaveBeenCalled();
+		expect(hook.isStreaming.value).toBe(false);
+		expect(hook.isCancelling.value).toBe(false);
+	});
+
+	it('keeps the composer closed until the backend stop resolves', async () => {
+		// A turn started in that gap registers under the same key server-side, so
+		// the in-flight cancel would abort the new turn instead of the stopped one.
+		const stopRequest = createDeferredPromise<{ cancelled: boolean }>();
+		cancelActiveAgentChatRunMock.mockReturnValue(stopRequest.promise);
+		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
+			makeAbortableSseResponse([], init.signal ?? null),
+		) as unknown as typeof fetch;
+
+		const hook = buildHook();
+		const send = hook.sendMessage('take your time');
+		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
+
+		const stopping = hook.stopGenerating();
+		await vi.waitFor(() => expect(cancelActiveAgentChatRunMock).toHaveBeenCalled());
+
+		// The local abort already cleared `isStreaming`; `isCancelling` is what
+		// keeps `sendMessage` from starting a second run in the gap.
+		expect(hook.isStreaming.value).toBe(false);
+		expect(hook.isCancelling.value).toBe(true);
+		await hook.sendMessage('too soon');
+		expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+		stopRequest.resolve({ cancelled: true });
+		await stopping;
+		await send;
+
+		expect(hook.isCancelling.value).toBe(false);
 	});
 });
 
