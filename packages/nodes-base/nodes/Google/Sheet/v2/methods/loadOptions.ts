@@ -161,9 +161,10 @@ export async function getSheetHeaderRowWithGeneratedColumnNamesForAllSheets(
 		const columns = sheet.testFilter(sheetData, 0, 0);
 
 		columns.forEach((column, i) => {
-			// Match the runtime generated-name convention for empty headers (0-based),
-			// so a selected blank-header column resolves during filtering
-			const name = column === '' ? `col_${i}` : column;
+			// Match the single-sheet generated-name convention for empty headers. At
+			// runtime `row_number` is prepended before the keys are built, so a blank
+			// header at index i resolves as `col_${i + 1}`
+			const name = column === '' ? `col_${i + 1}` : column;
 			if (seen.has(name)) return;
 			seen.add(name);
 			returnData.push({ name, value: name });

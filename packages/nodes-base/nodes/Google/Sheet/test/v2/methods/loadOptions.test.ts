@@ -191,12 +191,13 @@ describe('Google Sheets Functions', () => {
 			);
 
 			expect(result).toEqual([
-				// Blank headers use `col_<0-based index>`, matching GoogleSheet.lookupValues
+				// Blank headers use `col_<1-based index>`, matching the runtime keys once
+				// `row_number` is prepended (see GoogleSheet.lookupValues)
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				{ name: 'col_0', value: 'col_0' },
+				{ name: 'col_1', value: 'col_1' },
 				{ name: 'Header1', value: 'Header1' },
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				{ name: 'col_2', value: 'col_2' },
+				{ name: 'col_3', value: 'col_3' },
 				// The DATA_SOURCE sheet is read too, contributing its own column
 				{ name: 'Extra', value: 'Extra' },
 			]);
