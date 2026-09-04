@@ -44,6 +44,11 @@ describe('isResourceMapperFieldListStale', () => {
 			{ ...baseField, canBeUsedToMatch: false } as ResourceMapperField,
 		],
 		['type', { ...baseField }, { ...baseField, type: 'number' } as ResourceMapperField],
+		[
+			'description',
+			{ ...baseField },
+			{ ...baseField, description: 'changed' } as ResourceMapperField,
+		],
 	])('returns true when %s changes', (_property, oldField, newField) => {
 		expect(isResourceMapperFieldListStale([oldField], [newField])).toBe(true);
 	});

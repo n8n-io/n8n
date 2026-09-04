@@ -4229,6 +4229,8 @@ export interface ResourceMapperField {
 	readOnly?: boolean;
 	/** Pre-filled value applied when the field is first shown or re-added. Omit to leave the input empty. */
 	defaultValue?: string | number | boolean | null;
+	/** Help text shown in the "?" tooltip next to the field label, as for any other parameter's `description`. Ignored while the field is used to match or is a mandatory field in 'add' mode, since those states own the tooltip. */
+	description?: string;
 }
 
 export type FormFieldsParameter = Array<{

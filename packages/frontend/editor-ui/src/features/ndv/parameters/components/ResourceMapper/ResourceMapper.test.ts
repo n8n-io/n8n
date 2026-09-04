@@ -1,11 +1,14 @@
 import {
 	DEFAULT_SETUP,
+	FIELD_DESCRIPTION,
 	MAPPING_COLUMNS_RESPONSE,
+	MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS,
 	UPDATED_SCHEMA,
 	getLatestValueChangeEvent,
 } from './ResourceMapper.test.utils';
 import type { MockedStore } from '@/__tests__/utils';
-import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
 import ResourceMapper from './ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -83,6 +86,88 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input input').length,
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length + 1);
+	});
+
+	describe('field descriptions', () => {
+		// A copy of the default parameter switched to 'add' mode. Passed as a prop
+		// instead of via `{ merge: true }`, which mutates the shared DEFAULT_SETUP
+		// and would leak the mode into every test that follows.
+		const ADD_MODE_PARAMETER = createTestNodeProperties({
+			displayName: 'Columns',
+			name: 'columns',
+			type: 'resourceMapper',
+			default: { mappingMode: 'defineBelow', value: {} },
+			typeOptions: {
+				resourceMapper: {
+					resourceMapperMethod: 'getMappingColumns',
+					mode: 'add',
+					addAllFields: true,
+					fieldWords: { singular: 'column', plural: 'columns' },
+				} as ResourceMapperTypeOptions,
+			},
+		});
+
+		// Finds the rendered field whose label starts with the given display name
+		function getFieldItem(container: Element, displayName: string): Element {
+			const item = Array.from(container.querySelectorAll('.parameter-item')).find((element) =>
+				element.querySelector('div.title')?.textContent?.trim().startsWith(displayName),
+			);
+			if (!item) throw new Error(`Unable to find rendered field "${displayName}"`);
+			return item;
+		}
+
+		async function getFieldTooltip(container: Element, displayName: string) {
+			const infoIcon = getFieldItem(container, displayName).querySelector(
+				'[data-icon="circle-help"]',
+			);
+			if (!infoIcon) throw new Error(`Field "${displayName}" has no description tooltip`);
+			await hoverTooltipTrigger(infoIcon);
+			return await waitFor(() => getTooltip());
+		}
+
+		it('renders the description supplied by the node for a field', async () => {
+			fetchFieldsSpy.mockResolvedValueOnce(MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS);
+			const { container } = renderComponent();
+			await waitAllPromises();
+
+			expect(await getFieldTooltip(container, 'Username')).toHaveTextContent(FIELD_DESCRIPTION);
+		});
+
+		it('does not render a description tooltip for a field without one', async () => {
+			fetchFieldsSpy.mockResolvedValueOnce(MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS);
+			const { container } = renderComponent();
+			await waitAllPromises();
+
+			// 'Address' is the only field in the fixture with neither a node-supplied
+			// description nor a matching/mandatory state
+			expect(
+				getFieldItem(container, 'Address').querySelector('[data-icon="circle-help"]'),
+			).toBeNull();
+		});
+
+		it('prefers the matching column description over the one supplied by the node', async () => {
+			fetchFieldsSpy.mockResolvedValueOnce(MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS);
+			const { container } = renderComponent();
+			await waitAllPromises();
+
+			// 'id' is the default matching column and also carries a description
+			const tooltip = await getFieldTooltip(container, 'id');
+			expect(tooltip).toHaveTextContent(
+				"This column won't be updated and can't be removed, as it's used for matching",
+			);
+			expect(tooltip).not.toHaveTextContent(FIELD_DESCRIPTION);
+		});
+
+		it('prefers the mandatory field description over the one supplied by the node', async () => {
+			fetchFieldsSpy.mockResolvedValueOnce(MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS);
+			const { container } = renderComponent({ props: { parameter: ADD_MODE_PARAMETER } });
+			await waitAllPromises();
+
+			// 'First name' is required and also carries a description
+			const tooltip = await getFieldTooltip(container, 'First name');
+			expect(tooltip).toHaveTextContent('This column is mandatory and can’t be removed');
+			expect(tooltip).not.toHaveTextContent(FIELD_DESCRIPTION);
+		});
 	});
 
 	it('renders correctly in read only mode', async () => {
