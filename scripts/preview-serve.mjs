@@ -10,6 +10,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { serveHealthPath, servePort, waitForHealth } from './serve-ready.mjs';
@@ -101,10 +102,27 @@ if (!(await waitForHealth(port, healthPath))) {
 // Promote the shell user into the owner so the instance opens on a login page with
 // known credentials, not the setup wizard. Idempotent: on a refresh the sqlite file
 // survives, the owner already exists, and the endpoint rejects the second attempt.
-async function seedOwner() {
-	let res;
+
+// The setup endpoint's status cannot tell success from failure: it answers 400 both
+// when an owner exists and when the payload is wrong, and 404 while the REST routes
+// are still mounting. `showSetupOnFirstLoad` drives the wall a reviewer actually
+// hits, so check that instead. Undefined means the answer is not readable yet.
+async function setupWallIsUp() {
 	try {
-		res = await fetch(`http://127.0.0.1:${port}/rest/owner/setup`, {
+		const res = await fetch(`http://127.0.0.1:${port}/rest/settings`, {
+			signal: AbortSignal.timeout(15_000),
+		});
+		if (!res.ok) return undefined;
+		const body = await res.json();
+		return body?.data?.userManagement?.showSetupOnFirstLoad;
+	} catch {
+		return undefined;
+	}
+}
+
+async function postOwnerSetup() {
+	try {
+		const res = await fetch(`http://127.0.0.1:${port}/rest/owner/setup`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -115,18 +133,30 @@ async function seedOwner() {
 			}),
 			signal: AbortSignal.timeout(15_000),
 		});
+		return `HTTP ${res.status} ${(await res.text()).slice(0, 300)}`;
 	} catch (error) {
-		console.error(`Could not reach the owner setup endpoint: ${error.message}`);
-		return;
+		return `request failed: ${error.message}`;
 	}
+}
 
-	if (res.ok) {
-		console.log(`Seeded the instance owner: ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);
-		return;
+// `/healthz` goes green before the REST routes answer, so the first attempt can 404.
+// Retry until the wall drops, and report every attempt: a silent seed failure hands
+// the reviewer a URL that lands on /setup.
+async function seedOwner(attempts = 5, delayMs = 3000) {
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		const result = await postOwnerSetup();
+		console.log(`Owner setup attempt ${attempt}/${attempts} — ${result}`);
+
+		if ((await setupWallIsUp()) === false) {
+			console.log(`Owner is set up — sign in as ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);
+			return;
+		}
+		if (attempt < attempts) {
+			await sleep(delayMs);
+		}
 	}
-	// Already set up is the normal refresh case, not a failure.
-	console.log(
-		`Owner already set up (HTTP ${res.status}) — sign in as ${OWNER_EMAIL} / ${OWNER_PASSWORD}`,
+	console.error(
+		`Owner seeding FAILED: /rest/settings still reports showSetupOnFirstLoad. A reviewer will land on /setup, and /${SIGNIN_ROUTE} will not work. See ${BE_LOG}.`,
 	);
 }
 
