@@ -20,7 +20,7 @@ ARG PYTHON_VERSION=3.13
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-bookworm-slim AS javascript-runner-builder
+FROM node:${NODE_VERSION}-trixie-slim AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
@@ -118,7 +118,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM debian:bookworm-slim AS launcher-downloader
+FROM debian:trixie-slim AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.4.7
 
@@ -142,7 +142,7 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node Debian base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
+FROM node:${NODE_VERSION}-trixie-slim AS node-debian
 
 # ==============================================================================
 # STAGE 5: Runtime preparation
@@ -151,7 +151,7 @@ FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
 # copying to the distroless base. This stage runs with a shell so we can
 # create symlinks and organize files properly.
 # ==============================================================================
-FROM debian:bookworm-slim AS runtime-prep
+FROM debian:trixie-slim AS runtime-prep
 
 # Copy Python runtime
 COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
