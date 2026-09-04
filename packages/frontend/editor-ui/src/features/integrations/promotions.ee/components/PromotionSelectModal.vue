@@ -161,7 +161,7 @@ onMounted(async () => {
 				</div>
 
 				<div v-if="isLoading" :class="$style.loading">
-					<N8nText color="text-light">Loading...</N8nText>
+					<N8nText color="text-light">{{ i18n.baseText('generic.loading') }}</N8nText>
 				</div>
 
 				<template v-else-if="error">
@@ -284,7 +284,7 @@ onMounted(async () => {
 						{{ i18n.baseText('promotions.modal.close') }}
 					</N8nButton>
 					<N8nButton
-						:disabled="selectedCount === 0"
+						:disabled="selectedCount === 0 || isLoading || !!error || isPromoting"
 						:loading="isPromoting"
 						data-test-id="promotion-submit"
 						@click="onPromote"
@@ -402,6 +402,10 @@ onMounted(async () => {
 
 .rowSelected {
 	background-color: var(--color--orange-100);
+
+	body[data-theme='dark'] & {
+		background-color: var(--color--orange-900);
+	}
 }
 
 .rowContent {
