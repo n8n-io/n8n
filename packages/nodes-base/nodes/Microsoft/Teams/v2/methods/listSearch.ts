@@ -96,6 +96,15 @@ export async function getChats(
 		});
 	}
 
+	// The page held chats but every one was 1:1, so the dropdown would otherwise show an
+	// unexplained empty list for a state no search term can fix.
+	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'No group chats found', {
+			description:
+				'Only group chats can have members added. A 1:1 chat has a fixed roster, so Teams does not allow adding to it.',
+		});
+	}
+
 	const results = returnData
 		.filter(
 			(item) =>

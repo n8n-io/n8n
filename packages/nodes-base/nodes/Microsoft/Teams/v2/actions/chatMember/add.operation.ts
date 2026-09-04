@@ -18,7 +18,11 @@ import {
 import { throwIfChatMemberUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
-	chatRLC,
+	{
+		...chatRLC,
+		description:
+			'Select the group chat, or specify its URL or ID. One-on-one chats are not listed because Teams does not allow adding members to a 1:1 chat',
+	},
 	userRLC,
 	{
 		displayName: 'Options',

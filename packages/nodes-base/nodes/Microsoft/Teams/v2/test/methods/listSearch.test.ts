@@ -201,6 +201,35 @@ describe('Microsoft Teams v2 — getChats', () => {
 
 			expect(result.results.map((r) => r.value)).toEqual(['c2', 'c3', 'c1']);
 		});
+
+		it('explains the empty list when chatMember:add filters every chat away', async () => {
+			apiRequest.mockResolvedValue({
+				value: [
+					{ id: 'c1', topic: 'Alice', chatType: 'oneOnOne', webUrl: 'https://teams/chat/c1' },
+					{ id: 'c2', topic: 'Bob', chatType: 'oneOnOne', webUrl: 'https://teams/chat/c2' },
+				],
+			});
+			setParams({
+				authentication: 'microsoftOAuth2Api',
+				resource: 'chatMember',
+				operation: 'add',
+			});
+
+			await expect(getChats.call(ctx)).rejects.toThrow('No group chats found');
+		});
+
+		// The message must not fire when the tenant simply has no chats, or it would
+		// blame the 1:1 filter for an unrelated empty state.
+		it('stays silent for an empty page even on chatMember:add', async () => {
+			apiRequest.mockResolvedValue({ value: [] });
+			setParams({
+				authentication: 'microsoftOAuth2Api',
+				resource: 'chatMember',
+				operation: 'add',
+			});
+
+			await expect(getChats.call(ctx)).resolves.toEqual({ results: [] });
+		});
 	});
 });
 
