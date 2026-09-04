@@ -318,6 +318,18 @@ onMounted(async () => {
 </style>
 
 <style lang="scss" module>
+:global(body) {
+	--color--bg-promotion-row-selected: var(--color--orange-100);
+}
+:global(body[data-theme='dark']) {
+	--color--bg-promotion-row-selected: var(--color--orange-900);
+}
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) {
+		--color--bg-promotion-row-selected: var(--color--orange-900);
+	}
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -401,11 +413,7 @@ onMounted(async () => {
 }
 
 .rowSelected {
-	background-color: var(--color--orange-100);
-
-	body[data-theme='dark'] & {
-		background-color: var(--color--orange-900);
-	}
+	background-color: var(--color--bg-promotion-row-selected);
 }
 
 .rowContent {
