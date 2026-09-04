@@ -108,9 +108,23 @@ whichever comes first.
   branch and one executing branch reports `running`.
 - Send-and-wait nodes need credentials in v2 before they work end to end
   (CAT-2880). Time and webhook waits do not.
+- A wait can outlive the control-plane state it started with: the workflow may
+  be moved, a credential unshared, access revoked. The resume path reads no
+  control-plane state, so it cannot detect any of this. Whether a resume should
+  be refused on those grounds is a product decision, and taking it would need a
+  cross-plane check this design does not have.
+- Waiting executions must be excluded from data-plane pruning. A paused
+  execution is indistinguishable by age from a finished one, and pruning it
+  destroys a workflow mid-run.
+- The Wait node's `specificTime` mode resolves its target against the
+  workflow's timezone, which the shim does not yet receive, so it resolves in
+  the default zone instead. Durations are unaffected. The gap closes when
+  workflow settings reach the data plane.
 
 ## Links
 
 RFC: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc (§3.3)
 Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
-Related ADRs: ADR-2026-08-28-trigger-settlement-before-execution
+Related ADRs: ADR-2026-08-28-trigger-settlement-before-execution,
+ADR-2026-09-04-resume-urls-carry-a-derived-token,
+ADR-2026-09-04-timeout-excludes-waiting-time
