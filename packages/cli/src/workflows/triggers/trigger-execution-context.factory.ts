@@ -391,6 +391,20 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
+					// The registration snapshot above can be stale by the time this
+					// resolves (e.g. the workflow was just republished onto engine 2.0),
+					// so a payload that slipped past that check is guarded again here,
+					// against the copy that actually decides where this run goes.
+					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
+					if (routesToV2) {
+						try {
+							await this.engineV2ActiveTriggers.assertPayloadSupported(data);
+						} catch (error) {
+							responsePromise?.reject(ensureError(error));
+							throw error;
+						}
+					}
+
 					if (cursor === null) {
 						return await this.workflowExecutionService.runWorkflow(
 							freshWorkflowData,
@@ -402,7 +416,7 @@ export class TriggerExecutionContextFactory {
 						);
 					}
 
-					return this.engineV2ActiveTriggers.handles(freshWorkflowData, mode)
+					return routesToV2
 						? await this.workflowExecutionService.runPolledWorkflowV2(
 								freshWorkflowData,
 								node,

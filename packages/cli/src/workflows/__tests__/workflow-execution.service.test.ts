@@ -392,7 +392,14 @@ describe('WorkflowExecutionService', () => {
 
 			expect(returned).toBe('exec-v2');
 			expect(workflowRunner.run).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowData: workflow }),
+				expect.objectContaining({
+					workflowData: workflow,
+					executionData: expect.objectContaining({
+						executionData: expect.objectContaining({
+							nodeExecutionStack: [{ node, data: { main: pollItems }, source: null }],
+						}),
+					}),
+				}),
 				true,
 				undefined,
 				undefined,
@@ -404,6 +411,11 @@ describe('WorkflowExecutionService', () => {
 				cursor,
 				fence: undefined,
 			});
+			// The cursor must not advance until the data plane has confirmed the
+			// run: a commit before that could advance past items nothing carried.
+			expect(workflowRunner.run.mock.invocationCallOrder[0]).toBeLessThan(
+				pollCursorService.commitCursorOnly.mock.invocationCallOrder[0],
+			);
 		});
 
 		test('never commits the cursor when the run fails to start', async () => {

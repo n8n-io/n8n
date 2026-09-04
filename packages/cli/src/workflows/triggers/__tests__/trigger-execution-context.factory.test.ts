@@ -1884,6 +1884,38 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
 				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
 			});
+
+			test('re-checks the payload against fresh data when the registration snapshot missed the transition to engine 2.0', async () => {
+				const staleWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const freshWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				// The registration snapshot still says v1; only the fresh read reflects
+				// the workflow having since been republished onto engine 2.0.
+				engineV2Dispatcher.handlesWorkflow.mockImplementation((wf) => wf === freshWorkflowData);
+
+				const getPollFunctions = factory.getExecutePollFunctions(
+					staleWorkflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => freshWorkflowData,
+				);
+				const context = getPollFunctions(
+					workflow,
+					mock<INode>({ name: 'Poll Node' }),
+					additionalData,
+					mode,
+					activation,
+				);
+
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+				context.__emit(data);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
 		});
 
 		describe('a workflow that did not opt in', () => {
