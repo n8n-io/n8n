@@ -414,19 +414,16 @@ describe('SourceControlExportService', () => {
 			} as never) as SharedCredentials;
 
 		it('should load and write credentials in batches', async () => {
-			// Arrange
 			const credentialIds = Array.from({ length: 45 }, (_, index) => `cred-${index}`);
 			sharedCredentialsRepository.findByCredentialIds
 				.mockResolvedValueOnce(credentialIds.slice(0, 20).map(toSharing))
 				.mockResolvedValueOnce(credentialIds.slice(20, 40).map(toSharing))
 				.mockResolvedValueOnce(credentialIds.slice(40).map(toSharing));
 
-			// Act
 			const result = await service.exportCredentialsToWorkFolder(
 				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
-			// Assert
 			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenCalledTimes(3);
 			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
 				1,
@@ -456,18 +453,15 @@ describe('SourceControlExportService', () => {
 		});
 
 		it('should report credentials missing from any batch', async () => {
-			// Arrange
 			const credentialIds = Array.from({ length: 25 }, (_, index) => `cred-${index}`);
 			sharedCredentialsRepository.findByCredentialIds
 				.mockResolvedValueOnce(credentialIds.slice(0, 19).map(toSharing))
 				.mockResolvedValueOnce(credentialIds.slice(21).map(toSharing));
 
-			// Act
 			const result = await service.exportCredentialsToWorkFolder(
 				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
-			// Assert
 			expect(result.count).toBe(23);
 			expect(result.missingIds).toEqual(['cred-19', 'cred-20']);
 		});
@@ -536,7 +530,6 @@ describe('SourceControlExportService', () => {
 		});
 
 		it('should load only workflow ids and replace mappings of accessible workflows', async () => {
-			// Arrange
 			const mockTag = mock<TagEntity>({
 				id: 'tag1',
 				name: 'Tag 1',
@@ -557,10 +550,8 @@ describe('SourceControlExportService', () => {
 				}),
 			);
 
-			// Act
 			await service.exportTagsToWorkFolder(globalAdminContext);
 
-			// Assert
 			expect(workflowRepository.find).toHaveBeenCalledTimes(1);
 			expect(workflowRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({ select: { id: true } }),
@@ -796,7 +787,6 @@ describe('SourceControlExportService', () => {
 		});
 
 		it('should load and write workflows in batches', async () => {
-			// Arrange
 			const workflowIds = Array.from({ length: 45 }, (_, index) => `wf-${index}`);
 			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
 				workflowIds.map(
@@ -826,12 +816,10 @@ describe('SourceControlExportService', () => {
 				.mockResolvedValueOnce(workflowIds.slice(20, 40).map(toWorkflowEntity))
 				.mockResolvedValueOnce(workflowIds.slice(40).map(toWorkflowEntity));
 
-			// Act
 			const result = await service.exportWorkflowsToWorkFolder(
 				workflowIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
-			// Assert
 			expect(workflowRepository.find).toHaveBeenCalledTimes(3);
 			expect(workflowRepository.find).toHaveBeenNthCalledWith(1, {
 				where: { id: In(workflowIds.slice(0, 20)) },
