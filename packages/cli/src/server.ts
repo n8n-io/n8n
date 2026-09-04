@@ -115,7 +115,7 @@ export class Server extends AbstractServer {
 		await super.start();
 		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
-		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+		if (process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
@@ -131,6 +131,10 @@ export class Server extends AbstractServer {
 
 		if (inE2ETests) {
 			await import('@/controllers/e2e.controller.js');
+		}
+
+		if (process.env.N8N_DEV_RELOAD === 'true') {
+			await import('@/controllers/dev.controller.js');
 		}
 
 		if (isMfaFeatureEnabled()) {

@@ -355,6 +355,18 @@ When developing custom nodes or credentials, you can enable hot reload to automa
 N8N_DEV_RELOAD=true pnpm dev:be
 ```
 
+This enables two mechanisms:
+
+- a **file watcher** over the loaded node directories, and
+- `POST /rest/dev/reload`, an unauthenticated (rate-limited) endpoint that re-reads the node
+  files already on disk. `@n8n/node-cli`'s `dev` command uses this to push a
+  reload after each successful compile, because a container cannot watch a bind
+  mount and the Alpine image has no `@parcel/watcher` prebuild.
+
+The variable is honoured regardless of `NODE_ENV`, so it also applies to
+production builds and the published Docker image. Never set it on an instance
+reachable by anyone you would not give a shell to.
+
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines
 - The watcher monitors potentially thousands of files, which can impact CPU and memory usage
