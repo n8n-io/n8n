@@ -2567,7 +2567,10 @@ export class InstanceAiService {
 
 		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
 		// preserved) so every derived skill source inherits the exclusion.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
+			configEvalsEnabled,
+			instanceContextEnabled: this.instanceContext.enabled,
+		});
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
