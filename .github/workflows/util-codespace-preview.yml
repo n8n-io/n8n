@@ -57,6 +57,10 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'codespace-preview'))
       )
     runs-on: ubuntu-latest
+    # Holds CODESPACE_PREVIEW_TOKEN, so only a job that names this environment can
+    # read it. The environment must allow every branch: a pull_request run has the
+    # ref `refs/pull/<n>/merge`, which no branch policy matches.
+    environment: codespace-preview
     # `preview.mjs` alone allows 10 min for the box to accept ssh, and the in-box
     # step then runs `pnpm install` and a build before the backend answers.
     timeout-minutes: 45
@@ -84,7 +88,9 @@ jobs:
           # `gh` prefers GH_TOKEN over GITHUB_TOKEN. So the `gh` calls in
           # preview.mjs use the Codespaces token, and Octokit comments as the
           # Actions token. A GitHub App token cannot create a codespace: the
-          # Codespaces API belongs to a user, not to an installation.
+          # Codespaces API belongs to a user, not to an installation. Nor can a
+          # fine-grained token — those endpoints take a classic token with the
+          # `codespace` scope, which cannot be narrowed to one repository.
           # TODO: move CODESPACE_PREVIEW_TOKEN to a service account.
           GH_TOKEN: ${{ secrets.CODESPACE_PREVIEW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

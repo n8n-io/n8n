@@ -260,11 +260,27 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
-The job needs the `CODESPACE_PREVIEW_TOKEN` secret, a token that carries the
-`codespace` scope. Neither `GITHUB_TOKEN` nor a GitHub App token can create a
-codespace, because the Codespaces API belongs to a user and not to an
-installation. The job checks out the base branch, never the PR head, so a PR
-cannot supply the script that reads that token.
+The job needs `CODESPACE_PREVIEW_TOKEN`, a **classic** personal access token with
+the `repo` and `codespace` scopes, held in the `codespace-preview` environment.
+Three constraints drive that:
+
+- `GITHUB_TOKEN` has no `codespace` scope, and a GitHub App token cannot create a
+  codespace at all: the Codespaces API belongs to a user, not to an installation.
+- A fine-grained token does not work either. The create endpoints take a classic
+  token, which cannot be narrowed to one repository — so the token is broad by
+  construction and belongs on a service account, not on a person's account.
+- The environment is what keeps that broad token away from every other workflow:
+  only a job that names `codespace-preview` can read it. **The environment must
+  allow every branch.** A `pull_request` run has the ref `refs/pull/<n>/merge`,
+  which no deployment branch policy matches, so a branch rule would block every
+  preview. Add required reviewers only if a click for each preview is acceptable.
+
+The codespace belongs to whoever owns the token, and shows up in that account's
+codespace list. Billing still goes to the organization, because the repository is
+organization-owned and has a Codespaces budget.
+
+The job checks out the base branch, never the PR head, so a PR cannot supply the
+script that reads that token.
 
 ### Other Manual Workflows
 
