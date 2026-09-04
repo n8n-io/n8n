@@ -114,6 +114,7 @@ import {
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -153,6 +154,7 @@ import {
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
+import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
@@ -213,10 +215,6 @@ import {
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** A resource attachment as the trace records it: the reference, not its contents. */
 type TracedResourceAttachment = {
@@ -664,6 +662,9 @@ function classifyUnclaimedResume(
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+/** Sentinel for "no cap", matching the execution concurrency limits. */
+const UNLIMITED_CONCURRENCY = -1;
+
 /**
  * Circuit breaker for machine-started follow-up runs (verification, synthesize,
  * replan, …). A follow-up that dies before the agent can settle its trigger
@@ -700,11 +701,9 @@ export class InstanceAiService {
 
 	private readonly formBaseUrl: string;
 
-	private readonly runState = new RunStateRegistry<User>();
+	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
-	private readonly backgroundTasks = new BackgroundTaskManager(
-		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
-	);
+	private readonly backgroundTasks: BackgroundTaskManager;
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
 
@@ -852,6 +851,10 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.backgroundTasks = new BackgroundTaskManager(
+			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
+			this.instanceAiConfig.maxConcurrentSubAgents,
+		);
 		this.suspendedThreads = new SuspendedThreadPersistenceService({
 			logger: this.logger,
 			config: this.instanceAiConfig,
@@ -1344,6 +1347,66 @@ export class InstanceAiService {
 		await this.tracing.submitLangsmithFeedback(user, threadId, responseId, payload);
 	}
 
+	/**
+	 * Refuse a new user turn when a concurrency cap is already full.
+	 *
+	 * Only new turns are gated. Resumes and internal follow-up runs are always admitted: a
+	 * refused resume strands a conversation mid-confirmation, and a refused follow-up trips
+	 * the consecutive-failure breaker and abandons the thread's planned-task graph for good.
+	 * The ceiling is therefore soft by design -- it bounds how much new work starts, not how
+	 * much can be in flight.
+	 *
+	 * Counts are per process. That is the right scope for the instance cap, because the
+	 * pressure it relieves is per process; for the per-user cap it means a multi-main
+	 * deployment allows the cap once per main.
+	 *
+	 * The instance cap bounds concurrent execution, not resident memory: a suspended run
+	 * releases its slot but keeps its agent in memory. Counting those here would be worse
+	 * than the gap, because a few abandoned approval cards would then wall the whole
+	 * instance for the confirmation timeout. To close it, run state must leave memory.
+	 *
+	 * Either cap is disabled by setting it to `-1` (unlimited), matching
+	 * `N8N_CONCURRENCY_PRODUCTION_LIMIT`. The config schema rejects `0`, so it can't reach
+	 * here and be mistaken for either reading.
+	 */
+	private assertRunAdmissible(user: User): void {
+		const { maxConcurrentRuns, maxConcurrentRunsPerUser } = this.instanceAiConfig;
+
+		// Per-user first: it is the more specific diagnosis, and the only one the user can
+		// act on themselves.
+		if (maxConcurrentRunsPerUser !== UNLIMITED_CONCURRENCY) {
+			const running = this.runState.activeRunCountForUser(user.id);
+			if (running >= maxConcurrentRunsPerUser) {
+				this.logger.warn('Refused Instance AI run: per-user concurrency limit reached', {
+					userId: user.id,
+					running,
+					limit: maxConcurrentRunsPerUser,
+				});
+				this.eventService.emit('instance-ai-run-refused', { reason: 'user_run_limit' });
+				throw new InstanceAiRunLimitError(
+					`You already have ${running} conversations running. Wait for one to finish, or stop it, before starting another.`,
+					{ reason: 'user_run_limit', limit: maxConcurrentRunsPerUser },
+				);
+			}
+		}
+
+		if (maxConcurrentRuns !== UNLIMITED_CONCURRENCY) {
+			const running = this.runState.activeRunCount();
+			if (running >= maxConcurrentRuns) {
+				this.logger.warn('Refused Instance AI run: instance concurrency limit reached', {
+					userId: user.id,
+					running,
+					limit: maxConcurrentRuns,
+				});
+				this.eventService.emit('instance-ai-run-refused', { reason: 'instance_run_limit' });
+				throw new InstanceAiRunLimitError(
+					'This n8n instance is already running the maximum number of assistant conversations. Try again in a moment.',
+					{ reason: 'instance_run_limit', limit: maxConcurrentRuns },
+				);
+			}
+		}
+	}
+
 	startRun(
 		user: User,
 		threadId: string,
@@ -1353,6 +1416,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		pushRef?: string,
 	): string {
+		this.assertRunAdmissible(user);
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
@@ -2365,6 +2429,7 @@ export class InstanceAiService {
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
+		const nodeUsageEnabled = await this.adapterService.isNodeUsageEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2375,6 +2440,7 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			nodeUsageEnabled,
 			modelId,
 		});
 
