@@ -161,6 +161,7 @@ const targetLabel = computed(() =>
 			:target-workflow="targetWorkflow"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
+			show-fullscreen-button
 		>
 			<!-- Only when a baseline exists: with no prior published version there is
 				no publish status to represent. -->
@@ -177,7 +178,7 @@ const targetLabel = computed(() =>
 				</span>
 			</template>
 			<template #sourceEmptyText>
-				{{ sourceEmptyText }}
+				<N8nText size="small" color="text-base">{{ sourceEmptyText }}</N8nText>
 			</template>
 		</WorkflowDiffView>
 	</div>
@@ -216,8 +217,9 @@ const targetLabel = computed(() =>
 .diff {
 	height: 100%;
 	min-height: 0;
-	border: var(--border-width) var(--border-style) var(--border-color--subtle);
-	border-radius: var(--radius--md);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
 	overflow: hidden;
+	margin-top: var(--spacing--5xs);
 }
 </style>

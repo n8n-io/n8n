@@ -105,8 +105,10 @@ export {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,
 	gitKeyGeneratorTypeSchema,
@@ -150,19 +152,29 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
+export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublishPublicDto,
 	workflowPublicSchema,
+	createdWorkflowPublicSchema,
 	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
+	workflowParentFolderPublicSchema,
+	DeletedWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
 export {
+	ActivateWorkflowPublicDto,
+	activateWorkflowPublicSchema,
 	PublishWorkflowPublicDto,
 	publishWorkflowPublicSchema,
 } from './workflows/publish-workflow-public.dto';
@@ -170,6 +182,10 @@ export {
 	WorkflowPublishBlockedErrorPublicDto,
 	workflowPublishBlockedErrorPublicSchema,
 } from './workflows/workflow-publish-blocked-error-public.dto';
+export {
+	WorkflowPublishForbiddenErrorPublicDto,
+	workflowPublishForbiddenErrorPublicSchema,
+} from './workflows/workflow-publish-forbidden-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -332,6 +348,10 @@ export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
+export {
+	WorkflowVersionPublicDto,
+	workflowVersionPublicSchema,
+} from './workflow-history/workflow-version-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -346,6 +366,29 @@ export {
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
+export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export { ListExecutionsQueryDto } from './executions/list-executions-query.dto';
+export {
+	ExecutionPublicDto,
+	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
+	executionPublicSchema,
+	deletedExecutionPublicSchema,
+	executionListItemPublicSchema,
+} from './executions/execution-public.dto';
+export {
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
+	stoppedExecutionPublicSchema,
+	stoppedExecutionsPublicSchema,
+} from './executions/stopped-execution-public.dto';
+export {
+	StopManyExecutionsPublicDto,
+	STOPPABLE_PUBLIC_EXECUTION_STATUSES,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	type StoppablePublicExecutionStatus,
+} from './executions/stop-many-executions-public.dto';
+export { ExecutionTagsPublicDto } from './executions/execution-tags-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';

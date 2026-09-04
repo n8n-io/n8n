@@ -28,9 +28,15 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
-vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
-}));
+vi.mock('../workflow-validation-warnings', async () => {
+	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
+		'../workflow-validation-warnings',
+	);
+	return {
+		...actual,
+		partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
+	};
+});
 
 const generatedWorkflow = {
 	name: 'Generated workflow',
@@ -54,6 +60,7 @@ vi.mock('../workflow-source-compiler', () => ({
 vi.mock('../resolve-credentials', () => ({
 	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
 	buildCredentialResolutionNote: vi.fn(() => undefined),
+	isN8nCreditsWalletDepleted: vi.fn(async () => await Promise.resolve(false)),
 	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
@@ -83,7 +90,8 @@ vi.mock('../workflow-json-utils', async () => {
 vi.mock('../classify-node-destructiveness.service', () => ({
 	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
 }));
-vi.mock('../generate-simulation-fixtures.service', () => ({
+vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
 }));
 
@@ -211,6 +219,23 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
+	// The field that caused the misreport: `projectId` was advertised here as "Project
+	// ID to create the workflow in", while the adapter resolved the bound project and
+	// ignored it. So the agent picked a project, the workflow went somewhere else, and
+	// the build reported the project it had asked for. Writes are bound-project only —
+	// there must be no knob suggesting otherwise.
+	it("offers no projectId — a build writes to the conversation's own project", () => {
+		expect(buildWorkflowInputSchema.shape).not.toHaveProperty('projectId');
+
+		// The schema is `.strict()`, so a stale caller that still sends one fails LOUDLY
+		// rather than having it quietly dropped — which is the right end of the trade:
+		// the old silent drop is exactly what let a build report a project it never
+		// wrote to.
+		expect(() =>
+			buildWorkflowInputSchema.parse({ filePath: 'wf.workflow.ts', projectId: 'other-project-id' }),
+		).toThrow(/projectId/);
+	});
+
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
@@ -318,6 +343,59 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// The verify-biased post-build-flow body must NOT ride along on a one-off build.
 		expect(result.postBuildFlow?.instructions).not.toContain('# Post-Build Flow');
+	});
+
+	it('drops invalid node groups before saving and reports the drop', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath, trackTelemetry } = makeContext({ source });
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Broken group',
+						nodeIds: ['missing-node', 'another-missing-node'],
+					},
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toHaveLength(1);
+		expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+		expect(result.warnings?.join('\n')).toContain('Broken group');
+		expect(result.warnings?.join('\n')).toContain('missing-node');
+		expect(result.warnings?.join('\n')).toContain('another-missing-node');
+
+		const savedWorkflow = vi.mocked(context.workflowService.createFromWorkflowJSON).mock
+			.calls[0]?.[0];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				dropped_group_count: 1,
+				warning_count: 1,
+			}),
+		);
 	});
 
 	it('falls back to the post-build-flow handoff for a triggerless one-off build', async () => {
@@ -1851,7 +1929,7 @@ describe('createBuildWorkflowTool', () => {
 			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
-					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					{ type: 'openAiApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			},
 		});

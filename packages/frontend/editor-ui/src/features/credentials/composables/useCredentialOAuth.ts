@@ -318,6 +318,17 @@ export function useCredentialOAuth() {
 	 * Authorize a credential that was just created. Keeps it out of the store
 	 * until OAuth succeeds and removes it when authorization is not completed.
 	 */
+	/**
+	 * Publishes a credential the user just connected. `upsertCredential` only reaches
+	 * the flat map, so the picker — which reads the scope-narrowed slice — would not
+	 * offer the credential until the next scoped fetch. Ask the server rather than
+	 * inserting locally: only it can say whether the credential is usable here.
+	 */
+	async function publishConnectedCredential(credential: ICredentialsResponse): Promise<void> {
+		credentialsStore.upsertCredential(credential);
+		await credentialsStore.refreshUsableCredentials();
+	}
+
 	async function authorizeNewCredential(
 		credential: ICredentialsResponse,
 		options: OAuthAuthorizationOptions = {},
@@ -329,7 +340,7 @@ export function useCredentialOAuth() {
 		try {
 			success = await authorize(credential, controller.signal, options);
 			if (success) {
-				credentialsStore.upsertCredential(credential);
+				await publishConnectedCredential(credential);
 			}
 			return success;
 		} finally {
@@ -427,7 +438,7 @@ export function useCredentialOAuth() {
 		telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
-			credentialsStore.upsertCredential(credential);
+			await publishConnectedCredential(credential);
 
 			return credential;
 		}

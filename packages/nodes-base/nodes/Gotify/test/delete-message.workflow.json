@@ -1,0 +1,63 @@
+{
+	"name": "delete-message",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "test-trigger-node-id",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "delete",
+				"messageId": "123"
+			},
+			"id": "test-gotify-node-id",
+			"name": "Gotify",
+			"type": "n8n-nodes-base.gotify",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"gotifyApi": {
+					"id": "test-credentials-id",
+					"name": "Test Gotify API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Gotify",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Gotify": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"id": "test-workflow-id-8",
+	"tags": []
+}

@@ -85,7 +85,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -599,6 +599,69 @@ describe('LmChatAnthropic', () => {
 			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
 		});
 
+		it('should sanitize a manual-thinking rejection into an actionable message', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'manual' };
+				return undefined;
+			});
+
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return vi.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+			expect(capturedHandler).toBeDefined();
+
+			// Providers phrase the rejection in either voice, so both must be recognised
+			for (const providerMessage of [
+				'`thinking.budget_tokens` is not supported on this model.',
+				'This model does not support thinking.',
+				"claude-sonnet-5 doesn't support the `thinking` parameter",
+				'unsupported parameter: thinking',
+				'This model only supports adaptive thinking',
+			]) {
+				expect(() => capturedHandler!(new Error(providerMessage))).toThrow(NodeOperationError);
+				expect(() => capturedHandler!(new Error(providerMessage))).toThrow(/claude-sonnet-5/);
+			}
+
+			// Unrelated errors should pass through without throwing
+			for (const unrelated of [
+				'rate limit exceeded',
+				'overloaded_error: the model is currently overloaded',
+				'Could not resolve authentication method',
+			]) {
+				expect(() => capturedHandler!(new Error(unrelated))).not.toThrow();
+			}
+		});
+
+		it('should not claim a manual-thinking problem when thinking is not manual', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive' };
+				return undefined;
+			});
+
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return vi.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+			expect(capturedHandler).toBeDefined();
+
+			expect(() =>
+				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
+			).not.toThrow();
+		});
+
 		it('should throw when model is empty (v1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
@@ -687,6 +750,53 @@ describe('LmChatAnthropic', () => {
 				cachedResultName: 'Claude Sonnet 4.6',
 			});
 		});
+
+		it('should have Claude Sonnet 5 as default for v1.6+ resource locator', () => {
+			const v16ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
+						1.6,
+			);
+
+			expect(v16ModelField).toBeDefined();
+			expect(v16ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-5',
+				cachedResultName: 'Claude Sonnet 5',
+			});
+		});
+	});
+
+	describe('model builder hints', () => {
+		const modelFields = (type: string) =>
+			lmChatAnthropic.description.properties.filter((p) => p.name === 'model' && p.type === type);
+
+		it('should recommend the current Claude generation on every resource locator', () => {
+			const hints = modelFields('resourceLocator').map((p) => p.builderHint?.propertyHint);
+
+			expect(hints).toHaveLength(4);
+			for (const hint of hints) {
+				expect(hint).toContain('claude-sonnet-5');
+				expect(hint).toContain('claude-opus-5');
+				expect(hint).not.toContain('Default to claude-sonnet-4-6');
+			}
+		});
+
+		it('should only name models a fixed-enum model field can actually select', () => {
+			const enumFields = modelFields('options');
+			expect(enumFields.length).toBeGreaterThan(0);
+
+			for (const field of enumFields) {
+				const hint = field.builderHint?.propertyHint ?? '';
+				const selectable = (field.options ?? []).map((o) => ('value' in o ? String(o.value) : ''));
+
+				for (const named of hint.match(/claude-[a-z0-9-]+/g) ?? []) {
+					expect(selectable).toContain(named);
+				}
+			}
+		});
 	});
 
 	describe('thinking modes (v1.5)', () => {
@@ -734,6 +844,33 @@ describe('LmChatAnthropic', () => {
 						top_k: undefined,
 						top_p: undefined,
 						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should keep the v1.5 thinking-mode branch on v1.6', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive', promptCaching: '5m' };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-5',
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+						cache_control: { type: 'ephemeral', ttl: '5m' },
 					},
 				}),
 			);
@@ -871,8 +1008,7 @@ describe('LmChatAnthropic', () => {
 				(p) =>
 					p.name === 'model' &&
 					p.type === 'resourceLocator' &&
-					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
-						1.5,
+					p.displayOptions?.show?.['@version']?.[0] === 1.5,
 			);
 			expect(v15ModelField).toBeDefined();
 			expect(v15ModelField!.default).toEqual({

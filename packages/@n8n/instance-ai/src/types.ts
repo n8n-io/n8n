@@ -5,7 +5,6 @@ import type {
 	BuiltTool,
 	CheckpointStore,
 	MemoryTaskUsageReport,
-	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -16,6 +15,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -46,6 +46,7 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -310,6 +311,22 @@ export interface WorkflowListResult {
 	totalInScope: number;
 }
 
+/**
+ * What the workflows in scope are built out of. The cheap rung of preference discovery:
+ * `nodeTypes` answers "what does this project reach for" without opening a workflow, and
+ * `workflows` names the ones using a given type so one read gets the current house style.
+ */
+export interface NodeUsageResult {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	/** Set when no `nodeType` was asked for: every node type in use, most-used first. */
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	/** Set when a `nodeType` was asked for: the workflows using it, most recently updated first. */
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
+	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
@@ -323,7 +340,27 @@ export interface InstanceAiWorkflowService {
 		 * access. Writes stay locked to the thread's bound project regardless.
 		 */
 		projectId?: string;
+		/**
+		 * Keep only workflows containing at least one node of these types
+		 * (`n8n-nodes-base.slack`). Resolved from the dependency index, so it matches what a
+		 * workflow actually contains rather than what its name suggests, and costs one join
+		 * instead of a fetch per workflow.
+		 */
+		nodeTypes?: string[];
 	}): Promise<WorkflowListResult>;
+	/**
+	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
+	 * fetching workflows. Without `nodeType` it returns the histogram; with one, the workflows using
+	 * it. Node types only — parameter-level house style still needs a `get`.
+	 *
+	 * Optional: present only where the host wires the index behind it.
+	 */
+	nodeUsage?(options?: {
+		nodeType?: string;
+		limit?: number;
+		scope?: 'project' | 'instance';
+		projectId?: string;
+	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
@@ -351,13 +388,13 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -498,6 +535,11 @@ export interface InstanceAiCredentialService {
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
+	/** Whether a stored credential carries any values at all — `blank` when every
+	 *  text field its type declares is empty. Non-secret: only the verdict crosses
+	 *  the boundary, never the data. Tells an empty binding from a real one for the
+	 *  types that declare no connection test (generic auth). */
+	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
@@ -518,6 +560,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
+	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
 	/** Whether the credential type is an OAuth type whose client the instance
@@ -595,7 +639,7 @@ export interface UnavailableLocatorValue {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -608,7 +652,14 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
+	): Promise<{
+		content: string;
+		version?: string;
+		error?: string;
+		builderHint?: string;
+		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
+		deprecated?: boolean;
+	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -699,7 +750,7 @@ export interface DataTableFilterInput {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: string | number | boolean | null;
 	}>;
 }
@@ -1012,6 +1063,8 @@ export interface BuilderDelegateSession {
 export interface BuilderTurnStream {
 	fullStream: AsyncIterable<unknown>;
 	text: Promise<string>;
+	/** Structured host artifacts the embedded builder reported during this turn. */
+	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
 }
 
 /** Reference to a suspended builder tool call awaiting user input. */
@@ -1027,6 +1080,20 @@ export interface BuilderOpenSuspension {
  * suspend, which the caller cascades through its own suspend/resume so the
  * builder's questions survive a process restart.
  */
+
+/** Capabilities and limitations the orchestrator surfaces to plan an agent
+ *  build, sourced from the agents module via `InstanceAiBuilderDelegate.listAgentCapabilities`
+ *  so they stay aligned with the agent config schema and business rules as
+ * they evolve — the orchestrator never hardcodes these. */
+export interface AgentCapabilitiesSummary {
+	/** Supported chat-channel integrations; absence from this list means unsupported. */
+	channels: ChatIntegrationDescriptor[];
+	/** What an n8n Agent can do beyond chat channels — brief, for planning. */
+	agentCapabilities: string[];
+	/** Agent-level limitations the orchestrator must respect when planning a build. */
+	limitations: string[];
+}
+
 export interface InstanceAiBuilderDelegate {
 	/** `id` creates the agent under an id the frontend already minted for its
 	 *  unsaved artifact, so the chat and the editor converge on one agent. */
@@ -1052,6 +1119,11 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Capabilities and limitations the orchestrator surfaces to plan an agent
+	 *  build, sourced from the agents module via `listAgentCapabilities` so they
+	 *  stay aligned with the agent config schema and business rules as they
+	 *  evolve — the orchestrator never hardcodes these. */
+	listAgentCapabilities(): Promise<AgentCapabilitiesSummary>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1431,6 +1503,8 @@ export interface McpServerConfig {
 	 */
 	cacheKey?: string;
 	metadata?: {
+		/** ID of an Instance AI MCP registry connection. */
+		connectionId?: string;
 		/** Registry slug for Instance AI MCP registry servers. */
 		serverSlug?: string;
 		/** User who owns the registry MCP connection. */
@@ -1687,8 +1761,6 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**
 	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);

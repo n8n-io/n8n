@@ -1,6 +1,6 @@
 {
   "name": "@n8n/decorators",
-  "version": "1.36.0",
+  "version": "1.37.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,6 +19,18 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./policy-internal": {
+      "types": "./dist/policy-check/policy-mint.d.ts",
+      "import": "./src/policy-check/policy-mint.ts",
+      "require": "./dist/policy-check/policy-mint.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],

@@ -10,6 +10,7 @@ import {
 	executionErrorLabel,
 	executionErrorMessage,
 	formatDuration,
+	hitlRequestLabelKey,
 	hitlTimelineName,
 	isErroredTimelineItem,
 	isSubAgentTimelineItem,
@@ -119,11 +120,7 @@ function popoverLabel(item: TimelineItem): string {
 		case 'execution-error':
 			return executionErrorLabel(item, i18n);
 		case 'suspension':
-			return i18n.baseText(
-				item.hitlRequestType === 'approval'
-					? 'agentSessions.timeline.approvalRequested'
-					: 'agentSessions.timeline.hitlRequested',
-			);
+			return i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
 		case 'hitl-response':
 			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
@@ -375,6 +372,7 @@ onBeforeUnmount(() => {
 				v-for="(seg, segIdx) in segments"
 				:key="segIdx"
 				data-test-id="timeline-cell"
+				:data-error="seg.kind === 'event' && isErroredTimelineItem(seg.item) ? 'true' : undefined"
 				:class="$style.cell"
 				:style="cellStyle(seg)"
 			>
@@ -449,6 +447,7 @@ onBeforeUnmount(() => {
  * anchored to the active block/idle element.
  */
 .cell {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
@@ -458,8 +457,20 @@ onBeforeUnmount(() => {
 		transform var(--duration--snappy) var(--easing--ease-out);
 }
 
+.cell[data-error='true']::before {
+	position: absolute;
+	top: calc(var(--spacing--5xs) * -1);
+	left: 0;
+	width: 100%;
+	height: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--color--danger);
+	content: '';
+	z-index: 10;
+}
+
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
-	opacity: 0.6;
+	opacity: 0.4;
 }
 
 .idle {
@@ -500,14 +511,6 @@ onBeforeUnmount(() => {
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
-}
-
-.selected {
-	outline: var(--focus--border-width) solid var(--session-timeline-chart-block-color);
-	outline-offset: var(--spacing--5xs);
-	/* Lift above neighbouring idle stripes so the highlight outline doesn't
-	   get covered by the adjacent .idle background. */
-	z-index: 2;
 }
 
 /*

@@ -431,6 +431,38 @@ describe('useAgentToolRefAdapter', () => {
 			});
 		});
 
+		it('persists and clears workflow input bindings', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const withInputs = updateWorkflowToolRef(original, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+			expect(withInputs).toMatchObject({
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+
+			const cleared = updateWorkflowToolRef(withInputs, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: undefined,
+			});
+			expect(cleared).not.toHaveProperty('inputs');
+		});
+
 		it('is a no-op for non-workflow refs', () => {
 			const nodeRef: AgentJsonToolRef = {
 				type: 'node',

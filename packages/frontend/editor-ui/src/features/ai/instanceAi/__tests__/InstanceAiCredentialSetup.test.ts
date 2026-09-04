@@ -190,7 +190,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
-		vi.spyOn(credentialsStore, 'fetchAllCredentialsForWorkflow').mockResolvedValue([]);
+		vi.spyOn(credentialsStore, 'fetchUsableCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
 		// The card renders the NodeCredentials picker when the store has a usable
 		// credential of the type; default to one so the picker-based tests render it.
@@ -254,7 +254,7 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 			await nextTick();
 
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'project-team-1',
 			});
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();

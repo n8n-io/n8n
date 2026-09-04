@@ -396,7 +396,10 @@ describe('AgentCapabilitiesSection', () => {
 			expect.objectContaining({
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
-					agents: [{ id: 'agent-3', name: 'Research Agent' }],
+					agents: [
+						{ id: 'agent-3', name: 'Research Agent' },
+						{ id: 'agent-4', name: 'Draft Agent' },
+					],
 				}),
 			}),
 		);
@@ -405,8 +408,8 @@ describe('AgentCapabilitiesSection', () => {
 			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
 		modalCall.data.onConfirm({
-			agentId: 'agent-3',
-			useWhen: 'Use for research requests.',
+			agentId: 'agent-4',
+			useWhen: 'Use for draft research requests.',
 		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
@@ -415,7 +418,7 @@ describe('AgentCapabilitiesSection', () => {
 					maxChildren: 7,
 					agents: [
 						{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
-						{ agentId: 'agent-3', useWhen: 'Use for research requests.' },
+						{ agentId: 'agent-4', useWhen: 'Use for draft research requests.' },
 					],
 				},
 			},

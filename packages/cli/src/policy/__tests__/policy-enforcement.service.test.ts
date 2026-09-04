@@ -106,6 +106,11 @@ describe('PolicyEnforcementService', () => {
 
 			expect(second.violations).toEqual([]);
 		});
+
+		it('reports no checks for any point', () => {
+			expect(service.hasChecksFor('workflowStart')).toBe(false);
+			expect(service.hasChecksFor('credentialDecrypt')).toBe(false);
+		});
 	});
 
 	describe('setImplementation', () => {
@@ -127,6 +132,13 @@ describe('PolicyEnforcementService', () => {
 			backend = mock<PolicyEnforcementBackend>();
 			service = new PolicyEnforcementService();
 			service.setImplementation(backend);
+		});
+
+		it('asks the implementation about the point it was given', () => {
+			backend.hasChecksFor.mockReturnValue(true);
+
+			expect(service.hasChecksFor('workflowStart')).toBe(true);
+			expect(backend.hasChecksFor).toHaveBeenCalledExactlyOnceWith('workflowStart');
 		});
 
 		it('throws with every violation instead of minting', async () => {
@@ -192,6 +204,21 @@ describe('PolicyEnforcementService', () => {
 
 			expect(token.subject.type).toBe('workflow');
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		// A create can carry a client-supplied id (POST /workflows allows it), but that id is no
+		// proof of what was checked, so the save still binds to the content.
+		it('binds a create with a supplied id to a hash of its nodes', async () => {
+			const withClientId: PolicedWorkflow = { id: 'wf-client', name: 'New', nodes: [] };
+
+			const token = await service.enforceWorkflowSave({
+				workflow: withClientId,
+				storedWorkflow: null,
+				projectId: null,
+			});
+
+			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+			expect(token.subject.id).not.toBe('wf-client');
 		});
 
 		it('gives two unsaved workflows with different nodes different subjects', async () => {

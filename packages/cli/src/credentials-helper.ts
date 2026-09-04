@@ -41,8 +41,12 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	MANAGED_OAUTH_PINNED_FIELDS,
+} from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
@@ -97,6 +101,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {
 		super();
 	}
@@ -524,6 +529,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// Validate against the executing project's policy before any decryption happens.
+		await this.policyEnforcementService.enforceCredentialDecrypt({
+			credentialType: type,
+			credentialId: credentialsEntity.id,
+			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			projectId: additionalData.projectId ?? null,
+		});
+
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
 			credentialsEntity.type,
@@ -654,6 +668,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
 				decryptedData[field] = decryptedDataOriginal[field];
 			}
+		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
+			// For managed credentials the instance owns the OAuth endpoints. Honor an
+			// admin-configured overwrite for the field, otherwise pin the credential
+			// type default. The user's stored value is never used.
+			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
+			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
+				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
+				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
+				if (typeof property?.default !== 'string') continue;
+				const overwritten = overwrites[field];
+				decryptedData[field] =
+					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
+			}
 		}
 
 		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(
@@ -772,6 +799,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.executionContext,
 				staticData,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			return;
 		}

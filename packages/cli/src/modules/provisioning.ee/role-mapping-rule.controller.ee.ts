@@ -19,8 +19,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
-
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
@@ -32,7 +30,6 @@ export class RoleMappingRuleController {
 	constructor(
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
-		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
@@ -115,12 +112,10 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		const { ruleType } = await this.roleMappingRuleService.delete(id);
-
-		this.eventService.emit('role-mapping-rule-deleted', {
-			user: { id: req.user.id, email: req.user.email },
-			ruleId: id,
-			ruleType,
+		await this.roleMappingRuleService.delete({
+			id,
+			userId: req.user.id,
+			userEmail: req.user.email,
 		});
 
 		return { success: true };

@@ -7,7 +7,7 @@ import type {
 	WorkerStatus,
 	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
-import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
 	// #region Lifecycle
@@ -128,6 +128,21 @@ export type PubSubCommandMap = {
 	'relay-agent-execution-update': {
 		data: PushPayload<'agentExecutionUpdated'>;
 		userIds: string[];
+	};
+
+	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
+	'resume-agent-workflow-tool': {
+		agentRun: RelatedAgentRun;
+		status: string;
+	};
+
+	/**
+	 * Ask mains to abort a background job's live run. The job row is already
+	 * claimed as cancelled by the publisher; only the main holding the
+	 * in-process abort handle acts on this.
+	 */
+	'cancel-agent-background-job': {
+		jobId: string;
 	};
 
 	'clear-test-webhooks': {

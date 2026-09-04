@@ -167,6 +167,20 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText(input)).toBe(input);
 	});
 
+	it('redacts a Discord bot token', () => {
+		const token = join('MTI', '3NDU2Nzg5MDEyMzQ1Njc4.Gh1jKl.abcdefghijklmnopqrstuvwxyz1');
+		expect(scrubSecretsInText(`login failed for ${token}`)).toBe('login failed for [REDACTED]');
+	});
+
+	it('redacts Linear API keys and OAuth tokens', () => {
+		expect(scrubSecretsInText(`key ${join('lin_api_', 'abcdefghij0123456789')}`)).toBe(
+			'key [REDACTED]',
+		);
+		expect(scrubSecretsInText(`using ${join('lin_oauth_', 'abcdefghij0123456789')}`)).toBe(
+			'using [REDACTED]',
+		);
+	});
+
 	it('redacts a Telegram bot token, including inside a /bot… URL', () => {
 		const url = join(
 			'https://api.telegram.org/bot',

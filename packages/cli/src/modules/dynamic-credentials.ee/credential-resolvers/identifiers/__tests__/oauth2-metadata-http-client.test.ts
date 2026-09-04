@@ -1,6 +1,5 @@
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -15,17 +14,7 @@ describe('OAuth2MetadataHttpClient', () => {
 	const request = vi.fn();
 	const outboundHttp = mock<OutboundHttp>();
 
-	const buildClient = (
-		configOverrides: Partial<SsrfProtectionConfig>,
-		ssrfService = mock<SsrfProtectionService>(),
-	) =>
-		new OAuth2MetadataHttpClient(
-			logger,
-			cache,
-			outboundHttp,
-			ssrfService,
-			mock<SsrfProtectionConfig>(configOverrides),
-		);
+	const buildClient = () => new OAuth2MetadataHttpClient(logger, cache, outboundHttp);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -35,28 +24,17 @@ describe('OAuth2MetadataHttpClient', () => {
 	});
 
 	describe('Client construction', () => {
-		test('builds the client with SSRF disabled when protection is off', () => {
-			buildClient({ enabled: false });
+		test('builds the client with the default safe mode and the request timeout', () => {
+			buildClient();
 
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 10_000 });
-		});
-
-		test('builds the client with the SSRF service when protection is on', () => {
-			const ssrfProtectionService = mock<SsrfProtectionService>();
-
-			buildClient({ enabled: true }, ssrfProtectionService);
-
-			expect(outboundHttp.requests).toHaveBeenCalledWith({
-				ssrf: ssrfProtectionService,
-				timeout: 10_000,
-			});
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ timeout: 10_000 });
 		});
 	});
 
 	describe('requestFull', () => {
 		test('returns the full response without throwing on non-2xx', async () => {
 			request.mockResolvedValue({ statusCode: 404, body: { error: 'nope' } });
-			const client = buildClient({ enabled: true });
+			const client = buildClient();
 
 			const response = await client.requestFull({ url: 'https://auth.example.com', method: 'GET' });
 
@@ -77,7 +55,7 @@ describe('OAuth2MetadataHttpClient', () => {
 
 		test('fetches, validates, and caches the metadata', async () => {
 			request.mockResolvedValue({ statusCode: 200, body: { issuer: 'https://auth.example.com' } });
-			const client = buildClient({ enabled: true });
+			const client = buildClient();
 
 			const metadata = await client.fetchMetadata(schema, {
 				metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
@@ -95,7 +73,7 @@ describe('OAuth2MetadataHttpClient', () => {
 
 		test('throws IdentifierValidationError when the metadata fetch fails', async () => {
 			request.mockResolvedValue({ statusCode: 500, body: {} });
-			const client = buildClient({ enabled: true });
+			const client = buildClient();
 
 			await expect(
 				client.fetchMetadata(schema, {

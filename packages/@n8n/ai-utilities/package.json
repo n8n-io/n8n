@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -150,7 +150,7 @@
     "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "pdf-parse": "catalog:",
     "undici": "catalog:undici-v7"
   },

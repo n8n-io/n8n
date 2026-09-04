@@ -210,7 +210,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 
 		try {
 			credentialsStore.setCredentials([]);
-			const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			const credentials = await credentialsStore.fetchUsableCredentials({
 				projectId: context.projectId.value,
 			});
 			const credential = credentials.find(

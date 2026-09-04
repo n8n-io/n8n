@@ -66,32 +66,69 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
-	describe('channelMessage — only create hidden under SP', () => {
-		it('create fields are hidden, getAll fields are shown', () => {
-			const createFields = actionProps.filter(
+	describe('onlineMeeting — hidden under SP via the slash-prefixed field-level key', () => {
+		it('operation selector carries hide["/authentication"] = [SP]', () => {
+			const op = actionProps.find(
 				(p) =>
-					p.type !== 'notice' &&
-					p.displayOptions?.show?.resource?.includes('channelMessage') &&
-					p.displayOptions?.show?.operation?.includes('create'),
+					p.name === 'operation' && p.displayOptions?.show?.resource?.includes('onlineMeeting'),
 			);
-			expect(createFields.length).toBeGreaterThan(0);
-			for (const field of createFields) {
+			expect(isSpHidden(op)).toBe(true);
+			// distinct from the un-prefixed credential gate
+			expect(op?.displayOptions?.hide?.authentication).toBeUndefined();
+		});
+
+		it('every onlineMeeting field copy is hidden under SP', () => {
+			const meetingFields = actionProps.filter((p) =>
+				p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+			);
+			// subject, start/end times, options, meetingId…
+			const gatedFields = meetingFields.filter(
+				(p) => p.type !== 'notice' && p.name !== 'operation',
+			);
+			expect(gatedFields.length).toBeGreaterThan(0);
+			for (const field of gatedFields) {
 				expect(isSpHidden(field)).toBe(true);
 			}
+		});
 
-			const getAllFields = actionProps.filter(
+		it('shows an SP notice for the onlineMeeting resource', () => {
+			const notice = actionProps.find(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.resource?.includes('onlineMeeting') &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			expect(notice).toBeDefined();
+			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+	});
+
+	describe('channelMessage — only the sending operations are hidden under SP', () => {
+		const fieldsFor = (operation: string) =>
+			actionProps.filter(
 				(p) =>
 					p.type !== 'notice' &&
 					p.displayOptions?.show?.resource?.includes('channelMessage') &&
-					p.displayOptions?.show?.operation?.includes('getAll'),
+					p.displayOptions?.show?.operation?.includes(operation),
 			);
-			expect(getAllFields.length).toBeGreaterThan(0);
-			for (const field of getAllFields) {
+
+		it.each(['create', 'reply'])('%s fields are hidden under SP', (operation) => {
+			const fields = fieldsFor(operation);
+			expect(fields.length).toBeGreaterThan(0);
+			for (const field of fields) {
+				expect(isSpHidden(field)).toBe(true);
+			}
+		});
+
+		it.each(['get', 'getAll', 'getAllReplies'])('%s fields are shown under SP', (operation) => {
+			const fields = fieldsFor(operation);
+			expect(fields.length).toBeGreaterThan(0);
+			for (const field of fields) {
 				expect(isSpHidden(field)).toBe(false);
 			}
 		});
 
-		it('has both the create and the getAll SP notices', () => {
+		it('has an SP notice for every channelMessage operation', () => {
 			const notices = actionProps.filter(
 				(p) =>
 					p.type === 'notice' &&
@@ -99,8 +136,9 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
 			);
 			const operations = notices.flatMap((n) => n.displayOptions?.show?.operation ?? []);
-			expect(operations).toContain('create');
-			expect(operations).toContain('getAll');
+			expect(operations).toEqual(
+				expect.arrayContaining(['create', 'reply', 'get', 'getAll', 'getAllReplies']),
+			);
 		});
 	});
 
