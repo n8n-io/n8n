@@ -290,7 +290,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -536,6 +536,7 @@ export class AgentValidationService {
 		findCredential: FindCredential,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
 	) {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
@@ -556,7 +557,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'workflow') {
-				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues, scope);
 				continue;
 			}
 
@@ -571,6 +572,7 @@ export class AgentValidationService {
 		index: number,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
 	) {
 		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
 		const capability: AgentConfigValidationIssue['capability'] = {
@@ -590,6 +592,14 @@ export class AgentValidationService {
 		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 		if (incompatibility) {
 			issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
+			return;
+		}
+
+		// Production runs load the published workflow version, so an unpublished
+		// workflow blocks publishing the agent. Preview runs the draft and is not
+		// affected, hence publish scope only.
+		if (scope === 'publish' && !workflow.activeVersionId) {
+			issues.push(issue('incompatible_reference', path, capability, 'not_published'));
 		}
 	}
 

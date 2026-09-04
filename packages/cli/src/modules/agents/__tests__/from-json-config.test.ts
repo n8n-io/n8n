@@ -569,6 +569,23 @@ describe('buildFromJson()', () => {
 		expect(tool!.approval).toBeUndefined();
 	});
 
+	it('drops a workflow tool when resolveTool returns null', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Deleted Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool: vi.fn().mockResolvedValue(null),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Deleted Workflow')).toBe(false);
+	});
+
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 
