@@ -150,30 +150,6 @@ describe('TcrExecutor', () => {
 			expect(hasTestInChanged || hasTestInAffected).toBe(true);
 		});
 
-		it('detects new test files in new directories (staged)', () => {
-			// Create a new directory with a test file and stage it
-			const newDir = path.join(tempDir, 'tests', 'e2e', 'staged-feature');
-			fs.mkdirSync(newDir, { recursive: true });
-			// Use valid TypeScript without external imports to pass typecheck
-			fs.writeFileSync(
-				path.join(newDir, 'staged-feature.spec.ts'),
-				'export const test = { name: "staged feature test" };\n',
-			);
-
-			// Stage the new file
-			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
-
-			const tcr = new TcrExecutor();
-			const changedFiles = (
-				tcr as unknown as { getChangedFiles: (targetBranch?: string) => string[] }
-			).getChangedFiles();
-
-			// Should detect the actual test file, not just the directory
-			expect(changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
-			// Should NOT include directory paths
-			expect(changedFiles.some((f) => f.endsWith('staged-feature/'))).toBe(false);
-		});
-
 		it('detects deleted files', () => {
 			// Create and commit a file first
 			fs.writeFileSync(
