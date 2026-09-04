@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
@@ -251,6 +252,96 @@ describe('createBuildWorkflowTool', () => {
 			'Workspace-relative path to the TypeScript SDK workflow source file',
 		);
 		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
+	});
+
+	describe('folder placement', () => {
+		type SafeParseResult = { success: true; data: unknown } | { success: false; error: unknown };
+		const getInputSchema = (tool: unknown) =>
+			(tool as { inputSchema: { safeParse: (input: unknown) => SafeParseResult } }).inputSchema;
+
+		it('does not advertise folderPath while folder exploration is off', () => {
+			const { context, filePath } = makeContext({});
+			const schema = getInputSchema(createBuildWorkflowTool(context));
+
+			const parsed = schema.safeParse({ filePath, folderPath: 'Clients/Acme' });
+
+			// Either rejected or stripped — with the flag off the agent must not be able to pass it.
+			expect(parsed.success && 'folderPath' in (parsed.data as object)).toBe(false);
+		});
+
+		it('advertises folderPath while folder exploration is on', () => {
+			const { context, filePath } = makeContext({
+				overrides: { folderExplorationEnabled: true },
+			});
+			const schema = getInputSchema(createBuildWorkflowTool(context));
+
+			const parsed = schema.safeParse({ filePath, folderPath: 'Clients/Acme' });
+
+			expect(parsed.success).toBe(true);
+			expect(parsed.success && (parsed.data as { folderPath?: string }).folderPath).toBe(
+				'Clients/Acme',
+			);
+		});
+
+		it('creates a new workflow inside the named folder and reports where it landed', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+			const folder = { id: 'acme', name: 'Acme', path: 'Clients/Acme' };
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-1',
+				checksum: 'checksum-create',
+				folder,
+			} as never);
+
+			const result = await executeTool<BuildToolOutput & { folder?: unknown }>(
+				createBuildWorkflowTool(context),
+				{ filePath, name: 'Placed workflow', folderPath: 'Clients/Acme' },
+			);
+
+			expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Placed workflow' }),
+				{ markAsAiTemporary: true, folderPath: 'Clients/Acme' },
+			);
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-1', folder });
+		});
+
+		it('fails the build before saving when the folder does not resolve', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
+				new FolderResolutionError({
+					requested: 'Globex',
+					reason: 'not-found',
+					candidates: ['Clients', 'Clients/Acme'],
+				}),
+			);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Placed workflow',
+				folderPath: 'Globex',
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.workflowId).toBeUndefined();
+			const errors = result.errors?.join(' ') ?? '';
+			expect(errors).toContain('Globex');
+			expect(errors).toContain('Clients/Acme');
+			expect(errors).toMatch(/not (been )?(created|saved)/i);
+		});
+
+		it('rejects folderPath when updating an existing workflow', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-existing',
+				folderPath: 'Clients/Acme',
+			});
+
+			expect(result.success).toBe(false);
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+		});
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {

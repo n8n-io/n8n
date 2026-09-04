@@ -9,10 +9,14 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowEditorLockedError } = await import(
 		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
 	);
+	const { FolderResolutionError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/folder-resolution.error.js'
+	);
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
+		FolderResolutionError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -2502,6 +2506,84 @@ describe('createWorkflowAdapter', () => {
 			]);
 			return fixture;
 		}
+
+		describe('folder placement on create', () => {
+			const minimalJson = { name: 'Placed workflow', nodes: [], connections: {} } as never;
+
+			it('creates the workflow inside the resolved folder', async () => {
+				const { adapter, mockWorkflowService, mockUser } = withFolders();
+
+				await adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients/Acme' });
+
+				expect(mockWorkflowService.update).toHaveBeenCalledWith(
+					mockUser,
+					expect.anything(),
+					'wf-new',
+					{ source: 'n8n-ai', parentFolderId: 'acme' },
+				);
+			});
+
+			it('refuses to create the workflow when the folder does not resolve', async () => {
+				const { adapter, mockWorkflowRepository, mockWorkflowService } = withFolders();
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Globex' }),
+				).rejects.toMatchObject({
+					folderResolution: {
+						requested: 'Globex',
+						reason: 'not-found',
+						candidates: ['Clients', 'Clients/Acme'],
+					},
+				});
+				// Nothing was written: an unplaced workflow at the root is the silent
+				// degradation this option exists to remove.
+				expect(mockWorkflowRepository.manager.transaction).not.toHaveBeenCalled();
+				expect(mockWorkflowService.update).not.toHaveBeenCalled();
+			});
+
+			it('refuses with an ambiguous resolution when two folders match', async () => {
+				const { adapter, mockFolderRepository } = withFolders();
+				// A second nested "Acme" — neither path is exactly "Acme", so the name
+				// stage matches both and the request must not pick one.
+				mockFolderRepository.getMany.mockResolvedValue([
+					...folders,
+					{
+						id: 'acme-2',
+						name: 'Acme',
+						parentFolderId: 'partners',
+						homeProject: { id: 'team-project-id' },
+					},
+				]);
+				mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+					new Map([...paths, ['acme-2', ['Partners', 'Acme']]]),
+				);
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Acme' }),
+				).rejects.toMatchObject({ folderResolution: { reason: 'ambiguous' } });
+			});
+
+			it('reports folders as unsupported when the instance is not licensed for them', async () => {
+				const { adapter } = withFolders({ foldersLicensed: false });
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients' }),
+				).rejects.toMatchObject({ folderResolution: { reason: 'unsupported' } });
+			});
+
+			it('ignores a folder target while folder exploration is off', async () => {
+				const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+				await adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients/Acme' });
+
+				expect(mockWorkflowService.update).toHaveBeenCalledWith(
+					mockUser,
+					expect.anything(),
+					'wf-new',
+					{ source: 'n8n-ai' },
+				);
+			});
+		});
 
 		it('scopes the listing to the resolved folder and its subtree by default', async () => {
 			const { adapter, mockWorkflowService, mockUser, mockFolderFinderService } = withFolders();
