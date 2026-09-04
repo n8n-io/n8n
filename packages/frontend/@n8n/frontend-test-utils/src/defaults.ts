@@ -200,4 +200,7 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
+	groupNode: {
+		enabled: false,
+	},
 };

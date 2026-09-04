@@ -4,6 +4,7 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 import {
 	AddNodeGroupCommand,
 	RemoveNodeGroupCommand,
+	SetNodeParentCommand,
 	UpdateNodeGroupCommand,
 	historyBus,
 } from './history';
@@ -111,6 +112,51 @@ describe('node group history commands', () => {
 			await command.revert();
 
 			expect(emit).toHaveBeenCalledWith('revertUpdateNodeGroup', { group: before });
+		});
+	});
+
+	describe('SetNodeParentCommand', () => {
+		it('reverses back to the group the node came from', () => {
+			const command = new SetNodeParentCommand('node-1', 'group-1', 'group-2', 1);
+			const reverse = command.getReverseCommand(2);
+
+			expect(reverse).toBeInstanceOf(SetNodeParentCommand);
+			expect(reverse).toMatchObject({
+				nodeId: 'node-1',
+				oldParentId: 'group-2',
+				newParentId: 'group-1',
+			});
+		});
+
+		it('reverses a move onto the canvas back into the group', () => {
+			// `undefined` means the node sits on the canvas itself.
+			const command = new SetNodeParentCommand('node-1', 'group-1', undefined, 1);
+
+			expect(command.getReverseCommand(2)).toMatchObject({
+				oldParentId: undefined,
+				newParentId: 'group-1',
+			});
+		});
+
+		it('is equal to another command for the same node and the same move', () => {
+			const a = new SetNodeParentCommand('node-1', 'group-1', 'group-2', 1);
+			const b = new SetNodeParentCommand('node-1', 'group-1', 'group-2', 2);
+			const c = new SetNodeParentCommand('node-2', 'group-1', 'group-2', 3);
+
+			expect(a.isEqualTo(b)).toBe(true);
+			expect(a.isEqualTo(c)).toBe(false);
+		});
+
+		it('emits revertSetNodeParent with the previous group on revert', async () => {
+			const emit = vi.spyOn(historyBus, 'emit');
+			const command = new SetNodeParentCommand('node-1', 'group-1', 'group-2', 1);
+
+			await command.revert();
+
+			expect(emit).toHaveBeenCalledWith('revertSetNodeParent', {
+				nodeId: 'node-1',
+				parentId: 'group-1',
+			});
 		});
 	});
 });

@@ -132,6 +132,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	GROUP_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -975,6 +976,50 @@ export function useCanvasOperations() {
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
+		}
+	}
+
+	/**
+	 * Adds an empty group: a group node that no node points at yet.
+	 *
+	 * The node type loads before any mutation, so the node lands in one canvas
+	 * update. VueFlow pauses its props sync for a tick after each store echo, so
+	 * a second update a microtask later can be dropped.
+	 *
+	 * See `.agents/specs/group-as-first-class-node.md`.
+	 */
+	async function addEmptyGroup({
+		position,
+		trackHistory = true,
+	}: { position?: XYPosition; trackHistory?: boolean } = {}): Promise<INodeUi | undefined> {
+		const nodeTypeDescription = requireNodeTypeDescription(GROUP_NODE_TYPE);
+		const typeVersion = resolveNodeVersion(nodeTypeDescription);
+		// The only await, before any mutation: everything below is one flush.
+		await loadNodeTypesProperties([{ type: GROUP_NODE_TYPE, typeVersion }]);
+
+		// `addNode` runs the name through `uniqueNodeName`, so a plain base name
+		// is enough: a second group becomes "Group 1", "Group 2", and so on.
+		const name = i18n.baseText('canvas.nodeGroup.defaultTitle');
+
+		if (trackHistory) historyStore.startRecordingUndo();
+		try {
+			return addNode(
+				{
+					type: GROUP_NODE_TYPE,
+					typeVersion,
+					name,
+					id: window.crypto.randomUUID(),
+					position,
+					parameters: { objective: '' },
+				},
+				nodeTypeDescription,
+				{ trackHistory, telemetry: true },
+			);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('error'));
+			return undefined;
+		} finally {
+			if (trackHistory) historyStore.stopRecordingUndo();
 		}
 	}
 
@@ -3814,6 +3859,7 @@ export function useCanvasOperations() {
 		requireNodeTypeDescription,
 		addNodes,
 		addNode,
+		addEmptyGroup,
 		resolveNodePosition,
 		revertAddNode,
 		updateNodesPosition,

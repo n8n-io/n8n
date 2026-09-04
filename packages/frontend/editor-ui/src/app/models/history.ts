@@ -17,6 +17,7 @@ export const enum COMMANDS {
 	ADD_NODE_GROUP = 'addNodeGroup',
 	REMOVE_NODE_GROUP = 'removeNodeGroup',
 	UPDATE_NODE_GROUP = 'updateNodeGroup',
+	SET_NODE_PARENT = 'setNodeParent',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -418,6 +419,56 @@ export class UpdateNodeGroupCommand extends Command {
 	async revert(): Promise<void> {
 		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertUpdateNodeGroup', { group: this.before });
+			resolve();
+		});
+	}
+}
+
+/**
+ * Moves a node into a group, or out of one, by setting its `parentId`.
+ *
+ * On the group-node model a group holds its members through this field, so a
+ * reparent is the undoable step for "add to group" and "remove from group".
+ * `undefined` means the node sits on the canvas itself.
+ */
+export class SetNodeParentCommand extends Command {
+	nodeId: string;
+
+	oldParentId: string | undefined;
+
+	newParentId: string | undefined;
+
+	constructor(
+		nodeId: string,
+		oldParentId: string | undefined,
+		newParentId: string | undefined,
+		timestamp: number,
+	) {
+		super(COMMANDS.SET_NODE_PARENT, timestamp);
+		this.nodeId = nodeId;
+		this.oldParentId = oldParentId;
+		this.newParentId = newParentId;
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new SetNodeParentCommand(this.nodeId, this.newParentId, this.oldParentId, timestamp);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof SetNodeParentCommand &&
+			anotherCommand.nodeId === this.nodeId &&
+			anotherCommand.oldParentId === this.oldParentId &&
+			anotherCommand.newParentId === this.newParentId
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertSetNodeParent', {
+				nodeId: this.nodeId,
+				parentId: this.oldParentId,
+			});
 			resolve();
 		});
 	}

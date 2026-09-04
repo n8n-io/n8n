@@ -16,7 +16,9 @@ import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
+	XYPosition,
 } from '@/Interface';
+import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
 import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
@@ -54,11 +56,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
+	addEmptyGroup: [position: XYPosition];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
 
 const uiStore = useUIStore();
+const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
 const focusPanelStore = useFocusPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
@@ -85,18 +89,31 @@ function openNodeCreator() {
 	});
 }
 
-function addStickyNote() {
+/**
+ * Centre of the visible canvas, in canvas coordinates. The insert point for an
+ * element that is not connected to anything yet.
+ */
+function getMidCanvasInsertPosition(): XYPosition {
 	if (document.activeElement) {
 		(document.activeElement as HTMLElement).blur();
 	}
 
 	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
+	return getMidCanvasPosition(props.nodeViewScale, offset);
+}
 
-	const position = getMidCanvasPosition(props.nodeViewScale, offset);
+function addStickyNote() {
+	const position = getMidCanvasInsertPosition();
 	position[0] -= DEFAULT_STICKY_WIDTH / 2;
 	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
 	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
+}
+
+// The host owns group creation, because the group node and its first state must
+// land in one undo step. This only reports where the user wants it.
+function addEmptyGroup() {
+	emit('addEmptyGroup', getMidCanvasInsertPosition());
 }
 
 function closeNodeCreator(hasAddedNodes = false) {
@@ -213,6 +230,20 @@ function openCommandBar(event: MouseEvent) {
 				@click="addStickyNote"
 			/>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip
+			v-if="isGroupNodeEnabled"
+			:content="i18n.baseText('nodeView.addEmptyGroupHint')"
+			placement="left"
+		>
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="square"
+				:aria-label="i18n.baseText('nodeView.addEmptyGroupHint')"
+				data-test-id="add-empty-group-button"
+				@click="addEmptyGroup"
+			/>
+		</N8nTooltip>
 		<KeyboardShortcutTooltip
 			:label="sidePanelTooltip"
 			:shortcut="{ keys: ['f'], shiftKey: true }"

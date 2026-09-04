@@ -10,7 +10,13 @@ import type {
 	Workflow,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
+import {
+	GROUP_NODE_TYPE,
+	NodeConnectionTypes,
+	NodeHelpers,
+	UserError,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
@@ -1419,6 +1425,65 @@ describe('useCanvasOperations', () => {
 			setNodeSelected();
 
 			expect(uiStore.lastSelectedNode).toBe('');
+		});
+	});
+
+	describe('addEmptyGroup', () => {
+		function registerGroupNodeType() {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				...nodeTypesStore.nodeTypes,
+				[GROUP_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: GROUP_NODE_TYPE }) },
+			};
+		}
+
+		it('adds one group node at the given position', async () => {
+			registerGroupNodeType();
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addEmptyGroup } = useCanvasOperations();
+			await addEmptyGroup({ position: [64, 128] });
+
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			expect(addNodeSpy.mock.calls[0][0]).toMatchObject({
+				type: GROUP_NODE_TYPE,
+				typeVersion: 1,
+				position: [64, 128],
+			});
+		});
+
+		it('returns the new group node so the caller can open the rename flow', async () => {
+			registerGroupNodeType();
+
+			const { addEmptyGroup } = useCanvasOperations();
+			const group = await addEmptyGroup({});
+
+			expect(group?.type).toBe(GROUP_NODE_TYPE);
+			expect(group?.id).toBeTruthy();
+		});
+
+		it('names the group from the default title', async () => {
+			registerGroupNodeType();
+
+			const { addEmptyGroup } = useCanvasOperations();
+			const group = await addEmptyGroup({});
+
+			// `addNode` runs the name through `uniqueNodeName`, which makes a
+			// second group "Group 1" rather than a duplicate.
+			expect(group?.name).toBeTruthy();
+		});
+
+		it('records the group as one undo step', async () => {
+			registerGroupNodeType();
+			const historyStore = useHistoryStore();
+			const startSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			const { addEmptyGroup } = useCanvasOperations();
+			await addEmptyGroup({});
+
+			expect(startSpy).toHaveBeenCalledOnce();
+			expect(stopSpy).toHaveBeenCalledOnce();
 		});
 	});
 

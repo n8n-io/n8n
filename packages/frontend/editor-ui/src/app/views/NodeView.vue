@@ -51,6 +51,7 @@ import type {
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	parseCanvasGroupNodeId,
 } from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -115,9 +116,12 @@ import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
 import {
+	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
 	shouldIgnoreCanvasShortcut,
 } from '@/features/workflows/canvas/canvas.utils';
+import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
+import { useGroupNodeOperations } from '@/features/workflows/canvas/composables/useGroupNodeOperations';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
@@ -193,6 +197,8 @@ const workflowExecutionState = computed(() =>
 	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
 const workflowsListStore = useWorkflowsListStore();
+const groupNodeOperations = useGroupNodeOperations();
+const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const credentialsStore = useCredentialsStore();
@@ -246,6 +252,7 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	revertAddNode,
+	addEmptyGroup,
 	createConnection,
 	revertCreateConnection,
 	deleteConnection,
@@ -537,6 +544,17 @@ function onRevertRemoveNodeGroup({ group }: { group: IWorkflowGroup }) {
 
 function onRevertUpdateNodeGroup({ group }: { group: IWorkflowGroup }) {
 	workflowDocumentStore.value.restoreGroup(group);
+}
+
+/** Puts a node back in the group it came from, or back on the canvas. */
+function onRevertSetNodeParent({
+	nodeId,
+	parentId,
+}: {
+	nodeId: string;
+	parentId: string | undefined;
+}) {
+	groupNodeOperations.revertSetNodeParent(nodeId, parentId);
 }
 
 function onToggleNodeDisabled(id: string) {
@@ -837,8 +855,61 @@ async function loadCredentials() {
  * Connections
  */
 
+/**
+ * Maps a `group:<id>` canvas endpoint onto the group node's own main port.
+ *
+ * The group is a node, so the stored connection is an ordinary connection to
+ * it. This only translates the canvas id, which carries a prefix so a group
+ * card and a node cannot collide.
+ */
+function resolveGroupEndpoint(
+	id: string,
+	mode: CanvasConnectionMode,
+): { id: string; handle: string } | undefined {
+	if (!isGroupNodeEnabled.value) return undefined;
+
+	const groupId = parseCanvasGroupNodeId(id);
+	if (groupId === undefined) return undefined;
+	if (groupNodeOperations.getGroupNode(groupId) === undefined) return undefined;
+
+	return {
+		id: groupId,
+		handle: createCanvasConnectionHandleString({
+			mode,
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		}),
+	};
+}
+
+/**
+ * Adds an empty group, then opens the rename flow so the user can type the
+ * title straight away. The group node and its first state are one undo step.
+ */
+async function onCreateEmptyGroup(position?: XYPosition) {
+	if (!checkIfEditingIsAllowed()) return;
+
+	const group = await addEmptyGroup({ position });
+	if (!group) return;
+
+	await nextTick();
+	canvasEventBus.emit('rename:group', { groupId: group.id });
+}
+
 function onCreateConnection(connection: Connection) {
-	createConnection(connection, { trackHistory: true });
+	const source = resolveGroupEndpoint(connection.source, CanvasConnectionMode.Output);
+	const target = resolveGroupEndpoint(connection.target, CanvasConnectionMode.Input);
+
+	createConnection(
+		{
+			...connection,
+			source: source?.id ?? connection.source,
+			sourceHandle: source?.handle ?? connection.sourceHandle,
+			target: target?.id ?? connection.target,
+			targetHandle: target?.handle ?? connection.targetHandle,
+		},
+		{ trackHistory: true },
+	);
 }
 
 function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {
@@ -1454,6 +1525,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertAddNodeGroup', onRevertAddNodeGroup);
 	historyBus.on('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
 	historyBus.on('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
+	historyBus.on('revertSetNodeParent', onRevertSetNodeParent);
 }
 
 function removeUndoRedoEventBindings() {
@@ -1468,6 +1540,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddNodeGroup', onRevertAddNodeGroup);
 	historyBus.off('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
 	historyBus.off('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
+	historyBus.off('revertSetNodeParent', onRevertSetNodeParent);
 }
 
 /**
@@ -2140,6 +2213,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onCreateEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>
