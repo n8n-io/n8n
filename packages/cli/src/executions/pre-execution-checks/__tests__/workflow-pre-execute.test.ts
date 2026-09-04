@@ -153,6 +153,18 @@ describe('WorkflowPreExecute', () => {
 		expect(data.pinData).toEqual(pinData);
 	});
 
+	it('writes back cleared pin data when the hook was given pins and clears them', async () => {
+		const pinData = { NodeA: [{ json: { a: 1 } }] };
+		const data: IWorkflowBase = { ...workflowData, pinData };
+		externalHooks.run.mockImplementation(async (_name, args) => {
+			(args![0] as Workflow).setPinData(undefined);
+		});
+
+		await preExecute.run(data, 'manual', undefined, pinData);
+
+		expect(data.pinData).toBeUndefined();
+	});
+
 	it('skips the hook when N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION is true', async () => {
 		executionsConfig.preExecuteErrorCreatesExecution = true;
 

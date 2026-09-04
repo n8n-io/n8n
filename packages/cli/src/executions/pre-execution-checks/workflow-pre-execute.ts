@@ -71,18 +71,22 @@ export class WorkflowPreExecute {
 			throw new PreExecuteBlockedError(ensureError(error));
 		}
 
-		this.writeHookMutations(workflowData, workflow);
+		this.writeHookMutations(workflowData, workflow, pinData !== undefined);
 		return workflow;
 	}
 
-	private writeHookMutations(workflowData: IWorkflowBase, workflow: Workflow) {
+	private writeHookMutations(
+		workflowData: IWorkflowBase,
+		workflow: Workflow,
+		pinDataWasSupplied: boolean,
+	) {
 		workflowData.staticData = workflow.staticData;
 		workflowData.settings = workflow.settings;
 		workflowData.connections = workflow.connectionsBySourceNode;
 		if (workflow.name !== undefined) {
 			workflowData.name = workflow.name;
 		}
-		if (workflow.pinData !== undefined) {
+		if (pinDataWasSupplied || workflow.pinData !== undefined) {
 			workflowData.pinData = workflow.pinData;
 		}
 		workflowData.nodes = this.nodesFromWorkflow(workflow, workflowData.nodes ?? []);
