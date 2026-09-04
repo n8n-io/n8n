@@ -448,7 +448,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div
-				:class="$style.header"
+				:class="[$style.header, { [$style.headerEditing]: isEditingDescription }]"
 				:style="{ height: `${HEADER_HEIGHT}px` }"
 				data-test-id="canvas-node-group-header"
 			>
@@ -736,6 +736,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 	padding: var(--spacing--sm) var(--spacing--md);
 	box-sizing: border-box;
 	overflow: hidden;
+}
+
+// The description editor overlay grows below the header height; the header's
+// clip would cut off its action buttons, so stop clipping while editing.
+// The header keeps its fixed height, so the card layout is unchanged.
+.headerEditing {
+	overflow: visible;
 }
 
 .titleRow {
