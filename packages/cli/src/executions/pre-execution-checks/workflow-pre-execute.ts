@@ -2,6 +2,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
+	INode,
 	IPinData,
 	IWorkflowBase,
 	WorkflowExecuteMode,
@@ -70,8 +71,39 @@ export class WorkflowPreExecute {
 			throw new PreExecuteBlockedError(ensureError(error));
 		}
 
+		this.writeHookMutations(workflowData, workflow);
+		return workflow;
+	}
+
+	private writeHookMutations(workflowData: IWorkflowBase, workflow: Workflow) {
 		workflowData.staticData = workflow.staticData;
 		workflowData.settings = workflow.settings;
-		return workflow;
+		workflowData.connections = workflow.connectionsBySourceNode;
+		if (workflow.name !== undefined) {
+			workflowData.name = workflow.name;
+		}
+		if (workflow.pinData !== undefined) {
+			workflowData.pinData = workflow.pinData;
+		}
+		workflowData.nodes = this.nodesFromWorkflow(workflow, workflowData.nodes ?? []);
+	}
+
+	private nodesFromWorkflow(workflow: Workflow, originalNodes: INode[]): INode[] {
+		const seen = new Set<string>();
+		const nodes: INode[] = [];
+
+		for (const node of originalNodes) {
+			const current = workflow.nodes[node.name];
+			if (current === undefined) continue;
+			nodes.push(current);
+			seen.add(node.name);
+		}
+
+		for (const [name, node] of Object.entries(workflow.nodes)) {
+			if (seen.has(name)) continue;
+			nodes.push(node);
+		}
+
+		return nodes;
 	}
 }
