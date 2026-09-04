@@ -1073,6 +1073,23 @@ describe('InstanceAiEmptyView', () => {
 		},
 	);
 
+	it('restores the submitted draft when no project is selected', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = null;
+		const { getByRole, getByTestId } = renderView({
+			global: { stubs: { InstanceAiInput: false } },
+		});
+		const textbox = getByRole('textbox');
+
+		await fireEvent.update(textbox, 'Build me an invoice automation');
+		await fireEvent.click(getByTestId('instance-ai-send-button'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(textbox).toHaveValue('Build me an invoice automation');
+		expect(showErrorMock).toHaveBeenCalled();
+	});
+
 	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
