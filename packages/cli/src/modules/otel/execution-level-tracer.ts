@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Context, Exception, Span } from '@opentelemetry/api';
+import type { Attributes, Context, Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -19,15 +19,28 @@ const TRACER_NAME = 'n8n-workflow';
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
+/**
+ * Marker span emitted (and ended) at execution start. A span is only exported once it
+ * ends, so without this nothing identifiable reaches the collector until the first node
+ * or the workflow itself finishes.
+ */
+const WORKFLOW_START_SPAN_NAME = 'workflow.execute.started';
+
 function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
 
 type TrackedSpan = { span: Span };
 
+/**
+ * The workflow's root span plus the identity attributes copied onto each of its node
+ * spans, so a node span can be tied back to its workflow/execution/project on its own.
+ */
+type TrackedWorkflowSpan = TrackedSpan & { identity: Attributes };
+
 @Service()
 export class ExecutionLevelTracer {
-	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 	private tracer = trace.getTracer(TRACER_NAME);
 
@@ -50,16 +63,22 @@ export class ExecutionLevelTracer {
 			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
 			const links = this.buildContinuationLinks(params.linkTo);
 
+			// Kept deliberately small: only what identifies the execution, so it stays cheap to
+			// repeat on every node span. Custom (license-gated) attributes stay root-only.
+			const identity: Attributes = {
+				[ATTR.WORKFLOW_ID]: params.workflow.id,
+				[ATTR.WORKFLOW_NAME]: params.workflow.name,
+				[ATTR.EXECUTION_ID]: params.executionId,
+				...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+			};
+
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
 					attributes: {
-						[ATTR.WORKFLOW_ID]: params.workflow.id,
-						[ATTR.WORKFLOW_NAME]: params.workflow.name,
+						...identity,
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
-						[ATTR.EXECUTION_ID]: params.executionId,
-						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
 						...buildCustomAttributes(
 							ATTR.WORKFLOW_CUSTOM_PREFIX,
 							params.workflow?.customAttributes,
@@ -71,9 +90,9 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.activeWorkflowSpans.set(params.executionId, {
-				span,
-			});
+			this.activeWorkflowSpans.set(params.executionId, { span, identity });
+			this.emitStartMarker(span, identity);
+
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -122,20 +141,24 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx should never be null
-			const parentCtx = this.findWorkflowSpanContext(params.executionId);
+			//	We should always have the node running in a workflow so this should never be missing
+			const trackedWorkflow = this.activeWorkflowSpans.get(params.executionId);
 
-			if (!parentCtx) {
+			if (!trackedWorkflow) {
 				this.logger.warn(
 					'Trying to start a node without a pre-existing parent workflow trace - ignoring',
 				);
 				return;
 			}
 
+			const parentCtx = trace.setSpan(context.active(), trackedWorkflow.span);
+
 			const span = this.tracer.startSpan(
 				'node.execute',
 				{
 					attributes: {
+						// Repeated from the root span, which is not exported until the workflow ends.
+						...trackedWorkflow.identity,
 						[ATTR.NODE_ID]: params.node.id,
 						[ATTR.NODE_NAME]: params.node.name,
 						[ATTR.NODE_TYPE]: params.node.type,
@@ -249,9 +272,19 @@ export class ExecutionLevelTracer {
 		];
 	}
 
-	private findWorkflowSpanContext(executionId: string) {
-		const tracked = this.activeWorkflowSpans.get(executionId);
-		return tracked ? trace.setSpan(context.active(), tracked.span) : undefined;
+	/**
+	 * Starts and immediately ends a child of the workflow span, so one identified span is
+	 * exported at execution start rather than at execution end. Being a child keeps it in
+	 * the same trace and inherits the root's sampling decision; it does not affect the
+	 * traceparent handed back to callers, which still points at the root span.
+	 */
+	private emitStartMarker(workflowSpan: Span, identity: Attributes): void {
+		const marker = this.tracer.startSpan(
+			WORKFLOW_START_SPAN_NAME,
+			{ attributes: identity },
+			trace.setSpan(context.active(), workflowSpan),
+		);
+		marker.end();
 	}
 
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
