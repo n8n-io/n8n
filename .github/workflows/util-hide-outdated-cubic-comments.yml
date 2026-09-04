@@ -22,6 +22,7 @@ permissions:
 
 concurrency:
   group: hide-cubic-reviews-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   hide-old-cubic-reviews:
@@ -47,15 +48,24 @@ jobs:
               per_page: 100,
             });
 
-            // Anchor on the event's review id rather than on a timestamp sort, so
-            // a stale read that omits the new review still leaves it visible.
+            // Never touch a review newer than the triggering one. Two reviews
+            // submitted close together start two runs; without this guard the
+            // older run minimizes the newer review, and the newer run keeps that
+            // review but never restores its visibility, hiding every summary.
+            //
+            // A stale read that omits the triggering review means everything
+            // listed predates it, so Infinity is the right cutoff there.
+            const keep = reviews.find((r) => r.id === keepId);
+            const keepAt = keep ? new Date(keep.submitted_at).getTime() : Infinity;
+
             const toHide = reviews.filter(
               (r) =>
                 r.id !== keepId &&
                 r.user &&
                 r.user.login === 'cubic-dev-ai[bot]' &&
                 r.body &&
-                r.body.trim().length > 0
+                r.body.trim().length > 0 &&
+                new Date(r.submitted_at).getTime() < keepAt
             );
 
             for (const review of toHide) {
