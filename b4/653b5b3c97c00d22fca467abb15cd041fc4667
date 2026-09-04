@@ -1,0 +1,35 @@
+packages/frontend/@n8n/chat/tsconfig.build.json
+  s_ca25e93cce653e::t_ef3452276cc29a 1-24
+packages/frontend/editor-ui/tsconfig.json
+  s_ca25e93cce653e::t_df6138ffbb44c3 42-43
+packages/frontend/editor-ui/src/features/ai/chatHub/components/SuggestedPromptsEditor.vue
+  s_ca25e93cce653e::t_e307b7c1949021 32,34
+packages/frontend/@n8n/chat/vite.config.mts
+  s_ca25e93cce653e::t_db0ddb48668ebd 30-33,38-40
+  s_ca25e93cce653e::t_cb62a844c3a0b3 16
+  s_ca25e93cce653e::t_e01018a94acdfa 34-37
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_ca25e93cce653e::t_e6adc50dad5e68 16-17,137-151
+turbo.json
+  s_ca25e93cce653e::t_5d9de09a163bb5 32-51
+.github/workflows/release-publish.yml
+  s_ca25e93cce653e::t_4bcad8f28576fd 63-74
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_ca25e93cce653e::t_6819d1ed324d1d 3,27,31,107,111-112,116-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4653b5b3c97c00d22fca467abb15cd041fc4667",
+  "prompts": {},
+  "sessions": {
+    "s_ca25e93cce653e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70fd526f-275d-454f-9bd6-5fb883e0f647",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
