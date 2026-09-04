@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nTag } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nTag, N8nTooltip } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -557,16 +557,16 @@ const resizable = computed(() => {
 								<span :class="$style.contextChipText">{{
 									i18n.baseText('instanceAi.planReview.askForEdits')
 								}}</span>
-								<button
-									type="button"
+								<N8nIconButton
+									icon="x"
+									size="xsmall"
+									variant="ghost"
 									:class="$style.contextChipClose"
 									:title="i18n.baseText('generic.close')"
 									:aria-label="i18n.baseText('generic.close')"
 									data-test-id="instance-ai-plan-edit-cancel"
 									@click.stop="emit('cancel-plan-edit')"
-								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
+								/>
 							</span>
 						</template>
 					</N8nTag>
@@ -581,21 +581,22 @@ const resizable = computed(() => {
 							<span :class="$style.contextChipContent">
 								<N8nIcon
 									:icon="props.contextChip.icon ?? 'robot'"
-									size="small"
+									size="medium"
+									:class="$style.contextChipIcon"
 									data-test-id="instance-ai-handoff-context-chip-icon"
 								/>
 								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
-								<button
-									type="button"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-handoff-context-chip-dismiss"
-									@click.stop="emit('dismiss-context-chip')"
-								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
 							</span>
+							<N8nIconButton
+								icon="x"
+								size="xsmall"
+								variant="ghost"
+								:class="$style.contextChipClose"
+								:title="i18n.baseText('generic.close')"
+								:aria-label="i18n.baseText('generic.close')"
+								data-test-id="instance-ai-handoff-context-chip-dismiss"
+								@click.stop="emit('dismiss-context-chip')"
+							/>
 						</template>
 					</N8nTag>
 				</div>
@@ -672,6 +673,9 @@ const resizable = computed(() => {
 }
 
 .contextChip {
+	--tag--min-width: 0;
+	--tag--max-width: 80%;
+
 	align-self: flex-start;
 	max-width: 100%;
 }
@@ -679,27 +683,26 @@ const resizable = computed(() => {
 .contextChipContent {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	line-height: var(--line-height--xs);
+	overflow: hidden;
+}
+
+.contextChipIcon {
+	flex-shrink: 0;
 }
 
 .contextChipText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: 1.2;
 }
 
 .contextChipClose {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	flex: 0 0 auto;
-	width: var(--spacing--xs);
-	height: var(--spacing--xs);
-	padding: 0;
-	color: inherit;
-	cursor: pointer;
-	background: none;
-	border: 0;
-	border-radius: var(--radius--3xs);
+	margin-right: calc(var(--spacing--2xs) * -1);
 }
 
 .planEditInput {
