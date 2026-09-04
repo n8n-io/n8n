@@ -28,7 +28,7 @@ export interface NewExecutionRecord extends BaseExecutionRecord {
  * decides on `status`, never on when anything happened. The read path has its
  * own view (`ExecutionView`).
  */
-export interface ExecutionRecord extends BaseExecutionRecord {}
+export type ExecutionRecord = BaseExecutionRecord;
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
