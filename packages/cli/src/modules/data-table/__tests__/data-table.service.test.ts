@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { In } from '@n8n/typeorm';
-import type { DataTableInfoById } from 'n8n-workflow';
+import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import type { DataTableColumn } from '../data-table-column.entity';
@@ -486,7 +486,7 @@ describe('DataTableService', () => {
 	});
 
 	describe('getCachedSizeBytesByIds', () => {
-        const cachedSizeData: DataTablesSizeData = {
+		const cachedSizeData: DataTablesSizeData = {
 			totalBytes: 3072,
 			dataTables: {
 				'dt-1': {
@@ -504,7 +504,6 @@ describe('DataTableService', () => {
 					sizeBytes: 2048,
 				},
 			},
-		};
 		};
 
 		beforeEach(() => {
