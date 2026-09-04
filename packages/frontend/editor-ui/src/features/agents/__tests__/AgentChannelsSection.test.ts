@@ -37,7 +37,17 @@ vi.mock('../components/AgentChannelModal.vue', () => ({
 	},
 }));
 
-function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
+function mountSection({
+	simpleChannelSetup,
+	isPublished = false,
+	agentRunnable = true,
+	isPreviewOpen = false,
+}: {
+	simpleChannelSetup?: boolean;
+	isPublished?: boolean;
+	agentRunnable?: boolean;
+	isPreviewOpen?: boolean;
+} = {}) {
 	return mount(AgentChannelsSection, {
 		props: {
 			connectedTriggers: [],
@@ -45,6 +55,8 @@ function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
 			agentId: 'agent-id',
 			simpleChannelSetup,
 			isPublished,
+			agentRunnable,
+			isPreviewOpen,
 		},
 		global: {
 			stubs: {
@@ -69,7 +81,7 @@ describe('AgentChannelsSection', () => {
 		});
 
 		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
-			const wrapper = mountSection(true);
+			const wrapper = mountSection({ simpleChannelSetup: true });
 
 			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
 			await flushPromises();
@@ -81,7 +93,7 @@ describe('AgentChannelsSection', () => {
 	});
 
 	it('forwards publication state to the channel modal', async () => {
-		const wrapper = mountSection(undefined, true);
+		const wrapper = mountSection({ isPublished: true });
 
 		await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
 		await flushPromises();
@@ -89,5 +101,49 @@ describe('AgentChannelsSection', () => {
 		expect(
 			wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-is-published'),
 		).toBe('true');
+	});
+
+	describe('preview button', () => {
+		it('emits open-preview when clicked and the agent is runnable', async () => {
+			const wrapper = mountSection();
+
+			await wrapper.find('[data-testid="agent-channels-preview-tile"]').trigger('click');
+
+			expect(wrapper.emitted('open-preview')).toHaveLength(1);
+		});
+
+		it('stays disabled while the agent is not runnable yet', async () => {
+			const wrapper = mountSection({ agentRunnable: false });
+			const button = wrapper.find('[data-testid="agent-channels-preview-tile"]');
+
+			expect(button.attributes('disabled')).toBeDefined();
+
+			await button.trigger('click');
+
+			expect(wrapper.emitted('open-preview')).toBeUndefined();
+		});
+
+		it('reflects the open preview as an expanded, closable control', async () => {
+			const wrapper = mountSection({ isPreviewOpen: true });
+			const button = wrapper.find('[data-testid="agent-channels-preview-tile"]');
+
+			expect(button.attributes('aria-expanded')).toBe('true');
+
+			await button.trigger('click');
+
+			expect(wrapper.emitted('close-preview')).toHaveLength(1);
+			expect(wrapper.emitted('open-preview')).toBeUndefined();
+		});
+
+		it('can still close an open preview for an agent that is not runnable', async () => {
+			const wrapper = mountSection({ isPreviewOpen: true, agentRunnable: false });
+			const button = wrapper.find('[data-testid="agent-channels-preview-tile"]');
+
+			expect(button.attributes('disabled')).toBeUndefined();
+
+			await button.trigger('click');
+
+			expect(wrapper.emitted('close-preview')).toHaveLength(1);
+		});
 	});
 });
