@@ -147,7 +147,12 @@ export class SSHClientsManager {
 		});
 		this.clientsReversed.set(sshClient, clientHash);
 
-		return await returnPromise;
+		try {
+			return await returnPromise;
+		} catch (error) {
+			this.cleanupClient(clientHash, sshClient);
+			throw error;
+		}
 	}
 
 	/**
@@ -157,30 +162,31 @@ export class SSHClientsManager {
 	private withCleanupHandler(sshClient: Client, abortController: AbortController, key: string) {
 		sshClient.on('error', (error) => {
 			this.logger.error('encountered error, calling cleanup', { error });
-			this.cleanupClient(key);
+			this.cleanupClient(key, sshClient);
 		});
 		sshClient.on('end', () => {
 			this.logger.debug('socket was disconnected, calling abort signal', {});
-			this.cleanupClient(key);
+			this.cleanupClient(key, sshClient);
 		});
 		sshClient.on('close', () => {
 			this.logger.debug('socket was closed, calling abort signal', {});
-			this.cleanupClient(key);
+			this.cleanupClient(key, sshClient);
 		});
 		abortController.signal.addEventListener('abort', () => {
 			this.logger.debug('Got abort signal, cleaning up ssh client.', {
 				reason: abortController.signal.reason,
 			});
-			this.cleanupClient(key);
+			this.cleanupClient(key, sshClient);
 		});
 
 		return sshClient;
 	}
 
-	private cleanupClient(key: string) {
+	private cleanupClient(key: string, expectedClient?: Client) {
 		const registration = this.clients.get(key);
-		if (registration) {
+		if (registration && (!expectedClient || registration.client === expectedClient)) {
 			this.clients.delete(key);
+			this.clientsReversed.delete(registration.client);
 			registration.client.end();
 			if (!registration.abortController.signal.aborted) {
 				registration.abortController.abort();

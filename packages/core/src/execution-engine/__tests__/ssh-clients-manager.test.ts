@@ -53,11 +53,23 @@ describe('getClient', () => {
 		expect(client).toBeInstanceOf(Client);
 	});
 
-	it('should not create a new SSH client when connect fails', async () => {
-		connectSpy.mockImplementation(function (this: Client) {
-			throw new Error('Failed to connect');
+	it('should clear a failed connection before retrying the same credentials', async () => {
+		const error = new Error('Failed to connect');
+		const failedClients: Client[] = [];
+		connectSpy.mockImplementationOnce(function (this: Client) {
+			failedClients.push(this);
+			throw error;
 		});
-		await expect(sshClientsManager.getClient(credentials)).rejects.toThrow('Failed to connect');
+
+		await expect(sshClientsManager.getClient(credentials)).rejects.toBe(error);
+		expect(sshClientsManager.clients.size).toBe(0);
+		expect(sshClientsManager.clientsReversed.has(failedClients[0])).toBe(false);
+
+		const client = await sshClientsManager.getClient(credentials);
+
+		expect(client).not.toBe(failedClients[0]);
+		expect(await sshClientsManager.getClient(credentials)).toBe(client);
+		expect(connectSpy).toHaveBeenCalledTimes(2);
 	});
 
 	it('should reuse an existing SSH client', async () => {
@@ -93,6 +105,26 @@ describe('getClient', () => {
 		}
 		expect(connectSpy).toHaveBeenCalledTimes(1);
 	});
+
+	it.each(['close', 'end', 'error'])(
+		'should keep the replacement client when the previous client emits %s',
+		async (event) => {
+			const previousClient = await sshClientsManager.getClient(credentials);
+			previousClient.emit('end');
+
+			const abortController = new AbortController();
+			const replacementClient = await sshClientsManager.getClient(credentials, abortController);
+			endSpy.mockClear();
+
+			previousClient.emit(event, new Error('Previous connection ended'));
+
+			expect(endSpy).not.toHaveBeenCalled();
+			expect(abortController.signal.aborted).toBe(false);
+			expect(sshClientsManager.clients.size).toBe(1);
+			expect(await sshClientsManager.getClient(credentials)).toBe(replacementClient);
+			expect(connectSpy).toHaveBeenCalledTimes(2);
+		},
+	);
 });
 
 describe('onShutdown', () => {
@@ -184,6 +216,21 @@ describe('cleanup', () => {
 
 			// ASSERT 1
 			expect(endSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not refresh the replacement client when the previous client is used', async () => {
+			const previousClient = await sshClientsManager.getClient(credentials);
+			previousClient.emit('end');
+			const replacementClient = await sshClientsManager.getClient(credentials);
+			endSpy.mockClear();
+
+			vi.advanceTimersByTime((idleTimeout - 1) * 1000);
+			sshClientsManager.updateLastUsed(previousClient);
+			vi.advanceTimersByTime((cleanUpInterval + 1) * 1000);
+
+			expect(endSpy).toHaveBeenCalledTimes(1);
+			expect(endSpy.mock.contexts[0]).toBe(replacementClient);
+			expect(sshClientsManager.clients.size).toBe(0);
 		});
 	});
 });
