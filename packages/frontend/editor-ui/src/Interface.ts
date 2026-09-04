@@ -28,6 +28,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -112,6 +113,7 @@ declare global {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
@@ -122,6 +124,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,
@@ -147,7 +150,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }

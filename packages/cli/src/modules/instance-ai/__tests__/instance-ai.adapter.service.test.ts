@@ -4481,7 +4481,7 @@ describe('MCP registry discovery', () => {
 		moduleActive?: boolean;
 		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
-		registryResolveBySlugs?: Mock;
+		registryGetBySlugs?: Mock;
 		listConnectionsForUser?: Mock;
 	}
 
@@ -4490,12 +4490,12 @@ describe('MCP registry discovery', () => {
 	function stubContainer(stubs: McpStubs = {}) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
-		const resolveBySlugs = stubs.registryResolveBySlugs ?? vi.fn().mockResolvedValue([]);
+		const getBySlugs = stubs.registryGetBySlugs ?? vi.fn().mockResolvedValue([]);
 		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
-			if (token === McpRegistryService) return { search, resolveBySlugs };
+			if (token === McpRegistryService) return { search, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
 			return {
@@ -4503,7 +4503,7 @@ describe('MCP registry discovery', () => {
 			};
 		});
 
-		return { getFeatureFlags, search, resolveBySlugs, listConnectionsForUser };
+		return { getFeatureFlags, search, getBySlugs, listConnectionsForUser };
 	}
 
 	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
@@ -4568,6 +4568,46 @@ describe('MCP registry discovery', () => {
 			credentialType: 'googleDriveMcpOAuth2Api',
 			tools: [{ name: 'list_files', title: 'List files' }],
 			metadata: { nodeTypeName: '@n8n/mcp-registry.googleDrive' },
+			isTemplated: false,
+		};
+		const templatedHit = {
+			...registryHit,
+			slug: 'databricks-genie',
+			name: 'databricksGenie',
+			title: 'Databricks Genie',
+			url: '={{$self["host"]}}/api/2.0/mcp/genie',
+			isTemplated: true,
+		};
+		const registryServer = {
+			name: 'google-drive',
+			slug: 'google-drive',
+			title: 'Google Drive',
+			description: 'Google Drive MCP server',
+			tagline: 'Work with Drive files',
+			version: '1.0.0',
+			updatedAt: '2026-08-26T00:00:00.000Z',
+			icons: [],
+			authType: 'usesCredentials',
+			usesCredentials: [
+				{ credentialType: 'googleDriveOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+			],
+			remotes: [{ type: 'streamable-http', url: 'https://example.com/mcp' }],
+			tools: [{ name: 'list_files', title: 'List files' }],
+			isOfficial: true,
+			origin: 'registry',
+			status: 'active',
+		};
+		const templatedRegistryServer = {
+			...registryServer,
+			name: 'databricks-genie',
+			slug: 'databricks-genie',
+			title: 'Databricks Genie',
+			remotes: [
+				{
+					type: 'streamable-http-templated',
+					url: '={{$self["host"]}}/api/2.0/mcp/genie',
+				},
+			],
 		};
 
 		it('is absent from the context unless the gate passed', () => {
@@ -4591,7 +4631,6 @@ describe('MCP registry discovery', () => {
 					slug: 'google-drive',
 					title: 'Google Drive',
 					description: 'Work with Drive files',
-					credentialType: 'googleDriveMcpOAuth2Api',
 					tools: ['list_files'],
 				},
 			]);
@@ -4611,16 +4650,48 @@ describe('MCP registry discovery', () => {
 			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 
-		it('resolves exact slugs through the same summary shape', async () => {
-			const { resolveBySlugs } = stubContainer({
-				registryResolveBySlugs: vi.fn().mockResolvedValue([registryHit]),
+		// This path cannot resolve a templated url, so `createConnection` refuses
+		// such a row. Offering it would end at a credential picker and an error.
+		it('drops a templated server from search results', async () => {
+			stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([registryHit, templatedHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive', 'genie']);
+
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('drops a templated server from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([templatedRegistryServer]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.getServers(['databricks-genie'])).toEqual([]);
+		});
+
+		it('drops a server without a usable connection from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([{ ...registryServer, remotes: [] }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.getServers(['google-drive'])).toEqual([]);
+		});
+
+		it('resolves exact slugs with credential options for the connect card', async () => {
+			const { getBySlugs } = stubContainer({
+				registryGetBySlugs: vi.fn().mockResolvedValue([registryServer]),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
 			const results = await context.mcpService!.getServers(['google-drive', 'made-up']);
 
-			expect(resolveBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
+			expect(getBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
 			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+			expect(results[0].usesCredentials).toEqual(registryServer.usesCredentials);
 		});
 
 		it('lists slugs with a connection row, not just the loadable ones', async () => {

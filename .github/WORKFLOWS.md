@@ -324,7 +324,10 @@ test-workflows-pr-comment.yml
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
 │  │   └─ npm publish (tag: rc or latest)                                    │
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
-│  │   └─ Multi-arch: amd64 + arm64                                          │
+│  │   ├─ Build the application once on amd64                                │
+│  │   ├─ Build/push images on native amd64 + arm64 runners                  │
+│  │   └─ Merge manifests, then add release provenance                       │
+│  │       └─ Release VEX/SBOM attestations follow provenance                 │
 │  ├─ create-github-release                                                  │
 │  ├─ create-sentry-release (sourcemaps)                                     │
 │  ├─ generate-sbom ────────────────▶ sbom-generation-callable.yml           │
@@ -526,7 +529,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
@@ -555,7 +558,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
-| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 

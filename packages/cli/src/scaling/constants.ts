@@ -1,7 +1,5 @@
 import type { PubSub } from './pubsub/pubsub.types';
 
-export const QUEUE_NAME = 'jobs';
-
 export const JOB_TYPE_NAME = 'job';
 
 /** Pubsub channel for commands sent by a main process to workers or to other main processes. */
