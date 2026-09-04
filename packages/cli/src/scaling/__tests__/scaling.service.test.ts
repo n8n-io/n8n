@@ -497,8 +497,12 @@ describe('ScalingService', () => {
 
 			it.each([
 				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },
-				{ shutdownTimeout: 10, expectedDeadlineMs: 1_000, case: 'what is left of a short window' },
-				{ shutdownTimeout: 1, expectedDeadlineMs: 500, case: 'the floor when nothing is left' },
+				{
+					shutdownTimeout: 10,
+					expectedDeadlineMs: 1_000,
+					case: 'half of a short window remainder',
+				},
+				{ shutdownTimeout: 1, expectedDeadlineMs: 100, case: 'half of a tiny window remainder' },
 			])(
 				'should give the cancellation write $case',
 				async ({ shutdownTimeout, expectedDeadlineMs }) => {

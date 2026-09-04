@@ -35,11 +35,10 @@ import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-re
 
 const DRAIN_POLL_INTERVAL_MS = 500;
 
-/** Kept back from the cancellation write so the rest of the shutdown still gets to run. */
-const CANCEL_WRITE_MARGIN_MS = 1 * Time.seconds.toMilliseconds;
+/** Share of the time left at the drain deadline that the cancellation write may use. */
+const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 
-/** Floor and ceiling for the cancellation write, so any shutdown window yields a sane deadline. */
-const MIN_CANCEL_WRITE_TIMEOUT_MS = 500;
+/** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 @Service()
@@ -230,12 +229,12 @@ export class ScalingService {
 			);
 			this.logExecutionsToDrain();
 
-			// The force-exit timer is armed at the full window, so the write can only have
-			// what is left of it.
-			const remainingWindowMs = shutdownWindowMs - (Date.now() - start) - CANCEL_WRITE_MARGIN_MS;
+			// The force-exit timer is armed at the full window, so the write gets a share of
+			// what is left of it. The rest stays for the shutdown hooks that run after this one.
+			const remainingWindowMs = Math.max(0, shutdownWindowMs - (Date.now() - start));
 			const writeDeadlineMs = Math.min(
 				MAX_CANCEL_WRITE_TIMEOUT_MS,
-				Math.max(MIN_CANCEL_WRITE_TIMEOUT_MS, remainingWindowMs),
+				Math.round(remainingWindowMs * CANCEL_WRITE_BUDGET_SHARE),
 			);
 
 			const cancelledExecutionIds =
