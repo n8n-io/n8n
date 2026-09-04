@@ -9,15 +9,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { SidebarStateKey } from '../instanceAiLayout';
-import {
-	INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY,
-	INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY,
-	NEW_CONVERSATION_TITLE,
-} from '../constants';
+import { NEW_CONVERSATION_TITLE } from '../constants';
+import { LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	FrontendModuleSettings,
@@ -491,6 +490,7 @@ describe('InstanceAiThreadView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...defaultModuleSettings },
 		};
+		useUsersStore().currentUserId = 'user-1';
 		workflowPreviewEmit = null;
 
 		thread = reactive({
@@ -1553,50 +1553,12 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-content-area'));
 
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
-	});
 
-	it('restores the artifacts panel when returning to a thread', async () => {
-		mockWindowSizeState.width.value = 900;
-		thread.messages = [
-			{
-				id: 'msg-1',
-				role: 'assistant',
-				content: 'already loaded',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-			},
-		] as typeof thread.messages;
-		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
-		store.threads = [
-			...store.threads,
-			{
-				id: 'thread-2',
-				title: 'Another thread',
-				createdAt: '2026-04-02T00:00:00.000Z',
-				updatedAt: '2026-04-02T00:00:00.000Z',
-			},
-		] as typeof store.threads;
-		store.updateThreadMetadata.mockImplementation(async (threadId, metadata) => {
-			const item = store.threads.find((candidate) => candidate.id === threadId);
-			if (item) item.metadata = { ...item.metadata, ...metadata };
+		mockWindowSizeState.width.value = 1700;
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		});
-
-		const user = userEvent.setup();
-		const { getByTestId, queryByTestId, rerender } = renderView({
-			props: { threadId: 'thread-1' },
-		});
-
-		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
-		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
-		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-			[INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY]: true,
-		});
-
-		await rerender({ threadId: 'thread-2' });
-		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
-
-		await rerender({ threadId: 'thread-1' });
-		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
 	});
 
 	it('keeps the artifacts panel toggle available when the panel is in the layout', async () => {
@@ -1633,14 +1595,10 @@ describe('InstanceAiThreadView', () => {
 		thread.producedArtifacts = new Map([
 			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
 		]) as typeof thread.producedArtifacts;
-		store.threads = [
-			{
-				...store.threads[0],
-				metadata: {
-					[INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY]: true,
-				},
-			},
-		] as typeof store.threads;
+		localStorage.setItem(
+			LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1'),
+			'true',
+		);
 
 		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1747,6 +1705,14 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
+		const instanceAiSettingsStore = mockedStore(useInstanceAiSettingsStore);
+		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).toHaveBeenCalledWith(0.6);
+		instanceAiSettingsStore.persistChatPanelWidthRatio.mockClear();
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 120 });
+		await fireEvent.mouseUp(window);
+
+		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).not.toHaveBeenCalled();
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
@@ -1956,12 +1922,16 @@ describe('InstanceAiThreadView', () => {
 		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+		expect(
+			localStorage.getItem(
+				LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1'),
+			),
+		).toBe('false');
 
 		store.threads = [
 			{
 				...store.threads[0],
 				metadata: {
-					[INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY]: false,
 					instanceAiAgentBuilderTarget: {
 						agentId: 'agent-1',
 						projectId: 'proj-1',

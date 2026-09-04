@@ -30,6 +30,7 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
+	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
@@ -58,6 +59,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const modelCatalog = ref<InstanceAiModelCatalogResponse['models'] | null>(null);
 	const isModelCatalogLoading = ref(false);
 	let modelCatalogFetchPromise: Promise<void> | null = null;
+	let userPreferencesWriteQueue = Promise.resolve();
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
@@ -253,7 +255,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 	async function persistLocalGatewayPreference(disabled: boolean): Promise<void> {
 		try {
-			const result = await updatePreferences(rootStore.restApiContext, {
+			const result = await enqueueUserPreferencesUpdate({
 				localGatewayDisabled: disabled,
 			});
 			preferences.value = result;
@@ -265,16 +267,60 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	let pendingChatPanelWidthRatio: number | null = null;
+	let chatPanelWidthRatioPersistence: Promise<void> | null = null;
+
+	async function enqueueUserPreferencesUpdate(
+		update: InstanceAiUserPreferencesUpdateRequest,
+	): Promise<InstanceAiUserPreferencesResponse> {
+		const request = userPreferencesWriteQueue.then(
+			async () => await updatePreferences(rootStore.restApiContext, update),
+		);
+		userPreferencesWriteQueue = request.then(
+			() => undefined,
+			() => undefined,
+		);
+		return await request;
+	}
+
 	async function persistChatPanelWidthRatio(chatPanelWidthRatio: number): Promise<void> {
+		if (
+			pendingChatPanelWidthRatio === null &&
+			preferences.value?.chatPanelWidthRatio === chatPanelWidthRatio
+		) {
+			return;
+		}
+
+		pendingChatPanelWidthRatio = chatPanelWidthRatio;
 		if (preferences.value) {
 			preferences.value = { ...preferences.value, chatPanelWidthRatio };
 		}
-		try {
-			const result = await updatePreferences(rootStore.restApiContext, {
-				chatPanelWidthRatio,
-			});
-			preferences.value = result;
-		} catch {}
+
+		if (chatPanelWidthRatioPersistence) {
+			await chatPanelWidthRatioPersistence;
+			return;
+		}
+
+		chatPanelWidthRatioPersistence = (async () => {
+			while (pendingChatPanelWidthRatio !== null) {
+				const ratioToPersist = pendingChatPanelWidthRatio;
+				pendingChatPanelWidthRatio = null;
+
+				try {
+					const result = await enqueueUserPreferencesUpdate({
+						chatPanelWidthRatio: ratioToPersist,
+					});
+					preferences.value =
+						pendingChatPanelWidthRatio === null
+							? result
+							: { ...result, chatPanelWidthRatio: pendingChatPanelWidthRatio };
+				} catch {}
+			}
+		})().finally(() => {
+			chatPanelWidthRatioPersistence = null;
+		});
+
+		await chatPanelWidthRatioPersistence;
 	}
 
 	async function ensurePreferencesLoaded(): Promise<void> {

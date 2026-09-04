@@ -35,7 +35,8 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { DEBOUNCE_TIME } from '@/app/constants';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -76,8 +77,6 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
-	INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY,
-	INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -126,6 +125,7 @@ const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
@@ -294,23 +294,35 @@ watch(
 );
 
 // --- Canvas / data table preview ---
+const artifactPreviewOpenStorageKey = computed(() =>
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(
+		usersStore.currentUserId ?? 'anonymous',
+		props.threadId,
+	),
+);
+function readPersistedArtifactPreviewOpen(): boolean | undefined {
+	const value = localStorage.getItem(artifactPreviewOpenStorageKey.value);
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	return undefined;
+}
+const persistedArtifactPreviewOpen = ref(readPersistedArtifactPreviewOpen());
+watch(
+	artifactPreviewOpenStorageKey,
+	() => {
+		persistedArtifactPreviewOpen.value = readPersistedArtifactPreviewOpen();
+	},
+	{ flush: 'sync' },
+);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
-	previewOpenState: () => {
-		const value = store.getThreadMetadata(props.threadId)?.[
-			INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY
-		];
-		return typeof value === 'boolean' ? value : undefined;
-	},
+	previewOpenState: () => persistedArtifactPreviewOpen.value,
 	onPreviewOpenChange: (open) => {
-		void Promise.resolve(
-			store.updateThreadMetadata(props.threadId, {
-				[INSTANCE_AI_ARTIFACT_PREVIEW_OPEN_METADATA_KEY]: open,
-			}),
-		).catch(() => {});
+		persistedArtifactPreviewOpen.value = open;
+		localStorage.setItem(artifactPreviewOpenStorageKey.value, String(open));
 	},
 });
 const activeAgentPreviewSessionId = computed(() => {
@@ -347,13 +359,8 @@ watch(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const persistedArtifactsPanelOpen = computed<boolean | undefined>(() => {
-	const value = store.getThreadMetadata(props.threadId)?.[
-		INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY
-	];
-	return typeof value === 'boolean' ? value : undefined;
-});
-const artifactsPanelOpenOverride = ref<boolean | undefined>();
+const isArtifactsPanelRevealed = ref(false);
+const isArtifactsPanelDismissedInLayout = ref(false);
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
@@ -403,16 +410,21 @@ function toggleArtifactsPanel() {
 		return;
 	}
 
-	setArtifactsPanelOpen(!showArtifactsPanel.value);
-}
+	if (showArtifactsPanel.value) {
+		if (isArtifactsPanelInLayout.value) {
+			isArtifactsPanelDismissedInLayout.value = true;
+			return;
+		}
+		isArtifactsPanelRevealed.value = false;
+		return;
+	}
 
-function setArtifactsPanelOpen(open: boolean) {
-	artifactsPanelOpenOverride.value = open;
-	void Promise.resolve(
-		store.updateThreadMetadata(props.threadId, {
-			[INSTANCE_AI_ARTIFACTS_PANEL_OPEN_METADATA_KEY]: open,
-		}),
-	).catch(() => {});
+	if (isArtifactsPanelInLayout.value) {
+		isArtifactsPanelDismissedInLayout.value = false;
+		return;
+	}
+
+	isArtifactsPanelRevealed.value = true;
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -451,7 +463,9 @@ const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(artifactsPanelOpenOverride.value ?? isArtifactsPanelInLayout.value),
+		(isArtifactsPanelInLayout.value
+			? !isArtifactsPanelDismissedInLayout.value
+			: isArtifactsPanelRevealed.value),
 );
 const showArtifactsPanelToggle = computed(
 	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
@@ -473,8 +487,8 @@ const isAgentPreviewDockOpen = ref(false);
 const MIN_SPLIT_PANEL_WIDTH = 400;
 const MIN_SPLIT_CONTAINER_WIDTH = MIN_SPLIT_PANEL_WIDTH * 2;
 const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-const initialChatPanelWidthRatio = ref<number | null>(null);
 const preferredChatPanelWidthRatio = ref<number | null>(null);
+const previewPanelWidthBeforeResize = ref<number | null>(null);
 
 watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	if (activeTabId !== previousActiveTabId) {
@@ -491,11 +505,7 @@ const persistedChatPanelWidthRatio = computed(() => {
 	return isValidPanelWidthRatio(ratio) ? ratio : null;
 });
 const chatPanelWidthRatio = computed(
-	() =>
-		preferredChatPanelWidthRatio.value ??
-		persistedChatPanelWidthRatio.value ??
-		initialChatPanelWidthRatio.value ??
-		0.5,
+	() => preferredChatPanelWidthRatio.value ?? persistedChatPanelWidthRatio.value,
 );
 const previewMinWidth = computed(() =>
 	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
@@ -512,7 +522,11 @@ const previewPanelWidth = computed(() => {
 		return Math.round(threadAreaWidth.value / 2);
 	}
 
-	const preferredWidth = threadAreaWidth.value * (1 - chatPanelWidthRatio.value);
+	const preferredChatPanelWidth =
+		chatPanelWidthRatio.value === null
+			? Math.min(DEFAULT_CHAT_PANEL_CONTENT_WIDTH, threadAreaWidth.value / 2)
+			: threadAreaWidth.value * chatPanelWidthRatio.value;
+	const preferredWidth = threadAreaWidth.value - preferredChatPanelWidth;
 	return Math.round(
 		Math.max(previewMinWidth.value, Math.min(preferredWidth, previewMaxWidth.value)),
 	);
@@ -562,15 +576,26 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 
 function handlePreviewResize({ width }: { width: number }) {
 	if (threadAreaWidth.value <= 0) return;
-	preferredChatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
+	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
+	preferredChatPanelWidthRatio.value = ratio;
+}
+
+function handlePreviewResizeStart() {
+	isResizingPreview.value = true;
+	previewPanelWidthBeforeResize.value = previewPanelWidth.value;
 }
 
 function handlePreviewResizeEnd() {
 	isResizingPreview.value = false;
 	const ratio = preferredChatPanelWidthRatio.value;
-	if (ratio !== null) {
+	if (
+		ratio !== null &&
+		previewPanelWidthBeforeResize.value !== null &&
+		previewPanelWidth.value !== previewPanelWidthBeforeResize.value
+	) {
 		void settingsStore.persistChatPanelWidthRatio(ratio);
 	}
+	previewPanelWidthBeforeResize.value = null;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -595,6 +620,8 @@ watch(
 
 		if (!visible) {
 			isAgentPreviewDockOpen.value = false;
+		} else {
+			isArtifactsPanelRevealed.value = false;
 		}
 	},
 	{ flush: 'sync' },
@@ -607,11 +634,6 @@ const finishThreadAreaResize = useDebounceFn(() => {
 watch(
 	threadAreaWidth,
 	(width, previousWidth) => {
-		if (width > 0 && initialChatPanelWidthRatio.value === null) {
-			initialChatPanelWidthRatio.value =
-				Math.min(DEFAULT_CHAT_PANEL_CONTENT_WIDTH, width / 2) / width;
-		}
-
 		if (
 			typeof previousWidth === 'number' &&
 			previousWidth > 0 &&
@@ -625,19 +647,32 @@ watch(
 	{ immediate: true },
 );
 
-watch(
-	persistedArtifactsPanelOpen,
-	(open) => {
-		artifactsPanelOpenOverride.value = open;
-	},
-	{ immediate: true, flush: 'sync' },
-);
+watch(persistedChatPanelWidthRatio, (ratio, previousRatio) => {
+	if (ratio !== previousRatio && ratio !== null && preview.isPreviewVisible.value) {
+		previewPanelTransitionGate.suppressUntilStableRender();
+	}
+});
+
+watch(isArtifactsPanelInLayout, (isInLayout) => {
+	isArtifactsPanelRevealed.value = false;
+
+	if (isInLayout) {
+		isArtifactsPanelDismissedInLayout.value = false;
+	}
+});
+
+watch(canShowArtifactsPanel, (canShow) => {
+	if (!canShow) {
+		isArtifactsPanelRevealed.value = false;
+		isArtifactsPanelDismissedInLayout.value = false;
+	}
+});
 
 onClickOutside(
 	artifactsPanelSlotRef,
 	() => {
 		if (isArtifactsPanelInLayout.value) return;
-		setArtifactsPanelOpen(false);
+		isArtifactsPanelRevealed.value = false;
 	},
 	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
 );
@@ -1444,7 +1479,7 @@ async function dismissComposerContextChip() {
 					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
 					@resize="handlePreviewResize"
-					@resizestart="isResizingPreview = true"
+					@resizestart="handlePreviewResizeStart"
 					@resizeend="handlePreviewResizeEnd"
 				>
 					<TabsRoot

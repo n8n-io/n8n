@@ -88,16 +88,6 @@ export function useCanvasPreview({
 		return result;
 	});
 
-	watch(
-		[() => previewOpenState?.(), allArtifactTabs],
-		([open, tabs]) => {
-			if (open === true && activeTabId.value === undefined && tabs[0]) {
-				activeTabId.value = tabs[0].id;
-			}
-		},
-		{ immediate: true },
-	);
-
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
 		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
@@ -184,6 +174,22 @@ export function useCanvasPreview({
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
 			if (previewOpenState?.() !== false) setPreviewOpen(true, false);
+		},
+		{ immediate: true },
+	);
+
+	watch(
+		[
+			() => previewOpenState?.(),
+			allArtifactTabs,
+			() => thread.isHydratingThread,
+			initialArtifactId,
+		],
+		([open, tabs, isHydrating, initialId]) => {
+			if (isHydrating) return;
+			if (open === true && activeTabId.value === undefined && tabs[0]) {
+				activeTabId.value = tabs.some((tab) => tab.id === initialId) ? initialId : tabs[0].id;
+			}
 		},
 		{ immediate: true },
 	);

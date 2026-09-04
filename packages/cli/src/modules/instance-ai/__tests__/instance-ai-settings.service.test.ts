@@ -2380,6 +2380,18 @@ describe('InstanceAiSettingsService', () => {
 				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
 		});
+
+		it('should persist the chat panel width ratio', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			const panelUser = mock<User>({ id: 'user-3', settings: { instanceAi: {} } });
+
+			const result = await service.updateUserPreferences(panelUser, { chatPanelWidthRatio: 0.6 });
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-3', {
+				instanceAi: { chatPanelWidthRatio: 0.6 },
+			});
+			expect(result.chatPanelWidthRatio).toBe(0.6);
+		});
 	});
 
 	describe('cloud-managed fields', () => {
