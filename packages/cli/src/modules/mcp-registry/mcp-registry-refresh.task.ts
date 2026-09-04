@@ -23,8 +23,8 @@ export class McpRegistryRefreshTask implements SystemTask {
 
 	readonly durable = false;
 
-	// Also covers startup: the runner starts the timers as soon as the
-	// instance is the leader, and the registry may have drifted meanwhile.
+	// Only the leader polls the remote registry, so a new leader may be
+	// running on outdated data until this runs.
 	readonly runOnTakeover = true;
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}
