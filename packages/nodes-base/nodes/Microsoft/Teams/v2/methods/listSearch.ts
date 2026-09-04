@@ -36,9 +36,22 @@ export async function getChats(
 	}
 
 	const returnData: INodeListSearchItems[] = [];
+	// ponytail: one page of 50 (the endpoint maximum), not full pagination - a user with >50 chats
+	// that are mostly 1:1 may still not see every group chat. Upgrade path if that is ever reported:
+	// server-side `$filter` on `chatType` if Graph supports it on this endpoint (unverified), else
+	// `microsoftApiRequestAllItems`. By-ID mode is the escape hatch meanwhile.
 	const qs: IDataObject = {
 		$expand: 'members',
+		$top: 50,
 	};
+
+	// `0` is the FALLBACK value in load-options contexts, not an itemIndex: the Teams
+	// trigger shares this picker and has neither parameter, so dropping the fallback
+	// makes `getNodeParameter` throw there instead of listing chats.
+	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
+	// Adding a member is impossible on a 1:1 chat; listing its members is legal.
+	const excludeOneOnOne = resource === 'chatMember' && ['add'].includes(operation);
 
 	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
 	// sleeping 1s between attempts (not after the last one), and surface the final
@@ -66,6 +79,7 @@ export async function getChats(
 	}
 
 	for (const chat of value) {
+		if (excludeOneOnOne && chat.chatType === 'oneOnOne') continue;
 		if (!chat.topic) {
 			chat.topic = (chat.members as IDataObject[])
 				.filter((member: IDataObject) => member.displayName)
@@ -79,6 +93,16 @@ export async function getChats(
 			name: chatName,
 			value: chatId as string,
 			url,
+		});
+	}
+
+	// Every chat on the page was 1:1, so the dropdown would otherwise show an unexplained
+	// empty list for a state no search term can fix. Only one page is fetched, so the
+	// message states what this list holds and never that the account has no group chats.
+	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
+			description:
+				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
@@ -100,6 +124,57 @@ export async function getChats(
 		});
 
 	return { results };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
+	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
+	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
+	let response: IDataObject;
+	if (paginationToken) {
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			{},
+			{},
+			paginationToken,
+			headers,
+		)) as IDataObject;
+	} else {
+		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
+		if (filter) {
+			// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
+			// first, then `"`, and the OR operator is uppercase and outside the quotes.
+			const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+			qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
+		}
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/v1.0/users',
+			{},
+			qs,
+			undefined,
+			headers,
+		)) as IDataObject;
+	}
+
+	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
+		name: `${user.displayName} (${user.userPrincipalName})`,
+		value: user.id as string,
+	}));
+
+	// No filter argument: `$search` already filtered server-side across the whole
+	// collection, so this only applies the sort every sibling picker uses.
+	return {
+		results: filterSortSearchListItems(returnData),
+		paginationToken: response['@odata.nextLink'] as string | undefined,
+	};
 }
 
 export async function getTeams(
