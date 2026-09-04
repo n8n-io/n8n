@@ -198,6 +198,12 @@ describe('Expression Parser', () => {
 			]);
 		});
 
+		test('numberList rejects non-integer bounds (#37804)', () => {
+			expect(() => evaluate('={{ numberList(NaN, 5) }}')).toThrow(ExpressionExtensionError);
+			expect(() => evaluate('={{ numberList(Infinity, 5) }}')).toThrow(ExpressionExtensionError);
+			expect(() => evaluate('={{ numberList(1.5, 5) }}')).toThrow(ExpressionExtensionError);
+		});
+
 		test('zip', () => {
 			expect(evaluate('={{ zip(["test1", "test2", "test3"], [1, 2, 3]) }}')).toEqual({
 				test1: 1,

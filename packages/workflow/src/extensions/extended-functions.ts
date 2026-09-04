@@ -21,6 +21,11 @@ const min = Math.min;
 const max = Math.max;
 
 const numberList = (start: number, end: number): number[] => {
+	if (!Number.isInteger(start) || !Number.isInteger(end)) {
+		throw new ExpressionExtensionError(
+			'numberList(): expected integer bounds, e.g. numberList(1, 5)',
+		);
+	}
 	const size = Math.abs(start - end) + 1;
 	const arr = new Array<number>(size);
 
