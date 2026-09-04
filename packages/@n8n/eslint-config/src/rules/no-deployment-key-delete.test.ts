@@ -21,6 +21,7 @@ class DeploymentKeyRepository {
 	async softDelete(criteria: unknown): Promise<unknown> { return {}; }
 	async clear(): Promise<void> {}
 	async update(id: string, patch: unknown): Promise<unknown> { return {}; }
+	createQueryBuilder(alias?: string): { delete(): { execute(): Promise<unknown> } } { throw new Error(); }
 }
 `;
 
@@ -77,6 +78,24 @@ tx.getRepository(WebhookEntity);`,
 			code: `class DeploymentKey { id: string = ''; }
 declare const cache: Map<string, DeploymentKey>;
 cache.delete('x');`,
+			filename: 'service.ts',
+		},
+		// The repository builds its own use-case queries
+		{
+			code: `${repositoryClass}
+class Extended extends DeploymentKeyRepository {
+	list() { return this.createQueryBuilder('deploymentKey'); }
+}`,
+			filename: `${path.sep}repo${path.sep}packages${path.sep}@n8n${path.sep}db${path.sep}src${path.sep}repositories${path.sep}deployment-key.repository.ts`,
+			languageOptions: { parserOptions: { projectService: false } },
+		},
+		// Query builders on unrelated repositories stay allowed
+		{
+			code: `class WebhookRepository {
+	createQueryBuilder(alias?: string): unknown { return {}; }
+}
+declare const webhookRepository: WebhookRepository;
+void webhookRepository.createQueryBuilder();`,
 			filename: 'service.ts',
 		},
 	],
@@ -205,6 +224,24 @@ void qb.delete().from('deployment_key').execute();`,
 			code: 'declare const tx: { getRepository(entity: unknown): unknown };\ntx.getRepository(`deployment_key`);',
 			filename: 'service.ts',
 			errors: [{ messageId: 'noAlternativeSurface', data: { method: 'getRepository' } }],
+		},
+		// A repository-bound query builder names no entity — caught by receiver type
+		{
+			code: `${repositoryClass}
+declare const repo: DeploymentKeyRepository;
+void repo.createQueryBuilder().delete().execute();`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noRepositoryQueryBuilder' }],
+		},
+		{
+			code: `class DeploymentKey { id: string = ''; }
+class Repository<T> {
+	createQueryBuilder(alias?: string): T | undefined { return undefined; }
+}
+declare const repo: Repository<DeploymentKey>;
+void repo.createQueryBuilder('dk');`,
+			filename: 'service.ts',
+			errors: [{ messageId: 'noRepositoryQueryBuilder' }],
 		},
 	],
 });

@@ -244,7 +244,8 @@ New code encrypts and decrypts only through `cipher.encryptV2()` /
 `cipher.decryptV2()` — the key-manager module decides which key is used and in
 which output format. Enforced in CI by the rules in
 `packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
-`nodeConfig`, also composed into `@n8n/db` and `@n8n/task-runner`):
+`nodeConfig`; baseConfig packages that depend on `n8n-core` or `@n8n/db`
+compose it directly):
 
 - The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
 - The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
@@ -253,11 +254,13 @@ which output format. Enforced in CI by the rules in
   unreadable without it. Deactivate keys instead; the repository's delete
   surface throws at runtime and the lint rule rejects call sites.
 - Inline disables that name these rules, and bare line-form disables, are
-  themselves lint errors. The block-comment forms ESLint cannot self-police
-  (`/* eslint-disable */` variants) and package-level rule overrides are
-  guarded by review instead: the boundary config, the rule files, and the
-  package eslint configs require security (IAM) approval via OWNERS. Widening
-  the boundary happens in `encryption-boundary.ts` only.
+  themselves lint errors. The code-health rule `encryption-boundary` (CI
+  "Static Analysis") is the enforcement layer: it checks that every package
+  that depends on `n8n-core` or `@n8n/db` composes the boundary config at
+  `error` severity, and rejects every directive form that would silence the
+  rules in non-test code (`eslint-disable*` and inline `eslint` configuration
+  comments). Widening the boundary happens in `encryption-boundary.ts` only;
+  that file and the rule files require security (IAM) approval via OWNERS.
 
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`

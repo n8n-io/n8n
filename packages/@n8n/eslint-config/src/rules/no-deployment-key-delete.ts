@@ -27,13 +27,15 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow deleting deployment keys, and disallow reaching the deployment_key entity through surfaces that would allow it. Old ciphertext stays decryptable only while every key row survives — keys are deactivated, never deleted.',
+				'Disallow deleting deployment keys, and disallow reaching the deployment_key entity through surfaces that would allow it (entity-manager calls, query builders, `getRepository`). Old ciphertext stays decryptable only while every key row survives — keys are deactivated, never deleted.',
 		},
 		messages: {
 			noDelete:
 				'Never delete deployment keys: data encrypted with a key becomes unreadable without it. Deactivate the key instead (`markInactive`).',
 			noAlternativeSurface:
 				'Do not reach the deployment_key entity through `{{method}}` — it bypasses the delete lockdown. Go through `DeploymentKeyRepository`.',
+			noRepositoryQueryBuilder:
+				'Do not build queries on the deployment-key repository from outside it — `createQueryBuilder().delete()` bypasses the delete lockdown. Add a use-case method to `DeploymentKeyRepository` instead.',
 		},
 		schema: [],
 	},
@@ -111,8 +113,20 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 				// qb.delete().from(DeploymentKey), createQueryBuilder(DeploymentKey, …)
 				// — by identifier or by entity/table name string.
 				if (ACCESS_METHODS.has(method)) {
-					if (namesEntity(firstArg) && !isOwnRepositoryFile) {
+					// The repository builds its own use-case queries.
+					if (isOwnRepositoryFile) return;
+					if (namesEntity(firstArg)) {
 						context.report({ node: property, messageId: 'noAlternativeSurface', data: { method } });
+						return;
+					}
+					// A repository is already bound to its entity, so
+					// `repository.createQueryBuilder()` names no entity at all —
+					// catch it by the receiver's type instead.
+					if (method === 'createQueryBuilder') {
+						const services = ESLintUtils.getParserServices(context);
+						if (isDeploymentKeyRepository(services.getTypeAtLocation(callee.object))) {
+							context.report({ node: property, messageId: 'noRepositoryQueryBuilder' });
+						}
 					}
 					return;
 				}

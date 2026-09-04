@@ -1636,6 +1636,9 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -6720,6 +6723,9 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -7303,6 +7309,9 @@ importers:
       '@n8n/db':
         specifier: workspace:*
         version: link:../../@n8n/db
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
       '@n8n/instance-ai':
         specifier: workspace:*
         version: link:../../@n8n/instance-ai

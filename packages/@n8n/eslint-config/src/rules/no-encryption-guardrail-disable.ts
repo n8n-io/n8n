@@ -4,8 +4,8 @@ const TARGET_RULES = [
 	'no-legacy-cipher-methods',
 	'no-misplaced-cipher-primitives',
 	'no-deployment-key-delete',
-	// Self-protection: a `-next-line` directive naming this rule cannot
-	// suppress the report this rule emits at the directive's own line.
+	// A `-next-line` directive naming this rule cannot suppress the report
+	// this rule emits at the directive's own line.
 	'no-encryption-guardrail-disable',
 ];
 const DISABLE_DIRECTIVE = /^eslint-disable(-next-line|-line)?\b/;
@@ -18,17 +18,19 @@ const MIGRATIONS_PATH_PATTERN = /[\\/]migrations[\\/]/;
 const TEST_FILE_PATTERN = /(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test[\\/])/;
 
 /**
- * Guards the encryption boundary: an inline disable is the one way to smuggle
- * a new violation past CI. The boundary can only be widened in
+ * In-editor feedback for the encryption boundary: an inline disable is the one
+ * way to smuggle a new violation past lint. The boundary can only be widened in
  * `packages/@n8n/eslint-config/src/configs/encryption-boundary.ts`, which is
  * under security ownership.
  *
- * Known residuals this rule cannot close from inside ESLint (a block
- * directive's disabled range starts at the directive itself, so it swallows
- * any report this rule emits there): a bare block `eslint-disable`, and a
- * block directive naming this rule. A package-level `'off'` override in
- * eslint.config.mjs is equally invisible to lint. All three are only guarded
- * by review — the config and rule files require IAM approval via OWNERS.
+ * ESLint cannot fully police itself: a block directive's disabled range starts
+ * at the directive, and an `eslint-disable-line` directive covers its own line,
+ * so bare or self-naming directives of those forms swallow this rule's report,
+ * and a package-level `'off'` override is invisible to lint altogether. The
+ * authoritative check is the code-health rule `encryption-boundary`
+ * (packages/testing/code-health): it scans the source out of band for every
+ * directive form and verifies that each package that can reach the primitives
+ * composes the boundary config at error severity.
  */
 export const NoEncryptionGuardrailDisableRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -61,8 +63,8 @@ export const NoEncryptionGuardrailDisableRule = ESLintUtils.RuleCreator.withoutD
 					if (!directive) continue;
 
 					// Bare line-form disables silence every rule on the target line.
-					// (The block form cannot be reported: its disabled range starts at
-					// the directive itself and would swallow this very report.)
+					// (The block form cannot be reported from here — its disabled range
+					// starts at the directive itself; code-health covers it.)
 					const ruleList = text.slice(directive[0].length).trim();
 					if (
 						(ruleList === '' || ruleList.startsWith('--')) &&
