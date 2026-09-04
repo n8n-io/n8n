@@ -493,27 +493,16 @@ The pnpm version comes from the `packageManager` field in the root
 keep in sync: a bump in `package.json` moves the setup step, the cache key and
 the version check together.
 
-The action caches the pnpm executable in `~/setup-pnpm`, keyed on OS, arch and
-that version, and runs `pnpm/setup` only when the key misses. Without the cache
-every fresh job downloads pnpm from `registry.npmjs.org` before any cache is
-restored, so a registry outage fails unrelated jobs in their first step. Windows
-keeps the plain `pnpm/setup` path, and the pnpm store stays on the
-`actions/setup-node` `cache: pnpm` configuration. A hit also skips the
-lockfile-verification log that `pnpm/setup` restores, which the `pnpm-metadata`
-cache step covers on the same lockfile hash.
+The action caches the pnpm executable in `~/setup-pnpm` by OS, architecture and
+version. A cache miss runs `pnpm/setup` and retries once if the registry request
+fails. The action verifies the version and saves the cache before the rest of
+the job can fail.
 
-An explicit `actions/cache/save` step writes the entry directly after the
-version check. The `actions/cache` post-run saves only when the whole job
-succeeds, so a job that later failed its install or build left the key cold for
-every following job.
-
-Cache keys are write-once, and jobs that start together all miss a cold key
-before any of them saves it. A pnpm version bump therefore costs one download
-for each job in that first fan-out, not one download in total. Every job that
-starts after the first save hits the cache, including later runs and a re-run of
-a job that failed on the download. A prerequisite job that warms the key would
-remove that initial cost, but it would serialize a job in front of every
-workflow to save a download that happens only on a version bump.
+Concurrent jobs can all miss a new key before the first save completes. Jobs
+that start after the save use the cached executable. Windows keeps the standard
+`pnpm/setup` path because its runner cannot activate the cached POSIX home path.
+The existing `actions/setup-node` cache continues to store the pnpm package
+store.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per

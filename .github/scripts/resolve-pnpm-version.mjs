@@ -62,8 +62,7 @@ export function resolvePnpmVersion({
 	return { version, cacheKey };
 }
 
-// only run when executed directly, not when imported by tests
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	try {
 		const { version, cacheKey } = resolvePnpmVersion();
 		console.log(`pnpm ${version}, cache key ${cacheKey}`);

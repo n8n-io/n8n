@@ -43,17 +43,13 @@ runs:
         echo "::error::enable-docker-cache is true but docker-cache-key is empty"
         exit 1
 
-    # The `packageManager` pin feeds the cache key, the setup step and the
-    # verify step below, so none of them can drift from the others.
+    # Use one pin for setup, cache lookup and verification.
     - name: Resolve pnpm version
       id: pnpm-version
       shell: bash
       run: node .github/scripts/resolve-pnpm-version.mjs
 
-    # pnpm/setup downloads the executable from registry.npmjs.org before any
-    # cache is restored, so a registry blip fails unrelated jobs in their first
-    # step. Windows stays on that path: the activation step below writes a Git
-    # Bash home path that the runner cannot use in $GITHUB_PATH.
+    # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
       if: runner.os != 'Windows'
       id: cache-pnpm-exe
@@ -63,21 +59,26 @@ runs:
         key: ${{ steps.pnpm-version.outputs.cache-key }}
 
     - name: Setup pnpm
+      id: setup-pnpm
       if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      continue-on-error: true
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
         install: false
         version: ${{ steps.pnpm-version.outputs.version }}
 
-    # The cache holds files, not the per-job PATH and PNPM_HOME wiring that
-    # pnpm/setup does. $GITHUB_PATH prepends each line, so `<dest>/bin` goes last
-    # to keep the self-update shims ahead of `<dest>`. Both paths are fixed, so
-    # the environment-file writes take no external input.
+    - name: Retry pnpm setup
+      if: steps.setup-pnpm.outcome == 'failure'
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      with:
+        install: false
+        version: ${{ steps.pnpm-version.outputs.version }}
+
+    # Cache hits restore files but not the per-job environment.
     - name: Activate cached pnpm executable
       if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
-      run: |
-        # zizmor: ignore[github-env]
+      run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
         PNPM_DEST="$HOME/setup-pnpm"
         echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
         echo "$PNPM_DEST" >> "$GITHUB_PATH"
@@ -95,9 +96,7 @@ runs:
           exit 1
         fi
 
-    # Saved here rather than in a post-run: actions/cache only saves when the
-    # whole job succeeds, so a job that later fails its install or build would
-    # leave the key cold for every following job.
+    # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
       if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

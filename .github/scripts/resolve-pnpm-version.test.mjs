@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,8 @@ import {
 	parsePnpmVersion,
 	resolvePnpmVersion,
 } from './resolve-pnpm-version.mjs';
+
+const MODULE_URL = new URL('./resolve-pnpm-version.mjs', import.meta.url).href;
 
 /**
  * Run these tests by running
@@ -105,5 +108,17 @@ describe('resolvePnpmVersion', () => {
 		const { packageManager } = JSON.parse(readFileSync(ROOT_PACKAGE_JSON, 'utf8'));
 		assert.equal(packageManager, `pnpm@${version}`);
 		assert.equal(cacheKey, `pnpm-exe-v1-Linux-X64-${version}`);
+	});
+});
+
+describe('module entry point', () => {
+	it('can be imported without an argv entry', () => {
+		const result = spawnSync(
+			process.execPath,
+			['--input-type=module', '--eval', `process.argv.splice(1); await import('${MODULE_URL}')`],
+			{ encoding: 'utf8' },
+		);
+
+		assert.equal(result.status, 0, result.stderr);
 	});
 });
