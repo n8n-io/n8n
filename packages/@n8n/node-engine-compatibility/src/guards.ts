@@ -34,6 +34,8 @@ function isNodeCredentials(value: unknown): value is INodeCredentials {
 		(details) =>
 			isRecord(details) &&
 			(typeof details.id === 'string' || details.id === null) &&
-			typeof details.name === 'string',
+			typeof details.name === 'string' &&
+			(details.__aiGatewayManaged === undefined ||
+				typeof details.__aiGatewayManaged === 'boolean'),
 	);
 }
