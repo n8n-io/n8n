@@ -36,9 +36,9 @@ function createMockPluginContext(nodeTypesProvider?: NodeTypesProvider): PluginC
 	};
 }
 
-// Provider returning a BigQuery-shaped description: an sqlEditor query field
-// plus a plain string field, so one node covers both branches.
-function createBigQueryProvider(): NodeTypesProvider {
+// One provider covering every branch: a SQL editor field, a noDataExpression
+// field that is not an editor, and a field that does support expressions.
+function createProvider(): NodeTypesProvider {
 	return {
 		getByNameAndVersion: () => ({
 			description: {
@@ -50,6 +50,14 @@ function createBigQueryProvider(): NodeTypesProvider {
 						default: '',
 						noDataExpression: true,
 						typeOptions: { editor: 'sqlEditor' },
+					},
+					{
+						displayName: 'Code',
+						name: 'jsCode',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						typeOptions: { editor: 'jsEditor' },
 					},
 					{
 						displayName: 'Project',
@@ -211,7 +219,7 @@ describe('expressionPrefixValidator', () => {
 			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
 				parameters: { sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
 			});
-			const ctx = createMockPluginContext(createBigQueryProvider());
+			const ctx = createMockPluginContext(createProvider());
 
 			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
 
@@ -225,12 +233,85 @@ describe('expressionPrefixValidator', () => {
 					projectId: '{{ $json.project }}',
 				},
 			});
-			const ctx = createMockPluginContext(createBigQueryProvider());
+			const ctx = createMockPluginContext(createProvider());
 
 			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues).toHaveLength(1);
 			expect(issues[0]?.parameterPath).toBe('projectId');
+		});
+
+		it('warns that an sqlEditor parameter cannot carry the = prefix', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('sqlQuery');
+			expect(issues[0]?.message).toContain('Keep the {{ }} inline');
+		});
+
+		it('tells a non-editor parameter to use a static value instead', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: '={{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('Use a static value');
+		});
+
+		it('reports an inline template on a non-editor parameter as used literally', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: 'return {{ $json.id }};' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('used literally');
+		});
+
+		it('keeps a lone $fromAI() placeholder intact', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: "={{ $fromAI('query') }}" },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('leaves the = prefix alone on a parameter that supports expressions', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { projectId: '={{ $json.project }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('says nothing about the = prefix when no node-type provider is available', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
 		});
 
 		it('warns on an sqlEditor parameter when no node-type provider is available', () => {
