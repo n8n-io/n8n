@@ -37,6 +37,7 @@ withDefaults(defineProps<TagProps>(), {
 	border-radius: var(--tag--radius);
 	font-size: var(--tag--font-size);
 	transition: background-color 0.3s ease;
+	user-select: none;
 
 	&.clickable {
 		cursor: pointer;
