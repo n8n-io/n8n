@@ -65,6 +65,10 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.urlDecode should throw on malformed input (#37794)', () => {
+			expect(() => evaluate('={{ "%%%".urlDecode() }}')).toThrow(ExpressionExtensionError);
+		});
+
 		test('.urlEncode should work correctly on a string', () => {
 			expect(evaluate('={{ "string with spaces".urlEncode(false) }}')).toEqual(
 				'string%20with%20spaces',

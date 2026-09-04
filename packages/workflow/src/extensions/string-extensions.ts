@@ -254,10 +254,14 @@ export function toDateTime(value: string, extraArgs: [string] = ['']): DateTime 
 
 function urlDecode(value: string, extraArgs: boolean[]): string {
 	const [entireString = false] = extraArgs;
-	if (entireString) {
-		return decodeURI(value.toString());
+	try {
+		if (entireString) {
+			return decodeURI(value.toString());
+		}
+		return decodeURIComponent(value.toString());
+	} catch {
+		throw new ExpressionExtensionError('cannot decode URI component');
 	}
-	return decodeURIComponent(value.toString());
 }
 
 function urlEncode(value: string, extraArgs: boolean[]): string {
