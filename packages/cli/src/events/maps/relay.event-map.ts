@@ -685,6 +685,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -704,6 +705,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {

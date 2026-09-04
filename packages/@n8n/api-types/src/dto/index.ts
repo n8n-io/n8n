@@ -98,6 +98,8 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export { SourceControlStatusQueryPublicDto } from './source-control/source-control-status-query-public.dto';
+export { SourceControlStatusPublicDto } from './source-control/source-control-status-public.dto';
 export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,

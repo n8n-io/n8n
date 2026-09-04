@@ -79,6 +79,9 @@ paths:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
     delete:
       $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
+  /source-control/status:
+    get:
+      $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
