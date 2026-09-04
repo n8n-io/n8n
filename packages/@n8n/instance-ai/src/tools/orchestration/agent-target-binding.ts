@@ -108,6 +108,20 @@ async function readThreadTarget(
 }
 
 /**
+ * Re-read the thread's active binding, bypassing the run's cached target. A
+ * concurrent writer (the editor persisting the artifact this thread has open)
+ * can bind between the cached read and a create decision; creating anyway would
+ * mint a second agent beside the one it just bound.
+ */
+export async function rereadAgentBuilderTarget(
+	context: InstanceAiContext,
+): Promise<AgentBuilderTarget | undefined> {
+	const target = await readThreadTarget(context);
+	if (target) context.agentBuilderTarget = target;
+	return target;
+}
+
+/**
  * Resolve the active build target: in-memory context first (current run),
  * then the thread-persisted binding (previous turns). Hydrates the context so
  * subsequent calls in the same run skip the metadata read.
@@ -230,6 +244,81 @@ export function clearedAgentBuilderTargetMetadata(
 }
 
 /**
+ * The thread metadata that binds `target` as the active build target: the
+ * pending marker dropped, the active binding replaced, and the session registry
+ * reconciled — one value, so a caller writes the whole lifecycle transition in
+ * a single patch instead of leaving pending and bound standing side by side.
+ */
+export function withBoundAgentTarget(
+	metadata: Record<string, unknown>,
+	target: AgentBuilderTarget,
+): Record<string, unknown> {
+	// Omitted from the returned metadata, which callers write wholesale — that
+	// is what deletes the pending marker.
+	const { [PENDING_AGENT_METADATA_KEY]: _pendingAgent, ...carriedMetadata } = metadata;
+	const existingRegistry = parseRegistry(metadata[REGISTRY_METADATA_KEY]);
+	const previousByAgentId = Object.values(existingRegistry).find(
+		(entry) => entry.agentId === target.agentId,
+	);
+	// An agentId-path / display-name refresh may omit name or ref; keep the
+	// values recorded when the agent was first addressed so lookup and the
+	// FE artifact label stay correct.
+	const entry: AgentBuilderTarget = {
+		...target,
+		...(target.name === undefined && previousByAgentId?.name !== undefined
+			? { name: previousByAgentId.name }
+			: {}),
+		...(target.ref === undefined && previousByAgentId?.ref !== undefined
+			? { ref: previousByAgentId.ref }
+			: {}),
+	};
+	const registry = { ...existingRegistry };
+	if (entry.ref) {
+		const normalized = normalizeAgentRef(entry.ref);
+		// Drop any prior keys that pointed at this agentId so a changed
+		// addressing key doesn't leave a stale alias.
+		for (const [key, existing] of Object.entries(registry)) {
+			if (existing.agentId === entry.agentId) delete registry[key];
+		}
+		registry[normalized] = { ...entry, ref: normalized };
+	}
+	return {
+		...carriedMetadata,
+		[METADATA_KEY]: entry,
+		[REGISTRY_METADATA_KEY]: registry,
+	};
+}
+
+/**
+ * Whether this thread's own lifecycle metadata authorizes adopting an existing
+ * agent row under `target` — the proof behind the idempotent create/adopt path
+ * (AGENT-553). The pending marker alone is not enough: whichever writer binds
+ * first deletes it (see `withBoundAgentTarget`), so the loser converging
+ * afterwards can only prove itself by the active binding. Both ids must match,
+ * so a thread cannot adopt an agent it never targeted or one in another project.
+ *
+ * Only says what the THREAD attests. The caller still has to establish that the
+ * thread is the requesting user's and that they may create and update agents in
+ * the project — thread metadata is user-writable.
+ */
+export function threadAuthorizesAgentAdoption(
+	metadata: Record<string, unknown> | undefined,
+	target: { agentId: string; projectId: string },
+): boolean {
+	if (!metadata) return false;
+	const pending = pendingAgentTargetSchema.safeParse(metadata[PENDING_AGENT_METADATA_KEY]);
+	if (
+		pending.success &&
+		pending.data.agentId === target.agentId &&
+		pending.data.projectId === target.projectId
+	) {
+		return true;
+	}
+	const bound = parseTarget(metadata[METADATA_KEY]);
+	return bound?.agentId === target.agentId && bound.projectId === target.projectId;
+}
+
+/**
  * Persist the build target to thread metadata. A no-op (with a warning) when
  * thread persistence is unavailable — unreachable in practice, since every
  * real instance-AI session carries `threadMemory`/`threadId`.
@@ -251,47 +340,14 @@ export async function saveAgentBuilderTarget(
 	// creates a new agent instead of editing the one just built.
 	await patchThread(context.threadMemory, {
 		threadId: context.threadId,
-		update: ({ metadata = {} }) => {
-			// Omitted from the returned metadata, which `patchThread` writes
-			// wholesale — that is what deletes the pending marker.
-			const { [PENDING_AGENT_METADATA_KEY]: _pendingAgent, ...carriedMetadata } = metadata;
-			const existingRegistry = parseRegistry(metadata[REGISTRY_METADATA_KEY]);
-			const previousByAgentId = Object.values(existingRegistry).find(
-				(entry) => entry.agentId === target.agentId,
-			);
-			// An agentId-path / display-name refresh may omit name or ref; keep the
-			// values recorded when the agent was first addressed so lookup and the
-			// FE artifact label stay correct.
-			const entry: AgentBuilderTarget = {
-				...target,
-				...(target.name === undefined && previousByAgentId?.name !== undefined
-					? { name: previousByAgentId.name }
+		update: ({ metadata = {} }) => ({
+			metadata: {
+				...withBoundAgentTarget(metadata, target),
+				...(options?.previewSession
+					? { [AGENT_PREVIEW_SESSION_METADATA_KEY]: options.previewSession }
 					: {}),
-				...(target.ref === undefined && previousByAgentId?.ref !== undefined
-					? { ref: previousByAgentId.ref }
-					: {}),
-			};
-			const registry = { ...existingRegistry };
-			if (entry.ref) {
-				const normalized = normalizeAgentRef(entry.ref);
-				// Drop any prior keys that pointed at this agentId so a changed
-				// addressing key doesn't leave a stale alias.
-				for (const [key, existing] of Object.entries(registry)) {
-					if (existing.agentId === entry.agentId) delete registry[key];
-				}
-				registry[normalized] = { ...entry, ref: normalized };
-			}
-			return {
-				metadata: {
-					...carriedMetadata,
-					[METADATA_KEY]: entry,
-					[REGISTRY_METADATA_KEY]: registry,
-					...(options?.previewSession
-						? { [AGENT_PREVIEW_SESSION_METADATA_KEY]: options.previewSession }
-						: {}),
-				},
-			};
-		},
+			},
+		}),
 	});
 }
 

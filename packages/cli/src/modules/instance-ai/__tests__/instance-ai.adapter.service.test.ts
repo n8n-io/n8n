@@ -4867,11 +4867,17 @@ describe('createContext — builder delegate wiring', () => {
 		mockBuilderModuleActive(delegate);
 
 		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
-		const created = await context.builderDelegate?.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
+		const created = await context.builderDelegate?.createAgent('New agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+			adoptOnCollision: true,
+		});
 
 		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
 		// No wrapper means no re-declared signature that could drop an argument.
-		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', 'aBcDeFgHiJkLmNoP');
+		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+			adoptOnCollision: true,
+		});
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
 	});
 

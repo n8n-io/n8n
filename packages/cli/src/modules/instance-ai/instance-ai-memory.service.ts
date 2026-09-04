@@ -16,11 +16,14 @@ import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
 	patchThread,
+	withBoundAgentTarget,
+	type AgentBuilderTarget,
 	type AgentDbMessage,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
@@ -581,6 +584,35 @@ export class InstanceAiMemoryService {
 					patch.metadata.titleRefined = true;
 				}
 				return patch;
+			},
+		});
+		if (!updated) {
+			throw new NotFoundError(`Thread ${threadId} not found`);
+		}
+		return this.toThreadInfo(updated);
+	}
+
+	/**
+	 * Replace this thread's pending new-agent marker with `target` as its bound
+	 * agent-builder target, in one patch — a merge-style update cannot delete a
+	 * key, and leaving both standing makes a reload show a phantom blank artifact
+	 * beside the real agent. Ownership is re-checked inside the patch so a thread
+	 * that changed hands between read and write cannot be rebound.
+	 */
+	async bindAgentBuilderTarget(
+		userId: string,
+		threadId: string,
+		target: AgentBuilderTarget,
+	): Promise<InstanceAiThreadInfo> {
+		const updated = await patchThread(this.agentMemory, {
+			threadId,
+			update: (thread) => {
+				// A `null` patch means "leave the thread alone", which would answer a
+				// non-owner with a success — throw instead.
+				if (thread.resourceId !== userId) {
+					throw new ForbiddenError('Not authorized for this thread');
+				}
+				return { metadata: withBoundAgentTarget(thread.metadata ?? {}, target) };
 			},
 		});
 		if (!updated) {

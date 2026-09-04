@@ -1112,9 +1112,25 @@ export interface AgentCapabilitiesSummary {
 }
 
 export interface InstanceAiBuilderDelegate {
-	/** `id` creates the agent under an id the frontend already minted for its
-	 *  unsaved artifact, so the chat and the editor converge on one agent. */
-	createAgent(name: string, id?: string): Promise<{ agentId: string; projectId: string }>;
+	/**
+	 * `options.id` creates the agent under an id the frontend already minted for
+	 * its unsaved artifact, so the chat and the editor converge on one agent.
+	 * `options.adoptOnCollision` says the caller has proven it may adopt that
+	 * agent — set it only for an id this thread's own lifecycle metadata attests
+	 * to, so the editor winning the insert (and configuring the row) makes this
+	 * call adopt rather than fail.
+	 */
+	createAgent(
+		name: string,
+		options?: { id?: string; adoptOnCollision?: boolean },
+	): Promise<{
+		agentId: string;
+		projectId: string;
+		/** The persisted name, which differs from `name` when an existing row was adopted. */
+		name?: string;
+		/** True when the id collided and an existing row was adopted instead of created. */
+		adopted?: boolean;
+	}>;
 	streamBuild(
 		agentId: string,
 		message: string,

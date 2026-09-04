@@ -99,6 +99,15 @@ const props = withDefaults(
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
 		 *  renders a local default config and creates the agent on the first edit. */
 		artifactAgentPending?: boolean;
+		/**
+		 * Host-owned persistence for a pending artifact: creates (or adopts) the
+		 * agent under the already-minted id AND durably binds it to the host's
+		 * surface, resolving only once both are done. Supplied instead of the plain
+		 * strict create, so the acknowledgement the builder acts on includes the
+		 * binding — a reload can then never re-enter pending mode on an agent that
+		 * already exists.
+		 */
+		artifactPersistAgent?: (name: string) => Promise<AgentResource>;
 	}>(),
 	{
 		artifactMode: false,
@@ -107,12 +116,11 @@ const props = withDefaults(
 		artifactPreviewSessionId: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
+		artifactPersistAgent: undefined,
 	},
 );
 
 const emit = defineEmits<{
-	/** The agent behind an unsaved artifact now exists. */
-	persisted: [agent: AgentResource];
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
@@ -412,8 +420,11 @@ async function onGenerateEvalCases() {
 async function fetchAgent(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
+	/** Already-fetched resource to apply instead of re-reading it (see `probePendingAgentRow`). */
+	preloaded?: AgentResource,
 ) {
-	const data = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+	const data =
+		preloaded ?? (await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId));
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
 	agentName.value = data.name;
@@ -735,8 +746,12 @@ interface McpAvailabilitySnapshot {
  *
  * The agent is created under the already-minted `agentId`, so an agent-building
  * chat request on the same thread converges on this agent rather than a second
- * one (the builder path adopts a same-project still-unconfigured row on an id
- * collision; REST create stays strict).
+ * one: `artifactPersistAgent` creates-or-adopts, and the route-backed path
+ * (no host, so no thread to prove ownership with) uses the strict REST create.
+ *
+ * Only fully acknowledged targets are memoized — for the host path that means
+ * bound as well as created, so a retry after a failed binding goes back to the
+ * host instead of silently declaring the artifact saved.
  */
 const persistFlights = new Map<string, Promise<void>>();
 const persistedAgentsByTarget = new Map<string, AgentResource>();
@@ -750,7 +765,66 @@ function clearRoutePendingState(targetAgentId: string) {
 	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
 
+/**
+ * The agent row behind a pending artifact, or null when it genuinely does not
+ * exist yet — a 404 is the ordinary answer for a new-agent draft. Anything else
+ * is propagated: guessing "absent" on an unclear failure risks drafting over a
+ * real agent. The resource is returned rather than a boolean so the hydration
+ * below doesn't read the same agent twice.
+ */
+async function probePendingAgentRow(
+	targetProjectId: string,
+	targetAgentId: string,
+): Promise<AgentResource | null> {
+	try {
+		return await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+	} catch (error) {
+		if (isNotFoundError(error)) return null;
+		throw error;
+	}
+}
+
+/**
+ * Agent whose row exists but whose host binding has not landed yet, so the next
+ * mutation retries it. Not a reason to keep drafting: the row is real and
+ * hydrated, and re-showing a blank draft over it is what the probe exists to
+ * prevent.
+ */
+const unboundExistingAgent = ref<AgentResource | null>(null);
+
+/**
+ * Retire a stale pending marker whose agent row turned out to exist. Takes the
+ * probed row rather than reading `agent.value`, which a stale target switch can
+ * leave pointing at a different agent.
+ */
+async function adoptExistingPendingRow(existing: AgentResource): Promise<void> {
+	if (!props.artifactPersistAgent) return;
+	// `unboundExistingAgent` tracks one target, so a bind that settles after the
+	// user moved on must not clear (or claim) the current target's retry state.
+	const ownsRetryState = () => existing.id === agentId.value;
+	try {
+		await props.artifactPersistAgent(existing.name);
+		if (ownsRetryState()) unboundExistingAgent.value = null;
+	} catch (error) {
+		// Queued rather than surfaced: the artifact already shows the persisted
+		// agent, so the only casualty is the thread binding.
+		if (ownsRetryState()) unboundExistingAgent.value = existing;
+		console.warn('Failed to bind an existing agent to its artifact', error);
+	}
+}
+
+/** Retry a binding that failed after the probe, before the write it precedes. */
+async function retryPendingBind(): Promise<void> {
+	const existing = unboundExistingAgent.value;
+	if (!existing || existing.id !== agentId.value) return;
+	await adoptExistingPendingRow(existing);
+}
+
 async function ensureAgentPersisted(): Promise<void> {
+	// Every mutating path funnels through here, so this is where a binding that
+	// failed after the hydration probe gets its retry — a skill- or MCP-only edit
+	// must not leave the artifact unbound.
+	await retryPendingBind();
 	if (!isUnsaved.value) return;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -760,27 +834,23 @@ async function ensureAgentPersisted(): Promise<void> {
 		isUnsaved.value = false;
 		agent.value = persistedAgent;
 		clearRoutePendingState(targetAgentId);
-		emit('persisted', persistedAgent);
 		return;
 	}
 	let flight = persistFlights.get(targetKey);
 	if (!flight) {
 		flight = (async () => {
-			const created = await createAgent(
-				rootStore.restApiContext,
-				targetProjectId,
-				localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
-				{ id: targetAgentId },
-			);
+			const name = localConfig.value?.name ?? locale.baseText('agents.new.defaultName');
+			const created = props.artifactPersistAgent
+				? await props.artifactPersistAgent(name)
+				: await createAgent(rootStore.restApiContext, targetProjectId, name, {
+						id: targetAgentId,
+					});
 			persistedAgentsByTarget.set(targetKey, created);
 			upsertProjectAgentsListCache(targetProjectId, created);
 			clearRoutePendingState(targetAgentId);
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 			isUnsaved.value = false;
 			agent.value = created;
-			// Lets an artifact host replace its pending metadata. Route-backed drafts
-			// clear their history marker after the create succeeds instead.
-			emit('persisted', created);
 		})();
 		persistFlights.set(targetKey, flight);
 	}
@@ -1414,6 +1484,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	const targetAgentPending = isAgentPending.value;
+	const targetArtifactPending = props.artifactAgentPending;
 	const isCurrentInitialization = () =>
 		!disposed && sessionsFetchRequestId === latestSessionsFetchRequestId;
 	clearTimeout(externalRefreshTimer);
@@ -1481,11 +1552,24 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			repointConfigValidation(targetProjectId, targetAgentId);
 		}
 
+		// An artifact's pending marker can be stale — the chat may have created the
+		// agent under this id, or a previous session's binding write may have failed
+		// — and a blank draft over an existing row would autosave itself over that
+		// row on the first edit. So confirm the row is really absent before
+		// drafting. Only artifacts need this: a route-backed draft's id is minted
+		// milliseconds earlier by the entry point and no other writer can reach it,
+		// so the probe would be a guaranteed 404 on every "New agent" click.
+		const probedAgent = targetArtifactPending
+			? await probePendingAgentRow(targetProjectId, targetAgentId)
+			: null;
+		if (!isCurrentInitialization()) return;
+
 		// An agent that does not exist yet has nothing to fetch: stand up the same
 		// blank config the backend would have written, and let the first edit
 		// create it (see `ensureAgentPersisted`). The personalisation backfill is
 		// skipped too — it schedules a save, which would persist on mount alone.
-		isUnsaved.value = targetAgentPending;
+		unboundExistingAgent.value = null;
+		isUnsaved.value = targetAgentPending && !probedAgent;
 		if (isUnsaved.value) {
 			const draftConfig: AgentJsonConfig = {
 				name: locale.baseText('agents.new.defaultName'),
@@ -1503,13 +1587,16 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentName.value = agent.value.name;
 		} else {
 			await Promise.all([
-				fetchAgent(targetProjectId, targetAgentId),
+				fetchAgent(targetProjectId, targetAgentId, probedAgent ?? undefined),
 				fetchConfig(targetProjectId, targetAgentId),
 				fetchAgentFiles(targetProjectId, targetAgentId),
 				refreshConfigValidation(targetProjectId, targetAgentId),
 			]);
 			if (!isCurrentInitialization()) return;
 			persistMissingPersonalisationGradient();
+			// Hand the host the row the stale marker pointed at so it can retire the
+			// pending state.
+			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
 		// Keep agent credential pickers aligned with the workflow editor: load only

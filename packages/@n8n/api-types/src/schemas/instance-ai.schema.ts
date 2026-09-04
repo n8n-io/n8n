@@ -4,6 +4,7 @@ import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
+import { clientMintedAgentIdSchema } from '../agents/dto';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -1448,6 +1449,17 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
 	source: z.enum(INSTANCE_AI_THREAD_SOURCES),
 	origin: z.enum(INSTANCE_AI_THREAD_ORIGINS).optional(),
 	sourceContext: instanceAiSourceContextSchema.optional(),
+}) {}
+
+/**
+ * Persist the pending new-agent artifact a thread has open: creates the agent
+ * under the id the frontend minted, or adopts it when a concurrent writer got
+ * there first, and binds it to the thread in the same request.
+ */
+export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	projectId: z.string().min(1),
+	agentId: clientMintedAgentIdSchema,
+	name: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
