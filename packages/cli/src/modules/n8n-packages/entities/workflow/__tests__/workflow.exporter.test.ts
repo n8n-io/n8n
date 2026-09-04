@@ -46,6 +46,9 @@ function makeExporter(
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
 	finder.findExistingWorkflowIds.mockResolvedValue(new Set());
+	finder.findWorkflowNamesByIds.mockResolvedValue(
+		new Map(returned.map(({ id, name }) => [id, name])),
+	);
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
@@ -313,6 +316,84 @@ describe('WorkflowExporter', () => {
 		const writtenPaths = writer.files.map((f) => f.path);
 		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
 		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+	});
+
+	it('writes only selectedWorkflowIds but keeps the file names of a full export', async () => {
+		const a = makeWorkflow({ id: 'wf-aaaaa', name: 'Same Name' });
+		const b = makeWorkflow({ id: 'wf-bbbbb', name: 'Same Name' });
+		const { exporter, finder } = makeExporter([b]);
+		finder.findWorkflowNamesByIds.mockResolvedValue(new Map([[a.id, a.name]]));
+		const writer = new CapturingWriter();
+
+		const { entries, requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			selectedWorkflowIds: new Set([b.id]),
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			[b.id],
+			user,
+			['workflow:export'],
+			expect.anything(),
+		);
+		expect(finder.findWorkflowNamesByIds).toHaveBeenCalledWith([a.id]);
+		expect(entries).toEqual([{ id: b.id, name: b.name, target: 'workflows/same-name-2' }]);
+		expect(writer.files.map((f) => f.path)).toEqual(['workflows/same-name-2/workflow.json']);
+		expect(requirements.nodeTypes).toEqual([{ workflowId: b.id, nodes: [] }]);
+	});
+
+	it('does not authorize unselected workflows', async () => {
+		const selected = makeWorkflow({ id: 'wf-selected', name: 'Selected' });
+		const inaccessible = makeWorkflow({ id: 'wf-secret', name: 'Secret' });
+		// The scoped finder omits the inaccessible sibling; only its name is looked up.
+		const { exporter, finder } = makeExporter([selected]);
+		finder.findWorkflowNamesByIds.mockResolvedValue(
+			new Map([
+				[selected.id, selected.name],
+				[inaccessible.id, inaccessible.name],
+			]),
+		);
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [inaccessible.id, selected.id],
+			selectedWorkflowIds: new Set([selected.id]),
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		expect(entries).toEqual([
+			{ id: selected.id, name: selected.name, target: 'workflows/selected' },
+		]);
+		expect(writer.files.map((f) => f.path)).toEqual(['workflows/selected/workflow.json']);
+		expect(finder.findExistingWorkflowIds).not.toHaveBeenCalled();
+	});
+
+	it('still rejects a selected workflow the caller cannot access', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		finder.findExistingWorkflowIds.mockResolvedValue(new Set());
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({
+				user,
+				workflowIds: ['present-1', 'missing'],
+				selectedWorkflowIds: new Set(['present-1', 'missing']),
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
+		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
+
+		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
 	});
 
 	it('runs the extractor on each workflow and concatenates the results into requirements.credentials', async () => {

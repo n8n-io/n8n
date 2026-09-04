@@ -222,6 +222,12 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	/**
+	 * Restricts `projectIds` exports to these workflows and the folders on the
+	 * path to them. Omit to export the whole projects; an empty array writes the
+	 * project shells only. Every id must belong to one of `projectIds`.
+	 */
+	projectWorkflowIds?: string[];
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;

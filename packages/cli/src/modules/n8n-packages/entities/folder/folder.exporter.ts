@@ -27,6 +27,12 @@ export interface FolderExportRequest {
 	 * same walk nests under `projects/<slug>/folders/...`.
 	 */
 	basePrefix?: string;
+	/**
+	 * Export only these workflows and the folders on the path to them. Folder
+	 * and workflow file names are still allocated for the whole tree, so the
+	 * targets match a full export.
+	 */
+	selectedWorkflowIds?: ReadonlySet<string>;
 }
 
 export interface FolderExportResult {
@@ -41,6 +47,8 @@ export interface FolderExportResult {
 interface FolderWriteContext {
 	childrenByParent: Map<string, Folder[]>;
 	workflowIdsByFolder: Map<string, string[]>;
+	/** Folders to write; `undefined` means all of them. */
+	foldersToWrite: ReadonlySet<string> | undefined;
 	request: FolderExportRequest;
 }
 
@@ -73,12 +81,38 @@ export class FolderExporter {
 			folders.map((folder) => folder.id),
 		);
 
+		const foldersToWrite = request.selectedWorkflowIds
+			? this.foldersContaining(request.selectedWorkflowIds, folders, workflowIdsByFolder)
+			: undefined;
+
 		const foldersDir = request.basePrefix ? `${request.basePrefix}/folders` : 'folders';
 		return await this.exportLevel(roots, foldersDir, null, {
 			childrenByParent,
 			workflowIdsByFolder,
+			foldersToWrite,
 			request,
 		});
+	}
+
+	/** Folders that hold a selected workflow, plus their in-set ancestors. */
+	private foldersContaining(
+		selectedWorkflowIds: ReadonlySet<string>,
+		folders: Folder[],
+		workflowIdsByFolder: Map<string, string[]>,
+	): Set<string> {
+		const parentById = new Map(folders.map((folder) => [folder.id, folder.parentFolderId]));
+		const result = new Set<string>();
+
+		for (const [folderId, workflowIds] of workflowIdsByFolder) {
+			if (!workflowIds.some((id) => selectedWorkflowIds.has(id))) continue;
+			for (let current: string | null | undefined = folderId; current; ) {
+				if (result.has(current)) break;
+				result.add(current);
+				current = parentById.get(current);
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -123,6 +157,7 @@ export class FolderExporter {
 		const results: FolderExportResult[] = [];
 		for (const folder of this.orderedByCreation(siblings)) {
 			const target = allocator.allocate(folder.name);
+			if (context.foldersToWrite && !context.foldersToWrite.has(folder.id)) continue;
 			results.push(await this.exportFolder(folder, target, effectiveParentId, context));
 		}
 
@@ -187,6 +222,7 @@ export class FolderExporter {
 			includeTags: request.includeTags,
 			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix,
+			selectedWorkflowIds: request.selectedWorkflowIds,
 		});
 	}
 

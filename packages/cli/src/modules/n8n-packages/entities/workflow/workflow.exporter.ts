@@ -30,11 +30,24 @@ export interface WorkflowExportRequest {
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
+
+	/**
+	 * Write and report only these workflows. Every id in `workflowIds` still
+	 * claims its file name, so duplicate-name suffixes match a full export.
+	 */
+	selectedWorkflowIds?: ReadonlySet<string>;
 }
 
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
 	requirements: WorkflowExportRequirements;
+}
+
+interface FilenameClaim {
+	id: string;
+	name: string;
+	/** Set only for workflows that are written to the package. */
+	workflow?: WorkflowEntity;
 }
 
 @Service()
@@ -49,8 +62,13 @@ export class WorkflowExporter {
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
+		const { selectedWorkflowIds } = request;
+		const selectedIds = selectedWorkflowIds
+			? request.workflowIds.filter((id) => selectedWorkflowIds.has(id))
+			: request.workflowIds;
+
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
-			request.workflowIds,
+			selectedIds,
 			request.user,
 			['workflow:export'],
 			{
@@ -62,13 +80,13 @@ export class WorkflowExporter {
 
 		await assertEveryRequestedEntityAccessible(
 			'workflow',
-			request.workflowIds,
+			selectedIds,
 			workflows,
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const workflowsForExport = this.orderWorkflowsByRequest(
-			request.workflowIds,
+		const claims = await this.collectFilenameClaims(
+			request,
 			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
 		);
 		const entries: ManifestEntry[] = [];
@@ -82,8 +100,10 @@ export class WorkflowExporter {
 			'workflow',
 		);
 
-		for (const workflow of workflowsForExport) {
-			const target = fileNames.allocate(workflow.name);
+		for (const { name, workflow } of claims) {
+			const target = fileNames.allocate(name);
+			if (!workflow) continue;
+
 			const serialized = this.workflowSerializer.serialize(workflow, {
 				includeTags: request.includeTags,
 			});
@@ -110,24 +130,42 @@ export class WorkflowExporter {
 		return { entries, requirements: { credentials, dataTables, variables, tags, nodeTypes } };
 	}
 
-	private orderWorkflowsByRequest(
-		workflowIds: string[],
+	/**
+	 * Every requested id claims its file name in request order, so a partial export
+	 * gets the same duplicate-name suffixes as a full one. Only selected workflows
+	 * carry an entity and are written; unselected siblings claim a name by id only.
+	 */
+	private async collectFilenameClaims(
+		request: WorkflowExportRequest,
 		workflows: WorkflowEntity[],
-	): WorkflowEntity[] {
+	): Promise<FilenameClaim[]> {
+		const { selectedWorkflowIds } = request;
+		// Unselected siblings are never loaded, so a version policy that skips
+		// workflows cannot skip them here. Suffix parity is exact for `latest`.
+		const unselectedNames = selectedWorkflowIds
+			? await this.workflowFinder.findWorkflowNamesByIds(
+					request.workflowIds.filter((id) => !selectedWorkflowIds.has(id)),
+				)
+			: new Map<string, string>();
+
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const seen = new Set<string>();
-		const orderedWorkflows: WorkflowEntity[] = [];
+		const claims: FilenameClaim[] = [];
 
-		for (const workflowId of workflowIds) {
-			if (seen.has(workflowId)) continue;
+		for (const id of request.workflowIds) {
+			if (seen.has(id)) continue;
+			seen.add(id);
 
-			const workflow = workflowsById.get(workflowId);
-			if (!workflow) continue;
+			const workflow = workflowsById.get(id);
+			if (workflow) {
+				claims.push({ id, name: workflow.name, workflow });
+				continue;
+			}
 
-			seen.add(workflowId);
-			orderedWorkflows.push(workflow);
+			const name = unselectedNames.get(id);
+			if (name !== undefined) claims.push({ id, name });
 		}
 
-		return orderedWorkflows;
+		return claims;
 	}
 }

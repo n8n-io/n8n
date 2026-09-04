@@ -103,6 +103,46 @@ describe('FolderExporter', () => {
 		]);
 	});
 
+	it('writes only the folders on the path to a selected workflow, keeping sibling slugs', async () => {
+		const opsA = makeFolder({ id: 'ops-a', name: 'Ops', createdAt: new Date('2026-01-01') });
+		const opsB = makeFolder({ id: 'ops-b', name: 'Ops', createdAt: new Date('2026-02-01') });
+		const nested = makeFolder({ id: 'nested', name: 'Nested', parentFolderId: 'ops-b' });
+		const { exporter, workflowFinder, workflowExporter } = makeExporter([opsA, opsB, nested]);
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(
+			new Map([
+				['ops-a', ['w-a']],
+				['nested', ['w-n1', 'w-n2']],
+			]),
+		);
+		workflowExporter.export.mockResolvedValue({
+			entries: [{ id: 'w-n2', name: 'N2', target: 'folders/ops-2/nested/workflows/n2' }],
+			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
+		});
+		const writer = new CapturingWriter();
+
+		const result = await exporter.export({
+			user,
+			folderIds: ['ops-a', 'ops-b'],
+			selectedWorkflowIds: new Set(['w-n2']),
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		expect(result.entries.map((e) => e.target)).toEqual(['folders/ops-2', 'folders/ops-2/nested']);
+		expect(writer.directories).toEqual(['folders/ops-2', 'folders/ops-2/nested']);
+		// The exporter still receives every workflow of the folder so file names stay stable.
+		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
+		expect(workflowExporter.export).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowIds: ['w-n1', 'w-n2'],
+				selectedWorkflowIds: new Set(['w-n2']),
+				basePrefix: 'folders/ops-2/nested',
+			}),
+		);
+		expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-n2']);
+	});
+
 	it('propagates a WorkflowExporter abort so the whole folder export rejects', async () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));

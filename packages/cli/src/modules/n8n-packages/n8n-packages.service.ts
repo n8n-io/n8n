@@ -175,6 +175,7 @@ export class N8nPackagesService {
 				? await this.projectExporter.export({
 						user: request.user,
 						projectIds,
+						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
 						workflowVersionPolicy,
