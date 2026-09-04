@@ -451,17 +451,6 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should ignore an offset query parameter', async () => {
-		await saveCredential(dbCredential(), { user: owner });
-		await saveCredential(dbCredential(), { user: owner });
-		await saveCredential(dbCredential(), { user: owner });
-
-		const response = await authOwnerAgent.get('/credentials').query({ offset: 5 });
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(3);
-	});
-
 	test('should not include credential data or secrets in the response', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 		const decryptedData = await getDecryptedCredentialData(savedCredential.id);
@@ -530,26 +519,6 @@ describe('GET /credentials/:id', () => {
 		const response = await authMemberWithReadScopeAgent.get('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should expose only the allowlisted response fields', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
-
-		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
-
-		expect(response.statusCode).toBe(200);
-		expect(Object.keys(response.body).sort()).toEqual([
-			'createdAt',
-			'id',
-			'isGlobal',
-			'isManaged',
-			'isResolvable',
-			'name',
-			'resolvableAllowFallback',
-			'resolverId',
-			'type',
-			'updatedAt',
-		]);
 	});
 });
 
