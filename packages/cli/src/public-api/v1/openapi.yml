@@ -27,7 +27,7 @@ tags:
     description: Operations about security audit
   - name: CommunityPackage
     description: Operations about community packages
-  - name: Credential
+  - name: Credentials
     description: Operations about credentials
   - name: DataTable
     description: Operations about data tables and their rows
