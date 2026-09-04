@@ -66,6 +66,14 @@ export async function getPollResponse(
 			responseData = results.flat();
 		} else {
 			qs.$top = 1;
+			// Graph does not guarantee any ordering without $orderby, so request the
+			// newest message explicitly. When $orderby is combined with $filter, Graph
+			// requires the ordered property to appear first in the filter, so prepend
+			// an always-true receivedDateTime clause when user filters are set.
+			qs.$orderby = 'receivedDateTime desc';
+			if (qs.$filter) {
+				qs.$filter = `receivedDateTime ge 1900-01-01T00:00:00Z and ${qs.$filter}`;
+			}
 			const endpoints =
 				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
 
