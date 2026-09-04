@@ -431,7 +431,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
-				? this.createExecuteNodeAdapter(this.executeNodeService, user)
+				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
 				: undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
@@ -568,10 +568,13 @@ export class InstanceAiAdapterService {
 	private createExecuteNodeAdapter(
 		executeNodeService: ExecuteNodeService,
 		user: User,
+		boundProjectId?: string,
 	): InstanceAiExecuteNodeService {
+		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
+				const projectId = await resolveProjectId(['workflow:execute']);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -581,6 +584,7 @@ export class InstanceAiAdapterService {
 					},
 					input: request.input as Array<{ json: IDataObject }> | undefined,
 					timeoutMs: request.timeoutMs,
+					projectId,
 				});
 				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
 			},

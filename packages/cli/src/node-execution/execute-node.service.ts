@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ProjectRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
@@ -37,6 +37,7 @@ export interface ExecuteNodeRequest {
 	};
 	input?: Array<{ json: IDataObject }>;
 	timeoutMs?: number;
+	projectId: string;
 }
 
 export interface ExecuteNodeOutputItem {
@@ -66,9 +67,10 @@ export type ExecuteNodeResult =
  * and deleted afterwards.
  *
  * `findCredentialForUser` is the caller-facing authorization gate; nothing
- * downstream re-checks per user. The engine's project-level check runs against
- * the temp workflow's personal project, so a credential shared only via a team
- * project fails at run start (fails closed).
+ * downstream re-checks per user. The temp workflow is created in the caller's
+ * `projectId` (the Instance AI conversation's project), and the engine's
+ * project-level check runs against it, so credentials shared with that project
+ * are usable while anything else fails at run start (fails closed).
  */
 @Service()
 export class ExecuteNodeService {
@@ -77,7 +79,6 @@ export class ExecuteNodeService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionPersistence: ExecutionPersistence,
@@ -99,7 +100,7 @@ export class ExecuteNodeService {
 		);
 		const inputItems: INodeExecutionData[] = request.input ?? [{ json: {} }];
 
-		const workflow = await this.createTemporaryWorkflow(user, node, timeoutMs);
+		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
 			return await this.execute(user, workflow, node, inputItems, timeoutMs);
 		} catch (error) {
@@ -179,12 +180,10 @@ export class ExecuteNodeService {
 	}
 
 	private async createTemporaryWorkflow(
-		user: User,
+		projectId: string,
 		node: INode,
 		timeoutMs: number,
 	): Promise<WorkflowEntity> {
-		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
-
 		const newWorkflow = new WorkflowEntity();
 		newWorkflow.isArchived = true;
 		newWorkflow.versionId = uuid();
@@ -202,7 +201,7 @@ export class ExecuteNodeService {
 			executionTimeout: Math.ceil(timeoutMs / 1000),
 		};
 
-		return await this.workflowRepository.createWorkflowWithOwner(newWorkflow, personalProject.id);
+		return await this.workflowRepository.createWorkflowWithOwner(newWorkflow, projectId);
 	}
 
 	/** Cascade also removes the execution row, so read the result first. */

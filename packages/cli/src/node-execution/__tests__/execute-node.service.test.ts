@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -37,6 +37,7 @@ const baseRequest = (overrides: Partial<ExecuteNodeRequest> = {}): ExecuteNodeRe
 	type: 'n8n-nodes-base.set',
 	version: 3,
 	config: { parameters: {} },
+	projectId: 'project-1',
 	...overrides,
 });
 
@@ -49,7 +50,6 @@ describe('ExecuteNodeService', () => {
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const logger = mockInstance(Logger);
 	const workflowRepository = mockInstance(WorkflowRepository);
-	const projectRepository = mockInstance(ProjectRepository);
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const executionPersistence = mockInstance(ExecutionPersistence);
@@ -59,7 +59,6 @@ describe('ExecuteNodeService', () => {
 		credentialsFinderService,
 		logger,
 		workflowRepository,
-		projectRepository,
 		workflowRunner,
 		activeExecutions,
 		executionPersistence,
@@ -71,9 +70,6 @@ describe('ExecuteNodeService', () => {
 		vi.clearAllMocks();
 
 		nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType());
-		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
-			mock({ id: 'personal-project-1' }),
-		);
 		workflowRepository.createWorkflowWithOwner.mockImplementation(async (workflow) => {
 			workflow.id = 'temp-wf-1';
 			return await Promise.resolve(workflow);
@@ -164,7 +160,7 @@ describe('ExecuteNodeService', () => {
 	});
 
 	describe('engine execution', () => {
-		it('creates an archived single-node workflow shared into the personal project', async () => {
+		it('creates an archived single-node workflow owned by the requested project', async () => {
 			await service.run(user, baseRequest({ timeoutMs: 10_000 }));
 
 			const savedWorkflow = workflowRepository.createWorkflowWithOwner.mock.calls[0][0];
@@ -182,7 +178,7 @@ describe('ExecuteNodeService', () => {
 			);
 			expect(workflowRepository.createWorkflowWithOwner).toHaveBeenCalledWith(
 				savedWorkflow,
-				'personal-project-1',
+				'project-1',
 			);
 		});
 

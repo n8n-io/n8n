@@ -1372,6 +1372,7 @@ function createNodeAdapterServiceForTests(
 		loadNodesAndCredentials?: Record<string, unknown>;
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
+		executeNodeService?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1443,6 +1444,11 @@ function createNodeAdapterServiceForTests(
 			typeof InstanceAiAdapterService
 		>[35],
 		nodeCatalogService,
+		undefined,
+		undefined,
+		options?.executeNodeService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[39],
 	);
 
 	(
@@ -1458,11 +1464,56 @@ function createNodeAdapterServiceForTests(
 
 	return {
 		service,
+		mockUser,
 		nodeService: context.nodeService,
 		credentialService: context.credentialService,
 		nodeCatalogService,
 	};
 }
+
+describe('executeNodeService adapter', () => {
+	const executeRequest = {
+		type: 'n8n-nodes-base.set',
+		version: 3,
+		config: { parameters: {} },
+	};
+
+	beforeEach(() => {
+		mockedUserHasScopes.mockReset();
+	});
+
+	it('runs the node in the bound project after asserting execute scope there', async () => {
+		mockedUserHasScopes.mockResolvedValue(true);
+		const executeNodeService = {
+			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
+		};
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+		await context.executeNodeService?.execute(executeRequest);
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
+			projectId: 'team-project-1',
+		});
+		expect(executeNodeService.run).toHaveBeenCalledWith(
+			mockUser,
+			expect.objectContaining({ projectId: 'team-project-1' }),
+		);
+	});
+
+	it('does not run when the user lacks execute scope in the bound project', async () => {
+		mockedUserHasScopes.mockResolvedValue(false);
+		const executeNodeService = { run: vi.fn() };
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+
+		await expect(context.executeNodeService?.execute(executeRequest)).rejects.toThrow(
+			'required permissions',
+		);
+		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+});
 
 function createNodeAdapterForTests(
 	nodes: Array<Record<string, unknown>>,

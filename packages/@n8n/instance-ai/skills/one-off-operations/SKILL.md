@@ -74,9 +74,9 @@ Direct execution is sufficient when ALL of these hold:
   created first, route that through the credentials setup as usual.
 - The run fits the 60s cap and the input volume is modest.
 
-The run executes from the user's personal project. If it fails because the
-credential is not accessible there (e.g. shared only with a team project),
-fall back to the one-off workflow flow below.
+The run executes in the current conversation's project, so credentials shared
+with that project are usable. If it fails because a credential is not
+accessible there, fall back to the one-off workflow flow below.
 
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
