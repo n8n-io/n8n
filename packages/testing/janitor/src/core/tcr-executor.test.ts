@@ -76,6 +76,13 @@ describe('TcrExecutor', () => {
 				excludeTypes: ['Page'],
 			},
 			fixtureObjectName: 'app',
+			tcr: {
+				// The default test command is `npx playwright test`. These cases run in an
+				// ephemeral temp dir with no node_modules, so npx resolves playwright from
+				// the registry and blocks on its install prompt behind `stdio: 'pipe'` —
+				// a multi-minute hang instead of a 30s test. Keep the command local.
+				testCommand: 'echo',
+			},
 		});
 		setConfig(config);
 
