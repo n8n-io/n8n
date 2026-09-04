@@ -343,6 +343,12 @@ export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
 }
 
+/** A resource the agent uses that must be published before the agent itself can go live. */
+export type AgentPublishDependency = { type: 'workflow'; id: string; name: string };
+
+/** A dependency the publish flow tried to publish and could not, with the reason. */
+export type AgentPublishDependencyFailure = AgentPublishDependency & { reason: string };
+
 /**
  * Internal integration type for the in-app chat channel. Injected per-run for
  * `/chat` executions — never persisted in an agent's `integrations` array.

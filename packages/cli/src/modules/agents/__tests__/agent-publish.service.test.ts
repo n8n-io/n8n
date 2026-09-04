@@ -1,6 +1,6 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -10,6 +10,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -116,6 +117,8 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const workflowService = mock<WorkflowService>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -141,6 +144,7 @@ function makeService() {
 		status: 'valid',
 		issues: [],
 	});
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	Container.set(AgentTaskService, taskService);
 
@@ -158,6 +162,8 @@ function makeService() {
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
+		workflowRepository,
+		workflowService,
 	);
 
 	return {
@@ -174,6 +180,8 @@ function makeService() {
 		credentialsService,
 		telemetry,
 		eventService,
+		workflowRepository,
+		workflowService,
 		trx,
 		taskRepo,
 	};
@@ -946,5 +954,109 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.revision).toBe(8);
 		expect(agent.activeVersionId).toBe(versionId);
+	});
+
+	describe('workflow tool dependencies', () => {
+		// A publish mutates the entity, so every test gets its own copy.
+		const withWorkflowTools = () =>
+			makeAgent({
+				schema: {
+					...schema,
+					tools: [
+						{ type: 'workflow', workflowId: 'wf-1', workflow: 'Lookup' },
+						{ type: 'workflow', workflow: 'Notify' },
+					],
+				},
+			});
+		const lookup = { id: 'wf-1', name: 'Lookup', activeVersionId: null } as WorkflowEntity;
+		const notify = { id: 'wf-2', name: 'Notify', activeVersionId: 'v-live' } as WorkflowEntity;
+
+		it('publishes unpublished workflow tools before validating when publishDependencies is set', async () => {
+			const {
+				service,
+				agentRepository,
+				workflowRepository,
+				workflowService,
+				agentValidationService,
+			} = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(withWorkflowTools());
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([lookup, notify]);
+
+			await service.publishAgent(agentId, projectId, user, byUser, undefined, {
+				publishDependencies: true,
+			});
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
+				source: 'agent-publish',
+			});
+			expect(workflowService.activateWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
+				agentValidationService.validateAgentEntityConfiguration.mock.invocationCallOrder[0],
+			);
+			expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
+		});
+
+		it('publishes every unpublished dependency, then rejects the agent publish naming the failures', async () => {
+			const { service, agentRepository, workflowRepository, workflowService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(withWorkflowTools());
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				lookup,
+				{ ...notify, activeVersionId: null } as WorkflowEntity,
+			]);
+			workflowService.activateWorkflow.mockImplementation(async (_user, workflowId) => {
+				if (workflowId === 'wf-1') throw new Error('Webhook path in use');
+				return {} as WorkflowEntity;
+			});
+
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, undefined, {
+					publishDependencies: true,
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringContaining('"Lookup" (Webhook path in use)'),
+				meta: {
+					failedDependencies: [
+						{ type: 'workflow', id: 'wf-1', name: 'Lookup', reason: 'Webhook path in use' },
+					],
+				},
+			});
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledTimes(2);
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-2', {
+				source: 'agent-publish',
+			});
+			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		});
+
+		it('does not touch dependent workflows when publishDependencies is not set', async () => {
+			const { service, agentRepository, workflowRepository, workflowService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(withWorkflowTools());
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([lookup]);
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('lists each unpublished workflow tool once, even when referenced by id and by name', async () => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...schema,
+						tools: [
+							{ type: 'workflow', workflowId: 'wf-1', workflow: 'Lookup' },
+							{ type: 'workflow', workflow: 'Lookup' },
+							{ type: 'workflow', workflow: 'Notify' },
+						],
+					},
+				}),
+			);
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([lookup, notify]);
+
+			await expect(service.listUnpublishedDependencies(agentId, projectId)).resolves.toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'Lookup' },
+			]);
+		});
 	});
 });

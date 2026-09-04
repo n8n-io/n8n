@@ -2399,6 +2399,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('publishes the bound agent draft when the user has agent:publish', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.listUnpublishedDependencies.mockResolvedValue([]);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-active',
@@ -2417,6 +2418,7 @@ describe('AgentsBuilderToolsService', () => {
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				undefined,
+				{ publishDependencies: false },
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -2439,12 +2441,15 @@ describe('AgentsBuilderToolsService', () => {
 
 			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
 
+			// A snapshot republish skips the draft pre-flight.
+			expect(agentPublishService.listUnpublishedDependencies).not.toHaveBeenCalled();
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				agentId,
 				projectId,
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
+				{ publishDependencies: false },
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -2471,6 +2476,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('surfaces publish service errors to the model', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.listUnpublishedDependencies.mockResolvedValue([]);
 			agentPublishService.publishAgent.mockRejectedValue(
 				new Error('Cannot publish agent with missing custom tools: my_tool'),
 			);
@@ -2480,6 +2486,71 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: false,
 				errors: [{ message: 'Cannot publish agent with missing custom tools: my_tool' }],
+			});
+		});
+
+		describe('with unpublished workflow tools', () => {
+			const lookup = { type: 'workflow', id: 'wf-1', name: 'Lookup' } as const;
+
+			it('suspends for approval instead of publishing', async () => {
+				const { service, agentPublishService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentPublishService.listUnpublishedDependencies.mockResolvedValue([lookup]);
+
+				await getPublishTool(service).handler!({}, ctx);
+
+				expect(ctx.suspend).toHaveBeenCalledWith({
+					type: 'approval',
+					toolName: BUILDER_TOOLS.PUBLISH_AGENT,
+					displayName: 'Publish agent and 1 workflow',
+					args: { workflows: [{ id: 'wf-1', name: 'Lookup' }] },
+				});
+				expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			});
+
+			it('publishes the agent and its dependencies once the user approves', async () => {
+				const { service, agentPublishService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentPublishService.listUnpublishedDependencies.mockResolvedValue([lookup]);
+				agentPublishService.publishAgent.mockResolvedValue({
+					agent: { activeVersionId: 'v-active', versionId: 'v-active' } as Agent,
+				});
+
+				const result = await getPublishTool(service).handler!(
+					{},
+					{ ...ctx, resumeData: { approved: true } },
+				);
+
+				expect(ctx.suspend).not.toHaveBeenCalled();
+				expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					user,
+					{ by: 'builder', trigger: 'explicit' },
+					undefined,
+					{ publishDependencies: true },
+				);
+				expect(result).toEqual(
+					expect.objectContaining({ ok: true, publishedDependencies: [lookup] }),
+				);
+			});
+
+			it('does not publish when the user rejects', async () => {
+				const { service, agentPublishService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentPublishService.listUnpublishedDependencies.mockResolvedValue([lookup]);
+
+				const result = await getPublishTool(service).handler!(
+					{},
+					{ ...ctx, resumeData: { approved: false } },
+				);
+
+				expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					ok: false,
+					declined: true,
+					errors: [{ message: expect.stringContaining('declined') }],
+				});
 			});
 		});
 

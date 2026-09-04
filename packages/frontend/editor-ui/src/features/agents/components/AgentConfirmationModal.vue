@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import { N8nButton, N8nHeading, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+
+type AgentConfirmationModalItem = { id: string; name: string; href: string; detail?: string };
+
+/** Shown in place of the description and items while the user fixes the listed resources. */
+export type AgentConfirmationModalFailure = {
+	message: string;
+	items: AgentConfirmationModalItem[];
+};
 
 export type AgentConfirmationModalData = {
 	title: string;
 	description: string;
+	/** Linked resources listed under the description. */
+	items?: AgentConfirmationModalItem[];
 	confirmButtonText: string;
 	cancelButtonText: string;
-	onConfirm?: () => unknown | Promise<unknown>;
+	/** Resolve with a failure to keep the modal open and show it; the modal closes otherwise. */
+	onConfirm?: () => Promise<AgentConfirmationModalFailure | undefined>;
 	onCancel?: () => unknown | Promise<unknown>;
 	onClose?: () => unknown | Promise<unknown>;
 };
@@ -21,6 +32,9 @@ const props = defineProps<{
 
 const uiStore = useUIStore();
 const submitting = ref(false);
+const failure = ref<AgentConfirmationModalFailure | null>(null);
+
+const items = computed(() => failure.value?.items ?? props.data.items ?? []);
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
@@ -34,8 +48,8 @@ async function onCancel() {
 async function onConfirm() {
 	submitting.value = true;
 	try {
-		const shouldClose = await props.data.onConfirm?.();
-		if (shouldClose !== false) closeModal();
+		failure.value = (await props.data.onConfirm?.()) ?? null;
+		if (!failure.value) closeModal();
 	} catch {
 		// Keep the modal open when the caller handles an async failure.
 	} finally {
@@ -59,9 +73,23 @@ async function onBeforeClose() {
 		<template #content>
 			<div :class="$style.content">
 				<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
-				<N8nText size="medium">
-					{{ props.data.description }}
-				</N8nText>
+				<div :class="$style.body">
+					<N8nText
+						size="medium"
+						:color="failure ? 'danger' : undefined"
+						data-test-id="agent-confirmation-description"
+					>
+						{{ failure?.message ?? props.data.description }}
+					</N8nText>
+					<ul v-if="items.length" :class="$style.list" data-test-id="agent-confirmation-items">
+						<li v-for="item in items" :key="item.id">
+							<N8nLink :to="item.href" new-window size="small">{{ item.name }}</N8nLink>
+							<N8nText v-if="item.detail" tag="div" size="small" color="text-light">
+								{{ item.detail }}
+							</N8nText>
+						</li>
+					</ul>
+				</div>
 			</div>
 		</template>
 		<template #footer>
@@ -88,6 +116,19 @@ async function onBeforeClose() {
 .icon {
 	flex-shrink: 0;
 	margin-top: var(--spacing--4xs);
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	min-width: 0;
+}
+
+.list {
+	margin: 0;
+	padding-left: var(--spacing--md);
+	list-style: disc;
 }
 
 .footer {

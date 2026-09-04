@@ -34,7 +34,8 @@ export type WorkflowActionSource =
 	| 'n8n-mcp'
 	| 'n8n-ai'
 	| 'import'
-	| 'review-approval';
+	| 'review-approval'
+	| 'agent-publish';
 
 export type UserLike = {
 	id: string;

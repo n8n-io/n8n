@@ -19,6 +19,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import type { StatusDotVariant } from '@n8n/design-system';
@@ -42,7 +43,6 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
-	N8nStatusDot,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -758,32 +758,14 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<!-- The tooltip is only mounted for the rare partial/failed states; the
-					common published case keeps the plain markup. -->
-				<template v-else-if="publicationIndicator">
-					<div
-						v-if="!publicationIndicator.tooltip"
-						:class="$style.publishIndicator"
-						:data-state="publicationIndicator.state"
-						data-test-id="workflow-card-publish-indicator"
-					>
-						<N8nStatusDot :variant="publicationIndicator.variant" />
-						<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
-					</div>
-					<N8nTooltip v-else placement="top" as-child>
-						<template #content>{{ publicationIndicator.tooltip }}</template>
-						<!-- tabindex makes the explanation keyboard-reachable: the tooltip opens on focus. -->
-						<div
-							:class="$style.publishIndicator"
-							:data-state="publicationIndicator.state"
-							data-test-id="workflow-card-publish-indicator"
-							tabindex="0"
-						>
-							<N8nStatusDot :variant="publicationIndicator.variant" />
-							<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
-						</div>
-					</N8nTooltip>
-				</template>
+				<PublicationIndicator
+					v-else-if="publicationIndicator"
+					:variant="publicationIndicator.variant"
+					:label="publicationIndicator.label"
+					:tooltip="publicationIndicator.tooltip"
+					:data-state="publicationIndicator.state"
+					data-test-id="workflow-card-publish-indicator"
+				/>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -893,20 +875,6 @@ const tags = computed(
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground--tint-1);
 	color: var(--color--text);
-}
-
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

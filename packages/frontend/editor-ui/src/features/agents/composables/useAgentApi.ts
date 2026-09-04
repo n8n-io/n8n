@@ -7,6 +7,7 @@ import type {
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
+	AgentPublishDependency,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -336,13 +337,25 @@ export const publishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	versionId?: string,
+	options?: { versionId?: string; publishDependencies?: boolean },
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		versionId ? { versionId } : undefined,
+		options,
+	);
+};
+
+export const getAgentUnpublishedDependencies = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentPublishDependency[]> => {
+	return await makeRestApiRequest<AgentPublishDependency[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/unpublished-dependencies`,
 	);
 };
 

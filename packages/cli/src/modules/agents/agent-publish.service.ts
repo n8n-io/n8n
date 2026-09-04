@@ -2,11 +2,14 @@ import {
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
+	type AgentJsonWorkflowToolConfig,
+	type AgentPublishDependency,
+	type AgentPublishDependencyFailure,
 	type AgentSkill,
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { isUniqueConstraintError, type User } from '@n8n/db';
+import { isUniqueConstraintError, WorkflowRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
@@ -20,9 +23,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentPublishDependenciesError } from './agent-publish-dependencies.error';
 import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
 import {
 	AgentModificationTelemetryService,
@@ -41,6 +46,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import {
 	configuredCapabilityKinds,
 	countAgentCapabilities,
@@ -103,6 +109,8 @@ export class AgentPublishService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async publishAgent(
@@ -111,6 +119,7 @@ export class AgentPublishService {
 		user: User,
 		emitter: AgentPublishEmitter,
 		versionId?: string,
+		options: { publishDependencies?: boolean } = {},
 	): Promise<PublishAgentResult> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -141,6 +150,14 @@ export class AgentPublishService {
 			: new Map(
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
+
+		if (options.publishDependencies) {
+			await this.publishUnpublishedDependencies(
+				targetHistory ? targetHistory.schema : agent.schema,
+				projectId,
+				user,
+			);
+		}
 
 		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
 
@@ -242,6 +259,64 @@ export class AgentPublishService {
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return versionId ? { agent } : { agent, draftValidation: validation };
+	}
+
+	/**
+	 * Workflow tools of the current draft whose workflow has no published
+	 * version. Production runs load the published version, so these block
+	 * publishing the agent.
+	 */
+	async listUnpublishedDependencies(
+		agentId: string,
+		projectId: string,
+	): Promise<AgentPublishDependency[]> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		return await this.findUnpublishedDependencies(agent.schema, projectId);
+	}
+
+	private async findUnpublishedDependencies(
+		config: AgentJsonConfig | null,
+		projectId: string,
+	): Promise<AgentPublishDependency[]> {
+		const refs = (config?.tools ?? []).filter(
+			(tool): tool is AgentJsonWorkflowToolConfig => tool.type === 'workflow',
+		);
+		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
+		// The map has one entry per reference, so a workflow referenced by id
+		// and by name appears twice.
+		const unpublished = new Map<string, AgentPublishDependency>();
+		for (const { id, name, activeVersionId } of workflows.values()) {
+			if (!activeVersionId) unpublished.set(id, { type: 'workflow', id, name });
+		}
+		return [...unpublished.values()];
+	}
+
+	/**
+	 * Try every dependency, then fail with all failures: the agent must not go
+	 * live with an unpublished tool.
+	 */
+	private async publishUnpublishedDependencies(
+		config: AgentJsonConfig | null,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		const failedDependencies: AgentPublishDependencyFailure[] = [];
+		for (const dependency of await this.findUnpublishedDependencies(config, projectId)) {
+			try {
+				await this.workflowService.activateWorkflow(user, dependency.id, {
+					source: 'agent-publish',
+				});
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				failedDependencies.push({ ...dependency, reason });
+			}
+		}
+		if (failedDependencies.length > 0) {
+			throw new AgentPublishDependenciesError({ failedDependencies });
+		}
 	}
 
 	/**

@@ -126,7 +126,9 @@ export function useAgentVersionHistory() {
 
 		acting.value = true;
 		try {
-			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId, versionId);
+			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId, {
+				versionId,
+			});
 			showMessage({
 				title: locale.baseText('agents.versionHistory.publish.toast.title'),
 				type: 'success',

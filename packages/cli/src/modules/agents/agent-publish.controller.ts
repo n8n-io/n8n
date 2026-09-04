@@ -1,4 +1,5 @@
 import {
+	type AgentPublishDependency,
 	type AgentVersionListItemDto,
 	PaginationDto,
 	PublishAgentDto,
@@ -32,12 +33,26 @@ export class AgentPublishController {
 			req.user,
 			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
+			{ publishDependencies: payload?.publishDependencies },
 		);
 		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 			draftValidation,
+		);
+	}
+
+	@Get('/:agentId/unpublished-dependencies')
+	@ProjectScope('agent:read')
+	async listUnpublishedDependencies(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentPublishDependency[]> {
+		return await this.agentPublishService.listUnpublishedDependencies(
+			agentId,
+			req.params.projectId,
 		);
 	}
 

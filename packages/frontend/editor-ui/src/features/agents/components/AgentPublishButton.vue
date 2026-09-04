@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
+import { hasBlockingIssues } from '../utils/validationIssues';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -56,7 +57,12 @@ const publishState = computed((): AgentPublishState => {
 // `null` (unknown/stale, e.g. still loading or invalidated by a local edit
 // that hasn't been re-validated yet) is treated as not publishable — Publish
 // must never stay enabled against a result that predates the working copy.
-const isConfigInvalid = computed(() => props.configValidationStatus !== 'valid');
+// Warning-only issues (unpublished workflow tools) don't block: the publish
+// flow publishes them after the user confirms.
+const isConfigInvalid = computed(
+	() =>
+		props.configValidationStatus === null || hasBlockingIssues(props.configValidationIssues),
+);
 const invalidConfigTooltip = computed(() =>
 	locale.baseText('agents.publish.button.invalidConfigTooltip'),
 );

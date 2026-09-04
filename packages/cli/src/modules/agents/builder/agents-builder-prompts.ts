@@ -332,7 +332,9 @@ follow-up for the credential.
 ### Publish after build: "Publish it" / "Make it live"
 1. Finish any pending config mutations.
 2. \`publish_agent()\`.
-3. Confirm the agent is live; do not send the user to the editor Publish button.`;
+3. If \`publish_agent\` pauses for approval because the agent uses unpublished workflows, wait
+   for the user's decision in that approval; do not retry or work around it.
+4. Confirm the agent is live; do not send the user to the editor Publish button.`;
 
 export interface BuilderPromptContext {
 	agentPreviewPath: string;

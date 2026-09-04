@@ -1,12 +1,36 @@
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import type { AgentPublishDependency, AgentPublishDependencyFailure } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	getAgentUnpublishedDependencies,
+	publishAgent,
+	revertAgentToPublished,
+	unpublishAgent,
+} from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
+
+function isDependencyFailure(value: unknown): value is AgentPublishDependencyFailure {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'id' in value &&
+		'name' in value &&
+		'reason' in value
+	);
+}
+
+/** Workflows the backend tried to publish with the agent and could not. */
+function failedDependenciesOf(error: unknown): AgentPublishDependencyFailure[] {
+	const failed = error instanceof ResponseError ? error.meta?.failedDependencies : undefined;
+	return Array.isArray(failed) ? failed.filter(isDependencyFailure) : [];
+}
 
 /**
  * Shared publish/unpublish flow used by the builder header button and the list card.
@@ -15,20 +39,76 @@ import type { AgentResource } from '../types';
  */
 export function useAgentPublish() {
 	const rootStore = useRootStore();
+	const router = useRouter();
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 	const publishing = ref(false);
 
+	function toModalItem({ id, name }: AgentPublishDependency) {
+		return {
+			id,
+			name,
+			href: router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: id } }).href,
+		};
+	}
+
+	async function publishAndNotify(
+		projectId: string,
+		agentId: string,
+		dependencies: AgentPublishDependency[],
+	): Promise<AgentResource> {
+		const updated = await publishAgent(rootStore.restApiContext, projectId, agentId, {
+			publishDependencies: dependencies.length > 0,
+		});
+		upsertProjectAgentsListCache(projectId, updated);
+		showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
+		return updated;
+	}
+
 	async function publish(projectId: string, agentId: string): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
 		try {
-			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
-			upsertProjectAgentsListCache(projectId, updated);
-			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
-			return updated;
+			// Workflow tools without a published version go live with the agent,
+			// but only after the user has seen which ones.
+			const dependencies = await getAgentUnpublishedDependencies(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+			);
+			if (dependencies.length === 0) return await publishAndNotify(projectId, agentId, []);
+
+			// The modal closes only once the publish succeeds: workflows that could
+			// not be published are listed in it so the user can open and fix them.
+			let updated: AgentResource | undefined;
+			const confirmed = await openAgentConfirmationModal({
+				title: locale.baseText('agents.publish.dependencies.modal.title'),
+				description: locale.baseText('agents.publish.dependencies.modal.description'),
+				items: dependencies.map(toModalItem),
+				confirmButtonText: locale.baseText('agents.publish.dependencies.modal.button.publish'),
+				cancelButtonText: locale.baseText('generic.cancel'),
+				onConfirm: async () => {
+					try {
+						updated = await publishAndNotify(projectId, agentId, dependencies);
+						return undefined;
+					} catch (error) {
+						const failed = failedDependenciesOf(error);
+						const message =
+							failed.length > 0
+								? locale.baseText('agents.publish.dependencies.modal.failed')
+								: error instanceof Error
+									? error.message
+									: locale.baseText('agents.publish.error.publish');
+						return {
+							message,
+							items: failed.map((failure) => ({ ...toModalItem(failure), detail: failure.reason })),
+						};
+					}
+				},
+			});
+			return confirmed === MODAL_CONFIRM && updated ? updated : null;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));
 			return null;
