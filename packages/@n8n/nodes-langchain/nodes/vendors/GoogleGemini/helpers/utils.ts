@@ -47,16 +47,32 @@ export function getFilenameFromMimeType(
 	return `${baseName}.${extension(mimeType) || fallbackExtension}`;
 }
 
+export function getCredentialHostname(this: IExecuteFunctions, host: string): string {
+	try {
+		return new URL(host).hostname;
+	} catch {
+		throw new NodeOperationError(
+			this.getNode(),
+			"The Google Gemini credential host isn't a valid URL",
+			{
+				description: "Enter a valid URL in the credential's Host field",
+			},
+		);
+	}
+}
+
 export async function downloadFile(
 	this: IExecuteFunctions,
 	url: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
+	allowedDomains?: string,
 ) {
 	const downloadResponse = (await this.helpers.httpRequest({
 		method: 'GET',
 		url,
 		qs,
+		...(allowedDomains ? { allowedDomains } : {}),
 		returnFullResponse: true,
 		encoding: 'arraybuffer',
 	})) as { body: ArrayBuffer; headers: IDataObject };

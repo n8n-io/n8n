@@ -16,6 +16,12 @@ paths:
       $ref: ./handlers/executions/spec/paths/getExecutionTags.generated.yml
     put:
       $ref: ./handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  /executions/stop:
+    post:
+      $ref: ./handlers/executions/spec/paths/stopManyExecutions.generated.yml
+  /executions/{executionId}/stop:
+    post:
+      $ref: ./handlers/executions/spec/paths/stopExecution.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
