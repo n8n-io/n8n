@@ -129,8 +129,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
 		this.on('executionsCrashed', async ({ executions }) => {
-			// A sweep can crash a full batch of executions. Record them one at a time, to
-			// keep the writes within the database connection pool.
+			// Record one at a time, to keep a large sweep within the database connection pool.
 			for (const { workflowId, workflowName, mode } of executions) {
 				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
 			}

@@ -19,7 +19,6 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			if (batch.length === 0) return;
 
-			// One event for the whole batch, so the listener can pace the statistics writes.
 			this.workflowStatisticsService.emit('executionsCrashed', { executions: batch });
 		});
 	}

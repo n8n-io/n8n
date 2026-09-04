@@ -18,7 +18,6 @@ describe('ExecutionCrashService', () => {
 		...overrides,
 	});
 
-	/** Report one batch the way the repository reports each batch it transitions. */
 	const transitions = (batch: CrashedExecution[]) =>
 		executionRepository.markAsCrashed.mockImplementation(async (_ids, onBatchTransitioned) => {
 			onBatchTransitioned?.(batch);

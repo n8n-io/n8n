@@ -264,7 +264,6 @@ describe('ExecutionRepository', () => {
 				.map((_, i) => i.toString());
 
 		test('should batch updates above a threshold and report each batch as it transitions', async () => {
-			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
 			const manyExecutionsToMarkAsCrashed = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD);
 			entityManager.find.mockResolvedValue([crashableRow('1')]);
 			const reported: string[][] = [];

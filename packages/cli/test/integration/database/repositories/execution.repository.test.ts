@@ -290,8 +290,7 @@ describe('ExecutionRepository', () => {
 				finished: false,
 				createdAt: new Date(),
 			});
-			// The inserted id comes back as a number on Postgres and as a string on SQLite,
-			// while the repository always returns it as a string.
+			// Postgres returns the inserted id as a number, SQLite as a string.
 			const runningId = String(identifiers[0].id);
 			await executionRepo.softDelete(runningId);
 
@@ -302,8 +301,6 @@ describe('ExecutionRepository', () => {
 				withDeleted: true,
 			});
 			expect(runningExec?.status).toBe('crashed');
-			// The statistics counter relies on these fields being present on the
-			// returned rows, not just on the row count.
 			expect(crashed).toEqual([
 				{
 					id: runningId,
