@@ -486,7 +486,7 @@ describe('DataTableService', () => {
 	});
 
 	describe('getCachedSizeBytesByIds', () => {
-		const cachedSizeData = {
+        const cachedSizeData: DataTablesSizeData = {
 			totalBytes: 3072,
 			dataTables: {
 				'dt-1': {
@@ -503,7 +503,8 @@ describe('DataTableService', () => {
 					projectName: 'Project 2',
 					sizeBytes: 2048,
 				},
-			} satisfies DataTableInfoById,
+			},
+		};
 		};
 
 		beforeEach(() => {
