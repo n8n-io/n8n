@@ -32,7 +32,7 @@ describe('createAuthFetch', () => {
 		expect(res.status).toBe(200);
 		expect(baseFetchMock).toHaveBeenCalledTimes(1);
 		const [, init] = baseFetchMock.mock.calls[0] as [unknown, RequestInit];
-		expect(init.headers).toMatchObject({ Authorization: 'Bearer A' });
+		expect(new Headers(init.headers).get('authorization')).toBe('Bearer A');
 	});
 
 	it('returns 401 unchanged when no onUnauthorized handler is configured', async () => {
@@ -75,7 +75,7 @@ describe('createAuthFetch', () => {
 		expect(res.status).toBe(200);
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
 		const [, init2] = baseFetchMock.mock.calls[1] as [unknown, RequestInit];
-		expect(init2.headers).toMatchObject({ Authorization: 'Bearer B' });
+		expect(new Headers(init2.headers).get('authorization')).toBe('Bearer B');
 	});
 });
 
@@ -86,14 +86,15 @@ describe('createAuthFetch — header merging', () => {
 	});
 
 	it('merges caller-supplied init.headers with auth headers (auth takes precedence)', async () => {
-		const fetchFn = createAuthFetch({ baseFetch, initialHeaders: { Authorization: 'Bearer A' } });
-		await fetchFn('https://example.test/mcp', { headers: { 'X-Custom': 'value' } });
+		const fetchFn = createAuthFetch({ baseFetch, initialHeaders: { authorization: 'Bearer A' } });
+		await fetchFn('https://example.test/mcp', {
+			headers: { Authorization: 'Bearer caller', 'X-Custom': 'value' },
+		});
 
 		const [, init] = baseFetchMock.mock.calls[0] as [unknown, RequestInit];
-		expect(init.headers).toMatchObject({
-			'X-Custom': 'value',
-			Authorization: 'Bearer A',
-		});
+		const headers = new Headers(init.headers);
+		expect(headers.get('x-custom')).toBe('value');
+		expect(headers.get('authorization')).toBe('Bearer A');
 	});
 
 	it('uses the refreshed headers on the second call after a successful 401 refresh', async () => {
@@ -122,7 +123,7 @@ describe('createAuthFetch — header merging', () => {
 
 		expect(onUnauthorized).toHaveBeenCalledTimes(1);
 		const [, thirdInit] = baseFetchMock.mock.calls[2] as [unknown, RequestInit];
-		expect((thirdInit.headers as Record<string, string>).Authorization).toBe('Bearer refreshed-1');
+		expect(new Headers(thirdInit.headers).get('authorization')).toBe('Bearer refreshed-1');
 	});
 });
 
@@ -161,20 +162,21 @@ describe('createAuthFetch — allowedDomains', () => {
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
-		await expect(fetchFn('https://evil.test/mcp')).rejects.toThrow(UserError);
+		await expect(fetchFn('https://other.domain/mcp')).rejects.toThrow(UserError);
 		expect(baseFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('blocks redirect hops to disallowed domains', async () => {
-		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://evil.test/exfiltrate'));
+	it('blocks redirect hops to disallowed domains without sending the auth header there', async () => {
+		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://other.domain/exfiltrate'));
 
 		const fetchFn = createAuthFetch({
 			baseFetch,
-			initialHeaders: {},
+			initialHeaders: { Authorization: 'Bearer token' },
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
 		await expect(fetchFn('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(baseFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('follows redirect hops to allowed domains', async () => {
@@ -191,6 +193,25 @@ describe('createAuthFetch — allowedDomains', () => {
 
 		expect(res.status).toBe(200);
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('withholds auth headers after a redirect hop crosses origins', async () => {
+		baseFetchMock
+			.mockResolvedValueOnce(makeRedirect('https://other.test/moved'))
+			.mockResolvedValueOnce(makeOk());
+
+		const fetchFn = createAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer A' },
+			allowedDomains: { mode: 'domains', domains: 'example.test,other.test' },
+		});
+		await fetchFn('https://example.test/mcp');
+
+		expect(baseFetchMock).toHaveBeenCalledTimes(2);
+		expect(new Headers(baseFetchMock.mock.calls[0][1].headers).get('authorization')).toBe(
+			'Bearer A',
+		);
+		expect(new Headers(baseFetchMock.mock.calls[1][1].headers).get('authorization')).toBeNull();
 	});
 
 	it('blocks all requests when mode is none', async () => {

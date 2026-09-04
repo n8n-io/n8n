@@ -175,7 +175,7 @@ export class InfisicalProvider extends SecretsProvider {
 		this.http = this.outboundHttp.requests({
 			baseURL: this.settings.siteURL,
 			headers: () => this.buildAuthHeaders(),
-			ssrf: 'disabled', // admin-configured infrastructure
+			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Infisical provider initialized');

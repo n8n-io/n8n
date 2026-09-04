@@ -12,6 +12,7 @@ export function createMockTool(
 		invokeReturn?: unknown;
 		invokeError?: Error;
 		metadata?: Record<string, unknown>;
+		schema?: z.ZodTypeAny;
 	} = {},
 ): Mocked<Tool> {
 	const {
@@ -19,6 +20,7 @@ export function createMockTool(
 		invokeReturn = { result: 'success' },
 		invokeError,
 		metadata,
+		schema = z.object({}),
 	} = opts;
 
 	const invoke = vi.fn().mockImplementation(async () => {
@@ -32,7 +34,7 @@ export function createMockTool(
 	return {
 		name: toolName,
 		description,
-		schema: z.object({}),
+		schema,
 		invoke,
 		metadata,
 	} as unknown as Mocked<Tool>;

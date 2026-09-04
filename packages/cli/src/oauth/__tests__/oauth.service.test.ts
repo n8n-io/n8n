@@ -157,13 +157,11 @@ describe('OauthService', () => {
 	});
 
 	describe('constructor', () => {
-		it('builds its HTTP client with the injected SSRF protection service and a default timeout', () => {
-			// Guards the intent that outbound OAuth calls run with SSRF protection
-			// enabled per the configured env vars, rather than relying on the implicit
-			// `requests()` default, and that the shared request timeout is applied once
-			// on the client instead of being repeated per call.
+		it('builds its HTTP client with the default safe mode and a default timeout', () => {
+			// Guards the intent that outbound OAuth calls run through the default safe
+			// client, and that the shared request timeout is applied once on the
+			// client instead of being repeated per call.
 			expect(outboundHttp.requests).toHaveBeenCalledWith({
-				ssrf: ssrfProtectionService,
 				timeout: expect.any(Number),
 			});
 		});
@@ -304,7 +302,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(
+			credentialsFinderService.findById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'credential-id', isResolvable: false }),
 			);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
@@ -327,7 +325,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(mockCredential);
+			credentialsFinderService.findById.mockResolvedValue(mockCredential);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
 			const result = await service.getCredentialForAuthFlow(req);
@@ -1791,6 +1789,32 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'zendeskOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for typeformOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'typeformOAuth2Api',
 				isManaged: false,
 			});
 			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
@@ -5201,52 +5225,6 @@ describe('OauthService', () => {
 					oauthTokenSecret: 'request-secret',
 				}),
 			).rejects.toThrow(BadRequestError);
-		});
-	});
-
-	describe('extractAccountIdentifier', () => {
-		it('returns email from direct token field', () => {
-			expect(
-				OauthService.extractAccountIdentifier({ email: 'user@example.com', access_token: 'tok' }),
-			).toBe('user@example.com');
-		});
-
-		it('returns login from direct token field (GitHub-style)', () => {
-			expect(OauthService.extractAccountIdentifier({ login: 'octocat', access_token: 'tok' })).toBe(
-				'octocat',
-			);
-		});
-
-		it('extracts email from JWT id_token', () => {
-			const payload = { email: 'user@gmail.com', sub: '123' };
-			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
-			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe('user@gmail.com');
-		});
-
-		it('extracts preferred_username from JWT id_token when no email', () => {
-			const payload = { preferred_username: 'admin@contoso.com', sub: '123' };
-			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
-			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe(
-				'admin@contoso.com',
-			);
-		});
-
-		it('returns undefined for token data without identifiers', () => {
-			expect(
-				OauthService.extractAccountIdentifier({ access_token: 'tok', refresh_token: 'ref' }),
-			).toBeUndefined();
-		});
-
-		it('handles malformed JWT gracefully', () => {
-			expect(OauthService.extractAccountIdentifier({ id_token: 'not.a.jwt' })).toBeUndefined();
-		});
-
-		it('prefers direct fields over id_token', () => {
-			const payload = { email: 'jwt@example.com' };
-			const idToken = `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`;
-			expect(
-				OauthService.extractAccountIdentifier({ email: 'direct@example.com', id_token: idToken }),
-			).toBe('direct@example.com');
 		});
 	});
 

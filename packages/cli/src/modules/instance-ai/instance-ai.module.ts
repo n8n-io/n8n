@@ -12,17 +12,22 @@ export class InstanceAiModule implements ModuleInterface {
 		const {
 			InstanceAiSettingsService,
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-			INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
-			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 		} = await import('./instance-ai-settings.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const credentialBroker = Container.get(InstanceCredentialBroker);
 		credentialBroker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
-		credentialBroker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
-		credentialBroker.registerUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY);
+		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
+		// Instantiating the setup telemetry service registers its settings-updated
+		// listener. A setup finished by env vars only becomes observable at boot,
+		// so the once-per-instance completion telemetry is also checked here.
+		const { InstanceAiSetupTelemetryService } = await import(
+			'./instance-ai-setup-telemetry.service.js'
+		);
+		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
@@ -31,20 +36,17 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Durable-log flag (resilience phase): startup sweep resolves runs the
-		// previous process left mid-flight by converting their in-flight tool
-		// calls into tool-interrupted facts and appending run-finish{interrupted}.
-		const { GlobalConfig } = await import('@n8n/config');
-		if (Container.get(GlobalConfig).instanceAi.durableLog) {
-			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
-			const { InstanceAiService } = await import('./instance-ai.service.js');
-			const logger = Container.get(Logger).scoped('instance-ai');
-			const sweeper = Container.get(InterruptedRunSweeper);
-			sweeper.setResumeHost(Container.get(InstanceAiService));
-			void sweeper.sweep().catch((error: unknown) => {
-				logger.error('Interrupted-run sweep failed on startup', { error });
-			});
-		}
+		// Startup sweep resolves runs the previous process left mid-flight by
+		// converting their in-flight tool calls into tool-interrupted facts and
+		// appending run-finish{interrupted}.
+		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const sweepLogger = Container.get(Logger).scoped('instance-ai');
+		const sweeper = Container.get(InterruptedRunSweeper);
+		sweeper.setResumeHost(Container.get(InstanceAiService));
+		void sweeper.sweep().catch((error: unknown) => {
+			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
+		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
@@ -74,6 +76,8 @@ export class InstanceAiModule implements ModuleInterface {
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
+			activationCapped: settingsService.isActivationCapped(),
+			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 
@@ -81,7 +85,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
-		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity.js');
 		const { InstanceAiIterationLog } = await import(
 			'./entities/instance-ai-iteration-log.entity.js'
 		);
@@ -108,7 +111,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,

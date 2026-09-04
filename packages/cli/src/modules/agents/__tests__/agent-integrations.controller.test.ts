@@ -5,9 +5,12 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
+import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
@@ -21,22 +24,33 @@ function makeController({
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
+	channelStatusRepository = mock<AgentChannelStatusRepository>(),
+	statusReporter = mock<AgentChannelStatusReporter>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
 	agentRepository?: Mocked<AgentRepository>;
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
+	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
+	statusReporter?: Mocked<AgentChannelStatusReporter>;
 } = {}) {
+	channelStatusRepository.findByAgentId.mockResolvedValue([]);
+	statusReporter.isLive.mockReturnValue(true);
+
 	return {
 		controller: new AgentIntegrationsController(
 			managementService,
 			chatIntegrationService,
 			agentRepository,
 			chatIntegrationRegistry,
+			channelStatusRepository,
+			statusReporter,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
+		channelStatusRepository,
+		statusReporter,
 	};
 }
 
@@ -80,6 +94,7 @@ describe('AgentIntegrationsController integration management', () => {
 			} as never,
 			undefined as never,
 			agent.id,
+			integration as never,
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
@@ -89,6 +104,58 @@ describe('AgentIntegrationsController integration management', () => {
 			integration,
 		});
 		expect(result).toEqual({ status: 'connected' });
+	});
+
+	it('forwards a replacement so the swap happens in one operation', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: { ...integration, replaces: { credentialId: 'credential-0' } },
+			} as never,
+			undefined as never,
+			agent.id,
+			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith({
+			agent,
+			user,
+			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+			replaces: { type: 'slack', credentialId: 'credential-0' },
+		});
+	});
+
+	it('passes platform settings through the envelope untouched', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = {
+			type: 'telegram',
+			credentialId: 'credential-1',
+			settings: { accessMode: 'private', allowedUsers: ['@alice'] },
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -112,6 +179,7 @@ describe('AgentIntegrationsController integration management', () => {
 			} as never,
 			undefined as never,
 			agent.id,
+			integration as never,
 		);
 
 		expect(result).toEqual({ status: 'configured' });
@@ -268,5 +336,112 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(res.json).toHaveBeenCalledWith({
 			error: 'No active discord integration for agent "agent-1"',
 		});
+	});
+});
+
+describe('AgentIntegrationsController channel status', () => {
+	const slack = {
+		type: 'slack',
+		credentialId: 'credential-slack',
+	} satisfies AgentIntegrationConfig;
+	const telegram = {
+		type: 'telegram',
+		credentialId: 'credential-telegram',
+	} satisfies AgentIntegrationConfig;
+	const publishedAgent = {
+		id: 'agent-1',
+		projectId: 'project-1',
+		activeVersionId: 'version-1',
+		integrations: [slack, telegram],
+	} as unknown as Agent;
+
+	function liveRow(integration: AgentIntegrationConfig): AgentChannelStatus {
+		return {
+			agentId: publishedAgent.id,
+			integrationType: integration.type,
+			credentialId: integration.credentialId,
+			hostId: 'main-1',
+			status: 'connected',
+			errorMessage: null,
+			attempts: 0,
+			backoffUntil: null,
+			expiresAt: new Date(Date.now() + 60_000),
+		} as AgentChannelStatus;
+	}
+
+	async function statusOf(agent: Agent, rows: AgentChannelStatus[]) {
+		const { controller, agentRepository, channelStatusRepository, statusReporter } =
+			makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		channelStatusRepository.findByAgentId.mockResolvedValue(rows);
+		statusReporter.isLive.mockImplementation(
+			(row) => row.expiresAt === null || row.expiresAt.getTime() > Date.now(),
+		);
+
+		const response = await controller.integrationStatus(
+			{ params: { projectId: agent.projectId } } as never,
+			undefined as never,
+			agent.id,
+		);
+
+		return { response, channelStatusRepository, statusReporter };
+	}
+
+	it('reports a channel with a live row as connected and one without as starting', async () => {
+		const { response, channelStatusRepository } = await statusOf(publishedAgent, [liveRow(slack)]);
+
+		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id);
+		expect(response.integrations).toEqual([
+			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
+			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
+		]);
+	});
+
+	it('reports the reason a channel could not start', async () => {
+		const failed = {
+			...liveRow(telegram),
+			status: 'error',
+			errorMessage: 'Credential not found',
+		} as AgentChannelStatus;
+
+		const { response } = await statusOf(publishedAgent, [liveRow(slack), failed]);
+
+		expect(response.integrations).toEqual([
+			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
+			{
+				type: telegram.type,
+				credentialId: telegram.credentialId,
+				status: 'error',
+				errorMessage: 'Credential not found',
+			},
+		]);
+	});
+
+	it('ignores a row whose lease has run out, so a dead instance stops reporting', async () => {
+		const expired = {
+			...liveRow(slack),
+			expiresAt: new Date(Date.now() - 60_000),
+		} as AgentChannelStatus;
+
+		const { response } = await statusOf(publishedAgent, [expired]);
+
+		expect(response.integrations[0]).toEqual({
+			type: slack.type,
+			credentialId: slack.credentialId,
+			status: 'starting',
+		});
+	});
+
+	it('throws when the agent is not in the project', async () => {
+		const { controller, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(
+			controller.integrationStatus(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow('Agent "agent-1" not found');
 	});
 });

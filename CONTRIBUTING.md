@@ -19,6 +19,10 @@ Great that you are here and you want to contribute to n8n
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
+		- [Stacked pull requests](#stacked-pull-requests)
+			- [Enabling `gh stack`](#enabling-gh-stack)
+			- [Splitting work into a stack yourself](#splitting-work-into-a-stack-yourself)
+			- [Asking an agent to do it](#asking-an-agent-to-do-it)
 		- [Community PR Guidelines](#community-pr-guidelines)
 			- [**1. Change Request/Comment**](#1-change-requestcomment)
 			- [**2. General Requirements**](#2-general-requirements)
@@ -224,11 +228,22 @@ pnpm exec dotenvx run -f .env.local -- pnpm dev:be
 
 ## Development cycle
 
-While iterating on n8n modules code, you can run `pnpm dev`. It will then
-automatically build your code, restart the backend and refresh the frontend
-(editor-ui) on every change you make.
+While iterating on n8n modules code, run `pnpm dev:be` for the backend and
+`pnpm dev:fe:editor` for the editor UI. They build your code, restart the
+backend, and refresh the frontend on each change you make. The root `pnpm dev`
+does not exist: it prints a notice and exits with code 0.
 Given the size of the code base and the number of modules, we recommend only watching the modules you're
 actively working on.
+
+The dev servers default to 5678 (backend) and 8080 (editor). Set `N8N_PORT` and
+`N8N_EDITOR_PORT` to relocate them, for example to run a second instance beside
+your main one. The editor derives its REST base URL from `N8N_PORT`, so pass it
+to both commands:
+
+```bash
+N8N_PORT=5699 pnpm dev:be
+N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
+```
 
 ### Basic Development Workflow Example (most used within n8n)
 
@@ -337,7 +352,7 @@ packages/cli$ N8N_USER_FOLDER=~/.n8n4/ pnpm run dev
 When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server by setting
 
 ```bash
-N8N_DEV_RELOAD=true pnpm dev
+N8N_DEV_RELOAD=true pnpm dev:be
 ```
 
 **Performance considerations:**
@@ -417,7 +432,8 @@ For manual testing of the event bus with syslog (TCP or UDP), see [packages/cli/
 
 ### Performance Considerations
 
-The full development mode (`pnpm dev`) runs multiple processes in parallel:
+Full development mode (`pnpm dev:be` with `pnpm dev:fe:editor`) runs multiple
+processes in parallel:
 
 1. **TypeScript compilation** for each package
 2. **File watchers** monitoring source files
@@ -437,6 +453,75 @@ The full development mode (`pnpm dev`) runs multiple processes in parallel:
 1. Use selective development commands based on your task
 2. Close unnecessary applications to free up resources
 3. Monitor system performance and adjust your development approach accordingly
+
+---
+
+### Stacked pull requests
+
+A large change is easier to review as a chain of small PRs, each building on the
+one below it — a *stack*. The bottom PR targets `master`, every PR above it
+targets the branch below, so each review shows only that layer's diff. GitHub
+links them together, and the stack merges bottom to top.
+
+Reach for a stack when the work has natural layers (schema → API → UI), or when
+a single PR would grow past the size guidance in
+[Community PR Guidelines](#community-pr-guidelines).
+
+#### Enabling `gh stack`
+
+Stacked PRs are enabled on `n8n-io/n8n`. On your machine you need the
+[GitHub CLI](https://cli.github.com/) v2+, authenticated (`gh auth login`), plus:
+
+```bash
+gh extension install github/gh-stack
+git config rerere.enabled true        # remember conflict resolutions across rebases
+git config remote.pushDefault origin  # only needed if you have several remotes
+```
+
+#### Splitting work into a stack yourself
+
+```bash
+gh stack init ligo-123-db     # first branch, off master
+git add -p && git commit      # commit only what belongs in this layer
+gh stack add ligo-123-api     # next branch, stacked on the previous one
+git add -p && git commit
+gh stack add ligo-123-ui
+git add -p && git commit
+gh stack submit --auto        # push every branch and open a draft PR per branch
+```
+
+From there:
+
+- `gh stack up` / `down` / `top` / `bottom` move between layers.
+- Need a change in a lower layer? Go there, commit it, then
+  `gh stack rebase --upstack` to replay the layers above.
+- `gh stack sync` after `master` moves or a lower PR merges (`--prune` also
+  deletes local branches whose PR is merged).
+- `gh stack merge --yes --squash` merges the stack — `gh pr merge` does not work
+  on stacked PRs.
+
+Without the extension you can do the same by hand: create the branches yourself
+and open each PR with `gh pr create --base <branch-below>`. You then own the
+rebasing every time a lower branch changes.
+
+Two things to watch for in this repo:
+
+- `--auto` builds PR titles from your commit subjects (or the branch name), which
+  usually will not pass our
+  [PR title conventions](.github/pull_request_title_conventions.md). Write
+  conventional commit subjects, or fix the titles with `gh pr edit` before asking
+  for review. Each PR still needs its own description and tests — it is reviewed
+  on its own.
+- Every PR in the stack runs its own CI, so make each layer worth a full run.
+
+#### Asking an agent to do it
+
+The repo ships a [`gh-stack` skill](.agents/skills/gh-stack/SKILL.md) that
+teaches agents the non-interactive command rules, so you can just ask:
+*"split this branch into a stack: db layer, API layer, UI layer"*, or
+*"add the frontend changes as a new layer on top and resubmit"*. The setup above
+is still on you — the extension and the git config are per-machine, and the
+agent cannot install them for you.
 
 ---
 

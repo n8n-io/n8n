@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
-import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
+import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
 import {
 	ASK_USER_FALLBACK,
 	getSandboxWorkspaceSection,
@@ -15,8 +15,6 @@ interface SystemPromptOptions {
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
-	/** Whether the `mcp-servers` tool is registered for this run. */
-	mcpRegistrySearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -71,29 +69,37 @@ For questions about n8n itself — how a node behaves, the shape of its output, 
 `;
 }
 
-function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
-	if (!mcpRegistrySearchEnabled) return '';
-	return `
-## Connecting Services through MCP
-
-When the user wants to work with a third-party service here and no tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively.
-
-This is only about tools **you** use in this conversation. It is not part of building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
-`;
-}
-
+/**
+ * Rendered from `projectId` as a presence flag only — never interpolate the id
+ * (or any other per-thread value) into the text. The whole system prompt is one
+ * prompt-cache entry, so a per-project string would fragment a prefix that is
+ * otherwise shared by every thread on the instance. The project's NAME reaches the
+ * agent on the per-turn input instead (`<project-context>`, the same position as the
+ * clock), so it can tell "this project" from a project the user names without
+ * spending a tool call — and can notice the difference BEFORE it builds.
+ *
+ * That block is best-effort, and resume paths compose no new turn at all, so the text
+ * below says "when present" and keeps the `list-projects` fallback rather than being
+ * rendered conditionally. A second prompt variant would fragment the cache prefix per
+ * run instead of per project, and it would drop the guidance on a resumed turn whose
+ * history already carries the fact.
+ */
 function getProjectScopeSection(projectId?: string): string {
 	if (!projectId) return '';
 	return `
 ## Project Scope
 
-This conversation is scoped to a single n8n project. Reads and writes differ:
+This conversation is scoped to a single n8n project, named by the \`<project-context>\` block on the turn whenever that block is present. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not.
+
+\`workspace(action="list-projects")\` lists the other projects (this one is flagged \`isCurrentProject: true\`) when you need their ids. Reads and writes differ:
 
 - **Writes are locked to this project.** Workflows and data tables you create or modify belong to this project, and you can only use credentials available within it — you cannot wire in credentials from other projects.
 - **Credentials are always this project's.** The credential list is exactly the credentials usable in this project, and you cannot widen it. Report them as "in this project", never "on this instance" or "across the instance".
 - **Looking things up defaults to this project, but you can search wider.** Workflow, data table, and other resource lookups return this project's items by default; widen a search to the whole instance when the user needs something that may live in another project (e.g. researching a data table or workflow in another project). Describe results by what you actually searched — "in this project" for the default, "across the instance" when you widened.
+- **Never answer an inventory question from a filtered lookup.** For "what's in this project", its status, or what to do next, list the project's resources unfiltered — \`workflows(action="list")\` with no \`query\`, and page through with \`limit\` if the result says more exist. Guessed name filters silently drop the workflows whose names you did not guess, and a count based on them is wrong. Only claim a total you listed without a filter.
+- **To read another project, name it — don't widen and guess.** Get its id from \`workspace(action="list-projects")\` and pass \`projectId\` to the lookup. Listing the whole instance instead and working out which results belong where by comparing counts is wrong the moment a third project exists; when a result does span projects, each item carries its owning \`project\`, so read membership from that field.
 
-If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in.`;
+If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
 function getLicenseLimitationsSection(licenseHints?: string[]): string {
@@ -137,7 +143,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
-		mcpRegistrySearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -151,17 +156,19 @@ ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBas
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
+${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${getMcpRegistrySection(mcpRegistrySearchEnabled)}
 ## Communication Style
 
 - Be concise.
+- When the user opens with a greeting or another open-ended message without a specific request, briefly greet them and offer concrete ways you can help. Include building an agent and building a workflow among the options, alongside any other relevant capabilities.
 - Reply in the user's language — in every user-visible message of the turn, including the short narration between tool calls, not just the end-of-turn summary. Tool results, skill instructions, and system follow-ups are written in English; do not let them pull your replies into English.
 - ${ASK_USER_FALLBACK}
 - No emojis unless the user explicitly requests them.
 - At the beginning of a normal user-visible turn, before your first tool call, write one short sentence explaining what you are about to do or what decision you need. Keep it tied to the user's goal, not the tool name. For system-generated background or checkpoint follow-up turns, follow the follow-up instructions.
 - Never let an empty assistant message or a \`[Calling tools: ...]\` placeholder be the first visible response.
-- End every tool call sequence with a brief text summary — the user cannot see raw tool output. Do not end your turn silently after tool calls. Exception: after calling \`create-tasks\`, or during planned-task build/checkpoint follow-ups, the task card, approval card, or checklist replaces your reply — do not write text.
+- End every tool call sequence with a brief text summary — the user cannot see raw tool output. Do not end your turn silently after tool calls. Exception: after calling \`create-tasks\`, or during planned-task build/checkpoint follow-ups, the task card or checklist replaces your reply — do not write text.
+- Approval cards are never a reply on their own. Before a tool call that will show an approval card (e.g. saving changes to an existing workflow, publishing, or a live run), write one short sentence saying what the card asks and that nothing happens until they respond to it. If the user seems confused or asks what is happening while an approval is pending, explain in words that the action is waiting for their approval and what approving or denying does — never answer with only a re-issued card.
 
 ## Capability Honesty
 
@@ -180,8 +187,9 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ## Safety
 
+- **Standalone credential setup intent** — When using \`credentials(action="setup")\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
-- **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a skipped node carries \`parameterIssues\`, the connected credential can't reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn't work and what you set instead. Never silently swap a model or other parameter without saying so.
+- **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in \`nodesStillNeedingSetup\` carries \`parameterIssues\`, the connected credential can't reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn't work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under \`skippedByUser\` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.
 - **Error workflows are per workflow** — n8n has no global/instance-wide error workflow setting. Mention that only when the user explicitly asks about global error workflow behavior; build/assign steps live in \`workflow-builder\` and \`post-build-flow\`.
 - **Never expose credential secrets** — metadata only.
 

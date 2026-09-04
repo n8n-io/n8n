@@ -9,8 +9,10 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
 import {
+	registerModuleCommands,
 	registerModuleModals,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -237,6 +239,8 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
@@ -287,7 +291,7 @@ function registerAuthenticationHooks() {
 			userRole: user.role,
 		});
 		try {
-			postHogStore.init(user.featureFlags);
+			postHogStore.init(user.featureFlags, user.featureFlagPayloads);
 		} catch (e) {
 			// don't let posthog failing prevent further function calls
 			console.error(e);
@@ -305,5 +309,7 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
 	});
 }

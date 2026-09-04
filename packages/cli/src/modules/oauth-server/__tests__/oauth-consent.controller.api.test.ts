@@ -2,6 +2,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { JwtService } from '@/services/jwt.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
@@ -25,6 +26,9 @@ const createSessionToken = (payload: OAuthSessionPayload): string => {
 let oauthClientRepository: OAuthClientRepository;
 
 beforeAll(async () => {
+	// The suite drives resource-less consent, which targets the default protected
+	// resource — the instance MCP server, which must be available to grant on.
+	await Container.get(McpSettingsService).setEnabled(true);
 	owner = await createOwner();
 	member = await createMember();
 	jwtService = Container.get(JwtService);
@@ -69,6 +73,7 @@ describe('GET /rest/consent/details', () => {
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),
+			isFirstParty: false,
 		});
 	});
 
@@ -111,6 +116,7 @@ describe('GET /rest/consent/details', () => {
 			resourceName: 'My Named Workflow',
 			redirectUri: 'https://example.com/callback',
 			scopes: [],
+			isFirstParty: false,
 		});
 	});
 

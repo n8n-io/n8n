@@ -140,6 +140,9 @@ describe('TelemetryEventRelay', () => {
 			sandboxProvider: 'n8n-sandbox',
 			braveSearchApiKey: '',
 			searxngUrl: '',
+			model: 'anthropic/claude-sonnet-4',
+			modelApiKey: '',
+			modelUrl: '',
 		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
@@ -364,6 +367,7 @@ describe('TelemetryEventRelay', () => {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -372,6 +376,25 @@ describe('TelemetryEventRelay', () => {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
+				workflowUpdates: 5,
+				workflowConflicts: 2,
+				credConflicts: 1,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-pull-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started pull via UI', {
+				workflow_updates: 5,
+				workflow_conflicts: 2,
+				cred_conflicts: 1,
+				public_api: true,
 			});
 		});
 
@@ -411,6 +434,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -422,6 +446,31 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible: 5,
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-push-ui'] = {
+				userId: 'userId',
+				workflowsEligible: 10,
+				workflowsEligibleWithConflicts: 2,
+				credsEligible: 5,
+				credsEligibleWithConflicts: 1,
+				variablesEligible: 3,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-push-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
+				user_id: 'userId',
+				workflows_eligible: 10,
+				workflows_eligible_with_conflicts: 2,
+				creds_eligible: 5,
+				creds_eligible_with_conflicts: 1,
+				variables_eligible: 3,
+				public_api: true,
 			});
 		});
 
@@ -970,6 +1019,7 @@ describe('TelemetryEventRelay', () => {
 	describe('credentials events', () => {
 		it('should track on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1035,6 +1085,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1064,6 +1115,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1682,6 +1735,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -2284,6 +2339,9 @@ describe('TelemetryEventRelay', () => {
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
@@ -2305,6 +2363,11 @@ describe('TelemetryEventRelay', () => {
 						created: 2,
 						updated: 1,
 						skipped: 1,
+						archived: 3,
+						deleted: 2,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 2,
@@ -2345,6 +2408,9 @@ describe('TelemetryEventRelay', () => {
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
 				missing_node_type_mode: 'fail',
+				project_conflict_policy: 'merge',
+				folder_conflict_policy: 'merge',
+				overwrite_deletion_policy: 'archive',
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
@@ -2356,6 +2422,9 @@ describe('TelemetryEventRelay', () => {
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
+				workflows_archived: 3,
+				workflows_deleted: 2,
+				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
@@ -2390,6 +2459,8 @@ describe('TelemetryEventRelay', () => {
 					variables: 4,
 					tags: 2,
 				},
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2402,6 +2473,8 @@ describe('TelemetryEventRelay', () => {
 				data_table_count: 1,
 				variable_count: 4,
 				tag_count: 2,
+				credential_export_policy: 'expression-values-only',
+				include_archived_workflows: true,
 			});
 		});
 
@@ -2930,6 +3003,8 @@ describe('TelemetryEventRelay', () => {
 						sandbox_provider: 'daytona',
 						search_brave_set: true,
 						search_searxng_set: false,
+						model_env_set: false,
+						model_id: 'anthropic/claude-sonnet-4',
 					},
 				}),
 			);
@@ -3749,6 +3824,159 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user-redaction',
 				data_redaction_enforcement_floor: 'all',
 			});
+		});
+	});
+
+	describe('workflow review events', () => {
+		it('should track a workflow submitted for review, with how many reviewers were asked', () => {
+			eventService.emit('workflow-review-requested', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				reviewerCount: 2,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				project_id: 'project-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				reviewer_count: 2,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review re-pinned to another version', () => {
+			eventService.emit('workflow-review-version-updated', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-2',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+
+		it('should track an approval, when the review opened, and who was entitled to decide', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				decision: 'approved',
+				decidedVia: 'assigned-reviewer',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				decision: 'approved',
+				decided_via: 'assigned-reviewer',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a change request decided by an admin on a review whose version was pruned', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: null,
+				decision: 'changes_requested',
+				decidedVia: 'admin-override',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: null,
+				decision: 'changes_requested',
+				decided_via: 'admin-override',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review closed with no trigger recorded, never the acting user', () => {
+			eventService.emit('workflow-review-closed', {
+				workflowReviewRequestId: 'review-1',
+				cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+			});
+
+			const payload = {
+				workflow_review_request_id: 'review-1',
+				cause_trigger: 'unknown',
+				cause_actor_kind: 'system',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a comment on a review, never its body', () => {
+			eventService.emit('workflow-review-comment-created', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
 		});
 	});
 

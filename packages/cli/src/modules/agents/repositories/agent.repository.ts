@@ -1,6 +1,13 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Repository,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -8,6 +15,9 @@ export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
 >;
+
+/** The only columns an integration mutation reads or writes. */
+export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -248,6 +258,46 @@ export class AgentRepository extends Repository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	/**
+	 * Reads just the columns an integration mutation needs, so its write derives
+	 * from the current row rather than a possibly-stale request-scoped entity.
+	 */
+	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId', 'activeVersionId'],
+			where: { id },
+		});
+	}
+
+	/**
+	 * Compare-and-set the two columns an integration mutation owns, so a channel
+	 * change can never revert a concurrent publish or config write. Returns false
+	 * when another writer got there first; the caller can re-read and reapply,
+	 * because its input is a delta rather than a whole array.
+	 *
+	 * `activeVersionId` is guarded but never written: publishing leaves `versionId`
+	 * untouched, so without it in the `WHERE` a publish landing after the read
+	 * would let the write through and the caller would act on stale publication
+	 * state.
+	 */
+	async updateIntegrations(
+		id: string,
+		integrations: AgentIntegrationConfig[],
+		expected: Pick<AgentIntegrationState, 'versionId' | 'activeVersionId'>,
+		versionId: string | null,
+	): Promise<boolean> {
+		const result = await this.update(
+			{
+				id,
+				versionId: expected.versionId ?? IsNull(),
+				activeVersionId: expected.activeVersionId ?? IsNull(),
+			},
+			{ integrations, versionId },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
 	async findPublished(): Promise<Agent[]> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
@@ -278,5 +328,70 @@ export class AgentRepository extends Repository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
+	}
+
+	/**
+	 * Atomically advances publication state only when the row's `revision` still
+	 * matches the value the caller observed at load — the optimistic revision
+	 * fence for publish/unpublish. Writes only the publication-owned columns
+	 * (`activeVersionId`, `versionId`) and bumps `revision`, so a concurrent
+	 * draft edit (autosave) that bumped `revision` in between makes this affect
+	 * zero rows instead of clobbering the newer draft. Returns whether this
+	 * caller won the fence.
+	 */
+	async setActiveVersionFenced(
+		id: string,
+		expectedRevision: number,
+		next: { activeVersionId: string | null; versionId: string },
+		trx?: EntityManager,
+	): Promise<boolean> {
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				activeVersionId: next.activeVersionId,
+				versionId: next.versionId,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Persists a draft edit behind the same optimistic revision fence as
+	 * publish/unpublish. Writes only the draft-owned columns and bumps
+	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
+	 * a concurrent publish nor mask that publish by writing a stale in-memory
+	 * revision over the row. On a win the in-memory entity's `revision` and
+	 * `updatedAt` are synced to what was written. Returns whether this caller
+	 * won the fence.
+	 */
+	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+		const expectedRevision = agent.revision;
+		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
+		// so the in-memory entity can report the exact persisted timestamp.
+		const updatedAt = new Date();
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				name: agent.name,
+				schema: agent.schema,
+				integrations: agent.integrations,
+				tools: agent.tools,
+				skills: agent.skills,
+				versionId: agent.versionId,
+				updatedAt,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.execute();
+		const won = (result.affected ?? 0) > 0;
+		if (won) {
+			agent.revision = expectedRevision + 1;
+			agent.updatedAt = updatedAt;
+		}
+		return won;
 	}
 }

@@ -1,18 +1,30 @@
-import { describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import {
-	coverageFromCounts,
-	buildSummary,
 	buildNoTestsSummary,
+	buildSummary,
+	classifyRun,
+	coverageFromCounts,
+	createCleanup,
+	filesToCheckout,
+	findStrykerSetupFiles,
+	formatMutateArg,
+	isMutableSource,
+	mergeRanges,
+	parseHunkRanges,
+	registerCleanupHandlers,
+	removeStrykerSetupFiles,
+	restoreFiles,
 	scoreFromCounts,
+	snapshotFiles,
+	splitRange,
 } from './mutate.mjs';
-import {
-	buildPayload,
-	coverageForLedger,
-	makeChurnFor,
-	makeFixDensityFor,
-} from './emit-payload.mjs';
 
 // A minimal Stryker Mutation Testing Elements report for one source file. Mix
 // of statuses so coverage (anything that ran / ran + no-coverage) is a genuine
@@ -162,218 +174,482 @@ describe('buildNoTestsSummary (no covering tests)', () => {
 	});
 });
 
-// PR-gate contract (DEVP-496):
-//   "mutate.mjs fixture run produces ledger row with coverage field in [0,1]"
-describe('coverage writeback to the ledger row (DEVP-496 PR gate)', () => {
-	it('a fixture run produces a ledger row whose coverage is in [0,1]', () => {
-		const summary = buildSummary(RAW_FIXTURE, RUN_META);
-		const { ledger } = buildPayload(summary, {
-			pkg: 'n8n-workflow',
-			sha: 'deadbeef',
-			pkgRelToRepo: 'packages/workflow',
-		});
+describe('classifyRun', () => {
+	const DONE = 'Instrumented 1 source file(s) with 8 mutant(s)';
+	const NO_TESTS = 'ERROR Stryker No tests were executed. Stryker will exit prematurely.';
 
-		assert.equal(ledger.length, 1);
-		const row = ledger[0];
-		assert.ok(Object.hasOwn(row, 'coverage'), 'ledger row carries a coverage field');
-		assert.ok(isFractionInUnitInterval(row.coverage), `coverage ${row.coverage} must be in [0,1]`);
-		assert.equal(row.coverage, 0.75);
-		assert.equal(row.source_file_path, 'packages/workflow/src/cron.ts');
+	it('is complete when the run wrote a report and exited zero', () => {
+		assert.equal(classifyRun({ exitCode: 0, output: DONE, hasReport: true }), 'complete');
 	});
 
-	it('forwards coverage onto the event row dimensions too', () => {
-		const summary = buildSummary(RAW_FIXTURE, RUN_META);
-		const { events } = buildPayload(summary, {
-			pkg: 'n8n-workflow',
-			sha: 'deadbeef',
-			pkgRelToRepo: 'packages/workflow',
-		});
-		assert.ok(isFractionInUnitInterval(events[0].dimensions.coverage));
+	it('is partial when the run wrote a report and then exited non-zero', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: DONE, hasReport: true }), 'partial');
 	});
 
-	it('clamps an out-of-range summary coverage into [0,1]', () => {
-		assert.equal(coverageForLedger({ coverage: 1.4, counts: {} }), 1);
-		assert.equal(coverageForLedger({ coverage: -0.2, counts: {} }), 0);
+	it('is no-tests when nothing covers the target', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: NO_TESTS, hasReport: false }), 'no-tests');
 	});
 
-	it('falls back to deriving coverage from counts for pre-writeback summaries', () => {
-		// No `coverage` field (an older summary) → derived from the mutant census.
-		const row = coverageForLedger({
-			counts: { killed: 3, survived: 0, timeout: 0, noCoverage: 1, runtimeError: 0 },
-		});
-		assert.equal(row, 0.75);
-		assert.ok(isFractionInUnitInterval(row));
+	it('is failed when the run produced no report', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: 'SIGABRT', hasReport: false }), 'failed');
+	});
+
+	// The caller deletes the previous reports before each run. Without that, a
+	// crashed run finds the earlier report and is classified `partial`, so it
+	// reports the earlier target and its score instead of failing.
+	it('trusts hasReport as this run only — a report plus a crash is partial, never failed', () => {
+		assert.equal(classifyRun({ exitCode: 3, output: 'SIGABRT', hasReport: true }), 'partial');
+	});
+
+	// Same trap for the no-tests path: a leftover report used to suppress it, and
+	// a genuine score-0 red was reported as the earlier run's passing score.
+	it('still detects no-tests when the run crashed without a report', () => {
+		assert.equal(classifyRun({ exitCode: 3, output: NO_TESTS, hasReport: false }), 'no-tests');
 	});
 });
 
-// DEVP-546: the ledger row also carries a git-derived `churn` count so the
-// global picker can rank by the value formula's churn term.
-describe('churn writeback to the ledger row (DEVP-546)', () => {
-	it('forwards the per-file churn count and fix-density onto the ledger and event rows', () => {
-		const summary = buildSummary(RAW_FIXTURE, RUN_META);
-		const churnFor = (p) => (p === 'packages/workflow/src/cron.ts' ? 7 : null);
-		const fixDensityFor = (p) => (p === 'packages/workflow/src/cron.ts' ? 2.5 : null);
-		const { ledger, events } = buildPayload(summary, {
-			pkg: 'n8n-workflow',
-			sha: 'deadbeef',
-			pkgRelToRepo: 'packages/workflow',
-			churnFor,
-			fixDensityFor,
-		});
-
-		assert.ok(Object.hasOwn(ledger[0], 'churn'), 'ledger row carries a churn field');
-		assert.equal(ledger[0].churn, 7);
-		assert.equal(events[0].dimensions.churn, 7);
-		assert.ok(Object.hasOwn(ledger[0], 'fix_density'), 'ledger row carries a fix_density field');
-		assert.equal(ledger[0].fix_density, 2.5);
-		assert.equal(events[0].dimensions.fix_density, 2.5);
+describe('isMutableSource', () => {
+	it('accepts product source wherever a package keeps it', () => {
+		assert.ok(isMutableSource('packages/workflow/src/cron.ts'));
+		// nodes-base has no src/. An allowlist drops the largest surface in the repo.
+		assert.ok(isMutableSource('packages/nodes-base/nodes/Slack/Slack.node.ts'));
+		assert.ok(isMutableSource('packages/nodes-base/credentials/SlackApi.credentials.ts'));
+		assert.ok(isMutableSource('packages/frontend/editor-ui/src/stores/ui.store.ts'));
+		// `[cm]?` in the extension test is there for the ESM/CJS variants.
+		assert.ok(isMutableSource('packages/@n8n/db/src/index.mts'));
+		assert.ok(isMutableSource('packages/@n8n/db/src/index.cts'));
 	});
 
-	it('defaults churn and fix_density to null when no signal source is wired in', () => {
-		const summary = buildSummary(RAW_FIXTURE, RUN_META);
-		const { ledger } = buildPayload(summary, {
-			pkg: 'n8n-workflow',
-			sha: 'deadbeef',
-			pkgRelToRepo: 'packages/workflow',
-		});
-
-		assert.ok(Object.hasOwn(ledger[0], 'churn'), 'ledger row carries a churn field');
-		assert.equal(ledger[0].churn, null);
-		assert.ok(Object.hasOwn(ledger[0], 'fix_density'), 'ledger row carries a fix_density field');
-		assert.equal(ledger[0].fix_density, null);
-	});
-});
-
-describe('makeChurnFor (git-derived churn)', () => {
-	// Stub git: shallow probe answers `false`, every rev-list answers `count`.
-	function stubGit({ shallow = 'false', count } = {}) {
-		return (args) => {
-			if (args.includes('--is-shallow-repository')) return `${shallow}\n`;
-			if (typeof count === 'function') return count(args);
-			return `${count}\n`;
-		};
-	}
-
-	it('counts commits touching a file within the window', () => {
-		const churnFor = makeChurnFor({ runGit: stubGit({ count: 7 }) });
-		assert.equal(churnFor('packages/workflow/src/cron.ts'), 7);
+	it('rejects tests, declarations, configs and build output', () => {
+		assert.equal(isMutableSource('packages/workflow/src/cron.test.ts'), false);
+		assert.equal(isMutableSource('packages/workflow/src/cron.spec.ts'), false);
+		// The ESM/CJS variants are accepted as source, so they have to be
+		// excluded as tests too.
+		assert.equal(isMutableSource('packages/workflow/src/cron.test.mts'), false);
+		assert.equal(isMutableSource('packages/workflow/src/__tests__/cron.ts'), false);
+		assert.equal(isMutableSource('packages/workflow/src/__mocks__/cron.ts'), false);
+		assert.equal(isMutableSource('packages/workflow/src/types.d.ts'), false);
+		assert.equal(isMutableSource('packages/cli/vitest.config.ts'), false);
+		assert.equal(isMutableSource('packages/workflow/dist/cron.js'), false);
+		assert.equal(isMutableSource('packages/workflow/test/helper.ts'), false);
+		assert.equal(isMutableSource('packages/@n8n/db/src/migrations/sqlite/x.ts'), false);
+		assert.equal(isMutableSource('packages/design-system/src/Button.stories.ts'), false);
+		// The extension test is anchored: `.ts` has to end the path, not merely
+		// appear in it. Committed snapshots sit next to their source and would
+		// otherwise be handed to Stryker as mutable TypeScript.
+		assert.equal(isMutableSource('packages/cli/src/__snapshots__/foo.test.ts.snap'), false);
 	});
 
-	it('passes the configured window through to git rev-list', () => {
-		const seen = [];
-		const runGit = (args) => {
-			seen.push(args);
-			return args.includes('--is-shallow-repository') ? 'false\n' : '3\n';
-		};
-		const churnFor = makeChurnFor({ since: '30 days', runGit });
-		churnFor('a/b.ts');
-		const revList = seen.find((a) => a[0] === 'rev-list');
-		assert.ok(revList.includes('--since=30 days'));
-		assert.ok(revList.includes('a/b.ts'));
-	});
-
-	it('returns null on a shallow clone (truncated history would undercount)', () => {
-		const churnFor = makeChurnFor({ runGit: stubGit({ shallow: 'true', count: 999 }) });
-		assert.equal(churnFor('any/file.ts'), null);
-	});
-
-	it('returns null when git fails for a file', () => {
-		const runGit = (args) => {
-			if (args.includes('--is-shallow-repository')) return 'false\n';
-			throw new Error('git boom');
-		};
-		assert.equal(makeChurnFor({ runGit })('x.ts'), null);
-	});
-
-	it('returns null when the count is not a finite number', () => {
-		const churnFor = makeChurnFor({ runGit: stubGit({ count: 'not-a-number' }) });
-		assert.equal(churnFor('x.ts'), null);
-	});
-
-	it('treats a non-git directory (probe throws) as unknown churn', () => {
-		const runGit = () => {
-			throw new Error('not a git repository');
-		};
-		assert.equal(makeChurnFor({ runGit })('x.ts'), null);
+	// .vue stays out. Each SFC package crashed Stryker's mutate step in the
+	// 2026-06 sweep, and the component layer gives little value.
+	it('rejects everything that is not TypeScript', () => {
+		assert.equal(isMutableSource('packages/frontend/editor-ui/src/App.vue'), false);
+		assert.equal(isMutableSource('packages/workflow/src/cron.js'), false);
+		assert.equal(isMutableSource('README.md'), false);
+		assert.equal(isMutableSource('packages/workflow/package.json'), false);
 	});
 });
 
-describe('makeFixDensityFor (git-derived fix-density)', () => {
-	const NOW = 1_700_000_000; // fixed reference time (unix seconds) for determinism
-
-	// Stub git: shallow probe answers `shallow`, the log read answers `log`
-	// (synthetic `git log --numstat` output in signals.mjs's GIT_LOG_FORMAT).
-	function stubGit({ shallow = 'false', log = '' } = {}) {
-		return (args) => (args.includes('--is-shallow-repository') ? `${shallow}\n` : log);
-	}
-
-	// A fix commit and a non-fix commit, both touching the same file at `NOW`.
-	const FIX_AT_NOW = [
-		`COMMIT abc123 ${NOW} fix(core): patch a bug`,
-		'10\t0\tpackages/core/src/hot.ts',
-		'',
-		`COMMIT def456 ${NOW} feat(core): add a feature`,
-		'5\t0\tpackages/core/src/hot.ts',
-	].join('\n');
-
-	it('sums delta-weighted contributions of fix commits touching the file', () => {
-		const fixDensityFor = makeFixDensityFor({ now: NOW, runGit: stubGit({ log: FIX_AT_NOW }) });
-		// Only the fix commit counts; age 0 → weight 1 → 10 lines changed.
-		assert.equal(fixDensityFor('packages/core/src/hot.ts'), 10);
-	});
-
-	it('scores a file with no fix commits as 0 (known: no fixes), not null', () => {
-		const fixDensityFor = makeFixDensityFor({ now: NOW, runGit: stubGit({ log: FIX_AT_NOW }) });
-		assert.equal(fixDensityFor('packages/core/src/cold.ts'), 0);
-	});
-
-	it('decays older fixes by the configured half-life', () => {
-		const oneHalfLifeAgo = NOW - 90 * 86_400;
-		const log = [
-			`COMMIT old111 ${oneHalfLifeAgo} fix: older patch`,
-			'8\t0\tpackages/core/src/hot.ts',
+describe('parseHunkRanges', () => {
+	it('reads new-side ranges out of `git diff -U0` headers', () => {
+		const diff = [
+			'diff --git a/src/cron.ts b/src/cron.ts',
+			'--- a/src/cron.ts',
+			'+++ b/src/cron.ts',
+			'@@ -12,0 +13,4 @@ export function tick() {',
+			'+const a = 1;',
+			'@@ -40,2 +44,2 @@',
+			'+const b = 2;',
+			// Counts run past one digit on both sides for any hunk of ten lines
+			// or more, which is most of them.
+			'@@ -80,12 +90,14 @@',
+			'+const c = 3;',
 		].join('\n');
-		const fixDensityFor = makeFixDensityFor({
-			now: NOW,
-			halfLifeDays: 90,
-			runGit: stubGit({ log }),
-		});
-		// One half-life old → weight 0.5 → 8 * 0.5 = 4.
-		assert.equal(fixDensityFor('packages/core/src/hot.ts'), 4);
+		assert.deepEqual(parseHunkRanges(diff), [
+			{ start: 13, end: 16 },
+			{ start: 44, end: 45 },
+			{ start: 90, end: 103 },
+		]);
 	});
 
-	it('passes the configured window + pathspec through to git log', () => {
+	// `git diff` of a file that itself talks about diffs (a patch fixture, this
+	// very test file) carries hunk-header text inside `+`/`-` content lines.
+	// Only a header at the start of a line is a header.
+	it('ignores hunk-header text that appears inside a content line', () => {
+		const diff = ['@@ -1,0 +5,1 @@', "+const H = '@@ -1,2 +300,4 @@';"].join('\n');
+		assert.deepEqual(parseHunkRanges(diff), [{ start: 5, end: 5 }]);
+	});
+
+	it('treats a header with no new-side count as a single line', () => {
+		assert.deepEqual(parseHunkRanges('@@ -5 +7 @@'), [{ start: 7, end: 7 }]);
+	});
+
+	it('drops pure deletions — nothing survives there to mutate', () => {
+		assert.deepEqual(parseHunkRanges('@@ -10,4 +9,0 @@'), []);
+	});
+
+	it('returns nothing for a diff with no hunks', () => {
+		assert.deepEqual(parseHunkRanges(''), []);
+	});
+});
+
+describe('mergeRanges', () => {
+	it('merges overlapping ranges', () => {
+		assert.deepEqual(
+			mergeRanges([
+				{ start: 1, end: 5 },
+				{ start: 3, end: 9 },
+			]),
+			[{ start: 1, end: 9 }],
+		);
+	});
+
+	it('merges adjacent ranges so Stryker gets one span per region', () => {
+		assert.deepEqual(
+			mergeRanges([
+				{ start: 1, end: 4 },
+				{ start: 5, end: 8 },
+			]),
+			[{ start: 1, end: 8 }],
+		);
+	});
+
+	it('keeps ranges with a real gap apart, and sorts them', () => {
+		assert.deepEqual(
+			mergeRanges([
+				{ start: 20, end: 22 },
+				{ start: 1, end: 4 },
+			]),
+			[
+				{ start: 1, end: 4 },
+				{ start: 20, end: 22 },
+			],
+		);
+	});
+
+	it('leaves a fully-contained range absorbed', () => {
+		assert.deepEqual(
+			mergeRanges([
+				{ start: 1, end: 20 },
+				{ start: 5, end: 9 },
+			]),
+			[{ start: 1, end: 20 }],
+		);
+	});
+});
+
+describe('formatMutateArg', () => {
+	it('comma-joins every target into one flag value', () => {
+		assert.equal(
+			formatMutateArg(['src/a.ts:1-4', 'src/a.ts:20-22', 'src/b.ts']),
+			'src/a.ts:1-4,src/a.ts:20-22,src/b.ts',
+		);
+	});
+});
+
+describe('splitRange', () => {
+	it('splits a trailing line range off the path', () => {
+		assert.deepEqual(splitRange('src/cron.ts:13-16'), { file: 'src/cron.ts', range: '13-16' });
+	});
+
+	it('leaves a bare path alone', () => {
+		assert.deepEqual(splitRange('src/cron.ts'), { file: 'src/cron.ts', range: null });
+	});
+
+	it('does not mistake a Windows drive letter or a colon in a dirname for a range', () => {
+		assert.deepEqual(splitRange('src/a:b/cron.ts'), { file: 'src/a:b/cron.ts', range: null });
+	});
+});
+
+describe('filesToCheckout', () => {
+	it('picks the files the run made dirty', () => {
+		assert.deepEqual(filesToCheckout(['a.ts'], ['a.ts', 'b.ts']), ['b.ts']);
+	});
+
+	// A file that was dirty before the run holds the user's uncommitted work.
+	// `git checkout --` would throw it away; the byte snapshot restores it.
+	it('leaves the already-dirty files to the byte snapshot', () => {
+		assert.deepEqual(filesToCheckout(['a.ts', 'b.ts'], ['a.ts', 'b.ts']), []);
+	});
+
+	it('returns nothing when the run left the tree as it found it', () => {
+		assert.deepEqual(filesToCheckout([], []), []);
+	});
+});
+
+describe('createCleanup', () => {
+	it('restores the tree and then removes the setup files', () => {
+		const calls = [];
+		const cleanup = createCleanup({
+			restore: () => {
+				calls.push('restore');
+				return ['src/cron.ts'];
+			},
+			removeSetupFiles: () => {
+				calls.push('remove');
+				return ['stryker-setup-0.js'];
+			},
+		});
+		assert.deepEqual(cleanup(), { restored: ['src/cron.ts'], removed: ['stryker-setup-0.js'] });
+		assert.deepEqual(calls, ['restore', 'remove']);
+	});
+
+	// Four exit paths are wired to the same routine, and more than one can fire
+	// (SIGINT, then `exit`). Doing the work twice would undo a restore the user
+	// made in between.
+	it('does the work once however many exit paths call it', () => {
+		let restores = 0;
+		let removals = 0;
+		const cleanup = createCleanup({
+			restore: () => {
+				restores++;
+				return [];
+			},
+			removeSetupFiles: () => {
+				removals++;
+				return [];
+			},
+		});
+		cleanup();
+		cleanup();
+		cleanup();
+		assert.equal(restores, 1);
+		assert.equal(removals, 1);
+	});
+
+	it('still removes the setup files when the restore throws', () => {
+		let removals = 0;
+		const cleanup = createCleanup({
+			restore: () => {
+				throw new Error('working tree is locked');
+			},
+			removeSetupFiles: () => {
+				removals++;
+				return ['stryker-setup-0.js'];
+			},
+		});
+		assert.deepEqual(cleanup(), { restored: [], removed: ['stryker-setup-0.js'] });
+		assert.equal(removals, 1);
+	});
+});
+
+describe('registerCleanupHandlers', () => {
+	// A stand-in process, so the tests can fire the handlers without signalling
+	// or ending the test runner.
+	function harness({ onSignal } = {}) {
+		const proc = new EventEmitter();
+		const exits = [];
+		const writes = [];
+		let cleaned = 0;
+		const handlers = registerCleanupHandlers({
+			cleanup: () => {
+				cleaned++;
+				return { restored: [], removed: [] };
+			},
+			onSignal,
+			proc,
+			exit: (code) => exits.push(code),
+			write: (msg) => writes.push(msg),
+		});
+		return { proc, exits, writes, handlers, cleaned: () => cleaned };
+	}
+
+	it('cleans up on the usual exit path', () => {
+		const h = harness();
+		h.proc.emit('exit', 0);
+		assert.equal(h.cleaned(), 1);
+	});
+
+	it('cleans up and exits 130 on SIGINT', () => {
+		const h = harness({ onSignal: () => false });
+		h.proc.emit('SIGINT');
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [130]);
+	});
+
+	it('cleans up and exits 143 on SIGTERM', () => {
+		const h = harness({ onSignal: () => false });
+		h.proc.emit('SIGTERM');
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [143]);
+	});
+
+	// While Stryker is alive the run has to unwind first: a restore that races
+	// Stryker's own writes fixes nothing. The run's `finally` then cleans up.
+	it('defers to a live run, which still reaches cleanup', () => {
 		const seen = [];
-		const runGit = (args) => {
-			seen.push(args);
-			return args.includes('--is-shallow-repository') ? 'false\n' : '';
-		};
-		makeFixDensityFor({ since: '6 months', pathspec: 'packages/core', now: NOW, runGit })('x.ts');
-		const logArgs = seen.find((a) => a[0] === 'log');
-		assert.ok(logArgs.includes('--since=6 months'));
-		assert.ok(logArgs.includes('packages/core'));
-	});
-
-	it('returns null on a shallow clone (truncated history would undercount)', () => {
-		const fixDensityFor = makeFixDensityFor({
-			now: NOW,
-			runGit: stubGit({ shallow: 'true', log: FIX_AT_NOW }),
+		const h = harness({
+			onSignal: (signal) => {
+				seen.push(signal);
+				return true;
+			},
 		});
-		assert.equal(fixDensityFor('packages/core/src/hot.ts'), null);
+		h.proc.emit('SIGINT');
+		h.proc.emit('SIGTERM');
+		assert.deepEqual(seen, ['SIGINT', 'SIGTERM']);
+		assert.equal(h.cleaned(), 0);
+		assert.deepEqual(h.exits, []);
+
+		h.proc.emit('exit', 130);
+		assert.equal(h.cleaned(), 1);
 	});
 
-	it('returns null when git fails', () => {
-		const runGit = (args) => {
-			if (args.includes('--is-shallow-repository')) return 'false\n';
-			throw new Error('git boom');
-		};
-		assert.equal(makeFixDensityFor({ now: NOW, runGit })('x.ts'), null);
+	it('cleans up on an uncaught exception and exits 3', () => {
+		const h = harness();
+		h.proc.emit('uncaughtException', new Error('boom'));
+		assert.equal(h.cleaned(), 1);
+		assert.deepEqual(h.exits, [3]);
+		assert.match(h.writes.join(''), /boom/);
 	});
 
-	it('treats a non-git directory (probe throws) as unknown fix-density', () => {
-		const runGit = () => {
-			throw new Error('not a git repository');
+	it('stops listening after dispose, so the next job owns its own snapshot', () => {
+		const h = harness({ onSignal: () => false });
+		h.handlers.dispose();
+		h.proc.emit('exit', 0);
+		h.proc.emit('SIGINT');
+		h.proc.emit('SIGTERM');
+		h.proc.emit('uncaughtException', new Error('boom'));
+		assert.equal(h.cleaned(), 0);
+		assert.deepEqual(h.exits, []);
+	});
+});
+
+describe('working-tree cleanup', () => {
+	let root;
+
+	beforeEach(() => {
+		root = mkdtempSync(path.join(tmpdir(), 'mutate-cleanup-'));
+	});
+
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	// A mutate target plus two files outside it. The old target-only snapshot
+	// restored the target and left the other two mutated.
+	function seedTree() {
+		mkdirSync(path.join(root, 'packages/pkg/src'), { recursive: true });
+		mkdirSync(path.join(root, 'packages/other/src'), { recursive: true });
+		const files = {
+			target: path.join(root, 'packages/pkg/src/cron.ts'),
+			sibling: path.join(root, 'packages/pkg/src/helper.ts'),
+			test: path.join(root, 'packages/other/src/cron.test.ts'),
 		};
-		assert.equal(makeFixDensityFor({ now: NOW, runGit })('x.ts'), null);
+		for (const [name, file] of Object.entries(files)) writeFileSync(file, `original ${name}\n`);
+		return files;
+	}
+
+	// A stand-in for Stryker: a real child process that rewrites each file it is
+	// given and drops a setup file for each worker, the way the vitest runner
+	// does. `--inPlace` means those writes hit the working tree.
+	function runMockStryker({ mutates = [], setupFiles = [] }) {
+		const script = [
+			"const { writeFileSync } = require('node:fs');",
+			`for (const f of ${JSON.stringify(mutates)}) writeFileSync(f, 'Stryker was here!\\n');`,
+			`for (const f of ${JSON.stringify(setupFiles)}) writeFileSync(f, '// stryker setup\\n');`,
+		].join('\n');
+		const res = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
+		assert.equal(res.status, 0, res.stderr);
+	}
+
+	it('restores every file the run modified, not only the mutate targets', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+
+		runMockStryker({ mutates: Object.values(files) });
+		for (const file of Object.values(files)) {
+			assert.equal(readFileSync(file, 'utf8'), 'Stryker was here!\n');
+		}
+
+		assert.deepEqual(new Set(restoreFiles(snap)), new Set(Object.values(files)));
+		for (const [name, file] of Object.entries(files)) {
+			assert.equal(readFileSync(file, 'utf8'), `original ${name}\n`);
+		}
+	});
+
+	it('reports only the files it had to write back', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+
+		runMockStryker({ mutates: [files.sibling] });
+
+		assert.deepEqual(restoreFiles(snap), [files.sibling]);
+	});
+
+	it('skips a file the run deleted instead of throwing', () => {
+		const files = seedTree();
+		const snap = snapshotFiles(Object.values(files));
+		rmSync(files.test);
+
+		assert.deepEqual(restoreFiles(snap), []);
+	});
+
+	it('deletes every stryker-setup-*.js under the repo root', () => {
+		const files = seedTree();
+		const setupFiles = [
+			path.join(root, 'stryker-setup-0.js'),
+			path.join(root, 'packages/pkg/stryker-setup-1.js'),
+			path.join(root, 'packages/other/src/stryker-setup-12.js'),
+		];
+		runMockStryker({ setupFiles });
+
+		assert.deepEqual(new Set(removeStrykerSetupFiles(root)), new Set(setupFiles));
+		for (const file of setupFiles) assert.equal(existsSync(file), false);
+		assert.deepEqual(findStrykerSetupFiles(root), []);
+		// The sources stay where they are.
+		assert.ok(existsSync(files.target));
+	});
+
+	it('leaves files that only look like a setup file alone', () => {
+		seedTree();
+		const keep = [
+			path.join(root, 'stryker-setup.js'),
+			path.join(root, 'stryker-setup-0.ts'),
+			path.join(root, 'my-stryker-setup-0.js'),
+		];
+		runMockStryker({ setupFiles: keep });
+
+		assert.deepEqual(removeStrykerSetupFiles(root), []);
+		for (const file of keep) assert.ok(existsSync(file));
+	});
+
+	// A full-repo walk that enters node_modules takes minutes, and Stryker's own
+	// packaged `stryker-setup.js` lives there.
+	it('does not walk node_modules', () => {
+		mkdirSync(path.join(root, 'node_modules/@stryker-mutator'), { recursive: true });
+		const inside = path.join(root, 'node_modules/@stryker-mutator/stryker-setup-0.js');
+		runMockStryker({ setupFiles: [inside] });
+
+		assert.deepEqual(removeStrykerSetupFiles(root), []);
+		assert.ok(existsSync(inside));
+	});
+
+	it('leaves neither mutants nor setup files behind when a run is interrupted', () => {
+		const files = seedTree();
+		const setupFiles = [path.join(root, 'packages/pkg/stryker-setup-0.js')];
+		const snap = snapshotFiles(Object.values(files));
+
+		const cleanup = createCleanup({
+			restore: () => restoreFiles(snap),
+			removeSetupFiles: () => removeStrykerSetupFiles(root),
+		});
+		const proc = new EventEmitter();
+		const exits = [];
+		registerCleanupHandlers({
+			cleanup,
+			onSignal: () => false, // Stryker is already gone
+			proc,
+			exit: (code) => exits.push(code),
+			write: () => {},
+		});
+
+		runMockStryker({ mutates: Object.values(files), setupFiles });
+		proc.emit('SIGINT'); // the user hits Ctrl-C mid-run
+
+		for (const [name, file] of Object.entries(files)) {
+			assert.equal(readFileSync(file, 'utf8'), `original ${name}\n`);
+		}
+		assert.deepEqual(findStrykerSetupFiles(root), []);
+		assert.deepEqual(exits, [130]);
 	});
 });

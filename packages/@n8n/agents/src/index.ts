@@ -25,7 +25,9 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -98,7 +100,9 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
+	FinishReason,
 } from './types';
+export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
@@ -219,6 +223,12 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
+export {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './runtime/mcp/mcp-content';
+export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -361,6 +371,7 @@ export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,
@@ -418,7 +429,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	reconcileToolResultRuns,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {

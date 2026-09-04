@@ -22,6 +22,10 @@ function getIvm(): IsolatedVm {
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
+// Captured at module load so values rendered into generated code stay stable
+// even if the global is later replaced.
+const safeStringify = JSON.stringify;
+
 /** Check if a value is an error sentinel returned by serializeError. */
 function isErrorSentinel(value: unknown): value is ErrorSentinel {
 	return (
@@ -277,7 +281,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create an ivm.Reference callback for getting value/metadata at a path.
+	 * Create an ivm.Callback for getting value/metadata at a path.
 	 *
 	 * Used by createDeepLazyProxy when accessing properties. Returns metadata
 	 * markers for arrays and objects, or the primitive value directly.
@@ -291,8 +295,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: WorkflowData): ivm.Reference {
-		return new (getIvm().Reference)((path: string[]) => {
+	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
+		return new (getIvm().Callback)((path: string[]) => {
 			try {
 				// Navigate to value
 				// Special-case: paths starting with ['$item', index] call data.$item(index)
@@ -361,15 +365,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create an ivm.Reference callback for getting array elements at an index.
+	 * Create an ivm.Callback for getting array elements at an index.
 	 *
 	 * Used by array proxy when accessing numeric indices.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: WorkflowData): ivm.Reference {
-		return new (getIvm().Reference)((path: string[], index: number) => {
+	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
+		return new (getIvm().Callback)((path: string[], index: number) => {
 			try {
 				// Navigate to array
 				// Special-case: paths starting with ['$item', index] call data.$item(index)
@@ -462,11 +466,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * in this switch; the `type` field selects a static branch in source,
 	 * not a property lookup on a runtime object.
 	 *
+	 * Return-value note: handlers must return plain, structured-clone-able
+	 * data. Results cross into the isolate through an ivm.Callback, which copies
+	 * them via the structured-clone algorithm — return JSON-shaped values, not
+	 * isolated-vm objects (`Reference`/`ExternalCopy`) or other non-cloneable
+	 * values.
+	 *
 	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: WorkflowData): ivm.Reference {
-		return new (getIvm().Reference)((rawMsg: unknown) => {
+	private createCallHostRef(data: WorkflowData): ivm.Callback {
+		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
 				const msg = bridgeMessageSchema.parse(rawMsg);
 				switch (msg.type) {
@@ -654,8 +664,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
 	 * the string to the host's nested-evaluation helper, which re-enters
 	 * the expression engine on the inner expression. Under the VM engine
-	 * this round-trips through the bridge again on a fresh evaluation
-	 * cycle, which is the same shape the legacy engine supports.
+	 * this round-trips through the bridge again as a new evaluation on the
+	 * enclosing call's time budget, which is the same shape the legacy
+	 * engine supports.
 	 *
 	 * @private
 	 */
@@ -695,7 +706,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
-	 * 1. Create three ivm.Reference callbacks scoped to the current data:
+	 * 1. Create three ivm.Callback instances scoped to the current data:
 	 *    `getValueAtPath`, `getArrayElement`, `callHost`.
 	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`
 	 *    are the callback references — no global mutable state.
@@ -703,7 +714,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *    from the closure-scoped references.
 	 *
 	 * Each call gets its own closure, so nested and concurrent evaluations
-	 * cannot interfere with each other.
+	 * cannot see each other's data. Time is the exception: a nested call runs
+	 * on what is left of the enclosing call's budget (see `elapsedMs`).
 	 *
 	 * @param code - JavaScript expression to evaluate
 	 * @param data - Workflow data (e.g., { $json: {...}, $runIndex: 0 })
@@ -715,12 +727,33 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
+		// A nested call runs on what is left of the configured timeout, so the
+		// chain shares one budget: subtracting elapsed makes every frame's
+		// deadline the same instant. A configured timeout of 0 means "no limit",
+		// so there is nothing to share. A positive elapsed is the only nested
+		// case that needs handling — a frame that has spent nothing is owed the
+		// full timeout anyway.
+		const elapsedMs = options?.elapsedMs ?? 0;
+		const nested = elapsedMs > 0 && this.config.timeout > 0;
+		let timeout = this.config.timeout;
+		if (nested) {
+			// isolated-vm rejects a fractional timeout and reads 0 or less as "no
+			// timeout at all", so truncate, and fail here rather than pass on a
+			// budget that is already gone.
+			timeout = Math.trunc(this.config.timeout - elapsedMs);
+			if (timeout <= 0) throw this.timeoutError(true);
+		}
+
+		// Host callbacks are ivm.Callback instances: inside the isolate they
+		// arrive as plain functions with structured-clone marshaling, so the
+		// runtime invokes them directly. Callbacks are GC-managed; there is no
+		// release() to call in `finally`.
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
 		const callHost = this.createCallHostRef(data);
 
 		try {
-			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
+			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
 			// Tournament generates: this.$json.email, this.$items(), etc.
@@ -763,7 +796,7 @@ try {
 			const result = this.context.evalClosureSync(
 				wrappedCode,
 				[getValueAtPath, getArrayElement, callHost],
-				{ result: { copy: true }, timeout: this.config.timeout },
+				{ result: { copy: true }, timeout },
 			);
 
 			if (isErrorSentinel(result)) {
@@ -787,7 +820,7 @@ try {
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (errorMessage.includes('Script execution timed out')) {
-				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+				throw this.timeoutError(nested);
 			}
 			if (errorMessage.includes('memory limit')) {
 				throw new MemoryLimitError(
@@ -796,11 +829,20 @@ try {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
-		} finally {
-			getValueAtPath.release();
-			getArrayElement.release();
-			callHost.release();
 		}
+	}
+
+	/**
+	 * Always names the configured limit, never the reduced budget a nested call
+	 * ran on — reporting "timed out after 137ms" would misstate the limit.
+	 */
+	private timeoutError(nested: boolean): TimeoutError {
+		return new TimeoutError(
+			nested
+				? `Nested expressions timed out after sharing the ${this.config.timeout}ms limit`
+				: `Expression timed out after ${this.config.timeout}ms`,
+			{},
+		);
 	}
 
 	/**

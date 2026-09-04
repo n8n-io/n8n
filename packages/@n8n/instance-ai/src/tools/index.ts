@@ -41,6 +41,10 @@ const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
 );
+const loadListAgentCapabilitiesTool = lazyMod(
+	() =>
+		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
+);
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
@@ -127,7 +131,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 /**
  * Creates orchestrator domain tools. Skills run in the orchestrator now, so
  * domain tools keep their workflow-building surface while hiding raw full
- * WorkflowJSON update actions.
+ * WorkflowJSON read and update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -205,6 +209,10 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
+			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
 		]);
 		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}

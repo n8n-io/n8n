@@ -47,6 +47,7 @@ type PaginationRequestParams = {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
+	version?: number;
 };
 
 const REQUEST_TIMEOUT_MS = 6000;
@@ -86,7 +87,7 @@ export async function paginatedRequest<T>(
 		try {
 			response = await Container.get(OutboundHttp)
 				.requests({
-					ssrf: 'disabled', // n8n-controlled templates/Strapi host
+					useDefaultSsrfPolicy: 'unsafe', // n8n-controlled templates/Strapi host
 					timeout: REQUEST_TIMEOUT_MS,
 				})
 				.request<ResponseData<T>>({

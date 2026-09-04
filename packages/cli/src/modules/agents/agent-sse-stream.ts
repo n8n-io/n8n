@@ -5,6 +5,7 @@ import type {
 	AgentSseMessage,
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
@@ -64,6 +65,12 @@ function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
 
 	if (content.length === 0) return undefined;
 	return { role: message.role, content };
+}
+
+function toolResultOutputForSse(output: unknown, isError: boolean | undefined): unknown {
+	if (!isError) return output;
+	const fallback = output instanceof Error ? output.name : undefined;
+	return scrubSecretsInText(stringifyError(output) || fallback || 'Tool execution failed');
 }
 
 /** SSE-emit text/reasoning lifecycle chunks. */
@@ -170,7 +177,7 @@ function emitToolChunk(
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
-				output: chunk.output,
+				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
@@ -290,8 +297,8 @@ function stringifyError(error: unknown): string {
 			return JSON.stringify(error, null, 2);
 		}
 		return `Error: ${String(error)}`;
-	} catch (e) {
-		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	} catch {
+		LoggerProxy.warn('Failed to stringify agent streaming error');
 	}
 	return 'Unknown error';
 }

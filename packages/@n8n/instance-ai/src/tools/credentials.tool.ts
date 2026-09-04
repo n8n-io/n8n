@@ -3,6 +3,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	credentialRequestSchema,
 	instanceAiConfirmationSeveritySchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -12,13 +13,22 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, SetupItemsEmitter } from '../types';
+import {
+	buildChatModelProviderHint,
+	isChatModelProviderCredentialType,
+} from './nodes/preferred-chat-model';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
 import {
-	extractServiceHost,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	N8N_CONNECT_DISPLAY_NAME,
 } from './workflows/credential-utils';
+import {
+	buildSetupItemsFromCredentialRequests,
+	buildSetupItemsFromAnnouncement,
+	isSetupPanelEnabled,
+} from './workflows/setup-items';
+import { analyzeWorkflow } from './workflows/setup-workflow.service';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -131,6 +141,31 @@ function normalizeUrlForComparison(raw: unknown): string | undefined {
 	}
 }
 
+function extractHttpOrigin(raw: unknown): string | undefined {
+	if (typeof raw !== 'string') return undefined;
+	try {
+		const url = new URL(raw);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+export function findSetupHintTestUrlOriginProblem(
+	hint: InstanceAiCredentialSetupHint,
+	serviceOrigin: string,
+): string | undefined {
+	if (hint.testUrl === undefined) return undefined;
+	const testOrigin = extractHttpOrigin(hint.testUrl);
+	if (!testOrigin) {
+		return `testUrl "${hint.testUrl}" is not an absolute HTTP URL — omit testUrl if no documented read-only endpoint is available`;
+	}
+	if (testOrigin !== serviceOrigin) {
+		return `testUrl origin "${testOrigin}" does not match the workflow service origin "${serviceOrigin}" — use a documented read-only endpoint on the workflow service or omit testUrl`;
+	}
+	return undefined;
+}
+
 /**
  * Collect recipe problems so the model corrects them instead of the card
  * silently degrading. `nodeUrls` additionally rejects a testUrl pointing at
@@ -213,6 +248,71 @@ export function findSetupHintProblems(
 export const INVALID_SETUP_HINT_MESSAGE =
 	'Each setup hint must be a secret-free template whose {{marker}}s match its placeholders one-to-one. Fix the recipe (or omit it entirely) and retry.';
 
+/**
+ * Registered type names often diverge from credential class names, and a
+ * made-up name sails through to a setup card the frontend cannot render.
+ * Resolve which requested types are unknown so setup fails fast with a
+ * corrective error instead. Types are trusted as-is when the service doesn't
+ * expose the lookup.
+ */
+async function findUnknownCredentialTypes(
+	context: InstanceAiContext,
+	credentialTypes: string[],
+): Promise<string[]> {
+	const service = context.credentialService;
+	if (!service.credentialTypeExists) return [];
+
+	const unknown: string[] = [];
+	for (const credentialType of new Set(credentialTypes)) {
+		// The templated type is created from the setupHint recipe, not looked up.
+		if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) continue;
+		try {
+			if (!(await service.credentialTypeExists(credentialType))) {
+				unknown.push(credentialType);
+			}
+		} catch {
+			// Existence lookup failing is a soft signal — don't block setup on it.
+		}
+	}
+	return unknown;
+}
+
+/**
+ * Search queries for near-matches of an unknown type, most to least specific:
+ * the name itself, the name without its OAuth2/Api suffix, and the leading
+ * lowercase run (the service part of a camelCase name).
+ */
+function deriveTypeSuggestionQueries(credentialType: string): string[] {
+	const queries = [credentialType];
+	const withoutSuffix = credentialType.replace(/(?:OAuth2(?:Api)?|Api)$/, '');
+	if (withoutSuffix && !queries.includes(withoutSuffix)) queries.push(withoutSuffix);
+	const service = /^[a-z0-9]+/.exec(credentialType)?.[0];
+	if (service && !queries.includes(service)) queries.push(service);
+	return queries;
+}
+
+const MAX_TYPE_SUGGESTIONS = 5;
+
+async function suggestCredentialTypes(
+	context: InstanceAiContext,
+	credentialType: string,
+): Promise<Array<{ type: string; displayName: string }>> {
+	const service = context.credentialService;
+	if (!service.searchCredentialTypes) return [];
+
+	for (const query of deriveTypeSuggestionQueries(credentialType)) {
+		try {
+			const results = (await service.searchCredentialTypes(query)).filter(
+				(result) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(result.type),
+			);
+			if (results.length > 0) return results.slice(0, MAX_TYPE_SUGGESTIONS);
+		} catch {
+			// Try the next, broader query.
+		}
+	}
+	return [];
+}
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -265,28 +365,32 @@ const searchTypesAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
 		),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
+			'When true, ignore `query` and return every credential type supported by Gateway credits. Use to answer "which credential types support Gateway credits?".',
 		),
 });
+
+const standaloneSetupHintField = setupHintField.omit({ testUrl: true });
 
 const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished, so never tell the user a card is open or that they must authorize. A `success` result carries a `credentials` map plus a `selections` array reporting what each selection actually is (`connection`, `hasNoValues`) and a `verified` flag: only report credentials as ready when `verified` is true, and otherwise relay the unresolved selections named in `message`. A sole service-scoped credential may have been auto-selected with no user action, unless the entry set `preferNew`; generic auth types always need an explicit Continue.',
 		),
 	credentials: z
 		.array(
 			z.object({
 				credentialType: z
 					.string()
-					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+					.describe(
+						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify with action "search-types" when unsure.',
+					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
 					.string()
@@ -294,10 +398,28 @@ const setupAction = z.object({
 					.describe(
 						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
 					),
-				setupHint: setupHintField.optional(),
+				preferNew: z
+					.boolean()
+					.optional()
+					.describe(
+						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+					),
+				setupHint: standaloneSetupHintField.optional(),
 			}),
 		)
 		.describe('List of credentials to set up'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'The workflow these credentials are for, when one exists (e.g. the id returned by build-workflow). Lets the setup panel list them against that workflow.',
+		),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -424,17 +546,18 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
+	requireUserSelection: z.boolean().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
 
-const resumeSchema = z.object({
+export const credentialsResumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
-	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof credentialsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -447,7 +570,10 @@ interface StoredCredentialListItem {
 }
 
 interface AiGatewayManagedListItem {
-	id: null;
+	// Use the shared managed tag as the id so the builder references n8n credits
+	// like a stored credential (`newCredential(name, id)`); resolve recognizes the
+	// tag and attaches the managed credential.
+	id: typeof AI_GATEWAY_MANAGED_TAG;
 	name: string;
 	type: string;
 	__aiGatewayManaged: true;
@@ -457,6 +583,23 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	const storedCredentials = await context.credentialService.list({
 		type: input.type,
 	});
+
+	// An empty LLM-provider lookup is the moment the builder locks in a default
+	// provider — surface the LLM credentials the user does have so it prefers
+	// those (or asks) instead.
+	let chatModelProviderHint: string | undefined;
+	if (
+		input.type &&
+		storedCredentials.length === 0 &&
+		isChatModelProviderCredentialType(input.type)
+	) {
+		try {
+			const allStored = await context.credentialService.list({});
+			chatModelProviderHint = buildChatModelProviderHint(input.type, allStored);
+		} catch {
+			// Soft signal — the primary (empty) listing still returns.
+		}
+	}
 
 	// When the caller filters by type, prepend the synthetic n8n Connect
 	// managed entry if the AI Gateway covers that credential type. This is
@@ -469,7 +612,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			const supported = await context.credentialService.isAiGatewayCredentialType(input.type);
 			if (supported) {
 				items.push({
-					id: null,
+					id: AI_GATEWAY_MANAGED_TAG,
 					name: N8N_CONNECT_DISPLAY_NAME,
 					type: input.type,
 					__aiGatewayManaged: true,
@@ -494,19 +637,23 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
+	// Mutually exclusive: the provider hint requires a type filter, the
+	// truncation hint requires none.
+	const hint =
+		chatModelProviderHint ??
+		(truncatedWithoutNarrowing
+			? `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`
+			: undefined);
+
 	return {
 		credentials: page.map((c) =>
-			c.id === null
-				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: c.__aiGatewayManaged }
+			c.id === AI_GATEWAY_MANAGED_TAG
+				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: true }
 				: { id: c.id, name: c.name, type: c.type },
 		),
 		total,
 		hasMore,
-		...(truncatedWithoutNarrowing
-			? {
-					hint: `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`,
-				}
-			: {}),
+		...(hint ? { hint } : {}),
 	};
 }
 
@@ -551,9 +698,9 @@ async function handleSearchTypes(
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
 	// Enumerate n8n Connect–supported types regardless of query.
-	if (input.n8nConnectOnly) {
+	if (input.gatewayCreditsOnly) {
 		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
-		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+		return { results: types.map((type) => ({ type, gatewayCredits: true })) };
 	}
 
 	if (!context.credentialService.searchCredentialTypes) {
@@ -563,7 +710,7 @@ async function handleSearchTypes(
 	if (!input.query) {
 		return {
 			results: [],
-			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+			error: 'A `query` is required for search-types unless `gatewayCreditsOnly` is set.',
 		};
 	}
 
@@ -580,6 +727,85 @@ async function handleSearchTypes(
 	}
 
 	return { results };
+}
+
+/**
+ * The workflow a setup announcement belongs to: the one the agent named, else
+ * the workflow this run last saved — the latest artifact, which is the one the
+ * panel follows. Undefined outside any workflow context, where the card remains
+ * the right surface.
+ */
+function resolveSetupPanelWorkflowId(
+	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
+	input: Extract<Input, { action: 'setup' }>,
+): string | undefined {
+	return input.workflowId ?? context.setupItemsEmitter.lastWorkflowId();
+}
+
+async function announceSetupItems(
+	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
+	input: Extract<Input, { action: 'setup' }>,
+	workflowId: string,
+) {
+	const credentials = input.credentials ?? [];
+	// Best-effort, like the build's emission: the panel is a side channel.
+	try {
+		// Announce against the saved workflow's analysis so generic auth types
+		// land on their per-node rows and the snapshot stays whole. A merge, not
+		// a replace: earlier announcements may list types no saved node uses yet.
+		const analyzed = await analyzeWorkflow(context, workflowId, undefined, {
+			includeSettled: true,
+		});
+		context.setupItemsEmitter.merge(
+			workflowId,
+			buildSetupItemsFromAnnouncement(workflowId, credentials, analyzed),
+		);
+	} catch (error) {
+		context.logger.warn('Failed to announce setup-items, falling back to node-less rows', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		// Generic auth types have no node-less row, so this list can be empty;
+		// an empty merge would publish an empty snapshot over the durable one.
+		const fallback = buildSetupItemsFromCredentialRequests(workflowId, credentials);
+		if (fallback.length > 0) {
+			try {
+				context.setupItemsEmitter.merge(workflowId, fallback);
+			} catch {
+				// The panel is a side channel: never fail the tool over it.
+			}
+		}
+	}
+
+	const existingByType = await Promise.all(
+		credentials.map(async (req: { credentialType: string }) => {
+			const existing =
+				req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+					? []
+					: await context.credentialService.list({
+							type: req.credentialType,
+							...(context.projectId ? { projectId: context.projectId } : {}),
+						});
+			return {
+				credentialType: req.credentialType,
+				existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+			};
+		}),
+	);
+	const typeNames = credentials.map((c: { credentialType: string }) => c.credentialType).join(', ');
+
+	return {
+		success: true,
+		announced: true,
+		workflowId,
+		credentials: existingByType,
+		message:
+			`Listed ${typeNames} in the setup panel next to the chat. No card is open and nothing is waiting on ` +
+			'you: continue the build. The user can connect these at any time while you work — the build ' +
+			'attaches a matching stored credential automatically and the panel tracks what remains. Do not ' +
+			'ask the user to connect them now, do not describe a card, and do not call setup again for these ' +
+			'types unless the services the workflow needs change.',
+	};
 }
 
 async function handleSetup(
@@ -600,6 +826,27 @@ async function handleSetup(
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
+		const unknownTypes = await findUnknownCredentialTypes(
+			context,
+			input.credentials.map((req: { credentialType: string }) => req.credentialType),
+		);
+		if (unknownTypes.length > 0) {
+			const suggestions: Record<string, Array<{ type: string; displayName: string }>> = {};
+			for (const credentialType of unknownTypes) {
+				const matches = await suggestCredentialTypes(context, credentialType);
+				if (matches.length > 0) suggestions[credentialType] = matches;
+			}
+			return {
+				error: 'unknown_credential_type',
+				message: `No credential type named ${unknownTypes
+					.map((type) => `"${type}"`)
+					.join(
+						', ',
+					)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it with credentials(action: "search-types"), then retry.`,
+				...(Object.keys(suggestions).length > 0 ? { suggestions } : {}),
+			};
+		}
+
 		const hintProblems = input.credentials.flatMap(
 			(req: { credentialType: string; setupHint?: InstanceAiCredentialSetupHint }) => {
 				if (!req.setupHint) return [];
@@ -618,12 +865,30 @@ async function handleSetup(
 			};
 		}
 
+		// Setup panel v2: a workflow's credential needs are announced to the
+		// persistent panel and the turn continues — no card, no suspension. The
+		// finalize stage, standalone setup (no workflow), and an explicit user
+		// choice — the picker (`requireUserSelection`) or a fresh credential
+		// (`preferNew`) — keep the card: the panel has no way to express "replace
+		// the bound one", so the next save would silently re-attach it.
+		const keepsCard =
+			isFinalize ||
+			input.requireUserSelection === true ||
+			input.credentials.some((req: { preferNew?: boolean }) => req.preferNew === true);
+		if (isSetupPanelEnabled(context) && !keepsCard) {
+			const panelWorkflowId = resolveSetupPanelWorkflowId(context, input);
+			if (panelWorkflowId !== undefined) {
+				return await announceSetupItems(context, input, panelWorkflowId);
+			}
+		}
+
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
 				async (req: {
 					credentialType: string;
 					reason?: string;
 					suggestedName?: string;
+					preferNew?: boolean;
 					setupHint?: InstanceAiCredentialSetupHint;
 				}) => {
 					// This card has no node context to match candidates by service, so
@@ -635,17 +900,13 @@ async function handleSetup(
 									type: req.credentialType,
 									...(context.projectId ? { projectId: context.projectId } : {}),
 								});
-					// Service identity comes from the recipe's test endpoint here; an
-					// untagged credential is never offered automatically later.
-					const serviceHost = req.setupHint ? extractServiceHost(req.setupHint.testUrl) : undefined;
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
-						...(req.setupHint
-							? { setupHint: { ...req.setupHint, ...(serviceHost ? { serviceHost } : {}) } }
-							: {}),
+						...(req.preferNew ? { preferNew: true } : {}),
+						...(req.setupHint ? { setupHint: req.setupHint } : {}),
 					};
 				},
 			),
@@ -664,6 +925,7 @@ async function handleSetup(
 			severity: 'info' as const,
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
+			...(input.requireUserSelection === true ? { requireUserSelection: true } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
 	}
@@ -680,7 +942,8 @@ async function handleSetup(
 
 	// State 4: User requested automatic browser-assisted setup
 	if (resumeData.autoSetup) {
-		const { credentialType } = resumeData.autoSetup;
+		const { credentialType, attemptId } = resumeData.autoSetup;
+		context.browserCredentialSetup?.markPending(credentialType, attemptId);
 		const docsUrl =
 			(await context.credentialService.getDocumentationUrl?.(credentialType)) ?? undefined;
 		const requiredFields =
@@ -696,14 +959,134 @@ async function handleSetup(
 
 	// State 5: Approved with credential selections
 	const selectedCredentials = resumeData.credentials ?? {};
-	const hasSelections = Object.keys(selectedCredentials).length > 0;
+	const entries = Object.entries(selectedCredentials);
+	if (entries.length === 0) {
+		return {
+			success: true,
+			credentials: selectedCredentials,
+			message:
+				'The setup interaction finished without any credential selected. The setup card is no longer open — do not tell the user a card is open or waiting; report the outcome and ask how they want to proceed.',
+		};
+	}
+
+	// A selection can be a credential the card merely re-offered — an empty one, or
+	// one belonging to another service that happens to share this generic auth type.
+	// Check what was actually selected instead of reporting every selection as ready.
+	const selections = await Promise.all(
+		entries.map(
+			async ([credentialType, credentialId]) =>
+				await verifySelectedCredential(context, credentialType, credentialId),
+		),
+	);
+
 	return {
 		success: true,
 		credentials: selectedCredentials,
-		message: hasSelections
-			? 'Credential setup is complete — the credentials in the map above are selected and ready to use. The setup card is no longer open and no user action (such as OAuth authorization) is needed; confirm the outcome to the user.'
-			: 'The setup interaction finished without any credential selected. The setup card is no longer open — do not tell the user a card is open or waiting; report the outcome and ask how they want to proceed.',
+		verified: selections.every((selection) => selection.connection === 'passed'),
+		selections,
+		message: buildSetupOutcomeMessage(selections),
 	};
+}
+
+type SelectionConnectionState = 'passed' | 'failed' | 'untested';
+
+interface SelectedCredentialOutcome {
+	credentialType: string;
+	credentialId: string;
+	/** `untested` means the type declares no connection test, not that testing was skipped. */
+	connection: SelectionConnectionState;
+	connectionMessage?: string;
+	/** Only set when the credential is known to carry no values at all. */
+	hasNoValues?: true;
+}
+
+/**
+ * Establish what a selected credential actually is: connection-test it when its
+ * type has a test, and otherwise fall back to whether it carries any values —
+ * the only signal available for generic auth types, which is where a re-offered
+ * empty credential hides.
+ */
+async function verifySelectedCredential(
+	context: InstanceAiContext,
+	credentialType: string,
+	credentialId: string,
+): Promise<SelectedCredentialOutcome> {
+	// Absent capability means "assume testable", matching workflow setup's default.
+	const canTest = context.credentialService.isTestable
+		? await context.credentialService.isTestable(credentialType).catch(() => true)
+		: true;
+
+	if (canTest) {
+		const result = await context.credentialService.test(credentialId).catch((error: unknown) => ({
+			success: false,
+			message: error instanceof Error ? error.message : 'Credential test failed',
+		}));
+		if (result.success) return { credentialType, credentialId, connection: 'passed' };
+		return {
+			credentialType,
+			credentialId,
+			connection: 'failed',
+			...(result.message ? { connectionMessage: result.message } : {}),
+		};
+	}
+
+	const fillState =
+		(await context.credentialService
+			.getCredentialFillState?.(credentialId)
+			.catch(() => 'unknown' as const)) ?? 'unknown';
+
+	return {
+		credentialType,
+		credentialId,
+		connection: 'untested',
+		...(fillState === 'blank' ? { hasNoValues: true as const } : {}),
+	};
+}
+
+const SETUP_CARD_CLOSED_NOTE = 'The setup card is no longer open.';
+
+function describeSelectionProblem(selection: SelectedCredentialOutcome): string | undefined {
+	const label = `${selection.credentialType} (${selection.credentialId})`;
+	if (selection.connection === 'failed') {
+		return selection.connectionMessage
+			? `${label} failed its connection test: ${selection.connectionMessage}`
+			: `${label} failed its connection test`;
+	}
+	if (selection.hasNoValues) return `${label} has no values filled in`;
+	if (selection.connection === 'untested') {
+		return (
+			`${label} could not be verified — n8n has no connection test for this credential type, ` +
+			'so the selection may be a pre-existing credential belonging to a different service'
+		);
+	}
+	return undefined;
+}
+
+/**
+ * The result the agent relays. Only a selection that passed its own connection
+ * test may be reported as ready — anything else names what is unresolved so the
+ * agent does not tell the user a workflow is runnable when it still is not.
+ */
+function buildSetupOutcomeMessage(selections: SelectedCredentialOutcome[]): string {
+	const problems = selections
+		.map(describeSelectionProblem)
+		.filter((problem): problem is string => problem !== undefined);
+
+	if (problems.length === 0) {
+		return (
+			'Credential setup is complete — every selected credential passed its connection test and is ' +
+			`ready to use. ${SETUP_CARD_CLOSED_NOTE} No further user action (such as OAuth ` +
+			'authorization) is needed; confirm the outcome to the user.'
+		);
+	}
+
+	return (
+		`${SETUP_CARD_CLOSED_NOTE} These selections are not confirmed working: ${problems.join('; ')}. ` +
+		'Do not tell the user they are ready or that the workflow can now run. Report what is unresolved, ' +
+		'and when a credential is empty or belongs to another service, call credentials(action: "setup") ' +
+		'again for that type with preferNew: true so the card opens on creating a new, distinct credential ' +
+		'instead of re-offering the existing one.'
+	);
 }
 
 async function handleTest(context: InstanceAiContext, input: Extract<Input, { action: 'test' }>) {
@@ -729,7 +1112,7 @@ export function createCredentialsTool(
 		.description(getToolDescription(options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(credentialsResumeSchema)
 		.handler(async (input, ctx) => {
 			const parsedInput = inputSchema.parse(input) as Input;
 			switch (parsedInput.action) {

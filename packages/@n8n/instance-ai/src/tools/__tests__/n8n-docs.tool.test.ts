@@ -155,7 +155,7 @@ describe('n8n-docs tool', () => {
 		const matches = rankN8nDocsEntries(registry.entries, {
 			query: 'How do I set up Gmail OAuth2 API credentials?',
 			intent: 'credential-setup',
-			credentialType: 'gmailOAuth2Api',
+			credentialType: 'gmailOAuth2',
 			credentialDisplayName: 'Gmail OAuth2 API',
 			nodeType: 'n8n-nodes-base.gmail',
 		});
@@ -197,7 +197,7 @@ describe('n8n-docs tool', () => {
 			action: 'lookup',
 			query: 'How do I set up Gmail OAuth2 API credentials?',
 			intent: 'credential-setup',
-			credentialType: 'gmailOAuth2Api',
+			credentialType: 'gmailOAuth2',
 			credentialDisplayName: 'Gmail OAuth2 API',
 			oauthRedirectUrl: 'http://localhost:5678/rest/oauth2-credential/callback',
 		});

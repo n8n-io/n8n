@@ -5,6 +5,7 @@ import type {
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
+	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
@@ -27,6 +28,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -111,6 +113,7 @@ declare global {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
@@ -121,6 +124,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,
@@ -148,7 +152,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }
@@ -331,6 +339,7 @@ export type WorkflowResource = BaseResource & {
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type VariableResource = BaseResource & {
@@ -353,6 +362,7 @@ export type CredentialsResource = BaseResource & {
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 };
 
 // Base resource types that are always available
@@ -388,6 +398,7 @@ export type WorkflowListItem = Omit<
 	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -695,8 +706,13 @@ export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
+	/** Workflow the credential is being set up for, supplied by workflow-scoped
+	 * surfaces (NDV, Instance AI workflow setup) for telemetry attribution — the
+	 * modal itself can open where no workflow document is loaded. */
+	workflowId?: string;
 	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
 	 * template fields so the modal opens on the guided simple view. */
 	credentialSetupHint?: InstanceAiCredentialSetupHint;

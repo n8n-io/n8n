@@ -1,7 +1,13 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { CaseSeed } from '../harness/schema';
-import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
+import type {
+	ConversationTurn,
+	SetupWizardSkippedNode,
+	ToolInteraction,
+	TranscriptStep,
+	TranscriptTurn,
+} from '../types';
 
 /** Render a turn's out-of-band workflow attachment for a transcript/prompt, e.g.
  *  `[attached workflow: Batch loop]`, or '' when it has none. The editor hands the
@@ -229,9 +235,10 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 			}
 			const qs = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` (${q.type})` : '';
 					const opts = q.options && q.options.length > 0 ? ` [${q.options.join(' / ')}]` : '';
 					const answer = answerByQId.get(q.id);
-					return `Q: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
+					return `Q${type}: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
 				})
 				.join(' | ');
 			return `Asked user: ${qs}`;
@@ -246,12 +253,17 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 				);
 				parts.push(`configured ${configured.join('; ')}`);
 			}
-			if (interaction.skippedNodes.length > 0) {
-				const skipped = interaction.skippedNodes.map(
-					(s) =>
-						`${s.nodeName}${s.credentialType ? ` (needs ${s.credentialType} credential)` : ' (needs parameters)'}`,
+			const describeNeeds = (node: SetupWizardSkippedNode) =>
+				`${node.nodeName}${node.credentialType ? ` (needs ${node.credentialType} credential)` : ' (needs parameters)'}`;
+			if (interaction.nodesStillNeedingSetup.length > 0) {
+				parts.push(
+					`still needs setup ${interaction.nodesStillNeedingSetup.map(describeNeeds).join(', ')}`,
 				);
-				parts.push(`skipped ${skipped.join(', ')}`);
+			}
+			// Kept distinct from the above: the judge cares whether the assistant re-asked for
+			// something the user declined, which reads the same as "unconfigured" if merged.
+			if (interaction.skippedByUser && interaction.skippedByUser.length > 0) {
+				parts.push(`user skipped ${interaction.skippedByUser.map(describeNeeds).join(', ')}`);
 			}
 			const body = parts.length > 0 ? parts.join('; ') : 'nothing to apply';
 			return `Setup wizard: ${body}${interaction.reason ? ` — ${interaction.reason}` : ''}`;

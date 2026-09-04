@@ -23,11 +23,7 @@ import {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAgentNode,
-	InstanceAiEvent,
-} from '@n8n/api-types';
+import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -46,13 +42,18 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
+import type { StoredEvent } from '@n8n/instance-ai';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
-import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
+import {
+	OversizedAttachmentError,
+	UnsupportedAttachmentError,
+	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
+} from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -89,40 +90,6 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
-	/** Durable-log prototype flag (N8N_INSTANCE_AI_DURABLE_LOG): replay and
-	 *  cursors come from the DB-backed log instead of the in-memory bus. */
-	private readonly durableLogEnabled: boolean;
-
-	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
-		let score = 0;
-		const stack = [tree];
-
-		while (stack.length > 0) {
-			const node = stack.pop()!;
-			score += 100;
-			score += node.toolCalls.length * 10;
-			score += node.timeline.length * 2;
-			score += (node.planItems?.length ?? 0) * 20;
-			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
-			score += node.children.length * 25;
-			stack.push(...node.children);
-		}
-
-		return score;
-	}
-
-	private static selectBootstrapTree(
-		eventTree: InstanceAiAgentNode,
-		persistedTree?: InstanceAiAgentNode,
-	): InstanceAiAgentNode {
-		if (!persistedTree) return eventTree;
-
-		return InstanceAiController.getTreeRichnessScore(persistedTree) >
-			InstanceAiController.getTreeRichnessScore(eventTree)
-			? persistedTree
-			: eventTree;
-	}
-
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
@@ -148,12 +115,25 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	private requireInstanceAiEnabled(): void {
 		if (!this.settingsService.isInstanceAiEnabled()) {
 			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+
+	/**
+	 * Without a model the run starts and then dies inside the provider call, with
+	 * nothing to tell the user why. The frontend routes an unconfigured instance
+	 * to setup rather than the composer, but that is one gate per entry point and
+	 * the endpoint is reachable on its own, so refuse the run here too.
+	 */
+	private async requireModelConfigured(): Promise<void> {
+		if (!(await this.settingsService.isModelConfigured())) {
+			throw new BadRequestError(
+				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+			);
 		}
 	}
 
@@ -184,6 +164,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		await this.requireModelConfigured();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
 		}
@@ -199,12 +180,30 @@ export class InstanceAiController {
 		if (fileAttachments.length > 0) {
 			try {
 				validateAttachmentMimeTypes(fileAttachments);
+				// Reject oversized payloads here rather than letting them reach the model.
+				// The provider answers an oversized image with an opaque 400, and the
+				// attachment is already persisted in thread history by then — so every
+				// later turn replays it and fails too, stranding the conversation.
+				//
+				// Note the request schema caps each `data` field at the same per-file
+				// limit, and body validation runs before this handler — so over HTTP a
+				// single oversized file is answered by the schema and only the combined
+				// budget reaches here. This call stays because it is the check for
+				// non-HTTP callers and the one that enforces the total.
+				validateAttachmentSizes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
 					throw new BadRequestError(
 						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
 							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				if (error instanceof OversizedAttachmentError) {
+					throw new BadRequestError(
+						error.reason === 'per_file'
+							? `${error.message} Attach a smaller version, or resize the image before sending.`
+							: `${error.message} Send them across separate messages, or attach smaller versions.`,
 					);
 				}
 				throw error;
@@ -316,9 +315,7 @@ export class InstanceAiController {
 
 		// 2. Re-publish any terminal outcomes that never reached the client.
 		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 		}
 
 		// 3. Set SSE headers.
@@ -340,7 +337,7 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 5. Collect live message groups and fetch their persisted snapshots.
+		// 5. Collect live message groups.
 		//    Multiple groups can be active simultaneously when a background task
 		//    from an older turn outlives its original turn.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
@@ -373,23 +370,6 @@ export class InstanceAiController {
 			}
 		}
 
-		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
-		for (const [groupId, group] of liveGroups) {
-			persistedSnapshots.set(
-				groupId,
-				await this.memoryService.getLatestRunSnapshot(threadId, {
-					messageGroupId: groupId,
-					// Use the group's own latest runId — NOT the thread-global
-					// activeRunId, which belongs to the current orchestrator turn and
-					// would be wrong for background groups from older turns.
-					runId: group.runIds.at(-1),
-				}),
-			);
-		}
-
-		// The client may have disconnected during the awaits above.
-		if (closed) return;
-
 		// 6b (used by both arms below). Emit one run-sync control frame for a live
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
@@ -399,14 +379,9 @@ export class InstanceAiController {
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
 		) => {
-			const persistedSnapshot = persistedSnapshots.get(groupId);
-			if (runEvents.length === 0 && !persistedSnapshot) return;
+			if (runEvents.length === 0) return;
 
-			const eventTree = buildAgentTreeFromEvents(runEvents);
-			const agentTree = InstanceAiController.selectBootstrapTree(
-				eventTree,
-				persistedSnapshot?.tree,
-			);
+			const agentTree = buildAgentTreeFromEvents(runEvents);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -419,160 +394,144 @@ export class InstanceAiController {
 			);
 		};
 
-		if (this.durableLogEnabled) {
-			// 6. Replay missed events from the DURABLE log — survives restarts and is
-			//    valid on any main (the table is in the shared DB). The reads are
-			//    async, so unlike the old synchronous memory-store replay, live
-			//    events can land mid-bootstrap: buffer them across every await (the
-			//    replay read, the run-sync tree reads, AND the gap read) and flush
-			//    with seq dedupe only when no await remains before live delivery
-			//    takes over (the drain persists before it emits, so a fact is never
-			//    in neither place). A flushed event may already be folded into a
-			//    run-sync tree; the shared reducer applies it idempotently, same as
-			//    any live event arriving after a frame.
-			const arrivedDuringReplay: StoredEvent[] = [];
-			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-				arrivedDuringReplay.push(stored);
-			});
-			try {
-				const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-				// The client may have disconnected during the read: stop before
-				// writing to the dead response or arming the keep-alive below.
-				if (closed) return;
-				let lastReplayedSeq = cursor;
-				for (const stored of missed) {
-					deliver(stored);
-					if (stored.id !== undefined) lastReplayedSeq = stored.id;
-				}
-				// Build each live group's bootstrap tree from the durable log, so the
-				// group renders fully even when the bus cache was evicted, the process
-				// restarted, or this main never buffered the thread (sibling main).
-				// Remember which coalesced blocks each delivered tree folds: the gap
-				// read below may return the same rows, and re-applying a block the
-				// tree already renders would append a duplicate timeline entry.
-				const blockKey = (event: {
-					type: string;
-					runId: string;
-					agentId: string;
-					responseId?: string;
-					payload: { text: string };
-				}) =>
-					`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
-				const foldedBlockKeys = new Set<string>();
-				for (const [groupId, group] of liveGroups) {
-					const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
-					if (closed) return;
-					writeRunSyncFrame(groupId, group, runEvents);
-					for (const event of runEvents) {
-						if (event.type === 'text-block' || event.type === 'reasoning-block') {
-							foldedBlockKeys.add(blockKey(event));
-						}
-					}
-				}
-				// One more durable read: coalesced blocks are persisted but never
-				// live-emitted (live clients saw the deltas), so a segment that closed
-				// during the awaits above exists only as rows the replay read predates
-				// — invisible to the buffering subscription. Without this read, the
-				// buffered fact that follows such a block would advance the browser
-				// cursor past it and no later replay would ever return it.
-				const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
-				if (closed) return;
-				// A still-streaming segment exists only in the log's coalesce buffer
-				// (deltas are never persisted), so a mid-stream refresh would render
-				// only the post-refresh tail. Serve each open segment as one ephemeral
-				// delta frame (no `id:` line — the cursor stays on durable facts), after
-				// the run-sync frames so live deltas keep appending to it and the
-				// segment's eventual block replaces it. Everything from this read to
-				// `bootstrapping = false` is synchronous, so a buffered delta of a
-				// served segment is exactly text inside the snapshot: skipping it loses
-				// nothing and delivering it would duplicate.
-				const openSegments = this.eventLog.getOpenSegments(threadId);
-				const segmentKey = (
-					kind: 'text' | 'reasoning',
-					event: { runId: string; agentId: string; responseId?: string },
-				) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
-				const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
-				// Deliver the gap rows first. A block identical to one folded into a
-				// delivered run-sync tree is not re-applied (that would duplicate its
-				// text) but still counts as delivered for cursor contiguity — its
-				// content reached the client inside the frame. Buffered deltas of a
-				// gap block's segment are skipped below like served ones: their text
-				// is inside the block, and delivering them after it would duplicate.
-				const gapBlockSegments = new Set<string>();
-				for (const row of gapRows) {
-					if (row.id === undefined || row.id <= lastReplayedSeq) continue;
-					const { event } = row;
-					if (event.type === 'text-block' || event.type === 'reasoning-block') {
-						gapBlockSegments.add(
-							segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
-						);
-						if (foldedBlockKeys.has(blockKey(event))) {
-							lastReplayedSeq = row.id;
-							continue;
-						}
-					}
-					deliver(row);
-					lastReplayedSeq = row.id;
-				}
-				for (const stored of arrivedDuringReplay) {
-					if (stored.id !== undefined) {
-						if (stored.id <= lastReplayedSeq) continue;
-						if (stored.id === lastReplayedSeq + 1) {
-							deliver(stored);
-							lastReplayedSeq = stored.id;
-							continue;
-						}
-						// Rows between the cursor and this fact were persisted after the
-						// gap read (a segment closed while it was in flight): deliver the
-						// fact's content but strip its id line, so the cursor never
-						// crosses a row the client has not seen — the next replay returns
-						// the missing block and re-applies this fact idempotently.
-						deliver({ event: stored.event });
-						continue;
-					}
-					const { event } = stored;
-					if (
-						(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
-						(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
-							gapBlockSegments.has(
-								segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
-							))
-					) {
-						continue;
-					}
-					deliver(stored);
-				}
-				for (const segment of openSegments) {
-					deliver({
-						event: {
-							type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
-							runId: segment.runId,
-							agentId: segment.agentId,
-							...(segment.responseId ? { responseId: segment.responseId } : {}),
-							payload: { text: segment.text },
-						},
-					});
-				}
-				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
-			} finally {
-				// The buffering subscription must not outlive the bootstrap, even when
-				// a durable read throws.
-				stopBuffering();
-			}
-		} else {
-			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-			//    in one synchronous block. The event bus store and emitter are
-			//    synchronous, so no event can slip between the replay and the live
-			//    handler taking over. Events that arrived during the awaits above are
-			//    already in the store (the early subscription in step 1 keeps relayed
-			//    events flowing in multi-main) and are included in the replay here.
-			const missed = this.eventBus.getEventsAfter(threadId, cursor);
+		// 6. Replay missed events from the durable log — survives restarts and is
+		//    valid on any main (the table is in the shared DB). The reads are
+		//    async, so live events can land mid-bootstrap: buffer them across
+		//    every await (the
+		//    replay read, the run-sync tree reads, AND the gap read) and flush
+		//    with seq dedupe only when no await remains before live delivery
+		//    takes over (the drain persists before it emits, so a fact is never
+		//    in neither place). A flushed event may already be folded into a
+		//    run-sync tree; the shared reducer applies it idempotently, same as
+		//    any live event arriving after a frame.
+		const arrivedDuringReplay: StoredEvent[] = [];
+		const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+			arrivedDuringReplay.push(stored);
+		});
+		try {
+			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+			// The client may have disconnected during the read: stop before
+			// writing to the dead response or arming the keep-alive below.
+			if (closed) return;
+			let lastReplayedSeq = cursor;
 			for (const stored of missed) {
 				deliver(stored);
+				if (stored.id !== undefined) lastReplayedSeq = stored.id;
 			}
+			// Build each live group's bootstrap tree from the durable log, so the
+			// group renders fully even when the process
+			// restarted, or this main never buffered the thread (sibling main).
+			// Remember which coalesced blocks each delivered tree folds: the gap
+			// read below may return the same rows, and re-applying a block the
+			// tree already renders would append a duplicate timeline entry.
+			const blockKey = (event: {
+				type: string;
+				runId: string;
+				agentId: string;
+				responseId?: string;
+				payload: { text: string };
+			}) =>
+				`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
+			const foldedBlockKeys = new Set<string>();
 			for (const [groupId, group] of liveGroups) {
-				writeRunSyncFrame(groupId, group, this.eventBus.getEventsForRuns(threadId, group.runIds));
+				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
+				if (closed) return;
+				writeRunSyncFrame(groupId, group, runEvents);
+				for (const event of runEvents) {
+					if (event.type === 'text-block' || event.type === 'reasoning-block') {
+						foldedBlockKeys.add(blockKey(event));
+					}
+				}
 			}
+			// One more durable read: coalesced blocks are persisted but never
+			// live-emitted (live clients saw the deltas), so a segment that closed
+			// during the awaits above exists only as rows the replay read predates
+			// — invisible to the buffering subscription. Without this read, the
+			// buffered fact that follows such a block would advance the browser
+			// cursor past it and no later replay would ever return it.
+			const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
+			if (closed) return;
+			// A still-streaming segment exists only in the log's coalesce buffer
+			// (deltas are never persisted), so a mid-stream refresh would render
+			// only the post-refresh tail. Serve each open segment as one ephemeral
+			// delta frame (no `id:` line — the cursor stays on durable facts), after
+			// the run-sync frames so live deltas keep appending to it and the
+			// segment's eventual block replaces it. Everything from this read to
+			// `bootstrapping = false` is synchronous, so a buffered delta of a
+			// served segment is exactly text inside the snapshot: skipping it loses
+			// nothing and delivering it would duplicate.
+			const openSegments = this.eventLog.getOpenSegments(threadId);
+			const segmentKey = (
+				kind: 'text' | 'reasoning',
+				event: { runId: string; agentId: string; responseId?: string },
+			) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
+			const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
+			// Deliver the gap rows first. A block identical to one folded into a
+			// delivered run-sync tree is not re-applied (that would duplicate its
+			// text) but still counts as delivered for cursor contiguity — its
+			// content reached the client inside the frame. Buffered deltas of a
+			// gap block's segment are skipped below like served ones: their text
+			// is inside the block, and delivering them after it would duplicate.
+			const gapBlockSegments = new Set<string>();
+			for (const row of gapRows) {
+				if (row.id === undefined || row.id <= lastReplayedSeq) continue;
+				const { event } = row;
+				if (event.type === 'text-block' || event.type === 'reasoning-block') {
+					gapBlockSegments.add(
+						segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
+					);
+					if (foldedBlockKeys.has(blockKey(event))) {
+						lastReplayedSeq = row.id;
+						continue;
+					}
+				}
+				deliver(row);
+				lastReplayedSeq = row.id;
+			}
+			for (const stored of arrivedDuringReplay) {
+				if (stored.id !== undefined) {
+					if (stored.id <= lastReplayedSeq) continue;
+					if (stored.id === lastReplayedSeq + 1) {
+						deliver(stored);
+						lastReplayedSeq = stored.id;
+						continue;
+					}
+					// Rows between the cursor and this fact were persisted after the
+					// gap read (a segment closed while it was in flight): deliver the
+					// fact's content but strip its id line, so the cursor never
+					// crosses a row the client has not seen — the next replay returns
+					// the missing block and re-applies this fact idempotently.
+					deliver({ event: stored.event });
+					continue;
+				}
+				const { event } = stored;
+				if (
+					(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
+					(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
+						gapBlockSegments.has(
+							segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
+						))
+				) {
+					continue;
+				}
+				deliver(stored);
+			}
+			for (const segment of openSegments) {
+				deliver({
+					event: {
+						type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
+						runId: segment.runId,
+						agentId: segment.agentId,
+						...(segment.responseId ? { responseId: segment.responseId } : {}),
+						payload: { text: segment.text },
+					},
+				});
+			}
+			this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
+		} finally {
+			// The buffering subscription must not outlive the bootstrap, even when
+			// a durable read throws.
+			stopBuffering();
 		}
 		if (liveGroups.size > 0) res.flush?.();
 
@@ -761,6 +720,9 @@ export class InstanceAiController {
 		const sideEffects: Array<() => Promise<void> | void> = [
 			async () => {
 				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('agents');
 			},
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
@@ -961,11 +923,9 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates).
-		// Flag on: durable authority, valid across restarts and mains. Flag off:
-		// the shared sequence, so the cursor is valid against any main.
-		const nextEventId = this.durableLogEnabled
-			? await this.eventLog.getNextEventId(threadId)
-			: await this.eventBus.getNextEventId(threadId);
+		// Read from the log, so the cursor is valid across restarts and across
+		// mains sharing the database.
+		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 

@@ -15,8 +15,8 @@ import { PERSONALIZATION_MODAL_KEY } from './users.constants';
  * simply never appears. This drives the real wiring from `init.ts` end to end so
  * that divergence fails here instead. (N8N-126)
  *
- * The complementary check — every key used in `Modals.vue` is registered in
- * `modalsById` — lives in `ui.store.registration.spec.ts`.
+ * The complementary check — every key a `<ModalRoot>` renders has a definition
+ * backing it — lives in `ui.store.registration.spec.ts`.
  */
 describe('PERSONALIZATION_MODAL_KEY', () => {
 	beforeEach(() => {

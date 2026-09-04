@@ -1,3 +1,4 @@
+import type { AgentSessionQueryFilters, AgentSessionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
@@ -14,7 +15,7 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution } from './entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -24,6 +25,10 @@ import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
+import {
+	computeExecutionFailureSummary,
+	type ThreadFailureSummary,
+} from './utils/execution-failure-summary';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -70,6 +75,8 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
+	failureSummary: ThreadFailureSummary | null;
+	status: AgentSessionStatus | null;
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
@@ -123,6 +130,7 @@ export class AgentExecutionService {
 				timeline: null,
 				storedAt: 'db',
 				error: null,
+				failureSummary: null,
 				hitlStatus: null,
 				source: params.source ?? null,
 				attachments: params.attachments?.length ? params.attachments : null,
@@ -147,6 +155,13 @@ export class AgentExecutionService {
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
+		const stoppedAt = new Date(record.startTime + record.duration);
+		const failureSummary = computeExecutionFailureSummary({
+			timeline: record.timeline,
+			status,
+			error: record.error,
+			stoppedAt: stoppedAt.getTime(),
+		});
 		let storedAt: AgentExecution['storedAt'] =
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
@@ -166,7 +181,7 @@ export class AgentExecutionService {
 
 			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 				status,
-				stoppedAt: new Date(record.startTime + record.duration),
+				stoppedAt,
 				duration: record.duration,
 				model: record.model,
 				promptTokens: record.usage?.promptTokens ?? null,
@@ -176,6 +191,7 @@ export class AgentExecutionService {
 				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
 				storedAt,
 				error: record.error,
+				failureSummary,
 				hitlStatus: hitlStatus ?? null,
 			});
 			if (!finalized) return executionId;
@@ -200,6 +216,7 @@ export class AgentExecutionService {
 	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
+		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -209,7 +226,13 @@ export class AgentExecutionService {
 			duration,
 			timeline: timeline.length > 0 ? timeline : null,
 			storedAt: 'db',
-			error: 'Agent execution was interrupted by a process restart.',
+			error,
+			failureSummary: computeExecutionFailureSummary({
+				timeline,
+				status: 'interrupted',
+				error,
+				stoppedAt: stoppedAt.getTime(),
+			}),
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
@@ -386,6 +409,15 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * Whether the thread ever parked a run — a cheap negative filter in front of
+	 * the checkpoint lookup, which has no thread index and must parse each of the
+	 * agent's active checkpoints to find the thread's.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
+	}
+
+	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
 	 * suspend/resume cycle but only arrives once the resume completes.
@@ -481,12 +513,14 @@ export class AgentExecutionService {
 		agentId: string,
 		limit: number,
 		cursor?: string,
+		filters: AgentSessionQueryFilters = {},
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			agentId,
 			limit,
 			cursor,
+			filters,
 		);
 
 		if (page.threads.length === 0) {
@@ -494,9 +528,11 @@ export class AgentExecutionService {
 		}
 
 		const threadIds = page.threads.map((t) => t.id);
-		const [messageMap, sourceMap] = await Promise.all([
+		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
+			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
+			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
 		return {
@@ -505,6 +541,8 @@ export class AgentExecutionService {
 				...t,
 				firstMessage: messageMap.get(t.id) ?? null,
 				source: sourceMap.get(t.id) ?? null,
+				failureSummary: failureSummaryMap.get(t.id) ?? null,
+				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
 			})),
 		};
 	}
@@ -582,6 +620,15 @@ export class AgentExecutionService {
 	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
 		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
 	}
+}
+
+function toSessionStatus(
+	latestStatus: AgentExecutionStatus | undefined,
+	hasFailureSummary: boolean,
+): AgentSessionStatus | null {
+	if (!latestStatus) return null;
+	if (latestStatus === 'success') return hasFailureSummary ? 'error' : 'succeeded';
+	return latestStatus;
 }
 
 function cleanUserMessage(message: string | null, agentName: string): string | null {

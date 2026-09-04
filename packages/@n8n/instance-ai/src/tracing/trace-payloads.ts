@@ -16,6 +16,7 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
+import { modelConfigId } from '../utils/model-config-id';
 
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
@@ -62,8 +63,8 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 }
 
 /**
- * Telemetry/tracing redaction policy. Deliberately stricter than the
- * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * Telemetry/tracing redaction policy: secrets plus every supported PII
+ * category, since traces egress to third-party tooling.
  * `preserveUrlStructure`: whole-URL redaction destroyed traced workflow
  * definitions without adding protection (secrets in URLs are caught first).
  */
@@ -1342,12 +1343,12 @@ export function rawTracePayload(value: unknown): Record<string, unknown> {
 }
 
 export function serializeModelIdForTrace(modelId: unknown): unknown {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		return truncateString(modelId);
-	}
-
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return truncateString(modelId.id);
+	// Falling through to `sanitizeTraceValue` dumps the whole model instance —
+	// config, zod chunk schema, bound functions — into the span attribute, so
+	// every recognizable variant has to be handled by `modelConfigId`.
+	const id = modelConfigId(modelId);
+	if (id !== undefined) {
+		return truncateString(id);
 	}
 
 	return sanitizeTraceValue(modelId);

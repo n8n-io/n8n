@@ -169,7 +169,6 @@ describe('create-workflow-from-code MCP tool', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
-
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
@@ -243,6 +242,38 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const response = parseResult(result);
 			expect(response.error).toBe('projectId is required when folderId is provided');
+		});
+
+		test('passes the folder to the creation service and echoes it as targetFolder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow) =>
+				Object.assign(new WorkflowEntity(), {
+					...workflow,
+					id: 'wf-saved-1',
+					parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+				}),
+			);
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(createWorkflowMock).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({ projectId: 'custom-project-id', parentFolderId: 'folder-1' }),
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
+		});
+
+		test('omits targetFolder when no folderId is provided', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBeUndefined();
+			expect(parseResult(result).targetFolder).toBeUndefined();
 		});
 	});
 
@@ -446,6 +477,35 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: 'Marketing',
 				type: 'team',
 			});
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('includes targetFolder in recovery output from the persisted parent folder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-2';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-2',
+				name: 'Recovered',
+				nodes: mockNodes,
+				parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-recovery-2',
+				user,
+				['workflow:read'],
+				{ includeParentFolder: true },
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
 			expect(response.note).toContain('post-save operation failed');
 		});
 
@@ -894,7 +954,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					},
 					{
 						nodeName: 'OpenAI',
-						credentialName: 'n8n credits',
+						credentialName: 'Gateway credits',
 						credentialType: 'openAiApi',
 						source: 'aiGateway',
 					},

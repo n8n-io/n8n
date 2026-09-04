@@ -6,6 +6,12 @@ export interface ExecutionResult {
 	status: 'success' | 'error';
 	/** ISO timestamp from the run-workflow tool result. Used to detect stale executions. */
 	finishedAt?: string;
+	/**
+	 * Nodes whose output in this execution was simulated (fabricated fixture
+	 * data) during AI Assistant verification. Used to label that data in the
+	 * editor and guard against pinning it as if it were real.
+	 */
+	simulatedNodeNames?: string[];
 }
 
 /**
@@ -561,16 +567,28 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 			'status' in result &&
 			(result.status === 'success' || result.status === 'error')
 		) {
+			const simulatedNodeNames = getSimulatedNodeNames(result);
 			results.set(args.workflowId, {
 				executionId: result.executionId,
 				status: result.status,
 				...('finishedAt' in result && typeof result.finishedAt === 'string'
 					? { finishedAt: result.finishedAt }
 					: {}),
+				...(simulatedNodeNames.length > 0 ? { simulatedNodeNames } : {}),
 			});
 		}
 	}
 	for (const child of node.children) {
 		collectExecutionResults(child, results);
 	}
+}
+
+/** Simulated node names from a verify-built-workflow result (`simulatedNodes: [{nodeName, reason}]`). */
+function getSimulatedNodeNames(result: object): string[] {
+	if (!('simulatedNodes' in result) || !Array.isArray(result.simulatedNodes)) return [];
+	return result.simulatedNodes
+		.map((entry) =>
+			isRecord(entry) && typeof entry.nodeName === 'string' ? entry.nodeName : undefined,
+		)
+		.filter((name): name is string => name !== undefined);
 }

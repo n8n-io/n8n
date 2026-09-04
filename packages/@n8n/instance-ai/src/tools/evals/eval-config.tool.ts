@@ -9,6 +9,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	LLM_JUDGE_PROVIDER_NODE_TYPES,
 } from '@n8n/api-types';
@@ -151,9 +152,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 

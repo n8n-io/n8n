@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
+import { type INode, type IWorkflowBase, type WorkflowSettings } from 'n8n-workflow';
 
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
@@ -11,6 +11,7 @@ import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
+type WorkflowWithCallerPolicy = Pick<IWorkflowBase, 'id' | 'settings'>;
 
 @Service()
 export class SubworkflowPolicyChecker {
@@ -25,7 +26,12 @@ export class SubworkflowPolicyChecker {
 	/**
 	 * Check whether the parent workflow is allowed to call the subworkflow.
 	 */
-	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode, userId?: string) {
+	async check(
+		subworkflow: WorkflowWithCallerPolicy,
+		parentWorkflowId: string,
+		node?: INode,
+		userId?: string,
+	) {
 		const { id: subworkflowId } = subworkflow;
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
@@ -47,7 +53,7 @@ export class SubworkflowPolicyChecker {
 
 		this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
-		const errorDetails = await this.errorDetails(subworkflowProject, subworkflow, userId);
+		const errorDetails = await this.errorDetails(subworkflowProject, subworkflowId, userId);
 
 		throw new SubworkflowPolicyDenialError({
 			subworkflowId,
@@ -58,9 +64,39 @@ export class SubworkflowPolicyChecker {
 		});
 	}
 
-	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
+	/** Check whether a project-scoped caller, such as an Agent, may call the subworkflow. */
+	async checkForProject(
+		subworkflow: WorkflowWithCallerPolicy,
+		parentProjectId: string,
+		userId?: string,
+	) {
+		const { id: subworkflowId } = subworkflow;
+
+		if (!subworkflowId) return;
+
+		const policy = this.findPolicy(subworkflow);
+
+		if (policy === 'any') return;
+
+		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflowId);
+
+		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id) return;
+
+		this.logDenial({ parentProjectId, subworkflowId, policy });
+
+		const errorDetails = await this.errorDetails(subworkflowProject, subworkflowId, userId);
+		throw new SubworkflowPolicyDenialError({
+			subworkflowId,
+			subworkflowProject,
+			callerType: 'agent',
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			...errorDetails,
+		});
+	}
+
+	private async errorDetails(subworkflowProject: Project, subworkflowId: string, userId?: string) {
 		const hasReadAccess = userId
-			? await this.accessService.hasReadAccess(userId, subworkflow.id)
+			? await this.accessService.hasReadAccess(userId, subworkflowId)
 			: false; /* no user ID in policy check for error workflow, so `false` to keep error message generic */
 
 		if (subworkflowProject.type === 'team') return { hasReadAccess };
@@ -76,9 +112,9 @@ export class SubworkflowPolicyChecker {
 	/**
 	 * Find the subworkflow's caller policy.
 	 */
-	private findPolicy(subworkflow: Workflow): WorkflowSettings.CallerPolicy {
+	private findPolicy(subworkflow: WorkflowWithCallerPolicy): WorkflowSettings.CallerPolicy {
 		return (
-			subworkflow.settings.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
 		);
 	}
 
@@ -103,9 +139,9 @@ export class SubworkflowPolicyChecker {
 	/**
 	 * Whether the subworkflow has the parent workflow listed as a caller.
 	 */
-	private isListed(subworkflow: Workflow, parentWorkflowId: string) {
+	private isListed(subworkflow: WorkflowWithCallerPolicy, parentWorkflowId: string) {
 		const callerIds =
-			subworkflow.settings.callerIds
+			subworkflow.settings?.callerIds
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '') ?? [];
@@ -119,19 +155,16 @@ export class SubworkflowPolicyChecker {
 		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
 	};
 
-	private logDenial({
-		parentWorkflowId,
-		subworkflowId,
-		policy,
-	}: {
-		parentWorkflowId: string;
-		subworkflowId: string;
-		policy: DenialPolicy;
-	}) {
+	private logDenial(
+		details: {
+			subworkflowId: string;
+			policy: DenialPolicy;
+		} & ({ parentWorkflowId: string } | { parentProjectId: string }),
+	) {
+		const { policy, ...context } = details;
 		this.logger.warn('[SubworkflowPolicyChecker] Subworkflow execution denied', {
 			reason: this.denialReasons[policy],
-			parentWorkflowId,
-			subworkflowId,
+			...context,
 		});
 	}
 }

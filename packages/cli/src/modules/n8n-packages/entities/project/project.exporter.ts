@@ -6,9 +6,10 @@ import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ProjectSerializer } from './project.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
@@ -22,6 +23,8 @@ export interface ProjectExportRequest {
 	projectIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
+	includeArchivedWorkflows: boolean;
 }
 
 interface ProjectExportResult {
@@ -57,12 +60,11 @@ export class ProjectExporter {
 			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
 
-		const allocator = new UniqueFilenameAllocator('projects', 'project');
+		const projectsDir = packageDirectory('projects');
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const target = allocator.allocate(project.name);
-			results.push(await this.exportProject(project, target, request));
+			results.push(await this.exportProject(project, projectsDir, request));
 		}
 
 		return this.mergeProjectExportResults(results);
@@ -70,26 +72,26 @@ export class ProjectExporter {
 
 	private async exportProject(
 		project: Project,
-		target: string,
+		projectsDir: string,
 		request: ProjectExportRequest,
 	): Promise<ProjectExportResult> {
-		this.exportProjectShell(project, target, request.writer);
-		const folders = await this.exportProjectFolders(project.id, target, request);
-		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
+		const entry = await writeManifestEntry(
+			request.writer,
+			'projects',
+			projectsDir,
+			project,
+			this.projectSerializer.serialize(project),
+		);
+		const folders = await this.exportProjectFolders(project.id, entry.target, request);
+		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, entry.target, request);
 
 		return {
-			entries: [{ id: project.id, name: project.name, target }],
+			entries: [entry],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
-			projectTargetsById: new Map([[project.id, target]]),
+			projectTargetsById: new Map([[project.id, entry.target]]),
 		};
-	}
-
-	private exportProjectShell(project: Project, target: string, writer: PackageWriter): void {
-		const serialized = this.projectSerializer.serialize(project);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportProjectFolders(
@@ -111,6 +113,8 @@ export class ProjectExporter {
 			folderIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
+			includeArchivedWorkflows: request.includeArchivedWorkflows,
 			basePrefix: target,
 		});
 	}
@@ -120,7 +124,9 @@ export class ProjectExporter {
 		target: string,
 		request: ProjectExportRequest,
 	): Promise<WorkflowExportResult> {
-		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
+		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
+			includeArchived: request.includeArchivedWorkflows,
+		});
 		if (rootWorkflowIds.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}
@@ -130,6 +136,7 @@ export class ProjectExporter {
 			workflowIds: rootWorkflowIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
 		});
 	}

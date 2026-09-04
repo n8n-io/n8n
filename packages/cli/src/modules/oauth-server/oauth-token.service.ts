@@ -1,11 +1,15 @@
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { TransactionRunner, UserRepository } from '@n8n/db';
+import { TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { OAuthResourceGrant } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
@@ -16,10 +20,13 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
+import { authorizeAgainstGrant } from './resource-gate';
+import { isSameProtectedResource } from './resource-identity';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -42,18 +49,24 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly txRunner: TransactionRunner,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
 	}
 
+	/**
+	 * Mints an access/refresh pair. Returns the `audience` it resolved, so the
+	 * caller can persist the grant's resource alongside the refresh token — the
+	 * resolved value, not the (optional) request one, is what the token is bound to.
+	 */
 	generateTokenPair(
 		userId: string,
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
-	): { accessToken: string; refreshToken: string } {
+	): { accessToken: string; refreshToken: string; audience: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
 		const audience = resource ?? this.resourceRegistry.getDefaultResource()?.getResourceUrl();
@@ -81,7 +94,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 		const refreshToken = randomBytes(32).toString('hex');
 
-		return { accessToken, refreshToken };
+		return { accessToken, refreshToken, audience };
 	}
 
 	async saveTokenPair(
@@ -90,6 +103,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		userId: string,
 		scopes: string[],
+		resource: string,
 	): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
@@ -100,12 +114,18 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					userId,
 					expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
 					scope: scopes,
+					resource,
 				},
 				ctx,
 			);
 		});
 	}
 
+	/**
+	 * Rotates a refresh token into a fresh pair, reissuing the grant's scopes and
+	 * its resource. `resource`, when the client sends one, must name the resource
+	 * the grant was approved for (RFC 8707 §2.2).
+	 */
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
@@ -126,6 +146,23 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
+			// The resource approved at authorization bounds every later token request on
+			// the grant (RFC 8707 §2.2), so a request naming another one is refused and a
+			// request naming none reuses the grant's own — never the default resource.
+			// Checked before the row is consumed, so a refused request leaves the refresh
+			// token usable.
+			const grantedResource = refreshTokenRecord.resource;
+			if (
+				resource &&
+				!(await isSameProtectedResource(this.resourceRegistry, resource, grantedResource))
+			) {
+				this.logger.warn('Refresh token request denied: resource is outside the grant', {
+					clientId,
+					userId: refreshTokenRecord.userId,
+				});
+				throw new InvalidTargetError('Requested resource is not part of this grant');
+			}
+
 			const numAffected = await this.refreshTokenRepository.deleteValidByToken(
 				refreshToken,
 				clientId,
@@ -138,10 +175,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			const scopes = refreshTokenRecord.scope;
 
+			// Minted from the stored resource, not the requested spelling, so the binding
+			// cannot drift across rotations.
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
-				resource,
+				grantedResource,
 				scopes,
 			);
 
@@ -157,6 +196,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					userId: refreshTokenRecord.userId,
 					expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
 					scope: scopes,
+					resource: grantedResource,
 				},
 				ctx,
 			);
@@ -236,20 +276,30 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return scopeClaim === '' ? [] : scopeClaim.split(' ');
 	}
 
-	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
+	async verifyOAuthAccessToken(
+		token: string,
+		expectedAudience?: string,
+		grant?: OAuthResourceGrant,
+	): Promise<UserWithContext> {
 		try {
 			const resource = await this.getResourceByAudience(expectedAudience);
 
 			// Fail closed: a token bearing a resource-scoped audience whose resource
 			// can't be resolved (deleted, or a transient resolver failure the registry
 			// swallows to `undefined`) must NOT bypass the authorize gate below.
-			if (expectedAudience && !resource) {
+			//
+			// A sealed grant stands in for the resource rather than bypassing it — it is
+			// minted by this instance only once this gate has passed, and supplies the
+			// same audiences and execute check the resource would have.
+			if (expectedAudience && !resource && !grant) {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
 			const authInfo = await this.verifyTokenWithAudiences(
 				token,
-				this.audiencesForResource(resource, expectedAudience),
+				resource || !grant
+					? this.audiencesForResource(resource, expectedAudience)
+					: grant.audiences,
 			);
 
 			const userId =
@@ -269,7 +319,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			if (resource && !(await resource.authorize(user))) {
+			if (!(await this.isAuthorized(user, resource, grant))) {
 				this.logger.warn('OAuth token denied: user lacks execute access', {
 					userId: user.id,
 					expectedAudience,
@@ -277,7 +327,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
-			return { user, authType: 'oauth', scopes: authInfo.scopes };
+			// Handed back so a caller whose work outlives this resource can seal the gate it
+			// was just admitted by.
+			return {
+				user,
+				caller: { authType: 'oauth', clientId: authInfo.clientId },
+				scopes: authInfo.scopes,
+				grant: resource?.getGrant?.(),
+			};
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -295,6 +352,17 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				},
 			};
 		}
+	}
+
+	/**
+	 * Re-take a sealed grant's decision for a user, without the token. The sealed-identity
+	 * credential path calls this on every resolve, so a revoked `workflow:execute` stops
+	 * resolution mid-run. Loads the user with its role (a bare id lookup carries no scopes).
+	 */
+	async authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean> {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+		if (!user || user.disabled) return false;
+		return await authorizeAgainstGrant(this.workflowFinderService, grant, user);
 	}
 
 	/** Deletes every access and refresh token a user holds for a client. */
@@ -368,6 +436,22 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		// targets (MCP SDK generic verification), so accept any registered
 		// resource's audiences. Resource gates must pass `expectedAudience`.
 		return this.resourceRegistry.getAllAudiences();
+	}
+
+	/**
+	 * The resource's own gate while it resolves, otherwise the sealed grant — through the
+	 * same function that gate is built from, so a grant can't allow more than it did.
+	 */
+	private async isAuthorized(
+		user: User,
+		resource: ProtectedResource | undefined,
+		grant: OAuthResourceGrant | undefined,
+	): Promise<boolean> {
+		if (resource) return await resource.authorize(user);
+
+		if (!grant) return true;
+
+		return await authorizeAgainstGrant(this.workflowFinderService, grant, user);
 	}
 
 	private async getResourceByAudience(

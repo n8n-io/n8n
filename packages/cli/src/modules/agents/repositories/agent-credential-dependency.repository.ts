@@ -18,7 +18,7 @@ export class AgentCredentialDependencyRepository extends BaseRepository<AgentCre
 		dataSource: DataSource,
 		private readonly txRunner: TransactionRunner,
 	) {
-		super(AgentCredentialDependency, dataSource.manager);
+		super(AgentCredentialDependency, dataSource.manager, txRunner);
 	}
 
 	async refreshForAgent(agentId: string): Promise<void> {

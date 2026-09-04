@@ -275,7 +275,7 @@ describe('list-credentials MCP tool', () => {
 			);
 		});
 
-		describe('n8nConnect block', () => {
+		describe('gatewayCredits block', () => {
 			async function callHandler(opts: { available?: boolean } = {}) {
 				const { credentialsService, telemetry } = createMocks([buildCredential()]);
 				const { aiGatewayService } = makeAiGatewayMocks(opts);
@@ -298,21 +298,21 @@ describe('list-credentials MCP tool', () => {
 				return result.structuredContent as {
 					data: unknown[];
 					count: number;
-					n8nConnect?: { credentialTypes: string[]; nodes: string[] };
+					gatewayCredits?: { credentialTypes: string[]; nodes: string[] };
 				};
 			}
 
-			test('includes n8nConnect block when gateway is available', async () => {
+			test('includes gatewayCredits block when gateway is available', async () => {
 				const structured = await callHandler({ available: true });
-				expect(structured.n8nConnect).toEqual({
+				expect(structured.gatewayCredits).toEqual({
 					credentialTypes: ['openAiApi'],
 					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 				});
 			});
 
-			test('omits n8nConnect block when unavailable', async () => {
+			test('omits gatewayCredits block when unavailable', async () => {
 				const structured = await callHandler({ available: false });
-				expect(structured.n8nConnect).toBeUndefined();
+				expect(structured.gatewayCredits).toBeUndefined();
 			});
 		});
 	});

@@ -24,6 +24,14 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		});
 	}
 
+	async findForSandboxReconciliation(agentId: string): Promise<AgentCheckpoint[]> {
+		return await this.find({
+			where: { agentId, expired: false },
+			order: { updatedAt: 'DESC' },
+			take: 101,
+		});
+	}
+
 	async claimForResume(
 		runId: string,
 		agentId: string,

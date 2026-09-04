@@ -7,31 +7,48 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.18.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
-    default: '24.18.1'
+    default: '26.5.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
     default: 'false'
+  docker-cache-key:
+    description: 'Sticky-disk identity for the Docker layer cache. Required when enable-docker-cache is true. Use n8n-io/n8n: Blacksmith only retains disks that already exist, and a newly created key stays empty across runs, so a per-image key silently disables caching entirely.'
+    required: false
+    default: ''
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
   install-command:
-    description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
+    description: 'Command to install project dependencies. The action trusts the committed lockfile because SafeChain enforces the CI supply-chain policy. Leave empty to skip the install step.'
     required: false
     default: 'pnpm install --frozen-lockfile'
   cache-dependency-path:
-    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm store and metadata cache keys. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset.'
     required: false
     default: 'pnpm-lock.yaml'
 
 runs:
   using: 'composite'
   steps:
+    # An empty key makes the builder use a local, uncached one. The job stays
+    # green and loses the cache. Fail here instead.
+    - name: Verify Docker cache key is set
+      if: ${{ inputs.enable-docker-cache == 'true' && inputs.docker-cache-key == '' }}
+      shell: bash
+      run: |
+        echo "::error::enable-docker-cache is true but docker-cache-key is empty"
+        exit 1
+
     - name: Setup pnpm
-      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      with:
+        install: false
+        version: 11.25.0
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
     # on every subsequent job. First fresh runner pays the download; later jobs
@@ -47,7 +64,7 @@ runs:
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
       if: runner.os == 'Linux' && runner.arch == 'X64'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
         key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
@@ -56,7 +73,11 @@ runs:
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        # A job that installs nothing must not participate in the pnpm-store
+        # cache. Its post step would save an empty store, and cache keys are
+        # write-once — so if it lost the race to a real installer, every other
+        # job on that key would restore nothing and silently re-download.
+        cache: ${{ inputs.install-command != '' && 'pnpm' || '' }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Fail fast if setup-node silently fell through to the runner's baked-in
@@ -83,6 +104,24 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
+    # pnpm keeps registry metadata and its lockfile verification log outside the package store.
+    - name: Resolve pnpm metadata cache directory
+      if: ${{ inputs.install-command != '' }}
+      id: pnpm-metadata-cache
+      shell: bash
+      run: |
+        PNPM_CACHE_PATH="$(pnpm cache path --silent)"
+        mkdir -p "$PNPM_CACHE_PATH"
+        echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
+        echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm metadata cache
+      if: ${{ inputs.install-command != '' }}
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+        key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
+
     - name: Configure SafeChain
       shell: bash
       run: |
@@ -98,7 +137,7 @@ runs:
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
       id: cache-safe-chain
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.safe-chain/bin
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
@@ -164,8 +203,14 @@ runs:
     #  4. Everything is uploaded as an artifact by the next step, so the full log
     #     survives even when the live console stream is truncated by the runner.
     #
-    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
-    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # SafeChain's proxy decisions go to a file rather than the console. They are
+    # emitted via `writeVerbose`, which always writes to `SAFE_CHAIN_LOG_FILE` but
+    # only reaches the console at `SAFE_CHAIN_LOGGING=verbose` — and there is one
+    # line per HTTP request, so verbose put ~9.5k `Finished proxying request to`
+    # lines in every install (60-76% of the whole job log). Omitting the variable
+    # leaves the console at safe-chain's `normal` default; the file keeps the full
+    # detail (its own default verbosity is `verbose`) and lands in the diagnostics
+    # dir that the next step uploads on install failure.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       id: install-deps
@@ -173,7 +218,8 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
-        SAFE_CHAIN_LOGGING: verbose
+        SAFE_CHAIN_LOG_FILE: ${{ runner.temp }}/pnpm-diagnostics/safe-chain.log
+        SAFE_CHAIN_LOG_FILE_FORMAT: plain
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
@@ -183,7 +229,8 @@ runs:
         mkdir -p "$PNPM_DIAG_DIR/pnpm-logs"
 
         set +o pipefail
-        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+        timeout --kill-after=30s 600s $INSTALL_COMMAND \
+          --trust-lockfile \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
@@ -217,7 +264,7 @@ runs:
           find "$PNPM_DIAG_DIR/pnpm-logs" -type f -exec sh -c 'echo "----- $1 -----"; cat "$1"' _ {} \; 2>/dev/null || echo "(none)"
           echo "::endgroup::"
           case "$rc" in
-            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            124) echo "::error::pnpm install timed out after 600s (exit 124)" ;;
             137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
           esac
         fi
@@ -260,13 +307,15 @@ runs:
     # build job stays green; Linux/Blacksmith jobs keep remote caching.
     - name: Configure Turborepo Cache
       if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows'
-      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7 # v2.5.1
       with:
         server-port: 0
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
-      uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+      uses: useblacksmith/setup-docker-builder@a5256a73e30f09e37e3eceb8ca36043d17621d24 # v2.1.0
+      with:
+        cache-key: ${{ inputs.docker-cache-key }}
 
     - name: Setup Docker Builder (GitHub fallback)
       if: ${{ inputs.enable-docker-cache == 'true' && !contains(runner.name, 'blacksmith') }}

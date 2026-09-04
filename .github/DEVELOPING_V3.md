@@ -135,6 +135,7 @@ of the breaking removal on `3.x`.
    `master` is dropped as empty.
 3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
    resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+   `packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json`, and
    `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
    exactly as a human resolver would: the lockfile is regenerated with
    `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
@@ -177,9 +178,17 @@ If the PR says the lockfile was **deferred** (a `package.json` / `pnpm-workspace
 conflicted too), resolve the manifests first, then regenerate it with
 `pnpm install --lockfile-only` and include the result in your fix commit.
 
+Watch for the **"Deleted on one side, changed on the other"** section. Git leaves no markers
+for a delete/modify, so the branch looks clean where it is not: the merge keeps `3.x`'s side
+(its deletion, or its file when `master` deleted it). Confirm that is right, and check
+whether `master`'s change has to be carried over by hand — when a breaking commit re-recorded
+or renamed a file, `master`'s edit to the old one usually belongs on the replacement, and no
+automation can find that for you. The PR names the `master` commit behind each conflicted
+path so you can see what the change was.
+
 Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
-fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing,
-the same conflict reopens on the next sync, and the new PR will call out the abandoned one.
+fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing and
+the same conflict reopens on the next sync.
 
 `3.x` never holds markers at its tip, so nightly images keep building; the merge commit that
 carries them drops out of `3.x`'s history at the next sync (the replay takes the queue's
@@ -194,9 +203,10 @@ is squashed, and the tree guard proves the result is exactly the merge of `3.x` 
 `master`.
 
 **Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
-conflicted files (`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts).
-Those authors are **requested as reviewers** on the conflict PR and listed in the
-`#alerts-v3-sync` message.
+conflicted files, plus the `master` commits that touched the same files
+(`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts). Both sides are named
+in the PR body and the `#alerts-v3-sync` message. **Nobody is requested as a reviewer** — the
+resolver picks the PR up themselves.
 
 ## Trialing v3
 
@@ -206,7 +216,23 @@ Those authors are **requested as reviewers** on the conflict PR and listed in th
 ```bash
 docker pull n8nio/n8n:v3-nightly              # latest v3 nightly
 docker pull n8nio/n8n:v3-nightly-20260625     # a specific build date
+docker pull n8nio/n8n:v3-rc                   # latest release candidate
+docker pull n8nio/n8n:v3-rc-20260625          # latest RC of that day
+docker pull n8nio/n8n:v3-rc-20260625.2        # one exact RC, never overwritten
 ```
+
+Every Monday's nightly is also retagged as a release candidate, and a maintainer can
+publish extra RCs any day (`force_rc` on a manual run). Each publish claims the next
+rolling number for the day — `v3-rc-<date>.1`, `.2`, … — and moves `v3-rc` and
+`v3-rc-<date>` onto it, so:
+
+- **`v3-rc-<date>.N`** — pin this to hold a build still. Immutable.
+- **`v3-rc` / `v3-rc-<date>`** — track the newest RC overall / of that day. These move.
+
+The retag covers the whole set — `n8nio/n8n`, `n8nio/runners` and
+`n8nio/runners:v3-rc[-<date>.N]-distroless` — so pinning one RC across a stack gives
+images built from one `3.x` commit, unlike `v3-nightly`, which moves daily and can be
+mid-build when you pull. The same tags exist on GHCR (`ghcr.io/n8n-io/…`).
 
 Use these to trial v3 in docker/kubernetes before release. Do **not** use them in
 production.

@@ -48,8 +48,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
 });
 
-export const Markdown = Template.bind({});
-Markdown.args = {
+export const Default = Template.bind({});
+Default.args = {
 	content:
 		'I wanted a system to monitor website content changes and notify me. So I made it using n8n.\n\nEspecially my competitor blogs. I wanted to know how often they are posting new articles. (I used their sitemap.xml file) (The below workflow may vary)\n\nIn the Below example, I used HackerNews for example.\n\nExplanation:\n\n- First HTTP Request node crawls the webpage and grabs the website source code\n- Then wait for x minutes\n- Again, HTTP Node crawls the webpage\n- If Node compares both results are equal if anything is changed. It’ll go to the false branch and notify me in telegram.\n\n**Workflow:**\n\n![](fileId:1)\n\n**Sample Response:**\n\n![](https://community.n8n.io/uploads/default/original/2X/d/d21ba41d7ac9ff5cd8148fedb07d0f1ff53b2529.png)\n',
 	loading: false,
@@ -73,6 +73,13 @@ const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
 export const WithCheckboxes = TemplateWithCheckboxes.bind({});
 WithCheckboxes.args = {
 	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
+	loading: false,
+};
+
+export const WithCodeBlock = Template.bind({});
+WithCodeBlock.args = {
+	content:
+		'To get started, run the following in a terminal:\n\n```\necho "Hello world"\n```\n\nInline code like `EXAMPLE_VAR=true` should also render.\n',
 	loading: false,
 };
 
