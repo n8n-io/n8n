@@ -1,6 +1,44 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-export const meetingSettingsProperties: INodeProperties[] = [
+const lobbyBypassScope: INodeProperties = {
+	displayName: 'Lobby Bypass Scope',
+	name: 'lobbyBypassScope',
+	type: 'options',
+	options: [
+		{
+			name: 'Everyone',
+			value: 'everyone',
+		},
+		{
+			name: 'Invited',
+			value: 'invited',
+			description: 'Only people the organizer invited',
+		},
+		{
+			name: 'Organization',
+			value: 'organization',
+			description: 'People in the organization and guests',
+		},
+		{
+			name: 'Organization and Federated',
+			value: 'organizationAndFederated',
+			description: 'People in the organization and guests from trusted organizations',
+		},
+		{
+			name: 'Organization Excluding Guests',
+			value: 'organizationExcludingGuests',
+			description: 'People in the organization, without guests',
+		},
+		{
+			name: 'Organizer',
+			value: 'organizer',
+		},
+	],
+	default: 'organization',
+	description: 'Who can join the meeting without waiting in the lobby',
+};
+
+const meetingSettingsProperties: readonly INodeProperties[] = [
 	{
 		displayName: 'Allow Attendees to Enable Camera',
 		name: 'allowAttendeeToEnableCamera',
@@ -72,43 +110,7 @@ export const meetingSettingsProperties: INodeProperties[] = [
 		default: false,
 		description: 'Whether to announce when callers join or leave the meeting',
 	},
-	{
-		displayName: 'Lobby Bypass Scope',
-		name: 'lobbyBypassScope',
-		type: 'options',
-		options: [
-			{
-				name: 'Everyone',
-				value: 'everyone',
-			},
-			{
-				name: 'Invited',
-				value: 'invited',
-				description: 'Only people the organizer invited',
-			},
-			{
-				name: 'Organization',
-				value: 'organization',
-				description: 'People in the organization and guests',
-			},
-			{
-				name: 'Organization and Federated',
-				value: 'organizationAndFederated',
-				description: 'People in the organization and guests from trusted organizations',
-			},
-			{
-				name: 'Organization Excluding Guests',
-				value: 'organizationExcludingGuests',
-				description: 'People in the organization, without guests',
-			},
-			{
-				name: 'Organizer',
-				value: 'organizer',
-			},
-		],
-		default: 'organization',
-		description: 'Who can join the meeting without waiting in the lobby',
-	},
+	lobbyBypassScope,
 	{
 		displayName: 'Record Automatically',
 		name: 'recordAutomatically',
@@ -118,22 +120,21 @@ export const meetingSettingsProperties: INodeProperties[] = [
 	},
 ];
 
-const flatSettingNames = meetingSettingsProperties
-	.map((property) => property.name)
-	.filter((name) => name !== 'lobbyBypassScope');
+const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
 
 export function applyMeetingSettings(body: IDataObject, settings: IDataObject): void {
-	for (const name of flatSettingNames) {
-		if (settings[name] !== undefined) {
-			body[name] = settings[name];
+	for (const { name } of meetingSettingsProperties) {
+		const value = settings[name];
+		if (!isSet(value)) continue;
+		if (name === lobbyBypassScope.name) {
+			body.lobbyBypassSettings = { scope: value };
+		} else {
+			body[name] = value;
 		}
-	}
-	if (settings.lobbyBypassScope !== undefined) {
-		body.lobbyBypassSettings = { scope: settings.lobbyBypassScope };
 	}
 }
 
-export const withMeetingSettings = (extra: INodeProperties[]): INodeProperties[] =>
+export const withMeetingSettings = (extra: readonly INodeProperties[]): INodeProperties[] =>
 	[...meetingSettingsProperties, ...extra].sort((a, b) =>
-		a.displayName.localeCompare(b.displayName),
+		a.displayName.localeCompare(b.displayName, 'en'),
 	);
