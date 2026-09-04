@@ -48,8 +48,15 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
+import {
+	createWorkflowAgentStreamObserver,
+	type WorkflowAgentStreamObserver,
+} from './modules/agents/workflow-agent-stream';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
+
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
@@ -59,6 +66,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
@@ -70,12 +78,6 @@ import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
-import {
-	createWorkflowAgentStreamObserver,
-	type WorkflowAgentStreamObserver,
-} from './modules/agents/workflow-agent-stream';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -321,6 +323,16 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+
+	try {
+		await Container.get(WorkflowPreExecute).run(
+			workflowData,
+			runData.executionMode,
+			runData.source,
+		);
+	} catch (error) {
+		throw PreExecuteBlockedError.unwrap(error);
+	}
 
 	const executionId = await activeExecutions.add(runData);
 
