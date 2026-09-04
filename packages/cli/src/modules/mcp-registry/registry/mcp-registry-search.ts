@@ -32,6 +32,8 @@ export interface McpRegistrySearchResult {
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
+	const defaultCredential = connection.credentialBindings[0];
+	if (!defaultCredential) return null;
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),
@@ -39,8 +41,8 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		description: server.tagline,
 		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
-		authentication: connection.credentialType,
-		credentialType: connection.credentialType,
+		authentication: defaultCredential.credentialType,
+		credentialType: defaultCredential.credentialType,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),

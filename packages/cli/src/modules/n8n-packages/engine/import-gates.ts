@@ -3,6 +3,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { TagImportPlan } from '../entities/tag/tag.types';
+import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -53,5 +54,21 @@ export function assertTagWritesAllowed(
 	}
 	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
+	}
+}
+
+/**
+ * Archiving or unarchiving a matched workflow needs the same scope as deleting one. Checked
+ * against the plan, so a package that changes no archived state needs no extra scope.
+ */
+export function assertArchiveTransitionsAllowed(
+	apiKeyScopes: string[] | undefined,
+	workflowPlans: WorkflowImportPlan[],
+): void {
+	const hasTransitions = workflowPlans.some((plan) =>
+		plan.items.some((item) => item.action === 'update' && item.archiveTransition !== null),
+	);
+	if (hasTransitions) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
 	}
 }

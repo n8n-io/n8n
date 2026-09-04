@@ -6,6 +6,7 @@ import type {
 	WorkflowCreateBatchContext,
 	WorkflowCreationService,
 } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PackageImportBindings } from '../../../n8n-packages.types';
@@ -18,7 +19,13 @@ import type {
 import { WorkflowImporter } from '../workflow-importer';
 
 const makeWorkflow = (id: string): WorkflowEntity =>
-	Object.assign(new WorkflowEntity(), { id, name: id, nodes: [], connections: {} });
+	Object.assign(new WorkflowEntity(), {
+		id,
+		name: id,
+		nodes: [],
+		connections: {},
+		isArchived: false,
+	});
 
 const bindings: PackageImportBindings = {
 	credentials: new Map(),
@@ -47,6 +54,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowImportMatchService>(),
 			workflowCreationService,
 			workflowService,
+			mock<WorkflowFinderService>(),
 		);
 		const batchContext = mock<WorkflowCreateBatchContext>();
 		const createEntity = makeWorkflow('source-create');
@@ -66,6 +74,7 @@ describe('WorkflowImporter.apply', () => {
 			},
 			{
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'source-update',
 				entity: updateEntity,
 				existing: existingUpdate,
@@ -84,8 +93,10 @@ describe('WorkflowImporter.apply', () => {
 		const plan: WorkflowImportPlan = {
 			items,
 			conflicts: [],
+			lineageConflicts: [],
 			idConflicts: [],
 			folderConflicts: [],
+			archiveForbidden: [],
 		};
 		prepareBatchContext.mockResolvedValue(batchContext);
 		createWorkflow.mockResolvedValue(created);
@@ -109,7 +120,7 @@ describe('WorkflowImporter.apply', () => {
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import' },
+			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
 		);
 	});
 
@@ -122,12 +133,14 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowImportMatchService>(),
 			workflowCreationService,
 			workflowService,
+			mock<WorkflowFinderService>(),
 		);
 		const existing = makeWorkflow('existing');
 		const plan: WorkflowImportPlan = {
 			items: [
 				{
 					action: 'update',
+					archiveTransition: null,
 					sourceWorkflowId: 'source',
 					entity: makeWorkflow('source'),
 					existing,
@@ -136,8 +149,10 @@ describe('WorkflowImporter.apply', () => {
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
+			lineageConflicts: [],
 			idConflicts: [],
 			folderConflicts: [],
+			archiveForbidden: [],
 		};
 		updateWorkflow.mockResolvedValue(existing);
 
@@ -157,6 +172,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowImportMatchService>(),
 			workflowCreationService,
 			mock<WorkflowService>(),
+			mock<WorkflowFinderService>(),
 		);
 		const source = makeWorkflow('source');
 		const deepestWorkflow = JSON.stringify({
@@ -202,8 +218,10 @@ describe('WorkflowImporter.apply', () => {
 				},
 			],
 			conflicts: [],
+			lineageConflicts: [],
 			idConflicts: [],
 			folderConflicts: [],
+			archiveForbidden: [],
 		};
 		const batchContext = mock<WorkflowCreateBatchContext>();
 		prepareBatchContext.mockResolvedValue(batchContext);
@@ -222,5 +240,216 @@ describe('WorkflowImporter.apply', () => {
 			nodes: Array<{ credentials: { httpHeaderAuth: { id: string } } }>;
 		}>(outerWorkflow.nodes[0].parameters.workflowJson);
 		expect(innerWorkflow.nodes[0].credentials.httpHeaderAuth.id).toBe('target-credential');
+	});
+
+	it('updates content when the package and target workflows are archived', async () => {
+		const update = vi.fn<WorkflowService['update']>();
+		const archive = vi.fn<WorkflowService['archive']>();
+		const unarchive = vi.fn<WorkflowService['unarchive']>();
+		const workflowService = mock<WorkflowService>({ update, archive, unarchive });
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>(),
+			workflowService,
+			mock<WorkflowFinderService>(),
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
+		const entity = Object.assign(makeWorkflow('source'), { isArchived: true, name: 'New name' });
+		const updated = Object.assign(makeWorkflow('existing'), {
+			isArchived: true,
+			name: 'New name',
+		});
+		const plan: WorkflowImportPlan = {
+			items: [
+				{
+					action: 'update',
+					archiveTransition: null,
+					sourceWorkflowId: 'source',
+					entity,
+					existing,
+					parentFolderId: null,
+					sourcePublished: false,
+				},
+			],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		update.mockResolvedValue(updated);
+
+		const result = await importer.apply(context, plan, bindings);
+
+		expect(update).toHaveBeenCalledWith(user, expect.any(WorkflowEntity), 'existing', {
+			publicApi: true,
+			source: 'import',
+			allowArchivedUpdate: true,
+		});
+		expect(archive).not.toHaveBeenCalled();
+		expect(unarchive).not.toHaveBeenCalled();
+		expect(result.outcomes[0]?.workflow).toBe(updated);
+	});
+
+	it('archives only after the content update succeeds', async () => {
+		const update = vi.fn<WorkflowService['update']>();
+		const archive = vi.fn<WorkflowService['archive']>();
+		const workflowService = mock<WorkflowService>({ update, archive });
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>(),
+			workflowService,
+			mock<WorkflowFinderService>(),
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
+		const archived = Object.assign(makeWorkflow('existing'), { isArchived: true });
+		const plan: WorkflowImportPlan = {
+			items: [
+				{
+					action: 'update',
+					archiveTransition: 'archive',
+					sourceWorkflowId: 'source',
+					entity: Object.assign(makeWorkflow('source'), { isArchived: true }),
+					existing,
+					parentFolderId: null,
+					sourcePublished: false,
+				},
+			],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		update.mockResolvedValue(existing);
+		archive.mockResolvedValue(archived);
+
+		const result = await importer.apply(context, plan, bindings);
+
+		expect(update.mock.invocationCallOrder[0]).toBeLessThan(archive.mock.invocationCallOrder[0]);
+		expect(result.outcomes[0]?.workflow).toBe(archived);
+	});
+
+	it('does not unarchive when the content update fails', async () => {
+		const update = vi.fn<WorkflowService['update']>();
+		const unarchive = vi.fn<WorkflowService['unarchive']>();
+		const workflowService = mock<WorkflowService>({ update, unarchive });
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>(),
+			workflowService,
+			mock<WorkflowFinderService>(),
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
+		const plan: WorkflowImportPlan = {
+			items: [
+				{
+					action: 'update',
+					archiveTransition: 'unarchive',
+					sourceWorkflowId: 'source',
+					entity: Object.assign(makeWorkflow('source'), { isArchived: false }),
+					existing,
+					parentFolderId: null,
+					sourcePublished: false,
+				},
+			],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		update.mockRejectedValue(new Error('Update failed'));
+
+		await expect(importer.apply(context, plan, bindings)).rejects.toThrow('Update failed');
+		expect(unarchive).not.toHaveBeenCalled();
+	});
+});
+
+describe('WorkflowImporter.plan', () => {
+	it('plans a content update when both workflows are archived', async () => {
+		const matchService = mock<WorkflowImportMatchService>();
+		const finder = mock<WorkflowFinderService>();
+		const importer = new WorkflowImporter(
+			matchService,
+			mock<WorkflowCreationService>(),
+			mock<WorkflowService>(),
+			finder,
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
+		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
+		matchService.findBySourceWorkflowIds.mockResolvedValue({
+			matches: new Map([['source', existing]]),
+			lineageConflicts: [],
+		});
+		matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
+
+		const plan = await importer.plan(
+			context,
+			[
+				{
+					sourceWorkflowId: 'source',
+					entity,
+					parentFolderId: null,
+					sourcePublished: false,
+				},
+			],
+			{
+				workflowConflictPolicy: 'new-version',
+				workflowIdPolicy: 'source',
+				workflowPublishingPolicy: 'preserve-published-state',
+				missingNodeTypeMode: 'fail',
+			},
+		);
+
+		expect(plan.items[0]).toMatchObject({ action: 'update', archiveTransition: null });
+		expect(finder.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+	});
+
+	it('reports an archive transition when the user cannot delete the workflow', async () => {
+		const matchService = mock<WorkflowImportMatchService>();
+		const finder = mock<WorkflowFinderService>();
+		const importer = new WorkflowImporter(
+			matchService,
+			mock<WorkflowCreationService>(),
+			mock<WorkflowService>(),
+			finder,
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
+		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
+		matchService.findBySourceWorkflowIds.mockResolvedValue({
+			matches: new Map([['source', existing]]),
+			lineageConflicts: [],
+		});
+		matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
+		finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+		const plan = await importer.plan(
+			context,
+			[
+				{
+					sourceWorkflowId: 'source',
+					entity,
+					parentFolderId: null,
+					sourcePublished: false,
+				},
+			],
+			{
+				workflowConflictPolicy: 'new-version',
+				workflowIdPolicy: 'source',
+				workflowPublishingPolicy: 'preserve-published-state',
+				missingNodeTypeMode: 'fail',
+			},
+		);
+
+		expect(plan.archiveForbidden).toEqual([
+			{
+				sourceWorkflowId: 'source',
+				existingWorkflowId: 'existing',
+				name: 'existing',
+				projectId: 'project-1',
+				transition: 'archive',
+			},
+		]);
 	});
 });

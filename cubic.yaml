@@ -173,9 +173,10 @@ reviews:
         plus the entity it touches and the queries that will use any new column.
     - name: Frontend
       file_paths:
-        - .agents/skills/design-system/SKILL.md
         - .agents/review-rules/frontend/design-system.md
-        - .agents/review-rules/frontend/workflow-document-store.md
+        - .agents/review-rules/frontend/vue-correctness.md
+        - .agents/review-rules/frontend/component-wrappers.md
+        - .agents/review-rules/frontend/i18n.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/frontend/**
@@ -183,10 +184,13 @@ reviews:
         - '**/__tests__/**'
         - '**/*.stories.ts'
         - '**/*.spec.ts'
+        - '**/*.mdx'
       description: |-
-        Enforce n8n's frontend conventions using the linked rules. The design
-        system skill is the source of truth for which token to reach for; the
-        rule files that follow set the enforcement level.
+        Review n8n's frontend packages against the linked rules, drawn from
+        what actually shipped broken here. The editor is a long-lived SPA:
+        one component tree is reused across workflows, stores outlive the
+        views reading them, and navigation swaps the active workflow document
+        mid-request. Reason about what renders, not how the code reads.
     - name: QA & DX
       file_paths:
         - .agents/review-rules/qa-dx/docker-native-modules.md

@@ -8,6 +8,10 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
+Why these six points, why every check must pass, and why a check that does not
+answer blocks: read the policy infrastructure RFC in Notion. This README is the
+working reference for writing a check. It does not restate the RFC.
+
 Opt-in while it is built out: `N8N_ENABLED_MODULES=policy-infrastructure`.
 With the module off, nothing is checked and everything is allowed. That is the
 documented break-glass lever.
@@ -91,11 +95,34 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `workflowPublish` | 1000 ms | row id | activate, publication applier, activation on startup |
 | `workflowStart` | 250 ms | row id | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer` | 1000 ms | row id | move to another project |
-| `contentImport` | 1000 ms | row id | CLI import, source control import |
+| `contentImport` | 1000 ms | row id | CLI import, source control import, package and git-connection import |
 | `credentialDecrypt` | 250 ms | credential id | credential resolution during a run or a test |
 
 Deadlines are tight on the two points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
+
+## Contexts
+
+Each point hands its check a different context. The types are in
+`@n8n/decorators/src/policy-check/policy-check.ts`.
+
+| Point | Context type | Fields |
+|---|---|---|
+| `workflowSave` | `WorkflowSaveContext` | `workflow`, `storedWorkflow` (`null` for a create), `projectId` |
+| `workflowPublish` | `WorkflowPublishContext` | `workflow`, `projectId` |
+| `workflowStart` | `WorkflowStartContext` | `workflow`, `projectId` |
+| `workflowTransfer` | `WorkflowTransferContext` | `workflow`, `targetProjectId` — the project it moves *into*, whose policy applies |
+| `contentImport` | `ContentImportContext` | `workflow`, `projectId`, `transport` |
+| `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
+
+`workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
+`nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
+Every field is `readonly` — a check reads, it never writes.
+
+`transport` is `cli`, `source-control`, `package`, or `git-connection`. Read it
+to hold an unattended sync to a different standard than a hand-run import. The
+host reads it too, to pick its fail posture: a package import refuses the whole
+package, a source-control pull skips and reports the workflow.
 
 ## Fail posture
 
@@ -160,5 +187,5 @@ registry is read on every decision, so load order cannot hide a check.
 | `policy-check-failed.error.ts` | The 503 for a check that did not answer |
 | `../../policy/policy-enforcement.service.ts` | The enforcement point the hosts call, always loaded |
 | `../../policy/policy-violation.error.ts` | The 403 that carries `meta.violations` |
-| `../../policy/evaluate-content-import-safely.ts` | Advisory `contentImport` evaluation that reports a broken check instead of throwing |
+| `../../policy/policy-enforcement-backend.ts` | The interface `PolicyDecisionService` implements and the module registers |
 | `@n8n/decorators/src/policy-check/` | `@PolicyCheck()`, the registry, the contexts, the `PolicyCleared` token |

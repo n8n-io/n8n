@@ -1,23 +1,21 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	getChildNodes,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	type IConnections,
-} from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 
-export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-] as const;
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
+
+/** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */
+const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES: Record<
+	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
+	string
+> = {
+	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'When Executed by Another Workflow',
+};
+
+/** Display name of the trigger a workflow tool has to start with, for backend copy. */
+export const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME =
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE];
 
 /**
  * Body nodes a workflow tool cannot run. The Wait node is absent by design — the
