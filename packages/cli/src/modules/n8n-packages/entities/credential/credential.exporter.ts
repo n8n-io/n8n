@@ -7,8 +7,8 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { WorkflowCredentialRequirement } from './credential.types';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
@@ -24,8 +24,7 @@ export interface CredentialExportRequest {
 	requirements: WorkflowCredentialRequirement[];
 	writer: PackageWriter;
 	credentialExportPolicy: CredentialExportPolicy;
-	// Contains a map of projectId to export location
-	// p123 -> /project/p123/
+	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
 	projectTargetsById?: Map<string, string>;
 }
 
@@ -42,16 +41,6 @@ export class CredentialExporter {
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
-		// One allocator per base directory: `credentials/` and each
-		// `projects/<slug>/credentials/` suffix collisions independently.
-		const allocators = new Map<string, UniqueFilenameAllocator>();
-		const allocatorFor = (baseDir: string) => {
-			const existing = allocators.get(baseDir);
-			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'credential');
-			allocators.set(baseDir, created);
-			return created;
-		};
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
@@ -81,14 +70,19 @@ export class CredentialExporter {
 							credential.data,
 						).getData(),
 				);
-				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(name);
-				await request.writer.writeDirectory(target);
-				await request.writer.writeFile(
-					`${target}/credential.json`,
-					JSON.stringify(this.credentialSerializer.serialize(credential, { data }), null, '\t'),
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'credentials',
+						projectScopedDirectory(
+							'credentials',
+							this.ownerProjectId(credential),
+							request.projectTargetsById,
+						),
+						{ id, name },
+						this.credentialSerializer.serialize(credential, { data }),
+					),
 				);
-				entries.push({ id, name, target });
 			}
 
 			requirements.push({ id, name, type, usedByWorkflows });
@@ -98,20 +92,11 @@ export class CredentialExporter {
 	}
 
 	/**
-	 * Namespaces a credential under its OWNER project when that project is part of
-	 * the export; otherwise (owned by a non-exported project, or global) it stays at
-	 * the top-level `credentials/`. Owner = the `credential:owner` sharing's project.
+	 * A credential has no owner column: its owner is the project on the
+	 * `credential:owner` sharing. Undefined for a global credential.
 	 */
-	private resolveBaseDir(
-		credential: CredentialsEntity,
-		projectTargetsById?: Map<string, string>,
-	): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return 'credentials';
-		const ownerProjectId = credential.shared?.find(
-			(sharing) => sharing.role === 'credential:owner',
-		)?.projectId;
-		const prefix = ownerProjectId ? projectTargetsById.get(ownerProjectId) : undefined;
-		return prefix ? `${prefix}/credentials` : 'credentials';
+	private ownerProjectId(credential: CredentialsEntity): string | undefined {
+		return credential.shared?.find((sharing) => sharing.role === 'credential:owner')?.projectId;
 	}
 
 	private groupByCredentialId(

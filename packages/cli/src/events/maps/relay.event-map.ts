@@ -141,6 +141,14 @@ export type RelayEventMap = {
 	'workflow-deleted': {
 		user: UserLike;
 		workflowId: string;
+		/**
+		 * Both resolved before the delete runs. The cascade takes the workflow row and its
+		 * `shared_workflow` rows with it, so a listener cannot recover either afterwards.
+		 * `projectId` stays required-to-pass but nullable, so a caller has to decide rather than
+		 * forget, and an unowned workflow is still expressible.
+		 */
+		workflowName: string;
+		projectId: string | undefined;
 		publicApi: boolean;
 	};
 
@@ -450,6 +458,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -474,6 +483,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -485,6 +495,9 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		/** Both resolved before the delete, which cascades away the rows that name the project. */
+		credentialName: string;
+		projectId: string | undefined;
 	};
 
 	'credentials-user-disconnected': {
@@ -685,6 +698,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -704,6 +718,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {
