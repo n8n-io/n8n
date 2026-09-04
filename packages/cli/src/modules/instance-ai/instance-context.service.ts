@@ -50,14 +50,31 @@ const resourceHistoryLimit = 20;
  * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
  * worth surfacing are deletions, written by whichever request happens to be committing.
  *
- * So a delta re-reads this far below the mark and drops what it has already shown. An entry
- * committing further behind than this is still lost — no bounded cursor can be complete — but the
- * band covers the overlap a concurrent commit actually produces.
+ * So a delta re-reads this far below the mark and drops what it has already shown.
+ *
+ * What this does and does not promise. The read below is newest-first and capped, so when more
+ * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
+ * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
+ * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
+ * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
+ * could be displayed", not "every straggler is recovered". Keeping the cap above `windowSize` is
+ * what makes even that much true, which is why it is derived from it rather than set by hand.
  */
 const activityLagIds = 200;
 
-/** Ids remembered inside the band. Bounded so thread metadata cannot grow without limit. */
-const seenIdsCap = 200;
+/**
+ * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
+ * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
+ * show it again, and a larger one would store ids the floor already excludes.
+ */
+const seenIdsCap = activityLagIds;
+
+/**
+ * Rows one delta reads. Above `windowSize` on purpose — see the note on `activityLagIds`, which
+ * depends on it — and above it by enough that collapsing and the age filter still leave a full
+ * window to show.
+ */
+const entryFetchLimit = windowSize * fetchMultiplier;
 
 /**
  * How far back a delta re-reads runs. Absorbs clock skew between writers and the gap between a
@@ -91,9 +108,9 @@ export function readInstanceContextCursor(
 	metadata: Record<string, unknown> | undefined,
 ): InstanceContextCursor | null {
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
-	if (typeof value !== 'object' || value === null) return null;
+	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value as Record<string, unknown>;
+	const { activityMark, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
@@ -104,6 +121,10 @@ export function readInstanceContextCursor(
 			: [],
 		runsThrough,
 	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 type RunSummary = {
@@ -202,6 +223,7 @@ export class InstanceContextService {
 			return {
 				block: renderBlock({
 					entries: entries.rows.map((row) => toFeedEntry(row, input.userId, now)),
+					entriesTruncated: entries.truncated,
 					runs,
 					isUpdate,
 					inventory,
@@ -285,12 +307,12 @@ export class InstanceContextService {
 		projectIds: string[];
 		cursor: InstanceContextCursor | null;
 		now: Date;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[] }> {
+	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
 		const cursor = input.cursor;
 		const floor = cursor ? Math.max(0, cursor.activityMark - activityLagIds) : undefined;
 
 		const rows = await this.activityEventRepository.findFeed({
-			limit: windowSize * fetchMultiplier,
+			limit: entryFetchLimit,
 			projectIds: input.projectIds,
 			...(floor !== undefined ? { afterId: floor } : {}),
 		});
@@ -311,7 +333,14 @@ export class InstanceContextService {
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
-		return { rows: fresh.slice(0, windowSize), mark, seen };
+		return {
+			rows: fresh.slice(0, windowSize),
+			mark,
+			seen,
+			// Said out loud rather than left to inference. A cut list that does not say it is cut
+			// reads as the whole story, and the agent would draw conclusions from it.
+			truncated: fresh.length > windowSize || rows.length === entryFetchLimit,
+		};
 	}
 
 	private async readRuns(input: {
@@ -417,6 +446,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 
 function renderBlock(input: {
 	entries: string[];
+	entriesTruncated: boolean;
 	runs: RunSummary[];
 	isUpdate: boolean;
 	inventory?: Inventory;
@@ -428,7 +458,13 @@ function renderBlock(input: {
 		...(input.inventory ? renderInventory(input.inventory) : []),
 		...renderRuns(input.runs, input.isUpdate, input.now),
 		...(input.entries.length > 0
-			? [input.isUpdate ? 'Changes since then:' : 'What changed recently:', ...input.entries]
+			? [
+					input.isUpdate ? 'Changes since then:' : 'What changed recently:',
+					...input.entries,
+					...(input.entriesTruncated
+						? ['  ... and more than these — `activity(action="list")` for the rest.']
+						: []),
+				]
 			: []),
 	].join('\n');
 

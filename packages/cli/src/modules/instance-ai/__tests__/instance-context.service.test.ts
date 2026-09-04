@@ -183,6 +183,38 @@ describe('InstanceContextService', () => {
 			expect(built?.block).toContain('by the assistant');
 		});
 
+		it('says so when there is more than it shows, rather than reading as the whole story', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue(
+				Array.from({ length: 60 }, (_, index) => entry({ id: 100 + index })),
+			);
+
+			const built = await service.buildBlock({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				cursor: null,
+				now: NOW,
+			});
+
+			expect(built?.block).toContain('and more than these');
+			// Still bounded to the window it advertises.
+			expect(built?.block.match(/^\[\d+\]/gm)).toHaveLength(40);
+		});
+
+		it('does not claim to be cut when it is not', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 1 }), entry({ id: 2 })]);
+
+			const built = await service.buildBlock({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				cursor: null,
+				now: NOW,
+			});
+
+			expect(built?.block).not.toContain('and more than these');
+		});
+
 		it('drops entries older than the window', async () => {
 			const service = serviceWith();
 			activityEventRepository.findFeed.mockResolvedValue([

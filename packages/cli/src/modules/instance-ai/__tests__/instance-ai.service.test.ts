@@ -933,7 +933,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isNodeUsageEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
-		// Gates the instance-awareness skill out of the catalog this test asserts on.
+		// Only so the skill gate has a reader to read the flag off; the gate itself is mocked here.
 		service.instanceContext = { enabled: false };
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
