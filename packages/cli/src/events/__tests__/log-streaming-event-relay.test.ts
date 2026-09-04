@@ -130,6 +130,9 @@ describe('LogStreamingEventRelay', () => {
 						skipped: 0,
 						requirements: 1,
 					},
+					agents: {
+						created: 0,
+					},
 				},
 			};
 
@@ -196,6 +199,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTables: 1,
 					variables: 1,
 					tags: 1,
+					agents: 0,
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				credentialExportPolicy: 'expression-values-only',

@@ -120,6 +120,7 @@ export class WorkflowPackageImporter {
 			dataTableRequest,
 			variableRequest,
 			tagRequest,
+			agentRequest: { agents: await this.packageParser.getAgents(reader) },
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
@@ -161,6 +162,7 @@ export class WorkflowPackageImporter {
 			removedFolders: content.removedFolders,
 			folders: content.folderSummaries,
 			projects: [],
+			agents: content.agentResult,
 			bindings: content.bindings,
 			credentials: {
 				matched: content.credentialResult.matched,

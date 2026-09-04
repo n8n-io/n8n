@@ -1182,6 +1182,9 @@ describe('Package import event emission', () => {
 					skipped: 0,
 					requirements: 0,
 				},
+				agents: {
+					created: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1281,6 +1284,9 @@ describe('Package import event emission', () => {
 					skipped: 0,
 					requirements: 0,
 				},
+				agents: {
+					created: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1349,6 +1355,9 @@ describe('Package import event emission', () => {
 					reconciled: 0,
 					skipped: 0,
 					requirements: 0,
+				},
+				agents: {
+					created: 0,
 				},
 			});
 		} finally {
@@ -1420,6 +1429,9 @@ describe('Package import event emission', () => {
 					reconciled: 0,
 					skipped: 0,
 					requirements: 0,
+				},
+				agents: {
+					created: 0,
 				},
 			});
 		} finally {

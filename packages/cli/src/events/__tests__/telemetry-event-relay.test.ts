@@ -2343,6 +2343,9 @@ describe('TelemetryEventRelay', () => {
 						skipped: 9,
 						requirements: 10,
 					},
+					agents: {
+						created: 0,
+					},
 				},
 			};
 
@@ -2406,6 +2409,7 @@ describe('TelemetryEventRelay', () => {
 					dataTables: 1,
 					variables: 4,
 					tags: 2,
+					agents: 0,
 				},
 				credentialExportPolicy: 'expression-values-only',
 			};

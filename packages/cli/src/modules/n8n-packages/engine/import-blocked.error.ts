@@ -21,6 +21,7 @@ export function toImportBlockedError(
 				issue.type === 'variable-conflict' ||
 				(issue.type === 'data-table-unresolved' &&
 					(issue.kind === 'id-conflict' || issue.kind === 'name-conflict')) ||
+				(issue.type === 'agent-unresolved' && issue.kind === 'id-exists') ||
 				(issue.type === 'tag-unresolved' &&
 					(issue.kind === 'rename-drift' || issue.kind === 'name-collision')),
 		)

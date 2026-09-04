@@ -20,3 +20,10 @@ export class PackageImportConfig {
 	@Env('N8N_IMPORT_MAX_PATH_LENGTH')
 	maxPathLength: number = 1024;
 }
+
+@Config
+export class PackageExportConfig {
+	/** Maximum total size in bytes of one agent's knowledge files in an export. */
+	@Env('N8N_EXPORT_MAX_AGENT_KNOWLEDGE_BYTES')
+	maxAgentKnowledgeBytes: number = 250 * MiB;
+}

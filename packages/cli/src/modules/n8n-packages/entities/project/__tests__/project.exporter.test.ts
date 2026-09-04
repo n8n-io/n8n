@@ -1,12 +1,15 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentsService } from '@/modules/agents/agents.service';
 import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { PackageWriter } from '../../../io/package-writer';
+import type { AgentExporter } from '../../agent/agent.exporter';
 import type { FolderExporter } from '../../folder/folder.exporter';
 import {
 	PackageEntityAccessDeniedError,
@@ -72,6 +75,11 @@ function makeExporter({
 
 	const folderExporter = mock<FolderExporter>();
 	const workflowExporter = mock<WorkflowExporter>();
+	const agentExporter = mock<AgentExporter>();
+	const agentsService = mock<AgentsService>();
+	agentsService.findByProjectId.mockResolvedValue([]);
+	const moduleRegistry = mock<ModuleRegistry>();
+	moduleRegistry.isActive.mockReturnValue(true);
 
 	const exporter = new ProjectExporter(
 		projectService,
@@ -80,6 +88,9 @@ function makeExporter({
 		workflowFinder,
 		folderExporter,
 		workflowExporter,
+		agentExporter,
+		agentsService,
+		moduleRegistry,
 	);
 	return {
 		exporter,
@@ -88,6 +99,8 @@ function makeExporter({
 		workflowFinder,
 		folderExporter,
 		workflowExporter,
+		agentExporter,
+		agentsService,
 	};
 }
 
