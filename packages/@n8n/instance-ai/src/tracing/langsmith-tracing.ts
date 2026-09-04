@@ -8,6 +8,7 @@ import {
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
@@ -786,10 +787,6 @@ function isInternalOperationTracingEnabled(): boolean {
 	);
 }
 
-function normalizeErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
-
 function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | undefined {
 	const merged = tagGroups.flatMap((group) => group ?? []).filter(Boolean);
 	if (merged.length === 0) return undefined;
@@ -987,7 +984,7 @@ export async function withCurrentTraceSpan<T>(
 		return result;
 	} catch (error) {
 		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
-			error: normalizeErrorMessage(error),
+			error: getErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
 		throw error;
@@ -1278,7 +1275,7 @@ function createTraceContext(
 			proxyConfig,
 			async () =>
 				await finishProductSpanBestEffort(otelRuntime, run, {
-					error: normalizeErrorMessage(error),
+					error: getErrorMessage(error),
 					metadata,
 					forceFlush: isRootRun,
 				}),

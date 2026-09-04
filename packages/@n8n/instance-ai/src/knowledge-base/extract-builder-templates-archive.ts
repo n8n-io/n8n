@@ -1,12 +1,9 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { gunzipSync } from 'node:zlib';
 
 const TAR_BLOCK_SIZE = 512;
 const TAR_TYPE_REGULAR = '0';
 const TEMPLATE_ENTRY_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.ts$/;
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 function isAllowedTemplateEntryName(name: string): boolean {
 	if (name === 'index.json' || name === 'index.txt') return true;
