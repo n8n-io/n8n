@@ -96,9 +96,13 @@ describe('buildSdkLanguageReference', () => {
 });
 
 describe('NODE_GROUPS_REFERENCE', () => {
-	it('explains what a group is (visual-only) and how to declare one', () => {
+	it('explains what a group is and that it still matters', () => {
+		// A build called grouping "a finishing touch" and skipped it, echoing the word
+		// "cosmetic" this doc used to use.
 		expect(NODE_GROUPS_REFERENCE).toContain('## Node groups');
-		expect(NODE_GROUPS_REFERENCE).toMatch(/visual/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/no execution\s+semantics/is);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/part of the deliverable, not decoration/i);
+		expect(NODE_GROUPS_REFERENCE).not.toMatch(/cosmetic|purely organisational/i);
 	});
 
 	it('explains how to declare a group', () => {
@@ -222,25 +226,38 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes mean the boundaries are too fine/i);
 		});
 
+		it('states the one-member-per-side boundary limit', () => {
+			expect(GROUPING_GUIDANCE).toMatch(
+				/one member receiving from outside and one member sending outside/i,
+			);
+			expect(GROUPING_GUIDANCE).toMatch(/any number of connections may reach those two members/i);
+		});
+
 		it('says how to group a stage whose work fans out', () => {
 			// A stage fanning three validators out of the trigger cannot be one group:
-			// each branch head takes input from outside. Keeping the fan-out source
-			// inside fixes it, and a build proved it once the trigger fed a prep node.
-			expect(GROUPING_GUIDANCE).toMatch(/keep the node they fan out from inside the group/i);
-			expect(GROUPING_GUIDANCE).toMatch(/group from the node where the branches reconverge/i);
+			// each branch head faces outward. Both ends of the fan-out belong inside.
+			expect(GROUPING_GUIDANCE).toMatch(
+				/the node they fan out from and the node they reconverge on both belong inside/i,
+			);
+		});
+
+		it('offers a stage-owned entry or exit when neither end can be a member', () => {
+			// The trigger can never join a group, and a node already in another group
+			// cannot join a second one.
+			expect(GROUPING_GUIDANCE).toMatch(/cannot be a member/i);
+			expect(GROUPING_GUIDANCE).toMatch(/serve as the single entry or exit/i);
+			// Guard against an agent sprinkling pass-throughs for tidiness.
+			expect(GROUPING_GUIDANCE).toMatch(/use a step the stage already has/i);
 		});
 
 		it('says where to cut when an objective ends in a branch', () => {
 			// A build grouped an IF with its stop branch and lost both groups to
 			// `Output Edge From Non-Leaf Node`: the IF continued inside and exited too.
-			expect(GROUPING_GUIDANCE).toMatch(/both continues inside it and exits it/i);
 			// A branch node whose paths both leave is a leaf with one exit, so keeping it
 			// inside is valid and costs the fewest top-level items.
-			expect(GROUPING_GUIDANCE).toMatch(
-				/keep the branch node inside and leave both its paths outside/i,
-			);
-			expect(GROUPING_GUIDANCE).toMatch(/end the group before the branch node/i);
-			expect(GROUPING_GUIDANCE).toMatch(/leave the branch node and its stop path outside/i);
+			expect(GROUPING_GUIDANCE).toMatch(/keep the branch node inside with both its paths outside/i);
+			expect(GROUPING_GUIDANCE).toMatch(/end the group before it/i);
+			expect(GROUPING_GUIDANCE).toMatch(/leave it and its stop path outside/i);
 		});
 
 		it('breaks ties toward fewer, larger groups', () => {
@@ -250,8 +267,7 @@ describe('GROUPING_GUIDANCE', () => {
 		it('does not let the ceiling justify an invalid or absurd split', () => {
 			// A branchy graph cannot always reach 7, and chasing the number produces
 			// groups the save path drops.
-			expect(GROUPING_GUIDANCE).toMatch(/never break a validity rule/i);
-			expect(GROUPING_GUIDANCE).toMatch(/split one objective to hit the number/i);
+			expect(GROUPING_GUIDANCE).toMatch(/never split one objective to hit the number/i);
 		});
 
 		it('allows exceeding the ceiling only for items that cannot be grouped', () => {
@@ -269,7 +285,6 @@ describe('GROUPING_GUIDANCE', () => {
 
 		it('caps what is visible at the canvas top level', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/at most 7 top-level items/i);
-			expect(GROUPING_GUIDANCE).toMatch(/trigger \+ groups \+ nodes left outside/i);
 		});
 
 		it('makes a group a business outcome rather than a technical category', () => {
@@ -278,8 +293,20 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/merge groups serving the same outcome/i);
 		});
 
-		it('keeps the groups-vs-sub-workflows distinction', () => {
+		it('keeps the groups-vs-sub-workflows distinction without calling groups cosmetic', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/sub-workflow/i);
+			expect(GROUPING_GUIDANCE).not.toMatch(/cosmetic/i);
+		});
+
+		it('frames grouping as part of the build rather than a finishing touch', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/part of the build, not a finishing touch/i);
+		});
+
+		it('tells agents a rejected group does not close the stage', () => {
+			// Three builds hit one rejection, explained it, and left the stage ungrouped
+			// when a smaller slice would have been accepted.
+			expect(GROUPING_GUIDANCE).toMatch(/rejected group never closes the stage/i);
+			expect(GROUPING_GUIDANCE).toMatch(/try a smaller slice that is valid/i);
 		});
 	});
 
