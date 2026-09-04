@@ -1,5 +1,6 @@
 import type { Serialized } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -417,6 +418,96 @@ describe('N8nLlmTracing', () => {
 		});
 	});
 
+	describe('handleChatModelStart', () => {
+		const llm: Serialized = {
+			lc: 1,
+			type: 'constructor',
+			id: ['langchain', 'chat_models', 'openai'],
+			kwargs: { modelName: 'gpt-4', temperature: 0.7 },
+		};
+
+		it('should persist serialized messages, estimated tokens and options', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			const messages = [[new HumanMessage('What is the capital of France?')]];
+
+			await tracer.handleChatModelStart(llm, messages, 'run-123');
+
+			expect(mockExecutionFunctions.addInputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				expect.arrayContaining([
+					expect.arrayContaining([
+						expect.objectContaining({
+							json: expect.objectContaining({
+								messages: [messages[0][0].toJSON()],
+								estimatedTokens: expect.any(Number),
+								options: llm.kwargs,
+							}),
+						}),
+					]),
+				]),
+				undefined,
+			);
+			// estimation runs against the stringified message content
+			expect(estimateTokensFromStringList).toHaveBeenCalledWith(
+				['What is the capital of France?'],
+				'gpt-4o',
+			);
+		});
+
+		it('should store the original messages in runsMap for later use', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			const messages = [[new HumanMessage('Test prompt')]];
+
+			await tracer.handleChatModelStart(llm, messages, 'run-123');
+
+			expect(tracer.runsMap['run-123']).toBeDefined();
+			expect(tracer.runsMap['run-123'].messages).toBe(messages[0]);
+			expect(tracer.runsMap['run-123'].index).toBe(0);
+		});
+
+		it('should stringify non-string message content when estimating tokens', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			const structuredContent = [{ type: 'text', text: 'hi' }];
+			const messages = [[new HumanMessage({ content: structuredContent })]];
+
+			await tracer.handleChatModelStart(llm, messages, 'run-123');
+
+			expect(estimateTokensFromStringList).toHaveBeenCalledWith(
+				[JSON.stringify(structuredContent)],
+				'gpt-4o',
+			);
+		});
+
+		it('should mask declared header values in persisted options', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				redactedHeaders: ['x-secret-header'],
+			});
+			const llmWithHeaders: Serialized = {
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain', 'chat_models', 'openai'],
+				kwargs: {
+					model: 'gpt-4',
+					configuration: {
+						defaultHeaders: {
+							'User-Agent': 'n8n',
+							'x-secret-header': 'My_secret_API_key123456789',
+						},
+					},
+				},
+			};
+
+			await tracer.handleChatModelStart(llmWithHeaders, [[new HumanMessage('hello')]], 'run-123');
+
+			const inputArg = mockExecutionFunctions.addInputData.mock.calls[0][1] as Array<
+				Array<{ json: { options: { configuration: { defaultHeaders: Record<string, string> } } } }>
+			>;
+			const persistedHeaders = inputArg[0][0].json.options.configuration.defaultHeaders;
+			expect(persistedHeaders['x-secret-header']).toBe('**********');
+			expect(persistedHeaders['User-Agent']).toBe('n8n');
+		});
+	});
+
 	describe('handleLLMEnd', () => {
 		it('should handle LLM end event with token usage', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
@@ -521,6 +612,36 @@ describe('N8nLlmTracing', () => {
 					'llm.tokens.estimated': true,
 				},
 			});
+		});
+
+		it('should use the run-scoped prompt estimate, not a later run overwriting the shared field', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			// run-1 recorded its own estimate...
+			tracer.runsMap['run-1'] = {
+				index: 0,
+				messages: ['Prompt 1'],
+				options: {},
+				promptTokensEstimate: 50,
+			};
+			// ...but a concurrent run-2 later overwrote the shared instance field.
+			tracer.promptTokensEstimate = 200;
+
+			estimateTokensFromStringList.mockResolvedValue(25);
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response text' }]],
+				llmOutput: {},
+			};
+
+			await tracer.handleLLMEnd(output, 'run-1');
+
+			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
+			const outputData = callArgs?.[2]?.[0]?.[0]?.json;
+
+			// Prompt tokens come from run-1's own estimate (50), not run-2's shared 200.
+			expect(outputData.tokenUsageEstimate.promptTokens).toBe(50);
+			expect(outputData.tokenUsageEstimate.totalTokens).toBe(75);
 		});
 
 		it('should handle string messages', async () => {

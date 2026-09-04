@@ -538,6 +538,71 @@ describe('memoryManagement', () => {
 			expect((result[1] as ToolMessage).name).toBe('calculator');
 		});
 
+		it('should parse a serialized multimodal observation back into structured content', () => {
+			const blocks = [
+				{ type: 'text', text: '[{"success":true}]' },
+				{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } },
+			];
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'screenshot',
+						toolInput: {},
+						log: 'Taking screenshot',
+						toolCallId: 'call-img',
+						type: 'tool_call',
+					},
+					observation: JSON.stringify(blocks),
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect(result[1].content).toEqual(blocks);
+		});
+
+		it('should keep a plain-string observation as a string even if it looks like a JSON array', () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: {},
+						log: 'Calculating',
+						toolCallId: 'call-str',
+						type: 'tool_call',
+					},
+					// Array of primitives (no `type` keys) must not be treated as content blocks.
+					observation: '[1, 2, 3]',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result[1].content).toBe('[1, 2, 3]');
+		});
+
+		it('should keep an object-array observation as a string when its `type` is not a valid block', () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'listUsers',
+						toolInput: {},
+						log: 'Listing',
+						toolCallId: 'call-users',
+						type: 'tool_call',
+					},
+					// Ordinary tool JSON whose objects happen to carry a `type` field
+					// must not be promoted to multimodal content.
+					observation: JSON.stringify([{ type: 'user', name: 'Ada' }]),
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result[1].content).toBe(JSON.stringify([{ type: 'user', name: 'Ada' }]));
+		});
+
 		it('should create synthetic AIMessage when messageLog is missing', () => {
 			const steps: ToolCallData[] = [
 				{

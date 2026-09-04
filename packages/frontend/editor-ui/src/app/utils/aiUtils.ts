@@ -126,9 +126,10 @@ const outputTypeParsers: {
 								  }
 								| string;
 						}
-						let message = String(content.kwargs.content);
-						if (Array.isArray(message)) {
-							message = (message as MessageContent[])
+						const messageContent = content.kwargs.content;
+						let message = '';
+						if (Array.isArray(messageContent)) {
+							message = (messageContent as MessageContent[])
 								.map((item) => {
 									const { type, image_url } = item;
 									if (
@@ -140,9 +141,11 @@ const outputTypeParsers: {
 									} else if (typeof image_url === 'string') {
 										return `![Input image](${image_url})`;
 									}
-									return item.text;
+									return item.text ?? '';
 								})
 								.join('\n');
+						} else {
+							message = String(messageContent);
 						}
 						if (
 							content.kwargs.additional_kwargs &&
