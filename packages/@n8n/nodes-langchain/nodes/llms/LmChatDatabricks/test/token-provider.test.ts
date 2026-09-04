@@ -295,7 +295,7 @@ describe('createDatabricksFetch', () => {
 	it('should set the partner User-Agent, overwriting the SDK-supplied one', async () => {
 		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
 		globalThis.fetch = mockFetch;
-		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+		const wrappedFetch = createDatabricksFetch({ getToken: async () => 'fresh-token' });
 
 		await wrappedFetch('https://my.databricks.com/serving-endpoints/chat/completions', {
 			method: 'POST',
