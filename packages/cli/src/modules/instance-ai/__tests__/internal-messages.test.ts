@@ -30,6 +30,17 @@ function editorContextMarker(
 	return `<editor-context>\n${JSON.stringify(attachments)}\n\n${prose}\n</editor-context>`;
 }
 
+function instanceContextMarker(): string {
+	return [
+		'<instance-context>',
+		'What is going on in this instance.',
+		'',
+		'Workflows that already exist here: 1. Most recently worked on:',
+		'  - "Lead enrichment" (workflow:wf-1) [published]',
+		'</instance-context>',
+	].join('\n');
+}
+
 function credentialContextMarker(): string {
 	return `<credential-context>\n${JSON.stringify({
 		source: 'credential-modal',
@@ -79,6 +90,32 @@ describe('cleanStoredUserMessage', () => {
 		const stored =
 			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('strips an <instance-context> block followed by user text', () => {
+		const stored = `${instanceContextMarker()}\n\nCarry on where I left off`;
+		expect(cleanStoredUserMessage(stored)).toBe('Carry on where I left off');
+	});
+
+	/** The service can stack a hand-off ahead of it, so the leading blocks are stripped in a loop. */
+	it('strips an <instance-context> block stacked behind an <editor-context> block', () => {
+		const stored = [
+			editorContextMarker([{ type: 'workflow', id: 'wf-1' }]),
+			instanceContextMarker(),
+			'Why did it fail?',
+		].join('\n\n');
+
+		expect(cleanStoredUserMessage(stored)).toBe('Why did it fail?');
+	});
+
+	it('leaves the project and clock blocks that follow the user text intact when stripping it', () => {
+		const stored = [
+			instanceContextMarker(),
+			'Carry on',
+			'<project-context>\nThis conversation is scoped to the project "Ops" (team).\n</project-context>',
+		].join('\n\n');
+
+		expect(cleanStoredUserMessage(stored)).toBe('Carry on');
 	});
 
 	it('returns null for auto-follow-up message', () => {
