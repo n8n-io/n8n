@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_00ef06e002e9f7::t_0117273de6588c 277-282
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_00ef06e002e9f7::t_ef7b82db8e2c2f 87
+  s_00ef06e002e9f7::t_275eff2a2e6143 1289-1293
+  s_00ef06e002e9f7::t_a12928eca247ad 293-311
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupPanel.vue
+  s_00ef06e002e9f7::t_66a083e2025620 1-265
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_00ef06e002e9f7::t_b461f4dfaccc17 94
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_00ef06e002e9f7::t_f5b4d54485961f 6975-6976,6978
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/__tests__/InstanceAiSetupPanel.test.ts
+  s_00ef06e002e9f7::t_14cedae9a9691e 1-170
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupPanelDetail.vue
+  s_00ef06e002e9f7::t_3f84a3c344b28c 1-116,118-264
+  s_00ef06e002e9f7::t_017ef78523db41 117
+  s_00ef06e002e9f7::t_3778024cd2b821 265-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "46ce5da13ccba372243c1420379aa7497a286630",
+  "prompts": {},
+  "sessions": {
+    "s_00ef06e002e9f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "738235d1-e2a6-4f51-a0cf-7b61393bb1b7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
