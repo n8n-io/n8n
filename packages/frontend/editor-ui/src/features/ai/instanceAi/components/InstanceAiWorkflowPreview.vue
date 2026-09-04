@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
@@ -16,6 +16,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { requestCanvasTidyUp } from '@/features/workflows/canvas/pendingCanvasTidyUp';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import {
 	buildInstanceAiArtifactCredentialQuestion,
@@ -39,12 +40,15 @@ const props = withDefaults(
 		refreshKey?: number;
 		/** Latest completed execution produced by the agent for this workflow. */
 		executionResult?: ExecutionResult;
+		/** Workflow awaiting a one-shot post-build layout tidy (see useCanvasPreview). */
+		pendingTidyWorkflowId?: string | null;
 	}>(),
-	{ refreshKey: 0, executionResult: undefined },
+	{ refreshKey: 0, executionResult: undefined, pendingTidyWorkflowId: null },
 );
 
 const emit = defineEmits<{
 	'workflow-failures': [report: WorkflowFailuresReport];
+	'tidy-up-consumed': [];
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
@@ -144,16 +148,76 @@ const isAgentEditingThisWorkflow = computed(() => {
 // NodeView derives its read-only state from these via useEditorContext();
 // usePushConnection reads the toast flags to gate execution result
 // notifications.
+const isEditorLocked = computed(() => isAgentWorking.value || isAgentEditingThisWorkflow.value);
+
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
 	askAi: false,
-	readOnly: isAgentWorking.value || isAgentEditingThisWorkflow.value,
+	readOnly: isEditorLocked.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
 	executionButtonType: 'secondary',
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+// === Post-build auto tidy-up ===
+// The AI lays out group members as if the groups were open, so collapsed
+// chips render misaligned. Auto-run the canvas tidy-up: visual-only during
+// the run, persisted (readOnly lifts → autosave) once the agent goes idle.
+
+// True between a refresh trigger and its workflow-loaded — tidying in that
+// window would hit an unmounted or unmeasured canvas.
+const isCanvasReloading = ref(true);
+
+watch(
+	() => [props.workflowId, props.refreshKey],
+	() => {
+		isCanvasReloading.value = true;
+	},
+);
+
+function onWorkflowLoaded() {
+	isCanvasReloading.value = false;
+	restoreExecutionResult();
+	maybeAutoTidy();
+}
+
+function maybeAutoTidy() {
+	if (props.pendingTidyWorkflowId !== props.workflowId) {
+		return;
+	}
+
+	if (isCanvasReloading.value) {
+		return;
+	}
+
+	// Agent still working → intermediate, visual-only tidy: keep the marker so
+	// the final, persisting tidy still runs at idle.
+	if (!isEditorLocked.value) {
+		emit('tidy-up-consumed');
+	}
+
+	// Without groups the server layout is already the intended one
+	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.workflowId));
+	if (docStore.allGroups.length === 0) {
+		return;
+	}
+
+	requestCanvasTidyUp({
+		workflowId: props.workflowId,
+		source: 'builder-update',
+		trackEvents: false,
+		trackHistory: false,
+		trackBulk: false,
+	});
+}
+
+watch(isEditorLocked, (locked, wasLocked) => {
+	if (wasLocked && !locked) {
+		maybeAutoTidy();
+	}
+});
 
 const rootStore = useRootStore();
 
@@ -187,7 +251,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
-			@workflow-loaded="restoreExecutionResult"
+			@workflow-loaded="onWorkflowLoaded"
 		/>
 	</div>
 </template>
