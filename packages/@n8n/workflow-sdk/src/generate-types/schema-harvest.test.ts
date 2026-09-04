@@ -346,6 +346,67 @@ describe('harvestOutputSchemas', () => {
 		});
 	});
 
+	it('describes an object keyed only by record ids as a map', () => {
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: {
+					assignments: {
+						'ba4a422e-bdce-4795-b4b6-579287363f0e': { orderHint: '85', done: true },
+						'cb5b533f-cedf-48a6-b5c7-68a398474a1f': { orderHint: '9!', count: 2 },
+					},
+				},
+			}),
+		);
+
+		harvestOutputSchemas({ nodesRootDir });
+
+		const filePath = path.join(nodesRootDir, 'Widget/__schema__/v1.0.0/item/get.json');
+		expect(jsonParse(fs.readFileSync(filePath, 'utf-8'))).toEqual({
+			type: 'object',
+			properties: {
+				assignments: {
+					type: 'object',
+					additionalProperties: {
+						type: 'object',
+						properties: {
+							orderHint: { type: 'string' },
+							done: { type: 'boolean' },
+							count: { type: 'number' },
+						},
+					},
+				},
+			},
+		});
+	});
+
+	it('drops record ids that are mixed in with real fields', () => {
+		writeFixture(
+			nodesRootDir,
+			'Widget/test/v1/node/item/get.workflow.json',
+			baseFixture({
+				targetType: 'n8n-nodes-base.widget',
+				pinnedOnTarget: true,
+				sample: {
+					title: 'a deal',
+					f5ed368466cf0477371c6ee076252f49a188848e: null,
+					febf5dbb0f1e95d60876abc4638483291b8ef18b: 'custom',
+				},
+			}),
+		);
+
+		harvestOutputSchemas({ nodesRootDir });
+
+		const filePath = path.join(nodesRootDir, 'Widget/__schema__/v1.0.0/item/get.json');
+		expect(jsonParse(fs.readFileSync(filePath, 'utf-8'))).toEqual({
+			type: 'object',
+			properties: { title: { type: 'string' } },
+		});
+	});
+
 	it("skips operations whose output is shaped by the user's own data", () => {
 		writeFixture(
 			nodesRootDir,

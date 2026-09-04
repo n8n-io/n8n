@@ -17,44 +17,42 @@
 			"type": "string"
 		},
 		"assignments": {
-			"properties": {
-				"ba4a422e-bdce-4795-b4b6-579287363f0e": {
-					"properties": {
-						"@odata.type": {
-							"type": "string"
-						},
-						"assignedBy": {
-							"properties": {
-								"application": {
-									"properties": {
-										"displayName": {},
-										"id": {
-											"type": "string"
-										}
-									},
-									"type": "object"
-								},
-								"user": {
-									"properties": {
-										"displayName": {},
-										"id": {
-											"type": "string"
-										}
-									},
-									"type": "object"
-								}
-							},
-							"type": "object"
-						},
-						"assignedDateTime": {
-							"type": "string"
-						},
-						"orderHint": {
-							"type": "string"
-						}
+			"additionalProperties": {
+				"properties": {
+					"@odata.type": {
+						"type": "string"
 					},
-					"type": "object"
-				}
+					"assignedBy": {
+						"properties": {
+							"application": {
+								"properties": {
+									"displayName": {},
+									"id": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"user": {
+								"properties": {
+									"displayName": {},
+									"id": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"assignedDateTime": {
+						"type": "string"
+					},
+					"orderHint": {
+						"type": "string"
+					}
+				},
+				"type": "object"
 			},
 			"type": "object"
 		},

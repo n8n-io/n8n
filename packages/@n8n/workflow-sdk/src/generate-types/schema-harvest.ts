@@ -226,6 +226,13 @@ const USER_SHAPED_OPERATIONS = new Set([
 const OPAQUE_OUTPUT_PROPERTIES = new Set(['custom_fields']);
 
 /**
+ * A key that identifies a record instead of naming a field: a UUID, or a long
+ * hex digest such as a Pipedrive custom-field key.
+ */
+const OPAQUE_KEY =
+	/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32,})$/i;
+
+/**
  * A fixture is one sample, not a contract. It cannot prove a property is
  * always present, and a property that happened to be null says nothing about
  * the type it carries when set — so `required` is dropped and null widens to
@@ -240,13 +247,26 @@ function relaxInferredSchema(schema: JsonSchema): JsonSchema {
 	}
 
 	if (schema.type === 'object' && schema.properties) {
-		const properties: Record<string, JsonSchema> = {};
+		const named: Record<string, JsonSchema> = {};
+		const keyedByRecordId: JsonSchema[] = [];
+
 		for (const [key, value] of Object.entries(schema.properties)) {
-			properties[key] = OPAQUE_OUTPUT_PROPERTIES.has(key)
+			const relaxed: JsonSchema = OPAQUE_OUTPUT_PROPERTIES.has(key)
 				? { type: 'object' }
 				: relaxInferredSchema(value);
+			if (OPAQUE_KEY.test(key)) keyedByRecordId.push(relaxed);
+			else named[key] = relaxed;
 		}
-		return { type: 'object', properties };
+
+		// An object of nothing but record ids is a map, so describe its value
+		// shape once and let consumers read `Record<string, T>`. Record ids mixed
+		// in with real fields are just the ids the recording account happened to
+		// hold, so they are dropped rather than pinned as fields.
+		if (keyedByRecordId.length > 0 && Object.keys(named).length === 0) {
+			return { type: 'object', additionalProperties: keyedByRecordId.reduce(mergeSchemas) };
+		}
+
+		return { type: 'object', properties: named };
 	}
 
 	return schema;
@@ -262,9 +282,20 @@ function unionTypes(a: JsonSchema['type'], b: JsonSchema['type']): JsonSchema['t
  * cover one operation with different scenarios — a minimal response and a full
  * one — so keeping only the first drops fields the node really returns.
  */
+function isSchemaValue(value: boolean | JsonSchema | undefined): value is JsonSchema {
+	return typeof value === 'object';
+}
+
 function mergeSchemas(a: JsonSchema, b: JsonSchema): JsonSchema {
 	if (a.type === undefined) return b;
 	if (b.type === undefined) return a;
+
+	if (isSchemaValue(a.additionalProperties) && isSchemaValue(b.additionalProperties)) {
+		return {
+			type: 'object',
+			additionalProperties: mergeSchemas(a.additionalProperties, b.additionalProperties),
+		};
+	}
 
 	if (a.type === 'object' && b.type === 'object' && a.properties && b.properties) {
 		const properties: Record<string, JsonSchema> = { ...a.properties };
