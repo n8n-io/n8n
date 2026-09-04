@@ -48,6 +48,13 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
 
 	/**
+	 * Callers with an open lazy scope (lazyAcquire mode): acquired, but no
+	 * bridge created yet. The bridge is created on the first evaluate() that
+	 * reaches the engine and then lives in bridgesByCaller as usual.
+	 */
+	private lazyScopes = new WeakSet<object>();
+
+	/**
 	 * Depth of the evaluation chain currently in progress, and when it started.
 	 * An expression can evaluate another one (`$evaluateExpression`), which
 	 * re-enters `evaluate()` through a synchronous host callback; the whole
@@ -103,9 +110,22 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	 * acquired: `false` means the caller already held one, so the current
 	 * scope must not release it (release is not reference-counted and would
 	 * return the caller's bridge to the pool mid-use).
+	 *
+	 * Under `lazyAcquire`, this only opens a scope: the bridge is created on
+	 * the first evaluate() that needs the engine, so a scope whose expressions
+	 * never reach the engine costs nothing. The return value then means "scope
+	 * newly opened" and keeps the same do-not-double-release contract.
 	 */
 	async acquire(caller: object): Promise<boolean> {
+		// The pool throws this for eager acquisition; the lazy branch would
+		// otherwise happily open scopes whose every evaluation then fails.
+		if (this.disposed) throw new PoolDisposedError();
 		if (this.bridgesByCaller.has(caller)) return false;
+		if (this.config.lazyAcquire) {
+			if (this.lazyScopes.has(caller)) return false;
+			this.lazyScopes.add(caller);
+			return true;
+		}
 		let bridge: RuntimeBridge;
 		try {
 			bridge = this.pool.acquire();
@@ -117,6 +137,43 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		this.bridgesByCaller.set(caller, bridge);
 		return true;
+	}
+
+	/**
+	 * Pop a warm bridge from the pool, cold-starting one when it is empty.
+	 * Runs inside the synchronous evaluate() path (lazy acquisition), so the
+	 * cold start uses the bridge's synchronous initializer.
+	 */
+	private acquireBridgeSync(): RuntimeBridge {
+		let bridge: RuntimeBridge;
+		try {
+			bridge = this.pool.acquire();
+		} catch (error) {
+			if (error instanceof PoolDisposedError) throw error;
+			if (!(error instanceof PoolExhaustedError)) throw error;
+			bridge = this.config.createBridge();
+			// A failed cold start must not leak the bridge: it is not yet
+			// recorded anywhere, so dispose it here before rethrowing.
+			const coldStartStart = performance.now();
+			try {
+				if (typeof bridge.initializeSync !== 'function') {
+					throw new IsolateError(
+						'Isolate pool exhausted and the bridge has no synchronous initializer for a lazy cold start',
+					);
+				}
+				bridge.initializeSync();
+			} catch (initError) {
+				void bridge.dispose();
+				throw initError;
+			}
+			this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolColdStartSync.name, 1);
+			this.config.observability?.metrics.histogram(
+				EXPRESSION_METRICS.poolColdStartSyncDuration.name,
+				(performance.now() - coldStartStart) / 1000,
+			);
+		}
+		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
+		return bridge;
 	}
 
 	evaluate(
@@ -161,7 +218,12 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	}
 
 	private getBridge(caller: object): RuntimeBridge {
-		const bridge = this.bridgesByCaller.get(caller);
+		let bridge = this.bridgesByCaller.get(caller);
+		if (!bridge && this.lazyScopes.has(caller)) {
+			// Lazy acquisition: first engine-needing evaluation in this scope.
+			bridge = this.acquireBridgeSync();
+			this.bridgesByCaller.set(caller, bridge);
+		}
 		if (!bridge) {
 			throw new IsolateError('No bridge acquired for this context. Call acquire() first.');
 		}
@@ -176,6 +238,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	}
 
 	async release(caller: object): Promise<void> {
+		this.lazyScopes.delete(caller);
 		const bridge = this.bridgesByCaller.get(caller);
 		if (!bridge) return;
 		this.bridgesByCaller.delete(caller);

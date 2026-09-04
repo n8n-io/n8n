@@ -10,7 +10,15 @@ import { bridgeMessageSchema } from './bridge-messages';
 // file is statically imported (e.g. for error classes). The module is
 // only loaded when QuickJsBridge.initialize() is actually called.
 type QuickJSModule = typeof import('quickjs-emscripten');
+type QuickJSWasm = Awaited<ReturnType<QuickJSModule['getQuickJS']>>;
 let _quickjs: QuickJSModule | null = null;
+
+/**
+ * The instantiated WASM module, cached after the first async initialize().
+ * Creating runtimes/contexts from it is synchronous, so once it is cached
+ * (pool warmup does this) initializeSync() can build a bridge on demand.
+ */
+let _quickjsWasm: QuickJSWasm | null = null;
 
 async function getQuickJSModule(): Promise<QuickJSModule> {
 	if (!_quickjs) {
@@ -240,11 +248,15 @@ function serializeError(err: unknown): ErrorSentinel {
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
  */
+let _runtimeBundle: string | null = null;
+
 async function readRuntimeBundle(): Promise<string> {
+	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			_runtimeBundle = await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			return _runtimeBundle;
 		} catch {}
 		dir = path.dirname(dir);
 	}
@@ -497,7 +509,36 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const { getQuickJS } = await getQuickJSModule();
 		const QuickJS = await getQuickJS();
+		_quickjsWasm = QuickJS;
 
+		this.setupContext(QuickJS, await readRuntimeBundle());
+	}
+
+	/**
+	 * Synchronous variant of initialize(), for on-demand creation inside the
+	 * synchronous evaluate() path (lazy acquisition with an exhausted pool).
+	 * Requires the WASM module to have been instantiated by an earlier async
+	 * initialize() in this process — pool warmup provides that.
+	 */
+	initializeSync(): void {
+		if (this.disposed) throw new Error('Bridge has been disposed and cannot be reinitialized.');
+		if (this.initialized) return;
+
+		// Both caches are populated by the same async initialize() (pool
+		// warmup), so the sync path never touches the filesystem or the
+		// event loop beyond the context setup itself.
+		if (_quickjsWasm === null || _runtimeBundle === null) {
+			throw new Error(
+				'QuickJS WASM module and runtime bundle are not loaded yet: an async initialize() ' +
+					'must run once (pool warmup) before bridges can be created synchronously',
+			);
+		}
+
+		this.setupContext(_quickjsWasm, _runtimeBundle);
+	}
+
+	/** Everything after module/bundle acquisition is synchronous and shared. */
+	private setupContext(QuickJS: QuickJSWasm, runtimeBundle: string): void {
 		// Create runtime with memory limit (MB → bytes)
 		this.runtime = QuickJS.newRuntime();
 		this.runtime.setMemoryLimit(this.config.memoryLimit * 1024 * 1024);
@@ -518,7 +559,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.injectIntlPolyfill();
 
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
-		await this.loadRuntimeBundle();
+		this.loadRuntimeBundle(runtimeBundle);
 
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
@@ -536,10 +577,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	/**
 	 * Load the runtime IIFE bundle and verify required globals are present.
 	 */
-	private async loadRuntimeBundle(): Promise<void> {
+	private loadRuntimeBundle(runtimeBundle: string): void {
 		if (!this.vm) throw new Error('Context not initialized');
-
-		const runtimeBundle = await readRuntimeBundle();
 
 		const result = this.vm.evalCode(runtimeBundle);
 		if (result.error) {
