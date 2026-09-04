@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 
 import type { CommandBarItem } from './types';
+import { n8nHtml as vN8nHtml } from '../../directives';
 
 const props = defineProps<{
 	item: CommandBarItem;

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { n8nHtml as vN8nHtml } from '../../directives';
 import type { TextColor } from '../../types/text';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';

@@ -4,6 +4,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue';
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
+import { n8nHtml as vN8nHtml } from '../../../directives';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';

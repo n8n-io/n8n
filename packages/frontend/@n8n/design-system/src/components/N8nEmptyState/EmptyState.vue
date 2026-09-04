@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import EmptyStateIconCards from './EmptyStateIconCards.vue';
 import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
+import { n8nHtml as vN8nHtml } from '../../directives';
 import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';

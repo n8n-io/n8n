@@ -28,6 +28,18 @@ describe('Directive n8n-html', () => {
 		);
 	});
 
+	it('should render nothing for a nullish value', async () => {
+		const { html } = render(TestComponent, {
+			props: { html: undefined },
+			global: {
+				directives: {
+					n8nHtml,
+				},
+			},
+		});
+		expect(html()).toBe('<div></div>');
+	});
+
 	it('should not touch safe html', async () => {
 		const { html } = render(TestComponent, {
 			props: {
