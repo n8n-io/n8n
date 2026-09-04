@@ -111,27 +111,27 @@
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
 		},
-		"GET /executions/{id}": {
+		"GET /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:get"
 		},
-		"DELETE /executions/{id}": {
+		"DELETE /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
 		"POST /executions/{id}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
 			"status": "gap"
 		},
-		"GET /executions/{id}/tags": {
+		"GET /executions/{executionId}/tags": {
 			"status": "gap"
 		},
-		"PUT /executions/{id}/tags": {
+		"PUT /executions/{executionId}/tags": {
 			"status": "gap"
 		},
 		"GET /insights/summary": {
@@ -175,6 +175,9 @@
 		"GET /workflows/{id}/{versionId}": {
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
+		},
+		"GET /workflows/{workflowId}/versions/{versionId}": {
+			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {
 			"status": "gap"
@@ -242,6 +245,9 @@
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/pull": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

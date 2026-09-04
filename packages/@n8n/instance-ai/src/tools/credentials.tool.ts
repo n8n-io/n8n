@@ -20,7 +20,6 @@ import {
 } from './nodes/preferred-chat-model';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
 import {
-	extractServiceHost,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	N8N_CONNECT_DISPLAY_NAME,
 } from './workflows/credential-utils';
@@ -134,6 +133,31 @@ function normalizeUrlForComparison(raw: unknown): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function extractHttpOrigin(raw: unknown): string | undefined {
+	if (typeof raw !== 'string') return undefined;
+	try {
+		const url = new URL(raw);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+export function findSetupHintTestUrlOriginProblem(
+	hint: InstanceAiCredentialSetupHint,
+	serviceOrigin: string,
+): string | undefined {
+	if (hint.testUrl === undefined) return undefined;
+	const testOrigin = extractHttpOrigin(hint.testUrl);
+	if (!testOrigin) {
+		return `testUrl "${hint.testUrl}" is not an absolute HTTP URL — omit testUrl if no documented read-only endpoint is available`;
+	}
+	if (testOrigin !== serviceOrigin) {
+		return `testUrl origin "${testOrigin}" does not match the workflow service origin "${serviceOrigin}" — use a documented read-only endpoint on the workflow service or omit testUrl`;
+	}
+	return undefined;
 }
 
 /**
@@ -335,15 +359,17 @@ const searchTypesAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
 		),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
+			'When true, ignore `query` and return every credential type supported by Gateway credits. Use to answer "which credential types support Gateway credits?".',
 		),
 });
+
+const standaloneSetupHintField = setupHintField.omit({ testUrl: true });
 
 const setupAction = z.object({
 	action: z
@@ -372,7 +398,7 @@ const setupAction = z.object({
 					.describe(
 						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
 					),
-				setupHint: setupHintField.optional(),
+				setupHint: standaloneSetupHintField.optional(),
 			}),
 		)
 		.describe('List of credentials to set up'),
@@ -660,9 +686,9 @@ async function handleSearchTypes(
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
 	// Enumerate n8n Connect–supported types regardless of query.
-	if (input.n8nConnectOnly) {
+	if (input.gatewayCreditsOnly) {
 		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
-		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+		return { results: types.map((type) => ({ type, gatewayCredits: true })) };
 	}
 
 	if (!context.credentialService.searchCredentialTypes) {
@@ -672,7 +698,7 @@ async function handleSearchTypes(
 	if (!input.query) {
 		return {
 			results: [],
-			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+			error: 'A `query` is required for search-types unless `gatewayCreditsOnly` is set.',
 		};
 	}
 
@@ -766,18 +792,13 @@ async function handleSetup(
 									type: req.credentialType,
 									...(context.projectId ? { projectId: context.projectId } : {}),
 								});
-					// Service identity comes from the recipe's test endpoint here; an
-					// untagged credential is never offered automatically later.
-					const serviceHost = req.setupHint ? extractServiceHost(req.setupHint.testUrl) : undefined;
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
 						...(req.preferNew ? { preferNew: true } : {}),
-						...(req.setupHint
-							? { setupHint: { ...req.setupHint, ...(serviceHost ? { serviceHost } : {}) } }
-							: {}),
+						...(req.setupHint ? { setupHint: req.setupHint } : {}),
 					};
 				},
 			),

@@ -132,12 +132,12 @@ describe('nodes tool', () => {
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: 'http',
-				n8nConnectOnly: undefined,
+				gatewayCreditsOnly: undefined,
 			});
 			expect(result).toEqual({ nodes });
 		});
 
-		it('should forward n8nConnectOnly to nodeService.listAvailable', async () => {
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
 			const nodes = [
 				{
 					name: 'n8n-nodes-base.openAi',
@@ -154,13 +154,13 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'list', n8nConnectOnly: true } as never,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
 				{} as never,
 			);
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: undefined,
-				n8nConnectOnly: true,
+				gatewayCreditsOnly: true,
 			});
 			expect(result).toEqual({ nodes });
 		});
@@ -469,6 +469,46 @@ describe('nodes tool', () => {
 						version: 'v23',
 						content: 'export type IfNode = unknown;',
 						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
+			});
+		});
+
+		it('should mark a retired node type as deprecated', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						version: '1.1',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'type-definition',
+					nodeTypes: ['@n8n/n8n-nodes-langchain.toolHttpRequest'],
+				} as never,
+				{} as never,
+			);
+
+			// The definition is still returned. The caller decides what to do with it.
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						version: '1.1',
+						content: '/**\n * @deprecated This node type is retired.\n */',
+						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
+						deprecated: true,
 					},
 				],
 			});

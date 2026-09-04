@@ -167,6 +167,28 @@ describe('MainSidebar', () => {
 
 			expect(getByTestId('main-sidebar-settings')).toBeInTheDocument();
 		});
+
+		it('should show contact support item in help menu when on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = true;
+
+			const { getByText, findByText } = renderComponent();
+
+			getByText('Help').click();
+
+			expect(await findByText('Contact Support')).toBeInTheDocument();
+		});
+
+		it('should not show contact support item in help menu when not on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = false;
+
+			const { getByText, findByRole, queryByText } = renderComponent();
+
+			getByText('Help').click();
+			// Wait for the popover to mount before checking
+			await findByRole('dialog');
+
+			expect(queryByText('Contact Support')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('handleSelect', () => {
@@ -226,7 +248,7 @@ describe('MainSidebar', () => {
 			const { getByText, findByText } = renderComponent();
 
 			getByText('Settings').click();
-			const creditsItem = await findByText('n8n credits');
+			const creditsItem = await findByText('Gateway credits');
 			creditsItem.click();
 
 			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });

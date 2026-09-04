@@ -136,6 +136,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.guidance).toContain('Prefer one of: "gemini-3-flash"');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 
@@ -178,7 +179,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
-		expect(analysis.remediation?.guidance).toContain('n8n credits');
+		expect(analysis.remediation?.guidance).toContain('Gateway credits');
 	});
 
 	it('omits n8n credits from quota guidance when the instance has no gateway coverage', () => {
@@ -201,6 +202,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 		expect(analysis.remediation?.guidance).toContain('another provider or key');
 	});
@@ -250,6 +252,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 		expect(analysis.remediation?.guidance).toContain('another provider or key');
 	});
@@ -270,6 +273,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 });

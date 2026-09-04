@@ -23,11 +23,7 @@ import {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAgentNode,
-	InstanceAiEvent,
-} from '@n8n/api-types';
+import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -46,7 +42,7 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
+import type { StoredEvent } from '@n8n/instance-ai';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
@@ -94,36 +90,6 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
-	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
-		let score = 0;
-		const stack = [tree];
-
-		while (stack.length > 0) {
-			const node = stack.pop()!;
-			score += 100;
-			score += node.toolCalls.length * 10;
-			score += node.timeline.length * 2;
-			score += (node.planItems?.length ?? 0) * 20;
-			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
-			score += node.children.length * 25;
-			stack.push(...node.children);
-		}
-
-		return score;
-	}
-
-	private static selectBootstrapTree(
-		eventTree: InstanceAiAgentNode,
-		persistedTree?: InstanceAiAgentNode,
-	): InstanceAiAgentNode {
-		if (!persistedTree) return eventTree;
-
-		return InstanceAiController.getTreeRichnessScore(persistedTree) >
-			InstanceAiController.getTreeRichnessScore(eventTree)
-			? persistedTree
-			: eventTree;
-	}
-
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
@@ -157,6 +123,20 @@ export class InstanceAiController {
 		}
 	}
 
+	/**
+	 * Without a model the run starts and then dies inside the provider call, with
+	 * nothing to tell the user why. The frontend routes an unconfigured instance
+	 * to setup rather than the composer, but that is one gate per entry point and
+	 * the endpoint is reachable on its own, so refuse the run here too.
+	 */
+	private async requireModelConfigured(): Promise<void> {
+		if (!(await this.settingsService.isModelConfigured())) {
+			throw new BadRequestError(
+				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+			);
+		}
+	}
+
 	private requireRunDebugEnabled(): void {
 		if (!this.instanceAiService.isRunDebugEnabled()) {
 			throw new NotFoundError('Run debug is not enabled');
@@ -184,6 +164,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		await this.requireModelConfigured();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
 		}
@@ -334,9 +315,7 @@ export class InstanceAiController {
 
 		// 2. Re-publish any terminal outcomes that never reached the client.
 		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 		}
 
 		// 3. Set SSE headers.
@@ -358,7 +337,7 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 5. Collect live message groups and fetch their persisted snapshots.
+		// 5. Collect live message groups.
 		//    Multiple groups can be active simultaneously when a background task
 		//    from an older turn outlives its original turn.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
@@ -391,23 +370,6 @@ export class InstanceAiController {
 			}
 		}
 
-		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
-		for (const [groupId, group] of liveGroups) {
-			persistedSnapshots.set(
-				groupId,
-				await this.memoryService.getLatestRunSnapshot(threadId, {
-					messageGroupId: groupId,
-					// Use the group's own latest runId — NOT the thread-global
-					// activeRunId, which belongs to the current orchestrator turn and
-					// would be wrong for background groups from older turns.
-					runId: group.runIds.at(-1),
-				}),
-			);
-		}
-
-		// The client may have disconnected during the awaits above.
-		if (closed) return;
-
 		// 6b (used by both arms below). Emit one run-sync control frame for a live
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
@@ -417,14 +379,9 @@ export class InstanceAiController {
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
 		) => {
-			const persistedSnapshot = persistedSnapshots.get(groupId);
-			if (runEvents.length === 0 && !persistedSnapshot) return;
+			if (runEvents.length === 0) return;
 
-			const eventTree = buildAgentTreeFromEvents(runEvents);
-			const agentTree = InstanceAiController.selectBootstrapTree(
-				eventTree,
-				persistedSnapshot?.tree,
-			);
+			const agentTree = buildAgentTreeFromEvents(runEvents);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
