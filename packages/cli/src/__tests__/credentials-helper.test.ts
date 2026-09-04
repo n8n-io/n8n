@@ -1390,6 +1390,56 @@ describe('CredentialsHelper', () => {
 			});
 			expect(result).toEqual(syntheticCred);
 		});
+
+		it('should forward the executing node to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+			const executeData = mock<IExecuteData>({
+				node: {
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.5,
+					parameters: {},
+					position: [0, 0],
+				},
+			});
+
+			await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'openAiApi',
+				'manual',
+				executeData,
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ node: executeData.node }),
+			);
+		});
 	});
 
 	describe('getDecrypted - externalSecrets license check', () => {
