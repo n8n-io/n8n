@@ -181,6 +181,65 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 		thread.messages = [];
 	});
 
+	// INS-1265: a turn that completes work and ends on a card must still report the work.
+	// The tool ships that report as `introMessage`; the panel renders it above the card.
+	describe('turn summary above cards', () => {
+		it('renders the intro message above a workflow setup card', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-setup-intro',
+				severity: 'info',
+				message: 'Configure credentials for your workflow',
+				introMessage: 'Published the error handler and linked it. Slack still needs credentials.',
+				setupRequests: [
+					{
+						node: {
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 2,
+							parameters: {},
+							position: [0, 0],
+							id: 'node-1',
+						},
+						isTrigger: false,
+					},
+				],
+			});
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+
+			expect(getByTestId('instance-ai-confirmation-intro')).toHaveTextContent(
+				'Published the error handler and linked it. Slack still needs credentials.',
+			);
+		});
+
+		it('renders the intro message above a generic approval card', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-approval-intro',
+				severity: 'warning',
+				message: 'Edit Morning Invoice Processor (ID: wf-1)?',
+				introMessage: 'Built and published the error handler; linking it to this workflow now.',
+			});
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByTestId('instance-ai-confirmation-intro')).toHaveTextContent(
+				'Built and published the error handler; linking it to this workflow now.',
+			);
+		});
+
+		it('renders no intro block when the confirmation carries no summary', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-no-intro',
+				severity: 'info',
+				message: 'Run this workflow?',
+			});
+
+			const { queryByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(queryByTestId('instance-ai-confirmation-intro')).toBeNull();
+		});
+	});
+
 	describe('approval confirmation', () => {
 		it('requires a specific decision for the credential destination', async () => {
 			injectPendingConfirmation(

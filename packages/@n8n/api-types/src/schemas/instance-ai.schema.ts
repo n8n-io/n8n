@@ -749,7 +749,13 @@ export const confirmationRequestPayloadSchema = z.object({
 		)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
-	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
+	introMessage: z
+		.string()
+		.optional()
+		.describe(
+			"Intro text rendered above the card. Carries the turn's own report of what was done and " +
+				'what is outstanding, so a card that ends a turn is not the only thing the user sees.',
+		),
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),

@@ -122,6 +122,21 @@ const chunks = computed((): ConfirmationChunk[] => {
 	return [];
 });
 
+/**
+ * The turn's own report, shipped by the card-raising tool (INS-1265). A card is the last
+ * thing the user sees in a turn, so without this the work the turn completed is never
+ * reported. Questions cards draw their own intro, so skip those to avoid doubling up.
+ */
+function turnSummary(chunk: ConfirmationChunk): string | undefined {
+	const conf = chunk.item.toolCall.confirmation;
+	const intro = conf.introMessage?.trim();
+	if (!intro) return undefined;
+	if (chunk.type === 'floating' && conf.inputType === 'questions' && conf.questions) {
+		return undefined;
+	}
+	return intro;
+}
+
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
 }
@@ -475,6 +490,18 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 <template>
 	<TransitionGroup name="confirmation-slide">
 		<template v-for="chunk in chunks" :key="chunk.item.toolCall.confirmation.requestId">
+			<!-- The turn's own report, above whichever card follows. -->
+			<N8nText
+				v-if="turnSummary(chunk)"
+				:key="'intro-' + chunk.item.toolCall.confirmation.requestId"
+				tag="div"
+				size="small"
+				:class="$style.turnSummary"
+				data-test-id="instance-ai-confirmation-intro"
+			>
+				{{ turnSummary(chunk) }}
+			</N8nText>
+
 			<!-- Structured questions replace the chat input like other floating confirmations. -->
 			<InstanceAiQuestions
 				v-if="
@@ -682,6 +709,12 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 </template>
 
 <style lang="scss" module>
+.turnSummary {
+	margin-bottom: var(--spacing--2xs);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .root {
 	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);

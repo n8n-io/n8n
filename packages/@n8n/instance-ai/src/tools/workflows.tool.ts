@@ -201,6 +201,38 @@ const unarchiveAction = z.object({
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
+/**
+ * A card is the last thing the user sees in a turn, and its own one-line message says
+ * nothing about what the turn already did. Every card-raising action therefore carries
+ * the turn's own report, rendered above the card (INS-1265).
+ */
+const turnSummaryField = z
+	.string()
+	.min(1)
+	.optional()
+	.describe(
+		"What you did in this turn and what is still outstanding, in the user's language. " +
+			'1-3 sentences, rendered above the card. This card ends the turn, so this is the only ' +
+			'prose the user gets: name the workflows you built, saved, or published, and name any ' +
+			'part of the request you deferred. Do not restate the card wording, and never claim ' +
+			'work you did not do. Required: the card is not opened without it.',
+	);
+
+/** Recoverable result for a card-raising call that carries no report of the turn. */
+function missingTurnSummary(cardName: string) {
+	return {
+		success: false as const,
+		error:
+			`Missing \`summary\`. The ${cardName} card ends the turn, so on its own it tells the user ` +
+			'nothing about what you just did. Call again with `summary` set to what you completed this ' +
+			'turn and what is still outstanding.',
+	};
+}
+
+function hasTurnSummary(summary: string | undefined): summary is string {
+	return typeof summary === 'string' && summary.trim().length > 0;
+}
+
 const setupAction = z.object({
 	action: z
 		.literal('setup')
@@ -208,6 +240,7 @@ const setupAction = z.object({
 			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
+	summary: turnSummaryField,
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 	credentialHints: z
 		.array(
@@ -297,6 +330,7 @@ const publishBaseAction = z.object({
 		.literal('publish')
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
+	summary: turnSummaryField,
 	versionId: z.string().optional().describe('Version ID'),
 });
 
@@ -341,6 +375,7 @@ const confirmationSuspendSchema = setupSuspendSchema
 		message: true,
 		severity: true,
 		workflowId: true,
+		introMessage: true,
 	})
 	.partial({ workflowId: true })
 	.extend({ credentialDestination: credentialDestinationSchema.optional() });
@@ -1175,6 +1210,7 @@ async function handleSetupTestTrigger(
 		setupRequests: refreshedPending,
 		workflowId: input.workflowId,
 		...(projectId ? { projectId } : {}),
+		introMessage: input.summary,
 	});
 }
 
@@ -1580,6 +1616,8 @@ async function handleSetup(
 			return { success: true, reason: 'No nodes require setup.' };
 		}
 
+		if (!hasTurnSummary(input.summary)) return missingTurnSummary('workflow setup');
+
 		state.currentRequestId = nanoid();
 
 		// The thread-bound project is authoritative for credential scoping; without
@@ -1594,6 +1632,7 @@ async function handleSetup(
 			setupRequests,
 			workflowId: input.workflowId,
 			...(projectId ? { projectId } : {}),
+			introMessage: input.summary,
 		});
 	}
 
@@ -1783,6 +1822,8 @@ async function handlePublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		if (!hasTurnSummary(input.summary)) return missingTurnSummary('publish approval');
+
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const dependencyNote =
 			supportingWorkflowIds.length > 0
@@ -1795,6 +1836,7 @@ async function handlePublish(
 				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
 				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
 			severity: 'warning' as const,
+			introMessage: input.summary,
 		});
 	}
 

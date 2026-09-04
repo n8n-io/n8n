@@ -259,7 +259,11 @@ follow its build → publish → assign steps.
     with a concise completion message only when the post-build flow, required
     setup routing, or required verification path is complete.
 
-Do not produce visible output until the final step, unless blocked.
+Do not produce visible output until the final step, unless blocked. A card that
+ends the turn — `build-workflow`'s save approval, `workflows(action="setup")`,
+`workflows(action="publish")` — is a final step: pass its `summary` naming what
+you did this turn and what is still outstanding. The card's own one-line message
+reports nothing on its own.
 
 ## Verification Contract
 

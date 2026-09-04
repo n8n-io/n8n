@@ -21,6 +21,9 @@ export const setupSuspendSchema = z.object({
 	setupRequests: z.array(workflowSetupNodeSchema),
 	workflowId: z.string(),
 	projectId: z.string().optional(),
+	/** The turn's own report, rendered above the card. Without it a turn that both did
+	 *  work and raised a card shows only the card's one-line message (INS-1265). */
+	introMessage: z.string().optional(),
 });
 
 export const setupResumeSchema = z.object({

@@ -1022,7 +1022,7 @@ describe('createBuildWorkflowTool', () => {
 
 		await executeTool(
 			createBuildWorkflowTool(context),
-			{ filePath, workflowId: 'wf-existing' },
+			{ filePath, workflowId: 'wf-existing', summary: 'Linking the error handler.' },
 			{ suspend },
 		);
 
@@ -1035,6 +1035,63 @@ describe('createBuildWorkflowTool', () => {
 		);
 		expect(compileWorkflowSource).not.toHaveBeenCalled();
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	// INS-1265: the save-approval card used to be the entire visible turn, so work the agent
+	// had already completed went unreported. The card must carry the turn's own summary.
+	it('carries the turn summary into the save approval card as intro text', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		await executeTool(
+			createBuildWorkflowTool(context),
+			{
+				filePath,
+				workflowId: 'wf-existing',
+				summary: 'Built and published the error handler; linking it to this workflow now.',
+			},
+			{ suspend },
+		);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				introMessage: 'Built and published the error handler; linking it to this workflow now.',
+			}),
+		);
+	});
+
+	// A zod rejection here is a hard AI_InvalidToolInputError, so the summary stays schema-optional
+	// and the approval gate is the enforcement point.
+	it('does not open the save approval card without a turn summary', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ suspend },
+		);
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(result.success).toBe(false);
+		expect(result.errors?.join(' ')).toContain('summary');
 	});
 
 	it('persists a session update grant when edit approval resumes with scope=session', async () => {

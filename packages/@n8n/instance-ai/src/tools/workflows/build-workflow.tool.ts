@@ -108,6 +108,9 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
 	workflowId: z.string(),
+	/** The turn's own report, rendered above the card. Without it a turn that both did
+	 *  work and raised a card shows only the card's one-line message (INS-1265). */
+	introMessage: z.string().optional(),
 });
 
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
@@ -171,6 +174,19 @@ export const buildWorkflowInputSchema = z
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		// A save approval card can end the turn, and its own one-line message says nothing
+		// about what the turn already did (INS-1265).
+		summary: z
+			.string()
+			.min(1)
+			.optional()
+			.describe(
+				"What this build does and what you already did this turn, in the user's language. " +
+					'1-3 sentences. When saving to an existing workflow raises the approval card, this is ' +
+					'rendered above it and is the only prose the user gets for the turn, so name the work ' +
+					'already completed and anything still outstanding. Never claim work you did not do. ' +
+					'Required: the approval card is not opened without it.',
+			),
 		workItemId: z
 			.string()
 			.optional()
@@ -276,7 +292,7 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. When a card ends the turn instead (setup, save approval, publish approval), its `summary` argument is that turn\'s report — name what you did and what is outstanding there. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
 // Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
 const inlineSkillInstructionsCache = new Map<string, string>();
@@ -622,6 +638,29 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					};
 				}
 				if (!ctx.resumeData) {
+					// The approval card ends the turn on its own, so without a summary the user is
+					// never told what this turn already did (INS-1265). A zod-level `required` would
+					// surface as a hard AI_InvalidToolInputError, so reject recoverably here instead.
+					if (input.summary === undefined || input.summary.trim().length === 0) {
+						return {
+							success: false,
+							...sourceResponseBase(binding),
+							workflowId: targetWorkflowId,
+							errors: [
+								'Missing `summary`. The save approval card ends the turn, so on its own it tells ' +
+									'the user nothing about what you just did. Call build-workflow again with ' +
+									'`summary` set to what you completed this turn and what is still outstanding.',
+							],
+							remediation: createRemediation({
+								category: 'code_fixable',
+								shouldEdit: false,
+								reason: 'missing_turn_summary',
+								guidance:
+									'Call build-workflow again with the same filePath and a `summary` describing ' +
+									'what you did this turn and what remains outstanding.',
+							}),
+						};
+					}
 					if (!ctx.suspend) {
 						const remediation = createRemediation({
 							category: 'blocked',
@@ -659,6 +698,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
 						workflowId: targetWorkflowId,
+						introMessage: input.summary,
 					});
 				}
 				// "Always allow" — persist so later edits of this workflow skip HITL.

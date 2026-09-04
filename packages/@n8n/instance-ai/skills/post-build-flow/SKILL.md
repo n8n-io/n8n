@@ -46,9 +46,12 @@ verification.
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
-is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
-not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If it returns `deferred:
+is to call `workflows(action="setup")` with the `workflowId` from the payload and
+a `summary` of what this turn did and what is still outstanding. Do not verify and
+do not ask first; the inline setup card in the AI Assistant panel is where the user
+configures credentials, and your `summary` is rendered above it. The card's own
+one-line message reports nothing, so a turn that built, saved, published, or
+deferred anything must say so in `summary`. If setup returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
@@ -320,9 +323,14 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.
-4. When `workflows(action="setup")` opens the inline setup card, the card is the
-   user-visible surface. Do not tell the user to open the editor, use the canvas,
-   or click a Setup button; the user does not need to navigate anywhere.
+4. When `workflows(action="setup")` opens the inline setup card, the card is where
+   the user configures credentials. Do not tell the user to open the editor, use the
+   canvas, or click a Setup button; the user does not need to navigate anywhere.
+   The card ends the turn, so the `summary` you pass to `workflows(action="setup")`
+   is the turn's only report: name what you built, saved, published, or deferred
+   before the card, and name what is still outstanding. The same applies to the
+   `summary` on `build-workflow` and `workflows(action="publish")` — every card that
+   can end a turn carries one, and it is rejected without it.
 5. When `workflows(action="setup")` returns `deferred: true`, or reports
    `skippedByUser`, or applies only part of the card, respect the user's
    decision — do not retry with `credentials(action="setup")`, another
