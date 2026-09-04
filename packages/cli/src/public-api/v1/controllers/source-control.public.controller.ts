@@ -111,10 +111,11 @@ export class SourceControlPublicController {
 		);
 
 		if (result.statusCode === 409) {
+			const conflicts = result.statusResult.filter((file) => file.conflict);
 			throw new ConflictError(
 				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
 				undefined,
-				{ conflicts: result.statusResult },
+				{ conflicts },
 			);
 		}
 

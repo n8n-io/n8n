@@ -520,6 +520,27 @@ describe('Source Control (Public API)', () => {
 			});
 		});
 
+		it('should only list the conflicting files, not the whole selection, on 409', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const conflictingFile = sourceControlledFileFixture('wf-1', { conflict: true });
+			const cleanFile = sourceControlledFileFixture('wf-2', { conflict: false });
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockResolvedValue({
+				statusCode: 409,
+				pushResult: undefined,
+				statusResult: [conflictingFile, cleanFile],
+			});
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(409);
+			expect(response.body).toEqual({
+				message: expect.stringContaining('conflicting files'),
+				conflicts: [conflictingFile],
+			});
+		});
+
 		it('should return 200 when force is true even with conflicts', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
