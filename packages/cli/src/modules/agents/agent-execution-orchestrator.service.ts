@@ -23,7 +23,11 @@ import {
 	type StartExecutionParams,
 } from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import {
+	AgentRuntimeCacheService,
+	type AgentRuntime,
+	type GetRuntimeParams,
+} from './agent-runtime-cache.service';
 import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
@@ -31,12 +35,15 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { buildToolCallDetails, ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -269,6 +276,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	/**
@@ -604,13 +612,16 @@ export class AgentExecutionOrchestratorService {
 
 		// Published integration runtimes have no n8n user but are isolated by
 		// their external caller's hashed workspace principal.
-		const runtime = await this.runtimeCacheService.getRuntime({
-			agentId,
-			projectId,
-			integrationType,
-			usePublishedVersion: true,
-			sandboxPrincipalHash,
-		});
+		const runtime = await this.getPublishedRuntimeOrRecordFailure(
+			{
+				agentId,
+				projectId,
+				integrationType,
+				usePublishedVersion: true,
+				sandboxPrincipalHash,
+			},
+			{ threadId: memory.threadId, userMessage: message, attachments, source: integrationType },
+		);
 
 		try {
 			yield* this.streamChatResponse({
@@ -645,13 +656,16 @@ export class AgentExecutionOrchestratorService {
 
 		// Cron-fired runs have no n8n user and reuse the scheduled task's scope.
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId });
-		const runtime = await this.runtimeCacheService.getRuntime({
-			agentId,
-			projectId,
-			integrationType: 'task',
-			usePublishedVersion: true,
-			sandboxPrincipalHash,
-		});
+		const runtime = await this.getPublishedRuntimeOrRecordFailure(
+			{
+				agentId,
+				projectId,
+				integrationType: 'task',
+				usePublishedVersion: true,
+				sandboxPrincipalHash,
+			},
+			{ threadId: memory.threadId, userMessage: message, source: 'task', taskId, taskVersionId },
+		);
 
 		try {
 			yield* this.streamChatResponse({
@@ -838,6 +852,74 @@ export class AgentExecutionOrchestratorService {
 				},
 			});
 		}
+	}
+
+	/**
+	 * Build the published runtime, or record the failure as an errored session
+	 * before rethrowing. `streamChatResponse` only starts recording once it has
+	 * a runtime, so without this a broken tool or credential leaves no trace in
+	 * Agent Sessions and the channel only sees a generic error.
+	 */
+	private async getPublishedRuntimeOrRecordFailure(
+		params: GetRuntimeParams,
+		session: Pick<
+			StartExecutionParams,
+			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+		>,
+	): Promise<AgentRuntime> {
+		try {
+			return await this.runtimeCacheService.getRuntime(params);
+		} catch (error) {
+			try {
+				await this.recordFailedStart(params, session, error);
+			} catch (recordError) {
+				this.logger.warn('Failed to record agent execution', {
+					agentId: params.agentId,
+					threadId: session.threadId,
+					error: recordError instanceof Error ? recordError.message : String(recordError),
+				});
+			}
+			throw error;
+		}
+	}
+
+	private async recordFailedStart(
+		{ agentId, projectId }: GetRuntimeParams,
+		session: Pick<
+			StartExecutionParams,
+			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+		>,
+		error: unknown,
+	): Promise<void> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) return;
+		// Production runs execute the published snapshot, so name the session and
+		// build telemetry from it rather than from a draft that may have moved on.
+		const published = agent.activeVersion?.schema ? getPublishedAgentSnapshot(agent) : agent;
+
+		const recorder = new ExecutionRecorder();
+		recorder.record({ type: 'error', error });
+		recorder.record({ type: 'finish', finishReason: 'error' });
+		const startParams: StartExecutionParams = {
+			...session,
+			agentId,
+			agentName: published.schema?.name ?? agent.name,
+			projectId,
+			telemetry: {
+				runType: 'production',
+				configuration: buildAgentConfigurationTelemetry(published),
+			},
+		};
+		const executionId = await this.tryStartExecution(
+			startParams,
+			recorder.startedAt,
+			'Failed to start agent execution recording',
+		);
+		await this.persistRecordedExecution({
+			executionId,
+			params: { ...startParams, record: recorder.getMessageRecord() },
+			failureMessage: 'Failed to record agent execution',
+		});
 	}
 
 	private createRecorder(

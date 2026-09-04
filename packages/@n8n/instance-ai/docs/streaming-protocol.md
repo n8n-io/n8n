@@ -318,6 +318,14 @@ done-ness is always derived client-side. Durable; the reducer folds the
 latest snapshot per `workflowId` onto the ROOT agent node regardless of the
 emitting agent, so it survives refresh via `GET /messages`.
 
+Emitted only while the setup panel flag is on, through the host-wired
+`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+snapshot on every successful save (open credential slots fanned out to their
+nodes, slots already bound to a stored credential, and nodes with unresolved
+parameters); `credentials(action="setup")` re-analyses the saved workflow and
+merges the result, with the announced `reason`/`setupHint` applied, into the
+last snapshot. The emitter drops a snapshot whose content did not change.
+
 ```json
 {
   "type": "setup-items",
@@ -589,16 +597,16 @@ replaying all SSE events.
 
 1. **Persisted messages** — `@n8n/agents` persists tool invocations, reasoning, and
    text in its message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+   `InstanceAiMessage[]` objects.
 
-2. **Agent trees** — with the durable log enabled, history folds event-log rows
-   through `buildAgentTreeFromEvents()` when it reads a page. Stored snapshots
-   remain as the non-durable path and as a fallback for older history. The
-   backend updates snapshots when runs and background tasks settle.
+2. **Agent trees** — history folds event-log rows through
+   `buildAgentTreeFromEvents()` when it reads a page. The log is the only tree
+   source: a message whose run left no log rows renders from its own
+   text/reasoning content without a tree.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend
    sets its SSE cursor to `nextEventId - 1` so the SSE connection only receives
-   events that arrived after the historical snapshot. This prevents duplicate
+   events that arrived after the historical messages. This prevents duplicate
    messages on refresh.
 
 ### Frontend Flow

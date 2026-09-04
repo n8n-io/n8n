@@ -33,10 +33,10 @@ describe('createRefreshingAuthFetch', () => {
 		expect(init.redirect).toBeUndefined();
 	});
 
-	it('forwards auth headers to a redirect after its URL is validated', async () => {
+	it('forwards auth headers to a same-origin redirect after its URL is validated', async () => {
 		const baseFetch = vi
 			.fn()
-			.mockResolvedValueOnce(makeRedirect('https://redirected.example/mcp'))
+			.mockResolvedValueOnce(makeRedirect('https://example.com/v2/mcp'))
 			.mockResolvedValueOnce(new Response('ok'));
 		const assertAllowedUrl = vi.fn();
 		const fetchWithAuth = createRefreshingAuthFetch({
@@ -57,11 +57,53 @@ describe('createRefreshingAuthFetch', () => {
 
 		const [, secondInit] = baseFetch.mock.calls[1] as [URL, RequestInit];
 		const headers = new Headers(secondInit.headers);
-		expect(assertAllowedUrl).toHaveBeenLastCalledWith('https://redirected.example/mcp');
+		expect(assertAllowedUrl).toHaveBeenLastCalledWith('https://example.com/v2/mcp');
 		expect(headers.get('authorization')).toBe('Bearer token');
 		expect(headers.get('x-api-key')).toBe('secret');
 		expect(headers.get('cookie')).toBe('session=secret');
 		expect(headers.get('x-request')).toBe('value');
+	});
+
+	it('withholds auth headers once a redirect crosses origins, even to a validated URL', async () => {
+		const baseFetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeRedirect('https://other.example/mcp'))
+			.mockResolvedValueOnce(new Response('ok'));
+		const fetchWithAuth = createRefreshingAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer token', 'X-Api-Key': 'secret' },
+			assertAllowedUrl: vi.fn(),
+		});
+
+		await fetchWithAuth('https://example.com/mcp', {
+			headers: { 'X-Request': 'value' },
+		});
+
+		const [, secondInit] = baseFetch.mock.calls[1] as [URL, RequestInit];
+		const headers = new Headers(secondInit.headers);
+		expect(headers.get('authorization')).toBeNull();
+		expect(headers.get('x-api-key')).toBeNull();
+		expect(headers.get('x-request')).toBe('value');
+	});
+
+	it('does not refresh on a 401 from a cross-origin redirect target', async () => {
+		const baseFetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeRedirect('https://other.example/mcp'))
+			.mockResolvedValueOnce(makeUnauthorized());
+		const refreshHeaders = vi.fn();
+		const fetchWithAuth = createRefreshingAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer token' },
+			refreshHeaders,
+			assertAllowedUrl: vi.fn(),
+		});
+
+		const response = await fetchWithAuth('https://example.com/mcp');
+
+		expect(response.status).toBe(401);
+		expect(refreshHeaders).not.toHaveBeenCalled();
+		expect(baseFetch).toHaveBeenCalledTimes(2);
 	});
 
 	describe('401 handling', () => {
@@ -194,7 +236,7 @@ describe('createRefreshingAuthFetch', () => {
 		it('retries with the refreshed token on a redirect-validated request', async () => {
 			const baseFetch = vi
 				.fn()
-				.mockResolvedValueOnce(makeRedirect('https://redirected.example/mcp'))
+				.mockResolvedValueOnce(makeRedirect('https://example.com/v2/mcp'))
 				.mockResolvedValueOnce(makeUnauthorized())
 				.mockResolvedValueOnce(new Response('ok'));
 			const refreshHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer fresh' });
@@ -211,9 +253,9 @@ describe('createRefreshingAuthFetch', () => {
 			expect(response.status).toBe(200);
 			expect(authorizationOf(baseFetch.mock.calls[1])).toBe('Bearer stale');
 			expect(authorizationOf(baseFetch.mock.calls[2])).toBe('Bearer fresh');
-			expect(assertAllowedUrl.mock.calls.flat()).toEqual([
+			expect(assertAllowedUrl.mock.calls.map((call) => call[0])).toEqual([
 				'https://example.com/mcp',
-				'https://redirected.example/mcp',
+				'https://example.com/v2/mcp',
 			]);
 		});
 	});

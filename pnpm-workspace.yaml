@@ -18,7 +18,6 @@ allowUnusedPatches: true
 verifyDepsBeforeRun: false
 
 pmOnFail: warn
-fund: false
 updateNotifier: false
 loglevel: warn
 packageImportMethod: clone-or-copy
@@ -121,7 +120,7 @@ catalog:
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
-  '@qdrant/js-client-rest': ^1.16.2
+  '@qdrant/js-client-rest': ^1.19.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@stryker-mutator/core': 10.0.0
   '@stryker-mutator/vitest-runner': 10.0.0
@@ -263,6 +262,7 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
+  typescript-eslint: 8.35.0
   uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
@@ -324,10 +324,10 @@ catalogs:
     '@chromatic-com/storybook': ^4.1.3
     '@storybook/addon-a11y': ^10.5.10
     '@storybook/addon-docs': ^10.5.10
+    '@storybook/addon-themes': ^10.5.10
     '@storybook/addon-vitest': ^10.5.10
     '@storybook/vue3': ^10.5.10
     '@storybook/vue3-vite': ^10.5.10
-    '@vueless/storybook-dark-mode': ^10.0.8
     eslint-plugin-storybook: ^10.5.10
     storybook: ^10.5.10
   typescript:
@@ -453,6 +453,7 @@ overrides:
   undici@6: catalog:undici-v6
   undici@7: catalog:undici-v7
   node-gyp>undici: catalog:undici-v7
+  'eslint-plugin-import-x>@typescript-eslint/utils': 8.35.0
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8

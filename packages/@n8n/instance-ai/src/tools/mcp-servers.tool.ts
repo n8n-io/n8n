@@ -172,7 +172,7 @@ async function handleSearch(
 ): Promise<z.infer<typeof searchOutputSchema>> {
 	const mcpService = requireMcpService(context);
 	const matches = await mcpService.search(queries);
-	// Field by field: `credentialType` is for the connect card, not the model.
+	// Field by field: credential options are for the connect card, not the model.
 	const results = matches.slice(0, MAX_RESULTS).map(({ slug, title, description, tools }) => ({
 		slug,
 		title,
@@ -237,7 +237,7 @@ async function handleConnect(
 			servers: servers.map((server) => ({
 				serverSlug: server.slug,
 				title: server.title,
-				credentialType: server.credentialType,
+				usesCredentials: server.usesCredentials,
 				...(server.description ? { tagline: server.description } : {}),
 			})),
 		},
