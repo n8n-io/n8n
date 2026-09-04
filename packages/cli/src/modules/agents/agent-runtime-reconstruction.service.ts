@@ -518,6 +518,11 @@ export class AgentRuntimeReconstructionService {
 		const unavailable = [...(options.unavailableTools ?? [])];
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
+		// Callers that cannot resume a suspended run (agents invoked as workflow
+		// steps) pass supportsHitl false explicitly; otherwise only the top-level
+		// profile can be woken again.
+		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
+
 		const toolResolver = this.makeToolResolver(
 			{
 				projectId,
@@ -529,7 +534,16 @@ export class AgentRuntimeReconstructionService {
 				userId: user?.id,
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
-				supportsHitl: supportsHitl ?? runtimeProfile === 'top-level',
+				supportsHitl: canResume,
+				// Only an interactive top-level agent backgrounds waiting workflows: a
+				// child's job would nest under its own thread, where no check/cancel
+				// tools exist, and a top-level agent invoked as a workflow step
+				// (supportsHitl false) has no interactive turn to hand a receipt to.
+				// Everyone else handles waits the legacy way.
+				backgroundTasksEnabled:
+					runtimeProfile === 'top-level' &&
+					canResume &&
+					Container.get(AgentsConfig).backgroundTasksEnabled,
 			},
 			instrumentation,
 			unavailable,
@@ -701,6 +715,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType?: string;
 			userId?: string;
 			supportsHitl: boolean;
+			backgroundTasksEnabled: boolean;
 		},
 		instrumentation: AgentRuntimeInstrumentation | undefined,
 		/** Receives every workflow tool that had to be stubbed. */
@@ -714,6 +729,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			userId,
 			supportsHitl,
+			backgroundTasksEnabled,
 		} = runIdentity;
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
@@ -734,6 +750,7 @@ export class AgentRuntimeReconstructionService {
 					integrationType,
 					userId,
 					supportsHitl,
+					backgroundTasksEnabled,
 				};
 				try {
 					return await resolveWorkflowTool(ref, context);

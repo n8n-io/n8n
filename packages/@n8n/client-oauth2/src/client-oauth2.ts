@@ -50,6 +50,13 @@ export interface ClientOAuth2Options {
 	resource?: string;
 	ignoreSSLIssues?: boolean;
 	/**
+	 * Extra headers to send on the token request (e.g. a caller-identifying
+	 * User-Agent). Only honored by the client-credentials grant today
+	 * ({@link CredentialsFlow}); applied before it sets its own `Authorization`,
+	 * so a caller can't use this to override the credential's auth header.
+	 */
+	headers?: Headers;
+	/**
 	 * When provided, token endpoint requests are validated against the host's
 	 * outbound network policy before dispatch, at DNS resolution time, and on
 	 * every redirect. Omit to leave the request unchecked. Narrowed to the

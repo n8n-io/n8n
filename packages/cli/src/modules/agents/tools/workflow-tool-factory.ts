@@ -9,6 +9,7 @@ import {
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -22,8 +23,6 @@ import type {
 	INode,
 	IPinData,
 	IRun,
-	IRunData,
-	ITaskData,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -35,6 +34,7 @@ import {
 	TimeoutExecutionCancelledError,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -44,12 +44,19 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
-import { sanitizeToolName } from '../json-config/agent-config-composition';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
 	WorkflowToolWorkflowReference,
 } from './workflow-tool-workflow-loader.service';
+import {
+	AgentBackgroundJobService,
+	collectResultData,
+	EXECUTION_OUTCOME_UNKNOWN_ERROR,
+	serializeWorkflowJobResult,
+	settlementStatusForExecution,
+} from '../background/agent-background-job.service';
+import { sanitizeToolName } from '../json-config/agent-config-composition';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -159,6 +166,8 @@ export interface WorkflowToolContext {
 	userId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
+	/** When true, an execution parked at a Wait node becomes a background job instead of polling or suspending. */
+	backgroundTasksEnabled?: boolean;
 	/** Eval-only additionalData decoration for the sub-execution — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -538,41 +547,10 @@ export async function executeWorkflow(
 /** Map an execution's raw status into the tool's simplified status value. */
 function normaliseExecutionStatus(status: string | undefined): string {
 	if (status === 'error' || status === 'crashed') return 'error';
+	if (status === 'canceled') return 'canceled';
 	if (status === 'running' || status === 'new') return 'running';
 	if (status === 'waiting') return 'waiting';
 	return 'success';
-}
-
-/** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
-	const lastRun = nodeRuns[nodeRuns.length - 1];
-	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
-}
-
-/** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
-function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	const resultData: Record<string, unknown> = {};
-
-	if (allOutputs) {
-		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-			const outputItems = outputItemsFromNodeRuns(nodeRuns);
-			if (outputItems.length > 0) {
-				resultData[nodeName] = outputItems;
-			}
-		}
-		return resultData;
-	}
-
-	const nodeNames = Object.keys(runData);
-	const lastNodeName = nodeNames[nodeNames.length - 1];
-	if (lastNodeName) {
-		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
-		if (outputItems.length > 0) {
-			resultData[lastNodeName] = outputItems;
-		}
-	}
-	return resultData;
 }
 
 function formatResult(
@@ -681,6 +659,124 @@ function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | u
 function withoutWaitState(result: WorkflowToolExecutionResult): WorkflowToolResult {
 	const { wait: _wait, ...rest } = result;
 	return rest;
+}
+
+/**
+ * Register a waiting execution as a background job and hand the model a
+ * receipt, so the agent stays interactive instead of polling or suspending.
+ * Returns undefined when the run has no parent identity — such a job would be
+ * unreachable by the check tool, so the legacy wait handling takes over.
+ *
+ * Registration races the workflow finishing: a webhook can resume the Wait
+ * node in the gap between observing `waiting` and inserting the row. The
+ * insert-then-recheck order closes it — a finish landing before the insert is
+ * caught by the recheck and settled inline; one landing after it is seen by
+ * the `workflowExecuteAfter` settle hook, which finds the row. Both writers
+ * go through the guarded settle, so the first one wins. A finish whose
+ * execution the recheck cannot even find was hard-deleted per the workflow's
+ * save settings — the job settles as outcome-unknown right here, since the
+ * settle hook may have fired before the row existed.
+ *
+ * Never throws: the execution is already running either way, so a failure in
+ * here must not surface as a tool error the model would answer by retrying —
+ * that would start a duplicate execution. The legacy poll/suspend handling
+ * takes over instead.
+ */
+async function backgroundWaitingExecution(
+	result: WorkflowToolExecutionResult,
+	context: WorkflowToolRunContext,
+	ctx: WaitToolContext,
+	reference: WorkflowToolWorkflowReference,
+	allOutputs: boolean,
+): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
+	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
+	if (!agentRun || !reference.workflowId) return undefined;
+
+	try {
+		const jobService = Container.get(AgentBackgroundJobService);
+		const receipt = await jobService.registerWorkflowJob({
+			id: uuid(),
+			parentAgentId: agentRun.agentId,
+			parentThreadId: agentRun.threadId,
+			title: reference.workflowName,
+			workflowId: reference.workflowId,
+			executionId: result.executionId,
+		});
+
+		// A workflow job never hits the running cap, so the receipt can only be started.
+		if (receipt.status !== 'started') return undefined;
+		const jobId = receipt.jobId;
+
+		const executionPersistence = Container.get(ExecutionPersistence);
+		const recheck = await executionPersistence.findSingleExecution(result.executionId);
+		if (!recheck) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+
+		const rawStatus = recheck.status;
+		if (isTerminalExecutionStatus(rawStatus)) {
+			const full = await executionPersistence.findSingleExecution(result.executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+			// Pruned between the status read and the data read.
+			if (!full) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+
+			const fresh = formatResult(result.executionId, full.status, full.data, allOutputs);
+			// The job row keeps the last node's output for completed runs only,
+			// matching the settle hook's projection.
+			const settlementStatus = settlementStatusForExecution(rawStatus);
+			const runData = full.data?.resultData?.runData;
+			await jobService.settle(jobId, {
+				status: settlementStatus,
+				result:
+					settlementStatus === 'completed' && runData
+						? serializeWorkflowJobResult(collectResultData(runData, false))
+						: null,
+				error: fresh.error ?? null,
+			});
+
+			return { ...withoutWaitState(fresh), jobId };
+		}
+
+		const continuesAt = result.wait?.waitTill
+			? ` It continues at ${result.wait.waitTill.toISOString()}.`
+			: '';
+
+		return {
+			executionId: result.executionId,
+			status: 'running_in_background',
+			jobId,
+			note:
+				`The "${reference.workflowName}" workflow is paused at a Wait node and now runs as background job ${jobId}.${continuesAt}` +
+				' Use check_background_jobs for the result and cancel_background_job to stop it. Do not start it again.',
+		};
+	} catch (error) {
+		Container.get(Logger).error('Failed to background a waiting workflow execution', {
+			executionId: result.executionId,
+			workflowId: reference.workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
+/** The execution is gone, so its outcome cannot be known; a lost claim means the settle hook recorded it first. */
+async function settleOutcomeUnknown(
+	jobService: AgentBackgroundJobService,
+	jobId: string,
+	executionId: string,
+): Promise<WorkflowToolResult & { jobId: string }> {
+	const claimed = await jobService.settle(jobId, {
+		status: 'failed',
+		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
+	});
+	return {
+		executionId,
+		status: 'unknown',
+		jobId,
+		note: claimed
+			? EXECUTION_OUTCOME_UNKNOWN_ERROR
+			: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
+	};
 }
 
 function isPollableWait(wait: WorkflowWaitState | undefined): wait is { waitTill: Date } {
@@ -906,6 +1002,7 @@ function assembleWorkflowTool(
 				data: z.record(z.unknown()).optional(),
 				error: z.string().optional(),
 				note: z.string().optional(),
+				jobId: z.string().optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)
@@ -950,9 +1047,23 @@ function assembleWorkflowTool(
 				};
 			}
 
+			// A wait due within the poll window resolves inline. Only a wait the poll
+			// did not settle is handed to the background.
 			if (result.status === 'waiting') {
 				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
 			}
+
+			if (result.status === 'waiting' && context.backgroundTasksEnabled) {
+				const backgrounded = await backgroundWaitingExecution(
+					result,
+					context,
+					ctx,
+					reference,
+					allOutputs,
+				);
+				if (backgrounded) return backgrounded;
+			}
+
 			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
 			current ??= await loadCurrentWorkflow(context, reference);
