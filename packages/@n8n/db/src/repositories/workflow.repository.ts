@@ -71,6 +71,26 @@ type WorkflowListResult = {
 	count: number;
 };
 
+/**
+ * The workflows an agent's workflow tools refer to: refs by id, legacy refs by
+ * name, both inside the agent's project. Shared by the runtime lookup and the
+ * agent dependency index, so the two cannot resolve a reference differently.
+ */
+export function agentToolReferenceWhere(
+	projectId: string,
+	workflowIds: string[],
+	legacyWorkflowNames: string[],
+): Array<FindOptionsWhere<WorkflowEntity>> {
+	const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+	if (workflowIds.length > 0) {
+		where.push({ id: In(workflowIds), shared: { projectId } });
+	}
+	if (legacyWorkflowNames.length > 0) {
+		where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+	}
+	return where;
+}
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -322,13 +342,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	) {
-		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
-		if (workflowIds.length > 0) {
-			where.push({ id: In(workflowIds), shared: { projectId } });
-		}
-		if (legacyWorkflowNames.length > 0) {
-			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
-		}
+		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return [];
 
 		return await this.find({

@@ -1,7 +1,12 @@
 import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, WorkflowEntity } from '@n8n/db';
+import {
+	agentToolReferenceWhere,
+	BaseRepository,
+	TransactionRunner,
+	WorkflowEntity,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, type EntityManager, type FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentWorkflowDependency } from '../entities/agent-workflow-dependency.entity';
@@ -104,23 +109,13 @@ export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkf
 		});
 	}
 
-	/**
-	 * Same resolution rule as `WorkflowRepository.findManyByAgentToolReferences`:
-	 * refs resolve by id, legacy refs by name, both inside the agent's project.
-	 */
 	private async resolveWorkflowIds(
 		manager: EntityManager,
 		projectId: string,
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	): Promise<Set<string>> {
-		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
-		if (workflowIds.length > 0) {
-			where.push({ id: In(workflowIds), shared: { projectId } });
-		}
-		if (legacyWorkflowNames.length > 0) {
-			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
-		}
+		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return new Set();
 
 		const workflows = await manager.find(WorkflowEntity, { where, select: ['id'] });
