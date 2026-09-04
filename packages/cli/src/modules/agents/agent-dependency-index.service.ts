@@ -3,6 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentCredentialDependencyRepository } from './repositories/agent-credential-dependency.repository';
+import { AgentWorkflowDependencyRepository } from './repositories/agent-workflow-dependency.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
@@ -12,7 +13,8 @@ export class AgentDependencyIndexService {
 	private readonly logger: Logger;
 
 	constructor(
-		private readonly dependencyRepository: AgentCredentialDependencyRepository,
+		private readonly credentialDependencyRepository: AgentCredentialDependencyRepository,
+		private readonly workflowDependencyRepository: AgentWorkflowDependencyRepository,
 		private readonly agentRepository: AgentRepository,
 		logger: Logger,
 		workflowsConfig: WorkflowsConfig,
@@ -22,11 +24,13 @@ export class AgentDependencyIndexService {
 	}
 
 	async remove(agentId: string): Promise<void> {
-		await this.dependencyRepository.removeForAgent(agentId);
+		await this.credentialDependencyRepository.removeForAgent(agentId);
+		await this.workflowDependencyRepository.removeForAgent(agentId);
 	}
 
 	async refresh(agentId: string): Promise<void> {
-		await this.dependencyRepository.refreshForAgent(agentId);
+		await this.credentialDependencyRepository.refreshForAgent(agentId);
+		await this.workflowDependencyRepository.refreshForAgent(agentId);
 	}
 
 	async buildIndex(): Promise<void> {

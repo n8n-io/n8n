@@ -5,39 +5,44 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentDependencyIndexService } from '../agent-dependency-index.service';
 import type { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
+import type { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 function makeService(batchSize = 2) {
 	const dependencyRepository = mock<AgentCredentialDependencyRepository>();
+	const workflowDependencyRepository = mock<AgentWorkflowDependencyRepository>();
 	const agentRepository = mock<AgentRepository>();
 	const workflowsConfig = mock<WorkflowsConfig>({ indexingBatchSize: batchSize });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const service = new AgentDependencyIndexService(
 		dependencyRepository,
+		workflowDependencyRepository,
 		agentRepository,
 		logger,
 		workflowsConfig,
 	);
 
-	return { service, dependencyRepository, agentRepository, logger };
+	return { service, dependencyRepository, workflowDependencyRepository, agentRepository, logger };
 }
 
 describe('AgentDependencyIndexService', () => {
 	it('refreshes both sources from current persisted Agent state', async () => {
-		const { service, dependencyRepository } = makeService();
+		const { service, dependencyRepository, workflowDependencyRepository } = makeService();
 
 		await service.refresh('agent-1');
 
 		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
+		expect(workflowDependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
 	});
 
 	it('removes all rows as an idempotent fallback when an agent is deleted', async () => {
-		const { service, dependencyRepository } = makeService();
+		const { service, dependencyRepository, workflowDependencyRepository } = makeService();
 
 		await service.remove('agent-1');
 
 		expect(dependencyRepository.removeForAgent).toHaveBeenCalledWith('agent-1');
+		expect(workflowDependencyRepository.removeForAgent).toHaveBeenCalledWith('agent-1');
 	});
 
 	it('rebuilds every agent in batches and continues after an individual failure', async () => {
