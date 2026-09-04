@@ -23,9 +23,9 @@ inputs:
     required: false
     default: 'pnpm build'
   install-command:
-    description: 'Command to install project dependencies. The default trusts the committed lockfile because SafeChain enforces the CI supply-chain policy. Leave empty to skip the install step.'
+    description: 'Command to install project dependencies. The action trusts the committed lockfile because SafeChain enforces the CI supply-chain policy. Leave empty to skip the install step.'
     required: false
-    default: 'pnpm install --frozen-lockfile --trust-lockfile'
+    default: 'pnpm install --frozen-lockfile'
   cache-dependency-path:
     description: 'Path(s) to the lockfile(s) used to compute the pnpm store and metadata cache keys. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset.'
     required: false
@@ -232,6 +232,7 @@ runs:
 
         set +o pipefail
         timeout --kill-after=30s 600s $INSTALL_COMMAND \
+          --trust-lockfile \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
