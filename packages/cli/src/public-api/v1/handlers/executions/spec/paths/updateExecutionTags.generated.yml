@@ -1,6 +1,6 @@
 operationId: updateExecutionTags
 tags:
-  - Execution
+  - Executions
 summary: Update tags of an execution
 description: Update annotation tags of an execution.
 x-required-scope: executionTags:update

@@ -6,6 +6,7 @@ import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
 	IExecuteFunctions,
 	INode,
+	LiteralMcpRegistryConnection,
 	NodeEgressFilter,
 	PrepareMcpRegistryConnectionInput,
 } from 'n8n-workflow';
@@ -843,12 +844,13 @@ describe('utils', () => {
 					access_token: 'refreshed-token',
 				});
 				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
-				const connection = {
+				const connection: LiteralMcpRegistryConnection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
-					credentialType: 'testMcpOAuth2Api' as const,
+					credentialType: 'testMcpOAuth2Api',
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
-					transport: 'httpStreamable' as const,
+					transport: 'httpStreamable',
+					isTemplated: false,
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,

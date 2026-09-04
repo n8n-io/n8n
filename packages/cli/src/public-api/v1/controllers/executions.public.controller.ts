@@ -6,6 +6,10 @@ import {
 	GetExecutionQueryDto,
 	ListExecutionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	StopManyExecutionsPublicDto,
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
@@ -21,19 +25,23 @@ import {
 	Delete,
 	Get,
 	Param,
+	Post,
 	PublicApiController,
 	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-import { replaceCircularReferences } from 'n8n-workflow';
+import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+import type { StopResult } from '@/executions/execution.types';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -99,7 +107,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:list')
 	@ApiSummary('Retrieve all executions')
 	@ApiDescription('Retrieve all executions from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionListPublicDto)
 	@ApiErrorResponse(404)
 	async getExecutions(
@@ -165,7 +173,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:read')
 	@ApiSummary('Retrieve an execution')
 	@ApiDescription('Retrieve an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionPublicDto)
 	@ApiErrorResponse(404)
 	async getExecution(
@@ -222,7 +230,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('execution:delete')
 	@ApiSummary('Delete an execution')
 	@ApiDescription('Deletes an execution from your instance.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
@@ -251,7 +259,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('executionTags:list')
 	@ApiSummary('Get execution tags')
 	@ApiDescription('Get annotation tags for an execution.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionTagsPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
@@ -280,7 +288,7 @@ export class ExecutionsPublicController {
 	@ApiKeyScope('executionTags:update')
 	@ApiSummary('Update tags of an execution')
 	@ApiDescription('Update annotation tags of an execution.')
-	@ApiTags(['Execution'])
+	@ApiTags(['Executions'])
 	@ApiResponse(200, ExecutionTagsPublicDto)
 	@ApiErrorResponse(404)
 	async updateExecutionTags(
@@ -307,6 +315,89 @@ export class ExecutionsPublicController {
 		);
 
 		return tags.map(toPublicTag);
+	}
+	@Post('/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop multiple executions')
+	@ApiDescription('Stop multiple executions from your instance based on filter criteria.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, StoppedExecutionsPublicDto)
+	@ApiErrorResponse(404)
+	async stopManyExecutions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: StopManyExecutionsPublicDto,
+	): Promise<StoppedExecutionsPublicDto> {
+		const status = body.status.map((value) => STOPPABLE_PUBLIC_TO_INTERNAL_STATUS[value]);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			return { stopped: 0 };
+		}
+
+		const { workflowId } = body;
+
+		if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
+			throw new NotFoundError('Workflow not found or not accessible');
+		}
+
+		const stopped = await this.executionService.stopMany(
+			{
+				workflowId: workflowId ?? 'all',
+				status,
+				startedAfter: body.startedAfter,
+				startedBefore: body.startedBefore,
+			},
+			sharedWorkflowsIds,
+		);
+
+		return { stopped };
+	}
+
+	@Post('/:executionId/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop an execution')
+	@ApiDescription('Stop an execution by id.')
+	@ApiTags(['Executions'])
+	@ApiResponse(200, StoppedExecutionPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async stopExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<StoppedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const stopResult = await this.executionService.stop(executionId, sharedWorkflowsIds);
+
+			return toStoppedExecutionPublicDto(stopResult);
+		} catch (error) {
+			if (error instanceof MissingExecutionStopError) {
+				throw new NotFoundError(error.message);
+			}
+
+			if (error instanceof WorkflowOperationError) {
+				throw new ConflictError(error.message);
+			}
+
+			throw error;
+		}
 	}
 }
 
@@ -400,5 +491,15 @@ function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt
 		name: tag.name,
 		createdAt: tag.createdAt.toISOString(),
 		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPublicDto {
+	return {
+		mode: stopResult.mode,
+		startedAt: stopResult.startedAt.toISOString(),
+		stoppedAt: stopResult.stoppedAt?.toISOString(),
+		finished: stopResult.finished,
+		status: stopResult.status,
 	};
 }
