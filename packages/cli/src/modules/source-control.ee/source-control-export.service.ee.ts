@@ -287,6 +287,7 @@ export class SourceControlExportService {
 					'project.projectRelations.role',
 					'project.projectRelations.user',
 				],
+				loadEagerRelations: false,
 				select: {
 					id: true,
 					name: true,

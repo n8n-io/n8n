@@ -1130,6 +1130,7 @@ describe('SourceControlExportService', () => {
 			expect(dataTableRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: expect.objectContaining(scopedFilter),
+					loadEagerRelations: false,
 				}),
 			);
 		});

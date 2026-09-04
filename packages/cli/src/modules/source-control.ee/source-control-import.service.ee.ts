@@ -530,6 +530,7 @@ export class SourceControlImportService {
 					'project.projectRelations',
 					'project.projectRelations.role',
 				],
+				loadEagerRelations: false,
 				where:
 					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});

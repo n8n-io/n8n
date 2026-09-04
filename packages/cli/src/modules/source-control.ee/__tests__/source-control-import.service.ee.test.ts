@@ -3992,6 +3992,7 @@ describe('SourceControlImportService', () => {
 						'project.projectRelations',
 						'project.projectRelations.role',
 					],
+					loadEagerRelations: false,
 					where: {},
 				});
 			});
@@ -4019,6 +4020,7 @@ describe('SourceControlImportService', () => {
 						'project.projectRelations',
 						'project.projectRelations.role',
 					],
+					loadEagerRelations: false,
 					where,
 				});
 			});
