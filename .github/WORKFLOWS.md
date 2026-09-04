@@ -189,6 +189,7 @@ These only run if specific files changed:
 |----------------------------|-----------------------------|------------------------------------------------------|
 | Review approved            | `release-chromatic.yml` | + design files changed                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+| cubic review submitted     | `util-hide-outdated-cubic-comments.yml` | minimizes cubic's older review summaries |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
 workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
