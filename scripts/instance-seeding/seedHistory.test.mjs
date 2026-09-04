@@ -264,6 +264,41 @@ describe('seedHistory cleanup', () => {
 		assert.match(out, /Cleared prior: \d+ executions, 2 threads, \d+ activity entries/);
 	});
 
+	// `pnpm seed:preference` sends the estate to N8N_BASE_URL but the history to a
+	// local file, so a remote URL used to mean silently rewriting your own history.
+	it('refuses a remote N8N_BASE_URL unless the database is named explicitly', () => {
+		const dbFile = fixture();
+		const remote = { N8N_BASE_URL: 'https://test-foo.stage-app.n8n.cloud' };
+		assert.throws(
+			() =>
+				execFileSync(process.execPath, [SCRIPT], {
+					env: { ...process.env, ...remote, DB_SQLITE_DATABASE: undefined, HISTORY_DAYS: '2' },
+					encoding: 'utf8',
+				}),
+			/only writes local SQLite/,
+		);
+		// Naming the database is an explicit choice, so it still runs.
+		const out = execFileSync(process.execPath, [SCRIPT], {
+			env: { ...process.env, ...remote, DB_SQLITE_DATABASE: dbFile, HISTORY_DAYS: '2' },
+			encoding: 'utf8',
+		});
+		assert.match(out, /Database: /);
+	});
+
+	it('allows a loopback N8N_BASE_URL', () => {
+		const dbFile = fixture();
+		const out = execFileSync(process.execPath, [SCRIPT], {
+			env: {
+				...process.env,
+				N8N_BASE_URL: 'http://localhost:5678',
+				DB_SQLITE_DATABASE: dbFile,
+				HISTORY_DAYS: '2',
+			},
+			encoding: 'utf8',
+		});
+		assert.match(out, /Database: /);
+	});
+
 	it('exits with a message when nothing is seeded', () => {
 		const file = join(mkdtempSync(join(tmpdir(), 'seed-history-empty-')), 'database.sqlite');
 		const db = new DatabaseSync(file);
