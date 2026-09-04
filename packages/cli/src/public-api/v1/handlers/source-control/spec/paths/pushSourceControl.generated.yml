@@ -2,7 +2,7 @@ operationId: pushSourceControl
 tags:
   - SourceControl
 summary: Push local source control changes
-description: 'Commits and pushes the selected files to the connected Git repository. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.'
+description: Commits and pushes the selected files to the connected Git repository. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
 x-required-scope: sourceControl:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

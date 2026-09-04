@@ -5,9 +5,9 @@ import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SourceControlPushConflictError } from '@/errors/response-errors/source-control-push-conflict.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -162,7 +162,15 @@ describe('http-error-serializers', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			},
 		];
-		const descriptor = classifyHttpError(new SourceControlPushConflictError(conflicts));
+		const descriptor = classifyHttpError(
+			new ConflictError(
+				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
+				undefined,
+				{
+					conflicts,
+				},
+			),
+		);
 
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 409,

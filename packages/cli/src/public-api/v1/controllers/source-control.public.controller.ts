@@ -24,7 +24,7 @@ import {
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { SourceControlPushConflictError } from '@/errors/response-errors/source-control-push-conflict.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -78,10 +78,7 @@ export class SourceControlPublicController {
 	@ApiSummary('Push local source control changes')
 	@ApiDescription(
 		'Commits and pushes the selected files to the connected Git repository. Each entry in ' +
-			'`fileNames` is resolved against a fresh preview of the pending changes: only its ' +
-			'`id` and `type` are read, so the file path, status, and conflict state pushed are ' +
-			'always the server-derived ones, never client-supplied. Call `GET /source-control/status`' +
-			' with `direction=push` first to see what is eligible.',
+			'`fileNames` is resolved against a fresh preview of the pending changes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlPushResponsePublicDto)
@@ -114,7 +111,11 @@ export class SourceControlPublicController {
 		);
 
 		if (result.statusCode === 409) {
-			throw new SourceControlPushConflictError(result.statusResult);
+			throw new ConflictError(
+				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
+				undefined,
+				{ conflicts: result.statusResult },
+			);
 		}
 
 		return { data: result.statusResult };
