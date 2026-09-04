@@ -25,6 +25,7 @@ export type JobData = {
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
+	poolName?: string;
 
 	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
 	encryptedRunnerIdentity?: string;

@@ -89,7 +89,7 @@ describe('Worker', () => {
 			taskRunners: {},
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
-			queue: { bull: { gracefulShutdownTimeout: 20 } },
+			queue: { bull: { gracefulShutdownTimeout: 20 }, workerPool: { enabled: false, name: '' } },
 			generic: { gracefulShutdownTimeout: 30 },
 			...globalConfigOverrides,
 		};

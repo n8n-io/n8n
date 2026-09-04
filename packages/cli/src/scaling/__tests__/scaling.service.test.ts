@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, WorkerPoolConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
@@ -12,7 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
+import { JOB_TYPE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
@@ -67,6 +67,7 @@ describe('ScalingService', () => {
 					tls: false,
 				},
 			},
+			workerPool: Object.assign(new WorkerPoolConfig(), { enabled: true, name: '' }),
 		},
 		endpoints: {
 			metrics: {
@@ -108,14 +109,16 @@ describe('ScalingService', () => {
 	let stopQueueMetricsSpy: MockInstance;
 	let getRunningJobsCountSpy: MockInstance;
 
-	const bullConstructorArgs = [
-		QUEUE_NAME,
+	const expectedBullArgs = (queueName: string) => [
+		queueName,
 		{
 			prefix: globalConfig.queue.bull.prefix,
 			settings: { ...globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: expect.any(Function),
 		},
 	];
+
+	const defaultBullArgs = expectedBullArgs('jobs');
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -169,7 +172,7 @@ describe('ScalingService', () => {
 			it('should set up queue + listeners + queue recovery', async () => {
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
@@ -182,7 +185,7 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).not.toHaveBeenCalled();
@@ -196,7 +199,7 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).not.toHaveBeenCalled();
 			});
@@ -209,9 +212,66 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
+			});
+		});
+
+		describe('queue name resolution', () => {
+			afterEach(() => {
+				globalConfig.queue.workerPool.name = '';
+				globalConfig.queue.workerPool.enabled = true;
+			});
+
+			it('uses "jobs" on worker when pool is empty', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('uses "jobs-<pool>" on worker when pool is set', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs-gpu'));
+			});
+
+			it('uses "jobs" on worker when a pool is set but pools are disabled', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.queue.workerPool.name = 'gpu';
+				globalConfig.queue.workerPool.enabled = false;
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('ignores pool name on main and uses "jobs"', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'main';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('ignores pool name on webhook and uses "jobs"', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'webhook';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
 			});
 		});
 	});

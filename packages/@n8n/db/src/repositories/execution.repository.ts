@@ -58,6 +58,7 @@ import type {
 } from '../entities/types-db';
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { chunkIds } from '../utils/chunk-ids';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -1148,6 +1149,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
+		const rows: Array<Pick<ExecutionEntity, 'id' | 'status'>> = [];
+		for (const chunk of chunkIds(ids)) {
+			rows.push(...(await this.find({ select: ['id', 'status'], where: { id: In(chunk) } })));
+		}
+
+		return rows;
 	}
 
 	async getAllIds() {
