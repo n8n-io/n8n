@@ -1645,6 +1645,40 @@ describe('McpAgentToolsService', () => {
 			});
 			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
 		});
+
+		it('accepts a templated registry URL and passes it through for resolution', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+			listMcpServerToolsMock.mockResolvedValue([{ name: 'genie_ask', description: 'Ask' }]);
+			const templatedUrl = '={{$self["host"]}}/api/2.0/mcp/genie';
+
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				url: templatedUrl,
+				metadata: { nodeTypeName: '@n8n/mcp-registry.databricksGenie' },
+			});
+
+			expect(listMcpServerToolsMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: templatedUrl }),
+				expect.objectContaining({ projectId: 'project-1' }),
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				tools: [{ name: 'genie_ask', description: 'Ask' }],
+			});
+		});
+
+		it('rejects a templated URL with no registry node to resolve it', async () => {
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				url: '={{$self["host"]}}/api/2.0/mcp/genie',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'A templated server URL needs metadata.nodeTypeName so the registry can resolve it',
+			});
+			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('get_agent', () => {
