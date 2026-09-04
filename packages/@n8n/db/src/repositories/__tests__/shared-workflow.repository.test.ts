@@ -121,28 +121,6 @@ describe('SharedWorkflowRepository', () => {
 		});
 	});
 
-	describe('findByWorkflowIds', () => {
-		it('merges owner rows returned from different chunks', async () => {
-			const first = mock<SharedWorkflow>({ workflowId: 'first' });
-			const last = mock<SharedWorkflow>({ workflowId: 'last' });
-			entityManager.find.mockResolvedValueOnce([first]).mockResolvedValueOnce([last]);
-			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
-
-			const result = await sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-
-			expect(entityManager.find).toHaveBeenCalledTimes(2);
-			expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedWorkflow, {
-				where: {
-					role: 'workflow:owner',
-					workflowId: In(['workflow-10000']),
-				},
-				relations: { project: { projectRelations: { user: true, role: true } } },
-				loadEagerRelations: false,
-			});
-			expect(result).toEqual([first, last]);
-		});
-	});
-
 	describe('findWorkflowIdsInUserProjects', () => {
 		it('returns an empty set without querying when there are no workflow ids', async () => {
 			const result = await sharedWorkflowRepository.findWorkflowIdsInUserProjects([], 'user-1', [

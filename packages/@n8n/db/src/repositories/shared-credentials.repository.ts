@@ -6,6 +6,7 @@ import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -15,13 +16,24 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
-			relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
-			loadEagerRelations: false,
+			relations: { credentials: true },
 			where: {
 				credentialsId: In(credentialIds),
 				role,
 			},
 		});
+	}
+
+	async findOwnerProjectsByCredentialIds(credentialIds: string[]): Promise<Map<string, Project>> {
+		const ownerProjects = new Map<string, Project>();
+		for (const chunk of chunkIds(credentialIds)) {
+			const rows = await this.find({
+				where: { credentialsId: In(chunk), role: 'credential:owner' },
+				relations: { project: true },
+			});
+			for (const { credentialsId, project } of rows) ownerProjects.set(credentialsId, project);
+		}
+		return ownerProjects;
 	}
 
 	async makeOwnerOfAllCredentials(project: Project) {

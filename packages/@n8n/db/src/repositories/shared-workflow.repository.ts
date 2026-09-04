@@ -53,24 +53,6 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return found;
 	}
 
-	async findByWorkflowIds(workflowIds: string[]) {
-		const rows = new Map<string, SharedWorkflow>();
-
-		for (const chunk of chunkIds(workflowIds)) {
-			const found = await this.find({
-				where: {
-					role: 'workflow:owner',
-					workflowId: In(chunk),
-				},
-				relations: { project: { projectRelations: { user: true, role: true } } },
-				loadEagerRelations: false,
-			});
-			for (const row of found) rows.set(row.workflowId, row);
-		}
-
-		return [...rows.values()];
-	}
-
 	/** Owner project of each workflow, keyed by workflow id. */
 	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
 		const ownerRows: SharedWorkflow[] = [];

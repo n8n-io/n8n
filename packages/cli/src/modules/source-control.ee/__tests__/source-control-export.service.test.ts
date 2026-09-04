@@ -3,10 +3,10 @@ import type {
 	Folder,
 	FolderRepository,
 	Project,
+	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
-	SharedWorkflow,
 	SharedWorkflowRepository,
 	TagEntity,
 	TagRepository,
@@ -15,7 +15,7 @@ import type {
 	WorkflowTagMappingRepository,
 	Variables,
 } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
@@ -42,6 +42,7 @@ describe('SourceControlExportService', () => {
 	const folderRepository = mock<FolderRepository>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const dataTableRepository = mock<DataTableRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -62,7 +63,11 @@ describe('SourceControlExportService', () => {
 		sourceControlScopedService,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		dataTableRepository,
+		projectRelationRepository,
 	);
+
+	const personalProject = mock<Project>({ type: 'personal', id: 'personal-1', name: 'Personal' });
+	const teamProject = mock<Project>({ type: 'team', id: 'team1', name: 'Test Team' });
 
 	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
 	const fsReadFile = vi.spyOn(fsp, 'readFile');
@@ -70,6 +75,9 @@ describe('SourceControlExportService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
+		sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(new Map());
+		projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(new Map());
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {
@@ -96,18 +104,16 @@ describe('SourceControlExportService', () => {
 		it('should export credentials to work folder', async () => {
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
+					credentialsId: mockCredentials.id,
 					credentials: mockCredentials,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{
-								role: PROJECT_OWNER_ROLE,
-								user: mock({ email: 'user@example.com' }),
-							},
-						],
-					}),
 				} as never) as SharedCredentials,
 			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentials.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
 
 			// Act
 			const result = await service.exportCredentialsToWorkFolder([mock()]);
@@ -133,6 +139,8 @@ describe('SourceControlExportService', () => {
 				},
 				ownedBy: {
 					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
 					personalEmail: 'user@example.com',
 				},
 			});
@@ -141,14 +149,13 @@ describe('SourceControlExportService', () => {
 		it('should handle team project credentials', async () => {
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
+					credentialsId: mockCredentials.id,
 					credentials: mockCredentials,
-					project: mock({
-						type: 'team',
-						id: 'team1',
-						name: 'Test Team',
-					}),
 				} as never) as SharedCredentials,
 			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentials.id, teamProject]]),
+			);
 
 			// Act
 			const result = await service.exportCredentialsToWorkFolder([
@@ -209,14 +216,13 @@ describe('SourceControlExportService', () => {
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
+					credentialsId: mockGlobalCredential.id,
 					credentials: mockGlobalCredential,
-					project: mock({
-						type: 'team',
-						id: 'team1',
-						name: 'Test Team',
-					}),
 				} as never) as SharedCredentials,
 			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockGlobalCredential.id, teamProject]]),
+			);
 
 			// Act
 			const result = await service.exportCredentialsToWorkFolder([
@@ -269,18 +275,16 @@ describe('SourceControlExportService', () => {
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
+					credentialsId: mockNonGlobalCredential.id,
 					credentials: mockNonGlobalCredential,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{
-								role: PROJECT_OWNER_ROLE,
-								user: mock({ email: 'user@example.com' }),
-							},
-						],
-					}),
 				} as never) as SharedCredentials,
 			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockNonGlobalCredential.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
 
 			// Act
 			const result = await service.exportCredentialsToWorkFolder([
@@ -309,6 +313,8 @@ describe('SourceControlExportService', () => {
 				},
 				ownedBy: {
 					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
 					personalEmail: 'user@example.com',
 				},
 				isGlobal: false,
@@ -367,18 +373,16 @@ describe('SourceControlExportService', () => {
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
+					credentialsId: mockCredentialWithoutIsGlobal.id,
 					credentials: mockCredentialWithoutIsGlobal,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{
-								role: PROJECT_OWNER_ROLE,
-								user: mock({ email: 'user@example.com' }),
-							},
-						],
-					}),
 				} as never) as SharedCredentials,
 			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentialWithoutIsGlobal.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@example.com']]),
+			);
 
 			// Act
 			const result = await service.exportCredentialsToWorkFolder([
@@ -410,11 +414,13 @@ describe('SourceControlExportService', () => {
 					type: 'httpBasicAuth',
 					data: cipher.encrypt({ user: 'u', password: 'p' }),
 				}),
-				project: mock({ type: 'team', id: 'team-1', name: 'Team 1' }),
 			} as never) as SharedCredentials;
 
 		it('should load and write credentials in batches', async () => {
 			const credentialIds = Array.from({ length: 45 }, (_, index) => `cred-${index}`);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map(credentialIds.map((id) => [id, teamProject])),
+			);
 			sharedCredentialsRepository.findByCredentialIds
 				.mockResolvedValueOnce(credentialIds.slice(0, 20).map(toSharing))
 				.mockResolvedValueOnce(credentialIds.slice(20, 40).map(toSharing))
@@ -424,6 +430,11 @@ describe('SourceControlExportService', () => {
 				credentialIds.map((id) => mock<SourceControlledFile>({ id })),
 			);
 
+			expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).toHaveBeenCalledTimes(1);
+			expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).toHaveBeenCalledWith(
+				credentialIds,
+			);
+			expect(projectRelationRepository.findPersonalOwnerEmails).toHaveBeenCalledTimes(1);
 			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenCalledTimes(3);
 			expect(sharedCredentialsRepository.findByCredentialIds).toHaveBeenNthCalledWith(
 				1,
@@ -707,18 +718,12 @@ describe('SourceControlExportService', () => {
 					nodeGroups,
 				}),
 			]);
-			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
-				mock<SharedWorkflow>({
-					workflowId,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
-						],
-					}),
-					workflow: mock(),
-				} as never) as SharedWorkflow,
-			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([[workflowId, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@test.com']]),
+			);
 
 			// Act
 			const result = await service.exportWorkflowsToWorkFolder([
@@ -744,7 +749,12 @@ describe('SourceControlExportService', () => {
 				parentFolderId: null,
 				isArchived: false,
 				nodeGroups,
-				owner: { type: 'personal', personalEmail: 'user@test.com' },
+				owner: {
+					type: 'personal',
+					projectId: 'personal-1',
+					projectName: 'Personal',
+					personalEmail: 'user@test.com',
+				},
 			});
 		});
 
@@ -764,18 +774,12 @@ describe('SourceControlExportService', () => {
 					nodeGroups: [],
 				}),
 			]);
-			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
-				mock<SharedWorkflow>({
-					workflowId,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
-						],
-					}),
-					workflow: mock(),
-				} as never) as SharedWorkflow,
-			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([[workflowId, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(
+				new Map([[personalProject.id, 'user@test.com']]),
+			);
 
 			await service.exportWorkflowsToWorkFolder([mock<SourceControlledFile>({ id: workflowId })]);
 
@@ -788,15 +792,8 @@ describe('SourceControlExportService', () => {
 
 		it('should load and write workflows in batches', async () => {
 			const workflowIds = Array.from({ length: 45 }, (_, index) => `wf-${index}`);
-			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
-				workflowIds.map(
-					(workflowId) =>
-						mock<SharedWorkflow>({
-							workflowId,
-							project: mock({ type: 'team', id: 'team-1', name: 'Team 1' }),
-							workflow: mock(),
-						} as never) as SharedWorkflow,
-				),
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map(workflowIds.map((id) => [id, teamProject])),
 			);
 			const toWorkflowEntity = (id: string) =>
 				Object.assign(new WorkflowEntity(), {
@@ -846,22 +843,13 @@ describe('SourceControlExportService', () => {
 
 		it('should throw an error if workflow has no owner', async () => {
 			// Arrange
-			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
-				mock<SharedWorkflow>({
-					project: mock({
-						type: 'personal',
-						projectRelations: [],
-					}),
-					workflow: mock({
-						id: 'test-workflow-id',
-						name: 'TestWorkflow',
-					}),
-				} as never) as SharedWorkflow,
-			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['test-workflow-id', personalProject]]),
+			);
 
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
-				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
+				'Workflow test-workflow-id has no owner',
 			);
 		});
 	});
@@ -1118,7 +1106,7 @@ describe('SourceControlExportService', () => {
 			expect(dataTableRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: expect.objectContaining(scopedFilter),
-					loadEagerRelations: false,
+					relations: ['columns', 'project'],
 				}),
 			);
 		});

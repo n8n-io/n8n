@@ -26,7 +26,7 @@ import {
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
@@ -524,23 +524,17 @@ export class SourceControlImportService {
 	): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
-				relations: [
-					'columns',
-					'project',
-					'project.projectRelations',
-					'project.projectRelations.role',
-				],
-				loadEagerRelations: false,
+				relations: ['columns', 'project'],
 				where:
 					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
+			const ownerEmails = await this.projectRelationRepository.findPersonalOwnerEmails(
+				dataTables.flatMap((table) => (table.project?.type === 'personal' ? table.project.id : [])),
+			);
 			return dataTables.map((table) => {
 				let ownedBy: StatusResourceOwner | null = null;
 				if (table.project?.type === 'personal') {
-					const ownerRelation = table.project.projectRelations?.find(
-						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
-					);
-					if (ownerRelation) {
+					if (ownerEmails.has(table.project.id)) {
 						ownedBy = {
 							type: 'personal',
 							projectId: table.project.id,

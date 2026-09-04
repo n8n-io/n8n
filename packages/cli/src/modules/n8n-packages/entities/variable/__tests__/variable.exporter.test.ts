@@ -1,4 +1,4 @@
-import type { Project, SharedWorkflow, SharedWorkflowRepository, User, Variables } from '@n8n/db';
+import type { Project, SharedWorkflowRepository, User, Variables } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -57,9 +57,12 @@ function wireVariables(
 ) {
 	deps.variablesService.getAllCached.mockResolvedValue(opts.all);
 	deps.variablesService.getAllForUser.mockResolvedValue(opts.accessible ?? opts.all);
-	deps.sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
-		opts.workflowProjects.map(([workflowId, projectId]) =>
-			mock<SharedWorkflow>({ workflowId, project: { id: projectId } as Project }),
+	deps.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+		new Map(
+			opts.workflowProjects.map(([workflowId, projectId]) => [
+				workflowId,
+				{ id: projectId } as Project,
+			]),
 		),
 	);
 }
@@ -82,7 +85,7 @@ describe('VariableExporter', () => {
 			expect(writer.directories).toEqual([]);
 
 			expect(variablesService.getAllCached).not.toHaveBeenCalled();
-			expect(sharedWorkflowRepository.findByWorkflowIds).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
 		});
 	});
 

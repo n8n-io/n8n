@@ -3946,6 +3946,10 @@ describe('SourceControlImportService', () => {
 		});
 
 		describe('getLocalDataTablesFromDb', () => {
+			beforeEach(() => {
+				projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(new Map());
+			});
+
 			it('should return data tables from database', async () => {
 				// Arrange
 				const mockDataTables = [
@@ -3986,13 +3990,7 @@ describe('SourceControlImportService', () => {
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				});
 				expect(dataTableRepository.find).toHaveBeenCalledWith({
-					relations: [
-						'columns',
-						'project',
-						'project.projectRelations',
-						'project.projectRelations.role',
-					],
-					loadEagerRelations: false,
+					relations: ['columns', 'project'],
 					where: {},
 				});
 			});
@@ -4014,13 +4012,7 @@ describe('SourceControlImportService', () => {
 					sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
 				).toHaveBeenCalledWith(globalMemberContext);
 				expect(dataTableRepository.find).toHaveBeenCalledWith({
-					relations: [
-						'columns',
-						'project',
-						'project.projectRelations',
-						'project.projectRelations.role',
-					],
-					loadEagerRelations: false,
+					relations: ['columns', 'project'],
 					where,
 				});
 			});
