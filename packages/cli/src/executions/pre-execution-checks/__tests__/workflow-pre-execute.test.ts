@@ -1,5 +1,5 @@
 import type { ExecutionsConfig } from '@n8n/config';
-import type { IWorkflowBase, Workflow } from 'n8n-workflow';
+import type { IConnections, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -112,7 +112,7 @@ describe('WorkflowPreExecute', () => {
 			position: [200, 0] as [number, number],
 			parameters: {},
 		};
-		const connections = {
+		const connections: IConnections = {
 			Start: { main: [[{ node: 'Added', type: 'main', index: 0 }]] },
 		};
 
