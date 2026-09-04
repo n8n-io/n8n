@@ -20,6 +20,7 @@ export function isV1NodeStepConfig(config: unknown): config is V1NodeStepConfig 
 		config.nodeType.length > 0 &&
 		typeof config.typeVersion === 'number' &&
 		isRecord(config.parameters) &&
-		typeof config.continueOnFail === 'boolean'
+		typeof config.continueOnFail === 'boolean' &&
+		(config.credentials === undefined || isRecord(config.credentials))
 	);
 }

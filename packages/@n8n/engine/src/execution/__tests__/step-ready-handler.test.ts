@@ -67,6 +67,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		mode: 'production',
 		graph,
 		triggerOutputs: null,
+		context: {},
 		...overrides,
 	};
 	return {
@@ -160,6 +161,29 @@ describe('StepReadyHandler', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('hands the caller context of the execution to the executor', async () => {
+		const executor = makeExecutor();
+		const executionStore = makeExecutionStore({
+			context: { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' },
+		});
+		const handler = makeHandler(executionStore, makeStepStore(), makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context: expect.objectContaining({
+					executionId: 'exec-1',
+					userId: 'user-1',
+					projectId: 'project-1',
+					hostMode: 'webhook',
+				}) as unknown,
+			}),
+		);
 	});
 
 	it('reads inputs from the predecessor step outputs when the predecessor is not the trigger', async () => {

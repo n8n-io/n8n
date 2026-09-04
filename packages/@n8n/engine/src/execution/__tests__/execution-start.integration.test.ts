@@ -144,6 +144,7 @@ describe('execution start (integration)', () => {
 			mode: 'production',
 			graph,
 			triggerOutputs: null,
+			context: {},
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

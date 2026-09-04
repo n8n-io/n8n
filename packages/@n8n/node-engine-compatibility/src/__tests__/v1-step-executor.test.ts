@@ -11,8 +11,16 @@ import {
 	UnsupportedStepTypeError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
+import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
-import { items, stepRequest, testStepExecutor, v1Workflow } from './fixtures';
+import {
+	items,
+	stepRequest,
+	testAdditionalDataFactory,
+	testNodeTypes,
+	testStepExecutor,
+	v1Workflow,
+} from './fixtures';
 
 const converter = new V1WorkflowConverter();
 
@@ -53,6 +61,34 @@ describe('V1StepExecutor', () => {
 		} finally {
 			vi.restoreAllMocks();
 		}
+	});
+
+	it('builds the additional data from the execution context of the step', async () => {
+		const graph = graphWith('test.echoParam', { message: 'hi' });
+		const additionalDataFactory = vi.fn(testAdditionalDataFactory);
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			additionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+		const request = stepRequest(graph, 'n', items({}));
+		request.context = {
+			...request.context,
+			mode: 'production',
+			hostMode: 'webhook',
+			userId: 'user-1',
+			projectId: 'project-1',
+		};
+
+		await executor.execute(request);
+
+		expect(additionalDataFactory).toHaveBeenCalledExactlyOnceWith({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			mode: 'webhook',
+			userId: 'user-1',
+			projectId: 'project-1',
+		});
 	});
 
 	it('resolves `getNodeParameter` per item', async () => {

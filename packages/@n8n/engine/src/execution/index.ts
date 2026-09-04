@@ -5,6 +5,7 @@ export type {
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
+	ExecutionContext,
 	ExecutionMode,
 	ExecutionStatus,
 	StepError,

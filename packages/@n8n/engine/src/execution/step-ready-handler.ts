@@ -127,6 +127,7 @@ export class StepReadyHandler {
 			node,
 			inputs,
 			context: {
+				...execution.context,
 				executionId: execution.id,
 				stepId: step.id,
 				workflowId: execution.workflowId,

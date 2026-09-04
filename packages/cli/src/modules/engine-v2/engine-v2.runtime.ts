@@ -92,7 +92,7 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					// TODO(CAT-2880): no credential access. A v1 node that needs credentials
 					// fails when it asks for them.
-					additionalDataFactory: async (executionId) => {
+					additionalDataFactory: async ({ executionId }) => {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 						// The task runner keys its tasks by execution id, so it needs the engine's
