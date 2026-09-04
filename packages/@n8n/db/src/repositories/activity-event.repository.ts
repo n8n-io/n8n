@@ -4,6 +4,7 @@ import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { ActivityEvent } from '../entities';
+import type { ActivityResourceType } from '../entities';
 
 /** Long enough for any name a list needs to show, short enough that a row stays a pointer. */
 export const activityResourceNameMaxLength = 128;
@@ -103,6 +104,48 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		else if (bounds.length === 2) where.id = And(...bounds);
 
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
+	}
+
+	/**
+	 * One entry by id, or null when it is not in scope — which is also what a pruned id returns.
+	 * The two are deliberately indistinguishable: an id is a guess a reader may get wrong, and a
+	 * distinct "exists but not yours" would turn this into a probe for what other projects hold.
+	 *
+	 * Scoped here rather than by the caller, so the guarantee holds for every future caller.
+	 */
+	async findEntry(query: { id: number; projectIds: string[] }): Promise<ActivityEvent | null> {
+		if (query.projectIds.length === 0) return null;
+
+		return await this.findOne({
+			where: { id: query.id, projectId: In(query.projectIds) },
+		});
+	}
+
+	/**
+	 * Everything the feed holds about one resource, newest first — the history shown when a reader
+	 * expands a single entry. Served by the `(resourceType, resourceId, id)` index.
+	 *
+	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
+	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
+	 */
+	async findByResource(query: {
+		resourceType: ActivityResourceType;
+		resourceId: string;
+		projectIds: string[];
+		limit: number;
+	}): Promise<ActivityEvent[]> {
+		if (isEmptyPage(query.limit)) return [];
+		if (query.projectIds.length === 0) return [];
+
+		return await this.find({
+			where: {
+				resourceType: query.resourceType,
+				resourceId: query.resourceId,
+				projectId: In(query.projectIds),
+			},
+			order: { id: 'DESC' },
+			take: query.limit,
+		});
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */

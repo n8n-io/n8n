@@ -40,6 +40,8 @@ export type ActivityResourceType = (typeof activityResourceTypes)[number];
 // `id` trails each so a newest-first scan is served by the index alone.
 @Index('IDX_activity_event_project', ['projectId', 'id'])
 @Index('IDX_activity_event_user', ['userId', 'id'])
+// One resource's own history, which is what expanding a single entry shows.
+@Index('IDX_activity_event_resource', ['resourceType', 'resourceId', 'id'])
 export class ActivityEvent extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id and pages on it.
