@@ -164,6 +164,10 @@ const {
 	allGroups,
 	nodeGroupView,
 	isEmptyGroup,
+	// Only the group-node path fans a boundary edge to the interior entries.
+	getGroupEntryNodeNames: isGroupNodeEnabled.value
+		? groupNodeCards.getGroupEntryNodeNames
+		: undefined,
 	isExperimentalNdvActive,
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });

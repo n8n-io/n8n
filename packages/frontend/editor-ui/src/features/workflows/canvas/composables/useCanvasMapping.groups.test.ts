@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
-import { CANVAS_NODE_GROUP_HANDLE_LEFT, CANVAS_NODE_GROUP_HANDLE_RIGHT } from '../canvas.types';
+import {
+	CANVAS_NODE_GROUP_HANDLE_LEFT,
+	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	createCanvasGroupNodeId,
+} from '../canvas.types';
 import {
 	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
 	computeGroupFrameRects,
 	computeNodesRectFromStore,
+	fanBoundaryEdgesToInteriorEntries,
 	getGroupCardHeight,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
@@ -725,5 +730,83 @@ describe('remapCollapsedGroupConnections', () => {
 			expect(collapsedMap.has(connection.source)).toBe(false);
 			expect(collapsedMap.has(connection.target)).toBe(false);
 		}
+	});
+});
+
+describe('fanBoundaryEdgesToInteriorEntries', () => {
+	const boundaryEdge: CanvasConnection = {
+		id: 'src->group',
+		source: 'src',
+		sourceHandle: 'outputs/main/0',
+		target: createCanvasGroupNodeId('g1'),
+		targetHandle: CANVAS_NODE_GROUP_HANDLE_LEFT,
+	};
+
+	const deps = {
+		getGroupIdForCardId: (id: string) => (id === createCanvasGroupNodeId('g1') ? 'g1' : undefined),
+		getEntryNodeIds: () => ['entry-a', 'entry-b'],
+		isGroupExpanded: () => true,
+	};
+
+	it('adds one edge per interior entry node, keeping the boundary edge', () => {
+		const out = fanBoundaryEdgesToInteriorEntries([boundaryEdge], deps);
+
+		expect(out).toHaveLength(3);
+		expect(out[0]).toBe(boundaryEdge);
+		expect(out.slice(1).map((conn) => conn.target)).toEqual(['entry-a', 'entry-b']);
+	});
+
+	it('draws the fanned edges out of the group card', () => {
+		const out = fanBoundaryEdgesToInteriorEntries([boundaryEdge], deps);
+
+		expect(out[1].source).toBe(createCanvasGroupNodeId('g1'));
+		expect(out[1].sourceHandle).toBe(CANVAS_NODE_GROUP_HANDLE_RIGHT);
+	});
+
+	it('leaves the fanned edges without canonicals, so they cannot be mutated', () => {
+		const withData: CanvasConnection = {
+			...boundaryEdge,
+			data: { source: { type: 'main', index: 0 }, target: { type: 'main', index: 0 } },
+		};
+		const out = fanBoundaryEdgesToInteriorEntries([withData], deps);
+
+		expect(out[1].data).toBeUndefined();
+	});
+
+	it('fans nothing for a collapsed group, which hides its interior', () => {
+		const out = fanBoundaryEdgesToInteriorEntries([boundaryEdge], {
+			...deps,
+			isGroupExpanded: () => false,
+		});
+
+		expect(out).toEqual([boundaryEdge]);
+	});
+
+	it('fans nothing for an empty group, which has no entry node', () => {
+		const out = fanBoundaryEdgesToInteriorEntries([boundaryEdge], {
+			...deps,
+			getEntryNodeIds: () => [],
+		});
+
+		expect(out).toEqual([boundaryEdge]);
+	});
+
+	it('leaves an edge between two ordinary nodes untouched', () => {
+		const plain: CanvasConnection = {
+			id: 'a->b',
+			source: 'a',
+			sourceHandle: 'outputs/main/0',
+			target: 'b',
+			targetHandle: 'inputs/main/0',
+		};
+
+		expect(fanBoundaryEdgesToInteriorEntries([plain], deps)).toEqual([plain]);
+	});
+
+	it('does not add the same fanned edge twice', () => {
+		const out = fanBoundaryEdgesToInteriorEntries([boundaryEdge, boundaryEdge], deps);
+
+		// Two boundary edges to one group still fan to each entry once.
+		expect(out.filter((conn) => conn.target === 'entry-a')).toHaveLength(1);
 	});
 });

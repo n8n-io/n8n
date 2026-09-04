@@ -14,10 +14,15 @@ import type {
 	CanvasNodeData,
 	NodeExecutionSnapshot,
 } from '../canvas.types';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+	parseCanvasGroupNodeId,
+} from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	fanBoundaryEdgesToInteriorEntries,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -53,6 +58,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isEmptyGroup = () => false,
+	getGroupEntryNodeNames,
 	isExperimentalNdvActive = ref(false),
 	getAgentNodeHeight,
 }: {
@@ -63,6 +69,11 @@ export function useCanvasMapping({
 	nodeGroupView?: CanvasNodeGroupView;
 	/** True when the group holds no nodes. */
 	isEmptyGroup?: (id: string) => boolean;
+	/**
+	 * Interior entry node names of a group. Supplied only on the group-node
+	 * path, where a boundary edge fans to the nodes it really reaches.
+	 */
+	getGroupEntryNodeNames?: (id: string) => string[];
 	isExperimentalNdvActive?: Ref<boolean>;
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
@@ -206,7 +217,21 @@ export function useCanvasMapping({
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
 		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeId.value);
-		return remapped.map((connection) => ({
+		// An expanded group's boundary edge ends at the card, which says nothing
+		// about which interior nodes run. Fan it to the interior entry nodes.
+		const fanned =
+			getGroupEntryNodeNames === undefined
+				? remapped
+				: fanBoundaryEdgesToInteriorEntries(remapped, {
+						getGroupIdForCardId: parseCanvasGroupNodeId,
+						getEntryNodeIds: (groupId) =>
+							getGroupEntryNodeNames(groupId)
+								.map((name) => nodes.value.find((node) => node.name === name)?.id)
+								.filter((id): id is string => id !== undefined),
+						isGroupExpanded: (groupId) =>
+							!isEmptyGroup(groupId) && !(nodeGroupView?.isGroupCollapsed(groupId) ?? false),
+					});
+		return fanned.map((connection) => ({
 			...connection,
 			data: getConnectionData(connection),
 			type: 'canvas-edge',

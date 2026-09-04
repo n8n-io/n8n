@@ -366,6 +366,56 @@ export function buildCollapsedGroupByNodeId(
  * connection's endpoints in `data.canonicals` so consumers can resolve or
  * aggregate over all of them.
  */
+/**
+ * Fans a boundary edge from an expanded group's card to the interior nodes it
+ * really reaches.
+ *
+ * An edge into a group card ends at the card's own input port, which tells the
+ * reader nothing about which interior nodes run. This adds one edge per
+ * interior entry node, so the fan is visible. The added edges are display only:
+ * they carry no `canonicals`, so no connection mutation can resolve through
+ * them, and the real edge onto the group port stays in the list.
+ *
+ * A collapsed group hides its interior, so it fans nothing. Only the flag-on
+ * path calls this.
+ */
+export function fanBoundaryEdgesToInteriorEntries(
+	connections: CanvasConnection[],
+	{
+		getGroupIdForCardId,
+		getEntryNodeIds,
+		isGroupExpanded,
+	}: {
+		/** Group id for a `group:<id>` canvas endpoint, or undefined. */
+		getGroupIdForCardId: (canvasId: string) => string | undefined;
+		/** Canvas node ids of the group's interior entry nodes. */
+		getEntryNodeIds: (groupId: string) => string[];
+		isGroupExpanded: (groupId: string) => boolean;
+	},
+): CanvasConnection[] {
+	const result = [...connections];
+
+	for (const conn of connections) {
+		const groupId = getGroupIdForCardId(conn.target);
+		if (groupId === undefined || !isGroupExpanded(groupId)) continue;
+
+		for (const entryId of getEntryNodeIds(groupId)) {
+			const fanned = {
+				source: conn.target,
+				sourceHandle: CANVAS_NODE_GROUP_HANDLE_RIGHT,
+				target: entryId,
+				targetHandle: conn.targetHandle,
+			};
+			const id = createCanvasConnectionId(fanned);
+			if (result.some((existing) => existing.id === id)) continue;
+
+			result.push({ ...conn, id, ...fanned, data: undefined });
+		}
+	}
+
+	return result;
+}
+
 export function remapCollapsedGroupConnections(
 	connections: CanvasConnection[],
 	collapsedGroupByNodeId: Map<string, IWorkflowGroup>,
