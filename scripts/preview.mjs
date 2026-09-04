@@ -26,7 +26,7 @@ const DEVCONTAINER = process.env.PREVIEW_DEVCONTAINER ?? '.devcontainer/preview/
 // The preview devcontainer asks for 2 cpus / 8gb / 32gb, which keeps the smallest
 // type available. Set PREVIEW_MACHINE=standardLinux32gb to compare against 4 cores.
 const MACHINE = process.env.PREVIEW_MACHINE ?? 'basicLinux32gb';
-const IDLE_TIMEOUT = '30m';
+const IDLE_TIMEOUT = '2h';
 const RETENTION_PERIOD = '24h';
 // Only used to build the URL printed here. The in-box script reads the codespace's
 // own N8N_PORT and prints the authoritative URL, so override both or neither.
