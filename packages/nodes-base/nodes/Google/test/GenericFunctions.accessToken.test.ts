@@ -32,4 +32,16 @@ describe('getGoogleAccessToken', () => {
 		expect(signOptions.header).toEqual({ typ: 'JWT', alg: 'RS256' });
 		expect(signOptions.header).not.toHaveProperty('kid');
 	});
+
+	it('throws when neither service nor scopeOverride is provided', async () => {
+		const ctx = mock<IExecuteFunctions>();
+		const credentials: IDataObject = {
+			email: 'svc@project.iam.gserviceaccount.com',
+			privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+		};
+
+		await expect(getGoogleAccessToken.call(ctx, credentials, undefined)).rejects.toThrow(
+			'At least one scope is required to generate a Google access token.',
+		);
+	});
 });
