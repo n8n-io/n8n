@@ -864,6 +864,80 @@ describe('createModel', () => {
 	});
 });
 
+describe('OpenAI-compatible stream parsing', () => {
+	it.each([
+		{
+			name: 'parses thinking and text content arrays',
+			content: [
+				{
+					type: 'thinking',
+					thinking: [{ type: 'text', text: 'Let me think.' }],
+					closed: true,
+				},
+				{ type: 'text', text: 'The answer is 391.' },
+			],
+			expectedDeltas: [
+				{ type: 'reasoning-delta', id: 'reasoning-0', delta: 'Let me think.' },
+				{ type: 'text-delta', id: 'txt-0', delta: 'The answer is 391.' },
+			],
+		},
+		{
+			name: 'parses string content',
+			content: 'The answer is 391.',
+			expectedDeltas: [{ type: 'text-delta', id: 'txt-0', delta: 'The answer is 391.' }],
+		},
+	])('$name', async ({ content, expectedDeltas }) => {
+		const { createOpenAICompatible } = await vi.importActual<
+			typeof import('@ai-sdk/openai-compatible')
+		>('@ai-sdk/openai-compatible');
+		const responseChunks = [
+			{
+				id: 'chunk-1',
+				object: 'chat.completion.chunk',
+				created: 1,
+				model: 'zai-glm-5-2',
+				choices: [
+					{
+						index: 0,
+						delta: { role: 'assistant', content },
+						finish_reason: null,
+					},
+				],
+			},
+			{
+				id: 'chunk-2',
+				object: 'chat.completion.chunk',
+				created: 1,
+				model: 'zai-glm-5-2',
+				choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+			},
+		];
+		const body = `${responseChunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`;
+		const fetch = vi.fn().mockResolvedValue(
+			new Response(body, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			}),
+		);
+		const model = createOpenAICompatible({
+			name: 'custom',
+			baseURL: 'https://model.example.com/v1',
+			apiKey: 'test-key',
+			fetch,
+		})('zai-glm-5-2');
+
+		const result = await model.doStream({
+			prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
+		});
+		const chunks = [];
+		for await (const chunk of result.stream) chunks.push(chunk);
+
+		expect(fetch).toHaveBeenCalledOnce();
+		expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+		expect(chunks.filter((chunk) => chunk.type.endsWith('delta'))).toEqual(expectedDeltas);
+	});
+});
+
 describe('createEmbeddingModel', () => {
 	it('should accept a legacy api key string', () => {
 		const model = createEmbeddingModel(

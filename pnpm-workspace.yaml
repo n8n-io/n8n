@@ -65,7 +65,7 @@ catalog:
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
-  '@ai-sdk/openai-compatible': ^3.0.14
+  '@ai-sdk/openai-compatible': ^3.0.41
   '@ai-sdk/otel': ^1.0.66
   '@ai-sdk/provider-utils': ^5.0.27
   '@ai-sdk/xai': ^4.0.18

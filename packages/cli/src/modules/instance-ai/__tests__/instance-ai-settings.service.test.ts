@@ -88,6 +88,7 @@ describe('InstanceAiSettingsService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
+		vi.stubEnv('N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS', '');
 		vi.stubEnv('OPENAI_API_KEY', '');
 		vi.stubEnv('ANTHROPIC_API_KEY', '');
 		vi.stubEnv('GOOGLE_VERTEX_PROJECT', '');
@@ -1964,14 +1965,63 @@ describe('InstanceAiSettingsService', () => {
 			expect(resolveModelConfig).toHaveBeenCalledTimes(2);
 		});
 
-		it('builds and validates a model config from a draft connection', () => {
+		it.each([
+			['without a URL', undefined],
+			['with the OpenAI API URL', 'https://api.openai.com/v1'],
+			['with the n8n proxy URL', 'https://ai-assistant.n8n.io/v1'],
+		] as const)('builds an OpenAI provider config %s', (_description, url) => {
+			const data = { apiKey: 'key', ...(url ? { url } : {}) };
+
+			expect(service.buildModelConfigForConnection({ type: 'openAiApi', data }, 'gpt-5.4')).toEqual(
+				{ id: 'openai/gpt-5.4', url: url ?? '', apiKey: 'key' },
+			);
+		});
+
+		it('builds a custom provider config for an OpenAI-compatible endpoint', () => {
 			expect(
 				service.buildModelConfigForConnection(
-					{ type: 'openAiApi', data: { apiKey: 'key' } },
-					'gpt-5.4',
+					{ type: 'openAiApi', data: { url: 'https://api.eu.mistral.ai/v1' } },
+					'zai-glm-5-2',
 				),
-			).toEqual({ id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
+			).toEqual({ id: 'custom/zai-glm-5-2', url: 'https://api.eu.mistral.ai/v1' });
+		});
 
+		it.each([
+			['the known model default', '', true],
+			['an environment override', 'false', false],
+		] as const)(
+			'adds structured-output support from %s to a custom provider config',
+			(_, value, expected) => {
+				vi.stubEnv('N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS', value);
+
+				expect(
+					service.buildModelConfigForConnection(
+						{ type: 'openAiApi', data: { url: 'https://model.example.com/v1' } },
+						'zai-org/GLM-5.2-Fast',
+					),
+				).toEqual({
+					id: 'custom/zai-org/GLM-5.2-Fast',
+					url: 'https://model.example.com/v1',
+					supportsStructuredOutputs: expected,
+				});
+			},
+		);
+
+		it('does not add custom model options to an OpenAI provider config', () => {
+			vi.stubEnv('N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS', 'false');
+
+			expect(
+				service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { url: 'https://api.openai.com/v1' } },
+					'zai-org/GLM-5.2-Fast',
+				),
+			).toEqual({
+				id: 'openai/zai-org/GLM-5.2-Fast',
+				url: 'https://api.openai.com/v1',
+			});
+		});
+
+		it('validates a model config from a draft connection', () => {
 			expect(() =>
 				service.buildModelConfigForConnection(
 					{ type: 'braveSearchApi', data: { apiKey: 'key' } },
