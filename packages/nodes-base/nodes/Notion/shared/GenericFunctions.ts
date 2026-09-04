@@ -45,6 +45,26 @@ const apiVersion: { [key: number]: string } = {
 	2.2: '2021-08-16',
 };
 
+// Notion's database/data source schema never reveals what a formula property
+// evaluates to (string/number/date/checkbox) — that's only known once Notion
+// evaluates it, and Notion refuses to evaluate (and query-filter) a formula
+// whose branches don't all resolve to the same type. No "Formula Return Type"
+// choice in this node can work around that; the formula itself needs fixing.
+const FORMULA_UNKNOWN_TYPE_PATTERN = /unable to filter based on a formula of unknown type/i;
+
+export function isFormulaTypeInferenceError(error: unknown): error is NodeApiError {
+	if (!(error instanceof NodeApiError)) return false;
+	return [error.description, error.message].some(
+		(value) => typeof value === 'string' && FORMULA_UNKNOWN_TYPE_PATTERN.test(value),
+	);
+}
+
+export function applyFormulaTypeInferenceGuidance(error: NodeApiError): void {
+	error.message = "Notion couldn't determine this formula's return type";
+	error.description =
+		"This happens when the formula's branches evaluate to different types in Notion (for example, a date in one branch and an empty string \"\" in another). Open the formula property in Notion, make sure it always resolves to the same type — use empty() instead of \"\" for a blank fallback — and run this node again. Picking a different 'Formula Return Type' in this node won't help, since it's the formula itself that Notion cannot type.";
+}
+
 export async function notionApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -77,7 +97,11 @@ export async function notionApiRequest(
 		}
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const apiError = new NodeApiError(this.getNode(), error as JsonObject);
+		if (isFormulaTypeInferenceError(apiError)) {
+			applyFormulaTypeInferenceGuidance(apiError);
+		}
+		throw apiError;
 	}
 }
 
