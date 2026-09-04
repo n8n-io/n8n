@@ -47,8 +47,8 @@ export default defineConfig(
 
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// Ratchets whose allowlists below are the only escape hatch; block inline disables.
-			// `no-unsealed-workflow-entity-write` (on for every package via the plugin) has no allowlist at all.
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
+			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
@@ -56,12 +56,11 @@ export default defineConfig(
 						{
 							rule: 'misplaced-n8n-typeorm-import',
 							message:
-								'Keep TypeORM in the persistence layer (add a use-case repository method), or add the file to the allowlist in packages/cli/eslint.config.mjs.',
+								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
 						},
 						{
 							rule: 'no-repository-in-public-api-handler',
-							message:
-								'Call a service instead of the repository, or add the file to the allowlist in packages/cli/eslint.config.mjs.',
+							message: 'Call a service instead of reaching the repository.',
 						},
 						{
 							rule: 'require-public-api-controller',
