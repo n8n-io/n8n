@@ -116,7 +116,11 @@ export const contactOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}/',
 					},
 					send: {
-						preSend: [validEmailAndPhonePreSendAction, splitTagsPreSendAction],
+						preSend: [
+							validEmailAndPhonePreSendAction,
+							splitTagsPreSendAction,
+							addCustomFieldsPreSendAction,
+						],
 					},
 					output: {
 						postReceive: [
@@ -196,14 +200,6 @@ const customFields: INodeProperties = {
 					name: 'fieldValue',
 					type: 'string',
 					default: '',
-					routing: {
-						send: {
-							type: 'body',
-							property: 'customFields',
-							value:
-								'={{ $parent.values.map(field => ({ fieldId: { id: field.fieldId.id }, field_value: field.fieldValue })) }}',
-						},
-					},
 				},
 			],
 		},
