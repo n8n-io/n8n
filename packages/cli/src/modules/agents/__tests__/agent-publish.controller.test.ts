@@ -45,7 +45,7 @@ describe('AgentPublishController route access scopes', () => {
 		['revertToPublished', 'agent:update'],
 		['revertToVersion', 'agent:update'],
 		['listVersions', 'agent:read'],
-		['listUnpublishedDependencies', 'agent:read'],
+		['listUnpublishedDependencies', 'agent:publish'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});

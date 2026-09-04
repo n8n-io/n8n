@@ -640,11 +640,14 @@ function closePreviewDock() {
 }
 
 function onPublished(updated: AgentResource) {
+	// The publish may have waited in a modal while the route moved on.
+	if (updated.id !== agent.value?.id) return;
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
 }
 
 function onUnpublished(updated: AgentResource) {
+	if (updated.id !== agent.value?.id) return;
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
 }

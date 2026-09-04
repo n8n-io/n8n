@@ -23,6 +23,7 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -83,6 +84,13 @@ const toDependency = ({ id, name }: WorkflowEntity): AgentPublishDependency => (
 	name,
 });
 
+/** Errors that mean "fix the workflow", as opposed to a bug or an outage. */
+function isDependencyPublishFailure(error: unknown): error is Error {
+	return (
+		error instanceof UserError || (error instanceof ResponseError && error.httpStatusCode < 500)
+	);
+}
+
 function requireValidValidation(
 	validation: AgentConfigValidationResponse,
 ): asserts validation is ValidAgentConfigValidationResponse {
@@ -140,14 +148,6 @@ export class AgentPublishService {
 
 		const expectedRevision = agent.revision;
 
-		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-			return { agent };
-		}
-
-		if (versionId !== undefined && versionId === agent.activeVersionId) {
-			return { agent };
-		}
-
 		let targetHistory: AgentHistory | undefined;
 		if (versionId) {
 			const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
@@ -157,19 +157,30 @@ export class AgentPublishService {
 			targetHistory = target;
 		}
 
+		// Before the idempotent returns: a live agent can lose a workflow tool's
+		// published version, and the caller confirmed publishing exactly that.
+		const publishedDependencies = options.publishDependencies
+			? await this.publishUnpublishedDependencies(
+					targetHistory ? targetHistory.schema : agent.schema,
+					projectId,
+					user,
+				)
+			: false;
+
+		if (
+			(!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) ||
+			(versionId !== undefined && versionId === agent.activeVersionId)
+		) {
+			// Cached runtimes built the tool while the workflow was unpublished.
+			if (publishedDependencies) this.runtimeCacheService.clearRuntimes(agentId);
+			return { agent };
+		}
+
 		const tasks = versionId
 			? new Map<string, AgentTask>()
 			: new Map(
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
-
-		if (options.publishDependencies) {
-			await this.publishUnpublishedDependencies(
-				targetHistory ? targetHistory.schema : agent.schema,
-				projectId,
-				user,
-			);
-		}
 
 		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
 
@@ -309,14 +320,15 @@ export class AgentPublishService {
 
 	/**
 	 * Try every dependency, then fail with all failures: the agent must not go
-	 * live with an unpublished tool.
+	 * live with an unpublished tool. Returns whether any workflow was published.
 	 */
 	private async publishUnpublishedDependencies(
 		config: AgentJsonConfig | null,
 		projectId: string,
 		user: User,
-	): Promise<void> {
+	): Promise<boolean> {
 		const failedDependencies: AgentPublishDependencyFailure[] = [];
+		let published = false;
 		for (const workflow of await this.findUnpublishedWorkflows(config, projectId)) {
 			try {
 				// Publishing a workflow the agent cannot run as a tool would not
@@ -325,14 +337,18 @@ export class AgentPublishService {
 				await this.workflowService.activateWorkflow(user, workflow.id, {
 					source: 'agent-publish',
 				});
+				published = true;
 			} catch (error) {
-				const reason = error instanceof Error ? error.message : String(error);
-				failedDependencies.push({ ...toDependency(workflow), reason });
+				// Only failures the user can act on belong in the 400; an outage or
+				// a bug keeps its own status.
+				if (!isDependencyPublishFailure(error)) throw error;
+				failedDependencies.push({ ...toDependency(workflow), reason: error.message });
 			}
 		}
 		if (failedDependencies.length > 0) {
 			throw new AgentPublishDependenciesError({ failedDependencies });
 		}
+		return published;
 	}
 
 	/**

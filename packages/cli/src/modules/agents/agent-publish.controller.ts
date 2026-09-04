@@ -43,8 +43,9 @@ export class AgentPublishController {
 		);
 	}
 
+	// Same scope as the publish itself: whoever may publish must see what it entails.
 	@Get('/:agentId/unpublished-dependencies')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:publish')
 	async listUnpublishedDependencies(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,

@@ -74,6 +74,8 @@ async function onConfirm() {
 }
 
 async function onBeforeClose() {
+	// Closing mid-flight would hide a request that still completes.
+	if (submitting.value) return false;
 	const shouldClose = await props.data.onClose?.();
 	return shouldClose !== false;
 }

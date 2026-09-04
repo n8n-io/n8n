@@ -44,9 +44,13 @@ withDefaults(
 	border-radius: var(--spacing--4xs);
 	border: var(--border);
 
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
+
 	* {
 		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
+		line-height: calc(var(--font-size--sm) + var(--border-width));
 	}
 }
 </style>

@@ -13,6 +13,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 const STUBS = {
 	Modal: {
+		props: ['beforeClose'],
 		template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 	},
 	N8nHeading: { template: '<h2><slot /></h2>' },
@@ -82,5 +83,24 @@ describe('AgentConfirmationModal', () => {
 		await flushPromises();
 
 		expect(closeModalMock).toHaveBeenCalledWith('agentConfirmation');
+	});
+
+	it('refuses to close while confirming is in flight', async () => {
+		let finish: (value: undefined) => void = () => {};
+		const onConfirm = vi.fn(
+			async () => await new Promise<undefined>((resolve) => (finish = resolve)),
+		);
+		const wrapper = renderModal({ onConfirm });
+		const beforeClose = wrapper
+			.findComponent(STUBS.Modal)
+			.props('beforeClose') as () => Promise<boolean>;
+
+		await wrapper.findAll('button')[1].trigger('click');
+		await expect(beforeClose()).resolves.toBe(false);
+
+		finish(undefined);
+		await flushPromises();
+
+		await expect(beforeClose()).resolves.toBe(true);
 	});
 });

@@ -8,6 +8,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
@@ -971,7 +972,12 @@ describe('AgentPublishService', () => {
 			});
 		const nodes = [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }];
 		const lookup = { id: 'wf-1', name: 'Lookup', nodes, activeVersionId: null } as WorkflowEntity;
-		const notify = { id: 'wf-2', name: 'Notify', nodes, activeVersionId: 'v-live' } as WorkflowEntity;
+		const notify = {
+			id: 'wf-2',
+			name: 'Notify',
+			nodes,
+			activeVersionId: 'v-live',
+		} as WorkflowEntity;
 
 		it('publishes unpublished workflow tools before validating when publishDependencies is set', async () => {
 			const {
@@ -1026,7 +1032,7 @@ describe('AgentPublishService', () => {
 				manual,
 			]);
 			workflowService.activateWorkflow.mockImplementation(async (_user, workflowId) => {
-				if (workflowId === 'wf-1') throw new Error('Webhook path in use');
+				if (workflowId === 'wf-1') throw new BadRequestError('Webhook path in use');
 				return {} as WorkflowEntity;
 			});
 
@@ -1035,6 +1041,7 @@ describe('AgentPublishService', () => {
 					publishDependencies: true,
 				}),
 			).rejects.toMatchObject({
+				httpStatusCode: 400,
 				message: expect.stringContaining('"Lookup" (Webhook path in use)'),
 				meta: {
 					failedDependencies: [
@@ -1043,7 +1050,9 @@ describe('AgentPublishService', () => {
 							type: 'workflow',
 							id: 'wf-3',
 							name: 'Manual',
-							reason: expect.stringContaining("needs a 'When Executed by Another Workflow' trigger"),
+							reason: expect.stringContaining(
+								"needs a 'When Executed by Another Workflow' trigger",
+							),
 						},
 					],
 				},
@@ -1053,6 +1062,46 @@ describe('AgentPublishService', () => {
 			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-2', {
 				source: 'agent-publish',
 			});
+			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		});
+
+		it('lets an unexpected dependency error through instead of reporting it as a 400', async () => {
+			const { service, agentRepository, workflowRepository, workflowService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(withWorkflowTools());
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([lookup]);
+			const outage = new Error('connection lost');
+			workflowService.activateWorkflow.mockRejectedValue(outage);
+
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, undefined, {
+					publishDependencies: true,
+				}),
+			).rejects.toBe(outage);
+		});
+
+		it('repairs dependencies of a draft that is already live and drops its cached runtimes', async () => {
+			const { service, agentRepository, workflowRepository, workflowService, runtimeCacheService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					versionId: 'v1',
+					activeVersionId: 'v1',
+					schema: {
+						...schema,
+						tools: [{ type: 'workflow', workflowId: 'wf-1', workflow: 'Lookup' }],
+					},
+				}),
+			);
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([lookup]);
+
+			await service.publishAgent(agentId, projectId, user, byUser, undefined, {
+				publishDependencies: true,
+			});
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
+				source: 'agent-publish',
+			});
+			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		});
 
