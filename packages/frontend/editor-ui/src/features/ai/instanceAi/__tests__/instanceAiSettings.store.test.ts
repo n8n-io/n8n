@@ -522,6 +522,41 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(mockUpdatePreferences).not.toHaveBeenCalled();
 		});
+
+		it('keeps a saved ratio when an older preference request finishes later', async () => {
+			let resolveFetch: (value: InstanceAiUserPreferencesResponse) => void = () => {};
+			mockFetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise<InstanceAiUserPreferencesResponse>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+			mockUpdatePreferences.mockResolvedValueOnce(preferencesResponse(0.6));
+
+			const loading = store.ensurePreferencesLoaded();
+			await vi.waitFor(() => expect(mockFetchPreferences).toHaveBeenCalledOnce());
+			await store.persistChatPanelWidthRatio(0.6);
+			resolveFetch(preferencesResponse(0.5));
+			await loading;
+
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.6);
+		});
+
+		it('restores the confirmed ratio after a failed update and allows a retry', async () => {
+			setUserPreference(store, preferencesResponse(0.5));
+			mockUpdatePreferences
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce(preferencesResponse(0.6));
+
+			await store.persistChatPanelWidthRatio(0.6);
+
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.5);
+
+			await store.persistChatPanelWidthRatio(0.6);
+
+			expect(mockUpdatePreferences).toHaveBeenCalledTimes(2);
+			expect(store.preferences?.chatPanelWidthRatio).toBe(0.6);
+		});
 	});
 
 	describe('provider credentials', () => {

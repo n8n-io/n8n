@@ -524,7 +524,7 @@ const previewPanelWidth = computed(() => {
 
 	const preferredChatPanelWidth =
 		chatPanelWidthRatio.value === null
-			? Math.min(DEFAULT_CHAT_PANEL_CONTENT_WIDTH, threadAreaWidth.value / 2)
+			? DEFAULT_CHAT_PANEL_CONTENT_WIDTH
 			: threadAreaWidth.value * chatPanelWidthRatio.value;
 	const preferredWidth = threadAreaWidth.value - preferredChatPanelWidth;
 	return Math.round(
@@ -575,7 +575,7 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 }
 
 function handlePreviewResize({ width }: { width: number }) {
-	if (threadAreaWidth.value <= 0) return;
+	if (threadAreaWidth.value <= 0 || Math.round(width) === previewPanelWidth.value) return;
 	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
 	preferredChatPanelWidthRatio.value = ratio;
 }

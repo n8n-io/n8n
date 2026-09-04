@@ -60,6 +60,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isModelCatalogLoading = ref(false);
 	let modelCatalogFetchPromise: Promise<void> | null = null;
 	let userPreferencesWriteQueue = Promise.resolve();
+	let userPreferencesRevision = 0;
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
@@ -166,14 +167,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		try {
 			const promises: [
 				Promise<InstanceAiAdminSettingsResponse | null>,
-				Promise<InstanceAiUserPreferencesResponse>,
+				Promise<InstanceAiUserPreferencesResponse | null>,
 			] = [
 				canManage.value ? fetchSettings(rootStore.restApiContext) : Promise.resolve(null),
-				fetchPreferences(rootStore.restApiContext),
+				fetchLatestUserPreferences(),
 			];
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
-			preferences.value = p;
+			if (p) preferences.value = p;
 			if (!isCloudManaged.value && canManage.value) {
 				const [sc, imc] = await Promise.all([
 					fetchServiceCredentials(rootStore.restApiContext),
@@ -273,6 +274,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function enqueueUserPreferencesUpdate(
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
+		userPreferencesRevision++;
 		const request = userPreferencesWriteQueue.then(
 			async () => await updatePreferences(rootStore.restApiContext, update),
 		);
@@ -283,6 +285,28 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return await request;
 	}
 
+	async function fetchLatestUserPreferences(): Promise<InstanceAiUserPreferencesResponse | null> {
+		const revision = userPreferencesRevision;
+		const pendingWrites = userPreferencesWriteQueue;
+		const result = await pendingWrites.then(
+			async () => await fetchPreferences(rootStore.restApiContext),
+		);
+		return revision === userPreferencesRevision ? result : null;
+	}
+
+	function setChatPanelWidthRatio(
+		currentPreferences: InstanceAiUserPreferencesResponse,
+		chatPanelWidthRatio: number | undefined,
+	): InstanceAiUserPreferencesResponse {
+		const result = { ...currentPreferences };
+		if (chatPanelWidthRatio === undefined) {
+			delete result.chatPanelWidthRatio;
+		} else {
+			result.chatPanelWidthRatio = chatPanelWidthRatio;
+		}
+		return result;
+	}
+
 	async function persistChatPanelWidthRatio(chatPanelWidthRatio: number): Promise<void> {
 		if (
 			pendingChatPanelWidthRatio === null &&
@@ -291,6 +315,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 
+		const previousRatio = preferences.value?.chatPanelWidthRatio;
 		pendingChatPanelWidthRatio = chatPanelWidthRatio;
 		if (preferences.value) {
 			preferences.value = { ...preferences.value, chatPanelWidthRatio };
@@ -301,6 +326,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 
+		let lastConfirmedRatio = previousRatio;
 		chatPanelWidthRatioPersistence = (async () => {
 			while (pendingChatPanelWidthRatio !== null) {
 				const ratioToPersist = pendingChatPanelWidthRatio;
@@ -310,11 +336,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 					const result = await enqueueUserPreferencesUpdate({
 						chatPanelWidthRatio: ratioToPersist,
 					});
+					lastConfirmedRatio = result.chatPanelWidthRatio;
 					preferences.value =
 						pendingChatPanelWidthRatio === null
 							? result
 							: { ...result, chatPanelWidthRatio: pendingChatPanelWidthRatio };
-				} catch {}
+				} catch {
+					if (pendingChatPanelWidthRatio === null && preferences.value) {
+						preferences.value = setChatPanelWidthRatio(preferences.value, lastConfirmedRatio);
+					}
+				}
 			}
 		})().finally(() => {
 			chatPanelWidthRatioPersistence = null;
@@ -326,7 +357,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function ensurePreferencesLoaded(): Promise<void> {
 		if (preferences.value) return;
 		try {
-			preferences.value = await fetchPreferences(rootStore.restApiContext);
+			const result = await fetchLatestUserPreferences();
+			if (result && !preferences.value) preferences.value = result;
 		} catch {}
 	}
 
@@ -641,8 +673,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
 			promises.push(
-				fetchPreferences(rootStore.restApiContext).then((p) => {
-					preferences.value = p;
+				fetchLatestUserPreferences().then((p) => {
+					if (p && !preferences.value) preferences.value = p;
 				}),
 			);
 		}
