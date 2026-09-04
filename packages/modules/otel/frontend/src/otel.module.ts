@@ -37,11 +37,6 @@ export const OtelModule: FrontendModuleDescription = {
 		{
 			id: 'settings-opentelemetry',
 			icon: 'telescope',
-			// Getters, not values: the descriptor object is built once, at import,
-			// outside any reactive scope and before `setLanguage` runs. Reading here
-			// instead means each read happens inside `settingsSidebarItems`, so the
-			// label follows a language change and the scope check follows a
-			// permission change.
 			get label() {
 				return useI18n().baseText('settings.opentelemetry');
 			},
