@@ -269,7 +269,7 @@ export function mcpServerToNode(
 		parameters: {
 			endpointUrl: server.url,
 			serverTransport: toNodeTransport(server.transport),
-			authentication: authentication,
+			authentication,
 			...toolFilterParams,
 			options,
 		},
