@@ -533,7 +533,7 @@ describe('useInstanceAiSettingsStore', () => {
 			);
 			mockUpdatePreferences.mockResolvedValueOnce(preferencesResponse(0.6));
 
-			const loading = store.ensurePreferencesLoaded();
+			const loading = store.fetch();
 			await vi.waitFor(() => expect(mockFetchPreferences).toHaveBeenCalledOnce());
 			await store.persistChatPanelWidthRatio(0.6);
 			resolveFetch(preferencesResponse(0.5));
