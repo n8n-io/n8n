@@ -6,6 +6,7 @@ import {
 	OnLeaderStepdown,
 	OnLeaderTakeover,
 	OnShutdown,
+	resolveSystemTaskRunOptions,
 	SystemTaskMetadata,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -201,6 +202,9 @@ export class SystemTaskRunner {
 	 * @throws {UnexpectedError} When a task declares a `retryDelaySeconds` that is
 	 * not an integer between 1 and {@link MAX_RETRY_DELAY_SECONDS}. A timeout would
 	 * silently turn such a delay into an immediate retry.
+	 *
+	 * @throws {UnexpectedError} When a task declares a `maxAttempts` or
+	 * `misfireGraceSeconds` the scheduler cannot store.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -222,6 +226,8 @@ export class SystemTaskRunner {
 				extra: { name: task.name, retryDelaySeconds },
 			});
 		}
+
+		resolveSystemTaskRunOptions(task);
 
 		const routed: RoutedTask = { task };
 		this.routedTasksByName.set(task.name, routed);

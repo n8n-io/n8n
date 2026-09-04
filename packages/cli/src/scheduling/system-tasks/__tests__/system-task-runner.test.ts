@@ -756,6 +756,21 @@ describe('SystemTaskRunner', () => {
 			await expect(runner.init()).resolves.toBeUndefined();
 		});
 
+		it.each([
+			{ field: 'maxAttempts', value: 0 },
+			{ field: 'misfireGraceSeconds', value: 0 },
+		])('rejects a task declaring $field as $value', async ({ field, value }) => {
+			Object.assign(dummy, { [field]: value });
+			const { runner, metadata } = setup();
+			metadata.register(DummySystemTask);
+
+			await expect(runner.init()).rejects.toThrow(
+				expect.objectContaining({
+					cause: expect.objectContaining({ message: expect.stringContaining(field) }),
+				}),
+			);
+		});
+
 		it('rejects two tasks registered under the same name', async () => {
 			const other = new OtherDummySystemTask();
 			other.name = dummy.name;
