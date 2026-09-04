@@ -1019,6 +1019,7 @@ describe('TelemetryEventRelay', () => {
 	describe('credentials events', () => {
 		it('should track on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1084,6 +1085,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1113,6 +1115,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1731,6 +1735,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
