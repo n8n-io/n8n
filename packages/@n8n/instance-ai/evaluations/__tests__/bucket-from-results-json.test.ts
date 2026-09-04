@@ -124,6 +124,28 @@ describe('bucketFromResultsJson', () => {
 		expect(result.trialTotal).toBe(0);
 	});
 
+	it('yields a keyed case with no units when a failed build left every expectation unjudged', () => {
+		// The real shape of a failed sandbox build: the case is present and
+		// keyable, but nothing was graded. `compare-local` distinguishes this from
+		// "the two runs covered different cases" — telling someone to check their
+		// --filter when the filter was right sends them after a bug that isn't there.
+		const result = project({
+			testCases: [
+				{
+					name: 'build a thing',
+					testCaseFile: 'ai-gateway-respects-named-web-search-tool',
+					scenarios: [],
+					buildExpectations: [
+						{ expectation: 'honoured the named tool', passCount: 0, evaluatedCount: 0 },
+					],
+				},
+			],
+		});
+
+		expect(result.skipped).toEqual([]);
+		expect(result.bucket.evaluationUnits.size).toBe(0);
+	});
+
 	it('rejects a file that is not an eval-results.json', () => {
 		expect(() => parseEvalResults({ hello: 'world' }, 'notes.json')).toThrow(EvalResultsParseError);
 		expect(() => parseEvalResults({ hello: 'world' }, 'notes.json')).toThrow(/notes\.json/);

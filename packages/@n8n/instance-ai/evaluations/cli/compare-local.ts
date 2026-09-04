@@ -243,9 +243,24 @@ function render(
 	}
 
 	if (result.evaluationUnits.length === 0) {
+		// Two very different situations, and telling a developer to go check their
+		// --filter when the filter was right sends them hunting a bug that isn't
+		// there. If either side contributed units that simply didn't pair up, the
+		// runs really did cover different cases; if neither side produced a unit
+		// at all, the cases ran and were ungradeable — a failed build leaves every
+		// expectation unjudged, which is the common cause.
+		const eitherSideHadUnits = result.prOnly.length > 0 || result.baselineOnly.length > 0;
 		lines.push(
-			`${INDENT}No shared units. The two runs covered different cases — check the --filter/--tier on both.`,
+			eitherSideHadUnits
+				? `${INDENT}No shared units — the two runs covered different cases. Check the --filter/--tier on both.`
+				: `${INDENT}Neither run produced a graded unit, so there is nothing to compare. A build that`,
 		);
+		if (!eitherSideHadUnits) {
+			lines.push(
+				`${INDENT}fails leaves every expectation unjudged; check the run log and the HTML report`,
+			);
+			lines.push(`${INDENT}before reading anything into this.`);
+		}
 		lines.push('');
 		return lines;
 	}
